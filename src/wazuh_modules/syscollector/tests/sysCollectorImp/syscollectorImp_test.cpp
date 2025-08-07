@@ -71,24 +71,24 @@ TEST_F(SyscollectorImpTest, defaultCtor)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -113,52 +113,46 @@ TEST_F(SyscollectorImpTest, defaultCtor)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta.at("type").get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -166,19 +160,19 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -190,11 +184,11 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -202,11 +196,11 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult21
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult22
     {
@@ -218,7 +212,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult24
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -274,23 +268,23 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"},{"hotfix":"KB87654321"}])"_json));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"},{"hotfix_name":"KB87654321"}])"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(::testing::AtLeast(2))
     .WillRepeatedly(testing::InvokeArgument<0>(nlohmann::json::parse(
-                                                   R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})")));
+                                                   R"({"name":"kworker/u256:2-","pid":431625,"parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})")));
 
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(2))
     .WillRepeatedly(::testing::InvokeArgument<0>
-                    (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+                    (R"({"name":"TEXT", "version":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -364,22 +358,22 @@ TEST_F(SyscollectorImpTest, noHardware)
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -404,48 +398,42 @@ TEST_F(SyscollectorImpTest, noHardware)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -453,19 +441,19 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -473,11 +461,11 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -485,7 +473,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult21
     {
@@ -493,7 +481,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -505,7 +493,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -561,23 +549,23 @@ TEST_F(SyscollectorImpTest, noOs)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -602,64 +590,58 @@ TEST_F(SyscollectorImpTest, noOs)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -671,11 +653,11 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -683,7 +665,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult21
     {
@@ -691,7 +673,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -703,7 +685,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -758,23 +740,23 @@ TEST_F(SyscollectorImpTest, noNetwork)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).Times(0);
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -799,36 +781,30 @@ TEST_F(SyscollectorImpTest, noNetwork)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -836,7 +812,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -848,11 +824,11 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -872,7 +848,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult23
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult24
     {
@@ -884,7 +860,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult26
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -935,21 +911,21 @@ TEST_F(SyscollectorImpTest, noPackages)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -974,48 +950,42 @@ TEST_F(SyscollectorImpTest, noPackages)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult10
     {
@@ -1023,19 +993,19 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -1047,7 +1017,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -1055,7 +1025,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult21
     {
@@ -1063,7 +1033,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -1075,7 +1045,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1130,23 +1100,23 @@ TEST_F(SyscollectorImpTest, noPorts)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -1171,48 +1141,42 @@ TEST_F(SyscollectorImpTest, noPorts)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1220,15 +1184,15 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -1240,11 +1204,11 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -1252,7 +1216,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult21
     {
@@ -1260,7 +1224,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -1272,7 +1236,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1327,24 +1291,24 @@ TEST_F(SyscollectorImpTest, noPortsAll)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"","tx_queue":0},{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0},{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -1369,52 +1333,46 @@ TEST_F(SyscollectorImpTest, noPortsAll)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1422,19 +1380,19 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"7046b3f9cda975eb6567259c2469748e634dde49","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -1446,11 +1404,11 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -1458,15 +1416,15 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"09d591fb0ed092c387f77b24af5bada43b5d519d","inode":0,"item_id":"7046b3f9cda975eb6567259c2469748e634dde49","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":null,"network_transport":"udp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult21
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -1478,7 +1436,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1535,19 +1493,19 @@ TEST_F(SyscollectorImpTest, noProcesses)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
 
@@ -1574,48 +1532,42 @@ TEST_F(SyscollectorImpTest, noProcesses)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1623,19 +1575,19 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult16
     {
@@ -1643,11 +1595,11 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -1655,7 +1607,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult21
     {
@@ -1663,7 +1615,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult22
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult23
     {
@@ -1675,7 +1627,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1730,24 +1682,24 @@ TEST_F(SyscollectorImpTest, noHotfixes)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -1772,52 +1724,46 @@ TEST_F(SyscollectorImpTest, noHotfixes)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1825,19 +1771,19 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -1849,11 +1795,11 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult19
     {
@@ -1861,7 +1807,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult21
     {
@@ -1873,7 +1819,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult23
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1928,24 +1874,24 @@ TEST_F(SyscollectorImpTest, noUsers)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -1971,52 +1917,46 @@ TEST_F(SyscollectorImpTest, noUsers)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -2024,19 +1964,19 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -2048,11 +1988,11 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult19
     {
@@ -2060,7 +2000,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult21
     {
@@ -2072,7 +2012,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult23
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -2127,24 +2067,24 @@ TEST_F(SyscollectorImpTest, noGroups)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"431625","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).Times(0);
 
@@ -2169,52 +2109,46 @@ TEST_F(SyscollectorImpTest, noGroups)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -2222,19 +2156,19 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -2246,11 +2180,11 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -2258,7 +2192,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult21
     {
@@ -2270,7 +2204,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -2323,25 +2257,25 @@ TEST_F(SyscollectorImpTest, noGroups)
 
 TEST_F(SyscollectorImpTest, pushMessageOk)
 {
-    constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c","id":1606851004})"};
+    constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"begin":"enp4s0","end":"enp4s0","id":1606851004})"};
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+              (R"({"name":"TEXT", "version":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":431625,"parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -2378,22 +2312,22 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     constexpr auto messageToPush{R"(syscollector_processes dbsync checksum_fail {"begin":"1","end":"99","id":1})"};
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"}])"_json));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14", "os_patch":"","format":"deb","location":" "})"_json));
+              (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14", "os_patch":"","type":"deb","path":" "})"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"45","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":"45","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -2418,13 +2352,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
@@ -2439,15 +2367,15 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult3
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult4
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult5
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult6
     {
@@ -2455,7 +2383,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult7
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult8
     {
@@ -2463,51 +2391,51 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult10
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult11
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult12
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult13
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult14
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult15
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult16
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult17
     {
-        R"({"data":{"architecture":"amd64","checksum":"c1a125f40a70bab20a252f42ea4ec0dcf90733e8","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","os_patch":null,"priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","os_patch":null,"path":" ","priority":"optional","size":"411","source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
-        R"({"data":{"checksum":"f25348b1ce5310f36c1ed859d13138fbb4e6bacb","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"af3801fac517cf9ae30f746092ce3e4058574454","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"45","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"45","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult21
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult22
     {
@@ -2515,7 +2443,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult23
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult24
     {
@@ -2523,7 +2451,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult25
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2578,25 +2506,25 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
 
 TEST_F(SyscollectorImpTest, pushMessageInvalid)
 {
-    constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"end":"Loopback Pseudo-Interface 1","id":1606851004})"};
+    constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"end":"enp4s0","id":1606851004})"};
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"},{"hotfix":"KB87654321"}])"_json));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"},{"hotfix_name":"KB87654321"}])"_json));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+              (R"({"name":"TEXT", "version":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":431625,"parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -2630,25 +2558,25 @@ TEST_F(SyscollectorImpTest, pushMessageInvalid)
 
 TEST_F(SyscollectorImpTest, scanInvalidData)
 {
-    constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"end":"Loopback Pseudo-Interface 1","id":1606851004})"};
+    constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"end":"enp4s0","id":1606851004})"};
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+                                                                R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"},{"hotfix":"KB87654321"}])"_json));
+                                                                   R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"},{"hotfix_name":"KB87654321"}])"_json));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+              (R"({"name":"TEXT", "version":"TEXT", "vendor":"TEXT", "installed":"TEXT", "path":"TEXT", "architecture":"TEXT", "category":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":"kworker/u256:2-","pid":431625,"parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -2686,69 +2614,69 @@ TEST_F(SyscollectorImpTest, portAllEnable)
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"(
     [
         {
-            "inode":43481,
-            "local_ip":"0.0.0.0",
-            "local_port":47748,
-            "pid":0,
+            "destination_ip":"0.0.0.0",
+            "destination_port":0,
+            "file_inode":43481,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"",
+            "network_transport":"udp",
             "process_name":"",
-            "protocol":"udp",
-            "remote_ip":"0.0.0.0",
-            "remote_port":0,
-            "rx_queue":0,
-            "state":"",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"0.0.0.0",
+            "source_port":47748
         },
         {
-            "inode":43482,
-            "local_ip":"::",
-            "local_port":51087,
-            "pid":0,
+            "destination_ip":"::",
+            "destination_port":0,
+            "file_inode":43482,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"",
+            "network_transport":"udp6",
             "process_name":"",
-            "protocol":"udp6",
-            "remote_ip":"::",
-            "remote_port":0,
-            "rx_queue":0,
-            "state":"",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"::",
+            "source_port":51087
         },
         {
-            "inode":50324,
-            "local_ip":"127.0.0.1",
-            "local_port":33060,
-            "pid":0,
+            "destination_ip":"0.0.0.0",
+            "destination_port":0,
+            "file_inode":50324,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"listening",
+            "network_transport":"tcp",
             "process_name":"",
-            "protocol":"tcp",
-            "remote_ip":"0.0.0.0",
-            "remote_port":0,
-            "rx_queue":0,
-            "state":"listening",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"127.0.0.1",
+            "source_port":33060
         },
         {
-            "inode":122575,
-            "local_ip":"192.168.0.104",
-            "local_port":39106,
-            "pid":0,
+            "destination_ip":"44.238.116.130",
+            "destination_port":443,
+            "file_inode":122575,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"established",
+            "network_transport":"tcp",
             "process_name":"",
-            "protocol":"tcp",
-            "remote_ip":"44.238.116.130",
-            "remote_port":443,
-            "rx_queue":0,
-            "state":"established",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"192.168.0.104",
+            "source_port":39106
         },
         {
-            "inode":122575,
-            "local_ip":"192.168.0.104",
-            "local_port":39106,
-            "pid":0,
+            "destination_ip":"44.238.116.130",
+            "destination_port":443,
+            "file_inode":122575,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"established",
+            "network_transport":"tcp",
             "process_name":"",
-            "protocol":"tcp",
-            "remote_ip":"44.238.116.130",
-            "remote_port":443,
-            "rx_queue":0,
-            "state":"established",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"192.168.0.104",
+            "source_port":39106
         }
     ])")));
 
@@ -2759,28 +2687,27 @@ TEST_F(SyscollectorImpTest, portAllEnable)
         {
             auto delta = nlohmann::json::parse(data);
             delta["data"].erase("checksum");
-            delta["data"].erase("scan_time");
             wrapper.callbackMock(delta.dump());
         }
     };
     const auto expectedResult1
     {
-        R"({"data":{"inode":43481,"item_id":"12903a43db24ab10d872547cdd1d786a5876a0da","local_ip":"0.0.0.0","local_port":47748,"pid":0,"process_name":null,"protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":43481,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":null,"network_transport":"udp","process_name":null,"process_pid":0,"source_ip":"0.0.0.0","source_port":47748},"operation":"INSERTED","type":"dbsync_ports"})"
     };
 
     const auto expectedResult2
     {
-        R"({"data":{"inode":43482,"item_id":"ca7c9aff241cb251c6ad31e30b806366ecb2ad5f","local_ip":"::","local_port":51087,"pid":0,"process_name":null,"protocol":"udp6","remote_ip":"::","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"::","destination_port":0,"file_inode":43482,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":null,"network_transport":"udp6","process_name":null,"process_pid":0,"source_ip":"::","source_port":51087},"operation":"INSERTED","type":"dbsync_ports"})"
     };
 
     const auto expectedResult3
     {
-        R"({"data":{"inode":50324,"item_id":"8c790ef53962dd27f4516adb1d7f3f6096bc6d29","local_ip":"127.0.0.1","local_port":33060,"pid":0,"process_name":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":50324,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":null,"process_pid":0,"source_ip":"127.0.0.1","source_port":33060},"operation":"INSERTED","type":"dbsync_ports"})"
     };
 
     const auto expectedResult4
     {
-        R"({"data":{"inode":122575,"item_id":"d5511242275bd3f2d57175f248108d6c3b39c438","local_ip":"192.168.0.104","local_port":39106,"pid":0,"process_name":null,"protocol":"tcp","remote_ip":"44.238.116.130","remote_port":443,"rx_queue":0,"state":"established","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"44.238.116.130","destination_port":443,"file_inode":122575,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"established","network_transport":"tcp","process_name":null,"process_pid":0,"source_ip":"192.168.0.104","source_port":39106},"operation":"INSERTED","type":"dbsync_ports"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2818,69 +2745,69 @@ TEST_F(SyscollectorImpTest, portAllDisable)
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"(
     [
         {
-            "inode":43481,
-            "local_ip":"0.0.0.0",
-            "local_port":47748,
-            "pid":0,
+            "destination_ip":"0.0.0.0",
+            "destination_port":0,
+            "file_inode":43481,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"",
+            "network_transport":"udp",
             "process_name":"",
-            "protocol":"udp",
-            "remote_ip":"0.0.0.0",
-            "remote_port":0,
-            "rx_queue":0,
-            "state":"",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"0.0.0.0",
+            "source_port":47748
         },
         {
-            "inode":43482,
-            "local_ip":"::",
-            "local_port":51087,
-            "pid":0,
+            "destination_ip":"::",
+            "destination_port":0,
+            "file_inode":43482,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"",
+            "network_transport":"udp6",
             "process_name":"",
-            "protocol":"udp6",
-            "remote_ip":"::",
-            "remote_port":0,
-            "rx_queue":0,
-            "state":"",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"::",
+            "source_port":51087
         },
         {
-            "inode":50324,
-            "local_ip":"127.0.0.1",
-            "local_port":33060,
-            "pid":0,
+            "destination_ip":"0.0.0.0",
+            "destination_port":0,
+            "file_inode":50324,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"listening",
+            "network_transport":"tcp",
             "process_name":"",
-            "protocol":"tcp",
-            "remote_ip":"0.0.0.0",
-            "remote_port":0,
-            "rx_queue":0,
-            "state":"listening",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"127.0.0.1",
+            "source_port":33060
         },
         {
-            "inode":50324,
-            "local_ip":"127.0.0.1",
-            "local_port":33060,
-            "pid":0,
+            "destination_ip":"0.0.0.0",
+            "destination_port":0,
+            "file_inode":50324,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"listening",
+            "network_transport":"tcp",
             "process_name":"",
-            "protocol":"tcp",
-            "remote_ip":"0.0.0.0",
-            "remote_port":0,
-            "rx_queue":0,
-            "state":"listening",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"127.0.0.1",
+            "source_port":33060
         },
         {
-            "inode":122575,
-            "local_ip":"192.168.0.104",
-            "local_port":39106,
-            "pid":0,
+            "destination_ip":"44.238.116.130",
+            "destination_port":443,
+            "file_inode":122575,
+            "host_network_egress_queue":0,
+            "host_network_ingress_queue":0,
+            "interface_state":"established",
+            "network_transport":"tcp",
             "process_name":"",
-            "protocol":"tcp",
-            "remote_ip":"44.238.116.130",
-            "remote_port":443,
-            "rx_queue":0,
-            "state":"established",
-            "tx_queue":0
+            "process_pid":0,
+            "source_ip":"192.168.0.104",
+            "source_port":39106
         }
     ])")));
 
@@ -2891,23 +2818,22 @@ TEST_F(SyscollectorImpTest, portAllDisable)
         {
             auto delta = nlohmann::json::parse(data);
             delta["data"].erase("checksum");
-            delta["data"].erase("scan_time");
             wrapper.callbackMock(delta.dump());
         }
     };
     const auto expectedResult1
     {
-        R"({"data":{"inode":43481,"item_id":"12903a43db24ab10d872547cdd1d786a5876a0da","local_ip":"0.0.0.0","local_port":47748,"pid":0,"process_name":null,"protocol":"udp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":43481,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":null,"network_transport":"udp","process_name":null,"process_pid":0,"source_ip":"0.0.0.0","source_port":47748},"operation":"INSERTED","type":"dbsync_ports"})"
     };
 
     const auto expectedResult2
     {
-        R"({"data":{"inode":43482,"item_id":"ca7c9aff241cb251c6ad31e30b806366ecb2ad5f","local_ip":"::","local_port":51087,"pid":0,"process_name":null,"protocol":"udp6","remote_ip":"::","remote_port":0,"rx_queue":0,"state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"::","destination_port":0,"file_inode":43482,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":null,"network_transport":"udp6","process_name":null,"process_pid":0,"source_ip":"::","source_port":51087},"operation":"INSERTED","type":"dbsync_ports"})"
     };
 
     const auto expectedResult3
     {
-        R"({"data":{"inode":50324,"item_id":"8c790ef53962dd27f4516adb1d7f3f6096bc6d29","local_ip":"127.0.0.1","local_port":33060,"pid":0,"process_name":null,"protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":50324,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":null,"process_pid":0,"source_ip":"127.0.0.1","source_port":33060},"operation":"INSERTED","type":"dbsync_ports"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2947,9 +2873,9 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::DoAll(
                   ::testing::InvokeArgument<0>
-                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json),
+                  (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json),
                   ::testing::InvokeArgument<0>
-                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json)));
+                  (R"({"architecture":"amd64", "category":"x11","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json)));
 
 
 
@@ -2960,14 +2886,13 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
         {
             auto delta = nlohmann::json::parse(data);
             delta["data"].erase("checksum");
-            delta["data"].erase("scan_time");
             wrapper.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"architecture":"amd64","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2999,24 +2924,24 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
 {
     const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"board_serial":" Intel Corporation","scan_time":"2020/12/28 21:49:50 ", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":" Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz ", "ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+                                                                      R"({"serial_number":" Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":" Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz ", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                R"({"architecture":" x86_64","scan_time":"2020/12/28 21:49:50 ", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft   Windows  7 ","os_release":"   sp1","os_version":"6.1.7601   "})")));
+                                                                R"({"architecture":" x86_64", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft   Windows  7 ","os_distribution_release":"   sp1","os_version":"6.1.7601   "})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"address":"127.0.0.1 ","scan_time":" 2020/12/28 21:49:50", "mac":" d4:5d:64:51:07:5d ", "gateway":"  192.168.0.1|600","broadcast":"127.255.255.255  ", "name":"  ens1  ", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"   ethernet", "state":"up   ", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"   ethernet", "interface_state":"up   ", "network_dhcp":"disabled","interface_mtu":1500,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                   R"([{"inode":0,"local_ip":" 127.0.0.1 ","scan_time":"  2020/12/28 21:49:50  ", "local_port":631,"pid":0,"process_name":"System  Idle Process","protocol":"tcp   ","remote_ip":"   0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+                                                                   R"([{"file_inode":0,"source_ip":" 127.0.0.1 ", "source_port":631,"process_pid":0,"process_name":"System  Idle Process","network_transport":"tcp   ","destination_ip":"   0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":" amd64","scan_time":"2020/12/28 21:49:50 ", "group":"  x11  ","name":" xserver-xorg","priority":"optional ","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
+              (R"({"architecture":" amd64", "category":"  x11  ","name":" xserver-xorg","priority":"optional ","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14","type":"deb","path":" "})"_json));
 
-    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":" KB12345678 "}])"_json));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":" KB12345678 "}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"egroup":" root ","euser":" root","fgroup":"root ","name":" kworker/u256:2-  ","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":"  431625  ","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+              (R"({"name":" kworker/u256:2-  ","pid":"  431625  ","parent_pid":2,"start":9302261,"state":"I","stime":3,"utime":0})"_json));
 
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(
                                                              R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"_json));
@@ -3042,52 +2967,46 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
         [&wrapperDelta](const std::string & data)
         {
             auto delta = nlohmann::json::parse(data);
-
-            if (delta.at("type").get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
-            {
-                delta["data"].erase("checksum");
-            }
-
-            delta["data"].erase("scan_time");
+            delta["data"].erase("checksum");
             wrapperDelta.callbackMock(delta.dump());
         }
     };
 
     const auto expectedResult1
     {
-        R"({"data":{"board_serial":"Intel Corporation","checksum":"af7b22eef8f5e06c04af4db49c9f8d1d28963918","cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54},"operation":"INSERTED","type":"dbsync_hwinfo"})"
+        R"({"data":{"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","cpu_speed":2904,"memory_free":2257872,"memory_total":4972208,"memory_used":54,"serial_number":"Intel Corporation"},"operation":"INSERTED","type":"dbsync_hwinfo"})"
     };
     const auto expectedResult2
     {
-        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft   Windows  7","os_release":"sp1","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
+        R"({"data":{"architecture":"x86_64","hostname":"UBUNTU","os_build":"7601","os_distribution_release":"sp1","os_major":"6","os_minor":"1","os_name":"Microsoft   Windows  7","os_version":"6.1.7601"},"operation":"INSERTED","type":"dbsync_osinfo"})"
     };
     const auto expectedResult3
     {
-        R"({"data":{"adapter":" ","checksum":"165f7160ecd2838479ee4c43c1012b723736d90a","item_id":"25eef9a0a422a9b644fb6b73650453148bc6151c","mac":"d4:5d:64:51:07:5d","mtu":1500,"name":"enp4s0","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"state":"up","tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0,"type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
+        R"({"data":{"host_mac":"d4:5d:64:51:07:5d","host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"interface_alias":" ","interface_mtu":1500,"interface_name":"enp4s0","interface_state":"up","interface_type":"ethernet"},"operation":"INSERTED","type":"dbsync_network_iface"})"
     };
     const auto expectedResult4
     {
-        R"({"data":{"checksum":"ff63981c231f110a0877ac6acd8862ac09877b5d","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"d633b040008ea38303d778431ee2fd0b4ee5a37a","metric":" ","type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv4"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_broadcast":"192.168.153.255","network_ip":"192.168.153.1","network_netmask":"255.255.255.0","network_protocol":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"interface_name":"enp4s0","network_ip":"fe80::250:56ff:fec0:8","network_netmask":"ffff:ffff:ffff:ffff::","network_protocol":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
-        R"({"data":{"checksum":"b5cee87f8acba50334d2409d474fbac08d8015e0","inode":0,"item_id":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","local_ip":"127.0.0.1","local_port":631,"pid":0,"process_name":"System  Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"})"
+        R"({"data":{"destination_ip":"0.0.0.0","destination_port":0,"file_inode":0,"host_network_egress_queue":0,"host_network_ingress_queue":0,"interface_state":"listening","network_transport":"tcp","process_name":"System  Idle Process","process_pid":0,"source_ip":"127.0.0.1","source_port":631},"operation":"INSERTED","type":"dbsync_ports"})"
     };
     const auto expectedResult8
     {
-        R"({"data":{"checksum":"039934723aa69928b52e470c8d27365b0924b615","egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","nice":0,"nlwp":1,"pgrp":0,"pid":"431625","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"})"
+        R"({"data":{"name":"kworker/u256:2-","parent_pid":2,"pid":"431625","start":9302261,"state":"I","stime":3,"utime":0},"operation":"INSERTED","type":"dbsync_processes"})"
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"6ec380a9a572e439b68cfe87621b8a5611c0866c","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":4111222333,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","category":"x11","name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -3095,19 +3014,19 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult11
     {
-        R"({"component":"syscollector_network_iface","data":{"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_iface","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult12
     {
-        R"({"component":"syscollector_network_protocol","data":{"begin":"9dff246584835755137820c975f034d089e90b6f","end":"d633b040008ea38303d778431ee2fd0b4ee5a37a"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_protocol","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult13
     {
-        R"({"component":"syscollector_network_address","data":{"begin":"3d48ddc47fac84c62a19746af66fbfcf78547de9","end":"65973316a5dc8615a6d20b2d6c4ce52ecd074496"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_network_address","data":{"begin":"enp4s0","end":"enp4s0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult14
     {
-        R"({"component":"syscollector_ports","data":{"begin":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba","end":"cbf2ac25a6775175f912ebf2abc72f6f51ab48ba"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_ports","data":{"begin":"0","end":"0"},"type":"integrity_check_global"})"
     };
     const auto expectedResult15
     {
@@ -3119,11 +3038,11 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"xserver-xorg","end":"xserver-xorg"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
-        R"({"data":{"checksum":"56162cd7bb632b4728ec868e8e271b01222ff131","hotfix":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
+        R"({"data":{"hotfix_name":"KB12345678"},"operation":"INSERTED","type":"dbsync_hotfixes"})"
     };
     const auto expectedResult19
     {
@@ -3131,11 +3050,11 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult20
     {
-        R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+        R"({"data":{"interface_name":"enp4s0","network_dhcp":"unknown","network_gateway":"192.168.0.1|600","network_metric":" ","network_type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
     const auto expectedResult21
     {
-        R"({"data":{"checksum":"81793e529c565256a60eff6c6345e2f5c5ee8cb0","group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
+        R"({"data":{"group_description":null,"group_id":1,"group_id_signed":1,"group_is_hidden":0,"group_name":"daemon","group_users":"daemon:pollinate:vboxadd","group_uuid":null},"operation":"INSERTED","type":"dbsync_groups"})"
     };
     const auto expectedResult22
     {
@@ -3147,7 +3066,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult24
     {
-        R"({"data":{"checksum":"11769088416d594d547a508e084cec990e282ece","host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
+        R"({"data":{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null},"operation":"INSERTED","type":"dbsync_users"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);

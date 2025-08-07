@@ -131,7 +131,6 @@ class EXPORTED Syscollector final
         std::condition_variable                                                 m_cv;
         std::mutex                                                              m_mutex;
         std::unique_ptr<SysNormalizer>                                          m_spNormalizer;
-        std::string                                                             m_scanTime;
 };
 
 

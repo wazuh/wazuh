@@ -28,13 +28,13 @@ class OSHardwareMac final : public IOSHardware
 
         void buildHardwareData(nlohmann::json& hardware) override
         {
-            hardware["board_serial"] = m_wrapper->boardSerial();
+            hardware["serial_number"] = m_wrapper->boardSerial();
             hardware["cpu_name"] = m_wrapper->cpuName();
             hardware["cpu_cores"] = m_wrapper->cpuCores();
-            hardware["cpu_mhz"] = m_wrapper->cpuMhz();
-            hardware["ram_total"] = m_wrapper->ramTotal();
-            hardware["ram_free"] = m_wrapper->ramFree();
-            hardware["ram_usage"] = m_wrapper->ramUsage();
+            hardware["cpu_speed"] = m_wrapper->cpuMhz();
+            hardware["memory_total"] = m_wrapper->ramTotal();
+            hardware["memory_free"] = m_wrapper->ramFree();
+            hardware["memory_used"] = m_wrapper->ramUsage();
         }
 };
 
