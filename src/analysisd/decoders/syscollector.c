@@ -273,6 +273,32 @@ static struct deltas_fields_match_list const GROUP_FIELDS[] = {
   { .current = { "checksum", NULL }, .next = NULL}
 };
 
+static struct deltas_fields_match_list const BROWSER_EXTENSION_FIELDS[] = {
+  { .current = { "scan_time", NULL }, .next = &BROWSER_EXTENSION_FIELDS[1]},
+  { .current = { "browser_name", "browser_extension.browser_name" }, .next = &BROWSER_EXTENSION_FIELDS[2]},
+  { .current = { "user_id", "browser_extension.user_id" }, .next = &BROWSER_EXTENSION_FIELDS[3]},
+  { .current = { "package_name", "browser_extension.package_name" }, .next = &BROWSER_EXTENSION_FIELDS[4]},
+  { .current = { "package_id", "browser_extension.package_id" }, .next = &BROWSER_EXTENSION_FIELDS[5]},
+  { .current = { "package_version", "browser_extension.package_version" }, .next = &BROWSER_EXTENSION_FIELDS[6]},
+  { .current = { "package_description", "browser_extension.package_description" }, .next = &BROWSER_EXTENSION_FIELDS[7]},
+  { .current = { "package_vendor", "browser_extension.package_vendor" }, .next = &BROWSER_EXTENSION_FIELDS[8]},
+  { .current = { "package_build_version", "browser_extension.package_build_version" }, .next = &BROWSER_EXTENSION_FIELDS[9]},
+  { .current = { "package_path", "browser_extension.package_path" }, .next = &BROWSER_EXTENSION_FIELDS[10]},
+  { .current = { "browser_profile_name", "browser_extension.browser_profile_name" }, .next = &BROWSER_EXTENSION_FIELDS[11]},
+  { .current = { "browser_profile_path", "browser_extension.browser_profile_path" }, .next = &BROWSER_EXTENSION_FIELDS[12]},
+  { .current = { "package_reference", "browser_extension.package_reference" }, .next = &BROWSER_EXTENSION_FIELDS[13]},
+  { .current = { "package_permissions", "browser_extension.package_permissions" }, .next = &BROWSER_EXTENSION_FIELDS[14]},
+  { .current = { "package_type", "browser_extension.package_type" }, .next = &BROWSER_EXTENSION_FIELDS[15]},
+  { .current = { "package_enabled", "browser_extension.package_enabled" }, .next = &BROWSER_EXTENSION_FIELDS[16]},
+  { .current = { "package_autoupdate", "browser_extension.package_autoupdate" }, .next = &BROWSER_EXTENSION_FIELDS[17]},
+  { .current = { "package_persistent", "browser_extension.package_persistent" }, .next = &BROWSER_EXTENSION_FIELDS[18]},
+  { .current = { "package_from_webstore", "browser_extension.package_from_webstore" }, .next = &BROWSER_EXTENSION_FIELDS[19]},
+  { .current = { "browser_profile_referenced", "browser_extension.browser_profile_referenced" }, .next = &BROWSER_EXTENSION_FIELDS[20]},
+  { .current = { "package_installed", "browser_extension.package_installed" }, .next = &BROWSER_EXTENSION_FIELDS[21]},
+  { .current = { "file_hash_sha256", "browser_extension.file_hash_sha256" }, .next = &BROWSER_EXTENSION_FIELDS[22]},
+  { .current = { "checksum", NULL}, .next = NULL}
+};
+
 void SyscollectorInit(){
 
     os_calloc(1, sizeof(OSDecoderInfo), sysc_decoder);
@@ -2075,7 +2101,10 @@ static const struct deltas_fields_match_list * get_field_list(const char *type) 
         ret_val = USER_FIELDS;
     } else if(strcmp(type, "groups") == 0) {
         ret_val = GROUP_FIELDS;
-    } else {
+    } else if(strcmp(type, "browser_extensions") == 0) {
+        ret_val = BROWSER_EXTENSION_FIELDS;
+    }
+    else {
         /* This could be a new type of synchronization that is not yet implemented or corrupted data. */
         merror(INVALID_TYPE, type);
     }
@@ -2154,6 +2183,8 @@ static const struct delta_values_mapping_list * get_mapping_list(const char *typ
     } else if(strcmp(type, "users") == 0) {
         ret_val = NULL;
     } else if(strcmp(type, "groups") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "browser_extensions") == 0) {
         ret_val = NULL;
     } else {
         merror(INVALID_TYPE, type);
