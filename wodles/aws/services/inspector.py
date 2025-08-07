@@ -86,10 +86,10 @@ class AWSInspector(aws_service.AWSService):
         """
         if arn_list:
             response = self.client.describe_findings(findingArns=arn_list)['findings']
-            aws_tools.debug(f"+++ [v1] Processing {len(response)} events", 3)
+            aws_tools.debug(f"+++ [InspectorV1] Processing {len(response)} events", 3)
             for elem in response:
                 if self.event_should_be_skipped(elem):
-                    aws_tools.debug(f'+++ [v1] The "{self.discard_regex.pattern}" regex found a match in the '
+                    aws_tools.debug(f'+++ [InspectorV1] The "{self.discard_regex.pattern}" regex found a match in the '
                                     f'"{self.discard_field}" field. The event will be skipped.', 2)
                     continue
                 self.send_msg(self.format_message(elem))
@@ -108,7 +108,7 @@ class AWSInspector(aws_service.AWSService):
             return
         # Split into chunks of 10 (Inspector v2 API limit)
         chunk_size = 10
-        aws_tools.debug(f"+++ [v2] Processing {len(finding_arns)} events", 3)
+        aws_tools.debug(f"+++ [InspectorV2] Processing {len(finding_arns)} events", 3)
         for i in range(0, len(finding_arns), chunk_size):
             chunk = finding_arns[i:i + chunk_size]
 
@@ -118,7 +118,7 @@ class AWSInspector(aws_service.AWSService):
 
                 for finding in findings:
                     if self.event_should_be_skipped(finding):
-                        aws_tools.debug(f'+++ [v2] The "{self.discard_regex.pattern}" regex found a match in the '
+                        aws_tools.debug(f'+++ [InspectorV2] The "{self.discard_regex.pattern}" regex found a match in the '
                                         f'"{self.discard_field}" field. The event will be skipped.', 2)
                         continue
                     formatted = self.format_message(finding)
