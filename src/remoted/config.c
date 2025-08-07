@@ -47,7 +47,7 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     send_timeout_to_retry = getDefine_Int("remoted", "send_timeout_to_retry", 1, 60);
 
     /* Setting default values for global parameters */
-    cfg->global.agents_disconnection_time = 600;
+    cfg->global.agents_disconnection_time = 900;
     cfg->global.agents_disconnection_alert_time = 0;
 
     if (ReadConfig(modules, cfgfile, cfg, NULL) < 0 ||
