@@ -2706,10 +2706,6 @@ components:
                           type: integer
                           format: int32
                           description: "Events coming from agentd"
-                        agentless:
-                          type: integer
-                          format: int32
-                          description: "Events coming from agentlessd"
                         dbsync:
                           type: integer
                           format: int32
@@ -2826,10 +2822,6 @@ components:
                           type: integer
                           format: int32
                           description: "Events discarded from agentd because the queue was full"
-                        agentless:
-                          type: integer
-                          format: int32
-                          description: "Events discarded from agentlessd because the queue was full"
                         dbsync:
                           type: integer
                           format: int32
@@ -3806,8 +3798,6 @@ components:
     WazuhDaemonsStatus:
       type: object
       properties:
-        wazuh-agentlessd:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-analysisd:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-authd:
@@ -3875,10 +3865,6 @@ components:
       type: object
       properties:
         active-response:
-          type: array
-          items:
-            type: object
-        agentless:
           type: array
           items:
             type: object
@@ -4287,8 +4273,6 @@ components:
       type: object
       properties:
           indexer-connector:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-agentlessd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-analysisd:
             $ref: '#/components/schemas/LogSummary'
@@ -5611,7 +5595,6 @@ components:
         type: string
         enum:
         - agent
-        - agentless
         - analysis
         - auth
         - com
@@ -5663,11 +5646,6 @@ components:
         <td>agent</td>
         <td>anti_tampering</td>
         <td><code>&lt;anti_tampering&gt;</code></td>
-        </tr>
-        <tr>
-        <td>agentless</td>
-        <td>agentless</td>
-        <td><code>&lt;agentless&gt;</code></td>
         </tr>
         <tr>
         <td>analysis</td>
@@ -5845,7 +5823,6 @@ components:
         - labels
         - internal
         - anti_tampering
-        - agentless
         - global
         - active_response
         - alerts
@@ -6676,7 +6653,6 @@ components:
         type: string
         enum:
         - active-response
-        - agentless
         - alerts
         - auth
         - client
@@ -10501,8 +10477,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - wazuh-agentlessd: stopped
-                      wazuh-analysisd: running
+                    - wazuh-analysisd: running
                       wazuh-authd: stopped
                       wazuh-csyslogd: stopped
                       wazuh-dbd: stopped
@@ -12213,8 +12188,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - wazuh-agentlessd: "stopped"
-                      wazuh-analysisd: "running"
+                    - wazuh-analysisd: "running"
                       wazuh-authd: "running"
                       wazuh-csyslogd: "stopped"
                       wazuh-dbd: "stopped"
@@ -14268,7 +14242,6 @@ paths:
                 data:
                   affected_items:
                     - active_response
-                    - agentless
                     - attacks
                     - firewall
                     - gdpr_II_5.1.f

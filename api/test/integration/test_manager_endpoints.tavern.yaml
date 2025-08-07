@@ -17,7 +17,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - wazuh-agentlessd: !anystr
               wazuh-analysisd: !anystr
               wazuh-authd: !anystr
               wazuh-csyslogd: !anystr

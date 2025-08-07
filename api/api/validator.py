@@ -244,7 +244,6 @@ api_config_schema = {
 WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
     {
         'agent': {"client", "buffer", "labels", "internal", "anti_tampering"},
-        'agentless': {"agentless"},
         'analysis': {"global", "active_response", "alerts", "command", "rules", "decoders", "internal", "rule_test"},
         'auth': {"auth"},
         'com': {"active-response", "logging", "internal", "cluster"},
