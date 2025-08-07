@@ -14,7 +14,6 @@
 #include <sys/stat.h>
 #include "os_crypto/sha256/sha256_op.h"
 #include "shared.h"
-#include "wm_exec.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
