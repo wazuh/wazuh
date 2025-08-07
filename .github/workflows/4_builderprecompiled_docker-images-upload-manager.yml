@@ -38,7 +38,8 @@ jobs:
     runs-on: ${{ inputs.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 140
     name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
-
+    permissions:
+      packages: write
     steps:
       - name: Checkout wazuh/wazuh repository
         uses: actions/checkout@v4
