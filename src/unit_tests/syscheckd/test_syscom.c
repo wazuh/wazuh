@@ -17,6 +17,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/config_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_sync_wrappers.h"
+#include "../wrappers/wazuh/sync_protocol/agent_sync_protocol_wrappers.h"
 #include "../../syscheckd/include/syscheck.h"
 #include "../../config/syscheck-config.h"
 
@@ -143,6 +144,68 @@ void test_syscom_dispatch_null_output(void **state)
     char command[] = "invalid";
 
     expect_assert_failure(syscom_dispatch(command, NULL));
+}
+
+void test_syscom_dispatch_sync_success(void **state)
+{
+    (void) state;
+    size_t ret;
+    char command[] = "fim_sync test-data";
+    char *output;
+
+    syscheck.enable_synchronization = 1;
+    syscheck.sync_handle = (AgentSyncProtocolHandle*)0x1234;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "WMCOM Syncing module with data 'test-data'.");
+    expect_value(__wrap_asp_parse_response_buffer, handle, syscheck.sync_handle);
+    expect_memory(__wrap_asp_parse_response_buffer, data, "test-data", strlen("test-data"));
+    will_return(__wrap_asp_parse_response_buffer, 0);
+
+    ret = syscom_dispatch(command, &output);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_syscom_dispatch_sync_disabled(void **state)
+{
+    (void) state;
+    size_t ret;
+    char command[] = "fim_sync something";
+    char *output;
+
+    syscheck.enable_synchronization = 0;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "FIM synchronization is disabled");
+
+    ret = syscom_dispatch(command, &output);
+    *state = output;
+
+    assert_string_equal(output, "err FIM synchronization is disabled");
+    assert_int_equal(ret, 35);
+}
+
+void test_syscom_dispatch_sync_error(void **state)
+{
+    (void) state;
+    size_t ret;
+    char command[] = "fim_sync test-data";
+    char *output;
+
+    syscheck.enable_synchronization = 1;
+    syscheck.sync_handle = (AgentSyncProtocolHandle*)0x1234;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "WMCOM Syncing module with data 'test-data'.");
+    expect_value(__wrap_asp_parse_response_buffer, handle, syscheck.sync_handle);
+    expect_memory(__wrap_asp_parse_response_buffer, data, "test-data", strlen("test-data"));
+    will_return(__wrap_asp_parse_response_buffer, -1);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "WMCOM Error syncing module");
+
+    ret = syscom_dispatch(command, &output);
+    *state = output;
+
+    assert_string_equal(output, "err Error syncing module");
+    assert_int_equal(ret, 24);
 }
 
 void test_syscom_getconfig_syscheck(void **state)
@@ -286,6 +349,9 @@ int main(void) {
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_unrecognized, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_null_command, delete_string),
         cmocka_unit_test(test_syscom_dispatch_null_output),
+        cmocka_unit_test_teardown(test_syscom_dispatch_sync_success, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_sync_disabled, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_sync_error, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_syscheck, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_syscheck_failure, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_rootcheck, delete_string),

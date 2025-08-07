@@ -1723,6 +1723,9 @@ wrappers_wazuh_remoted_o := $(wrappers_wazuh_remoted_c:.c=.o)
 wrappers_wazuh_shared_modules_c := $(wildcard unit_tests/wrappers/wazuh/shared_modules/*.c)
 wrappers_wazuh_shared_modules_o := $(wrappers_wazuh_shared_modules_c:.c=.o)
 
+wrappers_wazuh_sync_protocol_c := $(wildcard unit_tests/wrappers/wazuh/sync_protocol/*.c)
+wrappers_wazuh_sync_protocol_o := $(wrappers_wazuh_sync_protocol_c:.c=.o)
+
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
@@ -1757,6 +1760,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_remoted_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_logcollector_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_sync_protocol_o}
 
 	ifeq (${TARGET},winagent)
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
