@@ -2,7 +2,7 @@
   description: Verify that the scan starts on startup and collects information but no sync is performed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -14,6 +14,7 @@
     HOTFIXES_SCAN: 'yes'
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     dummy_metadata: ''
