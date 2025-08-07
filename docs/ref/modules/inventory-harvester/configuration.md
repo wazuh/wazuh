@@ -68,7 +68,11 @@ Turn off specific providers individually
 <processes>yes</processes>
 <users>yes</users>
 <groups>yes</groups>
+<<<<<<< HEAD
 <services>yes</services>
+=======
+<browser_extensions>yes</browser_extensions>
+>>>>>>> 8abd902613 (feat: add browser extensions table to syscollector)
 
 <!-- Database synchronization settings -->
 <synchronization>

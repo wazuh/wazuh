@@ -25,6 +25,7 @@ constexpr auto SYSCOLLECTOR_DB_PATH {"TEMP.db"};
 #define EXPECT_CALL_GROUPS_JSON R"([{"group_description": null, "group_id": 1, "group_id_signed": 1, "group_is_hidden": 0, "group_name": "daemon", "group_users": "daemon:pollinate:vboxadd", "group_uuid": null }])"
 #define EXPECT_CALL_USERS_JSON R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"
 #define EXPECT_CALL_SERVICES_JSON R"([{"service_id":"wazuh-agent","service_name":"Wazuh Agent","service_description":"Monitors system activity","service_state":"running","service_sub_state":"subState","service_start_type":"auto","service_type":"type","process_pid":1234,"service_exit_code":0,"service_win32_exit_code":0,"process_executable":"/usr/bin/wazuh-agent","service_address":"/lib/systemd/system/wazuh-agent.service","user_name":"root","service_enabled":"enabled","service_following":"following","service_object_path":"objectPath","service_target_ephemeral_id":0,"service_target_type":"jobType","service_target_address":"jobPath","file_path":"sourcePath"}])"
+#define EXPECT_CALL_BROWSER_EXTENSIONS_JSON R"([{"browser_name":"chrome","user_id":"S-1-5-21-1234567890-987654321-1122334455-1001","package_name":"uBlock Origin","package_id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","package_version":"1.52.2","package_description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","package_vendor":"Raymond Hill","package_build_version":"","package_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","browser_profile_name":"Default","browser_profile_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","package_reference":"https://clients2.google.com/service/update2/crx","package_permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","package_type":"extension","package_enabled":1,"package_autoupdate":1,"package_persistent":0,"package_from_webstore":1,"browser_profile_referenced":1,"package_installed":"1710489821000","file_hash_sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234","scan_time":"2020/12/28 21:49:50"}])"
 
 const auto expected_dbsync_hwinfo
 {
@@ -82,6 +83,10 @@ const auto expected_dbsync_services
 {
     R"({"data":{"checksum":"daa615e783788aec35ae17eeed912ace3910f209","file_path":"sourcePath","item_id":"cced25cebdc8af9754617e3f42b16720fd7697f6","process_executable":"/usr/bin/wazuh-agent","process_pid":1234,"service_address":"/lib/systemd/system/wazuh-agent.service","service_description":"Monitors system activity","service_enabled":"enabled","service_exit_code":0,"service_following":"following","service_id":"wazuh-agent","service_name":"Wazuh Agent","service_object_path":"objectPath","service_start_type":"auto","service_state":"running","service_sub_state":"subState","service_target_address":"jobPath","service_target_ephemeral_id":0,"service_target_type":"jobType","service_type":"type","service_win32_exit_code":0,"user_name":"root"},"operation":"INSERTED","type":"dbsync_services"})"
 };
+const auto expected_dbsync_browser_extensions
+{
+    R"({"data":{"browser_name":"chrome","browser_profile_name":"Default","browser_profile_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","browser_profile_referenced":1,"checksum":"606abaac7962daf9842c84f4a15f609575d86bff","file_hash_sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234","package_autoupdate":1,"package_build_version":null,"package_description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","package_enabled":1,"package_from_webstore":1,"package_id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","package_installed":"1710489821000","package_name":"uBlock Origin","package_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","package_permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","package_persistent":0,"package_reference":"https://clients2.google.com/service/update2/crx","package_type":"extension","package_vendor":"Raymond Hill","package_version":"1.52.2","user_id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"operation":"INSERTED","type":"dbsync_browser_extensions"})"
+};
 
 
 const auto expected_syscollector_osinfo
@@ -132,6 +137,10 @@ const auto expected_syscollector_services
 {
     R"({"component":"syscollector_services","data":{"begin":"cced25cebdc8af9754617e3f42b16720fd7697f6","end":"cced25cebdc8af9754617e3f42b16720fd7697f6"},"type":"integrity_check_global"})"
 };
+const auto expected_syscollector_browser_extensions
+{
+    R"({"component":"syscollector_browser_extensions","data":{"begin":"uBlock Origin","end":"uBlock Origin"},"type":"integrity_check_global"})"
+};
 
 
 void SyscollectorImpTest::SetUp() {};
@@ -161,6 +170,7 @@ class SysInfoWrapper: public ISysInfo
         MOCK_METHOD(nlohmann::json, groups, (), (override));
         MOCK_METHOD(nlohmann::json, users, (), (override));
         MOCK_METHOD(nlohmann::json, services, (), (override));
+        MOCK_METHOD(nlohmann::json, browserExtensions, (), (override));
 };
 
 class CallbackMock
@@ -211,6 +221,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -255,6 +266,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_network_iface)).Times(1);
@@ -268,6 +280,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     std::thread t
     {
@@ -311,6 +324,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     std::thread t
     {
@@ -397,6 +411,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -445,6 +460,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_network_iface)).Times(1);
@@ -457,6 +473,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -508,6 +525,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -556,6 +574,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_network_iface)).Times(1);
@@ -568,6 +587,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -618,6 +638,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -670,6 +691,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -680,6 +702,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear_network_protocol)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(integrity_clear_network_address)).Times(1);
@@ -727,6 +750,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -775,6 +799,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -787,6 +812,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -837,6 +863,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -885,6 +912,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -897,6 +925,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -948,6 +977,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -992,6 +1022,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -1005,6 +1036,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     std::thread t
     {
@@ -1048,6 +1080,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1096,6 +1129,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -1108,6 +1142,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -1158,6 +1193,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1206,6 +1242,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -1218,6 +1255,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -1268,6 +1306,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).Times(0);
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1316,6 +1355,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_hotfixes)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -1328,6 +1368,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hotfixes)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -1378,6 +1419,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     EXPECT_CALL(*spInfoWrapper, groups()).Times(0);
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1426,6 +1468,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_hotfixes)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -1438,6 +1481,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hotfixes)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -1488,6 +1532,7 @@ TEST_F(SyscollectorImpTest, noServices)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1575,6 +1620,117 @@ TEST_F(SyscollectorImpTest, noServices)
     }
 }
 
+TEST_F(SyscollectorImpTest, noBrowserExtensions)
+{
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PACKAGES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HOTFIXES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .WillOnce([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).Times(0);
+
+    CallbackMock wrapper;
+    std::function<void(const std::string&)> callbackData
+    {
+        [&wrapper](const std::string & data)
+        {
+            auto delta = nlohmann::json::parse(data);
+            delta["data"].erase("checksum");
+            delta["data"].erase("id");
+            wrapper.callbackMock(delta.dump());
+        }
+    };
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            auto delta = nlohmann::json::parse(data);
+
+            if (delta["type"].get_ref<const std::string&>().compare("dbsync_osinfo") == 0)
+            {
+                delta["data"].erase("checksum");
+            }
+
+            delta["data"].erase("scan_time");
+            wrapperDelta.callbackMock(delta.dump());
+        }
+    };
+
+    const auto integrity_clear
+    {
+        R"({"component":"syscollector_browser_extensions","data":{},"type":"integrity_clear"})"
+    };
+
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_hwinfo)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_osinfo)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_network_iface)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_network_protocol_1)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_network_protocol_2)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_network_address_1)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_network_address_2)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_packages)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_ports)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_processes)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_hotfixes)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
+
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_network_iface)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_network_protocol)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_network_address)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_packages)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_ports)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_processes)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hotfixes)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
+
+    EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackData, &callbackDataDelta]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackData,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, true, true, true, true, true, true, true, true, true, false, true);
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
 TEST_F(SyscollectorImpTest, pushMessageOk)
 {
     constexpr auto messageToPush{R"(syscollector_network_iface dbsync checksum_fail {"begin":"25eef9a0a422a9b644fb6b73650453148bc6151c","end":"25eef9a0a422a9b644fb6b73650453148bc6151c","id":1606851004})"};
@@ -1599,6 +1755,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     std::thread t
     {
@@ -1649,6 +1806,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1693,6 +1851,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -1706,6 +1865,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     std::thread t
     {
@@ -1760,6 +1920,7 @@ TEST_F(SyscollectorImpTest, pushMessageInvalid)
                                                         (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     std::thread t
     {
@@ -1814,6 +1975,7 @@ TEST_F(SyscollectorImpTest, scanInvalidData)
                                                         (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     std::thread t
     {
@@ -2185,6 +2347,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
                                                         (R"([{"host_ip":"192.168.0.84","login_status":0,"login_tty":"pts/0","login_type":"user","process_pid":"129870","user_auth_failed_count":0,"user_auth_failed_timestamp":0,"user_created":0,"user_full_name":"root","user_group_id":0,"user_group_id_signed":0,"user_groups":0,"user_home":"/root","user_id":0,"user_is_hidden":0,"user_is_remote":1,"user_last_login":"1749605216","user_name":"root","user_password_expiration_date":-1,"user_password_hash_algorithm":"y","user_password_inactive_days":-1,"user_password_last_change":1745971200.0,"user_password_max_days_between_changes":99999,"user_password_min_days_between_changes":0,"user_password_status":"active","user_password_warning_days_before_expiration":7,"user_roles":"sudo","user_shell":"/bin/bash","user_type":null,"user_uid_signed":0,"user_uuid":null}])"_json));
 
     EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -2242,6 +2405,8 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_network_protocol_2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult10)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_network_iface)).Times(1);
@@ -2254,9 +2419,8 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hotfixes)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
-
-    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     std::thread t
     {

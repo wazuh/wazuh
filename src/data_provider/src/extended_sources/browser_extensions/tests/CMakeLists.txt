@@ -12,16 +12,16 @@ link_directories(${CMAKE_SOURCE_DIR}/../external/googletest/lib/)
 set(TEST_SRC "main.cpp")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-  list(APPEND TEST_SRC 
+  list(APPEND TEST_SRC
     test_safari_darwin.cpp
     test_chrome_darwin.cpp
   )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  list(APPEND TEST_SRC 
+  list(APPEND TEST_SRC
     test_chrome_linux.cpp
   )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  list(APPEND TEST_SRC 
+  list(APPEND TEST_SRC
     test_chrome_windows.cpp
   )
 endif()

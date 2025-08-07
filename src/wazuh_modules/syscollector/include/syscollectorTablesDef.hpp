@@ -1140,15 +1140,118 @@ constexpr auto SERVICES_SQL_STATEMENT
 static const std::vector<std::string> SERVICES_ITEM_ID_FIELDS{"service_id", "file_path"};
 
 
-constexpr auto NET_IFACE_TABLE    { "dbsync_network_iface"    };
-constexpr auto NET_PROTOCOL_TABLE { "dbsync_network_protocol" };
-constexpr auto NET_ADDRESS_TABLE  { "dbsync_network_address"  };
-constexpr auto PACKAGES_TABLE     { "dbsync_packages"         };
-constexpr auto HOTFIXES_TABLE     { "dbsync_hotfixes"         };
-constexpr auto PORTS_TABLE        { "dbsync_ports"            };
-constexpr auto PROCESSES_TABLE    { "dbsync_processes"        };
-constexpr auto OS_TABLE           { "dbsync_osinfo"           };
-constexpr auto HW_TABLE           { "dbsync_hwinfo"           };
-constexpr auto USERS_TABLE        { "dbsync_users"            };
-constexpr auto GROUPS_TABLE       { "dbsync_groups"           };
-constexpr auto SERVICES_TABLE     { "dbsync_services"         };
+constexpr auto BROWSER_EXTENSIONS_START_CONFIG_STATEMENT
+{
+    R"({"table":"dbsync_browser_extensions",
+        "first_query":
+            {
+                "column_list":["package_name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"package_name DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["package_name"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"package_name ASC",
+                "count_opt":1
+            },
+        "component":"syscollector_browser_extensions",
+        "index":"package_name",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE package_name BETWEEN '?' and '?' ORDER BY package_name",
+                "column_list":["package_name, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
+constexpr auto BROWSER_EXTENSIONS_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_browser_extensions",
+        "component":"syscollector_browser_extensions",
+        "index":"package_name",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":"WHERE package_name BETWEEN '?' and '?' ORDER BY package_name",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE package_name BETWEEN '?' and '?' ORDER BY package_name",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE package_name ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE package_name BETWEEN '?' and '?' ORDER BY package_name",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
+constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
+{
+    R"(CREATE TABLE dbsync_browser_extensions (
+        browser_name TEXT,
+        user_id TEXT,
+        package_name TEXT,
+        package_id TEXT,
+        package_version TEXT,
+        package_description TEXT,
+        package_vendor TEXT,
+        package_build_version TEXT,
+        package_path TEXT,
+        browser_profile_name TEXT,
+        browser_profile_path TEXT,
+        package_reference TEXT,
+        package_permissions TEXT,
+        package_type TEXT,
+        package_enabled INTEGER,
+        package_autoupdate INTEGER,
+        package_persistent INTEGER,
+        package_from_webstore INTEGER,
+        browser_profile_referenced INTEGER,
+        package_installed TEXT,
+        file_hash_sha256 TEXT,
+        checksum TEXT,
+        PRIMARY KEY (package_name)) WITHOUT ROWID;)"
+};
+static const std::vector<std::string> BROWSER_EXTENSIONS_ITEM_ID_FIELDS{"package_name"};
+
+
+constexpr auto NET_IFACE_TABLE              { "dbsync_network_iface"        };
+constexpr auto NET_PROTOCOL_TABLE           { "dbsync_network_protocol"     };
+constexpr auto NET_ADDRESS_TABLE            { "dbsync_network_address"      };
+constexpr auto PACKAGES_TABLE               { "dbsync_packages"             };
+constexpr auto HOTFIXES_TABLE               { "dbsync_hotfixes"             };
+constexpr auto PORTS_TABLE                  { "dbsync_ports"                };
+constexpr auto PROCESSES_TABLE              { "dbsync_processes"            };
+constexpr auto OS_TABLE                     { "dbsync_osinfo"               };
+constexpr auto HW_TABLE                     { "dbsync_hwinfo"               };
+constexpr auto USERS_TABLE                  { "dbsync_users"                };
+constexpr auto GROUPS_TABLE                 { "dbsync_groups"               };
+constexpr auto SERVICES_TABLE               { "dbsync_services"             };
+constexpr auto BROWSER_EXTENSIONS_TABLE     { "dbsync_browser_extensions"   };
