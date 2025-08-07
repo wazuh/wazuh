@@ -12,6 +12,7 @@
 #include <gtest/gtest.h>
 
 #include "../../src/gapSet.hpp"
+#include <thread>
 
 // Test fixture for GapSet tests
 class GapSetTest : public ::testing::Test
@@ -151,4 +152,19 @@ TEST_F(GapSetTest, EdgeCaseSizeOne)
     gs.observe(0);
     ASSERT_TRUE(gs.empty());
     ASSERT_TRUE(gs.ranges().empty());
+}
+
+TEST_F(GapSetTest, LastUpdateChangesOnlyOnValidObserve)
+{
+    GapSet gs(5);
+    auto before = gs.lastUpdate();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    gs.observe(2);
+    auto after = gs.lastUpdate();
+    EXPECT_GT(after, before);
+    
+    // Should NOT update lastUpdate
+    auto checkpoint = gs.lastUpdate();
+    gs.observe(2); // duplicate
+    EXPECT_EQ(gs.lastUpdate(), checkpoint);
 }
