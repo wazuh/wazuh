@@ -87,7 +87,7 @@ class TEndpointGetV1AgentsSync final
     struct Response final
     {
         std::vector<SyncReq> agentsSyncReq;
-        std::vector<int64_t> agentsSyncKeepAlive;
+        std::vector<SyncReq> agentsSyncKeepAlive;
         std::vector<SyncReq> agentsSyncStatus;
 
         REFLECTABLE(MAKE_FIELD("syncreq", &Response::agentsSyncReq),
@@ -175,13 +175,14 @@ public:
                 resObj.agentsSyncKeepAlive.reserve(stmtCount.template value<int64_t>(0));
             }
 
-            DBStatement stmtSyncKeepAlive(db,
-                                          "SELECT id FROM agent WHERE id > 0 AND sync_status = 'syncreq_keepalive';");
+            DBStatement stmtSyncKeepAlive(
+                db, "SELECT id, version FROM agent WHERE id > 0 AND sync_status = 'syncreq_keepalive';");
 
             while (stmtSyncKeepAlive.step() == SQLITE_ROW)
             {
                 const auto idAgent = stmtSyncKeepAlive.template value<int64_t>(0);
-                resObj.agentsSyncKeepAlive.push_back(idAgent);
+                resObj.agentsSyncKeepAlive.push_back(
+                    {.id = idAgent, .version = stmtSyncKeepAlive.template value<std::string>(1)});
             }
         }
 
@@ -193,16 +194,18 @@ public:
                 resObj.agentsSyncStatus.reserve(stmtCount.template value<int64_t>(0));
             }
 
-            DBStatement stmtSyncStatus(db,
-                                       "SELECT id, connection_status, disconnection_time, status_code FROM agent "
-                                       "WHERE id > 0 AND sync_status = 'syncreq_status';");
+            DBStatement stmtSyncStatus(
+                db,
+                "SELECT id, version, connection_status, disconnection_time, status_code FROM agent "
+                "WHERE id > 0 AND sync_status = 'syncreq_status';");
             while (stmtSyncStatus.step() == SQLITE_ROW)
             {
                 const auto idAgent = stmtSyncStatus.template value<int64_t>(0);
                 resObj.agentsSyncStatus.push_back({.id = idAgent,
-                                                   .connectionStatus = stmtSyncStatus.template value<std::string>(1),
-                                                   .disconnectionTime = stmtSyncStatus.template value<int64_t>(2),
-                                                   .statusCode = stmtSyncStatus.template value<int64_t>(3)});
+                                                   .version = stmtSyncStatus.template value<std::string>(1),
+                                                   .connectionStatus = stmtSyncStatus.template value<std::string>(2),
+                                                   .disconnectionTime = stmtSyncStatus.template value<int64_t>(3),
+                                                   .statusCode = stmtSyncStatus.template value<int64_t>(4)});
             }
         }
 

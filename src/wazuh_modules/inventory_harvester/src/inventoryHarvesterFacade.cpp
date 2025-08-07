@@ -100,6 +100,12 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                 }
                 else if (data->data_type() == Synchronization::DataUnion_integrity_clear)
                 {
+                    if (data->data_as_integrity_clear()->attributes_type() == nullptr)
+                    {
+                        logError(LOGGER_DEFAULT_TAG,
+                                 "InventoryHarvesterFacade::initRsyncSubscription: attributes_type is null");
+                        return;
+                    }
                     auto attributesType = data->data_as_integrity_clear()->attributes_type()->string_view();
                     if (attributesType.compare("fim_file") == 0 || attributesType.compare("fim_registry_key") == 0 ||
                         attributesType.compare("fim_registry_value") == 0)
@@ -121,6 +127,12 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                 }
                 else if (data->data_type() == Synchronization::DataUnion_integrity_check_global)
                 {
+                    if (data->data_as_integrity_check_global()->attributes_type() == nullptr)
+                    {
+                        logError(LOGGER_DEFAULT_TAG,
+                                 "InventoryHarvesterFacade::initRsyncSubscription: attributes_type is null");
+                        return;
+                    }
                     auto attributesType = data->data_as_integrity_check_global()->attributes_type()->string_view();
                     if (attributesType.compare("fim_file") == 0 || attributesType.compare("fim_registry_key") == 0 ||
                         attributesType.compare("fim_registry_value") == 0)
