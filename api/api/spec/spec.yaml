@@ -7634,7 +7634,7 @@ paths:
                 data:
                   client:
                     config-profile: "ubuntu, ubuntu20, ubuntu20.04"
-                    notify_time: 10
+                    notify_time: 20
                     time-reconnect: 60
                     force_reconnect_interval: 0
                     ip_update_interval: 0
