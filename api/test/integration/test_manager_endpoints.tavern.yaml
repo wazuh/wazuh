@@ -22,7 +22,6 @@ stages:
               wazuh-dbd: !anystr
               wazuh-execd: !anystr
               wazuh-logcollector: !anystr
-              wazuh-maild: !anystr
               wazuh-monitord: !anystr
               wazuh-remoted: !anystr
               wazuh-reportd: !anystr

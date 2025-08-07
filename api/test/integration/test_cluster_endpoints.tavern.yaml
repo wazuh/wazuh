@@ -962,7 +962,6 @@ stages:
           affected_items:
             - global:
                 alerts_log: !anystr
-                email_notification: !anystr
                 host_information: !anyint
                 integrity_checking: !anyint
                 jsonout_output: !anystr

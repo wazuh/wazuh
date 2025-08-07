@@ -3787,8 +3787,6 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-logcollector:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-maild:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-monitord:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-remoted:
@@ -3854,8 +3852,6 @@ components:
           items:
             type: object
         database_output:
-          type: object
-        email_alerts:
           type: object
         gcp-pubsub:
           type: object
@@ -4248,8 +4244,6 @@ components:
           wazuh-dbd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-execd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-maild:
             $ref: '#/components/schemas/LogSummary'
           wazuh-monitord:
             $ref: '#/components/schemas/LogSummary'
@@ -5695,16 +5689,6 @@ components:
         <td><code>&lt;global&gt;&lt;email...&gt;</code></td>
         </tr>
         <tr>
-        <td>mail</td>
-        <td>alerts</td>
-        <td><code>&lt;email_alerts&gt;</code></td>
-        </tr>
-        <tr>
-        <td>mail</td>
-        <td>internal</td>
-        <td><code>&lt;maild&gt;</code></td>
-        </tr>
-        <tr>
         <td>monitor</td>
         <td>global</td>
         <td><code>&lt;global&gt;</code></td>
@@ -6610,7 +6594,6 @@ components:
         - cluster
         - command
         - database_output
-        - email_alerts
         - global
         - labels
         - localfile
@@ -10429,7 +10412,6 @@ paths:
                       wazuh-monitord: running
                       wazuh-execd: running
                       wazuh-logcollector: running
-                      wazuh-maild: stopped
                       wazuh-remoted: running
                       wazuh-reportd: stopped
                       wazuh-syscheckd: running
@@ -10543,12 +10525,6 @@ paths:
                         alerts_log: yes
                         logall: no
                         logall_json: no
-                        email_notification: no
-                        smtp_server: smtp.example.wazuh.com
-                        email_from: wazuh@example.wazuh.com
-                        email_to: recipient@example.wazuh.com
-                        email_maxperhour: 12
-                        email_log_source: alerts.log
                         agents_disconnection_time: "10m"
                         agents_disconnection_alert_time: 0
                         update_check: yes
@@ -12138,7 +12114,6 @@ paths:
                       wazuh-monitor": "running"
                       wazuh-execd: "running"
                       wazuh-logcollector: "running"
-                      wazuh-maild: "stopped"
                       wazuh-remoted: "running"
                       wazuh-reportd: "stopped"
                       wazuh-syscheckd: "running"
@@ -12257,12 +12232,6 @@ paths:
                         alerts_log: yes
                         logall: no
                         logall_json: no
-                        email_notification: no
-                        smtp_server: smtp.example.wazuh.com
-                        email_from: wazuh@example.wazuh.com
-                        email_to: recipient@example.wazuh.com
-                        email_maxperhour: 12
-                        email_log_source: alerts.log
                         queue_size: 131072
                         update_check: yes
                         white_list:
@@ -12971,7 +12940,6 @@ paths:
                       level: info
                       description: "Starting evaluation"
                     - timestamp: '2020-04-15T13:50:24Z'
-                      tag: wazuh-maild
                       level: error
                       description: " (1263): Error Sending email to 69.172.200.109 (smtp server)"
                   total_affected_items: 3
