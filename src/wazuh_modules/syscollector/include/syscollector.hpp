@@ -18,8 +18,7 @@
 #include "sysInfoInterface.h"
 #include "commonDefs.h"
 #include "dbsync.hpp"
-#include "rsync.hpp"
-#include "syscollectorNormalizer.h"
+#include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
 
 // Define EXPORTED for any platform
@@ -46,7 +45,6 @@ class EXPORTED Syscollector final
 
         void init(const std::shared_ptr<ISysInfo>& spInfo,
                   const std::function<void(const std::string&)> reportDiffFunction,
-                  const std::function<void(const std::string&)> reportSyncFunction,
                   const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                   const std::string& dbPath,
                   const std::string& normalizerConfigPath,
@@ -66,7 +64,6 @@ class EXPORTED Syscollector final
                   const bool notifyOnFirstScan = false);
 
         void destroy();
-        void push(const std::string& data);
     private:
         Syscollector();
         ~Syscollector() = default;
@@ -81,7 +78,6 @@ class EXPORTED Syscollector final
         nlohmann::json getGroupsData();
         nlohmann::json getUsersData();
 
-        void registerWithRsync();
         void updateChanges(const std::string& table,
                            const nlohmann::json& values);
         void notifyChange(ReturnTypeCallback result,
@@ -96,21 +92,10 @@ class EXPORTED Syscollector final
         void scanProcesses();
         void scanGroups();
         void scanUsers();
-        void syncOs();
-        void syncHardware();
-        void syncNetwork();
-        void syncPackages();
-        void syncHotfixes();
-        void syncPorts();
-        void syncProcesses();
-        void syncGroups();
-        void syncUsers();
         void scan();
-        void sync();
         void syncLoop(std::unique_lock<std::mutex>& lock);
         std::shared_ptr<ISysInfo>                                               m_spInfo;
         std::function<void(const std::string&)>                                 m_reportDiffFunction;
-        std::function<void(const std::string&)>                                 m_reportSyncFunction;
         std::function<void(const modules_log_level_t, const std::string&)>      m_logFunction;
         unsigned int                                                            m_intervalValue;
         bool                                                                    m_scanOnStart;
@@ -127,7 +112,6 @@ class EXPORTED Syscollector final
         bool                                                                    m_groups;
         bool                                                                    m_users;
         std::unique_ptr<DBSync>                                                 m_spDBSync;
-        std::unique_ptr<RemoteSync>                                             m_spRsync;
         std::condition_variable                                                 m_cv;
         std::mutex                                                              m_mutex;
         std::unique_ptr<SysNormalizer>                                          m_spNormalizer;

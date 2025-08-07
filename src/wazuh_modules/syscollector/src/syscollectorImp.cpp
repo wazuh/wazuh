@@ -11,10 +11,11 @@
 #include "syscollector.h"
 #include "syscollector.hpp"
 #include "json.hpp"
-#include <iostream>
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include <iostream>
+
 #include "syscollectorTablesDef.hpp"
 
 #define TRY_CATCH_TASK(task)                                            \
@@ -208,131 +209,8 @@ std::string Syscollector::getCreateStatement() const
 }
 
 
-void Syscollector::registerWithRsync()
-{
-    const auto reportSyncWrapper
-    {
-        [this](const std::string & dataString)
-        {
-            auto jsonData(nlohmann::json::parse(dataString));
-            auto it{jsonData.find("data")};
-
-            if (!m_stopping)
-            {
-                if (it != jsonData.end())
-                {
-                    auto& data{*it};
-                    it = data.find("attributes");
-
-                    if (it != data.end())
-                    {
-                        auto& fieldData { *it };
-                        removeKeysWithEmptyValue(fieldData);
-                        const auto msgToSend{jsonData.dump()};
-                        m_reportSyncFunction(msgToSend);
-                        m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + msgToSend);
-                    }
-                    else
-                    {
-                        m_reportSyncFunction(dataString);
-                        m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
-                    }
-                }
-                else
-                {
-                    //LCOV_EXCL_START
-                    m_reportSyncFunction(dataString);
-                    m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
-                    //LCOV_EXCL_STOP
-                }
-            }
-        }
-    };
-
-    if (m_os)
-    {
-        m_spRsync->registerSyncID("syscollector_osinfo",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(OS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_hardware)
-    {
-        m_spRsync->registerSyncID("syscollector_hwinfo",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(HW_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_processes)
-    {
-        m_spRsync->registerSyncID("syscollector_processes",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(PROCESSES_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_packages)
-    {
-        m_spRsync->registerSyncID("syscollector_packages",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(PACKAGES_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_hotfixes)
-    {
-        m_spRsync->registerSyncID("syscollector_hotfixes",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(HOTFIXES_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_ports)
-    {
-        m_spRsync->registerSyncID("syscollector_ports",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(PORTS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_network)
-    {
-        m_spRsync->registerSyncID("syscollector_network_iface",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(NETIFACE_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-        m_spRsync->registerSyncID("syscollector_network_protocol",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(NETPROTO_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-        m_spRsync->registerSyncID("syscollector_network_address",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(NETADDRESS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_groups)
-    {
-        m_spRsync->registerSyncID("syscollector_groups",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(GROUPS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_users)
-    {
-        m_spRsync->registerSyncID("syscollector_users",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(USERS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-}
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
-                        const std::function<void(const std::string&)> reportSyncFunction,
                         const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
@@ -353,7 +231,6 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = std::move(reportDiffFunction);
-    m_reportSyncFunction = std::move(reportSyncFunction);
     m_logFunction = std::move(logFunction);
     m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
@@ -370,17 +247,14 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_users = users;
 
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
-    auto remoteSync = std::make_unique<RemoteSync>();
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
 
     m_spDBSync      = std::move(dbSync);
-    m_spRsync       = std::move(remoteSync);
     m_spNormalizer  = std::move(normalizer);
 
-    registerWithRsync();
     syncLoop(lock);
 }
 
@@ -412,11 +286,6 @@ void Syscollector::scanHardware()
     }
 }
 
-void Syscollector::syncHardware()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HW_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 nlohmann::json Syscollector::getOSData()
 {
     nlohmann::json ret;
@@ -435,11 +304,6 @@ void Syscollector::scanOs()
         updateChanges(OS_TABLE, osData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending os scan");
     }
-}
-
-void Syscollector::syncOs()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(OS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getNetworkData()
@@ -583,13 +447,6 @@ void Syscollector::scanNetwork()
     }
 }
 
-void Syscollector::syncNetwork()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 void Syscollector::scanPackages()
 {
     if (m_packages)
@@ -654,16 +511,6 @@ void Syscollector::scanHotfixes()
 
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending hotfixes scan");
     }
-}
-
-void Syscollector::syncPackages()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
-void Syscollector::syncHotfixes()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getPortsData()
@@ -753,11 +600,6 @@ void Syscollector::scanPorts()
     }
 }
 
-void Syscollector::syncPorts()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 void Syscollector::scanProcesses()
 {
     if (m_processes)
@@ -796,11 +638,6 @@ void Syscollector::scanProcesses()
     }
 }
 
-void Syscollector::syncProcesses()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 void Syscollector::scanGroups()
 {
     if (m_groups)
@@ -812,11 +649,6 @@ void Syscollector::scanGroups()
     }
 }
 
-void Syscollector::syncGroups()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(GROUPS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 void Syscollector::scanUsers()
 {
     if (m_users)
@@ -826,11 +658,6 @@ void Syscollector::scanUsers()
         updateChanges(USERS_TABLE, usersData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending users scan");
     }
-}
-
-void Syscollector::syncUsers()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(USERS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 void Syscollector::scan()
@@ -849,21 +676,6 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
-void Syscollector::sync()
-{
-    m_logFunction(LOG_DEBUG, "Starting syscollector sync");
-    TRY_CATCH_TASK(syncHardware);
-    TRY_CATCH_TASK(syncOs);
-    TRY_CATCH_TASK(syncNetwork);
-    TRY_CATCH_TASK(syncPackages);
-    TRY_CATCH_TASK(syncHotfixes);
-    TRY_CATCH_TASK(syncPorts);
-    TRY_CATCH_TASK(syncProcesses);
-    TRY_CATCH_TASK(syncGroups);
-    TRY_CATCH_TASK(syncUsers);
-    m_logFunction(LOG_DEBUG, "Ending syscollector sync");
-}
-
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
     m_logFunction(LOG_INFO, "Module started.");
@@ -871,7 +683,6 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     if (m_scanOnStart)
     {
         scan();
-        sync();
     }
 
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
@@ -880,32 +691,6 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 }))
     {
         scan();
-        sync();
     }
-    m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
-}
-
-void Syscollector::push(const std::string& data)
-{
-    std::unique_lock<std::mutex> lock{m_mutex};
-
-    if (!m_stopping)
-    {
-        auto rawData{data};
-        Utils::replaceFirst(rawData, "dbsync ", "");
-        const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
-
-        try
-        {
-            m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
-        }
-        // LCOV_EXCL_START
-        catch (const std::exception& ex)
-        {
-            m_logFunction(LOG_ERROR, ex.what());
-        }
-    }
-
-    // LCOV_EXCL_STOP
 }

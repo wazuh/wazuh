@@ -21,7 +21,6 @@ add_executable(fimdb_test_tool
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DOS_TYPE=OSType::WINDOWS)
     target_link_libraries(fimdb_test_tool
-        rsync
         fimdb
         dbsync
         -static-libstdc++
@@ -31,7 +30,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(fimdb_test_tool
         dbsync
         fimdb
-        rsync
         pthread
     )
 else()
@@ -39,7 +37,6 @@ else()
     target_link_libraries(fimdb_test_tool
         dbsync
         fimdb
-        rsync
         pthread
         dl
     )

@@ -98,7 +98,9 @@ int wmcom_sync(char * buffer) {
 #ifdef WIN32
 void wmcom_send(char * message)
 {
-    wmcom_sync(message);
+    char * response = NULL;
+    wmcom_dispatch(message, &response);
+    os_free(response);
 }
 #else
 

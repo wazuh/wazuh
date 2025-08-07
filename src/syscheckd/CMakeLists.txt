@@ -31,7 +31,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
-link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib/)
 link_directories(${SRC_FOLDER}/)
 
 add_definitions(-DARGV0="wazuh-syscheckd")
