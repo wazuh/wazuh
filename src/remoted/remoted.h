@@ -97,10 +97,10 @@ void *wait_for_msgs(void *none);
 void *update_shared_files(void *none);
 
 /* Save control messages */
-void save_controlmsg(const keyentry * key, char *msg, size_t msg_length, int *wdb_sock, bool *startup_msg, int is_startup, int is_shutdown);
+void save_controlmsg(const keyentry * key, char *msg, int *wdb_sock, bool *startup_msg, int is_startup, int is_shutdown);
 
 /* Pre process control message and return whether it should be queued for wdb processing */
-int pre_preprocess_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown);
+int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown);
 
 /* Assign a group to an agent without group */
 cJSON *assign_group_to_agent(const char *agent_id, const char *md5);

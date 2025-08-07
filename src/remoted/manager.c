@@ -248,9 +248,8 @@ void free_file_time(void *data) {
 /* Pre process control message and return whether it should be queued for wdb processing
  * Returns: 1 if message should be queued, 0 if not, -1 on error
  */
-int pre_preprocess_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown)
+int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown)
 {
-    char *msg = NULL;
     char *end = NULL;
     char msg_ack[OS_FLSIZE + 1] = "";
 
@@ -329,7 +328,6 @@ int pre_preprocess_control_msg(const keyentry * key, char *r_msg, size_t msg_len
         }
     } else {
         /* Clean msg and shared files (remove random string) */
-        msg = clean;
 
         if ((clean = strchr(clean, '\n'))) {
             /* Forward to random string (pass shared files) */
@@ -358,7 +356,7 @@ int pre_preprocess_control_msg(const keyentry * key, char *r_msg, size_t msg_len
  * wait_for_msgs (other thread) is going to deal with it
  * (only if message changed)
  */
-void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock, bool *startup_msg, int is_startup, int is_shutdown)
+void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *startup_msg, int is_startup, int is_shutdown)
 {
     char *msg = NULL;
     char *end = NULL;
@@ -372,7 +370,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     int result = 0;
 
     // Process only database-related operations here
-    // All validation and ACK sending was done in pre_preprocess_control_msg
+    // All validation and ACK sending was done in validate_control_msg
     // Parameters is_startup and is_shutdown come from validation results
 
     if (is_startup) {

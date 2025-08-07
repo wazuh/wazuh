@@ -123,7 +123,6 @@ char *str_family_address[FAMILY_ADDRESS_SIZE] = {
 typedef struct {
     keyentry * key; ///< Pointer to the key entry of agent to which the message belongs
     char * message; ///< Raw message received
-    size_t length;  ///< Length of the message
     int agent_id;   ///< Agent ID
     int is_startup; ///< Validation result: is startup message
     int is_shutdown; ///< Validation result: is shutdown message
@@ -824,7 +823,8 @@ STATIC void HandleSecureMessage(const message_t *message, w_queue_t * control_ms
             // Validate control message before potentially queuing it
             char *cleaned_msg = NULL;
             int is_startup = 0, is_shutdown = 0;
-            int validation_result = pre_preprocess_control_msg(key, tmp_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+            size_t tmp_msg_length = msg_length - 3; // Exclude the header length (3 characters)
+            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
             if (validation_result == 1) {
                 // Message should be queued for database processing
@@ -835,10 +835,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_queue_t * control_ms
                 ctrl_msg_data->key = key;
                 key = NULL;
 
-                ctrl_msg_data->length = msg_length - 3;
                 os_calloc(msg_length, sizeof(char), ctrl_msg_data->message);
                 // Use cleaned message from validation if available, otherwise use original
-                memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, ctrl_msg_data->length);
+                memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, tmp_msg_length);
 
                 // Store validation results in the control message data structure
                 ctrl_msg_data->is_startup = is_startup;
@@ -1122,7 +1121,7 @@ void * save_control_thread(void * control_msg_queue)
             bool is_startup = ctrl_msg_data->key->is_startup;
 
             // Process the control message with the validation results
-            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, ctrl_msg_data->length, 
+            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, 
                           &wdb_sock, &is_startup, ctrl_msg_data->is_startup, ctrl_msg_data->is_shutdown);
 
             if (ctrl_msg_data->key->is_startup != is_startup) {
