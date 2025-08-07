@@ -59,9 +59,8 @@ def test_manager():
 
 
 manager_status = {'wazuh-analysisd': 'running', 'wazuh-authd': 'running',
- 'wazuh-dbd': 'running', 'wazuh-monitord': 'running',
+ 'wazuh-monitord': 'running', 'wazuh-remoted': 'running',
  'wazuh-execd': 'running', 'wazuh-logcollector': 'running',
- 'wazuh-remoted': 'running',
  'wazuh-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
  'wazuh-db': 'running', 'wazuh-apid': 'running'}
 

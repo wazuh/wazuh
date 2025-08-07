@@ -3781,8 +3781,6 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-authd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-dbd:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-execd:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-logcollector:
@@ -3849,8 +3847,6 @@ components:
           type: array
           items:
             type: object
-        database_output:
-          type: object
         gcp-pubsub:
           type: object
         global:
@@ -4238,8 +4234,6 @@ components:
           wazuh-analysisd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-authd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-dbd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-execd:
             $ref: '#/components/schemas/LogSummary'
@@ -6589,7 +6583,6 @@ components:
         - client_buffer
         - cluster
         - command
-        - database_output
         - global
         - labels
         - localfile
@@ -10404,7 +10397,6 @@ paths:
                   affected_items:
                     - wazuh-analysisd: running
                       wazuh-authd: stopped
-                      wazuh-dbd: stopped
                       wazuh-monitord: running
                       wazuh-execd: running
                       wazuh-logcollector: running
@@ -12105,7 +12097,6 @@ paths:
                   affected_items:
                     - wazuh-analysisd: "running"
                       wazuh-authd: "running"
-                      wazuh-dbd: "stopped"
                       wazuh-monitor": "running"
                       wazuh-execd: "running"
                       wazuh-logcollector: "running"
