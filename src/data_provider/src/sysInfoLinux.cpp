@@ -843,3 +843,9 @@ nlohmann::json SysInfo::getUsers() const
 
     return result;
 }
+
+nlohmann::json SysInfo::getBrowserExtensions() const
+{
+    //TODO: Pending implementation.
+    return nlohmann::json();
+}
