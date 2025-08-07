@@ -44,10 +44,14 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 else()
     target_link_libraries(extended_sources_users_unit_test
         users
-        gtestd
-        gmockd
-        gtest_maind
-        gmock_maind
+        debug gtestd
+        debug gmockd
+        debug gtest_maind
+        debug gmock_maind
+        optimized gtest
+        optimized gmock
+        optimized gtest_main
+        optimized gmock_main
         pthread
     )
 endif()
