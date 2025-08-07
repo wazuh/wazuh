@@ -26,6 +26,7 @@ static const char *XML_SYNC = "synchronization";
 static const char *XML_GROUPS = "groups";
 static const char *XML_USERS = "users";
 static const char *XML_SERVICES = "services";
+static const char *XML_BROWSER_EXTENSIONS = "browser_extensions";
 
 static void parse_synchronization_section(wm_sys_t * syscollector, XML_NODE node) {
     const char *XML_DB_SYNC_MAX_EPS = "max_eps";
@@ -72,6 +73,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         syscollector->flags.groups = 1;
         syscollector->flags.users = 1;
         syscollector->flags.services = 1;
+        syscollector->flags.browser_extensions = 1;
 
         // Database synchronization config values
         syscollector->sync.sync_max_eps = 10;
@@ -93,6 +95,10 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             merror(XML_ELEMNULL);
             return OS_INVALID;
         } else if (!strcmp(node[i]->element, XML_INTERVAL)) {
+            if (!node[i]->content || !strlen(node[i]->content)) {
+                merror("Invalid interval at module '%s'", WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
             char *endptr;
             syscollector->interval = strtoul(node[i]->content, &endptr, 0);
 
@@ -120,81 +126,65 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             }
 
         } else if (!strcmp(node[i]->element, XML_SCAN_ON_START)) {
-            if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.scan_on_start = 1;
-            else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.scan_on_start = 0;
-            else {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SCAN_ON_START, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.scan_on_start = !strcmp(node[i]->content, "yes");
         } else if (!strcmp(node[i]->element, XML_DISABLED)) {
-            if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.enabled = 0;
-            else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.enabled = 1;
-            else {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_DISABLED, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.enabled = !strcmp(node[i]->content, "no");
         } else if (!strcmp(node[i]->element, XML_NETWORK)) {
-            if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.netinfo = 1;
-            else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.netinfo = 0;
-            else {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_NETWORK, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.netinfo = !strcmp(node[i]->content, "yes");
         } else if (!strcmp(node[i]->element, XML_OS_SCAN)) {
-            if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.osinfo = 1;
-            else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.osinfo = 0;
-            else {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_OS_SCAN, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.osinfo = !strcmp(node[i]->content, "yes");
         } else if (!strcmp(node[i]->element, XML_HARDWARE)) {
-            if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.hwinfo = 1;
-            else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.hwinfo = 0;
-            else {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_HARDWARE, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.hwinfo = !strcmp(node[i]->content, "yes");
         } else if (!strcmp(node[i]->element, XML_PACKAGES)) {
-            if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.programinfo = 1;
-            else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.programinfo = 0;
-            else {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PACKAGES, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.programinfo = !strcmp(node[i]->content, "yes");
         } else if (!strcmp(node[i]->element, XML_HOTFIXES)) {
 #ifdef WIN32
-                if (!strcmp(node[i]->content, "yes"))
-                    syscollector->flags.hotfixinfo = 1;
-                else if (!strcmp(node[i]->content, "no"))
-                    syscollector->flags.hotfixinfo = 0;
-                else {
+                if (!node[i]->content || !strlen(node[i]->content) ||
+                    (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                     merror("Invalid content for tag '%s' at module '%s'.", XML_HOTFIXES, WM_SYS_CONTEXT.name);
                     return OS_INVALID;
                 }
+                syscollector->flags.hotfixinfo = !strcmp(node[i]->content, "yes");
 #else
                 mwarn("The '%s' option is only available on Windows systems. Ignoring it.", XML_HOTFIXES);
 #endif
         } else if (!strcmp(node[i]->element, XML_PROCS)) {
-            if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.procinfo = 1;
-            else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.procinfo = 0;
-            else {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_PROCS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.procinfo = !strcmp(node[i]->content, "yes");
         } else if (!strcmp(node[i]->element, XML_PORTS)) {
             if (node[i]->attributes) {
                 if (!strcmp(node[i]->attributes[0], "all")) {
@@ -220,20 +210,15 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_GROUPS)) {
-            if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.groups = 1;
-            else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.groups = 0;
-            else {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_GROUPS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.groups = !strcmp(node[i]->content, "yes");
         } else if (!strcmp(node[i]->element, XML_USERS)) {
-            if (!strcmp(node[i]->content, "yes"))
-                syscollector->flags.users = 1;
-            else if (!strcmp(node[i]->content, "no"))
-                syscollector->flags.users = 0;
-            else {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_USERS, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
@@ -246,6 +231,15 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_SERVICES, WM_SYS_CONTEXT.name);
                 return OS_INVALID;
             }
+            syscollector->flags.users = !strcmp(node[i]->content, "yes");
+        } else if (!strcmp(node[i]->element, XML_BROWSER_EXTENSIONS)) {
+            if (!node[i]->content || !strlen(node[i]->content) ||
+                (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no"))) {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_BROWSER_EXTENSIONS, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
+            }
+            syscollector->flags.browser_extensions = !strcmp(node[i]->content, "yes");
+
         } else if (!strcmp(node[i]->element, XML_SYNC)) {
             // Synchronization section - Let's get the children node and iterate
             // the values (at the moment there is only one: max_eps)

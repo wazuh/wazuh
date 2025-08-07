@@ -64,6 +64,7 @@ class EXPORTED Syscollector final
                   const bool groups = true,
                   const bool users = true,
                   const bool services = true,
+                  const bool browserExtensions = true,
                   const bool notifyOnFirstScan = false);
 
         void destroy();
@@ -82,6 +83,7 @@ class EXPORTED Syscollector final
         nlohmann::json getGroupsData();
         nlohmann::json getUsersData();
         nlohmann::json getServicesData();
+        nlohmann::json getBrowserExtensionsData();
 
         void registerWithRsync();
         void updateChanges(const std::string& table,
@@ -99,6 +101,7 @@ class EXPORTED Syscollector final
         void scanGroups();
         void scanUsers();
         void scanServices();
+        void scanBrowserExtensions();
         void syncOs();
         void syncHardware();
         void syncNetwork();
@@ -109,6 +112,7 @@ class EXPORTED Syscollector final
         void syncGroups();
         void syncUsers();
         void syncServices();
+        void syncBrowserExtensions();
         void scan();
         void sync();
         void syncLoop(std::unique_lock<std::mutex>& lock);
@@ -131,6 +135,7 @@ class EXPORTED Syscollector final
         bool                                                                    m_groups;
         bool                                                                    m_users;
         bool                                                                    m_services;
+        bool                                                                    m_browserExtensions;
         std::unique_ptr<DBSync>                                                 m_spDBSync;
         std::unique_ptr<RemoteSync>                                             m_spRsync;
         std::condition_variable                                                 m_cv;

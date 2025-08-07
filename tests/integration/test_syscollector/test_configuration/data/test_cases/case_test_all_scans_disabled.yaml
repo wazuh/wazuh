@@ -2,7 +2,7 @@
   description: Verify that the scan starts after N seconds but no scan is triggered
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 2s
+    INTERVAL_SCAN: 2s
     START_ON_START: 'no'
     HARDWARE_SCAN: 'no'
     OS_SCAN: 'no'
@@ -14,7 +14,11 @@
     HOTFIXES_SCAN: 'no'
     GROUPS_SCAN: 'no'
     USERS_SCAN: 'no'
+<<<<<<< HEAD
     SERVICES_SCAN: 'no'
+=======
+    BROWSER_EXTENSIONS_SCAN: 'no'
+>>>>>>> 8abd902613 (feat: add browser extensions table to syscollector)
   metadata:
     disabled: 'no'
     interval_scan: 2
@@ -29,4 +33,8 @@
     hotfixes_scan: 'no'
     groups_scan: 'no'
     users_scan: 'no'
+<<<<<<< HEAD
     services_scan: 'no'
+=======
+    browser_extensions_scan: 'no'
+>>>>>>> 8abd902613 (feat: add browser extensions table to syscollector)
