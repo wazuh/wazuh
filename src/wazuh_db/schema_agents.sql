@@ -286,6 +286,34 @@ CREATE TABLE IF NOT EXISTS sys_groups (
     PRIMARY KEY (group_name)
 );
 
+CREATE TABLE IF NOT EXISTS sys_browser_extensions (
+    scan_id INTEGER,
+    scan_time TEXT,
+    browser_name TEXT,
+    user_id TEXT,
+    package_name TEXT,
+    package_id TEXT,
+    package_version TEXT,
+    package_description TEXT,
+    package_vendor TEXT,
+    package_build_version TEXT,
+    package_path TEXT,
+    browser_profile_name TEXT,
+    browser_profile_path TEXT,
+    package_reference TEXT,
+    package_permissions TEXT,
+    package_type TEXT,
+    package_enabled INTEGER,
+    package_autoupdate INTEGER,
+    package_persistent INTEGER,
+    package_from_webstore INTEGER,
+    browser_profile_referenced INTEGER,
+    package_installed TEXT,
+    file_hash_sha256 TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    PRIMARY KEY (package_name)
+);
+
 CREATE TABLE IF NOT EXISTS ciscat_results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     scan_id INTEGER,
@@ -410,5 +438,6 @@ INSERT INTO sync_info (component) VALUES ('syscollector-hwinfo');
 INSERT INTO sync_info (component) VALUES ('syscollector-osinfo');
 INSERT INTO sync_info (component) VALUES ('syscollector-users');
 INSERT INTO sync_info (component) VALUES ('syscollector-groups');
+INSERT INTO sync_info (component) VALUES ('syscollector-browser-extensions');
 
 COMMIT;

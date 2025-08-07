@@ -83,6 +83,7 @@ typedef struct _agent_syscollector_t {
     uint64_t syscollector_processes_queries;
     uint64_t syscollector_users_queries;
     uint64_t syscollector_groups_queries;
+    uint64_t syscollector_browser_extensions_queries;
     struct timeval syscollector_hotfixes_time;
     struct timeval syscollector_hwinfo_time;
     struct timeval syscollector_network_address_time;
@@ -94,6 +95,7 @@ typedef struct _agent_syscollector_t {
     struct timeval syscollector_processes_time;
     struct timeval syscollector_users_time;
     struct timeval syscollector_groups_time;
+    struct timeval syscollector_browser_extensions_time;
     agent_syscollector_deprecated_t deprecated;
 } agent_syscollector_t;
 
@@ -578,6 +580,12 @@ void w_inc_agent_syscollector_users();
  *
  */
 void w_inc_agent_syscollector_groups();
+
+/**
+ * @brief Increment syscollector web browser extensions information agent queries counter
+ *
+ */
+void w_inc_agent_syscollector_browser_extensions();
 
 /**
  * @brief Increment syscollector agent time counter

@@ -41,6 +41,7 @@ static const char * COMPONENT_NAMES[] = {
     [WDB_SYSCOLLECTOR_OSINFO] = "syscollector-osinfo",
     [WDB_SYSCOLLECTOR_GROUPS] = "syscollector-groups",
     [WDB_SYSCOLLECTOR_USERS] = "syscollector-users",
+    [WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS] = "syscollector-browser-extensions",
     [WDB_GENERIC_COMPONENT] = ""
 };
 
@@ -219,7 +220,9 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_val
                             [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_BY_PK,
                             [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_BY_PK,
                             [WDB_SYSCOLLECTOR_USERS] = WDB_STMT_SYSCOLLECTOR_USERS_DELETE_BY_PK,
-                            [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_BY_PK };
+                            [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_BY_PK,
+                            [WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS] = WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_BY_PK
+                          };
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
@@ -336,7 +339,9 @@ int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
                             [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM,
                             [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM,
                             [WDB_SYSCOLLECTOR_USERS] = WDB_STMT_SYSCOLLECTOR_USERS_SELECT_CHECKSUM,
-                            [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_SELECT_CHECKSUM };
+                            [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_SELECT_CHECKSUM,
+                            [WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS] = WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_SELECT_CHECKSUM
+                         };
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
@@ -385,7 +390,9 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
                             [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE,
                             [WDB_SYSCOLLECTOR_USERS] = WDB_STMT_SYSCOLLECTOR_USERS_SELECT_CHECKSUM_RANGE,
-                            [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_SELECT_CHECKSUM_RANGE };
+                            [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_SELECT_CHECKSUM_RANGE,
+                            [WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS] = WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_SELECT_CHECKSUM_RANGE
+                         };
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
@@ -446,7 +453,10 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
                                    [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND,
                                    [WDB_SYSCOLLECTOR_USERS] = WDB_STMT_SYSCOLLECTOR_USERS_DELETE_AROUND,
-                                   [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_AROUND};
+                                   [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_AROUND,
+                                   [WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS] = WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_AROUND
+                                 };
+
     const int INDEXES_RANGE[] = { [WDB_FIM] = WDB_STMT_FIM_DELETE_RANGE,
                                   [WDB_FIM_FILE] = WDB_STMT_FIM_FILE_DELETE_RANGE,
                                   [WDB_FIM_REGISTRY] = WDB_STMT_FIM_REGISTRY_DELETE_RANGE,
@@ -462,7 +472,9 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
                                   [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE,
                                   [WDB_SYSCOLLECTOR_USERS] = WDB_STMT_SYSCOLLECTOR_USERS_DELETE_RANGE,
-                                  [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_RANGE};
+                                  [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_RANGE,
+                                  [WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS] = WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_RANGE
+                                };
 
     assert(component < sizeof(INDEXES_AROUND) / sizeof(int));
     assert(component < sizeof(INDEXES_RANGE) / sizeof(int));
@@ -683,7 +695,9 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
                             [WDB_SYSCOLLECTOR_HWINFO] = WDB_STMT_SYSCOLLECTOR_HWINFO_CLEAR,
                             [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR,
                             [WDB_SYSCOLLECTOR_USERS] = WDB_STMT_SYSCOLLECTOR_USERS_CLEAR,
-                            [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_CLEAR };
+                            [WDB_SYSCOLLECTOR_GROUPS] = WDB_STMT_SYSCOLLECTOR_GROUPS_CLEAR,
+                            [WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS] = WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_CLEAR
+                         };
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
