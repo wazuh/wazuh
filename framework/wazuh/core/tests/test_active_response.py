@@ -21,46 +21,6 @@ test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data
 
 # Functions
 
-def agent_info(expected_exception: int = None) -> dict:
-    """Return dict to cause or not a exception code 1707 on active_response.send_command().
-
-    Parameters
-    ----------
-    expected_exception : int
-        Test expected exception with the parameters given.
-
-    Returns
-    -------
-    dict
-        Agent basic information with status depending on the expected_exception.
-    """
-    if expected_exception == 1707:
-        return {'status': 'random'}
-    else:
-        return {'status': 'active'}
-
-
-def agent_info_exception_and_version(expected_exception: int = None, version: str = '') -> dict:
-    """Return dict with status and version to cause or not a exception code 1707 on active_response.send_command().
-
-    Parameters
-    ----------
-    expected_exception : int
-        Test expected exception with the parameters given.
-    version : str
-        Agent version to return in the agent basic information dictionary.
-
-    Returns
-    -------
-    dict
-        Agent basic information with status depending on the expected_exception.
-    """
-    if expected_exception == 1707:
-        return {'status': 'random', 'version': version} if version else {'status': 'random'}
-    else:
-        return {'status': 'active', 'version': version} if version else {'status': 'active'}
-
-
 def agent_config(expected_exception):
     """Return dict to cause or not a exception code 1750 on active_response.send_command()."""
     if expected_exception == 1750:
@@ -192,42 +152,28 @@ def test_shell_escape(command, expected_escape):
     assert ret.count('\\') == expected_escape, f'Number of escaped symbols do not match'
 
 
-@pytest.mark.parametrize('agent_id, command, arguments, alert',
-                         [
-                             ('agent001', 'ls', ['arg1', 'arg2'], {'type': 'Firewall', 'src_ip': '192.168.1.1'})
-                         ])
-def test_send_ar_message(agent_id, command, arguments, alert):
-    """ Checks if the functions behaves as expected
-
-    Parameters
-    ----------
-    agent_id : str
-        Agent id
-    command : str
-        Command to be used
-    arguments : List[str]
-        List of arguments for the command
-    alert : Dict[str, str]
-        Alert information
-    """
-    mock_agent_info = {'status': 'active', 'version': '3.0'}
+@pytest.mark.parametrize('agent_id, agent_version, command, arguments, alert', [
+    ('agent001', 'Wazuh v4.14.0', 'ls', ['arg1', 'arg2'], 
+    {'type': 'Firewall', 'src_ip': '192.168.1.1'})
+])
+def test_send_ar_message(agent_id, agent_version, command, arguments, alert):
+    """Checks if the `send_ar_message` function behaves as expected."""
+    mock_agent_info = {'status': 'active', 'version': agent_version}
     mock_agent_conf = {'active-response': {'disabled': 'no'}}
 
     mock_wq = MagicMock()
 
-    with patch.object(Agent, 'get_basic_information', return_value=mock_agent_info) as mock_get_basic_info, \
-            patch.object(Agent, 'get_config', return_value=mock_agent_conf) as mock_get_config, \
+    with patch.object(Agent, 'get_config', return_value=mock_agent_conf) as mock_get_config, \
             patch.object(active_response.ARMessageBuilder, 'choose_builder') as mock_choose_builder:
         mock_message_builder = MagicMock()
         mock_message_builder_instance = mock_message_builder.return_value
         mock_choose_builder.return_value = mock_message_builder_instance
 
-        active_response.send_ar_message(agent_id=agent_id, wq=mock_wq, command=command, arguments=arguments,
-                                        alert=alert)
+        active_response.send_ar_message(agent_id=agent_id, agent_version=agent_version, wq=mock_wq, command=command, 
+                                        arguments=arguments, alert=alert)
 
-        mock_get_basic_info.assert_called_once_with()
-        mock_get_config.assert_called_once_with('com', 'active-response', '3.0')
-        mock_choose_builder.assert_called_once_with('3.0')
+        mock_get_config.assert_called_once_with('com', 'active-response', agent_version)
+        mock_choose_builder.assert_called_once_with(agent_version)
         mock_message_builder_instance.create_message.assert_called_once_with(command=command, arguments=arguments,
                                                                              alert=alert)
         mock_wq.send_msg_to_agent.assert_called_once_with(msg=mock_message_builder_instance.create_message.return_value,
@@ -235,24 +181,11 @@ def test_send_ar_message(agent_id, command, arguments, alert):
                                                           msg_type=active_response.WazuhQueue.AR_TYPE)
 
 
-@pytest.mark.parametrize('mock_agent_info, mock_agent_conf, expected_error_code',
-                         [
-                             ({'status': 'not-active', 'version': '3.0'}, {'active-response': {'disabled': 'no'}}, 1707),
-                             ({'status': 'active', 'version': '3.0'}, {'active-response': {'disabled': 'yes'}}, 1750),
-                         ])
+@pytest.mark.parametrize('mock_agent_info, mock_agent_conf, expected_error_code',[
+    ({'status': 'active', 'version': 'Wazuh v4.14.0'}, {'active-response': {'disabled': 'yes'}}, 1750),
+])
 def test_send_ar_message_nok(mock_agent_info, mock_agent_conf, expected_error_code):
-    """ Checks if the function raises the expected exceptions
-
-    Parameters
-    ----------
-    mock_agent_info : Dict[str, Any]
-        Agent information
-    mock_agent_conf : Dict[str, Any]
-        Agent configuration
-    expected_error_code : int
-        Expected error code
-
-    """
+    """Checks if the function raises the expected exceptions."""
     agent_id = 'agent001'
     command = 'ls'
     arguments = ['arg1', 'arg2']
@@ -260,14 +193,13 @@ def test_send_ar_message_nok(mock_agent_info, mock_agent_conf, expected_error_co
 
     mock_wq = MagicMock()
 
-    with patch.object(Agent, 'get_basic_information', return_value=mock_agent_info) as mock_get_basic_info, \
-            patch.object(Agent, 'get_config', return_value=mock_agent_conf) as mock_get_config, \
+    with patch.object(Agent, 'get_config', return_value=mock_agent_conf) as mock_get_config, \
             patch.object(active_response.ARMessageBuilder, 'choose_builder') as mock_choose_builder:
         mock_message_builder = MagicMock()
         mock_message_builder_instance = mock_message_builder.return_value
         mock_choose_builder.return_value = mock_message_builder_instance
 
         with pytest.raises(Exception) as e:
-            active_response.send_ar_message(agent_id=agent_id, wq=mock_wq, command=command, arguments=arguments,
-                                            alert=alert)
+            active_response.send_ar_message(agent_id=agent_id, agent_version=mock_agent_info['version'], wq=mock_wq,
+                                            command=command, arguments=arguments, alert=alert)
         assert e.value.code == expected_error_code
