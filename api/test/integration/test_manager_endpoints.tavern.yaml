@@ -24,7 +24,6 @@ stages:
               wazuh-logcollector: !anystr
               wazuh-monitord: !anystr
               wazuh-remoted: !anystr
-              wazuh-reportd: !anystr
               wazuh-syscheckd: !anystr
               wazuh-apid: !anystr
               wazuh-clusterd: !anystr
