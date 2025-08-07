@@ -12,7 +12,6 @@
  */
 
 #include "wmodules.h"
-#include "wm_exec.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */

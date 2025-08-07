@@ -16,7 +16,6 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "expression.h"
 #include "shared.h"
-#include "wm_exec.h"
 #include "sym_load.h"
 #include "logging_helper.h"
 

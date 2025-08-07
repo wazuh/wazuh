@@ -9,70 +9,7 @@
  * Foundation.
  */
 
-#include "wm_exec.h"
-
-/* Basic includes - minimal dependencies instead of shared.h */
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-
-/* Minimal Wazuh-specific includes - only what wm_exec needs */
-#include "../headers/defs.h"         /* For OS_SIZE_6144 */
-#include "../headers/mem_op.h"       /* For os_calloc, os_free */
-#include "../headers/debug_op.h"     /* For merror, mdebug, mwarn */
-#include "../headers/string_op.h"    /* For w_strtok */
-#include "../headers/file_op.h"      /* For w_descriptor_cloexec */
-#include "../headers/time_op.h"      /* For gettime */
-#include "../headers/pthreads_op.h"  /* For w_mutex_*, w_cond_* */
-#include "../headers/list_op.h"      /* For OSList */
-#include "../error_messages/error_messages.h" /* For FOPEN_ERROR */
-
-/* Buffer and string size constants */
-#define WM_STRING_MAX   67108864                    // Max. dynamic string size (64 MB).
-#define WM_BUFFER_MAX   1024                        // Max. static buffer size.
-
-/* Error constants */
-#define WM_ERROR_TIMEOUT 1                          // Error code for timeout.
-#define EXECVE_ERROR 0x7F                           // Execve error code.
-
-#ifdef WIN32
-/* Windows specific includes */
-#include <windows.h>
-#include <winbase.h>
-#include <process.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#else
-/* Unix specific includes */
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <signal.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <pthread.h>
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#endif
-
-/* External variables declarations */
-extern int wm_task_nice;
-extern int wm_kill_timeout;
-
-/* Memory allocation macros - extracted from shared.h to avoid dependencies */
-#define os_calloc(x,y,z) ((z = (__typeof__(z)) calloc(x,y)))?(void)1:merror_exit(MEM_ERROR, errno, strerror(errno))
-#define os_free(x) if(x){free(x);x=NULL;}
-
-/* External functions declarations */
-#ifndef WIN32
-extern void wm_append_sid(pid_t sid);
-extern void wm_remove_sid(pid_t sid);
-#endif
+#include "wmodules.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -81,25 +18,55 @@ extern void wm_remove_sid(pid_t sid);
 #define STATIC static
 #endif
 
-#if defined(WAZUH_UNIT_TESTING) && defined(WIN32)
-#include "../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
-#include "../unit_tests/wrappers/windows/handleapi_wrappers.h"
-#include "../unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
 #endif
 
+#if defined(WAZUH_UNIT_TESTING) && defined(WIN32)
+#include "../../unit_tests/wrappers/windows/processthreadsapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/handleapi_wrappers.h"
+#include "../../unit_tests/wrappers/windows/libc/kernel32_wrappers.h"
+#endif
 
-#ifdef WIN32
+static pthread_mutex_t wm_children_mutex;   // Mutex for child process pool
 
 // Data structure to share with the reader thread
 
 typedef struct ThreadInfo {
+#ifdef WIN32
     CHAR * output;
     HANDLE pipe;
+#else
+    pthread_mutex_t mutex;
+    pthread_cond_t finished;
+    int pipe;
+    char * output;
+#endif
 } ThreadInfo;
+
+STATIC OSList * wm_children_list = NULL;    // Child process list
+
+// Clean node data
+static void wm_children_node_clean(pid_t *p_sid) {
+    os_free(p_sid);
+}
+
+// Initialize children pool
+
+void wm_children_pool_init() {
+    w_mutex_init(&wm_children_mutex, NULL);
+    wm_children_list = OSList_Create();
+    OSList_SetFreeDataPointer(wm_children_list, (void (*)(void *))wm_children_node_clean);
+}
+
+#ifdef WIN32
+
+// Windows version -------------------------------------------------------------
 
 static DWORD WINAPI Reader(LPVOID args);    // Reading thread's start point
 
-// Windows version -------------------------------------------------------------
+// Execute command with timeout of secs
 
 int wm_exec(char *command, char **output, int *status, int secs, const char * add_path) {
     HANDLE hThread = NULL;
@@ -266,23 +233,81 @@ DWORD WINAPI Reader(LPVOID args) {
 
     return 0;
 }
+
+// Add process to pool
+
+void wm_append_handle(HANDLE hProcess) {
+    HANDLE * p_hProcess = NULL;
+
+    w_mutex_lock(&wm_children_mutex);
+    if (wm_children_list != NULL) {
+        os_calloc(1, sizeof(HANDLE), p_hProcess);
+        *p_hProcess = hProcess;
+
+        void * retval = OSList_AddData(wm_children_list, (void *)p_hProcess);
+
+        if (retval == NULL) {
+            merror("Child process handle %p could not be registered in the children list.", hProcess);
+            os_free(p_hProcess);
+        }
+    }
+    w_mutex_unlock(&wm_children_mutex);
+}
+
+// Remove process from pool
+
+void wm_remove_handle(HANDLE hProcess) {
+    OSListNode * node_it = NULL;
+    HANDLE * p_hProcess = NULL;
+
+    w_mutex_lock(&wm_children_mutex);
+    if (wm_children_list != NULL) {
+        OSList_foreach(node_it, wm_children_list) {
+            p_hProcess = (HANDLE *)node_it->data;
+            if (p_hProcess && *p_hProcess == hProcess) {
+                OSList_DeleteThisNode(wm_children_list, node_it);
+                os_free(p_hProcess);
+                w_mutex_unlock(&wm_children_mutex);
+                return;
+            }
+        }
+        mwarn("Child process handle %p could not be removed because it was not found in the children list.", hProcess);
+    }
+    w_mutex_unlock(&wm_children_mutex);
+}
+
+// Terminate every child process group. Doesn't wait for them!
+
+void wm_kill_children() {
+    // This function may be called from a signal handler
+
+    HANDLE * p_hProcess = NULL;
+    OSListNode * node_it = NULL;
+
+    w_mutex_lock(&wm_children_mutex);
+    OSList_foreach(node_it, wm_children_list) {
+        if (node_it->data) {
+            p_hProcess = (HANDLE *)node_it->data;
+            TerminateProcess(*p_hProcess, ERROR_PROC_NOT_FOUND);
+        }
+    }
+
+    // Release dynamic children's list
+    OSList_Destroy(wm_children_list);
+    wm_children_list = NULL;
+
+    w_mutex_unlock(&wm_children_mutex);
+}
+
 #else
 
 // Unix version ----------------------------------------------------------------
 
-#ifndef WIN32
-#include <sys/wait.h>
+#include <unistd.h>
+
+#ifndef _GNU_SOURCE
 extern char ** environ;
 #endif
-
-// Data structure to share with the reader thread
-
-typedef struct ThreadInfo {
-    pthread_mutex_t mutex;
-    pthread_cond_t finished;
-    int pipe;
-    char * output;
-} ThreadInfo;
 
 static void* reader(void *args);   // Reading thread's start point
 
@@ -611,4 +636,122 @@ void* reader(void *args) {
     return NULL;
 }
 
-#endif
+// Add process group to pool
+
+void wm_append_sid(pid_t sid) {
+    pid_t * p_sid = NULL;
+
+    w_mutex_lock(&wm_children_mutex);
+    if (wm_children_list != NULL) {
+        os_calloc(1, sizeof(pid_t), p_sid);
+        *p_sid = sid;
+
+        void * retval = OSList_AddData(wm_children_list, (void *)p_sid);
+
+        if (retval == NULL) {
+            merror("Child process ID %d could not be registered in the children list.", sid);
+            os_free(p_sid);
+        }
+    }
+    w_mutex_unlock(&wm_children_mutex);
+}
+
+// Remove process group from pool
+
+void wm_remove_sid(pid_t sid) {
+
+    OSListNode * node_it = NULL;
+    pid_t * p_sid = NULL;
+
+    w_mutex_lock(&wm_children_mutex);
+    if (wm_children_list != NULL) {
+        OSList_foreach(node_it, wm_children_list) {
+            p_sid = (pid_t *)node_it->data;
+            if (p_sid && *p_sid == sid) {
+                OSList_DeleteThisNode(wm_children_list, node_it);
+                os_free(p_sid);
+                w_mutex_unlock(&wm_children_mutex);
+                return;
+            }
+        }
+        mwarn("Child process ID %d could not be removed because it was not found in the children list.", sid);
+    }
+    w_mutex_unlock(&wm_children_mutex);
+}
+
+// Terminate every child process group. Doesn't wait for them!
+
+void wm_kill_children() {
+    // This function may be called from a signal handler
+
+    int timeout;
+    pid_t sid;
+    pid_t * p_sid = NULL;
+    OSListNode * node_it = NULL;
+
+    w_mutex_lock(&wm_children_mutex);
+    OSList_foreach(node_it, wm_children_list) {
+        p_sid = (pid_t *)node_it->data;
+        if (p_sid) {
+            sid = *p_sid;
+            if (wm_kill_timeout) {
+                timeout = wm_kill_timeout;
+
+                // Fork a process to kill the child
+
+                switch (fork()) {
+                case -1:
+                    merror("wm_kill_children(): Couldn't fork: (%d) %s.", errno, strerror(errno));
+                    break;
+
+                case 0: // Child
+
+                    kill(-sid, SIGTERM);
+
+                    do {
+                        sleep(1);
+
+                        // Poll process, waitpid() does not work here
+
+                        switch (kill(-sid, 0)) {
+                        case -1:
+                            switch (errno) {
+                            case ESRCH:
+                                exit(EXIT_SUCCESS);
+
+                            default:
+                                merror("wm_kill_children(): Couldn't wait PID %d: (%d) %s.", sid, errno, strerror(errno));
+                                exit(EXIT_FAILURE);
+                            }
+
+                        default:
+                            timeout--;
+                        }
+                    } while (timeout);
+
+                    // If time is gone, kill process
+
+                    mdebug1("Killing process group %d", sid);
+
+                    kill(-sid, SIGKILL);
+                    exit(EXIT_SUCCESS);
+
+                default: // Parent
+                    break;
+
+                }
+            } else {
+                // Kill immediately
+                kill(-sid, SIGKILL);
+            }
+        }
+    }
+
+    // Release dynamic children's list
+    OSList_Destroy(wm_children_list);
+    wm_children_list = NULL;
+
+    w_mutex_unlock(&wm_children_mutex);
+}
+
+#endif // WIN32
