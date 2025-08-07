@@ -37,7 +37,6 @@ CONF_SECTIONS = MappingProxyType({
     'command': {'type': 'duplicate', 'list_options': []},
     'localfile': {'type': 'duplicate', 'list_options': ["filter", "ignore"]},
     'remote': {'type': 'duplicate', 'list_options': []},
-    'integration': {'type': 'duplicate', 'list_options': []},
 
     'alerts': {'type': 'merge', 'list_options': []},
     'client': {'type': 'merge', 'list_options': []},

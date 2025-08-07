@@ -227,11 +227,6 @@ def test_get_ossec_conf():
         configuration.get_ossec_conf(section='remote',
                                      conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
 
-    with pytest.raises(WazuhError, match=".* 1103 .*"):
-        configuration.get_ossec_conf(
-            section='integration', field='error',
-            conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
-
     assert configuration.get_ossec_conf(conf_file=os.path.join(
         parent_directory, tmp_path, 'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
 
@@ -244,11 +239,6 @@ def test_get_ossec_conf():
         section='cluster', field='name',
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
     )['cluster']['name'] == 'wazuh'
-
-    assert configuration.get_ossec_conf(
-        section='integration', field='node',
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
-    )['integration'][0]['node'] == 'wazuh-worker'
 
     assert configuration.get_ossec_conf(
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),

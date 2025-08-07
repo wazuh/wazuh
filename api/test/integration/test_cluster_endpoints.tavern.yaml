@@ -903,11 +903,6 @@ stages:
                       allow: !anybool
                   indexer:
                     allow: !anybool
-                  integrations:
-                    virustotal:
-                      public_key:
-                        allow: !anybool
-                        minimum_quota: !anyint
             - node_name: "worker1"
               node_api_config:
                 <<: *default_api_config

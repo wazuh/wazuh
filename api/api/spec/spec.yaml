@@ -1845,13 +1845,6 @@ components:
                                 type: integer
                                 format: int32
                                 description: "Synchronization events (this agent)"
-                              integrations_breakdown:
-                                type: object
-                                properties:
-                                  virustotal:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from VirusTotal (this agent)"
                               modules_breakdown:
                                 type: object
                                 properties:
@@ -2710,13 +2703,6 @@ components:
                           type: integer
                           format: int32
                           description: "Synchronization events"
-                        integrations_breakdown:
-                          type: object
-                          properties:
-                            virustotal:
-                              type: integer
-                              format: int32
-                              description: "Events coming from VirusTotal integration"
                         modules_breakdown:
                           type: object
                           properties:
@@ -2826,13 +2812,6 @@ components:
                           type: integer
                           format: int32
                           description: "Synchronization events discarded because the queue was full"
-                        integrations_breakdown:
-                          type: object
-                          properties:
-                            virustotal:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from VirusTotal integration because the queue was full"
                         modules_breakdown:
                           type: object
                           properties:
@@ -3806,8 +3785,6 @@ components:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-execd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-integratord:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-logcollector:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-maild:
@@ -3884,10 +3861,6 @@ components:
           type: object
         global:
           type: object
-        integration:
-          type: array
-          items:
-            type: object
         labels:
           type: object
         localfile:
@@ -4275,8 +4248,6 @@ components:
           wazuh-dbd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-execd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-integratord:
             $ref: '#/components/schemas/LogSummary'
           wazuh-maild:
             $ref: '#/components/schemas/LogSummary'
@@ -5704,11 +5675,6 @@ components:
         <td><code>&lt;cluster&gt;</code></td>
         </tr>
         <tr>
-        <td>integrator</td>
-        <td>integration</td>
-        <td><code>&lt;integration&gt;</code></td>
-        </tr>
-        <tr>
         <td>logcollector</td>
         <td>localfile</td>
         <td><code>&lt;localfile&gt;</code></td>
@@ -5820,7 +5786,6 @@ components:
         - reports
         - active-response
         - cluster
-        - integration
         - localfile
         - socket
         - remote
@@ -6647,7 +6612,6 @@ components:
         - database_output
         - email_alerts
         - global
-        - integration
         - labels
         - localfile
         - logging
@@ -8137,8 +8101,6 @@ paths:
                                 decoded_breakdown:
                                   agent: 0
                                   dbsync: 0
-                                  integrations_breakdown:
-                                    virustotal: 0
                                   modules_breakdown:
                                     aws: 0
                                     azure: 0
@@ -10466,7 +10428,6 @@ paths:
                       wazuh-dbd: stopped
                       wazuh-monitord: running
                       wazuh-execd: running
-                      wazuh-integratord: stopped
                       wazuh-logcollector: running
                       wazuh-maild: stopped
                       wazuh-remoted: running
@@ -12176,7 +12137,6 @@ paths:
                       wazuh-dbd: "stopped"
                       wazuh-monitor": "running"
                       wazuh-execd: "running"
-                      wazuh-integratord: "stopped"
                       wazuh-logcollector: "running"
                       wazuh-maild: "stopped"
                       wazuh-remoted: "running"

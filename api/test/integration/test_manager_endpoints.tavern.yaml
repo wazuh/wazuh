@@ -21,7 +21,6 @@ stages:
               wazuh-authd: !anystr
               wazuh-dbd: !anystr
               wazuh-execd: !anystr
-              wazuh-integratord: !anystr
               wazuh-logcollector: !anystr
               wazuh-maild: !anystr
               wazuh-monitord: !anystr
@@ -942,11 +941,6 @@ stages:
                       allow: !anybool
                   indexer:
                     allow: !anybool
-                  integrations:
-                    virustotal:
-                      public_key:
-                        allow: !anybool
-                        minimum_quota: !anyint
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
