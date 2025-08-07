@@ -1302,9 +1302,8 @@ wdbc_result wdb_global_assign_agent_group(wdb_t *wdb, int id, cJSON* j_groups, i
                         // Check if agent exists
                         if (!wdb_global_agent_exists(wdb, id)) {
                             // Create agent in never_connected state
-                            const char *unknown = create_agent_name ? create_agent_name : "unknown";
                             const char *ip = "0.0.0.0";
-                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)unknown, (char*)ip, (char*)ip, NULL, NULL, time(NULL))) {
+                            if (OS_INVALID == wdb_global_insert_agent(wdb, id, (char*)create_agent_name, (char*)ip, (char*)ip, NULL, NULL, time(NULL))) {
                                 mdebug1("Unable to create agent '%d' in never_connected state", id);
                                 result = WDBC_ERROR;
                             } else {
