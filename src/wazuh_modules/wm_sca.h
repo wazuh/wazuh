@@ -42,16 +42,6 @@ typedef struct wm_sca_t {
     sched_scan_config scan_config;
 } wm_sca_t;
 
-typedef struct cis_db_info_t {
-    char *result;
-    cJSON *event;
-    int id;
-} cis_db_info_t;
-
-typedef struct cis_db_hash_info_t {
-    cis_db_info_t **elem;
-} cis_db_hash_info_t;
-
 extern const wm_context WM_SCA_CONTEXT;
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
