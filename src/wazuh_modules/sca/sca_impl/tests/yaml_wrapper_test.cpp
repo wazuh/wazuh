@@ -4,20 +4,35 @@
 #include <yaml_document.hpp>
 #include <yaml_node.hpp>
 
+#include "logging_helper.hpp"
+
 #include <string>
 
 using namespace testing;
 
 // NOLINTBEGIN(bugprone-exception-escape)
 
-TEST(YamlWrapperTest, YamlDocDefaultConstructor)
+class YamlWrapperTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
+            // Mock logging callback that does nothing
+        });
+
+    }
+};
+
+TEST_F(YamlWrapperTest, YamlDocDefaultConstructor)
 {
     auto doc = std::make_unique<YamlDocument>();
 
     ASSERT_FALSE(doc->IsValidDocument());
 }
 
-TEST(YamlWrapperTest, YamlDocLoadInvalidString)
+TEST_F(YamlWrapperTest, YamlDocLoadInvalidString)
 {
     const std::string yml = R"(
       variables:
@@ -32,7 +47,7 @@ TEST(YamlWrapperTest, YamlDocLoadInvalidString)
     ASSERT_FALSE(doc->IsValidDocument());
 }
 
-TEST(YamlWrapperTest, YamlDocLoadValidString)
+TEST_F(YamlWrapperTest, YamlDocLoadValidString)
 {
     const std::string yml = R"(
       variables:
@@ -54,7 +69,7 @@ TEST(YamlWrapperTest, YamlDocLoadValidString)
     ASSERT_TRUE(doc->IsValidDocument());
 }
 
-TEST(YamlWrapperTest, YamlDocGetRoot)
+TEST_F(YamlWrapperTest, YamlDocGetRoot)
 {
     const std::string yml = R"(
       variables:
@@ -78,7 +93,7 @@ TEST(YamlWrapperTest, YamlDocGetRoot)
     EXPECT_NO_THROW({ auto node = doc->GetRoot(); });
 }
 
-TEST(YamlWrapperTest, YamlNodeSubscriptOperatorAndGetNodeType)
+TEST_F(YamlWrapperTest, YamlNodeSubscriptOperatorAndGetNodeType)
 {
     const std::string yml = R"(
       variables:
@@ -124,7 +139,7 @@ TEST(YamlWrapperTest, YamlNodeSubscriptOperatorAndGetNodeType)
     EXPECT_THROW({ auto fail2 = root[0]; }, std::runtime_error);
 }
 
-TEST(YamlWrapperTest, YamlNodeIs_Scalar_Sequence_Map)
+TEST_F(YamlWrapperTest, YamlNodeIs_Scalar_Sequence_Map)
 {
     const std::string yml = R"(
       variables:
@@ -150,7 +165,7 @@ TEST(YamlWrapperTest, YamlNodeIs_Scalar_Sequence_Map)
     ASSERT_TRUE(tittle.IsScalar());
 }
 
-TEST(YamlWrapperTest, YamlNodeHasKey)
+TEST_F(YamlWrapperTest, YamlNodeHasKey)
 {
     const std::string yml = R"(
       variables:
@@ -172,7 +187,7 @@ TEST(YamlWrapperTest, YamlNodeHasKey)
     ASSERT_FALSE(root.HasKey("wazuh"));
 }
 
-TEST(YamlWrapperTest, YamlNodeAsString)
+TEST_F(YamlWrapperTest, YamlNodeAsString)
 {
     const std::string yml = R"(
       variables:
@@ -190,7 +205,7 @@ TEST(YamlWrapperTest, YamlNodeAsString)
     EXPECT_EQ(root["variables"]["$var11"].AsString(), "/usr");
 }
 
-TEST(YamlWrapperTest, YamlNodeAsMap)
+TEST_F(YamlWrapperTest, YamlNodeAsMap)
 {
     const std::string yml = R"(
       mapElem1: "MyElement1"
@@ -211,7 +226,7 @@ TEST(YamlWrapperTest, YamlNodeAsMap)
     EXPECT_EQ(rootMap["mapElem4"].AsString(), "MyElement4");
 }
 
-TEST(YamlWrapperTest, YamlNodeRemoveKey)
+TEST_F(YamlWrapperTest, YamlNodeRemoveKey)
 {
     const std::string yml = R"(
       mapElem1: "MyElement1"
@@ -230,7 +245,7 @@ TEST(YamlWrapperTest, YamlNodeRemoveKey)
     EXPECT_FALSE(root.HasKey("mapElem3"));
 }
 
-TEST(YamlWrapperTest, YamlNodeAsSequence)
+TEST_F(YamlWrapperTest, YamlNodeAsSequence)
 {
     const std::string yml = R"(
       - "MySeqElement1"
@@ -251,7 +266,7 @@ TEST(YamlWrapperTest, YamlNodeAsSequence)
     EXPECT_EQ(rootSeq[3].AsString(), "MySeqElement4");
 }
 
-TEST(YamlWrapperTest, YamlNodeAppendToSequence)
+TEST_F(YamlWrapperTest, YamlNodeAppendToSequence)
 {
     const std::string yml = R"(
       - "MySeqElement1"
@@ -273,7 +288,7 @@ TEST(YamlWrapperTest, YamlNodeAppendToSequence)
     EXPECT_EQ(rootSeq[3].AsString(), "MySeqElement4");
 }
 
-TEST(YamlWrapperTest, YamlNodeSetScalarValue)
+TEST_F(YamlWrapperTest, YamlNodeSetScalarValue)
 {
     const std::string yml = R"(
       variables:
@@ -292,7 +307,7 @@ TEST(YamlWrapperTest, YamlNodeSetScalarValue)
     EXPECT_EQ(root["variables"]["$var1"].AsString(), "NewValue");
 }
 
-TEST(YamlWrapperTest, YamlNodeSequenceCreation)
+TEST_F(YamlWrapperTest, YamlNodeSequenceCreation)
 {
     const std::string yml = R"(
       variables:
@@ -322,7 +337,7 @@ TEST(YamlWrapperTest, YamlNodeSequenceCreation)
     EXPECT_EQ(newSeq.AsSequence().size(), 4);
 }
 
-TEST(YamlWrapperTest, YamlNodeClone)
+TEST_F(YamlWrapperTest, YamlNodeClone)
 {
 
     const std::string yml = R"(
