@@ -109,7 +109,6 @@ static int setup_test(void **state) {
     agt->server = NULL;
     agt->rip_id = 0;
     agt->execdq = 0;
-    agt->cfgadq = -1;
     agt->profile = NULL;
     agt->buffer = 1;
     agt->buflength = 5000;

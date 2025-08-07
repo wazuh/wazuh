@@ -160,39 +160,7 @@ int receive_msg()
 
             /* Security configuration assessment DB request */
             else if (strncmp(tmp_msg, CFGA_DB_DUMP, strlen(CFGA_DB_DUMP)) == 0) {
-#ifndef WIN32
-                /* Connect to the Security configuration assessment queue */
-                if (agt->cfgadq >= 0) {
-                    if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                        mwarn("Error communicating with Security configuration assessment");
-                        close(agt->cfgadq);
-
-                        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
-                            mwarn("Unable to connect to the Security configuration assessment "
-                                    "queue (disabled).");
-                            agt->cfgadq = -1;
-                        } else if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            mwarn("Error communicating with Security configuration assessment");
-                            close(agt->cfgadq);
-                            agt->cfgadq = -1;
-                        }
-                    }
-                } else {
-                    if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
-                        mwarn("Unable to connect to the Security configuration assessment "
-                            "queue (disabled).");
-                        agt->cfgadq = -1;
-                    } else {
-                         if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            mwarn("Error communicating with Security configuration assessment");
-                            close(agt->cfgadq);
-                            agt->cfgadq = -1;
-                        }
-                    }
-                }
-#else
-                wm_sca_push_request_win(tmp_msg);
-#endif
+                mwarn("SCA dump operation is deprecated");
                 continue;
             }
 
