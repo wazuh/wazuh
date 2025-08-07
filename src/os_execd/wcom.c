@@ -15,7 +15,6 @@
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/signature/signature.h"
 #include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_exec.h"
 #include "external/zlib/zlib.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
