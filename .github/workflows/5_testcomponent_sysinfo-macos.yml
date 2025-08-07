@@ -23,13 +23,17 @@ jobs:
           make -C src build_syscollector TARGET=agent -j4
       - name: Install dependencies
         run: |
-          brew install wget
+          brew install wget jq
           pip3 install -r src/data_provider/qa/requirements.txt
       - name: Install macports package manager
         run: |
-          wget https://github.com/macports/macports-base/releases/download/v2.8.1/MacPorts-2.8.1-13-Ventura.pkg
-          sudo installer -pkg MacPorts-2.8.1-13-Ventura.pkg -target /
-          rm -rf MacPorts-2.8.1-13-Ventura.pkg
+          API_URL="https://api.github.com/repos/macports/macports-base/releases/latest"
+          last_macport=$(curl -s -H "Accept: application/vnd.github+json" \
+                            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                            "$API_URL" | jq -r '.assets[] | select(.name | endswith("Ventura.pkg")).browser_download_url')
+          wget $last_macport
+          sudo installer -pkg $(basename $last_macport) -target /
+          rm -rf $(basename $last_macport)
       - name: Install port
         run: |
           sudo /opt/local/bin/port selfupdate
