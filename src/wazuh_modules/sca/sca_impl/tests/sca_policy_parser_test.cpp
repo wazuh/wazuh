@@ -4,39 +4,54 @@
 #include <sca_policy_parser.hpp>
 #include <yaml_document.hpp>
 
+#include "logging_helper.hpp"
+
 #include <string>
 
 using namespace testing;
 
+class PolicyParserTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
+            // Mock logging callback that does nothing
+        });
+
+    }
+};
+
 // NOLINTBEGIN(bugprone-exception-escape)
 
-TEST(PolicyParserTest, InvalidYamlFileNotThrows)
+TEST_F(PolicyParserTest, InvalidYamlFileNotThrows)
 {
     auto mockYamlDocument = std::make_unique<MockYamlDocument>();
     MockYamlDocument* mockDocPtr = mockYamlDocument.get();
 
     EXPECT_CALL(*mockDocPtr, IsValidDocument()).WillOnce(::testing::Return(false));
     const std::filesystem::path path("dummy.yaml");
-    EXPECT_NO_THROW({ const PolicyParser parser(path, std::move(mockYamlDocument)); });
+    EXPECT_NO_THROW({ const PolicyParser parser(path, 30, false, std::move(mockYamlDocument)); });
 }
 
-TEST(PolicyParserTest, YamlSequenceIsValid)
+TEST_F(PolicyParserTest, YamlSequenceIsValid)
 {
     auto yamlDocument = std::make_unique<YamlDocument>(std::string("- item1\n- item2"));
 
     const std::filesystem::path path("dummy.yaml");
-    EXPECT_NO_THROW({ const PolicyParser parser(path, std::move(yamlDocument)); });
+    EXPECT_NO_THROW({ const PolicyParser parser(path, 30, false, std::move(yamlDocument)); });
 }
 
-TEST(PolicyParserTest, YamlMapIsValid)
+TEST_F(PolicyParserTest, YamlMapIsValid)
 {
     auto yamlDocument = std::make_unique<YamlDocument>(std::string("key: value"));
 
     const std::filesystem::path path("dummy.yaml");
-    EXPECT_NO_THROW({ const PolicyParser parser(path, std::move(yamlDocument)); }); // Maps are valid top-level YAML
+    EXPECT_NO_THROW({ const PolicyParser parser(path, 30, false, std::move(yamlDocument)); }); // Maps are valid top-level YAML
 }
 
-TEST(PolicyParserTest, ConstructorExtractsVariables)
+TEST_F(PolicyParserTest, ConstructorExtractsVariables)
 {
     const std::string yml = R"(
       variables:
@@ -56,7 +71,7 @@ TEST(PolicyParserTest, ConstructorExtractsVariables)
     auto yamlDocument = std::make_unique<YamlDocument>(yml);
 
     const std::filesystem::path path("dummy.yaml");
-    PolicyParser parser(path, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, std::move(yamlDocument));
 
     nlohmann::json j;
     const auto policyOpt = parser.ParsePolicy(j);
@@ -72,7 +87,7 @@ TEST(PolicyParserTest, ConstructorExtractsVariables)
     EXPECT_EQ(j["policies"][0]["id"], "policy1");
 }
 
-TEST(PolicyParserTest, MissingPolicyReturnsNullopt)
+TEST_F(PolicyParserTest, MissingPolicyReturnsNullopt)
 {
     const std::string yml = R"(
       checks:
@@ -85,13 +100,13 @@ TEST(PolicyParserTest, MissingPolicyReturnsNullopt)
     auto yamlDocument = std::make_unique<YamlDocument>(yml);
 
     const std::filesystem::path path("dummy.yaml");
-    PolicyParser parser(path, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, std::move(yamlDocument));
     nlohmann::json j;
     const auto policyOpt = parser.ParsePolicy(j);
     EXPECT_FALSE(policyOpt);
 }
 
-TEST(PolicyParserTest, EmptyRequirementsReturnsNullopt)
+TEST_F(PolicyParserTest, EmptyRequirementsReturnsNullopt)
 {
     const std::string yml = R"(
       policy:
@@ -102,14 +117,14 @@ TEST(PolicyParserTest, EmptyRequirementsReturnsNullopt)
 
     const std::filesystem::path path("dummy.yaml");
     auto yamlDocument = std::make_unique<YamlDocument>(yml);
-    PolicyParser parser(path, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, std::move(yamlDocument));
 
     nlohmann::json j;
     const auto policyOpt = parser.ParsePolicy(j);
     EXPECT_FALSE(policyOpt);
 }
 
-TEST(PolicyParserTest, MissingChecksReturnsNullopt)
+TEST_F(PolicyParserTest, MissingChecksReturnsNullopt)
 {
     const std::string yml = R"(
       policy:
@@ -122,14 +137,14 @@ TEST(PolicyParserTest, MissingChecksReturnsNullopt)
 
     const std::filesystem::path path("dummy.yaml");
     auto yamlDocument = std::make_unique<YamlDocument>(yml);
-    PolicyParser parser(path, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, std::move(yamlDocument));
 
     nlohmann::json j;
     const auto policyOpt = parser.ParsePolicy(j);
     EXPECT_FALSE(policyOpt);
 }
 
-TEST(PolicyParserTest, InvalidConditionReturnsNullopt)
+TEST_F(PolicyParserTest, InvalidConditionReturnsNullopt)
 {
     const std::string yml = R"(
       policy:
@@ -142,14 +157,14 @@ TEST(PolicyParserTest, InvalidConditionReturnsNullopt)
 
     const std::filesystem::path path("dummy.yaml");
     auto yamlDocument = std::make_unique<YamlDocument>(yml);
-    PolicyParser parser(path, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, std::move(yamlDocument));
 
     nlohmann::json j;
     const auto policyOpt = parser.ParsePolicy(j);
     EXPECT_FALSE(policyOpt);
 }
 
-TEST(PolicyParserTest, InvalidRuleIsHandledGracefully)
+TEST_F(PolicyParserTest, InvalidRuleIsHandledGracefully)
 {
     const std::string yml = R"(
       policy:
@@ -164,7 +179,7 @@ TEST(PolicyParserTest, InvalidRuleIsHandledGracefully)
 
     const std::filesystem::path path("dummy.yaml");
     auto yamlDocument = std::make_unique<YamlDocument>(yml);
-    PolicyParser parser(path, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, std::move(yamlDocument));
 
     nlohmann::json j;
     const auto policyOpt = parser.ParsePolicy(j);
@@ -174,7 +189,7 @@ TEST(PolicyParserTest, InvalidRuleIsHandledGracefully)
     EXPECT_EQ(j["checks"][0]["rules"], "");
 }
 
-TEST(PolicyParserTest, YamlNodeToJsonParsesMapWithSequenceValues)
+TEST_F(PolicyParserTest, YamlNodeToJsonParsesMapWithSequenceValues)
 {
     const std::string yml = R"(
       policy:
@@ -199,7 +214,7 @@ TEST(PolicyParserTest, YamlNodeToJsonParsesMapWithSequenceValues)
 
     const std::filesystem::path path("dummy.yaml");
     auto yamlDocument = std::make_unique<YamlDocument>(yml);
-    PolicyParser parser(path, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, std::move(yamlDocument));
 
     nlohmann::json j;
     const auto policyOpt = parser.ParsePolicy(j);

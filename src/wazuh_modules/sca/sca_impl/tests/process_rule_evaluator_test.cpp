@@ -6,6 +6,8 @@
 #include <mock_filesystem_wrapper.hpp>
 #include <mock_sysinfo.hpp>
 
+#include "logging_helper.hpp"
+
 #include <filesystem>
 #include <memory>
 
@@ -21,6 +23,11 @@ protected:
 
     void SetUp() override
     {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
+            // Mock logging callback that does nothing
+        });
+
         m_fsMock = std::make_unique<MockFileSystemWrapper>();
         m_rawFsMock = m_fsMock.get();
         m_sysInfoMock = std::make_unique<MockSysInfo>();
