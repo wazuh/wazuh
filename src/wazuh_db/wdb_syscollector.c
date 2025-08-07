@@ -1324,6 +1324,71 @@ int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     }
 }
 
+// Function to save web browser extensions info into the DB. Return 0 on success or -1 on error.
+int wdb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * wb_extension_record, const bool replace) {
+    if (!wdb->transaction && wdb_begin2(wdb) < 0){
+        mdebug1("at wdb_browser_extensions_save(): cannot begin transaction");
+        return -1;
+    }
+
+    if (wdb_browser_extensions_insert(wdb, wb_extension_record, replace)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+// Insert web browser extensions info tuple. Return 0 on success or -1 on error.
+int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t * wb_extension_record, const bool replace) {
+    sqlite3_stmt *stmt = NULL;
+
+    if (NULL == wb_extension_record->package_name ||
+        strlen(wb_extension_record->package_name) == 0){
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, replace ? WDB_STMT_BROWSER_EXTENSION_INSERT2 : WDB_STMT_BROWSER_EXTENSION_INSERT) < 0) {
+        mdebug1("at wdb_browser_extensions_insert(): cannot cache statement");
+        return OS_INVALID;
+    }
+
+    stmt = wdb->stmt[replace ? WDB_STMT_BROWSER_EXTENSION_INSERT2 : WDB_STMT_BROWSER_EXTENSION_INSERT];
+
+    sqlite3_bind_text(stmt, 1, wb_extension_record->scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, wb_extension_record->scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, wb_extension_record->browser_name, -1, NULL);
+    sqlite3_bind_text(stmt, 4, wb_extension_record->user_id, -1, NULL);
+    sqlite3_bind_text(stmt, 5, wb_extension_record->package_name, -1, NULL);
+    sqlite3_bind_text(stmt, 6, wb_extension_record->package_id, -1, NULL);
+    sqlite3_bind_text(stmt, 7, wb_extension_record->package_version, -1, NULL);
+    sqlite3_bind_text(stmt, 8, wb_extension_record->package_description, -1, NULL);
+    sqlite3_bind_text(stmt, 9, wb_extension_record->package_vendor, -1, NULL);
+    sqlite3_bind_text(stmt, 10, wb_extension_record->package_build_version, -1, NULL);
+    sqlite3_bind_text(stmt, 11, wb_extension_record->package_path, -1, NULL);
+    sqlite3_bind_text(stmt, 12, wb_extension_record->browser_profile_name, -1, NULL);
+    sqlite3_bind_text(stmt, 13, wb_extension_record->browser_profile_path, -1, NULL);
+    sqlite3_bind_text(stmt, 14, wb_extension_record->package_reference, -1, NULL);
+    sqlite3_bind_text(stmt, 15, wb_extension_record->package_permissions, -1, NULL);
+    sqlite3_bind_text(stmt, 16, wb_extension_record->package_type, -1, NULL);
+    sqlite3_bind_int(stmt, 17, wb_extension_record->package_enabled);
+    sqlite3_bind_int(stmt, 18, wb_extension_record->package_autoupdate);
+    sqlite3_bind_int(stmt, 19, wb_extension_record->package_persistent);
+    sqlite3_bind_int(stmt, 20, wb_extension_record->package_from_webstore);
+    sqlite3_bind_int(stmt, 21, wb_extension_record->browser_profile_referenced);
+    sqlite3_bind_text(stmt, 22, wb_extension_record-> package_installed, -1, NULL);
+    sqlite3_bind_text(stmt, 23, wb_extension_record-> file_hash_sha256, -1, NULL);
+    sqlite3_bind_text(stmt, 24, wb_extension_record->checksum, -1, NULL);
+
+    if (wdb_step(stmt) == SQLITE_DONE){
+        return OS_SUCCESS;
+    } else {
+        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    return 0;
+}
+
 int wdb_syscollector_processes_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
@@ -1576,6 +1641,46 @@ int wdb_syscollector_groups_save2(wdb_t * wdb, const cJSON * attributes)
                            group_users, checksum, TRUE);
 }
 
+int wdb_syscollector_browser_extensions_save2(wdb_t * wdb, const cJSON * attributes)
+{
+    const char * scan_id = "0";
+    const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
+    const char * browser_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "browser_name"));
+    const char * user_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_id"));
+    const char * package_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_name"));
+    const char * package_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_id"));
+    const char * package_version = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_version"));
+    const char * package_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_description"));
+    const char * package_vendor = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_vendor"));
+    const char * package_build_version = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_build_version"));
+    const char * package_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_path"));
+    const char * browser_profile_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "browser_profile_name"));
+    const char * browser_profile_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "browser_profile_path"));
+    const char * package_reference = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_reference"));
+    const char * package_permissions = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_permissions"));
+    const char * package_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_type"));
+    const bool package_enabled = cJSON_GetObjectItem(attributes, "package_enabled") ? cJSON_GetObjectItem(attributes, "package_enabled")->valueint : false;
+    const bool package_autoupdate = cJSON_GetObjectItem(attributes, "package_autoupdate") ? cJSON_GetObjectItem(attributes, "package_autoupdate")->valueint : false;
+    const bool package_persistent = cJSON_GetObjectItem(attributes, "package_persistent") ? cJSON_GetObjectItem(attributes, "package_persistent")->valueint : false;
+    const bool package_from_webstore = cJSON_GetObjectItem(attributes, "package_from_webstore") ? cJSON_GetObjectItem(attributes, "package_from_webstore")->valueint : false;
+    const bool browser_profile_referenced = cJSON_GetObjectItem(attributes, "browser_profile_referenced") ? cJSON_GetObjectItem(attributes, "browser_profile_referenced")->valueint : false;
+    const char * package_installed = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_installed"));
+    const char * file_hash_sha256 = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_hash_sha256"));
+    const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
+
+    browser_extension_record_t wb_extension_record = {
+        .scan_id = scan_id, .scan_time = scan_time, .browser_name = browser_name, .user_id = user_id, .package_name = package_name,
+        .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
+        .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
+        .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
+        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+    };
+
+    return wdb_browser_extensions_save(wdb, &wb_extension_record, TRUE);
+}
+
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload)
 {
     int result = -1;
@@ -1635,6 +1740,10 @@ int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * 
     else if(component == WDB_SYSCOLLECTOR_GROUPS)
     {
         result = wdb_syscollector_groups_save2(wdb, attributes);
+    }
+    else if(component == WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS)
+    {
+        result = wdb_syscollector_browser_extensions_save2(wdb, attributes);
     }
     else
     {
