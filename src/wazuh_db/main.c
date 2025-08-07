@@ -105,6 +105,8 @@ int main(int argc, char ** argv)
     wconfig.max_fragmentation = getDefine_Int("wazuh_db", "max_fragmentation", 0, 100);
     wconfig.check_fragmentation_interval = getDefine_Int("wazuh_db", "check_fragmentation_interval", 1, 30758400);
 
+    wconfig.is_worker_node = w_is_worker() == 1;
+
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
@@ -248,6 +250,7 @@ int main(int argc, char ** argv)
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/summary", (void*)&wdb_global_pre, (void*)&wdb_global_post);
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "GET", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
     router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/sync", (void*)&wdb_global_pre, (void*)&wdb_global_post);
+    router_register_api_endpoint("wazuh-db","wdb-http.sock", "POST", "/v1/agents/restartinfo", (void*)&wdb_global_pre, (void*)&wdb_global_post);
 
     router_start_api("wdb-http.sock");
 
