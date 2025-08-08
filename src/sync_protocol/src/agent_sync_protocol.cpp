@@ -11,6 +11,7 @@
 #include "ipersistent_queue.hpp"
 #include "persistent_queue.hpp"
 #include "defs.h"
+#include "logging_helper.hpp"
 
 #include <flatbuffers/flatbuffers.h>
 #include <iostream>
@@ -36,7 +37,7 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Failed to persist item: " << e.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to persist item: ") + e.what());
     }
 }
 
@@ -44,7 +45,7 @@ bool AgentSyncProtocol::synchronizeModule(Wazuh::SyncSchema::Mode mode, std::chr
 {
     if (!ensureQueueAvailable())
     {
-        std::cerr << "Failed to open queue: " << DEFAULTQUEUE << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
         return false;
     }
 
@@ -58,13 +59,13 @@ bool AgentSyncProtocol::synchronizeModule(Wazuh::SyncSchema::Mode mode, std::chr
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Failed to fetch items for sync: " << e.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to fetch items for sync: ") + e.what());
         return false;
     }
 
     if (dataToSync.empty())
     {
-        std::cout << "[Sync] No pending items to synchronize for module '" << m_moduleName << "'." << std::endl;
+        LoggingHelper::getInstance().log(LOG_DEBUG, "No pending items to synchronize for module " + m_moduleName);
         return true;
     }
 
@@ -90,18 +91,18 @@ bool AgentSyncProtocol::synchronizeModule(Wazuh::SyncSchema::Mode mode, std::chr
     {
         if (success)
         {
-            std::cout << "[Sync] Module '" << m_moduleName << "' synchronized successfully. Clearing " << dataToSync.size() << " items." << std::endl;
+            LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Synchronization completed successfully.");
             m_persistentQueue->clearSyncedItems();
         }
         else
         {
-            std::cerr << "[Sync] Synchronization failed for module '" << m_moduleName << "'. Resetting " << dataToSync.size() << " items to pending state." << std::endl;
+            LoggingHelper::getInstance().log(LOG_WARNING, "Synchronization failed.");
             m_persistentQueue->resetSyncingItems();
         }
     }
     catch (const std::exception& e)
     {
-        std::cerr << "CRITICAL: Failed to finalize sync state in DB: " << e.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to finalize sync state in DB: ") + e.what());
     }
 
     clearSyncState();
@@ -154,7 +155,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Wazuh::SyncSchema::Mode mode,
     {
         if (!sendFlatBufferMessageAsString(messageVector, maxEps))
         {
-            std::cerr << "[Sync] Failed to send Start message.\n";
+            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to send Start message.");
             continue;
         }
 
@@ -164,15 +165,15 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Wazuh::SyncSchema::Mode mode,
 
             if (m_syncState.syncFailed)
             {
-                std::cerr << "[Sync] Synchronization failed due to manager error." << std::endl;
+                LoggingHelper::getInstance().log(LOG_ERROR, "Synchronization failed due to manager error.");
                 return false;
             }
 
-            std::cout << "[Sync] StartAck received. Session " << m_syncState.session << " established.\n";
+            LoggingHelper::getInstance().log(LOG_DEBUG, "StartAck received. Session: " + std::to_string(m_syncState.session));
             return true;
         }
 
-        std::cout << "[Sync] Timed out waiting for StartAck. Retrying...\n";
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Timed out waiting for StartAck. Retrying...");
     }
 
     return false;
@@ -258,13 +259,13 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
     {
         if (sendEnd && !sendFlatBufferMessageAsString(messageVector, maxEps))
         {
-            std::cerr << "[Sync] Failed to send End message.\n";
+            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to send End message.");
             continue;
         }
 
         if (!receiveEndAck(timeout))
         {
-            std::cout << "[Sync] Timeout waiting for EndAck or ReqRet. Retrying...\n";
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Timeout waiting for EndAck or ReqRet. Retrying...");
             continue;
         }
 
@@ -273,7 +274,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
             if (m_syncState.syncFailed)
             {
-                std::cerr << "[Sync] Synchronization failed: Manager reported an error status." << std::endl;
+                LoggingHelper::getInstance().log(LOG_ERROR, "Synchronization failed: Manager reported an error status.");
                 return false;
             }
         }
@@ -296,7 +297,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         {
             if (ranges.empty())
             {
-                std::cerr << "[Sync] Received ReqRet with empty ranges. Aborting current sync attempt.\n";
+                LoggingHelper::getInstance().log(LOG_ERROR, "Received ReqRet with empty ranges. Aborting current sync attempt.");
                 return false;
             }
 
@@ -304,13 +305,13 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
             if (rangeData.empty())
             {
-                std::cerr << "[Sync] ReqRet asked for ranges that yield no data. Aborting." << std::endl;
+                LoggingHelper::getInstance().log(LOG_ERROR, "ReqRet asked for ranges that yield no data. Aborting.");
                 return false;
             }
 
             if (!sendDataMessages(session, rangeData, maxEps))
             {
-                std::cerr << "[Sync] Failed to resend data for ReqRet.\n";
+                LoggingHelper::getInstance().log(LOG_ERROR, "Failed to resend data for ReqRet.");
                 return false;
             }
 
@@ -323,7 +324,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
             if (m_syncState.endAckReceived)
             {
-                std::cout << "[Sync] EndAck received.\n";
+                LoggingHelper::getInstance().log(LOG_DEBUG, "EndAck received.");
                 return true;
             }
         }
@@ -345,12 +346,12 @@ bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>
 {
     if (m_mqFuncs.send_binary(m_queue, fbData.data(), fbData.size(), m_moduleName.c_str(), SYNC_MQ) < 0)
     {
-        std::cerr << "SendMSG failed, attempting to reinitialize queue..." << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, "SendMSG failed, attempting to reinitialize queue...");
         m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
 
         if (m_queue < 0 || m_mqFuncs.send_binary(m_queue, fbData.data(), fbData.size(), m_moduleName.c_str(), SYNC_MQ) < 0)
         {
-            std::cerr << "Failed to send message after retry" << std::endl;
+            LoggingHelper::getInstance().log(LOG_ERROR, "SendMSG failed to send message after retry");
             return false;
         }
     }
@@ -371,7 +372,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
 {
     if (!data)
     {
-        std::cerr << "Invalid buffer received.\n";
+        LoggingHelper::getInstance().log(LOG_ERROR, "Invalid buffer received.");
         return false;
     }
 
@@ -391,7 +392,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
                     if (startAck->status() == Wazuh::SyncSchema::Status::Error ||
                             startAck->status() == Wazuh::SyncSchema::Status::Offline)
                     {
-                        std::cerr << "[Sync] Received StartAck with error status. Aborting synchronization." << std::endl;
+                        LoggingHelper::getInstance().log(LOG_ERROR, "Received StartAck with error status. Aborting synchronization.");
                         m_syncState.syncFailed = true;
                         m_syncState.cv.notify_all();
                         break;
@@ -402,12 +403,11 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
                     m_syncState.startAckReceived = true;
                     m_syncState.cv.notify_all();
 
-                    std::cout << "[StartAck] Received and accepted for new session: " << m_syncState.session << "\n";
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "Received and accepted for new session: " + std::to_string(static_cast<int>(m_syncState.session)));
                 }
                 else
                 {
-                    std::cerr << "[StartAck] Discarded. Not in WaitingStartAck phase. Current phase: "
-                              << static_cast<int>(m_syncState.phase) << "\n";
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "Discarded. Not in WaitingStartAck phase. Current phase: " + std::to_string(static_cast<int>(m_syncState.phase)));
                 }
 
                 break;
@@ -420,14 +420,14 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
 
                 if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
                 {
-                    std::cout << "[EndAck] invalid phase or session. \n";
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "Parsing EndAck, invalid phase or session.");
                     break;
                 }
 
                 if (endAck->status() == Wazuh::SyncSchema::Status::Error ||
                         endAck->status() == Wazuh::SyncSchema::Status::Offline)
                 {
-                    std::cerr << "[Sync] Received EndAck with error status. Aborting synchronization." << std::endl;
+                    LoggingHelper::getInstance().log(LOG_ERROR, "Received EndAck with error status. Aborting synchronization.");
                     m_syncState.syncFailed = true;
                     m_syncState.cv.notify_all();
                     break;
@@ -436,7 +436,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
                 m_syncState.endAckReceived = true;
                 m_syncState.cv.notify_all();
 
-                std::cout << "[EndAck] session ended: " << incomingSession << "\n";
+                LoggingHelper::getInstance().log(LOG_DEBUG, "EndAck session '" + std::to_string(incomingSession) + "' ended" );
                 break;
             }
 
@@ -447,7 +447,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
 
                 if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
                 {
-                    std::cout << "[ReqRet] invalid phase or session. \n";
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "Parsing ReqRet, invalid phase or session.");
                     break;
                 }
 
@@ -463,14 +463,14 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
 
                 m_syncState.reqRetReceived = true;
 
-                std::cout << "[ReqRet] received " << m_syncState.reqRetRanges.size() << " ranges\n";
+                LoggingHelper::getInstance().log(LOG_DEBUG, "ReqRet received '" + std::to_string(m_syncState.reqRetRanges.size()) + "' ranges" );
                 m_syncState.cv.notify_all();
                 break;
             }
 
         default:
             {
-                std::cerr << "Unknown message type: " << static_cast<int>(messageType) << "\n";
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Unknown message type: " + std::to_string(static_cast<int>(messageType)));
                 return false;
             }
     }
@@ -482,15 +482,13 @@ bool AgentSyncProtocol::validatePhaseAndSession(const SyncPhase receivedPhase, c
 {
     if (m_syncState.phase != receivedPhase)
     {
-        std::cerr << "[Sync] Discarded. Received phase " << static_cast<int>(receivedPhase)
-                  << " but current phase is " << static_cast<int>(m_syncState.phase) << "\n";
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Discarded. Received phase '" + std::to_string(static_cast<int>(receivedPhase)) + "' but current phase is '" + std::to_string(static_cast<int>(m_syncState.phase)) + "'.");
         return false;
     }
 
     if (m_syncState.session != incomingSession)
     {
-        std::cerr << "[Sync] Discarded. Session mismatch. Expected session: "
-                  << m_syncState.session << " received: " << incomingSession << "\n";
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Discarded. Session mismatch. Expected session '" + std::to_string(m_syncState.session) + "' but session received is '" + std::to_string(incomingSession) + "'.");
         return false;
     }
 
@@ -520,7 +518,7 @@ std::vector<PersistedData> AgentSyncProtocol::filterDataByRanges(
         {
             if (range.second < range.first)
             {
-                std::cerr << "[Sync] Requested set of ranks malformed. Aborting." << std::endl;
+                LoggingHelper::getInstance().log(LOG_ERROR, "Requested set of ranks malformed. Aborting.");
                 return {};
             }
 

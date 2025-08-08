@@ -148,6 +148,7 @@ typedef enum fdb_stmt {
 #include "integrity_op.h"
 #include "../external/sqlite/sqlite3.h"
 #include "../headers/list_op.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WIN32
 typedef struct whodata_dir_status whodata_dir_status;
@@ -431,6 +432,8 @@ typedef struct _config {
     char **prefilter_cmd;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
     bool allow_remote_prefilter_cmd;
+
+    AgentSyncProtocolHandle *sync_handle;
 } syscheck_config;
 
 

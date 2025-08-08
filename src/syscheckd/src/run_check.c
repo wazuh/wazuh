@@ -118,7 +118,8 @@ void persist_syscheck_msg(const cJSON* _msg) {
 
         mdebug2(FIM_PERSIST, msg);
 
-        // fim_persist_stateful_event(msg);
+        // TODO: Use real value for id/index
+        asp_persist_diff(syscheck.sync_handle, "idfim", 1, "fim index", msg);
 
         os_free(msg);
     } else {
@@ -524,7 +525,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     while (FOREVER()) {
         mdebug1("Running inventory synchronization.");
 
-        // fim_synchronize(syscheck.sync_response_timeout, syscheck.sync_max_eps);
+        asp_sync_module(syscheck.sync_handle, 0, syscheck.sync_response_timeout, 3, syscheck.sync_max_eps);
 
         mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
         sleep(syscheck.sync_interval);

@@ -1,6 +1,7 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "agent_sync_protocol.hpp"
 #include "persistent_queue.hpp"
+#include "logging_helper.hpp"
 #include <chrono>
 #include <memory>
 #include <string>
@@ -37,9 +38,17 @@ struct AgentSyncProtocolWrapper
 
 extern "C" {
 
-    AgentSyncProtocolHandle* asp_create(const char* module, const MQ_Functions* mq_funcs)
+    AgentSyncProtocolHandle* asp_create(const char* module, const MQ_Functions* mq_funcs, asp_logger_t logger)
     {
         if (!mq_funcs) return nullptr;
+
+        if (logger) {
+            LoggingHelper::setLogCallback(
+                [logger](const modules_log_level_t level, const char* msg) {
+                    logger(level, msg);
+                }
+            );
+        }
 
         return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, *mq_funcs));
     }
