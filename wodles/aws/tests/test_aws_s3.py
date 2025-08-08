@@ -60,8 +60,9 @@ def test_main(mock_arguments, args: list[str], class_):
         instance.iter_bucket.assert_called_once()
     elif 'service' in args[1]:
         if args[2] == 'inspector':
-            assert mocked_class.call_count == len(services.inspector.SUPPORTED_REGIONS)
-            assert instance.get_alerts.call_count == len(services.inspector.SUPPORTED_REGIONS)
+            total_regions = len(services.inspector.INSPECTOR_V1_REGIONS) + len(services.inspector.INSPECTOR_V2_REGIONS)
+            assert mocked_class.call_count == total_regions
+            assert instance.get_alerts.call_count == total_regions
         else:
             assert mocked_class.call_count == len(aws_tools.ALL_REGIONS)
             assert instance.get_alerts.call_count == len(aws_tools.ALL_REGIONS)
@@ -76,7 +77,7 @@ def test_main(mock_arguments, args: list[str], class_):
     (['main', '--subscriber', 'invalid'], utils.INVALID_TYPE_ERROR_CODE),
     (['main', '--service', 'cloudwatchlogs', '--regions', 'in-valid-1'], utils.INVALID_REGION_ERROR_CODE),
     (['main', '--service', 'inspector', '--regions', 'in-valid-1'], utils.INVALID_REGION_ERROR_CODE),
-    (['main', '--service', 'inspector', '--regions', 'af-south-1'], utils.INVALID_REGION_ERROR_CODE)
+    (['main', '--service', 'inspector', '--regions', 'in-valid-8'], utils.INVALID_REGION_ERROR_CODE)
 ])
 def test_main_type_ko(args: list[str], error_code: int):
     """Test 'main' function handles exceptions when receiving invalid buckets or services.
