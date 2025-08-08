@@ -20,42 +20,12 @@
 
 namespace chrome
 {
-
     ChromeExtensionsProvider::ChromeExtensionsProvider(std::shared_ptr<IChromeExtensionsWrapper> chromeExtensionsWrapper) : m_chromeExtensionsWrapper(std::move(chromeExtensionsWrapper))
     {
-        m_userIds = m_chromeExtensionsWrapper->getUserIdsMap();
     }
 
     ChromeExtensionsProvider::ChromeExtensionsProvider() : m_chromeExtensionsWrapper(std::make_shared<ChromeExtensionsWrapper>())
     {
-        m_userIds = m_chromeExtensionsWrapper->getUserIdsMap();
-    }
-
-    ChromeUserProfileList ChromeExtensionsProvider::getProfileDirs()
-    {
-        ChromeUserProfileList userProfiles;
-        std::string homePath = m_chromeExtensionsWrapper->getHomePath();
-
-        for (const auto& user : Utils::enumerateDir(homePath))
-        {
-            const std::string userHomePath = Utils::joinPaths(homePath, user);
-
-            for (const auto& browser : kLinuxPathList)
-            {
-                std::string browserPath = std::get<1>(browser);
-                const std::string profilePath = Utils::joinPaths(userHomePath, browserPath);
-
-                if (!Utils::existsDir(profilePath))
-                {
-                    // std::cerr << "Chrome path does not exist\n";
-                    continue;
-                }
-
-                userProfiles.emplace_back(profilePath);
-            }
-        }
-
-        return userProfiles;
     }
 
     bool ChromeExtensionsProvider::isValidChromeProfile(const std::string& profilePath)
@@ -257,26 +227,8 @@ namespace chrome
 
     void ChromeExtensionsProvider::getCommonSettings(ChromeExtension& extension, const std::string& manifestPath)
     {
-        std::string absoluteAppPath = Utils::joinPaths("/", Utils::removePrefix(manifestPath, Utils::getParentPath(m_chromeExtensionsWrapper->getHomePath())));
-
-        for (const auto& browser : kLinuxPathList)
-        {
-            if (absoluteAppPath.find(std::get<1>(browser)) != std::string::npos)
-            {
-                extension.browser_type = kChromeBrowserTypeToString.at(std::get<0>(browser));
-                break;
-            }
-        }
-
-        for (const auto& user : m_userIds)
-        {
-            if (Utils::startsWith(absoluteAppPath, user.first))
-            {
-                extension.uid = user.second;
-                break;
-            }
-        }
-
+        extension.browser_type = m_currentBrowserType;
+        extension.uid = m_currentUid;
         extension.manifest_hash = sha256File(manifestPath);
     }
 
@@ -564,23 +516,49 @@ namespace chrome
         }
     }
 
-    void ChromeExtensionsProvider::getExtensionsFromProfiles(ChromeExtensionList& extensions, const ChromeUserProfileList& profilePaths)
+    void ChromeExtensionsProvider::getExtensionsFromProfiles(ChromeExtensionList& extensions)
     {
-        for (auto& profilePath : profilePaths)
-        {
-            if (isValidChromeProfile(profilePath))
-            {
-                getExtensionsFromPath(extensions, profilePath);
-            }
-            else
-            {
-                for (auto subDirectory : Utils::enumerateDir(profilePath))
-                {
-                    subDirectory = Utils::joinPaths(profilePath, subDirectory);
+        std::string homePath = m_chromeExtensionsWrapper->getHomePath();
 
-                    if (Utils::existsDir(subDirectory) && isValidChromeProfile(subDirectory))
+        for (const auto& user : Utils::enumerateDir(homePath))
+        {
+            // ignore ".", ".." and hidden directories
+            if (Utils::startsWith(user, "."))
+            {
+                continue;
+            }
+
+            m_currentUid = m_chromeExtensionsWrapper->getUserId(user);
+            const std::string userHomePath = Utils::joinPaths(homePath, user);
+
+            for (const auto& browser : kLinuxPathList)
+            {
+                std::string browserPath = std::get<1>(browser);
+                const std::string profilePath = Utils::joinPaths(userHomePath, browserPath);
+
+                if (!Utils::existsDir(profilePath))
+                {
+                    // std::cerr << "Chrome path does not exist\n";
+                    continue;
+                }
+
+                m_currentBrowserType = kChromeBrowserTypeToString.at(std::get<0>(browser));
+
+                // The profile path exists, now let's find the profile.
+                if (isValidChromeProfile(profilePath))
+                {
+                    getExtensionsFromPath(extensions, profilePath);
+                }
+                else
+                {
+                    for (auto subDirectory : Utils::enumerateDir(profilePath))
                     {
-                        getExtensionsFromPath(extensions, subDirectory);
+                        subDirectory = Utils::joinPaths(profilePath, subDirectory);
+
+                        if (Utils::existsDir(subDirectory) && isValidChromeProfile(subDirectory))
+                        {
+                            getExtensionsFromPath(extensions, subDirectory);
+                        }
                     }
                 }
             }
@@ -589,9 +567,8 @@ namespace chrome
 
     nlohmann::json ChromeExtensionsProvider::collect()
     {
-        auto profilePaths = getProfileDirs();
         ChromeExtensionList extensions;
-        getExtensionsFromProfiles(extensions, profilePaths);
+        getExtensionsFromProfiles(extensions);
 
         return toJson(extensions);
     }

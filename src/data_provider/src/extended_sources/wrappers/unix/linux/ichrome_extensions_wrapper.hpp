@@ -10,7 +10,6 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
 
 class IChromeExtensionsWrapper
 {
@@ -18,5 +17,5 @@ class IChromeExtensionsWrapper
         /// Destructor
         virtual ~IChromeExtensionsWrapper() = default;
         virtual std::string getHomePath() = 0;
-        virtual std::unordered_map<std::string, std::string> getUserIdsMap() = 0;
+        virtual std::string getUserId(std::string user) = 0;
 };

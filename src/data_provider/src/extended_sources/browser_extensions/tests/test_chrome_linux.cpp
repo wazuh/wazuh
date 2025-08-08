@@ -17,19 +17,16 @@ class MockChromeExtensionsWrapper : public IChromeExtensionsWrapper
 {
     public:
         MOCK_METHOD(std::string, getHomePath, (), (override));
-        MOCK_METHOD((std::unordered_map<std::string, std::string>), getUserIdsMap, (), (override));
+        MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
 
 TEST(ChromeExtensionsTests, NumberOfExtensions)
 {
     auto mockExtensionsWrapper = std::make_shared<MockChromeExtensionsWrapper>();
     std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "mock_home");
-    std::unordered_map<std::string, std::string> mockUserMap =
-    {
-        {"/mock_home/mock-user", "123"}
-    };
+
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockExtensionsWrapper, getUserIdsMap()).WillRepeatedly(::testing::Return(mockUserMap));
+    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
     nlohmann::json extensionsJson = chromeExtensionsProvider.collect();
@@ -40,12 +37,9 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 {
     auto mockExtensionsWrapper = std::make_shared<MockChromeExtensionsWrapper>();
     std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "mock_home");
-    std::unordered_map<std::string, std::string> mockUserMap =
-    {
-        {"/mock_home/mock-user", "123"}
-    };
+
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
-    EXPECT_CALL(*mockExtensionsWrapper, getUserIdsMap()).WillRepeatedly(::testing::Return(mockUserMap));
+    EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
 
     chrome::ChromeExtensionsProvider chromeExtensionsProvider(mockExtensionsWrapper);
     nlohmann::json extensionsJson = chromeExtensionsProvider.collect();

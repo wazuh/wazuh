@@ -71,17 +71,19 @@ namespace chrome
     using ChromeUserProfileList = std::vector<std::string>;
 
     /// A list of path suffixes for each Chrome-based browser on Windows
-    const ChromePathSuffixMap kLinuxPathList =
+    const ChromePathSuffixMap kWindowsPathList =
     {
-        {ChromeBrowserType::GoogleChrome, ".config/google-chrome"},
-        {ChromeBrowserType::GoogleChromeBeta, ".config/google-chrome-beta"},
-        {ChromeBrowserType::GoogleChromeDev, ".config/google-chrome-unstable"},
-        {ChromeBrowserType::Brave, ".config/BraveSoftware/Brave-Browser"},
-        {ChromeBrowserType::Chromium, ".config/chromium"},
-        {ChromeBrowserType::Chromium, "snap/chromium/common/chromium"},
-        {ChromeBrowserType::Yandex, ".config/yandex-browser-beta"},
-        {ChromeBrowserType::Opera, ".config/opera"},
-        {ChromeBrowserType::Vivaldi, ".config/vivaldi"},
+        {ChromeBrowserType::GoogleChrome, "AppData\\Local\\Google\\Chrome\\User Data"},
+        {ChromeBrowserType::GoogleChromeBeta, "AppData\\Local\\Google\\Chrome Beta\\User Data"},
+        {ChromeBrowserType::GoogleChromeDev, "AppData\\Local\\Google\\Chrome Dev\\User Data"},
+        {ChromeBrowserType::GoogleChromeCanary, "AppData\\Local\\Google\\Chrome SxS\\User Data"},
+        {ChromeBrowserType::Brave, "AppData\\Roaming\\brave"},
+        {ChromeBrowserType::Chromium, "AppData\\Local\\Chromium"},
+        {ChromeBrowserType::Yandex, "AppData\\Local\\Yandex\\YandexBrowser\\User Data"},
+        {ChromeBrowserType::Edge, "AppData\\Local\\Microsoft\\Edge\\User Data"},
+        {ChromeBrowserType::EdgeBeta, "AppData\\Local\\Microsoft\\Edge Beta\\User Data"},
+        {ChromeBrowserType::Opera, "AppData\\Roaming\\Opera Software\\Opera Stable"},
+        {ChromeBrowserType::Vivaldi, "AppData\\Local\\Vivaldi\\User Data"}
     };
 
     const std::unordered_map<ChromeBrowserType, std::string>

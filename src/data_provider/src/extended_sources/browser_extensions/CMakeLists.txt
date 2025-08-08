@@ -10,6 +10,7 @@ set(SRC_FILES "")
 include_directories(
   include
   ${SRC_FOLDER}/external/nlohmann/
+  ${SRC_FOLDER}/external/openssl/include/
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -34,7 +35,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   endif(UNIT_TEST)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   include_directories(
-    ${SRC_FOLDER}/external/openssl/include/
     ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/linux
   )
 
@@ -42,13 +42,41 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     src/chrome_linux.cpp
   )
 
-  add_library(chrome_extensions STATIC ${SRC_FILES})
-  target_link_libraries(chrome_extensions
+  add_library(browser_extensions STATIC ${SRC_FILES})
+  target_link_libraries(browser_extensions
     ${SRC_FOLDER}/external/openssl/libcrypto.a
   )
 
   if(UNIT_TEST)
-    target_link_libraries(chrome_extensions gcov)
+    target_link_libraries(browser_extensions gcov)
     add_subdirectory(tests)
   endif(UNIT_TEST)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/
+  )
+
+  list(APPEND SRC_FILES 
+    src/chrome_windows.cpp
+  )
+
+  add_library(browser_extensions STATIC ${SRC_FILES})
+  target_link_libraries(browser_extensions
+    ${SRC_FOLDER}/external/openssl/libcrypto.a
+    ws2_32
+    crypt32
+  )
+
+  add_executable(chrome_windows src/main.cpp)
+  target_link_libraries(chrome_windows
+    browser_extensions
+    -static-libgcc
+    -static-libstdc++
+    -static
+  )
+
+  # if(UNIT_TEST)
+  #   target_link_libraries(browser_extensions gcov)
+  #   add_subdirectory(tests)
+  # endif(UNIT_TEST)
 endif()
