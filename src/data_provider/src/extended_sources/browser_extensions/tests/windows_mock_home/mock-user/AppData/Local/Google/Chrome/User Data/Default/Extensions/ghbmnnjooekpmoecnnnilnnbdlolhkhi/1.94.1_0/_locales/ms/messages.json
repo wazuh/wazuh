@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "BUAT BAHARU"
+   },
+   "explanationofflinedisabled": {
+      "message": "Anda berada di luar talian. Untuk menggunakan Google Docs tanpa sambungan Internet, pergi ke tetapan di halaman utama Google Docs dan hidupkan penyegerakan luar talian apabila anda disambungkan ke Internet selepas ini."
+   },
+   "explanationofflineenabled": {
+      "message": "Anda berada di luar talian, tetapi anda masih boleh mengedit fail yang tersedia atau buat fail baharu."
+   },
+   "extdesc": {
+      "message": "Edit, buat dan lihat dokumen, hamparan dan pembentangan anda — kesemuanya tanpa akses Internet."
+   },
+   "extname": {
+      "message": "Google Docs Luar Talian"
+   },
+   "learnmore": {
+      "message": "Ketahui Lebih Lanjut"
+   },
+   "popuphelptext": {
+      "message": "Tulis, edit dan bekerjasama di mana-mana sahaja anda berada, dengan atau tanpa sambungan Internet."
+   }
+}

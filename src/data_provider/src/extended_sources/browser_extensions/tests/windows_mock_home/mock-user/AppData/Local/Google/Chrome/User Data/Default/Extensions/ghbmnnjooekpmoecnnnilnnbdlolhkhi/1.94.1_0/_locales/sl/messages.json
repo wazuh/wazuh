@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "USTVARI NOVO"
+   },
+   "explanationofflinedisabled": {
+      "message": "Nimate vzpostavljene povezave. Če želite uporabljati Google Dokumente brez internetne povezave, odprite nastavitve na domači strani Google Dokumentov in vklopite sinhronizacijo brez povezave, ko naslednjič vzpostavite internetno povezavo."
+   },
+   "explanationofflineenabled": {
+      "message": "Nimate vzpostavljene povezave, vendar lahko še vedno urejate razpoložljive datoteke ali ustvarjate nove."
+   },
+   "extdesc": {
+      "message": "Urejajte, ustvarjajte in si ogledujte dokumente, preglednice in predstavitve – vse to brez internetnega dostopa."
+   },
+   "extname": {
+      "message": "Google Dokumenti brez povezave"
+   },
+   "learnmore": {
+      "message": "Več o tem"
+   },
+   "popuphelptext": {
+      "message": "Pišite, urejajte in sodelujte, kjer koli ste, z internetno povezavo ali brez nje."
+   }
+}
