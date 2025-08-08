@@ -4,6 +4,7 @@
 #include <sca_event_handler.hpp>
 
 #include "mocks/sca_event_handler_mock.hpp"
+#include "logging_helper.hpp"
 
 using namespace sca_event_handler;
 
@@ -12,6 +13,11 @@ class SCAEventHandlerTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
+            // Mock logging callback that does nothing
+        });
+
         mockDBSync = std::make_shared<MockDBSync>();
         handler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync);
     }
