@@ -437,17 +437,18 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
         NormalizePolicy(policy);
 
         jsonEvent = {
-            {"event",
-             {
-                 {"created", Utils::getCurrentISO8601()},
-                 {"category", {"configuration"}},
-                 {"type", STATELESS_OPERATION_MAP.at(event["result"])},
-                 {"action",
-                  {event.at("collector").get<std::string>() + "-" + STATELESS_OPERATION_MAP.at(event["result"])}},
-                 {"changed_fields", changedFields},
-             }},
-            {"policy", policy},
-            {"check", check}};
+            {"collector", event.at("collector")},
+            {"module", "sca"},
+            {"data", {
+                {"event", {
+                    {"changed_fields", changedFields},
+                    {"created", Utils::getCurrentISO8601()},
+                    {"type", STATELESS_OPERATION_MAP.at(event["result"])}
+                }},
+                {"check", check},
+                {"policy", policy}
+            }}
+        };
 
         jsonMetadata = {{"module", "sca"}, {"collector", event.at("collector")}};
     }
@@ -498,10 +499,8 @@ void SCAEventHandler::PushStateless(const nlohmann::json& event, const nlohmann:
         throw std::runtime_error("Message queue not set, cannot send message.");
     }
 
-    const nlohmann::json statelessJson = {
-        {"type", "stateless"}, {"event", event}, {"module", metadata["module"]}, {"metadata", metadata}};
-
-    const auto statelessMessage = statelessJson.dump();
+    // The event already contains the complete structure we want to send
+    const auto statelessMessage = event.dump();
 
     m_pushMessage(statelessMessage);
     LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE,
