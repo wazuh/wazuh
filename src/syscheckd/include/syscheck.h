@@ -24,7 +24,6 @@
 /* Audit defs */
 #define WDATA_DEFAULT_INTERVAL_SCAN 300
 #define AUDIT_SOCKET                "queue/sockets/audit"
-#define AUDIT_CONF_FILE             "etc/af_wazuh.conf"
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
 #define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
 #define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
