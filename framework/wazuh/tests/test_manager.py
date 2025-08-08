@@ -58,10 +58,9 @@ def test_manager():
     return test_manager
 
 
-manager_status = {'wazuh-agentlessd': 'running', 'wazuh-analysisd': 'running', 'wazuh-authd': 'running',
- 'wazuh-csyslogd': 'running', 'wazuh-dbd': 'running', 'wazuh-monitord': 'running',
- 'wazuh-execd': 'running', 'wazuh-integratord': 'running', 'wazuh-logcollector': 'running',
- 'wazuh-maild': 'running', 'wazuh-remoted': 'running', 'wazuh-reportd': 'running',
+manager_status = {'wazuh-analysisd': 'running', 'wazuh-authd': 'running',
+ 'wazuh-monitord': 'running', 'wazuh-remoted': 'running',
+ 'wazuh-execd': 'running', 'wazuh-logcollector': 'running',
  'wazuh-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
  'wazuh-db': 'running', 'wazuh-apid': 'running'}
 
@@ -83,7 +82,6 @@ def test_get_status(mock_status):
     ('wazuh-modulesd:syscollector', None, 2, None, None),
     ('wazuh-modulesd:aws-s3', None, 5, None, None),
     ('wazuh-execd', None, 1, None, None),
-    ('wazuh-csyslogd', None, 2, None, None),
     ('random', None, 0, ['timestamp'], True),
     (None, 'info', 7, ['timestamp'], False),
     (None, 'error', 2, ['level'], True),
@@ -169,7 +167,6 @@ def test_ossec_log_q(mock_exists, mock_active_logging_format, q, field, operatio
 def test_ossec_log_summary(mock_exists, mock_active_logging_format):
     """Tests ossec_log_summary function works and returned data match with expected"""
     expected_result = {
-        'wazuh-csyslogd': {'all': 2, 'info': 2, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 0},
         'wazuh-execd': {'all': 1, 'info': 0, 'error': 1, 'critical': 0, 'warning': 0, 'debug': 0},
         'wazuh-modulesd:aws-s3': {'all': 5, 'info': 2, 'error': 1, 'critical': 0, 'warning': 2, 'debug': 0},
         'wazuh-modulesd:database': {'all': 2, 'info': 0, 'error': 0, 'critical': 0, 'warning': 0, 'debug': 2},

@@ -1845,13 +1845,6 @@ components:
                                 type: integer
                                 format: int32
                                 description: "Synchronization events (this agent)"
-                              integrations_breakdown:
-                                type: object
-                                properties:
-                                  virustotal:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from VirusTotal (this agent)"
                               modules_breakdown:
                                 type: object
                                 properties:
@@ -2706,21 +2699,10 @@ components:
                           type: integer
                           format: int32
                           description: "Events coming from agentd"
-                        agentless:
-                          type: integer
-                          format: int32
-                          description: "Events coming from agentlessd"
                         dbsync:
                           type: integer
                           format: int32
                           description: "Synchronization events"
-                        integrations_breakdown:
-                          type: object
-                          properties:
-                            virustotal:
-                              type: integer
-                              format: int32
-                              description: "Events coming from VirusTotal integration"
                         modules_breakdown:
                           type: object
                           properties:
@@ -2826,21 +2808,10 @@ components:
                           type: integer
                           format: int32
                           description: "Events discarded from agentd because the queue was full"
-                        agentless:
-                          type: integer
-                          format: int32
-                          description: "Events discarded from agentlessd because the queue was full"
                         dbsync:
                           type: integer
                           format: int32
                           description: "Synchronization events discarded because the queue was full"
-                        integrations_breakdown:
-                          type: object
-                          properties:
-                            virustotal:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from VirusTotal integration because the queue was full"
                         modules_breakdown:
                           type: object
                           properties:
@@ -3806,29 +3777,17 @@ components:
     WazuhDaemonsStatus:
       type: object
       properties:
-        wazuh-agentlessd:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-analysisd:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-authd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-csyslogd:
-          $ref: '#/components/schemas/DaemonStatus'
-        wazuh-dbd:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-execd:
           $ref: '#/components/schemas/DaemonStatus'
-        wazuh-integratord:
-          $ref: '#/components/schemas/DaemonStatus'
         wazuh-logcollector:
-          $ref: '#/components/schemas/DaemonStatus'
-        wazuh-maild:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-monitord:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-remoted:
-          $ref: '#/components/schemas/DaemonStatus'
-        wazuh-reportd:
           $ref: '#/components/schemas/DaemonStatus'
         wazuh-syscheckd:
           $ref: '#/components/schemas/DaemonStatus'
@@ -3878,10 +3837,6 @@ components:
           type: array
           items:
             type: object
-        agentless:
-          type: array
-          items:
-            type: object
         alerts:
           type: object
         auth:
@@ -3892,18 +3847,10 @@ components:
           type: array
           items:
             type: object
-        database_output:
-          type: object
-        email_alerts:
-          type: object
         gcp-pubsub:
           type: object
         global:
           type: object
-        integration:
-          type: array
-          items:
-            type: object
         labels:
           type: object
         localfile:
@@ -3928,10 +3875,6 @@ components:
           type: object
         syscheck:
           type: object
-        syslog_output:
-          type: array
-          items:
-            type: object
 
         #Wodle sections inside WazuhConfiguration(ossec.conf)
         aws-s3:
@@ -4288,29 +4231,17 @@ components:
       properties:
           indexer-connector:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-agentlessd:
-            $ref: '#/components/schemas/LogSummary'
           wazuh-analysisd:
             $ref: '#/components/schemas/LogSummary'
           wazuh-authd:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-csyslogd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-dbd:
-            $ref: '#/components/schemas/LogSummary'
           wazuh-execd:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-integratord:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-maild:
             $ref: '#/components/schemas/LogSummary'
           wazuh-monitord:
             $ref: '#/components/schemas/LogSummary'
           wazuh-logcollector:
             $ref: '#/components/schemas/LogSummary'
           wazuh-remoted:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-reportd:
             $ref: '#/components/schemas/LogSummary'
           rootcheck:
             $ref: '#/components/schemas/LogSummary'
@@ -5611,11 +5542,9 @@ components:
         type: string
         enum:
         - agent
-        - agentless
         - analysis
         - auth
         - com
-        - csyslog
         - integrator
         - logcollector
         - mail
@@ -5663,11 +5592,6 @@ components:
         <td>agent</td>
         <td>anti_tampering</td>
         <td><code>&lt;anti_tampering&gt;</code></td>
-        </tr>
-        <tr>
-        <td>agentless</td>
-        <td>agentless</td>
-        <td><code>&lt;agentless&gt;</code></td>
         </tr>
         <tr>
         <td>analysis</td>
@@ -5735,16 +5659,6 @@ components:
         <td><code>&lt;cluster&gt;</code></td>
         </tr>
         <tr>
-        <td>csyslog</td>
-        <td>csyslog</td>
-        <td><code>&lt;csyslog_output&gt;</code></td>
-        </tr>
-        <tr>
-        <td>integrator</td>
-        <td>integration</td>
-        <td><code>&lt;integration&gt;</code></td>
-        </tr>
-        <tr>
         <td>logcollector</td>
         <td>localfile</td>
         <td><code>&lt;localfile&gt;</code></td>
@@ -5763,16 +5677,6 @@ components:
         <td>mail</td>
         <td>global</td>
         <td><code>&lt;global&gt;&lt;email...&gt;</code></td>
-        </tr>
-        <tr>
-        <td>mail</td>
-        <td>alerts</td>
-        <td><code>&lt;email_alerts&gt;</code></td>
-        </tr>
-        <tr>
-        <td>mail</td>
-        <td>internal</td>
-        <td><code>&lt;maild&gt;</code></td>
         </tr>
         <tr>
         <td>monitor</td>
@@ -5845,7 +5749,6 @@ components:
         - labels
         - internal
         - anti_tampering
-        - agentless
         - global
         - active_response
         - alerts
@@ -5857,8 +5760,6 @@ components:
         - reports
         - active-response
         - cluster
-        - csyslog
-        - integration
         - localfile
         - socket
         - remote
@@ -6676,17 +6577,13 @@ components:
         type: string
         enum:
         - active-response
-        - agentless
         - alerts
         - auth
         - client
         - client_buffer
         - cluster
         - command
-        - database_output
-        - email_alerts
         - global
-        - integration
         - labels
         - localfile
         - logging
@@ -6697,7 +6594,6 @@ components:
         - sca
         - socket
         - syscheck
-        - syslog_output
         - vulnerability-detection
         - indexer
         # Wodle sections
@@ -8177,8 +8073,6 @@ paths:
                                 decoded_breakdown:
                                   agent: 0
                                   dbsync: 0
-                                  integrations_breakdown:
-                                    virustotal: 0
                                   modules_breakdown:
                                     aws: 0
                                     azure: 0
@@ -10501,18 +10395,12 @@ paths:
               example:
                 data:
                   affected_items:
-                    - wazuh-agentlessd: stopped
-                      wazuh-analysisd: running
+                    - wazuh-analysisd: running
                       wazuh-authd: stopped
-                      wazuh-csyslogd: stopped
-                      wazuh-dbd: stopped
                       wazuh-monitord: running
                       wazuh-execd: running
-                      wazuh-integratord: stopped
                       wazuh-logcollector: running
-                      wazuh-maild: stopped
                       wazuh-remoted: running
-                      wazuh-reportd: stopped
                       wazuh-syscheckd: running
                       wazuh-apid: running
                       wazuh-clusterd: running
@@ -10624,12 +10512,6 @@ paths:
                         alerts_log: yes
                         logall: no
                         logall_json: no
-                        email_notification: no
-                        smtp_server: smtp.example.wazuh.com
-                        email_from: wazuh@example.wazuh.com
-                        email_to: recipient@example.wazuh.com
-                        email_maxperhour: 12
-                        email_log_source: alerts.log
                         agents_disconnection_time: "10m"
                         agents_disconnection_alert_time: 0
                         update_check: yes
@@ -12213,18 +12095,12 @@ paths:
               example:
                 data:
                   affected_items:
-                    - wazuh-agentlessd: "stopped"
-                      wazuh-analysisd: "running"
+                    - wazuh-analysisd: "running"
                       wazuh-authd: "running"
-                      wazuh-csyslogd: "stopped"
-                      wazuh-dbd: "stopped"
                       wazuh-monitor": "running"
                       wazuh-execd: "running"
-                      wazuh-integratord: "stopped"
                       wazuh-logcollector: "running"
-                      wazuh-maild: "stopped"
                       wazuh-remoted: "running"
-                      wazuh-reportd: "stopped"
                       wazuh-syscheckd: "running"
                       wazuh-clusterd: "running"
                       wazuh-modulesd: "running"
@@ -12341,12 +12217,6 @@ paths:
                         alerts_log: yes
                         logall: no
                         logall_json: no
-                        email_notification: no
-                        smtp_server: smtp.example.wazuh.com
-                        email_from: wazuh@example.wazuh.com
-                        email_to: recipient@example.wazuh.com
-                        email_maxperhour: 12
-                        email_log_source: alerts.log
                         queue_size: 131072
                         update_check: yes
                         white_list:
@@ -13055,7 +12925,6 @@ paths:
                       level: info
                       description: "Starting evaluation"
                     - timestamp: '2020-04-15T13:50:24Z'
-                      tag: wazuh-maild
                       level: error
                       description: " (1263): Error Sending email to 69.172.200.109 (smtp server)"
                   total_affected_items: 3
@@ -14268,7 +14137,6 @@ paths:
                 data:
                   affected_items:
                     - active_response
-                    - agentless
                     - attacks
                     - firewall
                     - gdpr_II_5.1.f

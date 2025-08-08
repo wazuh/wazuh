@@ -17,18 +17,12 @@ stages:
         error: 0
         data:
           affected_items:
-            - wazuh-agentlessd: !anystr
               wazuh-analysisd: !anystr
               wazuh-authd: !anystr
-              wazuh-csyslogd: !anystr
-              wazuh-dbd: !anystr
               wazuh-execd: !anystr
-              wazuh-integratord: !anystr
               wazuh-logcollector: !anystr
-              wazuh-maild: !anystr
               wazuh-monitord: !anystr
               wazuh-remoted: !anystr
-              wazuh-reportd: !anystr
               wazuh-syscheckd: !anystr
               wazuh-apid: !anystr
               wazuh-clusterd: !anystr
@@ -944,11 +938,6 @@ stages:
                       allow: !anybool
                   indexer:
                     allow: !anybool
-                  integrations:
-                    virustotal:
-                      public_key:
-                        allow: !anybool
-                        minimum_quota: !anyint
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []

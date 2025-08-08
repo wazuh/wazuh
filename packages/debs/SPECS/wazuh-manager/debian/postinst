@@ -153,11 +153,8 @@ case "$1" in
     touch ${DIR}/etc/client.keys
 
     touch ${DIR}/logs/active-responses.log
-    touch ${DIR}/logs/integrations.log
     chown ${USER}:${GROUP} ${DIR}/logs/active-responses.log
-    chown ${USER}:${GROUP} ${DIR}/logs/integrations.log
     chmod 0660 ${DIR}/logs/active-responses.log
-    chmod 0640 ${DIR}/logs/integrations.log
 
     # Set merged.mg permissions to new ones
     find ${DIR}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;

@@ -121,15 +121,6 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#agents'},
-        1130: {'message': 'Public Virus Total API Key detected',
-               'remediation': 'To solve this, either use a premium VirusTotal API key or disable the public key'
-                              ' protection in the API settings: '
-                              f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
-        1131: {'message': 'Virus Total API request error',
-               'remediation': 'The use of Virus Total Public API keys is disabled but could not be checked. '
-                              'To solve this, check your connection to the Virus Total API or disable the public key'
-                              ' protection in the API settings: '
-                              f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'

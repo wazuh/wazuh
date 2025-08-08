@@ -215,26 +215,6 @@ api_config_schema = {
                             "type": "boolean"
                         }
                     }
-                },
-                "integrations": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "properties": {
-                        "virustotal": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "public_key": {
-                                    "type": "object",
-                                    "additionalProperties": False,
-                                    "properties": {
-                                        "allow": {"type": "boolean"},
-                                        "minimum_quota": {"type": "integer"}
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
@@ -244,12 +224,9 @@ api_config_schema = {
 WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
     {
         'agent': {"client", "buffer", "labels", "internal", "anti_tampering"},
-        'agentless': {"agentless"},
         'analysis': {"global", "active_response", "alerts", "command", "rules", "decoders", "internal", "rule_test"},
         'auth': {"auth"},
         'com': {"active-response", "logging", "internal", "cluster"},
-        'csyslog': {"csyslog"},
-        'integrator': {"integration"},
         'logcollector': {"localfile", "socket", "internal"},
         'mail': {"global", "alerts", "internal"},
         'monitor': {"global", "internal", "reports"},
