@@ -261,7 +261,8 @@ nlohmann::json SCAPolicyLoader::NormalizeDataWithChecksum(nlohmann::json data, c
     {
         for (auto& entry : data)
         {
-            std::string checksum = sca::calculateChecksum(entry);
+            const auto checksum = sca::calculateChecksum(entry);
+
             if (!checksum.empty())
             {
                 entry["checksum"] = checksum;
