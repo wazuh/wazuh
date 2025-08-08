@@ -95,6 +95,7 @@ add_library(
     src/sca_policy_parser.cpp
     src/sca_event_handler.cpp
     src/sca_utils.cpp
+    src/sca_checksum.cpp
     src/check_condition_evaluator.cpp
     $<$<PLATFORM_ID:Windows>:src/sca_policy_check_win.cpp>
     ${SRC_FOLDER}/${RESOURCE_OBJ})
