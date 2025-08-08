@@ -94,7 +94,7 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
         // being processed in the OSSEC log
         auto simplePrintFunction = [this](const std::string& message) -> int {
                 // Commented out to avoid printing to console and mess integration tests
-                // LoggingHelper::getInstance().log(LOG_INFO, "SCA Event: " + message);
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA Event:\n\n\n" + message + "\n\n\n");
             return 0;
         };
 
