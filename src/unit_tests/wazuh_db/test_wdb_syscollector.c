@@ -3894,6 +3894,345 @@ void test_wdb_groups_insert_sql_fail(void **state) {
     assert_int_equal(output, -1);
 }
 
+/* wdb_browser_extensions_insert */
+void test_wdb_browser_extensions_insert_sql_fail(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * browser_name = "browser_name";
+    const char * user_id = "user_id";
+    const char * package_name = "package_name";
+    const char * package_id = "package_id";
+    const char * package_version = "package_version";
+    const char * package_description = "package_description";
+    const char * package_vendor = "package_vendor";
+    const char * package_build_version = "package_biuld_version";
+    const char * package_path = "package_path";
+    const char * browser_profile_name = "browser_profile_name";
+    const char * browser_profile_path = "browser_profile_path";
+    const char * package_reference = "package_reference";
+    const char * package_permissions = "package_permissions";
+    const char * package_type = "package_type";
+    const bool package_enabled = false;
+    const bool package_autoupdate = true;
+    const bool package_persistent = false;
+    const bool package_from_webstore = true;
+    const bool browser_profile_referenced = false;
+    const char * package_installed = "package_installed";
+    const char * file_hash_sha256 = "file_hash_sha256";
+    const char * checksum = "checksum";
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, scan_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, scan_time);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, browser_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, user_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_version);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_description);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_vendor);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_build_version);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, browser_profile_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, browser_profile_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_reference);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_permissions);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 16);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_type);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 17);
+    expect_value(__wrap_sqlite3_bind_int, value, package_enabled);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 18);
+    expect_value(__wrap_sqlite3_bind_int, value, package_autoupdate);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 19);
+    expect_value(__wrap_sqlite3_bind_int, value, package_persistent);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 20);
+    expect_value(__wrap_sqlite3_bind_int, value, package_from_webstore);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 21);
+    expect_value(__wrap_sqlite3_bind_int, value, browser_profile_referenced);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 22);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_installed);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 23);
+    expect_string(__wrap_sqlite3_bind_text, buffer, file_hash_sha256);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 24);
+    expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_wdb_step, 1);
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
+
+    browser_extension_record_t browser_extension_record = {
+        .scan_id = scan_id, .scan_time = scan_time, .browser_name = browser_name, .user_id = user_id, .package_name = package_name,
+        .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
+        .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
+        .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
+        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+    };
+
+    output = wdb_browser_extensions_insert(data, &browser_extension_record, true);
+    assert_int_equal(output, -1);
+}
+
+/* Test wdb_browser_extensions_save */
+void test_wdb_browser_extensions_save_transaction_fail(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * browser_name = "browser_name";
+    const char * user_id = "user_id";
+    const char * package_name = "package_name";
+    const char * package_id = "package_id";
+    const char * package_version = "package_version";
+    const char * package_description = "package_description";
+    const char * package_vendor = "package_vendor";
+    const char * package_build_version = "package_biuld_version";
+    const char * package_path = "package_path";
+    const char * browser_profile_name = "browser_profile_name";
+    const char * browser_profile_path = "browser_profile_path";
+    const char * package_reference = "package_reference";
+    const char * package_permissions = "package_permissions";
+    const char * package_type = "package_type";
+    const bool package_enabled = false;
+    const bool package_autoupdate = true;
+    const bool package_persistent = false;
+    const bool package_from_webstore = true;
+    const bool browser_profile_referenced = false;
+    const char * package_installed = "package_installed";
+    const char * file_hash_sha256 = "file_hash_sha256";
+    const char * checksum = "checksum";
+
+    data->transaction = 0;
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_browser_extensions_save(): cannot begin transaction");
+
+    browser_extension_record_t browser_extension_record = {
+        .scan_id = scan_id, .scan_time = scan_time, .browser_name = browser_name, .user_id = user_id, .package_name = package_name,
+        .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
+        .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
+        .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
+        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+    };
+
+    output = wdb_browser_extensions_save(data, &browser_extension_record, true);
+    assert_int_equal(output, -1);
+}
+
+void test_wdb_browser_extensions_save_insert_fail(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * browser_name = "browser_name";
+    const char * user_id = "user_id";
+    const char * package_name = "package_name";
+    const char * package_id = "package_id";
+    const char * package_version = "package_version";
+    const char * package_description = "package_description";
+    const char * package_vendor = "package_vendor";
+    const char * package_build_version = "package_biuld_version";
+    const char * package_path = "package_path";
+    const char * browser_profile_name = "browser_profile_name";
+    const char * browser_profile_path = "browser_profile_path";
+    const char * package_reference = "package_reference";
+    const char * package_permissions = "package_permissions";
+    const char * package_type = "package_type";
+    const bool package_enabled = false;
+    const bool package_autoupdate = true;
+    const bool package_persistent = false;
+    const bool package_from_webstore = true;
+    const bool browser_profile_referenced = false;
+    const char * package_installed = "package_installed";
+    const char * file_hash_sha256 = "file_hash_sha256";
+    const char * checksum = "checksum";
+
+    data->transaction = 1;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_browser_extensions_insert(): cannot cache statement");
+
+    browser_extension_record_t browser_extension_record = {
+        .scan_id = scan_id, .scan_time = scan_time, .browser_name = browser_name, .user_id = user_id, .package_name = package_name,
+        .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
+        .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
+        .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
+        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+    };
+
+    output = wdb_browser_extensions_save(data, &browser_extension_record, true);
+    assert_int_equal(output, -1);
+}
+
+void test_wdb_browser_extensions_save_success(void **state) {
+    int output = 0;
+    wdb_t *data = (wdb_t *)*state;
+
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * browser_name = "browser_name";
+    const char * user_id = "user_id";
+    const char * package_name = "package_name";
+    const char * package_id = "package_id";
+    const char * package_version = "package_version";
+    const char * package_description = "package_description";
+    const char * package_vendor = "package_vendor";
+    const char * package_build_version = "package_biuld_version";
+    const char * package_path = "package_path";
+    const char * browser_profile_name = "browser_profile_name";
+    const char * browser_profile_path = "browser_profile_path";
+    const char * package_reference = "package_reference";
+    const char * package_permissions = "package_permissions";
+    const char * package_type = "package_type";
+    const bool package_enabled = false;
+    const bool package_autoupdate = true;
+    const bool package_persistent = false;
+    const bool package_from_webstore = true;
+    const bool browser_profile_referenced = false;
+    const char * package_installed = "package_installed";
+    const char * file_hash_sha256 = "file_hash_sha256";
+    const char * checksum = "checksum";
+
+    data->transaction = 0;
+    will_return(__wrap_wdb_begin2, 0);
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, scan_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, scan_time);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, browser_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, user_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_version);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_description);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_vendor);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_build_version);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 12);
+    expect_string(__wrap_sqlite3_bind_text, buffer, browser_profile_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 13);
+    expect_string(__wrap_sqlite3_bind_text, buffer, browser_profile_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_reference);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_permissions);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 16);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_type);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 17);
+    expect_value(__wrap_sqlite3_bind_int, value, package_enabled);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 18);
+    expect_value(__wrap_sqlite3_bind_int, value, package_autoupdate);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 19);
+    expect_value(__wrap_sqlite3_bind_int, value, package_persistent);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 20);
+    expect_value(__wrap_sqlite3_bind_int, value, package_from_webstore);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 21);
+    expect_value(__wrap_sqlite3_bind_int, value, browser_profile_referenced);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 22);
+    expect_string(__wrap_sqlite3_bind_text, buffer, package_installed);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 23);
+    expect_string(__wrap_sqlite3_bind_text, buffer, file_hash_sha256);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 24);
+    expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    browser_extension_record_t browser_extension_record = {
+        .scan_id = scan_id, .scan_time = scan_time, .browser_name = browser_name, .user_id = user_id, .package_name = package_name,
+        .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
+        .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
+        .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
+        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+    };
+
+    output = wdb_browser_extensions_save(data, &browser_extension_record, true);
+    assert_int_equal(output, 0);
+}
+
 /* Test wdb_syscollector_save2 */
 void test_wdb_syscollector_save2_parser_json_fail(void **state) {
     int output = 0;
@@ -5752,6 +6091,12 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_groups_save_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_groups_save_insert_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_groups_save_success, test_setup, test_teardown),
+        /* Test wdb_browser_extensions_insert */
+        cmocka_unit_test_setup_teardown(test_wdb_browser_extensions_insert_sql_fail, test_setup, test_teardown),
+        /* Test wdb_browser_extensiosn_save */
+        cmocka_unit_test_setup_teardown(test_wdb_browser_extensions_save_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_browser_extensions_save_insert_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_browser_extensions_save_success, test_setup, test_teardown),
         /* Test wdb_syscollector_save2 */
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_parser_json_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_get_attributes_fail, test_setup, test_teardown),
@@ -5775,6 +6120,8 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_hwinfo_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_osinfo_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_osinfo_success, test_setup, test_teardown),
+        //cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_browser_extensions_fail, test_setup, test_teardown),
+        //cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_browser_extensions_success, test_setup, test_teardown),
         // Test wdb_netinfo_save
         cmocka_unit_test_setup_teardown(test_wdb_netinfo_save_transaction_fail, setup_wdb, teardown_wdb),
         cmocka_unit_test_setup_teardown(test_wdb_netinfo_save_success, setup_wdb, teardown_wdb),
