@@ -22,7 +22,7 @@
   metadata:
     pre_required_group: Test_group1,Test_group2
     input: global sync-agent-groups-get {"condition":"all"}
-    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+    output: "[{'data': [{'id': 1, 'name': 'Agent-test1', 'groups': ['Test_group1']}, {'id': 2, 'name': 'Agent-test2', 'groups': ['Test_group2']}]}]"
 
 - name: Test 'all' condition when agent groups are in 'synced'
   description:
@@ -32,7 +32,7 @@
     pre_input:
       - global sql UPDATE agent SET group_sync_status="synced"
     input: global sync-agent-groups-get {"condition":"all"}
-    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+    output: "[{'data': [{'id': 1, 'name': 'Agent-test1', 'groups': ['Test_group1']}, {'id': 2, 'name': 'Agent-test2', 'groups': ['Test_group2']}]}]"
 
 - name: Test 'sync_status' condition when one agent groups are in 'synced'
   description:
@@ -52,7 +52,7 @@
     pre_input:
       - global sql UPDATE agent SET group_sync_status="synced" WHERE id = 2
     input: global sync-agent-groups-get {"condition":"all"}
-    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+    output: "[{'data': [{'id': 1, 'name': 'Agent-test1', 'groups': ['Test_group1']}, {'id': 2, 'name': 'Agent-test2', 'groups': ['Test_group2']}]}]"
 
 - name: Test with and invalid filter in condition
   description:
@@ -147,7 +147,7 @@
   metadata:
     pre_required_group: Test_group1,Test_group2
     input: global sync-agent-groups-get {"condition":"all", "agent_registration_delta":0}
-    output: "[{'data': [{'id': 1, 'groups': ['Test_group1']}, {'id': 2, 'groups': ['Test_group2']}]}]"
+    output: "[{'data': [{'id': 1, 'name': 'Agent-test1', 'groups': ['Test_group1']}, {'id': 2, 'name': 'Agent-test2', 'groups': ['Test_group2']}]}]"
 
 - name: Test 'agent_registration_delta' with delta in 10000 and sync_status
   description:
@@ -169,7 +169,7 @@
       - global insert-agent {"id":6,"name":"Agent-test6","date_add":1545753642}
       - global set-agent-groups {"mode":"append","sync_status":"syncreq","data":[{"id":6,"groups":["Test_group6"]}]}
     input: global sync-agent-groups-get {"condition":"all", "agent_registration_delta":10000}
-    output: "[{'data': [{'id': 6, 'groups': ['Test_group6']}]}]"
+    output: "[{'data': [{'id': 6, 'name': 'Agent-test6', 'groups': ['Test_group6']}]}]"
 
 - name: Test last_id - by default
   description:
