@@ -16,6 +16,7 @@
 #include "router.h"
 #include "sym_load.h"
 #include "agent_messages_adapter.h"
+#include "indexed_queue_op.h"
 
 
 #ifdef WAZUH_UNIT_TESTING
@@ -75,7 +76,7 @@ static void * rem_handler_main(void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-STATIC void HandleSecureMessage(const message_t *message, w_queue_t * control_msg_queue);
+STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -166,7 +167,8 @@ void HandleSecure()
 
 
     size_t ctrl_msg_queue_size = (size_t) getDefine_Int("remoted", "control_msg_queue_size", 4096, 0x1 << 20); // 1MB
-    w_queue_t * control_msg_queue = queue_init(ctrl_msg_queue_size);
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
+    indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
@@ -459,7 +461,7 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
 // Message handler thread
 void * rem_handler_main(void * args) {
     message_t * message;
-    w_queue_t * control_msg_queue = (w_queue_t *) args;
+    w_indexed_queue_t * control_msg_queue = (w_indexed_queue_t *) args;
     mdebug1("Message handler thread started.");
 
     while (1) {
@@ -534,7 +536,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(const message_t *message, w_queue_t * control_msg_queue) {
+STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -843,11 +845,16 @@ STATIC void HandleSecureMessage(const message_t *message, w_queue_t * control_ms
                 ctrl_msg_data->is_startup = is_startup;
                 ctrl_msg_data->is_shutdown = is_shutdown;
 
-                if (queue_push_ex(control_msg_queue, ctrl_msg_data) == 0) {
+                // Create key based on agent_id for indexing
+                char agent_key[32];
+                snprintf(agent_key, sizeof(agent_key), "%d", agentid);
+                
+                // Use upsert to allow updating existing control messages for the same agent
+                if (indexed_queue_upsert_ex(control_msg_queue, agent_key, ctrl_msg_data) == 0) {
                     rem_inc_ctrl_msg_queue_usage();
-                    mdebug2("Control message pushed to queue.");
+                    mdebug2("Control message pushed/updated in queue for agent ID '%s'.", agent_key);
                 } else {
-                    mwarn("Control message queue is full. Discarding control message for agent ID '%s'.", ctrl_msg_data->key->id);
+                    mwarn("Failed to insert control message for agent ID '%s'.", agent_key);
                     w_free_ctrl_msg_data(ctrl_msg_data);
                 }
             } else if (validation_result == 0) {
@@ -1109,12 +1116,12 @@ void *current_timestamp(__attribute__((unused)) void *none)
 void * save_control_thread(void * control_msg_queue)
 {
     assert(control_msg_queue != NULL);
-    w_queue_t * queue = (w_queue_t *)control_msg_queue;
+    w_indexed_queue_t * queue = (w_indexed_queue_t *)control_msg_queue;
     w_ctrl_msg_data_t * ctrl_msg_data = NULL;
     int wdb_sock = -1;
 
     while (FOREVER()) {
-        if ((ctrl_msg_data = (w_ctrl_msg_data_t *)queue_pop_ex(queue))) {
+        if ((ctrl_msg_data = (w_ctrl_msg_data_t *)indexed_queue_pop_ex(queue))) {
 
             rem_dec_ctrl_msg_queue_usage();
 
