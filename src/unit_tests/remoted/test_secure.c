@@ -54,7 +54,7 @@ void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
 /* Forward declarations */
 void * close_fp_main(void * args);
-void HandleSecureMessage(const message_t *message, w_queue_t * control_msg_queue);
+void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue);
 
 /* Setup/teardown */
 
