@@ -172,7 +172,8 @@ std::vector<nlohmann::json> SCAEventHandler::GetChecksForPolicy(const std::strin
     const std::string filter = "WHERE policy_id = '" + policyId + "'";
     auto selectQuery = SelectQuery::builder()
                            .table("sca_check")
-                           .columnList({"id",
+                           .columnList({"checksum",
+                                        "id",
                                         "policy_id",
                                         "name",
                                         "description",
@@ -243,7 +244,8 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
     const std::string filter = "WHERE id = '" + policyCheckId + "'";
     auto selectQuery = SelectQuery::builder()
                            .table("sca_check")
-                           .columnList({"id",
+                           .columnList({"checksum",
+                                        "id",
                                         "policy_id",
                                         "name",
                                         "description",
