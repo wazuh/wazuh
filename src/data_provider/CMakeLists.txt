@@ -70,6 +70,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/groups/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/users/include)
+include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/services/include)
 include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
@@ -216,7 +217,7 @@ add_library(sysinfo SHARED
     ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(sysinfo psapi iphlpapi ws2_32 wbemuuid uuid wuguid ole32 oleaut32 groups users)
+  target_link_libraries(sysinfo psapi iphlpapi ws2_32 wbemuuid uuid wuguid ole32 oleaut32 groups users services)
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
