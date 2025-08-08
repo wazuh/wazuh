@@ -3,6 +3,7 @@
 #include <sca_policy.hpp>
 #include <sca_policy_parser.hpp>
 #include <sca_utils.hpp>
+#include <sca_checksum.hpp>
 
 #include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
@@ -193,7 +194,7 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
 
     nlohmann::json input;
     input["table"] = tableName;
-    input["data"] = NormalizeData(data);
+    input["data"] = NormalizeDataWithChecksum(data, tableName);
     input["options"]["return_old_data"] = true;
 
     txn.syncTxnRow(input);
@@ -210,7 +211,20 @@ void SCAPolicyLoader::UpdateCheckResult(const nlohmann::json& check) const
         return;
     }
 
-    auto updateResultQuery = SyncRowQuery::builder().table(SCA_CHECK_TABLE_NAME).data(check).build();
+    // Calculate and add checksum to the check data
+    nlohmann::json checkWithChecksum = check;
+    const auto checksum = sca::calculateChecksum(checkWithChecksum);
+
+    if (!checksum.empty())
+    {
+        checkWithChecksum["checksum"] = checksum;
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Failed to calculate checksum for check result update");
+    }
+
+    auto updateResultQuery = SyncRowQuery::builder().table(SCA_CHECK_TABLE_NAME).data(checkWithChecksum).build();
 
     const auto callback = [](ReturnTypeCallback, const nlohmann::json&) {
     };
@@ -232,6 +246,30 @@ nlohmann::json SCAPolicyLoader::NormalizeData(nlohmann::json data) const
         {
             entry["name"] = entry["title"];
             entry.erase("title");
+        }
+    }
+
+    return data;
+}
+
+nlohmann::json SCAPolicyLoader::NormalizeDataWithChecksum(nlohmann::json data, const std::string& tableName) const
+{
+    data = NormalizeData(data);
+
+    // If this is check data, calculate and add checksums
+    if (tableName == SCA_CHECK_TABLE_NAME)
+    {
+        for (auto& entry : data)
+        {
+            std::string checksum = sca::calculateChecksum(entry);
+            if (!checksum.empty())
+            {
+                entry["checksum"] = checksum;
+            }
+            else
+            {
+                LoggingHelper::getInstance().log(LOG_ERROR, "Failed to calculate checksum for check: " + entry.dump());
+            }
         }
     }
 
