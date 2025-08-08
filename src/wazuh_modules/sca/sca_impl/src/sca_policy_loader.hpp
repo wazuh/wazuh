@@ -76,6 +76,15 @@ private:
     /// @returns The normalized JSON object.
     nlohmann::json NormalizeData(nlohmann::json data) const;
 
+    /// @brief Normalizes the structure of a JSON object and adds checksums for check data.
+    ///
+    /// Calls NormalizeData and additionally calculates and adds checksums for check entries.
+    ///
+    /// @param data The JSON object to normalize.
+    /// @param tableName The table name to determine if checksum calculation is needed.
+    /// @returns The normalized JSON object with checksums added if applicable.
+    nlohmann::json NormalizeDataWithChecksum(nlohmann::json data, const std::string& tableName) const;
+
     std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 
     std::vector<std::filesystem::path> m_customPoliciesPaths;
