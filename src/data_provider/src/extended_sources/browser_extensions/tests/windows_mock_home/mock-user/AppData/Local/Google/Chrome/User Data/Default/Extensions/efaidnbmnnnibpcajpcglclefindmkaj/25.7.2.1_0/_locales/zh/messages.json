@@ -1,0 +1,465 @@
+{
+   "ConvertVerbDescription": {
+      "message": "將文件轉換為 PDF，或將 PDF 轉換為其他格式。"
+   },
+   "Disable": {
+      "message": "停用"
+   },
+   "EditVerbDescription": {
+      "message": "重新排序、旋轉或刪除 PDF 頁面。"
+   },
+   "Enable": {
+      "message": "啟用"
+   },
+   "LearnMoreURL": {
+      "message": "https://helpx.adobe.com/tw/acrobat/kb/acrobat-pro-aip-for-chrome.html"
+   },
+   "LearnMoreURLEdge": {
+      "message": "https://helpx.adobe.com/tw/acrobat/kb/acrobat-pro-aip-for-edge.html"
+   },
+   "acrobatGmailFteToolTipButton": {
+      "message": "了解"
+   },
+   "acrobatGmailFteToolTipDescription": {
+      "message": "編輯、轉換、加註及簽署 - 直接在 Chrome 中使用 Acrobat"
+   },
+   "acrobatGmailFteToolTipTitle": {
+      "message": "在 Acrobat 中開啟此 PDF"
+   },
+   "acrobatGsuiteFteToolTipButton": {
+      "message": "知道了"
+   },
+   "acrobatGsuiteFteToolTipDescription": {
+      "message": "編輯、轉換、加註及簽署 - 直接在 Chrome 中使用 Acrobat"
+   },
+   "acrobatGsuiteFteToolTipTitle": {
+      "message": "在 Acrobat 中開啟此 PDF"
+   },
+   "acrobatGsuiteTouchPointPreferenceDescription": {
+      "message": "此整合功能可讓您使用 Acrobat 擴充功能，開啟並編輯 Gmail 和 Google 雲端硬碟中的 PDF"
+   },
+   "acrobatGsuiteTouchPointPreferenceTitle": {
+      "message": "Gmail 和 Google 雲端硬碟中的 Acrobat 整合"
+   },
+   "adobeYoloErrorMessage": {
+      "message": "很抱歉，此為無效連結"
+   },
+   "adobeYoloMessage": {
+      "message": "正在將您登入 Acrobat…"
+   },
+   "analyticsOptinTitle": {
+      "message": "傳送使用資料"
+   },
+   "appearancePrefDesc": {
+      "message": "切換深色和淺色主題"
+   },
+   "appearancePrefOp1": {
+      "message": "使用系統設定"
+   },
+   "appearancePrefOp2": {
+      "message": "深色模式"
+   },
+   "appearancePrefOp3": {
+      "message": "淺色模式"
+   },
+   "appearancePrefTitle": {
+      "message": "深色模式設定"
+   },
+   "closeButton": {
+      "message": "關閉"
+   },
+   "dcWebBookmarkTitle": {
+      "message": "Adobe Acrobat 首頁"
+   },
+   "doNotShowButton": {
+      "message": "不再顯示"
+   },
+   "downloadBannerContinue": {
+      "message": "開啟"
+   },
+   "downloadBannerText": {
+      "message": "將應用程式設定為 Chrome 的預設 PDF 檢視器，即可在 Acrobat 中開啟所有下載的 PDF"
+   },
+   "editMegaVerbText": {
+      "message": "編輯"
+   },
+   "enableGenAIFeaturesDescription": {
+      "message": "您的檔案將在雲端處理，以在您使用生成式 AI 功能時，我們能為您提供生成式 AI 功能。若關閉此功能，就無法處理您的檔案，且生成式 AI 會停用。您可以隨時重新啟動此功能。"
+   },
+   "enableGenAIFeaturesTitle": {
+      "message": "啟用 Acrobat 的生成式 AI 功能"
+   },
+   "extensionMenuTitle": {
+      "message": "Acrobat 擴充功能 - 前往您所有 PDF 工具的快速鍵"
+   },
+   "fteOwnershipSideRedCardContent": {
+      "message": "將 Acrobat 設為預設的 PDF 檢視器，可直接在 Google Chrome 中新增注釋、填寫表單、簽署等。"
+   },
+   "fteSideCardPrimaryHeader": {
+      "message": "使用 Acrobat"
+   },
+   "fteSideCardSecondaryHeader": {
+      "message": "直接在 Chrome 中"
+   },
+   "gDriveDVPAppListCoachMarkContent": {
+      "message": "啟用「預設使用」核取方塊，從下次開始直接在 Acrobat 中開啟 Google 雲端硬碟中的 PDF"
+   },
+   "gDriveDVPCoachMarkTitle": {
+      "message": "將 Acrobat 設定為預設檢視器"
+   },
+   "gDriveDVPManageAppCoachMarkContent": {
+      "message": "按一下'管理應用程式'以設定為直接在 Acrobat 中開啟所有 Google 雲端硬碟中的 PDF，以檢視註解和編輯 PDF"
+   },
+   "gSuiteDVPAddOnDefaultDesc": {
+      "message": "Acrobat 附加元件現已設為預設值"
+   },
+   "genericDVPCoachMarkContent": {
+      "message": "按一下「管理應用程式」、向下捲動到 Acrobat 附加元件，然後按一下「預設使用」核取方塊"
+   },
+   "gmailPromptFTETooltip": {
+      "message": "在 Acrobat 中開啟 PDF，以使用編輯、簽署等工具"
+   },
+   "gsuiteEditWithAcrobat": {
+      "message": "使用 Acrobat 編輯"
+   },
+   "gsuiteOpenWithAcrobat": {
+      "message": "在 Acrobat 中開啟"
+   },
+   "localFileOptionDesc": {
+      "message": "授權給 Acrobat 擴充功能，使其能存取您的本機檔案 URL，以在 Chrome 中使用 Acrobat 開啟您的所有檔案。"
+   },
+   "localFileOptionTitle": {
+      "message": "在 Acrobat 中開啟本機 PDF"
+   },
+   "localFteContinue": {
+      "message": "前往設定"
+   },
+   "localFteDescription": {
+      "message": "充分善用 Acrobat 擴充功能來開啟所有 PDF。在擴充功能設定中開啟「允許存取檔案 URL」。"
+   },
+   "localFteDontShowAgainText": {
+      "message": "不再顯示"
+   },
+   "localFteTitle": {
+      "message": "切換至 Acrobat 以開啟您的本機檔案"
+   },
+   "optionsFailurePrompt": {
+      "message": "無法儲存變更，請稍後再試。"
+   },
+   "optionsSuccessPrompt": {
+      "message": "已成功儲存偏好設定"
+   },
+   "optionsSuccessPromptReloadRequired": {
+      "message": "必須重新載入，偏好設定才會反映出來"
+   },
+   "pdfOwnerShipDmbConfirmBtn": {
+      "message": "繼續"
+   },
+   "pdfOwnerShipSideRedCardConfirmBtn": {
+      "message": "繼續"
+   },
+   "pdfOwnershipDefSideCardcontent": {
+      "message": "將 Adobe Acrobat 設為預設的 PDF 檢視器，即可檢視、新增注釋、填寫表單、簽署及執行更多操作。"
+   },
+   "pdfOwnershipExploreAcrobat": {
+      "message": "在 Chrome 中使用 Acrobat"
+   },
+   "pdfOwnershipExploreAcrobatEdge": {
+      "message": "在 Microsoft Edge 使用 Acrobat"
+   },
+   "pdfOwnershipExploreOptionsDescription": {
+      "message": "將 Acrobat 設為您瀏覽器的預設 PDF 檢視程式，即可使用注釋、填寫及簽署功能等更多 PDF 工具。"
+   },
+   "pdfOwnershipExploreOptionsTitle": {
+      "message": "在 Acrobat 中開啟 PDF"
+   },
+   "pdfOwnershipPromptCancel": {
+      "message": "暫時不要"
+   },
+   "pdfOwnershipPromptContent": {
+      "message": "將 Adobe Acrobat 設定為預設檢視器，以便在 Chrome 中使用更多 PDF 功能。"
+   },
+   "pdfOwnershipPromptContent2": {
+      "message": "將 Acrobat 設為預設的 PDF 檢視器，直接在 Google Chrome 中使用 PDF。新增注釋、填寫、簽署，並使用轉換和壓縮等工具。"
+   },
+   "pdfOwnershipPromptContentEdge": {
+      "message": "將 Adobe Acrobat 設為預設的檢視器，以便在 Microsoft Edge 中使用更多 PDF 功能。"
+   },
+   "pdfOwnershipPromptDeny": {
+      "message": "不了，謝謝"
+   },
+   "pdfOwnershipPromptOk": {
+      "message": "設為預設值"
+   },
+   "pdfOwnershipPromptOkFullscreen": {
+      "message": "立即嘗試"
+   },
+   "popupNoConnection": {
+      "message": "無連線"
+   },
+   "popupOfflineMessage": {
+      "message": "請聯絡您的管理員，以恢復連線"
+   },
+   "saveLocationOp1": {
+      "message": "每次詢問我"
+   },
+   "saveLocationOp2": {
+      "message": "Adobe 雲端儲存空間"
+   },
+   "saveLocationOp3": {
+      "message": "我的電腦"
+   },
+   "saveLocationPreferenceDescription": {
+      "message": "設定檔案儲存位置"
+   },
+   "saveLocationPreferenceTitle": {
+      "message": "檔案儲存位置"
+   },
+   "sharepointPreferenceMessage": {
+      "message": "允許在 Acrobat 中登出 SharePoint 檔案。"
+   },
+   "stripTextOpenAcrobat": {
+      "message": "在 Acrobat 中開啟"
+   },
+   "stripTextOpenFillnSign": {
+      "message": "Acrobat 中的「填寫和簽署」"
+   },
+   "successToastText": {
+      "message": "PDF 下載檔案現在將會在 Adobe Acrobat 中開啟"
+   },
+   "userLocale": {
+      "message": "使用者地區"
+   },
+   "web2pdfAddButtonText": {
+      "message": "新增至現有 PDF..."
+   },
+   "web2pdfAlwaysShow": {
+      "message": "自動顯示於 PDF 文件"
+   },
+   "web2pdfAppendLinkContextMenu": {
+      "message": "附加連結目標至現有 PDF"
+   },
+   "web2pdfAppendPageContextMenu": {
+      "message": "新增網頁至現有 PDF..."
+   },
+   "web2pdfBadVersion": {
+      "message": "這個 Chrome 版本不支援 Adobe Acrobat。最低版本: $version$",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfBadVersionEdge": {
+      "message": "這個 Edge 版本不支援 Adobe Acrobat。最低版本: $version$",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfClickToOpen": {
+      "message": "請按一下下方連結，在 Acrobat 中開啟 PDF。"
+   },
+   "web2pdfConvertButtonToolTip": {
+      "message": "Acrobat 擴充功能 - 前往您所有 PDF 工具的捷徑。"
+   },
+   "web2pdfConvertButtonToolTipERPReader": {
+      "message": "Acrobat Reader 延伸功能目前已停用。請聯絡您的 IT 管理員。"
+   },
+   "web2pdfConvertButtonToolTipReader": {
+      "message": "在 Acrobat Reader 中開啟 PDF"
+   },
+   "web2pdfConvertLinkContextMenu": {
+      "message": "轉換連結目標為 Adobe PDF"
+   },
+   "web2pdfConvertPageContextMenu": {
+      "message": "轉換網頁為 Adobe PDF..."
+   },
+   "web2pdfCopyText": {
+      "message": "複製至 Acrobat"
+   },
+   "web2pdfDestinationText": {
+      "message": "目的地檔案夾:"
+   },
+   "web2pdfDoneButtonText": {
+      "message": "完成"
+   },
+   "web2pdfExtnDescription": {
+      "message": "在瀏覽器中使用 Acrobat 檢視、轉換、壓縮及簽署 PDF"
+   },
+   "web2pdfExtnDescriptionBeta": {
+      "message": "在瀏覽器中使用 Acrobat 檢視、轉換、壓縮及簽署 PDF"
+   },
+   "web2pdfExtnDescriptionChrome": {
+      "message": "使用 Adobe Acrobat PDF 工具在 Google Chrome 中完成更多工作。檢視、填寫、加註、簽署，以及嘗試轉換和壓縮等工具。"
+   },
+   "web2pdfExtnDescriptionEdge": {
+      "message": "使用 Adobe Acrobat PDF 工具在 Microsoft Edge 中完成更多工作。檢視、填寫、加註、簽署，以及嘗試轉換和壓縮等工具。"
+   },
+   "web2pdfExtnName": {
+      "message": "Adobe Acrobat：PDF 編輯、轉換、簽署工具"
+   },
+   "web2pdfExtnNameBeta": {
+      "message": "Beta 版 Adobe Acrobat"
+   },
+   "web2pdfExtnNameEdge": {
+      "message": "Adobe Acrobat：PDF 編輯、轉換、簽署工具"
+   },
+   "web2pdfExtnNameStage": {
+      "message": "Adobe Acrobat Stage"
+   },
+   "web2pdfFileLockedError": {
+      "message": "有其他程序正在使用檔案，無法儲存檔案。"
+   },
+   "web2pdfFilename": {
+      "message": "檔名:"
+   },
+   "web2pdfFrictionlessToggleDescription": {
+      "message": "Adobe Acrobat 擴充功能會提供您 PDF 工具建議，協助您完成工作。系統會根據您的搜尋內容提出建議，而且這項功能只會在裝置上執行；搜尋內容不會傳送到 Adobe。"
+   },
+   "web2pdfFrictionlessUrl": {
+      "message": "https://www.adobe.com/go/fl_chromeext_tw"
+   },
+   "web2pdfFrictionlessUrlEdge": {
+      "message": "https://www.adobe.com/tw/acrobat/online.html?x_api_client_id=edge_extension&x_api_client_location=trefoil&mv=other&mv2=edge_extension:trefoil&trackingid=HM85XB76"
+   },
+   "web2pdfHTMLJSError": {
+      "message": "處理網頁時發生錯誤。"
+   },
+   "web2pdfHTMLTooLarge": {
+      "message": "HTML 內容過大無法處理。"
+   },
+   "web2pdfInfoHoverPopup": {
+      "message": "Adobe Acrobat 擴充功能建議使用 PDF 工具協助完成您的任務。我們根據您進行的搜尋提出建議，且僅在裝置上建議；搜尋結果不會傳送到 Adobe。請按一下\u003Cspan class = \"tooltip-content-settings\">這裡\u003C/span>停用此功能。"
+   },
+   "web2pdfLoaderTitle": {
+      "message": "載入中..."
+   },
+   "web2pdfMissingMac": {
+      "message": "Adobe Acrobat for Chrome 暫時無法在 Mac 上使用"
+   },
+   "web2pdfMissingMacEdge": {
+      "message": "Adobe Acrobat for Microsoft Edge 暫時無法在 Mac 上使用"
+   },
+   "web2pdfNoFoldersText": {
+      "message": "您的 Acrobat DC 儲存空間沒有任何檔案夾。"
+   },
+   "web2pdfNoWritePermissionOnSelectedFile": {
+      "message": "您沒有寫入選取檔案的權限。"
+   },
+   "web2pdfOpenButtonText": {
+      "message": "在 Acrobat 中開啟"
+   },
+   "web2pdfOpenButtonTextOlder": {
+      "message": "下載 Adobe PDF"
+   },
+   "web2pdfOpenButtonTextReader": {
+      "message": "在 Acrobat Reader 中開啟"
+   },
+   "web2pdfOpenConvertedPDFDescription": {
+      "message": "網頁轉換為 PDF 後自動在 Acrobat 中開啟。"
+   },
+   "web2pdfOpenConvertedPDFTitle": {
+      "message": "在 Acrobat 中自動開啟轉換後的 PDF"
+   },
+   "web2pdfOpenInDCButtonText": {
+      "message": "在 Acrobat 中開啟 PDF"
+   },
+   "web2pdfOptOut": {
+      "message": "為改善產品功能，此擴充功能會針對您使用產品的情形，將相關資訊傳送給 Adobe。"
+   },
+   "web2pdfOptOutDisabled": {
+      "message": "您的所有使用資料皆不在分享範圍中。"
+   },
+   "web2pdfOptions": {
+      "message": "選項"
+   },
+   "web2pdfOptionsTitle": {
+      "message": "Adobe Acrobat 偏好設定"
+   },
+   "web2pdfPDFOpenFailed": {
+      "message": "開啟 PDF 失敗"
+   },
+   "web2pdfPDFOpenFailedv2": {
+      "message": "無法開啟"
+   },
+   "web2pdfPDFOpened": {
+      "message": "已開啟 PDF"
+   },
+   "web2pdfPDFOpening": {
+      "message": "正在開啟 PDF"
+   },
+   "web2pdfPreferencesButtonText": {
+      "message": "偏好設定..."
+   },
+   "web2pdfPreferencesNewText": {
+      "message": "轉換設定..."
+   },
+   "web2pdfPrivacy": {
+      "message": "關於 Adobe Acrobat"
+   },
+   "web2pdfReplaceWarning": {
+      "message": "已存在。\n您要取代它嗎？"
+   },
+   "web2pdfSave": {
+      "message": "儲存"
+   },
+   "web2pdfSaveButton": {
+      "message": "儲存偏好設定"
+   },
+   "web2pdfShowPDFTools": {
+      "message": "與 Google 搜尋結果一併顯示"
+   },
+   "web2pdfShowPDFViewerOption": {
+      "message": "使用 Acrobat 作為預設的 PDF 檢視器"
+   },
+   "web2pdfShowPersistentOpen": {
+      "message": "顯示「在 Acrobat 中開啟」"
+   },
+   "web2pdfShowPersistentOpenAlways": {
+      "message": "一律顯示「在 Acrobat 中開啟」"
+   },
+   "web2pdfShowPersistentOpenDescription": {
+      "message": "每次都顯示在 Acrobat 中開啟 PDF 的選項。"
+   },
+   "web2pdfStatusCancelled": {
+      "message": "轉換已取消"
+   },
+   "web2pdfStatusComplete": {
+      "message": "轉換成功"
+   },
+   "web2pdfStatusDownloading": {
+      "message": "正在下載轉換..."
+   },
+   "web2pdfStatusDownloadingPDF": {
+      "message": "正在下載 PDF"
+   },
+   "web2pdfStatusFailure": {
+      "message": "轉換失敗"
+   },
+   "web2pdfStatusInProgress": {
+      "message": "轉換正在進行中..."
+   },
+   "web2pdfStatusUnknownFailure": {
+      "message": "不明的失敗"
+   },
+   "web2pdfStatusWaiting": {
+      "message": "正在等待轉換..."
+   },
+   "web2pdfTitle": {
+      "message": "Adobe Acrobat"
+   },
+   "web2pdfUnsupportedAcrobatVersion": {
+      "message": "找不到 Acrobat 的支援版本。請安裝 \u003Ca target='_blank' href='https://acrobat.adobe.com/tw/zh-Hant/free-trial-download.html?trackingid=29NMCS7T&mv=other'>7 天免費試用版\u003C/a>。"
+   },
+   "web2pdfUntitledFileName": {
+      "message": "未命名"
+   },
+   "webpagePDFConversion": {
+      "message": "網頁轉換為 PDF 的轉換設定"
+   },
+   "webpagePDFConversionDescription": {
+      "message": "將網頁儲存為 PDF 時，您可以設定邊界、字型和其他版面細節"
+   }
+}

@@ -1,0 +1,106 @@
+{
+   "action": {
+      "default_icon": "browser/images/acrobat_dc_appicon_24.png",
+      "default_popup": "browser/js/popup.html",
+      "default_title": "__MSG_extensionMenuTitle__"
+   },
+   "background": {
+      "service_worker": "service-worker.js",
+      "type": "module"
+   },
+   "content_scripts": [ {
+      "js": [ "libs/jquery-3.1.1.min.js", "browser/js/ch-settings.js", "content_scripts/content-util.js", "content_scripts/SidePanel/GenAIWebpageBlocklist.js", "content_scripts/SidePanel/ActionableCoachmark.js", "content_scripts/embeddedpdfs/EmbeddedPDFTouchPointCoachMark.js", "content_scripts/express/express_whatsapp/whatsapp-express-fte.js", "content_scripts/express/gmail/gmail-express-fte.js", "content_scripts/outlook/outlook-fte.js", "content_scripts/gmail/GmailAcrobatFteCoachmark.js", "content_scripts/SidePanel/FABManager.js", "content_scripts/SidePanel/GenAIWebpageEligibilityService.js", "content_scripts/addWebpage/KWEligibilityService.js", "content_scripts/SidePanel/AttributionManager.js", "content_scripts/SidePanel/AnimateCannedQuestions.js", "content_scripts/content-script-utils.js", "content_scripts/ch-content-script.js", "content_scripts/injectBannerIframe.js", "content_scripts/prompts/ShowOneChild.js", "content_scripts/extract-webpage-html.js" ],
+      "matches": [ "file://*/*", "http://*/*", "https://*/*" ],
+      "run_at": "document_start"
+   }, {
+      "css": [ "browser/css/outlook-content-script.css", "browser/css/gsuite-fte.css" ],
+      "js": [ "content_scripts/outlook/outlook-content-script.js" ],
+      "matches": [ "https://outlook.office365.com/*", "https://outlook.office.com/*", "https://outlook.live.com/*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "browser/css/express-tooltip.css" ],
+      "js": [ "content_scripts/content-script-idle.js" ],
+      "matches": [ "http://*/*", "https://*/*" ],
+      "run_at": "document_idle"
+   }, {
+      "js": [ "content_scripts/ch-content-script-dend.js", "content_scripts/injectAIMarker.js" ],
+      "matches": [ "file://*/*", "http://*/*", "https://*/*" ],
+      "run_at": "document_end"
+   }, {
+      "all_frames": true,
+      "css": [ "browser/css/embedded-pdf-touch-point.css", "browser/css/gsuite-fte.css" ],
+      "js": [ "content_scripts/embeddedpdfs/embedded-pdf-touch-point.js" ],
+      "matches": [ "\u003Call_urls>" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "browser/css/gdrive-content-script.css", "browser/css/gdrive-touchpoint-service.css" ],
+      "js": [ "content_scripts/gdrive-content-script.js" ],
+      "matches": [ "https://drive.google.com/*" ],
+      "run_at": "document_start"
+   }, {
+      "js": [ "content_scripts/express/express_whatsapp/whatsapp-content-script.js" ],
+      "matches": [ "https://web.whatsapp.com/*" ],
+      "run_at": "document_idle"
+   }, {
+      "js": [ "content_scripts/express/google-image-preview/google-image-preview-content-script.js" ],
+      "matches": [ "https://www.google.com/*" ],
+      "run_at": "document_idle"
+   }, {
+      "js": [ "content_scripts/gdrive-download-page-content-script.js" ],
+      "matches": [ "https://drive.usercontent.google.com/download*" ],
+      "run_at": "document_end"
+   }, {
+      "css": [ "browser/css/gmail-content-script.css" ],
+      "js": [ "content_scripts/gmail-content-script.js" ],
+      "matches": [ "https://mail.google.com/*" ],
+      "run_at": "document_start"
+   }, {
+      "js": [ "content_scripts/acrobat-content-script.js" ],
+      "matches": [ "https://acrobat.adobe.com/*", "https://documentcloud.adobe.com/*" ],
+      "run_at": "document_end"
+   } ],
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; child-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; frame-src https://use.typekit.net https://assets.adobedtm.com https://*.adobecontent.io https://*.adobelogin.com https://local-test.acrobat.com:* https://local-test.acrobat.adobe.com:* https://*.acrobat.com https://*.adobe.com https://*.adobe.io"
+   },
+   "default_locale": "en",
+   "description": "__MSG_web2pdfExtnDescriptionChrome__",
+   "externally_connectable": {
+      "ids": [ "bngnhmnppadfcmpggglniifohlkmddfc" ],
+      "matches": [ "https://*.adobe.com/*", "https://adobe.com/*", "https://www.adobe.com/*" ]
+   },
+   "host_permissions": [ "\u003Call_urls>" ],
+   "icons": {
+      "128": "browser/images/acrobat_dc_appicon_128.png",
+      "16": "browser/images/acrobat_dc_appicon_16.png",
+      "48": "browser/images/acrobat_dc_appicon_48.png"
+   },
+   "incognito": "not_allowed",
+   "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCZBtDwJUnqCebbFbTP819W+x0Tk9Com3yrxaCi/D0t/1FPWBuOvyyiQtFr/FmloZu/2ml8LFYNGNE6gQSSIgGXZceAFCRxzj+EXSI37kNIPISrdKznCTdkA6oSKUpFEVOcoD959DQFqeNbliB9MV+ZrZST+DOVxApdMSJzsCczIwIDAQAB",
+   "manifest_version": 3,
+   "minimum_chrome_version": "107.0",
+   "name": "__MSG_web2pdfExtnName__",
+   "optional_permissions": [ "history", "bookmarks" ],
+   "options_page": "browser/js/options.html",
+   "permissions": [ "contextMenus", "tabs", "downloads", "nativeMessaging", "webRequest", "webNavigation", "storage", "scripting", "alarms", "offscreen", "cookies", "sidePanel" ],
+   "storage": {
+      "managed_schema": "schema.json"
+   },
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "25.7.2.1",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "viewer.html", "signInHandler.html", "signInAdobeYolo.html", "browser/js/check-cookies.html", "browser/js/express.html", "browser/js/frame.html", "browser/js/frameUI.html", "browser/js/local-fte.html", "browser/js/local-file/local-file-blocking-page.html", "browser/js/local-file/local-file-prompt.html", "browser/js/lsCopy.html", "browser/js/gdrive-inject.js", "browser/js/viewer/localFileSignInRedirection.html", "browser/js/viewer/localFileSignInRedirection.html", "browser/js/download-banner.html", "browser/js/successToast.html", "browser/js/failToast.html", "browser/js/assistantPopup.html", "browser/images/SDC_GenAIGradientTrefoil_24_N.svg", "browser/css/fonts/AdobeClean-Regular.otf", "browser/css/fonts/AdobeClean-Bold.otf", "browser/images/dc_trefoil_red_32_n.svg", "browser/images/acrobat_dc_appicon_128.png", "browser/images/acrobat_dc_trefoil_24_white.svg", "browser/images/cross_10_n.svg", "browser/images/ExpressRemoveBackground.png", "browser/images/ExpressApplyEffects.png", "browser/images/ExpressCropImage.png", "browser/images/SDC_ShowMenu_18_N_24_D.svg", "browser/images/SDC_ShowMenu_18_N_24_D_ActiveState.svg", "content_scripts/express/express-fte.js", "content_scripts/express/express-fte-utils.js", "content_scripts/gsuite/fte-utils.js", "resources/SidePanel/sidePanelUpsellSuccess.html", "resources/SidePanel/sidePanelButton.html", "resources/SidePanel/index.html", "resources/SidePanel/ActionableCoachmark.html", "resources/SidePanel/FABViewSettings.html", "resources/SidePanel/signInSuccess.html", "resources/SidePanel/sidePanelUtil.js", "common/local-storage.js", "libs/*", "resources/addWebpage/index.html" ]
+   }, {
+      "matches": [ "https://mail.google.com/*" ],
+      "resources": [ "content_scripts/gmail/gmail-inject.js", "content_scripts/gmail/state.js", "content_scripts/gmail/util.js", "content_scripts/gsuite/util.js", "content_scripts/gmail/gmail-response-service.js", "content_scripts/gmail/native-viewer-touch-point-service.js", "content_scripts/gmail/message-view-touch-point-service.js", "content_scripts/gmail/list-view-touch-point-service.js", "content_scripts/gmail/default-viewership-service.js", "content_scripts/express/gmail/express-gmail-touchpoint-service.js", "content_scripts/express/gmail/express-gmail-message-view-touchpoint-service.js" ]
+   }, {
+      "matches": [ "https://drive.google.com/*" ],
+      "resources": [ "content_scripts/gdrive/gdrive-inject.js", "content_scripts/gdrive/get-auth-user.js", "content_scripts/gdrive/state.js", "content_scripts/gdrive/util.js", "content_scripts/gsuite/util.js", "content_scripts/gdrive/touchpoint-service.js", "content_scripts/express/gdrive/express-gdrive-touchpoint-service.js", "content_scripts/gdrive/search-handler.js", "content_scripts/gdrive/default-viewership-service.js", "content_scripts/gdrive/api-parsing-util.js" ]
+   }, {
+      "matches": [ "https://web.whatsapp.com/*", "https://mail.google.com/*", "https://www.google.com/*", "https://drive.google.com/*" ],
+      "resources": [ "browser/images/express_edit.svg", "browser/images/express_remove_background.svg", "browser/images/express_apply_effects.svg", "browser/images/express_crop_image.svg", "browser/images/express_insert_objects.svg", "browser/images/express_remove_objects.svg", "browser/images/acrobat_prodc_appicon_24.svg", "resources/express/expressDropdownMenu.html", "content_scripts/express/dropdown-menu.js", "resources/express/expressSingleClickCTA.html", "content_scripts/express/single-click-cta.js", "content_scripts/express/express-cta-tooltip.js", "resources/express/expressContextualFTE.html", "content_scripts/express/fte/express-contextual-fte.js" ]
+   }, {
+      "matches": [ "https://outlook.office365.com/*", "https://outlook.office.com/*", "https://outlook.live.com/*" ],
+      "resources": [ "content_scripts/outlook/outlook-inject.js", "content_scripts/gsuite/util.js", "content_scripts/outlook/state.js", "browser/images/outlook-error-toast-icon.svg", "browser/images/outlook-error-toast-close.svg", "resources/outlook/error-toast.html", "content_scripts/outlook/outlook-error-toast-service.js", "content_scripts/outlook/outlook-fte-service.js" ]
+   } ]
+}

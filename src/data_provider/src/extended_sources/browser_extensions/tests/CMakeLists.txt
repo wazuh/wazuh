@@ -16,32 +16,23 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     test_safari_darwin.cpp
     test_chrome_darwin.cpp
   )
-
-  add_executable(extended_sources_browser_extensions_unit_test ${TEST_SRC})
-  target_link_libraries(extended_sources_browser_extensions_unit_test
-    browser_extensions
-    gtestd
-    gmockd
-    gtest_maind
-    gmock_maind
-    pthread
-  )
-
-  add_test(NAME BrowsersExtensionsTests COMMAND extended_sources_browser_extensions_unit_test)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   list(APPEND TEST_SRC 
     test_chrome_linux.cpp
   )
-
-  add_executable(extended_sources_browser_extensions_unit_test ${TEST_SRC})
-  target_link_libraries(extended_sources_browser_extensions_unit_test
-    chrome_extensions
-    gtestd
-    gmockd
-    gtest_maind
-    gmock_maind
-    pthread
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  list(APPEND TEST_SRC 
+    test_chrome_windows.cpp
   )
-
-  add_test(NAME BrowsersExtensionsTests COMMAND extended_sources_browser_extensions_unit_test)
 endif()
+
+add_executable(extended_sources_browser_extensions_unit_test ${TEST_SRC})
+target_link_libraries(extended_sources_browser_extensions_unit_test
+  browser_extensions
+  gtestd
+  gmockd
+  gtest_maind
+  gmock_maind
+  pthread
+)
+add_test(NAME BrowsersExtensionsTests COMMAND extended_sources_browser_extensions_unit_test)

@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "YENİ OLUŞTUR"
+   },
+   "explanationofflinedisabled": {
+      "message": "İnternet'e bağlı değilsiniz. Google Dokümanlar'ı İnternet bağlantısı olmadan kullanmak için, İnternet'e bağlanabildiğinizde Google Dokümanlar ana sayfasında Ayarlar'a gidin ve çevrimdışı senkronizasyonu etkinleştirin."
+   },
+   "explanationofflineenabled": {
+      "message": "İnternet'e bağlı değilsiniz. Ancak, yine de mevcut dosyaları düzenleyebilir veya yeni dosyalar oluşturabilirsiniz."
+   },
+   "extdesc": {
+      "message": "Doküman, e-tablo ve sunu oluşturun, bunları düzenleyin ve görüntüleyin. Tüm bu işlemleri internet erişimi olmadan yapabilirsiniz."
+   },
+   "extname": {
+      "message": "Google Dokümanlar Çevrimdışı"
+   },
+   "learnmore": {
+      "message": "Daha Fazla Bilgi"
+   },
+   "popuphelptext": {
+      "message": "İnternet bağlantınız olsun veya olmasın, nerede olursanız olun yazın, düzenleyin, başka kullanıcılarla birlikte çalışın."
+   }
+}

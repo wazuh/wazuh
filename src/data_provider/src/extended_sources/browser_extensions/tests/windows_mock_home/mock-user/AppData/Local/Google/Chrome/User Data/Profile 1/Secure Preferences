@@ -1,0 +1,703 @@
+{
+    "extensions": {
+        "settings": {
+            "ahfgeienlihckogmohjhadlkjgocpleb": {
+                "account_extension_type": 0,
+                "active_permissions": {
+                    "api": [
+                        "management",
+                        "system.display",
+                        "system.storage",
+                        "webstorePrivate",
+                        "system.cpu",
+                        "system.memory",
+                        "system.network"
+                    ],
+                    "explicit_host": [],
+                    "manifest_permissions": [],
+                    "scriptable_host": []
+                },
+                "app_launcher_ordinal": "t",
+                "commands": {},
+                "content_settings": [],
+                "creation_flags": 1,
+                "disable_reasons": [],
+                "events": [],
+                "first_install_time": "13399145445158324",
+                "from_webstore": false,
+                "incognito_content_settings": [],
+                "incognito_preferences": {},
+                "last_update_time": "13399145445158324",
+                "location": 5,
+                "manifest": {
+                    "app": {
+                        "launch": {
+                            "web_url": "https://chrome.google.com/webstore"
+                        },
+                        "urls": [
+                            "https://chrome.google.com/webstore"
+                        ]
+                    },
+                    "description": "Descubra ótimos aplicativos, jogos, extensões e temas para o Google Chrome.",
+                    "icons": {
+                        "128": "webstore_icon_128.png",
+                        "16": "webstore_icon_16.png"
+                    },
+                    "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCtl3tO0osjuzRsf6xtD2SKxPlTfuoy7AWoObysitBPvH5fE1NaAA1/2JkPWkVDhdLBWLaIBPYeXbzlHp3y4Vv/4XG+aN5qFE3z+1RU/NqkzVYHtIpVScf3DjTYtKVL66mzVGijSoAIwbFCC3LpGdaoe6Q1rSRDp76wR6jjFzsYwQIDAQAB",
+                    "name": "Web Store",
+                    "permissions": [
+                        "webstorePrivate",
+                        "management",
+                        "system.cpu",
+                        "system.display",
+                        "system.memory",
+                        "system.network",
+                        "system.storage"
+                    ],
+                    "version": "0.2"
+                },
+                "page_ordinal": "n",
+                "path": "C:\\Program Files\\Google\\Chrome\\Application\\139.0.7258.67\\resources\\web_store",
+                "preferences": {},
+                "regular_only_preferences": {},
+                "was_installed_by_default": false,
+                "was_installed_by_oem": false
+            },
+            "fignfifoniblkonapihmkfakmlgkbkcf": {
+                "account_extension_type": 0,
+                "active_permissions": {
+                    "api": [
+                        "metricsPrivate",
+                        "systemPrivate",
+                        "ttsEngine",
+                        "offscreen"
+                    ],
+                    "explicit_host": [
+                        "https://www.google.com/*"
+                    ],
+                    "manifest_permissions": [],
+                    "scriptable_host": []
+                },
+                "commands": {},
+                "content_settings": [],
+                "creation_flags": 1,
+                "disable_reasons": [],
+                "first_install_time": "13399145445159901",
+                "from_webstore": false,
+                "incognito_content_settings": [],
+                "incognito_preferences": {},
+                "last_update_time": "13399145445159901",
+                "location": 5,
+                "manifest": {
+                    "background": {
+                        "service_worker": "service_worker.js"
+                    },
+                    "description": "Component extension providing speech via the Google network text-to-speech service.",
+                    "host_permissions": [
+                        "https://www.google.com/"
+                    ],
+                    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5mnqF6oM8Q5tYd7YqL40YL7Keftt4PwydehlNOyNlCiWDM/7SiQYwxYvVHMj1i03z7B5lZXQinrcqhHhoIgcSHK1JrdzVSJxPRVdmV0rJLv0KQgmVwL8p8MfN6SmHs+72xz+1GoRWpd0WlHMil7RzGKJA4Ku+9jxxsXoxes9eeV1hCavkb1dSF+mlQbaNiw7u1hhvc5mmeuEcWjoce8r8B2R4wmnGbuTLfoSchZ6jkasynmOaFxyT4jiYDYgrNtWRTQ/9PuPduJ+uBWVT/o2ZhDK2XcywVwzUfYIXDLDblK+YdZi8w8ZBNvc7hP9/iZr6/eoUpfsLa8qlJgyLBQebwIDAQAB",
+                    "manifest_version": 3,
+                    "name": "Google Network Speech",
+                    "permissions": [
+                        "metricsPrivate",
+                        "offscreen",
+                        "systemPrivate",
+                        "ttsEngine"
+                    ],
+                    "tts_engine": {
+                        "voices": [
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "de-DE",
+                                "remote": true,
+                                "voice_name": "Google Deutsch"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "en-US",
+                                "remote": true,
+                                "voice_name": "Google US English"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "en-GB",
+                                "remote": true,
+                                "voice_name": "Google UK English Female"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "male",
+                                "lang": "en-GB",
+                                "remote": true,
+                                "voice_name": "Google UK English Male"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "es-ES",
+                                "remote": true,
+                                "voice_name": "Google español"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "es-US",
+                                "remote": true,
+                                "voice_name": "Google español de Estados Unidos"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "fr-FR",
+                                "remote": true,
+                                "voice_name": "Google français"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "hi-IN",
+                                "remote": true,
+                                "voice_name": "Google हिन्दी"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "id-ID",
+                                "remote": true,
+                                "voice_name": "Google Bahasa Indonesia"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "it-IT",
+                                "remote": true,
+                                "voice_name": "Google italiano"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "ja-JP",
+                                "remote": true,
+                                "voice_name": "Google 日本語"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "ko-KR",
+                                "remote": true,
+                                "voice_name": "Google 한국의"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "nl-NL",
+                                "remote": true,
+                                "voice_name": "Google Nederlands"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "pl-PL",
+                                "remote": true,
+                                "voice_name": "Google polski"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "pt-BR",
+                                "remote": true,
+                                "voice_name": "Google português do Brasil"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "ru-RU",
+                                "remote": true,
+                                "voice_name": "Google русский"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "zh-CN",
+                                "remote": true,
+                                "voice_name": "Google 普通话（中国大陆）"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "zh-HK",
+                                "remote": true,
+                                "voice_name": "Google 粤語（香港）"
+                            },
+                            {
+                                "event_types": [
+                                    "start",
+                                    "end",
+                                    "error"
+                                ],
+                                "gender": "female",
+                                "lang": "zh-TW",
+                                "remote": true,
+                                "voice_name": "Google 國語（臺灣）"
+                            }
+                        ]
+                    },
+                    "version": "1.0"
+                },
+                "path": "C:\\Program Files\\Google\\Chrome\\Application\\139.0.7258.67\\resources\\network_speech_synthesis/mv3",
+                "preferences": {},
+                "regular_only_preferences": {},
+                "service_worker_registration_info": {
+                    "version": "1.0"
+                },
+                "serviceworkerevents": [
+                    "ttsEngine.onPause",
+                    "ttsEngine.onResume",
+                    "ttsEngine.onSpeak",
+                    "ttsEngine.onStop"
+                ],
+                "was_installed_by_default": false,
+                "was_installed_by_oem": false
+            },
+            "ghbmnnjooekpmoecnnnilnnbdlolhkhi": {
+                "account_extension_type": 0,
+                "ack_external": true,
+                "active_permissions": {
+                    "api": [
+                        "alarms",
+                        "storage",
+                        "unlimitedStorage",
+                        "offscreen"
+                    ],
+                    "explicit_host": [
+                        "https://docs.google.com/*",
+                        "https://drive.google.com/*"
+                    ],
+                    "manifest_permissions": [],
+                    "scriptable_host": []
+                },
+                "commands": {},
+                "content_settings": [],
+                "creation_flags": 137,
+                "disable_reasons": [],
+                "first_install_time": "13399145446397981",
+                "from_webstore": true,
+                "granted_permissions": {
+                    "api": [
+                        "alarms",
+                        "storage",
+                        "unlimitedStorage",
+                        "offscreen"
+                    ],
+                    "explicit_host": [
+                        "https://docs.google.com/*",
+                        "https://drive.google.com/*"
+                    ],
+                    "manifest_permissions": [],
+                    "scriptable_host": []
+                },
+                "incognito_content_settings": [],
+                "incognito_preferences": {},
+                "last_update_time": "13399145446397981",
+                "lastpingday": "13399110000692990",
+                "location": 1,
+                "manifest": {
+                    "author": {
+                        "email": "docs-hosted-app-own@google.com"
+                    },
+                    "background": {
+                        "service_worker": "service_worker_bin_prod.js"
+                    },
+                    "content_capabilities": {
+                        "matches": [
+                            "https://docs.google.com/*",
+                            "https://drive.google.com/*",
+                            "https://drive-autopush.corp.google.com/*",
+                            "https://drive-daily-0.corp.google.com/*",
+                            "https://drive-daily-1.corp.google.com/*",
+                            "https://drive-daily-2.corp.google.com/*",
+                            "https://drive-daily-3.corp.google.com/*",
+                            "https://drive-daily-4.corp.google.com/*",
+                            "https://drive-daily-5.corp.google.com/*",
+                            "https://drive-daily-6.corp.google.com/*",
+                            "https://drive-preprod.corp.google.com/*",
+                            "https://drive-staging.corp.google.com/*"
+                        ],
+                        "permissions": [
+                            "clipboardRead",
+                            "clipboardWrite",
+                            "unlimitedStorage"
+                        ]
+                    },
+                    "content_security_policy": {
+                        "extension_pages": "script-src 'self'; object-src 'self'"
+                    },
+                    "current_locale": "pt_BR",
+                    "default_locale": "en_US",
+                    "description": "Edite, crie e veja seus documentos, planilhas e apresentações sem precisar de acesso à Internet.",
+                    "externally_connectable": {
+                        "matches": [
+                            "https://docs.google.com/*",
+                            "https://drive.google.com/*",
+                            "https://drive-autopush.corp.google.com/*",
+                            "https://drive-daily-0.corp.google.com/*",
+                            "https://drive-daily-1.corp.google.com/*",
+                            "https://drive-daily-2.corp.google.com/*",
+                            "https://drive-daily-3.corp.google.com/*",
+                            "https://drive-daily-4.corp.google.com/*",
+                            "https://drive-daily-5.corp.google.com/*",
+                            "https://drive-daily-6.corp.google.com/*",
+                            "https://drive-preprod.corp.google.com/*",
+                            "https://drive-staging.corp.google.com/*"
+                        ]
+                    },
+                    "host_permissions": [
+                        "https://docs.google.com/*",
+                        "https://drive.google.com/*"
+                    ],
+                    "icons": {
+                        "128": "128.png"
+                    },
+                    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnF7RGLAxIon0/XeNZ4MLdP3DMkoORzEAKVg0sb89JpA/W2osTHr91Wqwdc9lW0mFcSpCYS9Y3e7cUMFo/M2ETASIuZncMiUzX2/0rrWtGQ3UuEj3KSe5PdaVZfisyJw/FebvHwirEWrhqcgzVUj9fL9YjE0G45d1zMKcc1umKvLqPyTznNuKBZ9GJREdGLRJCBmUgCkI8iwtwC+QZTUppmaD50/ksnEUXv+QkgGN07/KoNA5oAgo49Jf1XBoMv4QXtVZQlBYZl84zAsI82hb63a6Gu29U/4qMWDdI7+3Ne5TRvo6Zi3EI4M2NQNplJhik105qrz+eTLJJxvf4slrWwIDAQAB",
+                    "manifest_version": 3,
+                    "minimum_chrome_version": "88",
+                    "name": "Documentos Google off-line",
+                    "permissions": [
+                        "alarms",
+                        "storage",
+                        "unlimitedStorage",
+                        "offscreen"
+                    ],
+                    "storage": {
+                        "managed_schema": "dasherSettingSchema.json"
+                    },
+                    "update_url": "https://clients2.google.com/service/update2/crx",
+                    "version": "1.94.1",
+                    "web_accessible_resources": [
+                        {
+                            "matches": [
+                                "\u003Call_urls>"
+                            ],
+                            "resources": [
+                                "page_embed_script.js"
+                            ]
+                        }
+                    ]
+                },
+                "path": "ghbmnnjooekpmoecnnnilnnbdlolhkhi\\1.94.1_0",
+                "preferences": {},
+                "regular_only_preferences": {},
+                "service_worker_registration_info": {
+                    "version": "1.94.1"
+                },
+                "serviceworkerevents": [
+                    "alarms.onAlarm",
+                    "runtime.onConnectExternal"
+                ],
+                "was_installed_by_default": true,
+                "was_installed_by_oem": false,
+                "withholding_permissions": false
+            },
+            "mhjfbmdgcfjbbpaeojofohoefgiehjai": {
+                "account_extension_type": 0,
+                "active_permissions": {
+                    "api": [
+                        "contentSettings",
+                        "fileSystem",
+                        "fileSystem.write",
+                        "metricsPrivate",
+                        "tabs",
+                        "resourcesPrivate",
+                        "pdfViewerPrivate"
+                    ],
+                    "explicit_host": [
+                        "chrome://resources/*",
+                        "chrome://webui-test/*"
+                    ],
+                    "manifest_permissions": [],
+                    "scriptable_host": []
+                },
+                "commands": {},
+                "content_settings": [],
+                "creation_flags": 1,
+                "disable_reasons": [],
+                "events": [],
+                "first_install_time": "13399145445159006",
+                "from_webstore": false,
+                "incognito_content_settings": [],
+                "incognito_preferences": {},
+                "last_update_time": "13399145445159006",
+                "location": 5,
+                "manifest": {
+                    "content_security_policy": "script-src 'self' 'wasm-eval' blob: filesystem: chrome://resources chrome://webui-test; object-src * blob: externalfile: file: filesystem: data:",
+                    "description": "",
+                    "incognito": "split",
+                    "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDN6hM0rsDYGbzQPQfOygqlRtQgKUXMfnSjhIBL7LnReAVBEd7ZmKtyN2qmSasMl4HZpMhVe2rPWVVwBDl6iyNE/Kok6E6v6V3vCLGsOpQAuuNVye/3QxzIldzG/jQAdWZiyXReRVapOhZtLjGfywCvlWq7Sl/e3sbc0vWybSDI2QIDAQAB",
+                    "manifest_version": 2,
+                    "mime_types": [
+                        "application/pdf"
+                    ],
+                    "mime_types_handler": "index.html",
+                    "name": "Chrome PDF Viewer",
+                    "offline_enabled": true,
+                    "permissions": [
+                        "chrome://resources/",
+                        "chrome://webui-test/",
+                        "contentSettings",
+                        "metricsPrivate",
+                        "pdfViewerPrivate",
+                        "resourcesPrivate",
+                        "tabs",
+                        {
+                            "fileSystem": [
+                                "write"
+                            ]
+                        }
+                    ],
+                    "version": "1"
+                },
+                "path": "C:\\Program Files\\Google\\Chrome\\Application\\139.0.7258.67\\resources\\pdf",
+                "preferences": {},
+                "regular_only_preferences": {},
+                "was_installed_by_default": false,
+                "was_installed_by_oem": false
+            },
+            "nkeimhogjdpnpccoofpliimaahmaaome": {
+                "account_extension_type": 0,
+                "active_permissions": {
+                    "api": [
+                        "processes",
+                        "webrtcLoggingPrivate",
+                        "system.cpu",
+                        "enterprise.hardwarePlatform"
+                    ],
+                    "explicit_host": [],
+                    "manifest_permissions": [],
+                    "scriptable_host": []
+                },
+                "commands": {},
+                "content_settings": [],
+                "creation_flags": 1,
+                "disable_reasons": [],
+                "events": [
+                    "runtime.onConnectExternal"
+                ],
+                "first_install_time": "13399145445159516",
+                "from_webstore": false,
+                "incognito_content_settings": [],
+                "incognito_preferences": {},
+                "last_update_time": "13399145445159516",
+                "location": 5,
+                "manifest": {
+                    "background": {
+                        "page": "background.html",
+                        "persistent": false
+                    },
+                    "externally_connectable": {
+                        "ids": [
+                            "moklfjoegmpoolceggbebbmgbddlhdgp",
+                            "ldmpofkllgeicjiihkimgeccbhghhmfj",
+                            "denipklgekfpcdmbahmbpnmokgajnhma",
+                            "kjfhgcncjdebkoofmbjoiemiboifnpbo",
+                            "ikfcpmgefdpheiiomgmhlmmkihchmdlj",
+                            "jlgegmdnodfhciolbdjciihnlaljdbjo",
+                            "lkbhffjfgpmpeppncnimiiikojibkhnm",
+                            "acdafoiapclbpdkhnighhilgampkglpc",
+                            "hkamnlhnogggfddmjomgbdokdkgfelgg"
+                        ],
+                        "matches": [
+                            "https://*.meet.google.com/*"
+                        ]
+                    },
+                    "incognito": "split",
+                    "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDAQt2ZDdPfoSe/JI6ID5bgLHRCnCu9T36aYczmhw/tnv6QZB2I6WnOCMZXJZlRdqWc7w9jo4BWhYS50Vb4weMfh/I0On7VcRwJUgfAxW2cHB+EkmtI1v4v/OU24OqIa1Nmv9uRVeX0GjhQukdLNhAE6ACWooaf5kqKlCeK+1GOkQIDAQAB",
+                    "manifest_version": 2,
+                    "name": "Google Hangouts",
+                    "permissions": [
+                        "enterprise.hardwarePlatform",
+                        "processes",
+                        "system.cpu",
+                        "webrtcLoggingPrivate"
+                    ],
+                    "version": "1.3.24"
+                },
+                "path": "C:\\Program Files\\Google\\Chrome\\Application\\139.0.7258.67\\resources\\hangout_services",
+                "preferences": {},
+                "regular_only_preferences": {},
+                "was_installed_by_default": false,
+                "was_installed_by_oem": false
+            },
+            "nmmhkkegccagdldgiimedpiccmgmieda": {
+                "account_extension_type": 0,
+                "ack_external": true,
+                "active_permissions": {
+                    "api": [
+                        "identity",
+                        "webview"
+                    ],
+                    "explicit_host": [
+                        "https://payments.google.com/*",
+                        "https://sandbox.google.com/*",
+                        "https://www.google.com/*",
+                        "https://www.googleapis.com/*"
+                    ],
+                    "manifest_permissions": [],
+                    "scriptable_host": []
+                },
+                "commands": {},
+                "content_settings": [],
+                "creation_flags": 137,
+                "disable_reasons": [],
+                "events": [
+                    "app.runtime.onLaunched",
+                    "runtime.onConnectExternal"
+                ],
+                "first_install_time": "13399145446129847",
+                "from_webstore": true,
+                "granted_permissions": {
+                    "api": [
+                        "identity",
+                        "webview"
+                    ],
+                    "explicit_host": [
+                        "https://payments.google.com/*",
+                        "https://sandbox.google.com/*",
+                        "https://www.google.com/*",
+                        "https://www.googleapis.com/*"
+                    ],
+                    "manifest_permissions": [],
+                    "scriptable_host": []
+                },
+                "incognito_content_settings": [],
+                "incognito_preferences": {},
+                "last_update_time": "13399145446129847",
+                "lastpingday": "13399110000692990",
+                "location": 10,
+                "manifest": {
+                    "app": {
+                        "background": {
+                            "scripts": [
+                                "craw_background.js"
+                            ]
+                        }
+                    },
+                    "current_locale": "pt_BR",
+                    "default_locale": "en",
+                    "description": "Pagamentos da Chrome Web Store",
+                    "display_in_launcher": false,
+                    "display_in_new_tab_page": false,
+                    "icons": {
+                        "128": "images/icon_128.png",
+                        "16": "images/icon_16.png"
+                    },
+                    "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCrKfMnLqViEyokd1wk57FxJtW2XXpGXzIHBzv9vQI/01UsuP0IV5/lj0wx7zJ/xcibUgDeIxobvv9XD+zO1MdjMWuqJFcKuSS4Suqkje6u+pMrTSGOSHq1bmBVh0kpToN8YoJs/P/yrRd7FEtAXTaFTGxQL4C385MeXSjaQfiRiQIDAQAB",
+                    "manifest_version": 2,
+                    "minimum_chrome_version": "29",
+                    "name": "Pagamentos da Chrome Web Store",
+                    "oauth2": {
+                        "auto_approve": true,
+                        "client_id": "203784468217.apps.googleusercontent.com",
+                        "scopes": [
+                            "https://www.googleapis.com/auth/sierra",
+                            "https://www.googleapis.com/auth/sierrasandbox",
+                            "https://www.googleapis.com/auth/chromewebstore",
+                            "https://www.googleapis.com/auth/chromewebstore.readonly"
+                        ]
+                    },
+                    "permissions": [
+                        "identity",
+                        "webview",
+                        "https://www.google.com/",
+                        "https://www.googleapis.com/*",
+                        "https://payments.google.com/payments/v4/js/integrator.js",
+                        "https://sandbox.google.com/payments/v4/js/integrator.js"
+                    ],
+                    "update_url": "https://clients2.google.com/service/update2/crx",
+                    "version": "1.0.0.6"
+                },
+                "path": "nmmhkkegccagdldgiimedpiccmgmieda\\1.0.0.6_0",
+                "preferences": {},
+                "regular_only_preferences": {},
+                "running": false,
+                "was_installed_by_default": true,
+                "was_installed_by_oem": false
+            }
+        }
+    }
+}

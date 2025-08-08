@@ -1,0 +1,735 @@
+{
+   "ConvertVerbDescription": {
+      "message": "Convertiți documente în sau din PDF."
+   },
+   "Disable": {
+      "message": "Dezactivare"
+   },
+   "EditVerbDescription": {
+      "message": "Reordonați, rotiți sau ștergeți pagini din PDF."
+   },
+   "Enable": {
+      "message": "Activare"
+   },
+   "LearnMoreURL": {
+      "message": "https://helpx.adobe.com/ro/acrobat/kb/acrobat-pro-aip-for-chrome.html"
+   },
+   "LearnMoreURLEdge": {
+      "message": "https://helpx.adobe.com/ro/acrobat/kb/acrobat-pro-aip-for-edge.html"
+   },
+   "acrobatEmbeddedTouchPointPreferenceDescription": {
+      "message": "The shortcut can be used to open PDFs within extension for easy editing, summarizing, saving, and more."
+   },
+   "acrobatEmbeddedTouchPointPreferenceTitle": {
+      "message": "Show Acrobat shortcut in embedded web PDFs"
+   },
+   "acrobatGdriveTripleDotMenuTouchPointText": {
+      "message": "Open with Acrobat"
+   },
+   "acrobatGmailFteToolTipButton": {
+      "message": "Am înţeles"
+   },
+   "acrobatGmailFteToolTipDescription": {
+      "message": "Edit, convert, comment & sign - right in Chrome with Acrobat"
+   },
+   "acrobatGmailFteToolTipTitle": {
+      "message": "Open this PDF in Acrobat"
+   },
+   "acrobatGsuiteFteToolTipButton": {
+      "message": "Am înțeles"
+   },
+   "acrobatGsuiteFteToolTipButtonDV": {
+      "message": "OK"
+   },
+   "acrobatGsuiteFteToolTipButtonNonDV": {
+      "message": "OK"
+   },
+   "acrobatGsuiteFteToolTipDescription": {
+      "message": "Edit, convert, comment & sign - right in Chrome with Acrobat"
+   },
+   "acrobatGsuiteFteToolTipDescriptionDV": {
+      "message": "Try PDF tools like edit, comment, convert, and e-sign from $surfaceName$ by making Acrobat your default PDF viewer.",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "acrobatGsuiteFteToolTipDescriptionNonDV": {
+      "message": "Try Acrobat PDF tools like edit, comment, convert, and e-sign — right from $surfaceName$.",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "acrobatGsuiteFteToolTipTitle": {
+      "message": "Open this PDF in Acrobat"
+   },
+   "acrobatGsuiteFteToolTipTitleDV": {
+      "message": "Open all PDFs in Adobe Acrobat"
+   },
+   "acrobatGsuiteFteToolTipTitleNonDV": {
+      "message": "Open this PDF in Adobe Acrobat"
+   },
+   "acrobatGsuiteTouchPointPreferenceDescription": {
+      "message": "Add Acrobat icons to Gmail and Google Drive to quickly open PDFs in Acrobat and access PDF tools."
+   },
+   "acrobatGsuiteTouchPointPreferenceTitle": {
+      "message": "Integrate Acrobat into Gmail and Google Drive"
+   },
+   "acrobatTouchPointInOtherSitesPreferenceDescription": {
+      "message": "Integrate Acrobat with websites, including Gmail and Google Drive, for easy access to PDF tools."
+   },
+   "acrobatTouchPointInOtherSitesPreferenceTitle": {
+      "message": "Show Open in Acrobat icon in other websites"
+   },
+   "acrobatTouchPointInOtherSurfacesPreferenceDescription": {
+      "message": "Integrate Acrobat with websites, including Gmail, Google Drive, and Outlook for easy access to PDF tools."
+   },
+   "addWebpageToProjectContextMenuTitle": {
+      "message": "Add to a PDF Project..."
+   },
+   "adobeYoloErrorMessage": {
+      "message": "Ne pare rău, acest link este nevalid"
+   },
+   "adobeYoloMessage": {
+      "message": "Vă conectaţi la Acrobat..."
+   },
+   "aiAcBody": {
+      "message": "Quickly summarize webpages and get key insights using Acrobat AI Assistant."
+   },
+   "aiAcHeader": {
+      "message": "Do more with your Acrobat extension"
+   },
+   "aiMarkerTouchpointPreferenceDescription": {
+      "message": "Always display AI Assistant menu when hovering over PDFs on webpages."
+   },
+   "aiMarkerTouchpointPreferenceTitle": {
+      "message": "AI Assistant contextual menu"
+   },
+   "analyticsOptinTitle": {
+      "message": "Trimiteți date de utilizare"
+   },
+   "appearancePrefDesc": {
+      "message": "Treceţi de la tema întunecată la tema deschisă"
+   },
+   "appearancePrefOp1": {
+      "message": "Utilizare setări de sistem"
+   },
+   "appearancePrefOp2": {
+      "message": "Dark mode"
+   },
+   "appearancePrefOp3": {
+      "message": "Light mode"
+   },
+   "appearancePrefTitle": {
+      "message": "Setări mod întunecat"
+   },
+   "askAssistantBannerContentText": {
+      "message": "Get fast summaries and key insights with AI Assistant on webpages."
+   },
+   "askAssistantBannerTitle": {
+      "message": "AI Assistant for webpages"
+   },
+   "canQuesBriefOverview": {
+      "message": "Provide a brief overview of this article"
+   },
+   "canQuesCreateFAQ": {
+      "message": "Create an FAQ list based on this info"
+   },
+   "canQuesDraftEmail": {
+      "message": "Draft an email summarizing the key points"
+   },
+   "canQuesImpTopics": {
+      "message": "List all important topics and keywords"
+   },
+   "canQuesSummarise": {
+      "message": "Summarize this article"
+   },
+   "closeButton": {
+      "message": "Închidere"
+   },
+   "cropImageContextMenu": {
+      "message": "Crop Image"
+   },
+   "dcWebBookmarkTitle": {
+      "message": "Pagina principală Adobe Acrobat"
+   },
+   "doNotShowButton": {
+      "message": "Nu se mai afişează"
+   },
+   "domainPreferenceTitle": {
+      "message": "Websites where AI Assistant FAB is hidden"
+   },
+   "downloadBannerContinue": {
+      "message": "Turn on"
+   },
+   "downloadBannerText": {
+      "message": "Open all downloaded PDFs in Acrobat by setting the app as default PDF viewer in Chrome"
+   },
+   "editImageContextMenu": {
+      "message": "Editare imagine"
+   },
+   "editMegaVerbText": {
+      "message": "Editare"
+   },
+   "effectsImageContextMenu": {
+      "message": "Apply Effects"
+   },
+   "embeddedPDFHideIconForNow": {
+      "message": "Hide icon for now"
+   },
+   "embeddedPDFManagePreferences": {
+      "message": "Manage preferences"
+   },
+   "embeddedPDFOpenInAcrobatTooltip": {
+      "message": "Open in Acrobat"
+   },
+   "embeddedPDFOpenPDFInAcrobat": {
+      "message": "Open PDF in Acrobat"
+   },
+   "embeddedPDFTouchPointFTEBody": {
+      "message": "Edit, summarize, and more right from the Acrobat extension. You can hide this shortcut anytime in Preferences."
+   },
+   "embeddedPDFTouchPointFTEHeader": {
+      "message": "Open this PDF in Adobe Acrobat"
+   },
+   "enableGenAIFeaturesDescription": {
+      "message": "Your file will be processed in the cloud to deliver a generative AI capability when you use a generative AI feature. Turning off this feature prevents your file from being processed and disables generative AI. You can reactivate it anytime."
+   },
+   "enableGenAIFeaturesTitle": {
+      "message": "Enable Generative AI features in Acrobat"
+   },
+   "expressContextualFteCtaLabel": {
+      "message": "Close"
+   },
+   "expressContextualFteDescription": {
+      "message": "Easily crop, remove the background, and more. Powered by Adobe Express."
+   },
+   "expressContextualFteTitle": {
+      "message": "Edit this image in $surfaceName$",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "expressDropdownMenuTitle": {
+      "message": "Adobe Acrobat"
+   },
+   "expressDropdownMenuTooltip": {
+      "message": "Easily crop, remove background and more. Powered by Adobe Express."
+   },
+   "expressEditImageParentContextMenu": {
+      "message": "Edit Image"
+   },
+   "expressEditImagePoweredByExpressContextMenu": {
+      "message": "Powered by Adobe Express"
+   },
+   "expressExportOptionsDownloadLabel": {
+      "message": "Descărcare"
+   },
+   "expressExportOptionsSaveLabel": {
+      "message": "Salvare"
+   },
+   "expressFTEDescription": {
+      "message": "Right click to crop, remove background, or reimagine an image using AI."
+   },
+   "expressFTEFooter": {
+      "message": "Via \u003Cb>Adobe Acrobat\u003C/b>"
+   },
+   "expressFTETitle": {
+      "message": "Edit image with Adobe Express"
+   },
+   "expressPopoverFTEDescription": {
+      "message": "Right-click on any online image to quickly remove the background, crop, or reimagine it using AI with Adobe Express"
+   },
+   "expressPopoverFTETitle": {
+      "message": "Edit images right in your browser"
+   },
+   "expressPublishModalTitle": {
+      "message": "Downloading image..."
+   },
+   "expressTouchpointPreferenceDescription": {
+      "message": "Adobe Acrobat extension lets you edit images with Adobe Express. Turning off this feature will remove this capability. You can reactivate it any time."
+   },
+   "expressTouchpointPreferenceTitle": {
+      "message": "Enable Adobe Express actions in Acrobat"
+   },
+   "extensionMenuTitle": {
+      "message": "Extensie Acrobat - Scurtătură către toate instrumentele PDF"
+   },
+   "failToastText": {
+      "message": "An unexpected error has occurred, please try again later."
+   },
+   "fteOwnershipSideRedCardContent": {
+      "message": "Comentați, completați formulare, semnați și multe altele direct în Chrome, setând Acrobat ca vizualizator implicit de fișiere PDF."
+   },
+   "fteSideCardPrimaryHeader": {
+      "message": "Folosiți Acrobat"
+   },
+   "fteSideCardSecondaryHeader": {
+      "message": "direct în Chrome"
+   },
+   "gDriveDVPAppListCoachMarkContent": {
+      "message": "Enable the checkbox 'Use by default' to directly open Google Drive PDFs in Acrobat from next time"
+   },
+   "gDriveDVPCoachMarkTitle": {
+      "message": "Set Acrobat as default viewer"
+   },
+   "gDriveDVPManageAppCoachMarkContent": {
+      "message": "Faceți clic pe „Gestionare aplicații” pentru a vizualiza, a comenta, a edita fișiere PDF, prin deschiderea tuturor fișierelor PDF din Google Drive direct în Acrobat"
+   },
+   "gSuiteDVPAddOnDefaultDesc": {
+      "message": "Acrobat Add On is now set as default"
+   },
+   "genAIFabPreferenceDescription": {
+      "message": "Always display Al Assistant button at the edge of your browser window."
+   },
+   "genAIFabPreferenceTitle": {
+      "message": "Al Assistant button"
+   },
+   "generativeFillImageContextMenu": {
+      "message": "Generative Fill"
+   },
+   "genericDVPCoachMarkContent": {
+      "message": "Click on 'Manage Apps', then scroll down to Acrobat Add On and click on 'Use by default' checkbox"
+   },
+   "getInsight": {
+      "message": "Get insights with Acrobat AI Assistant"
+   },
+   "getSummary": {
+      "message": "Summarize PDF"
+   },
+   "gmailPromptFTETooltip": {
+      "message": "Open PDFs in Acrobat to use tools like Edit, Sign and more"
+   },
+   "gsuiteEditWithAcrobat": {
+      "message": "Edit with Acrobat"
+   },
+   "gsuiteOpenWithAcrobat": {
+      "message": "Deschidere în Acrobat"
+   },
+   "hideFabForDomain": {
+      "message": "Disable for this site"
+   },
+   "hideForNow": {
+      "message": "Hide for now"
+   },
+   "hidePopup": {
+      "message": "Hide for this session"
+   },
+   "insertObjectImageContextMenu": {
+      "message": "Insert Object"
+   },
+   "localFileBlockingPageOpenInChrome": {
+      "message": "Open this file in Chrome"
+   },
+   "localFileBlockingPageTitle": {
+      "message": "Enable Acrobat Extension"
+   },
+   "localFileOptionDesc": {
+      "message": "Acordaţi extensiei Acrobat acces la adresele URL ale fişierelor locale pentru a vă deschide toate fişierele PDF în Acrobat în Chrome."
+   },
+   "localFileOptionTitle": {
+      "message": "Deschiderea fişierelor PDF locale în Acrobat"
+   },
+   "localFilePromptContinueButton": {
+      "message": "Continue"
+   },
+   "localFilePromptDescription": {
+      "message": "Let Acrobat access files from this device for immediate access to all your tools so you can edit PDFs, convert files, and e-sign in a snap."
+   },
+   "localFilePromptHeader": {
+      "message": "Open in Acrobat to edit, sign, and more"
+   },
+   "localFteContinue": {
+      "message": "Accesaţi setările"
+   },
+   "localFteDescription": {
+      "message": "Profitaţi la maximum de extensia Acrobat şi folosiţi-o pentru a deschide toate fişierele PDF. Activaţi Permitere acces la URL-urile de fişiere în setările extensiei."
+   },
+   "localFteDontShowAgainText": {
+      "message": "Nu se mai afişează"
+   },
+   "localFteTitle": {
+      "message": "Treceţi la Acrobat pentru a deschide fişierele locale"
+   },
+   "neverDisplayFab": {
+      "message": "Never display"
+   },
+   "openInAcrobat": {
+      "message": "Open In Acrobat"
+   },
+   "openSettings": {
+      "message": "Manage in settings"
+   },
+   "optionsFailurePrompt": {
+      "message": "Nu putem salva modificările. Încercați din nou mai târziu"
+   },
+   "optionsSuccessPrompt": {
+      "message": "Preferințele au fost salvate cu succes"
+   },
+   "optionsSuccessPromptReloadRequired": {
+      "message": "Preference would be reflected only after reload"
+   },
+   "outlookErrorToastDescription": {
+      "message": "Something went wrong. Please close the file and try again."
+   },
+   "outlookErrorToastTitle": {
+      "message": "Unable to open file"
+   },
+   "outlookPDFTouchPointFTEBody": {
+      "message": "Edit, summarize, and sign PDFs by opening them in Acrobat."
+   },
+   "outlookPDFTouchPointFTEHeader": {
+      "message": "Open this PDF in Adobe Acrobat"
+   },
+   "pdfOwnerShipDmbConfirmBtn": {
+      "message": "Continuare"
+   },
+   "pdfOwnerShipSideRedCardConfirmBtn": {
+      "message": "Continuare"
+   },
+   "pdfOwnershipDefSideCardcontent": {
+      "message": "Vizualizați, comentați, completați formulare, semnați și multe altele, setând Adobe Acrobat ca vizualizator implicit de fișiere PDF."
+   },
+   "pdfOwnershipExploreAcrobat": {
+      "message": "Folosiți Acrobat în Chrome"
+   },
+   "pdfOwnershipExploreAcrobatEdge": {
+      "message": "Utilizați Acrobat în Microsoft Edge"
+   },
+   "pdfOwnershipExploreOptionsDescription": {
+      "message": "Make Acrobat the default PDF viewer for your browser for quick access to commenting, Fill & Sign, and other PDF tools."
+   },
+   "pdfOwnershipExploreOptionsTitle": {
+      "message": "Open all PDFs in Acrobat"
+   },
+   "pdfOwnershipPromptCancel": {
+      "message": "Nu acum"
+   },
+   "pdfOwnershipPromptContent": {
+      "message": "Faceți mai multe cu PDF-urile în Chrome atunci când setați Adobe Acrobat ca vizualizator implicit."
+   },
+   "pdfOwnershipPromptContent2": {
+      "message": "Setați Acrobat ca vizualizator implicit de fișiere PDF pentru a utiliza PDF-uri direct în Google Chrome. Comentați, completați, semnați și încercați instrumente precum cele de conversie și comprimare."
+   },
+   "pdfOwnershipPromptContentEdge": {
+      "message": "Faceți mai multe cu PDF-urile în Microsoft Edge atunci când setați Adobe Acrobat ca vizualizator implicit."
+   },
+   "pdfOwnershipPromptDeny": {
+      "message": "Nu, mulțumesc"
+   },
+   "pdfOwnershipPromptOk": {
+      "message": "Setați ca implicit"
+   },
+   "pdfOwnershipPromptOkFullscreen": {
+      "message": "Încercați acum"
+   },
+   "popupNoConnection": {
+      "message": "Fără conexiune"
+   },
+   "popupOfflineMessage": {
+      "message": "Contactaţi administratorul pentru a relua conectarea"
+   },
+   "preferences": {
+      "message": "Preferences"
+   },
+   "removeBackgroundImageContextMenu": {
+      "message": "Eliminare fundal"
+   },
+   "removeObjectImageContextMenu": {
+      "message": "Remove Object"
+   },
+   "saveLocationOp1": {
+      "message": "Întreabă-mă de fiecare dată"
+   },
+   "saveLocationOp2": {
+      "message": "Spaţiu de stocare în cloud Adobe"
+   },
+   "saveLocationOp3": {
+      "message": "Computerul meu"
+   },
+   "saveLocationPreferenceDescription": {
+      "message": "Setaţi o locaţie pentru salvarea fişierelor"
+   },
+   "saveLocationPreferenceTitle": {
+      "message": "Salvaţi locaţia fişierului"
+   },
+   "sharepointPreferenceMessage": {
+      "message": "Permiteți funcția de checkout a fișierelor SharePoint în Acrobat."
+   },
+   "sidepanelLocationPreferenceButtonText": {
+      "message": "Change in browser settings"
+   },
+   "sidepanelLocationPreferenceDescription": {
+      "message": "Place the side panel on the left or right side of the browser window. Side panel is only available in Google Chrome 11.4 or later."
+   },
+   "sidepanelLocationPreferenceTitle": {
+      "message": "AI Assistant panel location"
+   },
+   "stripTextOpenAcrobat": {
+      "message": "Deschidere în Acrobat"
+   },
+   "stripTextOpenFillnSign": {
+      "message": "Completare și semnare în Acrobat"
+   },
+   "successToastText": {
+      "message": "PDF downloads will now open in Adobe Acrobat"
+   },
+   "surfaceNameGdrive": {
+      "message": "Google Drive"
+   },
+   "surfaceNameGmail": {
+      "message": "Gmail"
+   },
+   "tooltipTextDisabled": {
+      "message": "AI Assistant isn't available for this webpage"
+   },
+   "tooltipTextEnabled": {
+      "message": "Get summaries and key insights using AI Assistant"
+   },
+   "tooltipTextSubText": {
+      "message": "powered by Adobe Acrobat"
+   },
+   "unsupportedFileTypeToastText": {
+      "message": "This file type isn’t supported. You can try editing another file."
+   },
+   "userLocale": {
+      "message": "Local utilizator"
+   },
+   "web2pdfAddButtonText": {
+      "message": "Ad. la PDF existent…"
+   },
+   "web2pdfAlwaysShow": {
+      "message": "Arată automat pentru PDF-uri"
+   },
+   "web2pdfAppendLinkContextMenu": {
+      "message": "Adăugare ţintă legătură la un PDF existent"
+   },
+   "web2pdfAppendPageContextMenu": {
+      "message": "Adăugare pagină web la un PDF existent..."
+   },
+   "web2pdfBadVersion": {
+      "message": "Această versiune de Chrome nu acceptă Adobe Acrobat. Versiunea minimă este: $version$",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfBadVersionEdge": {
+      "message": "Această versiune de Edge nu acceptă Adobe Acrobat. Versiunea minimă este: $version$",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfClickToOpen": {
+      "message": "Faceţi clic pe legătura de mai jos pentru a deschide PDF-ul în Acrobat."
+   },
+   "web2pdfConvertButtonToolTip": {
+      "message": "Acrobat Extension - Shortcut to all your PDF tools."
+   },
+   "web2pdfConvertButtonToolTipERPReader": {
+      "message": "În prezent, extensia Acrobat Reader este dezactivată. Contactați administratorul dvs. IT"
+   },
+   "web2pdfConvertButtonToolTipReader": {
+      "message": "Deschidere PDF în Acrobat Reader"
+   },
+   "web2pdfConvertLinkContextMenu": {
+      "message": "Conversie ţintă legătură în Adobe PDF"
+   },
+   "web2pdfConvertPageContextMenu": {
+      "message": "Conversie pagină web în Adobe PDF..."
+   },
+   "web2pdfCopyText": {
+      "message": "Se copiază în Acrobat"
+   },
+   "web2pdfDestinationText": {
+      "message": "Dosar destinaţie:"
+   },
+   "web2pdfDoneButtonText": {
+      "message": "Finalizat"
+   },
+   "web2pdfExtnDescription": {
+      "message": "Utilizați Acrobat în browser pentru a vizualiza, a face conversia, a comprima și a semna PDF-uri"
+   },
+   "web2pdfExtnDescriptionBeta": {
+      "message": "Utilizați Acrobat în browser pentru a vizualiza, a face conversia, a comprima și a semna PDF-uri"
+   },
+   "web2pdfExtnDescriptionChrome": {
+      "message": "Faceți mai multe lucruri în Google Chrome cu instrumentele Adobe Acrobat PDF. Vizualizați, completați, comentați, semnați și încercați instrumentele de conversie și comprimare."
+   },
+   "web2pdfExtnDescriptionEdge": {
+      "message": "Faceți mai multe  în Microsoft Edge cu Adobe Acrobat PDF. Comentați, semnați și încercați instrumentele de editare și conversie."
+   },
+   "web2pdfExtnName": {
+      "message": "Adobe Acrobat: editare fișiere PDF, conversie, instrumente de semnare"
+   },
+   "web2pdfExtnNameBeta": {
+      "message": "Adobe Acrobat Beta"
+   },
+   "web2pdfExtnNameEdge": {
+      "message": "Adobe Acrobat: editare fișiere PDF, conversie, instrumente de semnare"
+   },
+   "web2pdfExtnNameStage": {
+      "message": "Adobe Acrobat Stage"
+   },
+   "web2pdfFileLockedError": {
+      "message": "Fişierul nu poate fi salvat deoarece este folosit de alt proces."
+   },
+   "web2pdfFilename": {
+      "message": "Nume fişier:"
+   },
+   "web2pdfFrictionlessToggleDescription": {
+      "message": "Extensia Adobe Acrobat recomandă utilizarea instrumentelor PDF pentru a vă ajuta să vă realizați sarcinile. Recomandarea noastră se bazează pe căutările dvs. și apare pe dispozitiv; căutările nu sunt trimise la Adobe."
+   },
+   "web2pdfFrictionlessUrl": {
+      "message": "https://www.adobe.com/go/fl_chromeext_ro"
+   },
+   "web2pdfFrictionlessUrlEdge": {
+      "message": "https://www.adobe.com/ro/acrobat/online.html?x_api_client_id=edge_extension&x_api_client_location=trefoil&mv=other&mv2=edge_extension:trefoil&trackingid=HM85XB76"
+   },
+   "web2pdfHTMLJSError": {
+      "message": "Eroare la procesarea paginii web."
+   },
+   "web2pdfHTMLTooLarge": {
+      "message": "Conţinutul HTML este prea mare pentru a fi procesat."
+   },
+   "web2pdfInfoHoverPopup": {
+      "message": "Extensia Adobe Acrobat recomandă utilizarea instrumentelor PDF pentru a vă ajuta să vă realizați activitatea. Recomandarea noastră se bazează pe căutările dvs. și apare pe dispozitiv; căutările nu sunt trimise la Adobe. Faceți clic \u003Cspan class = \"tooltip-content-settings\">aici\u003C/span> pentru a dezactiva această funcție."
+   },
+   "web2pdfLoaderTitle": {
+      "message": "Se încarcă..."
+   },
+   "web2pdfMissingMac": {
+      "message": "Adobe Acrobat pentru Chrome nu este încă disponibil pentru Mac"
+   },
+   "web2pdfMissingMacEdge": {
+      "message": "Adobe Acrobat pentru Microsoft Edge nu este încă disponibil pentru Mac"
+   },
+   "web2pdfNoFoldersText": {
+      "message": "Nu aveţi dosare în spaţiul de stocare Acrobat DC."
+   },
+   "web2pdfNoWritePermissionOnSelectedFile": {
+      "message": "Nu aveţi permisiuni de scriere pentru fişierul selectat."
+   },
+   "web2pdfOpenButtonText": {
+      "message": "Deschidere în Acrobat"
+   },
+   "web2pdfOpenButtonTextOlder": {
+      "message": "Descărcare Adobe PDF"
+   },
+   "web2pdfOpenButtonTextReader": {
+      "message": "Deschidere în Acrobat Reader"
+   },
+   "web2pdfOpenConvertedPDFDescription": {
+      "message": "Deschideți automat fișierul PDF convertit în Acrobat după finalizarea conversiei paginii web în format PDF."
+   },
+   "web2pdfOpenConvertedPDFTitle": {
+      "message": "Deschideți automat fișierele PDF convertite în Acrobat"
+   },
+   "web2pdfOpenInDCButtonText": {
+      "message": "Des. PDF în Acrobat"
+   },
+   "web2pdfOptOut": {
+      "message": "Pentru a îmbunătăți caracteristicile produsului, această extensie trimite către Adobe informații despre modul în care îl utilizați."
+   },
+   "web2pdfOptOutDisabled": {
+      "message": "Nu se partajează niciuna dintre datele de utilizare."
+   },
+   "web2pdfOptions": {
+      "message": "Opţiuni"
+   },
+   "web2pdfOptionsTitle": {
+      "message": "Preferinţe Adobe Acrobat"
+   },
+   "web2pdfPDFOpenFailed": {
+      "message": "Eroare la deschiderea PDF-ului"
+   },
+   "web2pdfPDFOpenFailedv2": {
+      "message": "Deschiderea fișierului a eșuat"
+   },
+   "web2pdfPDFOpened": {
+      "message": "PDF deschis"
+   },
+   "web2pdfPDFOpening": {
+      "message": "Se deschide PDF-ul"
+   },
+   "web2pdfPreferencesButtonText": {
+      "message": "Preferinţe..."
+   },
+   "web2pdfPreferencesNewText": {
+      "message": "Setări de conversie..."
+   },
+   "web2pdfPrivacy": {
+      "message": "Despre Adobe Acrobat"
+   },
+   "web2pdfReplaceWarning": {
+      "message": "există deja.\nDoriţi să înlocuiţi?"
+   },
+   "web2pdfSave": {
+      "message": "Salvare"
+   },
+   "web2pdfSaveButton": {
+      "message": "Salvați preferințele"
+   },
+   "web2pdfShowPDFTools": {
+      "message": "Afișați cu rezultatele căutării Google"
+   },
+   "web2pdfShowPDFViewerOption": {
+      "message": "Utilizați Acrobat ca vizualizator de fișiere PDF implicit"
+   },
+   "web2pdfShowPersistentOpen": {
+      "message": "Afișare \"Deschidere în Acrobat\""
+   },
+   "web2pdfShowPersistentOpenAlways": {
+      "message": "Afișare permanentă \"Deschidere în Acrobat\""
+   },
+   "web2pdfShowPersistentOpenDescription": {
+      "message": "Afișați opțiunea pentru a deschide fișierul PDF în Acrobat de fiecare dată."
+   },
+   "web2pdfStatusCancelled": {
+      "message": "Conversie anulată"
+   },
+   "web2pdfStatusComplete": {
+      "message": "Conversie reuşită"
+   },
+   "web2pdfStatusDownloading": {
+      "message": "Se descarcă pentru conversie..."
+   },
+   "web2pdfStatusDownloadingPDF": {
+      "message": "Descărcare PDF"
+   },
+   "web2pdfStatusFailure": {
+      "message": "Conversie nereuşită"
+   },
+   "web2pdfStatusInProgress": {
+      "message": "Conversie în curs..."
+   },
+   "web2pdfStatusUnknownFailure": {
+      "message": "Eroare necunoscută"
+   },
+   "web2pdfStatusWaiting": {
+      "message": "Se aşteaptă conversia..."
+   },
+   "web2pdfTitle": {
+      "message": "Adobe Acrobat"
+   },
+   "web2pdfUnsupportedAcrobatVersion": {
+      "message": "Nu a putut fi găsită o versiune acceptată de Acrobat. Instalaţi o \u003Ca target='_blank' href='https://acrobat.adobe.com/ro/en/free-trial-download.html?trackingid=29NMCS7T&mv=other'>versiune de probă gratuită de 7 de zile\u003C/a>."
+   },
+   "web2pdfUntitledFileName": {
+      "message": "fără titlu"
+   },
+   "webpagePDFConversion": {
+      "message": "Setări de convertire pagini web în PDF"
+   },
+   "webpagePDFConversionDescription": {
+      "message": "Atunci când salvaţi pagini web ca PDF, puteţi configura margini, fonturi şi alte detalii de aspect."
+   }
+}

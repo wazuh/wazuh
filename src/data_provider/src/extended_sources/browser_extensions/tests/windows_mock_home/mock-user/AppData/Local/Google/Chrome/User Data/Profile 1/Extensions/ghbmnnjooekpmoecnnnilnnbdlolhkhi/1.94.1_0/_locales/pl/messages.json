@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "UTWÓRZ NOWY"
+   },
+   "explanationofflinedisabled": {
+      "message": "Jesteś offline. Aby korzystać z Dokumentów Google bez połączenia internetowego, otwórz ustawienia na stronie głównej Dokumentów Google i włącz synchronizację offline następnym razem, gdy będziesz mieć dostęp do internetu."
+   },
+   "explanationofflineenabled": {
+      "message": "Jesteś offline, ale nadal możesz edytować dostępne pliki i tworzyć nowe."
+   },
+   "extdesc": {
+      "message": "Edytuj, twórz i wyświetlaj swoje dokumenty, arkusze kalkulacyjne oraz prezentacje bez konieczności łączenia się z internetem."
+   },
+   "extname": {
+      "message": "Dokumenty Google offline"
+   },
+   "learnmore": {
+      "message": "Więcej informacji"
+   },
+   "popuphelptext": {
+      "message": "Pisz, edytuj i współpracuj, gdziekolwiek jesteś – niezależnie od tego, czy masz połączenie z internetem."
+   }
+}
