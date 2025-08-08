@@ -822,10 +822,10 @@ checks:
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
-    rules:
-      - "c:systemctl is-enabled apport.service -> r:disabled"
+     rules:
+      - "c:systemctl is-enabled apport.service -> r:disabled|masked"
       - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
-      - "not c:systemctl is-active apport.service -> r:active"
+      - "c:systemctl is-active apport.service -> r:inactive"
 
   # 1.6.1 Ensure message of the day is configured properly. (Automated)
   - id: 28537
