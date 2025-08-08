@@ -10,26 +10,25 @@
 #pragma once
 
 #include "ichrome_extensions_wrapper.hpp"
-#include <pwd.h>
+// #include <pwd.h>
 
 class ChromeExtensionsWrapper : public IChromeExtensionsWrapper
 {
     public:
         std::string getHomePath() override
         {
-            return std::string("/Users");
+            return std::string("C:\\Users");
         }
 
-        std::string getUserId(std::string user) override
-        {
-            std::string uid = "";
-            struct passwd* pwd = getpwnam(user.c_str());
+        // std::string getUserId(std::string user) override
+        // {
+        //   std::string uid = "";
+        //   struct passwd* pwd = getpwnam(user.c_str());
+        //   if (pwd != nullptr)
+        //   {
+        //     uid = std::to_string(pwd->pw_uid);
+        //   }
 
-            if (pwd != nullptr)
-            {
-                uid = std::to_string(pwd->pw_uid);
-            }
-
-            return uid;
-        }
+        //   return uid;
+        // }
 };
