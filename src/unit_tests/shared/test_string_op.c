@@ -1082,6 +1082,34 @@ void test_print_hex_string_null_dst_err(void ** state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
+void test_os_substr_negative_length(void **state){
+    char src[120] = "TEST";
+    char dest[120];
+    int result = os_substr(dest,src,5,-2);
+    assert_int_equal(result,-3);
+}
+
+void test_os_substr_src_length_minor_than_position(void **state){
+    char src[120] = "TEST";
+    char dest[120];
+    int result = os_substr(dest,src,5,4);
+    assert_int_equal(result,-1);
+}
+
+void test_os_substr_null_src(void **state){
+    char dest[120];
+    int result = os_substr(dest, NULL, 0, 5);
+    assert_int_equal(result, -2);
+}
+
+void test_os_substr_success(void **state){
+    char src[120] = "TEST STRING";
+    char dest[120];
+    int result = os_substr(dest, src, 0, 4);
+    assert_int_equal(result, 0);
+    assert_string_equal(dest, "TEST");
+}
+
 /* Tests */
 
 int main(void) {
@@ -1200,7 +1228,11 @@ int main(void) {
         cmocka_unit_test(test_print_hex_string_miss_last_dest_ok),
         cmocka_unit_test(test_print_hex_string_null_src_err),
         cmocka_unit_test(test_print_hex_string_null_dst_err),
-
+        // Test substr_os
+        cmocka_unit_test(test_os_substr_negative_length),
+        cmocka_unit_test(test_os_substr_src_length_minor_than_position),
+        cmocka_unit_test(test_os_substr_null_src),
+        cmocka_unit_test(test_os_substr_success),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
