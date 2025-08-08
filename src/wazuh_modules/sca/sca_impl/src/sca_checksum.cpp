@@ -37,23 +37,23 @@ namespace sca
                                   const std::string& rules)
     {
         // Calculate required buffer size
-        int size = std::snprintf(nullptr,
-                                 0,
-                                 "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
-                                 id.c_str(),
-                                 policyId.c_str(),
-                                 name.c_str(),
-                                 description.c_str(),
-                                 rationale.c_str(),
-                                 remediation.c_str(),
-                                 refs.c_str(),
-                                 condition.c_str(),
-                                 compliance.c_str(),
-                                 rules.c_str());
+        const auto size = std::snprintf(nullptr,
+                                        0,
+                                        "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+                                        id.c_str(),
+                                        policyId.c_str(),
+                                        name.c_str(),
+                                        description.c_str(),
+                                        rationale.c_str(),
+                                        remediation.c_str(),
+                                        refs.c_str(),
+                                        condition.c_str(),
+                                        compliance.c_str(),
+                                        rules.c_str());
 
         if (size < 0)
         {
-            return "";
+            throw std::runtime_error{"Error calculating checksum size."};
         }
 
         // Allocate buffer and format the string
@@ -83,7 +83,7 @@ namespace sca
         }
         catch (const std::exception& e)
         {
-            return "";
+            throw std::runtime_error{"Error calculating checksum: " + std::string(e.what())};
         }
     }
 
