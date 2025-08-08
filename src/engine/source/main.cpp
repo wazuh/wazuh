@@ -459,7 +459,6 @@ int main(int argc, char* argv[])
             {
                 // TODO queueFloodFile, queueFloodAttempts, queueFloodSleep -> Move to Queue.flood options
                 eventQueue = std::make_shared<QEventType>(confManager.get<int>(conf::key::QUEUE_SIZE),
-                                                          "routerEventQueue",
                                                           confManager.get<std::string>(conf::key::QUEUE_FLOOD_FILE),
                                                           confManager.get<int>(conf::key::QUEUE_FLOOD_ATTEMPS),
                                                           confManager.get<int>(conf::key::QUEUE_FLOOD_SLEEP),
@@ -468,7 +467,7 @@ int main(int argc, char* argv[])
             }
 
             {
-                testQueue = std::make_shared<QTestType>(confManager.get<int>(conf::key::QUEUE_SIZE), "routerTestQueue");
+                testQueue = std::make_shared<QTestType>(confManager.get<int>(conf::key::QUEUE_SIZE));
                 LOG_DEBUG("Test queue created.");
             }
 
