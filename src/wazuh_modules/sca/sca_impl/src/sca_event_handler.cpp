@@ -1,3 +1,4 @@
+#include <sca_checksum.hpp>
 #include <sca_event_handler.hpp>
 
 #include <dbsync.hpp>
@@ -67,6 +68,19 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     auto policyData = GetPolicyById(policyId);
     auto checkData = GetPolicyCheckById(checkId);
     checkData["result"] = checkResult;
+
+    try
+    {
+        const auto checksum = sca::calculateChecksum(checkData);
+        checkData["checksum"] = checksum;
+    }
+    catch (const std::exception& e)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR,
+                                         "Failed to calculate checksum for check result: " + std::string(e.what()));
+
+        return;
+    }
 
     auto updateResultQuery = SyncRowQuery::builder().table("sca_check").data(checkData).returnOldData().build();
 
@@ -172,7 +186,8 @@ std::vector<nlohmann::json> SCAEventHandler::GetChecksForPolicy(const std::strin
     const std::string filter = "WHERE policy_id = '" + policyId + "'";
     auto selectQuery = SelectQuery::builder()
                            .table("sca_check")
-                           .columnList({"id",
+                           .columnList({"checksum",
+                                        "id",
                                         "policy_id",
                                         "name",
                                         "description",
@@ -243,7 +258,8 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
     const std::string filter = "WHERE id = '" + policyCheckId + "'";
     auto selectQuery = SelectQuery::builder()
                            .table("sca_check")
-                           .columnList({"id",
+                           .columnList({"checksum",
+                                        "id",
                                         "policy_id",
                                         "name",
                                         "description",
@@ -293,7 +309,7 @@ nlohmann::json SCAEventHandler::ProcessStateful(const nlohmann::json& event) con
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_ERROR,"Stateful event does not contain check");
+            LoggingHelper::getInstance().log(LOG_ERROR, "Stateful event does not contain check");
             return {};
         }
 
@@ -310,7 +326,7 @@ nlohmann::json SCAEventHandler::ProcessStateful(const nlohmann::json& event) con
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_ERROR,"Stateful event does not contain policy");
+            LoggingHelper::getInstance().log(LOG_ERROR, "Stateful event does not contain policy");
             return {};
         }
 
@@ -456,14 +472,14 @@ void SCAEventHandler::PushStateful(const nlohmann::json& event, const nlohmann::
         {"type", "stateful"},
         {"event", metadata["operation"] == "delete" ? nlohmann::json::object() : event},
         {"module", metadata["module"]},
-        {"metadata", metadata}
-    };
+        {"metadata", metadata}};
 
     const auto statefulMessage = statefulJson.dump();
 
     m_pushMessage(statefulMessage);
 
-    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + event.dump() + ", metadata " + metadata.dump());
+    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE,
+                                     "Stateful event queued: " + event.dump() + ", metadata " + metadata.dump());
 }
 
 void SCAEventHandler::PushStateless(const nlohmann::json& event, const nlohmann::json& metadata) const
@@ -474,16 +490,13 @@ void SCAEventHandler::PushStateless(const nlohmann::json& event, const nlohmann:
     }
 
     const nlohmann::json statelessJson = {
-        {"type", "stateless"},
-        {"event", event},
-        {"module", metadata["module"]},
-        {"metadata", metadata}
-    };
+        {"type", "stateless"}, {"event", event}, {"module", metadata["module"]}, {"metadata", metadata}};
 
     const auto statelessMessage = statelessJson.dump();
 
     m_pushMessage(statelessMessage);
-    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateless event queued: " + event.dump() + ", metadata " + metadata.dump());
+    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE,
+                                     "Stateless event queued: " + event.dump() + ", metadata " + metadata.dump());
 }
 
 nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) const
