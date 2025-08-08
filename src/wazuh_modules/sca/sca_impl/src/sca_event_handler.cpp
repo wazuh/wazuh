@@ -333,7 +333,16 @@ nlohmann::json SCAEventHandler::ProcessStateful(const nlohmann::json& event) con
         NormalizeCheck(check);
         NormalizePolicy(policy);
 
-        jsonEvent = {{"policy", policy}, {"check", check}, {"timestamp", Utils::getCurrentISO8601()}};
+        // Modify where the checksum is stored in the json structured to what the server expects
+        nlohmann::json checksumObj = nlohmann::json::object();
+
+        if (check.contains("checksum") && !check["checksum"].empty())
+        {
+            checksumObj = {{"hash", {{"sha1", check["checksum"]}}}};
+            check.erase("checksum");
+        }
+
+        jsonEvent = {{"checksum", checksumObj}, {"check", check}, {"policy", policy}};
         jsonMetadata = {{"id", CalculateHashId(jsonEvent)},
                         {"operation", STATEFUL_OPERATION_MAP.at(event["result"])},
                         {"module", "sca"}};
