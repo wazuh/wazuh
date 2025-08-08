@@ -118,7 +118,7 @@ void fim_initialize() {
         .send_binary = fim_send_binary_msg
     };
 
-    syscheck.sync_handle = asp_create("fim", &mq_funcs);
+    syscheck.sync_handle = asp_create("fim", &mq_funcs, loggingFunction);
     if (!syscheck.sync_handle) {
         merror_exit("Failed to initialize AgentSyncProtocol");
     }

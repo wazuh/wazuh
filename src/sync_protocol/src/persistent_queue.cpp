@@ -9,6 +9,7 @@
 
 #include "persistent_queue.hpp"
 #include "persistent_queue_storage.hpp"
+#include "logging_helper.hpp"
 
 #include <algorithm>
 
@@ -21,7 +22,7 @@ PersistentQueue::PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storag
     }
     catch (const std::exception& ex)
     {
-        std::cerr << "[PersistentQueue] Error on DB: " << ex.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error on DB: ") + ex.what());
         throw;
     }
 }
@@ -42,7 +43,7 @@ void PersistentQueue::submit(const std::string& id,
     }
     catch (const std::exception& ex)
     {
-        std::cerr << "[PersistentQueue] Error persisting message: " << ex.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error persisting message: ") + ex.what());
         throw;
     }
 }

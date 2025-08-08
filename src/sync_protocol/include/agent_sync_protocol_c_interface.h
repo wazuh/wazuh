@@ -1,8 +1,19 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #pragma once
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "logging_helper.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,6 +42,12 @@ typedef int (*mq_start_fn)(const char* key, short type, short attempts);
 /// @return Integer status code (0 on success, non-zero on failure).
 typedef int (*mq_send_binary_fn)(int queue, const void* message, size_t message_len, const char* locmsg, char loc);
 
+
+/// @brief Callback type for logging messages from the AgentSyncProtocol.
+/// @param level Logging level of the message (e.g., LOG_ERROR, LOG_INFO, LOG_DEBUG).
+/// @param log   Null-terminated string containing the log message.
+typedef void (*asp_logger_t)(modules_log_level_t level, const char* log);
+
 /// @brief Struct containing function pointers for MQ operations.
 ///
 /// This structure provides the implementation of MQ start and send operations.
@@ -47,8 +64,9 @@ typedef struct MQ_Functions
 ///
 /// @param module Name of the module associated with this instance.
 /// @param mq_funcs Pointer to a MQ_Functions struct containing the MQ callbacks.
+/// @param logger Callback function used for logging messages.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const MQ_Functions* mq_funcs);
+AgentSyncProtocolHandle* asp_create(const char* module, const MQ_Functions* mq_funcs, asp_logger_t logger);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///
