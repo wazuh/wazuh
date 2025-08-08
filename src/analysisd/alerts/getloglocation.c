@@ -65,6 +65,56 @@ void OS_InitLog()
     umask(0027);
 }
 
+void ensure_path(const char *path, mode_t desired_mode, const char *username, const char *groupname) {
+    struct stat st;
+    uid_t owner_uid = Privsep_GetUser(username);
+    gid_t owner_gid = Privsep_GetGroup(groupname);
+
+    // Validate user and group ID conversion
+    if (owner_uid == (uid_t)OS_INVALID || owner_gid == (gid_t)OS_INVALID) {
+        merror_exit("Invalid user or group name provided.");
+    }
+
+    // Attempt to create the target directory
+    if (mkdir(path, desired_mode) != 0) {
+        if (errno != EEXIST) {
+            merror_exit("Error creating directory '%s': %s", path, strerror(errno));
+        }
+    }
+
+    // Check if directory exists and get current permissions and ownership
+    int fd = open(path, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+    if (fd < 0) {
+        merror_exit("Error opening directory '%s': %s", path, strerror(errno));
+    }
+
+    // Stat via descriptor
+    if (fstat(fd, &st) != 0) {
+        close(fd);
+        merror_exit("Error stating directory '%s': %s", path, strerror(errno));
+    }
+
+    // Securely apply permissions
+    if ((st.st_mode & 0777) != desired_mode) {
+        mwarn("Directory '%s' had incorrect permissions, correcting to %04o", path, desired_mode);
+
+        if (fchmod(fd, desired_mode) != 0) {
+            close(fd);
+            merror_exit("Error setting permissions for directory '%s': %s", path, strerror(errno));
+        }
+    }
+
+    // Adjust ownership if necessary
+    if (st.st_uid != owner_uid || st.st_gid != owner_gid) {
+        if (fchown(fd, owner_uid, owner_gid) != 0) {
+            close(fd);
+            merror_exit("Error setting ownership for directory '%s': %s", path, strerror(errno));
+        }
+    }
+
+    close(fd);
+}
+
 int OS_GetLogLocation(int day,int year,char *mon)
 {
     /* Check what directories to create
@@ -73,6 +123,10 @@ int OS_GetLogLocation(int day,int year,char *mon)
      */
 
     /* For the events */
+
+    /* Ensure path exists with proper permissions. Default; 0750 wazuh:wazuh */
+    ensure_path(EVENTS,0750,USER,GROUPGLOBAL);
+
     _eflog = openlog(_eflog, __elogfile, EVENTS, year, mon, "archive", day, "log", EVENTS_DAILY, &__ecounter, FALSE);
 
     /* For the events in JSON */
@@ -81,6 +135,10 @@ int OS_GetLogLocation(int day,int year,char *mon)
     }
 
     /* For the alerts logs */
+
+    /* Ensure path exists with proper permissions. Default; 0750 wazuh:wazuh */
+    ensure_path(ALERTS,0750,USER,GROUPGLOBAL);
+
     _aflog = openlog(_aflog, __alogfile, ALERTS, year, mon, "alerts", day, "log", ALERTS_DAILY, &__acounter, FALSE);
 
     if (Config.jsonout_output) {
@@ -88,6 +146,10 @@ int OS_GetLogLocation(int day,int year,char *mon)
     }
 
     /* For the firewall events */
+
+    /* Ensure path exists with proper permissions. Default; 0750 wazuh:wazuh */
+    ensure_path(FWLOGS,0750,USER,GROUPGLOBAL);
+
     _fflog = openlog(_fflog, __flogfile, FWLOGS, year, mon, "firewall", day, "log", FWLOGS_DAILY, &__fcounter, FALSE);
 
     /* Setting the new day */
