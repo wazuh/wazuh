@@ -17,5 +17,5 @@ class IChromeExtensionsWrapper
         /// Destructor
         virtual ~IChromeExtensionsWrapper() = default;
         virtual std::string getHomePath() = 0;
-        virtual std::string getUserId(std::string user) = 0;
+        // virtual std::string getUserId(std::string user) = 0;
 };

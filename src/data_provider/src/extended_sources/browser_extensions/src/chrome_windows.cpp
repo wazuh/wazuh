@@ -7,7 +7,7 @@
  * Foundation.
  */
 
-#include "chrome_darwin.hpp"
+#include "chrome_windows.hpp"
 #include <tuple>
 #include <iostream>
 #include <fstream>
@@ -528,10 +528,11 @@ namespace chrome
                 continue;
             }
 
-            m_currentUid = m_chromeExtensionsWrapper->getUserId(user);
+            // m_currentUid = m_chromeExtensionsWrapper->getUserId(user);
+            m_currentUid = "123";
             const std::string userHomePath = Utils::joinPaths(homePath, user);
 
-            for (const auto& browser : kMacOsPathList)
+            for (const auto& browser : kWindowsPathList)
             {
                 std::string browserPath = std::get<1>(browser);
                 const std::string profilePath = Utils::joinPaths(userHomePath, browserPath);
