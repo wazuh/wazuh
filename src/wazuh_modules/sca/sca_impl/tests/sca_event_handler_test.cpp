@@ -186,7 +186,8 @@ TEST_F(SCAEventHandlerTest, GetChecksForPolicy)
     const nlohmann::json expectedQuery = {{"table", "sca_check"},
                                           {"query",
                                            {{"column_list",
-                                             {"id",
+                                             {"checksum",
+                                              "id",
                                               "policy_id",
                                               "name",
                                               "description",
@@ -222,7 +223,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput1)
 {
     const nlohmann::json input = {{"check",
                                    {{"new",
-                                     {{"id", "chk1"},
+                                     {{"checksum", "abc123"},
+                                      {"id", "chk1"},
                                       {"name", "Ensure firewall is active"},
                                       {"description", "Verifies that the firewall is running"},
                                       {"rationale", "Security best practices"},
@@ -250,6 +252,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput1)
     auto event = output["event"];
     auto metadata = output["metadata"];
 
+    EXPECT_EQ(event["check"]["checksum"], "abc123");
     EXPECT_EQ(event["check"]["id"], "chk1");
     EXPECT_EQ(event["check"]["name"], "Ensure firewall is active");
     EXPECT_EQ(event["check"]["description"], "Verifies that the firewall is running");
@@ -278,7 +281,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput1)
 TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput2)
 {
     const nlohmann::json input = {{"check",
-                                   {{"id", "chk1"},
+                                   {{"checksum", "abc123"},
+                                    {"id", "chk1"},
                                     {"name", "Ensure firewall is active"},
                                     {"description", "Verifies that the firewall is running"},
                                     {"rationale", "Security best practices"},
@@ -305,6 +309,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput2)
     auto event = output["event"];
     auto metadata = output["metadata"];
 
+    EXPECT_EQ(event["check"]["checksum"], "abc123");
     EXPECT_EQ(event["check"]["id"], "chk1");
     EXPECT_EQ(event["check"]["name"], "Ensure firewall is active");
     EXPECT_EQ(event["check"]["description"], "Verifies that the firewall is running");
@@ -342,7 +347,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_InvalidInput1)
 TEST_F(SCAEventHandlerTest, ProcessStateful_InvalidInput2)
 {
     const nlohmann::json input = {{"check",
-                                   {{"id", "chk1"},
+                                   {{"checksum", "abc123"},
+                                    {"id", "chk1"},
                                     {"name", "Ensure firewall is active"},
                                     {"description", "Verifies that the firewall is running"},
                                     {"rationale", "Security best practices"},
@@ -358,7 +364,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
     // Input data with shorter, placeholder values
     const nlohmann::json input = {{"check",
                                    {{"new",
-                                     {{"id", "chk1"},
+                                     {{"checksum", "abc123"},
+                                      {"id", "chk1"},
                                       {"result", "passed"},
                                       {"compliance", {"cis:1.1", "cis_csc:13", "pci_dss:2.2", "tsc:CC6"}},
                                       {"condition", "all"},
@@ -391,6 +398,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
     auto event = output["event"];
     auto metadata = output["metadata"];
 
+    ASSERT_TRUE(event["check"].contains("checksum"));
     ASSERT_TRUE(event["check"].contains("id"));
     ASSERT_TRUE(event["check"].contains("result"));
     ASSERT_TRUE(event["check"].contains("previous"));
@@ -423,7 +431,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
 TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
 {
     const nlohmann::json input = {{"check",
-                                   {{"id", "chk1"},
+                                   {{"checksum", "abc123"},
+                                    {"id", "chk1"},
                                     {"result", "failed"},
                                     {"compliance", {"cis:1.2", "pci_dss:1.1"}},
                                     {"condition", "any"},
@@ -449,6 +458,9 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
 
     auto event = output["event"];
     auto metadata = output["metadata"];
+
+    ASSERT_TRUE(event["check"].contains("checksum"));
+    EXPECT_EQ(event["check"]["checksum"], "abc123");
 
     ASSERT_TRUE(event["check"].contains("id"));
     EXPECT_EQ(event["check"]["id"], "chk1");

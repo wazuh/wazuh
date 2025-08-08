@@ -25,6 +25,7 @@ constexpr auto POLICY_SQL_STATEMENT {
 
 constexpr auto CHECK_SQL_STATEMENT {
     R"(CREATE TABLE IF NOT EXISTS sca_check (
+    checksum TEXT NOT NULL,
     id TEXT PRIMARY KEY,
     policy_id TEXT REFERENCES sca_policy(id),
     name TEXT,
