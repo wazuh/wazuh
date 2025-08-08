@@ -13,7 +13,7 @@ list(APPEND tests_names "test_wm_ms_graph")
 list(APPEND tests_flags "-Wl,--wrap=_merror -Wl,--wrap=_mtinfo -Wl,--wrap=_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap=_mterror -Wl,--wrap,wurl_http_request \
                         -Wl,--wrap,atexit -Wl,--wrap,time -Wl,--wrap,wm_state_io -Wl,--wrap,StartMQ -Wl,--wrap,gmtime_r -Wl,--wrap,isDebug \
                         -Wl,--wrap,sched_scan_get_time_until_next_scan -Wl,--wrap,is_fim_shutdown -Wl,--wrap,fim_db_teardown -Wl,--wrap,Start_win32_Syscheck \
-                        -Wl,--wrap,strftime -Wl,--wrap,_mtdebug2 -Wl,--wrap,wm_sendmsg -Wl,--wrap,strerror -Wl,--wrap,_imp__rsync_initialize \
+                        -Wl,--wrap,strftime -Wl,--wrap,_mtdebug2 -Wl,--wrap,wm_sendmsg -Wl,--wrap,strerror \
                         -Wl,--wrap,syscom_dispatch -Wl,--wrap,_imp__dbsync_initialize -Wl,--wrap,w_get_timestamp -Wl,--wrap,os_random -Wl,--wrap,FOREVER")
 
 

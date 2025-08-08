@@ -212,7 +212,7 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromBerkleyDB)
     CallbackMock wrapper;
 
     auto expectedPackage1 =
-        R"({"architecture":"amd64","description":"The Open Source Security Platform","format":"rpm","groups":"test","install_time":"5","name":"Wazuh","size":321,"vendor":"The Wazuh Team","version":"123:4.4-1","location":" ","priority":" ","source":" "})"_json;
+        R"({"architecture":"amd64","description":"The Open Source Security Platform","type":"rpm","category":"test","installed":"5","name":"Wazuh","size":321,"vendor":"The Wazuh Team","version":"123:4.4-1","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
@@ -370,7 +370,7 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFromLibRPM)
     CallbackMock wrapper;
 
     auto expectedPackage1 =
-        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm","location":" ","priority":" ","source":" "})"_json;
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","installed":"9","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto rpm_mock { std::make_unique<RpmLibMock>() };
@@ -428,9 +428,9 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromLibRPM)
     CallbackMock wrapper;
 
     auto expectedPackage1 =
-        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm","location":" ","priority":" ","source":" "})"_json;
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","installed":"9","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
     auto expectedPackage2 =
-        R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm","location":" ","priority":" ","source":" "})"_json;
+        R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","installed":"19","category":"20","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto rpm_mock { std::make_unique<RpmLibMock>() };
@@ -456,9 +456,9 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBConfigError)
     CallbackMock wrapper;
 
     auto expectedPackage1 =
-        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm","location":" ","priority":" ","source":" "})"_json;
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","installed":"9","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
     auto expectedPackage2 =
-        R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm","location":" ","priority":" ","source":" "})"_json;
+        R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","installed":"19","category":"20","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
@@ -485,9 +485,9 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBOpenError)
     CallbackMock wrapper;
 
     auto expectedPackage1 =
-        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm","location":" ","priority":" ","source":" "})"_json;
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","installed":"9","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
     auto expectedPackage2 =
-        R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm","location":" ","priority":" ","source":" "})"_json;
+        R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","installed":"19","category":"20","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };
@@ -523,9 +523,9 @@ TEST(SysInfoPackageLinuxParserRPM_test, rpmFallbackFromBerkleyDBCursorError)
     CallbackMock wrapper;
 
     auto expectedPackage1 =
-        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","install_time":"9","groups":"10","format":"rpm","location":" ","priority":" ","source":" "})"_json;
+        R"({"name":"1","architecture":"2","description":"3","size":4,"version":"5:7-6","vendor":"8","installed":"9","category":"10","type":"rpm","path":" ","priority":" ","source":" "})"_json;
     auto expectedPackage2 =
-        R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","install_time":"19","groups":"20","format":"rpm","location":" ","priority":" ","source":" "})"_json;
+        R"({"name":"11","architecture":"12","description":"13","size":14,"version":"15:17-16","vendor":"18","installed":"19","category":"20","type":"rpm","path":" ","priority":" ","source":" "})"_json;
 
     auto utils_mock { std::make_unique<UtilsMock>() };
     auto libdb_mock { std::make_unique<LibDBMock>() };

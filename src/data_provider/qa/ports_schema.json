@@ -8,11 +8,11 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "inode": {
+                    "file_inode": {
                         "type": "integer",
                         "minimum": 0
                     },
-                    "local_ip": {
+                    "source_ip": {
                         "type": "string",
                         "anyOf": [
                             {
@@ -23,18 +23,18 @@
                             }
                         ]
                     },
-                    "local_port": {
+                    "source_port": {
                         "type": "integer",
                         "minimum": 0
                     },
-                    "pid": {
+                    "process_pid": {
                         "type": "integer",
                         "minimum": 0
                     },
-                    "process": {
+                    "process_name": {
                         "type": "string"
                     },
-                    "protocol": {
+                    "network_transport": {
                         "type": "string",
                         "enum": [
                             "udp",
@@ -43,7 +43,7 @@
                             "tcp6"
                         ]
                     },
-                    "remote_ip": {
+                    "destination_ip": {
                         "type": "string",
                         "anyOf": [
                             {
@@ -54,34 +54,34 @@
                             }
                         ]
                     },
-                    "remote_port": {
+                    "destination_port": {
                         "type": "integer",
                         "minimum": 0
                     },
-                    "rx_queue": {
+                    "host_network_ingress_queue": {
                         "type": "integer",
                         "minimum": 0
                     },
-                    "state": {
+                    "interface_state": {
                         "type": "string"
                     },
-                    "tx_queue": {
+                    "host_network_egress_queue": {
                         "type": "integer",
                         "minimum": 0
                     }
                 },
                 "required": [
-                    "inode",
-                    "local_ip",
-                    "local_port",
-                    "pid",
-                    "process",
-                    "protocol",
-                    "remote_ip",
-                    "remote_port",
-                    "rx_queue",
-                    "state",
-                    "tx_queue"
+                    "file_inode",
+                    "source_ip",
+                    "source_port",
+                    "process_pid",
+                    "process_name",
+                    "network_transport",
+                    "destination_ip",
+                    "destination_port",
+                    "host_network_ingress_queue",
+                    "interface_state",
+                    "host_network_egress_queue"
                 ]
             }
         }

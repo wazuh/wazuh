@@ -35,7 +35,7 @@ set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl
                             -Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_GetHost \
                             -Wl,--wrap,send_msg -Wl,--wrap,recv -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,fseek \
                             -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
-                            -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                            -Wl,--wrap=_imp__dbsync_initialize \
                             -Wl,--wrap,fprintf -Wl,--wrap,fflush -Wl,--wrap,ReadSecMSG -Wl,--wrap,wnet_select \
                             -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_SendUDPbySize -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,w_calloc_expression_t -Wl,--wrap,w_expression_compile -Wl,--wrap,w_expression_match \
@@ -51,7 +51,7 @@ if(${TARGET} STREQUAL "winagent")
 list(APPEND client-agent_flags "-Wl,--wrap,control_check_connection,--wrap,OS_SendUnix,--wrap,OS_RecvUnix \
                                 -Wl,--wrap,strftime -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
-                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=getsockname -Wl,--wrap,get_ipv4_string -Wl,--wrap,get_ipv6_string \
                                 -Wl,--wrap,sleep,--wrap,w_rotate_log,--wrap,getpid,--wrap,time ${DEBUG_OP_WRAPPERS}")
 else()
@@ -69,7 +69,7 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap,cJSON_AddItemToObject@12 -Wl,--wrap,cJSON_AddStringToObject@12 \
                                     -Wl,--wrap,cJSON_Delete@4 -Wl,--wrap,strftime -Wl,--wrap=syscom_dispatch \
                                     -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
-                                    -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize \
+                                    -Wl,--wrap=_imp__dbsync_initialize \
                                     -Wl,--wrap,cJSON_PrintUnformatted@4 -Wl,--wrap,w_agentd_get_buffer_lenght \
                                     -Wl,--wrap,cJSON_AddBoolToObject@12 -Wl,--enable-stdcall-fixup ${DEBUG_OP_WRAPPERS}")
 else()
@@ -84,7 +84,7 @@ list(APPEND client-agent_names "test_buffer")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap=syscom_dispatch \
                                 -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
-                                -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize")
+                                -Wl,--wrap=_imp__dbsync_initialize")
 else()
 list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                                 -Wl,--wrap,getDefine_Int -Wl,--wrap,_minfo -Wl,--wrap,_mwarn")

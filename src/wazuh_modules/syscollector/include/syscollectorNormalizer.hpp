@@ -8,8 +8,9 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
-#ifndef _SYSCOLLECTOR_NORMALIZER_H
-#define _SYSCOLLECTOR_NORMALIZER_H
+
+#pragma once
+
 #include <json.hpp>
 #include <string>
 #include <map>
@@ -31,6 +32,3 @@ class SysNormalizer
         const std::map<std::string, nlohmann::json> m_typeExclusions;
         const std::map<std::string, nlohmann::json> m_typeDictionary;
 };
-
-
-#endif //_SYSCOLLECTOR_NORMALIZER_H

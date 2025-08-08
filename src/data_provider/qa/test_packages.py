@@ -115,8 +115,8 @@ def validate_packages_json(json_data):
         # If the validation fails, print the error message
         if len(e.absolute_path) >= 3:
             pkg_name=json_data['packages'][e.absolute_path[1]]['name']
-            pkg_format=json_data['packages'][e.absolute_path[1]]['format']
-            pytest.fail(f"The output for package '{pkg_name}' with format '{pkg_format}' does not comply with the schema, in the field '{e.absolute_path[2]}': {e}")
+            pkg_format=json_data['packages'][e.absolute_path[1]]['type']
+            pytest.fail(f"The output for package '{pkg_name}' with type '{pkg_format}' does not comply with the schema, in the field '{e.absolute_path[2]}': {e}")
         else:
             pytest.fail(f"The output does not comply with the schema: {e}")
 

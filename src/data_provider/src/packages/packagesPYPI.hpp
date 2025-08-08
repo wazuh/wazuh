@@ -42,16 +42,16 @@ class PYPI final : public TFileSystem, public TFileIO
             // Parse the METADATA file
             nlohmann::json packageInfo;
 
-            packageInfo["groups"] = UNKNOWN_VALUE;
+            packageInfo["category"] = UNKNOWN_VALUE;
             packageInfo["description"] = UNKNOWN_VALUE;
             packageInfo["architecture"] = UNKNOWN_VALUE;
-            packageInfo["format"] = "pypi";
+            packageInfo["type"] = "pypi";
             packageInfo["source"] = UNKNOWN_VALUE;
-            packageInfo["location"] = path.string();
+            packageInfo["path"] = path.string();
             packageInfo["priority"] = UNKNOWN_VALUE;
             packageInfo["size"] = 0;
             packageInfo["vendor"] = UNKNOWN_VALUE;
-            packageInfo["install_time"] = UNKNOWN_VALUE;
+            packageInfo["installed"] = UNKNOWN_VALUE;
             // The multiarch field won't have a default value
 
             TFileIO::readLineByLine(path,

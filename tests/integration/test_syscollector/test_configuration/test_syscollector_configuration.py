@@ -459,8 +459,8 @@ def test_syscollector_scanning(test_configuration, test_metadata, set_wazuh_conf
         assert log_monitor.callback_result
 
     # Check general scan has finished
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_FINISHED), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_FINISHED), timeout=30)
     assert log_monitor.callback_result
     # Check that the sync has finished
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SYNC_FINISHED), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SYNC_FINISHED), timeout=30)
     assert log_monitor.callback_result

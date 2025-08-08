@@ -11,13 +11,9 @@ else()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
-include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 
 file(GLOB FILEITEM_SRC "${SRC_FOLDER}/syscheckd/src/db/src/dbFileItem.cpp")
-
-file(GLOB RSYNC_IMP_SRC
-    "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
 
 file(GLOB DBSYNC_IMP_SRC
     "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
@@ -31,7 +27,6 @@ add_executable(fileitem_unit_test
     ${fileitem_UNIT_TEST_SRC}
     ${FILEITEM_SRC}
     ${WINDOWS_FILEITEM_SRC}
-    ${RSYNC_IMP_SRC}
     ${DBSYNC_IMP_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

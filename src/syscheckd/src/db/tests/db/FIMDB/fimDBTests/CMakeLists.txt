@@ -5,13 +5,11 @@ project(fimdb_unit_tests)
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
-link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
 link_directories(${SRC_FOLDER}/syscheckd/db/src/)
 link_directories(${SRC_FOLDER}/config/)
 link_directories(${SRC_FOLDER}/shared/)
 link_directories(${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/config/)
-include_directories(${SRC_FOLDER}/shared_modules/rsync/src/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 include_directories(${SRC_FOLDER}/shared/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/)
@@ -23,9 +21,6 @@ file(GLOB FIMDB_IMP_SRC
      "${SRC_FOLDER}/syscheckd/src/db/src/fimDB.cpp"
     )
 
-file(GLOB RSYNC_IMP_SRC
-    "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
-
 file(GLOB DBSYNC_IMP_SRC
     "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
     "${SRC_FOLDER}/shared_modules/dbsync/src/sqlite/*.cpp")
@@ -36,7 +31,6 @@ add_executable(fimdb_unit_test
     ${FIMDB_UNIT_TEST_SRC}
     ${FIMDB_IMP_SRC}
     ${DBSYNC_IMP_SRC}
-    ${RSYNC_IMP_SRC}
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

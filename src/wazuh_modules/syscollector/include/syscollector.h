@@ -39,7 +39,6 @@ typedef void((*send_data_callback_t)(const void* buffer));
 
 EXPORTED void syscollector_start(const unsigned int inverval,
                                  send_data_callback_t callbackDiff,
-                                 send_data_callback_t callbackSync,
                                  log_callback_t callbackLog,
                                  const char* dbPath,
                                  const char* normalizerConfigPath,
@@ -58,17 +57,12 @@ EXPORTED void syscollector_start(const unsigned int inverval,
 
 EXPORTED void syscollector_stop();
 
-EXPORTED int syscollector_sync_message(const char* data);
-
-
-
 #ifdef __cplusplus
 }
 #endif
 
 typedef void(*syscollector_start_func)(const unsigned int inverval,
                                        send_data_callback_t callbackDiff,
-                                       send_data_callback_t callbackSync,
                                        log_callback_t callbackLog,
                                        const char* dbPath,
                                        const char* normalizerConfigPath,
@@ -86,9 +80,5 @@ typedef void(*syscollector_start_func)(const unsigned int inverval,
                                        const bool users);
 
 typedef void(*syscollector_stop_func)();
-
-typedef int (*syscollector_sync_message_func)(const char* data);
-
-typedef void (*rsync_initialize_full_log_func)(full_log_fnc_t log_function);
 
 #endif //_SYSCOLLECTOR_H
