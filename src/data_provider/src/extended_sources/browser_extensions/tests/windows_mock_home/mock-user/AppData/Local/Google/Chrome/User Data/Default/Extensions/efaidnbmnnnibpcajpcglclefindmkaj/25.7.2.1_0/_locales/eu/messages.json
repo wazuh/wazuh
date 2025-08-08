@@ -1,0 +1,735 @@
+{
+  "web2pdfExtnName": {
+    "message": "Adobe Acrobat: PDFak editatzeko, bihurtzeko eta sinatzeko tresnak"
+  },
+  "web2pdfExtnNameBeta": {
+    "message": "Adobe Acrobat Beta"
+  },
+  "web2pdfExtnNameStage": {
+    "message": "Adobe Acrobat fasea"
+  },
+  "web2pdfExtnDescriptionChrome": {
+    "message": "Egin gauza gehiago Google Chrome-n Adobe Acrobat-en PDFetarako tresnekin. Ikusi, bete, sinatu PDFak, utzi iruzkinak haietan eta probatu bihurtzeo eta konprimatzeko tresnak."
+  },
+  "web2pdfExtnDescriptionEdge": {
+    "message": "Gauza gehiago Edge-n Acrobat-en PDFko tresnekin. Ikusi, bete, sinatu, utzi iruzkinak eta probatu bihurtu eta konprimatzeko tresnak."
+  },
+  "web2pdfExtnNameEdge": {
+    "message": "Adobe Acrobat: PDFak editatzeko, bihurtzeko eta sinatzeko tresnak"
+  },
+  "web2pdfExtnDescription": {
+    "message": "Erabili Acrobat arakatzaile batean PDFak ikusi, bihurtu, konprimatu eta sinatzeko"
+  },
+  "web2pdfExtnDescriptionBeta": {
+    "message": "Erabili Acrobat arakatzaile batean PDFak ikusi, bihurtu, konprimatu eta sinatzeko"
+  },
+  "web2pdfConvertButtonToolTip": {
+    "message": "Acrobat Extension - Shortcut to all your PDF tools."
+  },
+  "web2pdfConvertButtonToolTipReader": {
+    "message": "Ireki PDFa Acrobat Reader-en "
+  },
+  "web2pdfConvertButtonToolTipERPReader": {
+    "message": "Une honetan desgaituta dago Acrobat Reader luzapena. Jarri harremanetan IKT administratzailearekin."
+  },
+  "web2pdfOpenButtonText": {
+    "message": "Ireki Acrobat-en"
+  },
+  "web2pdfOpenButtonTextReader": {
+    "message": "Ireki Acrobat Reader-en"
+  },
+  "web2pdfOpenButtonTextOlder": {
+    "message": "Deskargatu Adobe PDF"
+  },
+  "web2pdfAddButtonText": {
+    "message": "Gehitu lehendik dagoen PDFan..."
+  },
+  "web2pdfOpenInDCButtonText": {
+    "message": "Ireki PDFa Acrobat-en"
+  },
+  "web2pdfPreferencesButtonText": {
+    "message": "Hobespenak..."
+  },
+  "web2pdfCopyText": {
+    "message": "Acrobat-en kopiatzen"
+  },
+  "web2pdfFilename": {
+    "message": "Fitxategiaren izena:"
+  },
+  "web2pdfDestinationText": {
+    "message": "Helburuko karpeta:"
+  },
+  "web2pdfNoFoldersText": {
+    "message": "Ez duzu karpetarik Acrobat DC biltegian."
+  },
+  "web2pdfDoneButtonText": {
+    "message": "Eginda"
+  },
+  "expressEditImageParentContextMenu": {
+    "message": "Edit Image"
+  },
+  "expressEditImagePoweredByExpressContextMenu": {
+    "message": "Adobe Express-en teknologiarekin"
+  },
+  "expressDropdownMenuTitle": {
+    "message": "Adobe Acrobat"
+  },
+  "expressDropdownMenuTooltip": {
+    "message": "Easily crop, remove background and more. Powered by Adobe Express."
+  },
+  "expressContextualFteTitle": {
+    "message": "Edit this image in $surfaceName$",
+    "placeholders": {
+      "surfaceName": {
+        "content": "$1"
+      }
+    }
+  },
+  "expressContextualFteDescription": {
+    "message": "Easily crop, remove the background, and more. Powered by Adobe Express."
+  },
+  "expressContextualFteCtaLabel": {
+    "message": "Close"
+  },
+  "web2pdfConvertPageContextMenu": {
+    "message": "Bihurtu web-orria Adobe PDF..."
+  },
+  "web2pdfAppendPageContextMenu": {
+    "message": "Gehitu web-orria lehendik dagoen PDFan..."
+  },
+  "web2pdfConvertLinkContextMenu": {
+    "message": "Bihurtu estekaren helburua Adobe PDF"
+  },
+  "web2pdfAppendLinkContextMenu": {
+    "message": "Erantsi estekaren helburua lehendik dagoen PDFan"
+  },
+  "editImageContextMenu": {
+    "message": "Editatu irudia"
+  },
+  "removeBackgroundImageContextMenu": {
+    "message": "Kendu atzeko planoa"
+  },
+  "cropImageContextMenu": {
+    "message": "Crop Image"
+  },
+  "effectsImageContextMenu": {
+    "message": "Apply Effects"
+  },
+  "generativeFillImageContextMenu": {
+    "message": "Generative Fill"
+  },
+  "insertObjectImageContextMenu": {
+    "message": "Insert Object"
+  },
+  "removeObjectImageContextMenu": {
+    "message": "Remove Object"
+  },
+  "web2pdfUntitledFileName": {
+    "message": "izengabea"
+  },
+  "web2pdfStatusWaiting": {
+    "message": "Bihurtzeko zain..."
+  },
+  "web2pdfStatusDownloading": {
+    "message": "Deskargatzen bihurtzeko..."
+  },
+  "web2pdfStatusInProgress": {
+    "message": "Bihurketa abian dago..."
+  },
+  "web2pdfStatusCancelled": {
+    "message": "Bihurketa bertan behera utzi da"
+  },
+  "web2pdfStatusComplete": {
+    "message": "Bihurketa behar bezala egin da"
+  },
+  "web2pdfClickToOpen": {
+    "message": "Egin klik jarraian duzun estekan PDFa Acrobat-en irekitzeko."
+  },
+  "web2pdfStatusFailure": {
+    "message": "Bihurketak huts egin du"
+  },
+  "web2pdfUnsupportedAcrobatVersion": {
+    "message": "Ezin izan da aurkitu Acrobat-en bertsio bateragarririk. Instalatu <a target='_blank' href='https://acrobat.adobe.com/es/es/free-trial-download.html?trackingid=29NMCS7T&mv=other'>7 eguneko doako probaldia</a>."
+  },
+  "web2pdfStatusUnknownFailure": {
+    "message": "Hutsegite ezezaguna"
+  },
+  "web2pdfFileLockedError": {
+    "message": "Ezin da fitxategia gorde, beste prozesu batean erabiltzen ari delako."
+  },
+  "web2pdfReplaceWarning": {
+    "message": "badago lehendik.\n Ordeztu nahi duzu?"
+  },
+  "web2pdfNoWritePermissionOnSelectedFile": {
+    "message": "Ez duzu idazteko baimenik hautatutako fitxategian."
+  },
+  "web2pdfHTMLTooLarge": {
+    "message": "HTML edukia handiegia da prozesatzeko."
+  },
+  "web2pdfHTMLJSError": {
+    "message": "Errore bat gertatu da web-orria prozesatzean."
+  },
+  "web2pdfOptionsTitle": {
+    "message": "Adobe Acrobat hobespenak"
+  },
+  "web2pdfMissingMac": {
+    "message": "Chrome-rako Adobe Acrobat oraindik ez dago erabilgarri Mac gailuetarako"
+  },
+  "web2pdfMissingMacEdge": {
+    "message": "Microsoft Edge-rako Adobe Acrobat oraindik ez dago erabilgarri Mac gailuetarako"
+  },
+  "web2pdfOptOut": {
+    "message": "Produktuaren eginbideak hobetzeko asmoz, erabiltzen duzun moduari buruzko informazioa bidaltzen dio Adobe-ri luzapen honek."
+  },
+  "web2pdfOptOutDisabled": {
+    "message": "Zure erabilera-datuetako bat ere ez da partekatzen ari."
+  },
+  "web2pdfOptions": {
+    "message": "Aukerak"
+  },
+  "web2pdfSave": {
+    "message": "Gorde"
+  },
+  "web2pdfStatusDownloadingPDF": {
+    "message": "PDFa deskargatzen"
+  },
+  "web2pdfPDFOpening": {
+    "message": "PDFa irekitzen"
+  },
+  "web2pdfPDFOpenFailed": {
+    "message": "Ezin izan da PDFa ireki"
+  },
+  "web2pdfPDFOpenFailedv2": {
+    "message": "Ezin izan da ireki"
+  },
+  "web2pdfPDFOpened": {
+    "message": "PDF irekita"
+  },
+  "web2pdfAlwaysShow": {
+    "message": "Erakutsi automatikoki PDF fitxategietarako"
+  },
+  "web2pdfShowPersistentOpen": {
+    "message": "Erakutsi \"Ireki Acrobat-en\""
+  },
+  "web2pdfShowPersistentOpenAlways": {
+    "message": "Erakutsi beti \"Ireki Acrobat-en\""
+  },
+  "web2pdfFrictionlessUrl": {
+    "message": "https://www.adobe.com/go/fl_chromeext_es"
+  },
+  "web2pdfFrictionlessUrlEdge": {
+    "message": "https://www.adobe.com/es/acrobat/online.html?x_api_client_id=edge_extension&x_api_client_location=trefoil&mv=other&mv2=edge_extension:trefoil&trackingid=HM85XB76"
+  },
+  "web2pdfPrivacy": {
+    "message": "Adobe Acrobat-i buruz"
+  },
+  "web2pdfTitle": {
+    "message": "Adobe Acrobat"
+  },
+  "web2pdfBadVersion": {
+    "message": "Chrome bertsio honek ez du onartzen Adobe Acrobat. Gutxienez $version$ bertsioa izan behar du.",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "web2pdfBadVersionEdge": {
+    "message": "Edge-en bertsio honek ez du onartzen Adobe Acrobat. $version$ bertsioa erabili behar duzu gutxienez.",
+    "placeholders": {
+      "version": {
+        "content": "$1"
+      }
+    }
+  },
+  "stripTextOpenAcrobat": {
+    "message": "Ireki Acrobat-en"
+  },
+  "stripTextOpenFillnSign": {
+    "message": "Bete eta sinatu Acrobat-en"
+  },
+  "editMegaVerbText": {
+    "message": "Editatu"
+  },
+  "ConvertVerbDescription": {
+    "message": "Bihurtu fitxategiak PDF-ra edo PDF-tik beste formatu batera."
+  },
+  "EditVerbDescription": {
+    "message": "Berrantolatu, biratu edo ezabatu PDF-aren orrialdeak."
+  },
+  "web2pdfShowPDFTools": {
+    "message": "Erakutsi Google-ko bilaketa-emaitzekin"
+  },
+  "web2pdfInfoHoverPopup": {
+    "message": "Adobe Acrobat-eko luzapenak PDF-ko tresnak gomendatzen dizkizu atazak burutzen laguntzeko. Gure gomendioak egiten dituzun bilaketetan eta gailuan gertatzen denean oinarritzen da; bilaketak ez zaizkio Adobe-ri bidaltzen. Sakatu <span class = \"tooltip-content-settings\">hau</span> eginbidea desgaitzeko."
+  },
+  "web2pdfLoaderTitle": {
+    "message": "Kargatzen…"
+  },
+  "web2pdfShowPDFViewerOption": {
+    "message": "Erabili Acrobat PDF fitxategien ikustaile lehenetsi gisa"
+  },
+  "pdfOwnershipExploreAcrobat": {
+    "message": "Erabili Acrobat Chrome-n"
+  },
+  "pdfOwnershipExploreAcrobatEdge": {
+    "message": "Erabili Acrobat Microsoft Edge-n"
+  },
+  "pdfOwnershipPromptContent": {
+    "message": "Egin gauza gehiago PDF fitxategiekin Chrome-n Adobe Acrobat ikustaile lehenetsi gisa ezarrita."
+  },
+  "pdfOwnershipPromptContent2": {
+    "message": "Ezarri Acrobat PDFen ikustaile lehenetsi gisa, Google Chrome-n PDFak ikusteko. Idatzi iruzkinak, bete eta sinatu inprimakiak, eta probatu bihurtzeko, konprimatzeko eta antzeko tresnak."
+  },
+  "pdfOwnershipPromptContentEdge": {
+    "message": "Egin gauza gehiago PDF fitxategiekin Microsfot Edge-n Adobe Acrobat ikustaile lehenetsi gisa ezarrita."
+  },
+  "pdfOwnershipPromptCancel": {
+    "message": "Orain ez"
+  },
+  "pdfOwnershipPromptDeny": {
+    "message": "Ez, eskerrik asko"
+  },
+  "pdfOwnershipPromptOk": {
+    "message": "Ezarri lehenetsi gisa"
+  },
+  "pdfOwnershipPromptOkFullscreen": {
+    "message": "Probatu"
+  },
+  "sharepointPreferenceMessage": {
+    "message": "Eman baimenak SharePoint-eko fitxategiak erabiltzeko Acrobat-en."
+  },
+  "LearnMoreURL": {
+    "message": "https://helpx.adobe.com/acrobat/kb/acrobat-pro-aip-for-chrome.html"
+  },
+  "LearnMoreURLEdge": {
+    "message": "https://helpx.adobe.com/acrobat/kb/acrobat-pro-aip-for-edge.html"
+  },
+  "analyticsOptinTitle": {
+    "message": "Bidali erabilerari buruzko datuak"
+  },
+  "web2pdfOpenConvertedPDFTitle": {
+    "message": "Ireki automatikoki bihurtutako PDFak Acrobat-en"
+  },
+  "web2pdfShowPersistentOpenDescription": {
+    "message": "Erakutsi PDFa Acrobat-en irekitzeko aukera aldi bakoitzean."
+  },
+  "web2pdfOpenConvertedPDFDescription": {
+    "message": "Ireki automatikoki bihurtutako PDFa Acrobat-en web-orritik PDFrako bihurketa osatu denean."
+  },
+  "pdfOwnershipExploreOptionsTitle": {
+    "message": "Open all PDFs in Acrobat"
+  },
+  "pdfOwnershipExploreOptionsDescription": {
+    "message": "Make Acrobat the default PDF viewer for your browser for quick access to commenting, Fill & Sign, and other PDF tools."
+  },
+  "enableGenAIFeaturesTitle": {
+    "message": "Enable Generative AI features in Acrobat"
+  },
+  "enableGenAIFeaturesDescription": {
+    "message": "Your file will be processed in the cloud to deliver a generative AI capability when you use a generative AI feature. Turning off this feature prevents your file from being processed and disables generative AI. You can reactivate it anytime."
+  },
+  "aiMarkerTouchpointPreferenceTitle": {
+    "message": "AI Assistant contextual menu"
+  },
+  "aiMarkerTouchpointPreferenceDescription": {
+    "message": "Always display AI Assistant menu when hovering over PDFs on webpages."
+  },
+  "optionsSuccessPrompt": {
+    "message": "Gorde dira hobespenak"
+  },
+  "optionsSuccessPromptReloadRequired": {
+    "message": "Preference would be reflected only after reload"
+  },
+  "optionsFailurePrompt": {
+    "message": "Ezin ditugu gorde aldaketak. Saiatu berriro geroago."
+  },
+  "web2pdfFrictionlessToggleDescription": {
+    "message": "Adobe Acrobat-eko luzapenak PDF-ko tresnak gomendatzen dizkizu atazak burutzen laguntzeko. Gure gomendioak egiten dituzun bilaketetan eta gailuan gertatzen denean oinarritzen da; bilaketak ez zaizkio Adobe-ri bidaltzen."
+  },
+  "web2pdfSaveButton": {
+    "message": "Gorde hobespenak"
+  },
+  "web2pdfPreferencesNewText": {
+    "message": "Bihurketaren ezarpenak..."
+  },
+  "fteSideCardPrimaryHeader": {
+    "message": "Erabili Acrobat"
+  },
+  "fteSideCardSecondaryHeader": {
+    "message": "Chrome-ren bidez"
+  },
+  "pdfOwnershipDefSideCardcontent": {
+    "message": "Ikusi, idatzi iruzkinak, bete inprimakiak, sinatu eta abar Adobe Acrobat PDF ikustaile lehenetsi gisa ezartzen duzunean."
+  },
+  "pdfOwnerShipDmbConfirmBtn": {
+    "message": "Jarraitu"
+  },
+  "pdfOwnerShipSideRedCardConfirmBtn": {
+    "message": "Jarraitu"
+  },
+  "fteOwnershipSideRedCardContent": {
+    "message": "Idatzi iruzkinak, bete eta sinatu inprimakiak, eta abar Chrome-ren bidez, Acrobat PDF ikustaile lehenetsi gisa ezartzen duzunean."
+  },
+  "appearancePrefTitle": {
+    "message": "Gai ilunaren ezarpenak"
+  },
+  "appearancePrefDesc": {
+    "message": "Aldatu gai ilunaren eta argiaren artean"
+  },
+  "appearancePrefOp1": {
+    "message": "Erabili sistemaren ezarpena"
+  },
+  "appearancePrefOp2": {
+    "message": "Dark mode"
+  },
+  "appearancePrefOp3": {
+    "message": "Light mode"
+  },
+  "adobeYoloMessage": {
+    "message": "Acrobat-en saioa hasten…"
+  },
+  "saveLocationPreferenceTitle": {
+    "message": "Gorde fitxategiaren kokalekua"
+  },
+  "saveLocationPreferenceDescription": {
+    "message": "Ezarri fitxategiak gordetzeko kokalekua"
+  },
+  "saveLocationOp1": {
+    "message": "Galdetu beti"
+  },
+  "saveLocationOp2": {
+    "message": "Adobe-ko hodeiko biltegiratzea"
+  },
+  "saveLocationOp3": {
+    "message": "Nire ordenagailua"
+  },
+  "localFteTitle": {
+    "message": "Aldatu Acrobat-era fitxategi lokalak irekitzeko"
+  },
+  "localFteDescription": {
+    "message": "Atera etekinik handiena Acrobat luzapenari eta erabil ezazu PDF fitxategi guztiak irekitzeko. Aktibatu Onartu fitxategien URLetarako sarbidea luzapenaren ezarpenetan."
+  },
+  "localFteDontShowAgainText": {
+    "message": "Ez erakutsi hau berriro"
+  },
+  "localFteContinue": {
+    "message": "Joan Ezarpenak atalera"
+  },
+  "localFileOptionTitle": {
+    "message": "PDF fitxategi lokalak Acrobat-en irekitzen"
+  },
+  "localFileOptionDesc": {
+    "message": "Eman Acrobat luzapenerako sarbidea fitxategi lokalen URLetarako PDF guztiak Chrome-ko Acrobat-en irekitzeko."
+  },
+  "localFilePromptHeader": {
+    "message": "Open in Acrobat to edit, sign, and more"
+  },
+  "localFilePromptDescription": {
+    "message": "Let Acrobat access files from this device for immediate access to all your tools so you can edit PDFs, convert files, and e-sign in a snap."
+  },
+  "localFilePromptContinueButton": {
+    "message": "Continue"
+  },
+  "localFileBlockingPageTitle": {
+    "message": "Enable Acrobat Extension"
+  },
+  "localFileBlockingPageOpenInChrome": {
+    "message": "Open this file in Chrome"
+  },
+  "Enable": {
+    "message": "Gaitu"
+  },
+  "Disable": {
+    "message": "Desgaitu"
+  },
+  "adobeYoloErrorMessage": {
+    "message": "Esteka hau baliogabea da"
+  },
+  "popupNoConnection": {
+    "message": "Konexiorik ez"
+  },
+  "popupOfflineMessage": {
+    "message": "Jarri harremanetan administratzailearekin konexioari berrekiteko"
+  },
+  "webpagePDFConversion": {
+    "message": "Web-orriak PDF bihurtzeko ezarpena"
+  },
+  "webpagePDFConversionDescription": {
+    "message": "Web-orriak PDF gisa gordetzean, marjinak, letra-tripoa eta bestelako diseinu-xehetasunak ezar ditzakezu"
+  },
+  "extensionMenuTitle": {
+    "message": "Acrobat luzapena - Gehitu lasterbidea PDF tresna guztietara"
+  },
+  "userLocale": {
+    "message": "Erabiltzailearen kokapena"
+  },
+  "dcWebBookmarkTitle": {
+    "message": "Adobe Acrobat-en Hasiera"
+  },
+  "gsuiteEditWithAcrobat": {
+    "message": "Edit with Acrobat"
+  },
+  "gmailPromptFTETooltip": {
+    "message": "Open PDFs in Acrobat to use tools like Edit, Sign and more"
+  },
+  "gsuiteOpenWithAcrobat": {
+    "message": "Ireki Acrobat-en"
+  },
+  "gDriveDVPCoachMarkTitle": {
+    "message": "Set Acrobat as default viewer"
+  },
+  "gDriveDVPManageAppCoachMarkContent": {
+    "message": "Egin klik 'Kudeatu aplikazioak' aukeran PDF fitxategiak ikusi, iruzkinak egin eta editatzeko, Google Drive PDF guztiak zuzenean Acrobat-en irekita"
+  },
+  "gDriveDVPAppListCoachMarkContent": {
+    "message": "Enable the checkbox 'Use by default' to directly open Google Drive PDFs in Acrobat from next time"
+  },
+  "gSuiteDVPAddOnDefaultDesc": {
+    "message": "Acrobat Add On is now set as default"
+  },
+  "genericDVPCoachMarkContent": {
+    "message": "Click on 'Manage Apps', then scroll down to Acrobat Add On and click on 'Use by default' checkbox"
+  },
+  "acrobatGsuiteTouchPointPreferenceTitle": {
+    "message": "Integrate Acrobat into Gmail and Google Drive"
+  },
+  "acrobatGsuiteTouchPointPreferenceDescription": {
+    "message": "Add Acrobat icons to Gmail and Google Drive to quickly open PDFs in Acrobat and access PDF tools."
+  },
+  "expressTouchpointPreferenceTitle": {
+    "message": "Enable Adobe Express actions in Acrobat"
+  },
+  "expressTouchpointPreferenceDescription": {
+    "message": "Adobe Acrobat extension lets you edit images with Adobe Express. Turning off this feature will remove this capability. You can reactivate it any time."
+  },
+  "expressExportOptionsDownloadLabel": {
+    "message": "Deskargatu"
+  },
+  "expressExportOptionsSaveLabel": {
+    "message": "Gorde"
+  },
+  "expressPublishModalTitle": {
+    "message": "Downloading image..."
+  },
+  "acrobatGmailFteToolTipTitle": {
+    "message": "Open this PDF in Acrobat"
+  },
+  "acrobatGmailFteToolTipDescription": {
+    "message": "Edit, convert, comment & sign - right in Chrome with Acrobat"
+  },
+  "acrobatGmailFteToolTipButton": {
+    "message": "Ados"
+  },
+  "acrobatGdriveTripleDotMenuTouchPointText": {
+    "message": "Open with Acrobat"
+  },
+  "downloadBannerText": {
+    "message": "Open all downloaded PDFs in Acrobat by setting the app as default PDF viewer in Chrome"
+  },
+  "downloadBannerContinue": {
+    "message": "Turn on"
+  },
+  "doNotShowButton": {
+    "message": "Ez erakutsi berriro"
+  },
+  "closeButton": {
+    "message": "Itxi"
+  },
+  "successToastText": {
+    "message": "PDF downloads will now open in Adobe Acrobat"
+  },
+  "failToastText": {
+    "message": "An unexpected error has occurred, please try again later."
+  },
+  "unsupportedFileTypeToastText": {
+    "message": "This file type isn’t supported. You can try editing another file."
+  },
+  "acrobatGsuiteFteToolTipTitle": {
+    "message": "Open this PDF in Acrobat"
+  },
+  "acrobatGsuiteFteToolTipDescription": {
+    "message": "Edit, convert, comment & sign - right in Chrome with Acrobat"
+  },
+  "acrobatGsuiteFteToolTipButton": {
+    "message": "Ados"
+  },
+  "expressFTETitle": {
+    "message": "Edit image with Adobe Express"
+  },
+  "expressFTEDescription": {
+    "message": "Right click to crop, remove background, or reimagine an image using AI."
+  },
+  "expressFTEFooter": {
+    "message": "Via <b>Adobe Acrobat</b>"
+  },
+  "expressPopoverFTETitle": {
+    "message": "Edit images right in your browser"
+  },
+  "expressPopoverFTEDescription": {
+    "message": "Right-click on any online image to quickly remove the background, crop, or reimagine it using AI with Adobe Express"
+  },
+  "acrobatGsuiteFteToolTipTitleDV": {
+    "message": "Open all PDFs in Adobe Acrobat"
+  },
+  "acrobatGsuiteFteToolTipDescriptionDV": {
+    "message": "Try PDF tools like edit, comment, convert, and e-sign from $surfaceName$ by making Acrobat your default PDF viewer.",
+    "placeholders": {
+      "surfaceName": {
+        "content": "$1"
+      }
+    }
+  },
+  "acrobatGsuiteFteToolTipButtonDV": {
+    "message": "OK"
+  },
+  "acrobatGsuiteFteToolTipTitleNonDV": {
+    "message": "Open this PDF in Adobe Acrobat"
+  },
+  "acrobatGsuiteFteToolTipDescriptionNonDV": {
+    "message": "Try Acrobat PDF tools like edit, comment, convert, and e-sign — right from $surfaceName$.",
+    "placeholders": {
+      "surfaceName": {
+        "content": "$1"
+      }
+    }
+  },
+  "acrobatGsuiteFteToolTipButtonNonDV": {
+    "message": "OK"
+  },
+  "surfaceNameGmail": {
+    "message": "Gmail"
+  },
+  "surfaceNameGdrive": {
+    "message": "Google Drive"
+  },
+  "aiAcHeader": {
+    "message": "Do more with your Acrobat extension"
+  },
+  "aiAcBody": {
+    "message": "Quickly summarize webpages and get key insights using Acrobat AI Assistant."
+  },
+  "hideForNow": {
+    "message": "Hide for now"
+  },
+  "hideFabForDomain": {
+    "message": "Disable for this site"
+  },
+  "neverDisplayFab": {
+    "message": "Never display"
+  },
+  "preferences": {
+    "message": "Preferences"
+  },
+  "genAIFabPreferenceTitle": {
+    "message": "Al Assistant button"
+  },
+  "genAIFabPreferenceDescription": {
+    "message": "Always display Al Assistant button at the edge of your browser window."
+  },
+  "sidepanelLocationPreferenceTitle": {
+    "message": "AI Assistant panel location"
+  },
+  "sidepanelLocationPreferenceDescription": {
+    "message": "Place the side panel on the left or right side of the browser window. Side panel is only available in Google Chrome 11.4 or later."
+  },
+  "sidepanelLocationPreferenceButtonText": {
+    "message": "Change in browser settings"
+  },
+  "domainPreferenceTitle": {
+    "message": "Websites where AI Assistant FAB is hidden"
+  },
+  "askAssistantBannerTitle": {
+    "message": "AI Assistant for webpages"
+  },
+  "askAssistantBannerContentText": {
+    "message": "Get fast summaries and key insights with AI Assistant on webpages."
+  },
+  "tooltipTextEnabled": {
+    "message": "Get summaries and key insights using AI Assistant"
+  },
+  "tooltipTextSubText": {
+    "message": "powered by Adobe Acrobat"
+  },
+  "tooltipTextDisabled": {
+    "message": "AI Assistant isn't available for this webpage"
+  },
+  "openInAcrobat": {
+    "message": "Open In Acrobat"
+  },
+  "getSummary": {
+    "message": "Summarize PDF"
+  },
+  "hidePopup": {
+    "message": "Hide for this session"
+  },
+  "openSettings": {
+    "message": "Manage in settings"
+  },
+  "getInsight": {
+    "message": "Get insights with Acrobat AI Assistant"
+  },
+  "canQuesBriefOverview": {
+    "message": "Provide a brief overview of this article"
+  },
+  "canQuesSummarise": {
+    "message": "Summarize this article"
+  },
+  "canQuesImpTopics": {
+    "message": "List all important topics and keywords"
+  },
+  "canQuesDraftEmail": {
+    "message": "Draft an email summarizing the key points"
+  },
+  "canQuesCreateFAQ": {
+    "message": "Create an FAQ list based on this info"
+  },
+  "embeddedPDFTouchPointFTEBody": {
+    "message": "Edit, summarize, and more right from the Acrobat extension. You can hide this shortcut anytime in Preferences."
+  },
+  "acrobatTouchPointInOtherSitesPreferenceTitle": {
+    "message": "Show Open in Acrobat icon in other websites"
+  },
+  "acrobatTouchPointInOtherSitesPreferenceDescription": {
+    "message": "Integrate Acrobat with websites, including Gmail and Google Drive, for easy access to PDF tools."
+  },
+  "embeddedPDFHideIconForNow": {
+    "message": "Hide icon for now"
+  },
+  "embeddedPDFOpenPDFInAcrobat": {
+    "message": "Open PDF in Acrobat"
+  },
+  "embeddedPDFTouchPointFTEHeader": {
+    "message": "Open this PDF in Adobe Acrobat"
+  },
+  "embeddedPDFOpenInAcrobatTooltip": {
+    "message": "Open in Acrobat"
+  },
+  "embeddedPDFManagePreferences": {
+    "message": "Manage preferences"
+  },
+  "outlookPDFTouchPointFTEHeader": {
+    "message": "Open this PDF in Adobe Acrobat"
+  },
+  "addWebpageToProjectContextMenuTitle": {
+    "message": "Add to a PDF Project..."
+  },
+  "outlookPDFTouchPointFTEBody": {
+    "message": "Edit, summarize, and sign PDFs by opening them in Acrobat."
+  },
+  "acrobatTouchPointInOtherSurfacesPreferenceDescription": {
+    "message": "Integrate Acrobat with websites, including Gmail, Google Drive, and Outlook for easy access to PDF tools."
+  },
+  "outlookErrorToastTitle": {
+    "message": "Unable to open file"
+  },
+  "outlookErrorToastDescription": {
+    "message": "Something went wrong. Please close the file and try again."
+  },
+  "acrobatEmbeddedTouchPointPreferenceTitle": {
+    "message": "Show Acrobat shortcut in embedded web PDFs"
+  },
+  "acrobatEmbeddedTouchPointPreferenceDescription": {
+    "message": "The shortcut can be used to open PDFs within extension for easy editing, summarizing, saving, and more."
+  }
+}

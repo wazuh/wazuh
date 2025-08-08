@@ -23,7 +23,7 @@ class MockChromeExtensionsWrapper : public IChromeExtensionsWrapper
 TEST(ChromeExtensionsTests, NumberOfExtensions)
 {
     auto mockExtensionsWrapper = std::make_shared<MockChromeExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "mock_home");
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "linux_mock_home");
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
@@ -36,7 +36,7 @@ TEST(ChromeExtensionsTests, NumberOfExtensions)
 TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 {
     auto mockExtensionsWrapper = std::make_shared<MockChromeExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "mock_home");
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "linux_mock_home");
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));

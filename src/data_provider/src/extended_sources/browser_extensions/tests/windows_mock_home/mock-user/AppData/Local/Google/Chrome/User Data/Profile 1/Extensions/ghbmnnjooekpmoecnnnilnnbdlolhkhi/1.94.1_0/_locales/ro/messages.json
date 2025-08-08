@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "CREEAZĂ UN DOCUMENT"
+   },
+   "explanationofflinedisabled": {
+      "message": "Ești offline. Pentru a utiliza Documente Google fără conexiune la internet, intră în setările din pagina principală Documente Google și activează sincronizarea offline data viitoare când ești conectat(ă) la internet."
+   },
+   "explanationofflineenabled": {
+      "message": "Ești offline, dar poți încă să editezi fișierele disponibile sau să creezi altele."
+   },
+   "extdesc": {
+      "message": "Editează, creează și accesează documente, foi de calcul și prezentări - totul fără acces la internet."
+   },
+   "extname": {
+      "message": "Documente Google Offline"
+   },
+   "learnmore": {
+      "message": "Află mai multe"
+   },
+   "popuphelptext": {
+      "message": "Scrie, editează și colaborează oriunde ai fi, cu sau fără conexiune la internet."
+   }
+}

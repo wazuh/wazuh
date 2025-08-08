@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "SUKURTI NAUJĄ"
+   },
+   "explanationofflinedisabled": {
+      "message": "Esate neprisijungę. Jei norite naudoti „Google“ dokumentus be interneto ryšio, pagrindiniame „Google“ dokumentų puslapyje eikite į nustatymų skiltį ir įjunkite sinchronizavimą neprisijungus, kai kitą kartą būsite prisijungę prie interneto."
+   },
+   "explanationofflineenabled": {
+      "message": "Esate neprisijungę, bet vis tiek galite redaguoti pasiekiamus failus arba sukurti naujų."
+   },
+   "extdesc": {
+      "message": "Redaguokite, kurkite ir peržiūrėkite savo dokumentus, skaičiuokles ir pristatymus – viską darykite be prieigos prie interneto."
+   },
+   "extname": {
+      "message": "„Google“ dokumentai neprisijungus"
+   },
+   "learnmore": {
+      "message": "Sužinoti daugiau"
+   },
+   "popuphelptext": {
+      "message": "Rašykite, redaguokite ir bendradarbiaukite bet kurioje vietoje naudodami interneto ryšį arba nenaudodami jo."
+   }
+}
