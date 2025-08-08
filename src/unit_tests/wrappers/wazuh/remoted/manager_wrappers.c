@@ -28,3 +28,11 @@ void __wrap_save_controlmsg(const keyentry * key, char *r_msg, __attribute__((un
 
     return;
 }
+
+int __wrap_validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length,  __attribute__((unused)) char **cleaned_msg,  __attribute__((unused)) int *is_startup,  __attribute__((unused)) int *is_shutdown) {
+    check_expected(key);
+    check_expected(r_msg);
+    check_expected(msg_length);
+
+    return mock_type(int);
+}

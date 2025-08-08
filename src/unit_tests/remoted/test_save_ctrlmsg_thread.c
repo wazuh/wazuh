@@ -47,9 +47,9 @@ void test_save_control_message_ok(void **state)
     os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
     os_calloc(sizeof(keyentry), 1, ctrl_msg_data->key);
 
-    ctrl_msg_data->length = strlen("test message") + 1;
-    os_calloc(ctrl_msg_data->length, sizeof(char), ctrl_msg_data->message);
-    memcpy(ctrl_msg_data->message, "test message", ctrl_msg_data->length);
+    size_t len = strlen("test message") + 1;
+    os_calloc(len, sizeof(char), ctrl_msg_data->message);
+    memcpy(ctrl_msg_data->message, "test message", len);
 
     queue_push(queue, ctrl_msg_data);
 

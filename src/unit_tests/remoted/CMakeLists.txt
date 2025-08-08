@@ -69,7 +69,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,rem_getCounter -Wl,--wrap,rem_inc_recv_ctrl \
                             -Wl,--wrap,rem_inc_recv_unknown -Wl,--wrap,rem_inc_tcp \
                             -Wl,--wrap,rem_msgpush -Wl,--wrap,rem_setCounter -Wl,--wrap,remove \
-                            -Wl,--wrap,save_controlmsg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
+                            -Wl,--wrap,save_controlmsg -Wl,--wrap,validate_control_msg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \

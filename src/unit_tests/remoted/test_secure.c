@@ -543,6 +543,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     os_calloc(1, sizeof(keyentry), key);
 
     key->id = strdup("009");
+    key->name = strdup("test_agent");
     key->sock = 1;
     key->keyid = 1;
 
@@ -583,6 +584,12 @@ void test_HandleSecureMessage_shutdown_message(void** state)
 
     expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
 
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "agent shutdown ");
+    expect_value(__wrap_validate_control_msg, msg_length, 15);
+    will_return(__wrap_validate_control_msg, 1);
+
     // OS_FreeKey
     expect_value(__wrap_OS_FreeKey, key, key);
 
@@ -592,7 +599,6 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     w_ctrl_msg_data_t * node = queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "agent shutdown ");
-    assert_int_equal(node->length, strlen("agent shutdown "));
     assert_int_equal(node->key->keyid, 1);
     assert_int_equal(node->key->sock, 1);
     assert_string_equal(node->key->id, "009");
@@ -602,10 +608,185 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     os_free(node);
 
     os_free(key->id);
+    os_free(key->name);
     os_free(key);
     os_free(keyentries);
     queue_free(control_msg_queue);
 }
+
+void test_HandleSecureMessage_HC_req_message(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "#!-req payload";
+    message_t message = {.buffer = buffer, .size = 14, .sock = 1, .counter = 11};
+    struct sockaddr_in peer_info;
+    w_queue_t * control_msg_queue = queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("009");
+    key->name = strdup("test_agent");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "#!-req payload");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, "#!-req payload");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    // OS_DupKeyEntry
+    expect_value(__wrap_OS_DupKeyEntry, key, key);
+    will_return(__wrap_OS_DupKeyEntry, key);
+
+    // OS_AddSocket
+    expect_value(__wrap_OS_AddSocket, keys, &keys);
+    expect_value(__wrap_OS_AddSocket, i, 0);
+    expect_value(__wrap_OS_AddSocket, sock, message.sock);
+    will_return(__wrap_OS_AddSocket, OS_ADDSOCKET_KEY_ADDED);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "TCP socket 1 added to keystore.");
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "req payload");
+    expect_value(__wrap_validate_control_msg, msg_length, 11);
+    will_return(__wrap_validate_control_msg, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Control message processed directly, not queued.");
+
+
+    // OS_FreeKey
+    expect_value(__wrap_OS_FreeKey, key, key);
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    // Expect the control message to be added to the queue
+    assert_true(queue_empty(control_msg_queue));
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key);
+    os_free(keyentries);
+    queue_free(control_msg_queue);
+}
+
+
+void test_HandleSecureMessage_invalid_HC_req_message(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "#!-req witouthCounter";
+    message_t message = {.buffer = buffer, .size = 21, .sock = 1, .counter = 11};
+    struct sockaddr_in peer_info;
+    w_queue_t * control_msg_queue = queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("009");
+    key->name = strdup("test_agent");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "#!-req witouthCounter");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, "#!-req witouthCounter");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    // OS_DupKeyEntry
+    expect_value(__wrap_OS_DupKeyEntry, key, key);
+    will_return(__wrap_OS_DupKeyEntry, key);
+
+    // OS_AddSocket
+    expect_value(__wrap_OS_AddSocket, keys, &keys);
+    expect_value(__wrap_OS_AddSocket, i, 0);
+    expect_value(__wrap_OS_AddSocket, sock, message.sock);
+    will_return(__wrap_OS_AddSocket, OS_ADDSOCKET_KEY_ADDED);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "TCP socket 1 added to keystore.");
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "req witouthCounter");
+    expect_value(__wrap_validate_control_msg, msg_length, 18);
+    will_return(__wrap_validate_control_msg, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Error validating control message from agent ID '009'.");
+
+
+    // OS_FreeKey
+    expect_value(__wrap_OS_FreeKey, key, key);
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    // Expect the control message to be added to the queue
+    assert_true(queue_empty(control_msg_queue));
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key);
+    os_free(keyentries);
+    queue_free(control_msg_queue);
+}
+
 
 void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
 {
@@ -669,6 +850,12 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
 
     expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
 
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "agent startup ");
+    expect_value(__wrap_validate_control_msg, msg_length, 14);
+    will_return(__wrap_validate_control_msg, 1);
+
     // OS_FreeKey
     expect_value(__wrap_OS_FreeKey, key, key);
 
@@ -678,7 +865,6 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     w_ctrl_msg_data_t * node = queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "agent startup ");
-    assert_int_equal(node->length, strlen("agent startup "));
     assert_int_equal(node->key->keyid, 1);
     assert_int_equal(node->key->sock, 1);
     assert_string_equal(node->key->id, "009");
@@ -1504,7 +1690,7 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "#!-12!";
-    message_t message = {.buffer = buffer, .size = 7, .sock = 1, .counter = 11};
+    message_t message = {.buffer = buffer, .size = 6, .sock = 1, .counter = 11};
     struct sockaddr_in peer_info;
     w_queue_t * control_msg_queue = queue_init(10);
 
@@ -1595,6 +1781,11 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 
     expect_string(__wrap_rem_inc_recv_ctrl, agent_id, "001");
 
+    // Should be added to the control message queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "12!");
+    expect_value(__wrap_validate_control_msg, msg_length, 3);
+    will_return(__wrap_validate_control_msg, 1);
     // OS_FreeKey
     expect_value(__wrap_OS_FreeKey, key, key);
 
@@ -2110,6 +2301,8 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_not_found),
         cmocka_unit_test(test_HandleSecureMessage_invalid_message),
         cmocka_unit_test(test_HandleSecureMessage_shutdown_message),
+        cmocka_unit_test(test_HandleSecureMessage_HC_req_message),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_HC_req_message),
         cmocka_unit_test(test_HandleSecureMessage_NewMessage_NoShutdownMessage),
         cmocka_unit_test(test_HandleSecureMessage_OldMessage_NoShutdownMessage),
         cmocka_unit_test(test_HandleSecureMessage_different_sock),
