@@ -528,8 +528,7 @@ namespace chrome
                 continue;
             }
 
-            // m_currentUid = m_chromeExtensionsWrapper->getUserId(user);
-            m_currentUid = "123";
+            m_currentUid = m_chromeExtensionsWrapper->getUserId(user);
             const std::string userHomePath = Utils::joinPaths(homePath, user);
 
             for (const auto& browser : kWindowsPathList)
