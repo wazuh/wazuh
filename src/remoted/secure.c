@@ -848,11 +848,14 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 // Create key based on agent_id for indexing
                 char agent_key[32];
                 snprintf(agent_key, sizeof(agent_key), "%d", agentid);
-                
+
                 // Use upsert to allow updating existing control messages for the same agent
-                if (indexed_queue_upsert_ex(control_msg_queue, agent_key, ctrl_msg_data) == 0) {
+                int res = indexed_queue_upsert_ex(control_msg_queue, agent_key, ctrl_msg_data);
+                if (res == 1) {
+                    mdebug2("Control message updated in queue for agent ID '%s'.", agent_key);
+                } else if (res == 0) {
+                    mdebug2("Control message pushed in queue for agent ID '%s'.", agent_key);
                     rem_inc_ctrl_msg_queue_usage();
-                    mdebug2("Control message pushed/updated in queue for agent ID '%s'.", agent_key);
                 } else {
                     mwarn("Failed to insert control message for agent ID '%s'.", agent_key);
                     w_free_ctrl_msg_data(ctrl_msg_data);

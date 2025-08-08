@@ -240,7 +240,7 @@ int indexed_queue_upsert_ex(w_indexed_queue_t *queue, const char *key, void *dat
         entry->data = data;
         entry->queue_node->data = data;
         pthread_mutex_unlock(&queue->mutex);
-        return 0;
+        return 1;
     } else {
         // Wait if queue is full for new insertions
         while (indexed_queue_full(queue)) {
