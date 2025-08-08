@@ -1,4 +1,5 @@
 #include <sca_event_handler.hpp>
+#include <sca_checksum.hpp>
 
 #include <dbsync.hpp>
 #include <hashHelper.h>
@@ -67,6 +68,17 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     auto policyData = GetPolicyById(policyId);
     auto checkData = GetPolicyCheckById(checkId);
     checkData["result"] = checkResult;
+
+    const auto checksum = sca::calculateChecksum(checkData);
+
+    if (!checksum.empty())
+    {
+        checkData["checksum"] = checksum;
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Failed to calculate checksum for check result");
+    }
 
     auto updateResultQuery = SyncRowQuery::builder().table("sca_check").data(checkData).returnOldData().build();
 
