@@ -57,6 +57,11 @@ bool YamlDocument::Load(std::istream& input)
     yaml_parser_set_input_string(&m_parser, reinterpret_cast<const unsigned char*>(content.c_str()), content.size());
     m_loaded = yaml_parser_load(&m_parser, &m_document);
 
+    if(!m_loaded)
+    {
+        yaml_parser_delete(&m_parser);
+    }
+
     return m_loaded;
 }
 
