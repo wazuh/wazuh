@@ -109,7 +109,6 @@ int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1);
 int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1);
 
 #ifndef WIN32
-int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1);
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 #ifndef CLIENT
 // Current key-request module
