@@ -14,6 +14,7 @@ namespace sca
      *
      * @param checkData JSON object containing the check data
      * @return SHA1 checksum as a hex string, or empty string on error
+     * @throw std::runtime_error if checksum calculation fails
      */
     std::string calculateChecksum(const nlohmann::json& checkData);
 
@@ -31,6 +32,7 @@ namespace sca
      * @param compliance Check compliance information
      * @param rules Check rules
      * @return SHA1 checksum as a hex string, or empty string on error
+     * @throw std::runtime_error if checksum calculation fails
      */
     std::string calculateChecksum(const std::string& id,
                                   const std::string& policyId,

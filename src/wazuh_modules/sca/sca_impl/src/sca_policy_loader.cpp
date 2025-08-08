@@ -1,14 +1,15 @@
 #include <sca_policy_loader.hpp>
 
+#include <sca_checksum.hpp>
 #include <sca_policy.hpp>
 #include <sca_policy_parser.hpp>
 #include <sca_utils.hpp>
-#include <sca_checksum.hpp>
 
 #include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
 
 #include <algorithm>
+
 #include "logging_helper.hpp"
 
 SCAPolicyLoader::SCAPolicyLoader(const std::vector<std::string>& policies,
@@ -80,7 +81,8 @@ std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const Cre
             }
             catch (const std::exception& e)
             {
-                LoggingHelper::getInstance().log(LOG_WARNING, "Failed to parse policy from  " + path.string() + ": " + e.what());
+                LoggingHelper::getInstance().log(LOG_WARNING,
+                                                 "Failed to parse policy from  " + path.string() + ": " + e.what());
             }
         }
     }
@@ -181,12 +183,13 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
                                  }
                                  else
                                  {
-                                    LoggingHelper::getInstance().log(LOG_ERROR, "Invalid data:  " + rowData.dump());
+                                     LoggingHelper::getInstance().log(LOG_ERROR, "Invalid data:  " + rowData.dump());
                                  }
                              }
                              else
                              {
-                                    LoggingHelper::getInstance().log(LOG_ERROR, "Failed to parse policy from  " + rowData.dump());
+                                 LoggingHelper::getInstance().log(LOG_ERROR,
+                                                                  "Failed to parse policy from  " + rowData.dump());
                              }
                          }};
 
@@ -213,15 +216,18 @@ void SCAPolicyLoader::UpdateCheckResult(const nlohmann::json& check) const
 
     // Calculate and add checksum to the check data
     nlohmann::json checkWithChecksum = check;
-    const auto checksum = sca::calculateChecksum(checkWithChecksum);
 
-    if (!checksum.empty())
+    try
     {
+        const auto checksum = sca::calculateChecksum(checkWithChecksum);
         checkWithChecksum["checksum"] = checksum;
     }
-    else
+    catch (const std::exception& e)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, "Failed to calculate checksum for check result update");
+        LoggingHelper::getInstance().log(
+            LOG_ERROR, "Failed to calculate checksum for check result update: " + std::string(e.what()));
+
+        return;
     }
 
     auto updateResultQuery = SyncRowQuery::builder().table(SCA_CHECK_TABLE_NAME).data(checkWithChecksum).build();
@@ -261,15 +267,15 @@ nlohmann::json SCAPolicyLoader::NormalizeDataWithChecksum(nlohmann::json data, c
     {
         for (auto& entry : data)
         {
-            const auto checksum = sca::calculateChecksum(entry);
-
-            if (!checksum.empty())
+            try
             {
+                const auto checksum = sca::calculateChecksum(entry);
                 entry["checksum"] = checksum;
             }
-            else
+            catch (const std::exception& e)
             {
-                LoggingHelper::getInstance().log(LOG_ERROR, "Failed to calculate checksum for check: " + entry.dump());
+                LoggingHelper::getInstance().log(
+                    LOG_ERROR, "Failed to calculate checksum for check: " + entry.dump() + " - " + e.what());
             }
         }
     }
