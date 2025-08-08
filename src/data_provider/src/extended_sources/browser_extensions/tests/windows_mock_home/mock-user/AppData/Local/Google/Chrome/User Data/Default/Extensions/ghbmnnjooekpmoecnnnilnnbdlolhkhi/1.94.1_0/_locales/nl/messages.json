@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "NIEUW MAKEN"
+   },
+   "explanationofflinedisabled": {
+      "message": "Je bent offline. Wil je Google Documenten zonder internetverbinding gebruiken, ga dan de volgende keer dat je verbinding met internet hebt naar 'Instellingen' op de homepage van Google Documenten en zet 'Offline synchronisatie' aan."
+   },
+   "explanationofflineenabled": {
+      "message": "Je bent offline, maar je kunt nog wel beschikbare bestanden bewerken of nieuwe bestanden maken."
+   },
+   "extdesc": {
+      "message": "Bewerk, maak en bekijk je documenten, spreadsheets en presentaties. Allemaal zonder internettoegang."
+   },
+   "extname": {
+      "message": "Offline Documenten"
+   },
+   "learnmore": {
+      "message": "Meer informatie"
+   },
+   "popuphelptext": {
+      "message": "Overal schrijven, bewerken en samenwerken, met of zonder internetverbinding."
+   }
+}

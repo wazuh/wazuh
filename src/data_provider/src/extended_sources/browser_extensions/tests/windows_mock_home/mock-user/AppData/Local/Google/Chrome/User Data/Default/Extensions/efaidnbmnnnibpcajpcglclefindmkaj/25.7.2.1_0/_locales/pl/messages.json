@@ -1,0 +1,735 @@
+{
+   "ConvertVerbDescription": {
+      "message": "Konwertuj dokumenty do lub z formatu PDF."
+   },
+   "Disable": {
+      "message": "Wyłącz"
+   },
+   "EditVerbDescription": {
+      "message": "Zmieniaj kolejność, obracaj lub usuwaj strony w plikach PDF."
+   },
+   "Enable": {
+      "message": "Włącz"
+   },
+   "LearnMoreURL": {
+      "message": "https://helpx.adobe.com/pl/acrobat/kb/acrobat-pro-aip-for-chrome.html"
+   },
+   "LearnMoreURLEdge": {
+      "message": "https://helpx.adobe.com/pl/acrobat/kb/acrobat-pro-aip-for-edge.html"
+   },
+   "acrobatEmbeddedTouchPointPreferenceDescription": {
+      "message": "The shortcut can be used to open PDFs within extension for easy editing, summarizing, saving, and more."
+   },
+   "acrobatEmbeddedTouchPointPreferenceTitle": {
+      "message": "Show Acrobat shortcut in embedded web PDFs"
+   },
+   "acrobatGdriveTripleDotMenuTouchPointText": {
+      "message": "Otwórz w programie Acrobat"
+   },
+   "acrobatGmailFteToolTipButton": {
+      "message": "Rozumiem"
+   },
+   "acrobatGmailFteToolTipDescription": {
+      "message": "Edytuj, konwertuj, komentuj i podpisuj w przeglądarce Chrome z rozszerzeniem Acrobat"
+   },
+   "acrobatGmailFteToolTipTitle": {
+      "message": "Otwórz ten plik PDF w programie Acrobat"
+   },
+   "acrobatGsuiteFteToolTipButton": {
+      "message": "Rozumiem"
+   },
+   "acrobatGsuiteFteToolTipButtonDV": {
+      "message": "OK"
+   },
+   "acrobatGsuiteFteToolTipButtonNonDV": {
+      "message": "OK"
+   },
+   "acrobatGsuiteFteToolTipDescription": {
+      "message": "Edytuj, konwertuj, komentuj i podpisuj w przeglądarce Chrome z rozszerzeniem Acrobat"
+   },
+   "acrobatGsuiteFteToolTipDescriptionDV": {
+      "message": "Wypróbuj narzędzia PDF, takie jak edycja, komentowanie, konwertowanie i podpisywanie elektroniczne w $surfaceName$, ustawiając program Acrobat jako domyślną przeglądarkę PDF.",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "acrobatGsuiteFteToolTipDescriptionNonDV": {
+      "message": "Wypróbuj narzędzia PDF programu Acrobat , takie jak edycja, komentowanie, konwertowanie i podpisywanie elektroniczne — bezpośrednio w $surfaceName$.",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "acrobatGsuiteFteToolTipTitle": {
+      "message": "Otwórz ten plik PDF w programie Acrobat"
+   },
+   "acrobatGsuiteFteToolTipTitleDV": {
+      "message": "Otwieraj wszystkie pliki PDF w programie Adobe Acrobat"
+   },
+   "acrobatGsuiteFteToolTipTitleNonDV": {
+      "message": "Otwórz ten plik PDF w programie Adobe Acrobat"
+   },
+   "acrobatGsuiteTouchPointPreferenceDescription": {
+      "message": "Dodaj ikony Acrobat do Gmaila i Dysku Google, aby szybko otwierać pliki PDF w programie Acrobat i korzystać z narzędzi PDF."
+   },
+   "acrobatGsuiteTouchPointPreferenceTitle": {
+      "message": "Zintegruj program Acrobat z usługami Gmail i Dysk Google"
+   },
+   "acrobatTouchPointInOtherSitesPreferenceDescription": {
+      "message": "Zintegruj program Acrobat z witrynami internetowymi, w tym Gmail i Dysk Google, aby uzyskać łatwy dostęp do narzędzi PDF."
+   },
+   "acrobatTouchPointInOtherSitesPreferenceTitle": {
+      "message": "Pokaż ikonę Otwórz w programie Acrobat w innych witrynach internetowych"
+   },
+   "acrobatTouchPointInOtherSurfacesPreferenceDescription": {
+      "message": "Zintegruj program Acrobat z witrynami internetowymi, w tym Gmail, Dysk Google i Outlook, aby uzyskać łatwy dostęp do narzędzi PDF."
+   },
+   "addWebpageToProjectContextMenuTitle": {
+      "message": "Dodaj do projektu PDF…"
+   },
+   "adobeYoloErrorMessage": {
+      "message": "Przepraszamy, to łącze jest nieprawidłowe"
+   },
+   "adobeYoloMessage": {
+      "message": "Trwa logowanie do programu Acrobat..."
+   },
+   "aiAcBody": {
+      "message": "Szybko podsumowuj strony internetowe i uzyskuj kluczowe informacje za pomocą Asystenta SI w programie Acrobat."
+   },
+   "aiAcHeader": {
+      "message": "Więcej możliwości dzięki rozszerzeniu Acrobat"
+   },
+   "aiMarkerTouchpointPreferenceDescription": {
+      "message": "Zawsze wyświetlaj menu Asystenta SI podczas przesuwania kursora nad plikami PDF na stronach internetowych."
+   },
+   "aiMarkerTouchpointPreferenceTitle": {
+      "message": "Menu kontekstowe Asystenta SI"
+   },
+   "analyticsOptinTitle": {
+      "message": "Wysyłanie danych dotyczących użytkowania"
+   },
+   "appearancePrefDesc": {
+      "message": "Przełączanie między motywem ciemnym i jasnym"
+   },
+   "appearancePrefOp1": {
+      "message": "Użyj ustawień systemowych"
+   },
+   "appearancePrefOp2": {
+      "message": "Tryb ciemny"
+   },
+   "appearancePrefOp3": {
+      "message": "Tryb jasny"
+   },
+   "appearancePrefTitle": {
+      "message": "Ustawienia trybu ciemnego"
+   },
+   "askAssistantBannerContentText": {
+      "message": "Uzyskaj szybkie podsumowania i kluczowe informacje ze stron internetowych dzięki Asystentowi SI."
+   },
+   "askAssistantBannerTitle": {
+      "message": "Asystent SI dla stron internetowych"
+   },
+   "canQuesBriefOverview": {
+      "message": "Podaj krótki przegląd tego artykułu"
+   },
+   "canQuesCreateFAQ": {
+      "message": "Utwórz listę często zadawanych pytań na podstawie tych informacji"
+   },
+   "canQuesDraftEmail": {
+      "message": "Przygotuj wiadomość e-mail podsumowującą kluczowe informacje"
+   },
+   "canQuesImpTopics": {
+      "message": "Wymień wszystkie ważne tematy i słowa kluczowe"
+   },
+   "canQuesSummarise": {
+      "message": "Podsumuj ten artykuł"
+   },
+   "closeButton": {
+      "message": "Zamknij"
+   },
+   "cropImageContextMenu": {
+      "message": "Kadruj obraz"
+   },
+   "dcWebBookmarkTitle": {
+      "message": "Strona główna programu Adobe Acrobat"
+   },
+   "doNotShowButton": {
+      "message": "Nie pokazuj więcej"
+   },
+   "domainPreferenceTitle": {
+      "message": "Strony internetowe, gdzie ruchomy przycisk operacji Asystenta SI jest ukryty"
+   },
+   "downloadBannerContinue": {
+      "message": "Włącz"
+   },
+   "downloadBannerText": {
+      "message": "Otwórz wszystkie pobrane pliki PDF w programie Acrobat, ustawiając aplikację jako domyślną przeglądarkę plików PDF w Chrome"
+   },
+   "editImageContextMenu": {
+      "message": "Edytuj obraz"
+   },
+   "editMegaVerbText": {
+      "message": "Edytuj"
+   },
+   "effectsImageContextMenu": {
+      "message": "Zastosuj efekty"
+   },
+   "embeddedPDFHideIconForNow": {
+      "message": "Ukryj ikonę na razie"
+   },
+   "embeddedPDFManagePreferences": {
+      "message": "Zarządzaj preferencjami"
+   },
+   "embeddedPDFOpenInAcrobatTooltip": {
+      "message": "Otwórz w programie Acrobat"
+   },
+   "embeddedPDFOpenPDFInAcrobat": {
+      "message": "Otwórz plik PDF w: Acrobat"
+   },
+   "embeddedPDFTouchPointFTEBody": {
+      "message": "Edit, summarize, and more right from the Acrobat extension. You can hide this shortcut anytime in Preferences."
+   },
+   "embeddedPDFTouchPointFTEHeader": {
+      "message": "Otwórz ten plik PDF w programie Adobe Acrobat"
+   },
+   "enableGenAIFeaturesDescription": {
+      "message": "Plik będzie przetwarzany w chmurze w celu zapewnienia możliwości generatywnej SI. Wyłączenie tej funkcji uniemożliwia przetwarzanie pliku i wyłącza generatywną SI. Możesz ją ponownie aktywować w dowolnym momencie."
+   },
+   "enableGenAIFeaturesTitle": {
+      "message": "Włącz funkcje generatywnej SI w programie Acrobat"
+   },
+   "expressContextualFteCtaLabel": {
+      "message": "Zamknij"
+   },
+   "expressContextualFteDescription": {
+      "message": "Z łatwością kadruj, usuwaj tło i nie tylko. Obsługiwane przez Adobe Express."
+   },
+   "expressContextualFteTitle": {
+      "message": "Edytuj ten obraz w programie $surfaceName$",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "expressDropdownMenuTitle": {
+      "message": "Adobe Acrobat"
+   },
+   "expressDropdownMenuTooltip": {
+      "message": "Z łatwością kadruj, usuwaj tło i nie tylko. Obsługiwane przez Adobe Express."
+   },
+   "expressEditImageParentContextMenu": {
+      "message": "Edytuj obraz"
+   },
+   "expressEditImagePoweredByExpressContextMenu": {
+      "message": "Obsługiwane przez Adobe Express"
+   },
+   "expressExportOptionsDownloadLabel": {
+      "message": "Pobierz"
+   },
+   "expressExportOptionsSaveLabel": {
+      "message": "Zapisz"
+   },
+   "expressFTEDescription": {
+      "message": "Kliknij prawym przyciskiem myszy, aby kadrować, usunąć tło lub zmienić obraz za pomocą SI."
+   },
+   "expressFTEFooter": {
+      "message": "Przez \u003Cb>Adobe Acrobat\u003C/b>"
+   },
+   "expressFTETitle": {
+      "message": "Edytuj obraz w programie Adobe Express"
+   },
+   "expressPopoverFTEDescription": {
+      "message": "Kliknij prawym przyciskiem myszy na dowolny obraz w Internecie, aby szybko usunąć tło, wykadrować lub przekształcić go za pomocą sztucznej inteligencji w programie Adobe Express"
+   },
+   "expressPopoverFTETitle": {
+      "message": "Edytuj obrazy bezpośrednio w przeglądarce"
+   },
+   "expressPublishModalTitle": {
+      "message": "Pobieranie obrazu…"
+   },
+   "expressTouchpointPreferenceDescription": {
+      "message": "Rozszerzenie Adobe Acrobat umożliwia edycję obrazów za pomocą programu Adobe Express. Wyłączenie tej funkcji spowoduje jej usunięcie. Można ją aktywować w dowolnym momencie."
+   },
+   "expressTouchpointPreferenceTitle": {
+      "message": "Włącz operacje Adobe Express w programie Acrobat"
+   },
+   "extensionMenuTitle": {
+      "message": "Rozszerzenie Acrobat – Skrót do wszystkich narzędzi PDF"
+   },
+   "failToastText": {
+      "message": "Wystąpił nieoczekiwany błąd. Spróbuj ponownie później."
+   },
+   "fteOwnershipSideRedCardContent": {
+      "message": "Komentuj, wypełniaj formularze, podpisuj i nie tylko w Chrome, ustawiając Acrobat jako domyślną przeglądarkę PDF."
+   },
+   "fteSideCardPrimaryHeader": {
+      "message": "Użyj programu Acrobat"
+   },
+   "fteSideCardSecondaryHeader": {
+      "message": "bezpośrednio w Chrome"
+   },
+   "gDriveDVPAppListCoachMarkContent": {
+      "message": "Zaznacz pole wyboru „Użyj domyślnie”, aby bezpośrednio otwierać pliki PDF z Dysku Google w programie Acrobat"
+   },
+   "gDriveDVPCoachMarkTitle": {
+      "message": "Ustaw program Acrobat jako domyślną przeglądarkę"
+   },
+   "gDriveDVPManageAppCoachMarkContent": {
+      "message": "Kliknij przycisk 'Zarządzaj aplikacjami', aby wyświetlać, komentować i edytować pliki PDF, otwierając wszystkie pliki PDF z Dysku Google bezpośrednio w programie Acrobat"
+   },
+   "gSuiteDVPAddOnDefaultDesc": {
+      "message": "Dodatek Acrobat jest teraz ustawiony jako domyślny"
+   },
+   "genAIFabPreferenceDescription": {
+      "message": "Zawsze wyświetlaj przycisk Asystenta SI na krawędzi okna przeglądarki."
+   },
+   "genAIFabPreferenceTitle": {
+      "message": "Przycisk Asystenta SI"
+   },
+   "generativeFillImageContextMenu": {
+      "message": "Wypełnienie generatywne"
+   },
+   "genericDVPCoachMarkContent": {
+      "message": "Kliknij opcję „Zarządzaj aplikacjami”, a następnie przewiń w dół do opcji Dodatek Acrobat i kliknij pole wyboru „Użyj domyślnie”"
+   },
+   "getInsight": {
+      "message": "Uzyskaj analizy za pomocą Asystenta SI w programie Acrobat"
+   },
+   "getSummary": {
+      "message": "Podsumuj plik PDF"
+   },
+   "gmailPromptFTETooltip": {
+      "message": "Otwieraj pliki PDF w programie Acrobat, aby korzystać z narzędzi edycji, podpisu i nie tylko"
+   },
+   "gsuiteEditWithAcrobat": {
+      "message": "Edytuj w programie Acrobat"
+   },
+   "gsuiteOpenWithAcrobat": {
+      "message": "Otwórz w programie Acrobat"
+   },
+   "hideFabForDomain": {
+      "message": "Wyłącz dla tej witryny"
+   },
+   "hideForNow": {
+      "message": "Ukryj na razie"
+   },
+   "hidePopup": {
+      "message": "Ukryj podczas tej sesji"
+   },
+   "insertObjectImageContextMenu": {
+      "message": "Wstaw obiekt"
+   },
+   "localFileBlockingPageOpenInChrome": {
+      "message": "Otwórz ten plik w przeglądarce Chrome"
+   },
+   "localFileBlockingPageTitle": {
+      "message": "Włącz rozszerzenie Acrobat"
+   },
+   "localFileOptionDesc": {
+      "message": "Przyznaj rozszerzeniu Acrobat dostęp do lokalnych adresów URL plików, aby otwierać wszystkie pliki PDF programu Acrobat w przeglądarce Chrome."
+   },
+   "localFileOptionTitle": {
+      "message": "Otwieranie lokalnych plików PDF w programie Acrobat"
+   },
+   "localFilePromptContinueButton": {
+      "message": "Kontynuuj"
+   },
+   "localFilePromptDescription": {
+      "message": "Zapewnij programowi Acrobat dostęp do plików z tego urządzenia, aby uzyskać natychmiastowy dostęp do wszystkich narzędzi, dzięki czemu można błyskawicznie edytować pliki PDF, konwertować pliki i składać podpisy elektroniczne."
+   },
+   "localFilePromptHeader": {
+      "message": "Otwórz w programie Acrobat, aby edytować, podpisać i nie tylko"
+   },
+   "localFteContinue": {
+      "message": "Przejdź do ustawień"
+   },
+   "localFteDescription": {
+      "message": "Wykorzystaj w pełni rozszerzenie Acrobat i otwieraj wszystkie pliki PDF. Włącz opcję Zezwalaj na dostęp do adresów URL pliku w ustawieniach rozszerzeń."
+   },
+   "localFteDontShowAgainText": {
+      "message": "Nie pokazuj tego więcej"
+   },
+   "localFteTitle": {
+      "message": "Przełącz się na Acrobat, aby otworzyć pliki lokalne"
+   },
+   "neverDisplayFab": {
+      "message": "Nigdy nie wyświetlaj"
+   },
+   "openInAcrobat": {
+      "message": "Otwórz w programie Acrobat"
+   },
+   "openSettings": {
+      "message": "Zarządzaj w ustawieniach"
+   },
+   "optionsFailurePrompt": {
+      "message": "Nie można zapisać zmian. Spróbuj ponownie później."
+   },
+   "optionsSuccessPrompt": {
+      "message": "Zapisano preferencje"
+   },
+   "optionsSuccessPromptReloadRequired": {
+      "message": "Preferencje zostaną uwzględnione dopiero po ponownym uruchomieniu przeglądarki"
+   },
+   "outlookErrorToastDescription": {
+      "message": "Coś poszło nie tak. Zamknij plik i spróbuj ponownie."
+   },
+   "outlookErrorToastTitle": {
+      "message": "Nie można otworzyć pliku"
+   },
+   "outlookPDFTouchPointFTEBody": {
+      "message": "Edytuj, podsumowuj i podpisuj pliki PDF, otwierając je w programie Acrobat."
+   },
+   "outlookPDFTouchPointFTEHeader": {
+      "message": "Otwórz ten plik PDF w programie Adobe Acrobat"
+   },
+   "pdfOwnerShipDmbConfirmBtn": {
+      "message": "Kontynuuj"
+   },
+   "pdfOwnerShipSideRedCardConfirmBtn": {
+      "message": "Kontynuuj"
+   },
+   "pdfOwnershipDefSideCardcontent": {
+      "message": "Wyświetlaj, komentuj, wypełniaj formularze, podpisuj i nie tylko po ustawieniu programu Adobe Acrobat jako domyślnej przeglądarki PDF."
+   },
+   "pdfOwnershipExploreAcrobat": {
+      "message": "Użyj aplikacji Acrobat w Chrome"
+   },
+   "pdfOwnershipExploreAcrobatEdge": {
+      "message": "Użyj aplikacji Acrobat w Microsoft Edge"
+   },
+   "pdfOwnershipExploreOptionsDescription": {
+      "message": "Ustaw program Acrobat jako domyślną przeglądarkę plików PDF, aby uzyskać szybki dostęp do komentowania, wypełniania i podpisywania oraz innych narzędzi PDF."
+   },
+   "pdfOwnershipExploreOptionsTitle": {
+      "message": "Otwórz wszystkie pliki PDF w programie Acrobat"
+   },
+   "pdfOwnershipPromptCancel": {
+      "message": "Nie teraz"
+   },
+   "pdfOwnershipPromptContent": {
+      "message": "Wykonuj więcej zadań z plikami PDF w przeglądarce Chrome po ustawieniu programu Adobe Acrobat jako domyślnej przeglądarki PDF."
+   },
+   "pdfOwnershipPromptContent2": {
+      "message": "Ustaw program Acrobat jako domyślną przeglądarkę plików PDF, aby korzystać z plików PDF bezpośrednio w przeglądarce Google Chrome. Komentuj, wypełniaj, podpisuj oraz wypróbuj narzędzia, takie jak konwertowanie lub kompresowanie."
+   },
+   "pdfOwnershipPromptContentEdge": {
+      "message": "Wykonuj więcej zadań z plikami PDF w przeglądarce Microsoft Edge po ustawieniu programu Adobe Acrobat jako domyślnej przeglądarki PDF."
+   },
+   "pdfOwnershipPromptDeny": {
+      "message": "Nie, dziękuję"
+   },
+   "pdfOwnershipPromptOk": {
+      "message": "Ustaw jako domyślny"
+   },
+   "pdfOwnershipPromptOkFullscreen": {
+      "message": "Wypróbuj teraz"
+   },
+   "popupNoConnection": {
+      "message": "Brak połączenia"
+   },
+   "popupOfflineMessage": {
+      "message": "Skontaktuj się z administratorem, aby wznowić połączenie"
+   },
+   "preferences": {
+      "message": "Preferencje"
+   },
+   "removeBackgroundImageContextMenu": {
+      "message": "Usuń tło"
+   },
+   "removeObjectImageContextMenu": {
+      "message": "Usuń obiekt"
+   },
+   "saveLocationOp1": {
+      "message": "Pytaj za każdym razem"
+   },
+   "saveLocationOp2": {
+      "message": "Adobe"
+   },
+   "saveLocationOp3": {
+      "message": "Mój komputer"
+   },
+   "saveLocationPreferenceDescription": {
+      "message": "Ustaw lokalizację do zapisu plików"
+   },
+   "saveLocationPreferenceTitle": {
+      "message": "Zapisz lokalizację pliku"
+   },
+   "sharepointPreferenceMessage": {
+      "message": "Zezwól na wyewidencjonowanie plików SharePoint w programie Acrobat."
+   },
+   "sidepanelLocationPreferenceButtonText": {
+      "message": "Zmiana ustawień przeglądarki"
+   },
+   "sidepanelLocationPreferenceDescription": {
+      "message": "Umieść panel boczny po lewej lub prawej stronie okna przeglądarki. Panel boczny jest dostępny tylko w przeglądarce Google Chrome 11.4 lub nowszej."
+   },
+   "sidepanelLocationPreferenceTitle": {
+      "message": "Lokalizacja panelu Asystenta SI"
+   },
+   "stripTextOpenAcrobat": {
+      "message": "Otwórz w programie Acrobat"
+   },
+   "stripTextOpenFillnSign": {
+      "message": "Wypełnij i podpisz w programie Acrobat"
+   },
+   "successToastText": {
+      "message": "Pliki PDF zostaną teraz otwarte w programie Adobe Acrobat"
+   },
+   "surfaceNameGdrive": {
+      "message": "Dysk Google"
+   },
+   "surfaceNameGmail": {
+      "message": "Gmail"
+   },
+   "tooltipTextDisabled": {
+      "message": "Asystent SI nie jest dostępny dla tej strony internetowej"
+   },
+   "tooltipTextEnabled": {
+      "message": "Uzyskuj podsumowania i najważniejsze informacje za pomocą Asystenta SI"
+   },
+   "tooltipTextSubText": {
+      "message": "obsługiwane przez Adobe Acrobat"
+   },
+   "unsupportedFileTypeToastText": {
+      "message": "Ten typ pliku nie jest obsługiwany. Możesz spróbować edytować inny plik."
+   },
+   "userLocale": {
+      "message": "Ustawienia regionalne użytkownika"
+   },
+   "web2pdfAddButtonText": {
+      "message": "Dodaj do istniejącego PDF..."
+   },
+   "web2pdfAlwaysShow": {
+      "message": "Otwieraj pliki PDF automatycznie"
+   },
+   "web2pdfAppendLinkContextMenu": {
+      "message": "Dołącz obiekt docelowy łącza do istniejącego pliku PDF"
+   },
+   "web2pdfAppendPageContextMenu": {
+      "message": "Dodaj stronę internetową do istniejącego pliku PDF..."
+   },
+   "web2pdfBadVersion": {
+      "message": "Ta wersja przeglądarki Chrome nie obsługuje programu Adobe Acrobat. Należy korzystać z wersji minimum $version$.",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfBadVersionEdge": {
+      "message": "Ta wersja przeglądarki Edge nie obsługuje programu Adobe Acrobat. Należy korzystać z wersji minimum $version$.",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfClickToOpen": {
+      "message": "Kliknij poniższe łącze i otwórz plik PDF w programie Acrobat."
+   },
+   "web2pdfConvertButtonToolTip": {
+      "message": "Rozszerzenie Acrobat – Skrót do wszystkich narzędzi PDF."
+   },
+   "web2pdfConvertButtonToolTipERPReader": {
+      "message": "Rozszerzenie programu Acrobat Reader jest obecnie wyłączone. Skontaktuj się z administratorem IT."
+   },
+   "web2pdfConvertButtonToolTipReader": {
+      "message": "Otwórz plik PDF w programie Acrobat Reader"
+   },
+   "web2pdfConvertLinkContextMenu": {
+      "message": "Konwertuj obiekt docelowy łącza na plik Adobe PDF"
+   },
+   "web2pdfConvertPageContextMenu": {
+      "message": "Konwertuj stronę internetową do pliku Adobe PDF..."
+   },
+   "web2pdfCopyText": {
+      "message": "Kopiowanie do programu Acrobat"
+   },
+   "web2pdfDestinationText": {
+      "message": "Folder docelowy:"
+   },
+   "web2pdfDoneButtonText": {
+      "message": "Gotowe"
+   },
+   "web2pdfExtnDescription": {
+      "message": "Korzystaj z programu Acrobat w przeglądarce, aby przeglądać, konwertować, kompresować i podpisywać pliki PDF"
+   },
+   "web2pdfExtnDescriptionBeta": {
+      "message": "Korzystaj z programu Acrobat w przeglądarce, aby przeglądać, konwertować, kompresować i podpisywać pliki PDF"
+   },
+   "web2pdfExtnDescriptionChrome": {
+      "message": "Więcej możliwości w przeglądarce Google Chrome dzięki narzędziom PDF Adobe Acrobat. Przeglądaj, wypełniaj, komentuj, podpisuj oraz wypróbuj narzędzia konwertowania i kompresowania."
+   },
+   "web2pdfExtnDescriptionEdge": {
+      "message": "Zrób więcej w Microsoft Edge dzięki narzędziom PDF Adobe Acrobat. Przeglądaj, wypełniaj, komentuj, podpisuj, konwertuj i kompresuj."
+   },
+   "web2pdfExtnName": {
+      "message": "Adobe Acrobat: edycja plików PDF, konwertowanie, narzędzia podpisywania"
+   },
+   "web2pdfExtnNameBeta": {
+      "message": "Adobe Acrobat Beta"
+   },
+   "web2pdfExtnNameEdge": {
+      "message": "Adobe Acrobat: edycja plików PDF, konwertowanie, narzędzia podpisywania"
+   },
+   "web2pdfExtnNameStage": {
+      "message": "Adobe Acrobat Stage"
+   },
+   "web2pdfFileLockedError": {
+      "message": "Plik nie może zostać zapisany, ponieważ jest wykorzystywany przez inny proces."
+   },
+   "web2pdfFilename": {
+      "message": "Nazwa pliku:"
+   },
+   "web2pdfFrictionlessToggleDescription": {
+      "message": "Rozszerzenie Adobe Acrobat zaleca korzystanie z narzędzi PDF w celu wykonaniu zadania. Rekomendacja jest oparta na wykonanych wyszukiwaniach. Te dane nie są jednak przesyłane do firmy Adobe."
+   },
+   "web2pdfFrictionlessUrl": {
+      "message": "https://www.adobe.com/go/fl_chromeext_pl"
+   },
+   "web2pdfFrictionlessUrlEdge": {
+      "message": "https://www.adobe.com/pl/acrobat/online.html?x_api_client_id=edge_extension&x_api_client_location=trefoil&mv=other&mv2=edge_extension:trefoil&trackingid=HM85XB76"
+   },
+   "web2pdfHTMLJSError": {
+      "message": "Wystąpił błąd podczas przetwarzania strony internetowej."
+   },
+   "web2pdfHTMLTooLarge": {
+      "message": "Zawartość HTML jest zbyt duża, aby ją przetworzyć."
+   },
+   "web2pdfInfoHoverPopup": {
+      "message": "Rozszerzenie Adobe Acrobat zaleca korzystanie z narzędzi PDF w celu wykonaniu zadania. Rekomendacja jest oparta na wykonanych wyszukiwaniach. Te dane nie są jednak przesyłane do firmy Adobe. Aby wyłączyć tę funkcję, kliknij \u003Cspan class = \"tooltip-content-settings\">tutaj\u003C/span>."
+   },
+   "web2pdfLoaderTitle": {
+      "message": "Wczytywanie..."
+   },
+   "web2pdfMissingMac": {
+      "message": "Program Adobe Acrobat dla przeglądarki Chrome nie jest jeszcze dostępny dla komputerów Mac."
+   },
+   "web2pdfMissingMacEdge": {
+      "message": "Program Adobe Acrobat dla przeglądarki Microsoft Edge nie jest jeszcze dostępny dla komputerów Mac"
+   },
+   "web2pdfNoFoldersText": {
+      "message": "Nie masz żadnych folderów w pamięci Acrobat DC."
+   },
+   "web2pdfNoWritePermissionOnSelectedFile": {
+      "message": "Nie masz uprawnień do zapisu wybranego pliku."
+   },
+   "web2pdfOpenButtonText": {
+      "message": "Otwórz w programie Acrobat"
+   },
+   "web2pdfOpenButtonTextOlder": {
+      "message": "Pobierz Adobe PDF"
+   },
+   "web2pdfOpenButtonTextReader": {
+      "message": "Otwórz w programie Acrobat Reader"
+   },
+   "web2pdfOpenConvertedPDFDescription": {
+      "message": "Automatycznie otwórz przekonwertowany plik PDF w programie Acrobat po zakończeniu konwersji strony."
+   },
+   "web2pdfOpenConvertedPDFTitle": {
+      "message": "Automatycznie otwórz przekonwertowane pliki PDF w programie Acrobat"
+   },
+   "web2pdfOpenInDCButtonText": {
+      "message": "Otwórz plik PDF w: Acrobat"
+   },
+   "web2pdfOptOut": {
+      "message": "Aby ulepszyć funkcje produktów, aplikacja ta wysyła firmie Adobe informacje na temat sposobu korzystania z niej."
+   },
+   "web2pdfOptOutDisabled": {
+      "message": "Żadne dane dotyczące użytkowania nie są udostępniane."
+   },
+   "web2pdfOptions": {
+      "message": "Opcje"
+   },
+   "web2pdfOptionsTitle": {
+      "message": "Preferencje programu Adobe Acrobat"
+   },
+   "web2pdfPDFOpenFailed": {
+      "message": "Nie udało się otworzyć pliku PDF"
+   },
+   "web2pdfPDFOpenFailedv2": {
+      "message": "Nie udało się otworzyć"
+   },
+   "web2pdfPDFOpened": {
+      "message": "Otworzono plik PDF"
+   },
+   "web2pdfPDFOpening": {
+      "message": "Otwieranie pliku PDF"
+   },
+   "web2pdfPreferencesButtonText": {
+      "message": "Preferencje..."
+   },
+   "web2pdfPreferencesNewText": {
+      "message": "Ustawienia konwersji..."
+   },
+   "web2pdfPrivacy": {
+      "message": "Adobe Acrobat — informacje"
+   },
+   "web2pdfReplaceWarning": {
+      "message": "już istnieje.\nCzy chcesz go zastąpić?"
+   },
+   "web2pdfSave": {
+      "message": "Zapisz"
+   },
+   "web2pdfSaveButton": {
+      "message": "Zapisz preferencje"
+   },
+   "web2pdfShowPDFTools": {
+      "message": "Pokaż z wynikami Google"
+   },
+   "web2pdfShowPDFViewerOption": {
+      "message": "Korzystaj z aplikacji Acrobat jako domyślnej przeglądarki PDF"
+   },
+   "web2pdfShowPersistentOpen": {
+      "message": "Pokazuj „Otwórz w programie Acrobat”"
+   },
+   "web2pdfShowPersistentOpenAlways": {
+      "message": "Zawsze pokazuj „Otwórz w programie Acrobat”"
+   },
+   "web2pdfShowPersistentOpenDescription": {
+      "message": "Pokaż opcję każdorazowego otwierania plików PDF w programie Acrobat."
+   },
+   "web2pdfStatusCancelled": {
+      "message": "Konwertowanie anulowane"
+   },
+   "web2pdfStatusComplete": {
+      "message": "Konwer. zakończ."
+   },
+   "web2pdfStatusDownloading": {
+      "message": "Pobieranie do konwertowania..."
+   },
+   "web2pdfStatusDownloadingPDF": {
+      "message": "Pobieranie pliku PDF"
+   },
+   "web2pdfStatusFailure": {
+      "message": "Błąd konwersji"
+   },
+   "web2pdfStatusInProgress": {
+      "message": "Trwa konwertowanie..."
+   },
+   "web2pdfStatusUnknownFailure": {
+      "message": "Nieznany problem"
+   },
+   "web2pdfStatusWaiting": {
+      "message": "Oczekiwanie na konwertowanie..."
+   },
+   "web2pdfTitle": {
+      "message": "Adobe Acrobat"
+   },
+   "web2pdfUnsupportedAcrobatVersion": {
+      "message": "Nie znaleziono obsługiwanej wersji programu Acrobat. Zainstaluj \u003Ca target='_blank' href='https://acrobat.adobe.com/pl/pl/free-trial-download.html?trackingid=29NMCS7T&mv=other'>bezpłatną 7-dniową wersję próbną\u003C/a>."
+   },
+   "web2pdfUntitledFileName": {
+      "message": "Bez nazwy"
+   },
+   "webpagePDFConversion": {
+      "message": "Ustawienia konwersji strony internetowej na plik PDF"
+   },
+   "webpagePDFConversionDescription": {
+      "message": "Podczas zapisywania stron internetowych w formacie PDF można ustawić marginesy, czcionki i inne szczegóły układu"
+   }
+}

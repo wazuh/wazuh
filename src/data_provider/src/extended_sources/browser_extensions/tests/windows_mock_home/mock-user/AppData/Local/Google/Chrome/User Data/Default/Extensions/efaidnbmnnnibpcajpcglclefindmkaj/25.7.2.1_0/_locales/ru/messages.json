@@ -1,0 +1,735 @@
+{
+   "ConvertVerbDescription": {
+      "message": "Преобразуйте документы в формат PDF или из него."
+   },
+   "Disable": {
+      "message": "Откл."
+   },
+   "EditVerbDescription": {
+      "message": "Изменяйте порядок страниц, поворачивайте и удаляйте их в файлах PDF."
+   },
+   "Enable": {
+      "message": "Включить"
+   },
+   "LearnMoreURL": {
+      "message": "https://helpx.adobe.com/ru/acrobat/kb/acrobat-pro-aip-for-chrome.html"
+   },
+   "LearnMoreURLEdge": {
+      "message": "https://helpx.adobe.com/ru/acrobat/kb/acrobat-pro-aip-for-edge.html"
+   },
+   "acrobatEmbeddedTouchPointPreferenceDescription": {
+      "message": "The shortcut can be used to open PDFs within extension for easy editing, summarizing, saving, and more."
+   },
+   "acrobatEmbeddedTouchPointPreferenceTitle": {
+      "message": "Show Acrobat shortcut in embedded web PDFs"
+   },
+   "acrobatGdriveTripleDotMenuTouchPointText": {
+      "message": "Открыть в Acrobat"
+   },
+   "acrobatGmailFteToolTipButton": {
+      "message": "ОК"
+   },
+   "acrobatGmailFteToolTipDescription": {
+      "message": "Редактируйте, преобразовывайте, комментируйте и подписывайте — прямо в Chrome с помощью Acrobat"
+   },
+   "acrobatGmailFteToolTipTitle": {
+      "message": "Открыть этот файл PDF в Acrobat"
+   },
+   "acrobatGsuiteFteToolTipButton": {
+      "message": "ОК"
+   },
+   "acrobatGsuiteFteToolTipButtonDV": {
+      "message": "ОК"
+   },
+   "acrobatGsuiteFteToolTipButtonNonDV": {
+      "message": "ОК"
+   },
+   "acrobatGsuiteFteToolTipDescription": {
+      "message": "Редактируйте, преобразовывайте, комментируйте и подписывайте — прямо в Chrome с помощью Acrobat"
+   },
+   "acrobatGsuiteFteToolTipDescriptionDV": {
+      "message": "Используйте инструменты для работы с PDF, такие как редактирование, комментирование, преобразование и электронное подписание, прямо в $surfaceName$, установив Acrobat средством просмотра PDF по умолчанию.",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "acrobatGsuiteFteToolTipDescriptionNonDV": {
+      "message": "Используйте инструменты Acrobat PDF, такие как редактирование, комментирование, преобразование и электронное подписание — прямо в $surfaceName$.",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "acrobatGsuiteFteToolTipTitle": {
+      "message": "Открыть этот файл PDF в Acrobat"
+   },
+   "acrobatGsuiteFteToolTipTitleDV": {
+      "message": "Открывать все файлы PDF в Adobe Acrobat"
+   },
+   "acrobatGsuiteFteToolTipTitleNonDV": {
+      "message": "Открыть этот файл PDF в Adobe Acrobat"
+   },
+   "acrobatGsuiteTouchPointPreferenceDescription": {
+      "message": "Добавьте значки Acrobat в Gmail и Google Диск, чтобы быстро открывать файлы PDF в Acrobat и получить доступ к инструментам для работы с PDF."
+   },
+   "acrobatGsuiteTouchPointPreferenceTitle": {
+      "message": "Интеграция Acrobat в Gmail и Google Диск"
+   },
+   "acrobatTouchPointInOtherSitesPreferenceDescription": {
+      "message": "Интегрируйте Acrobat в веб-сайте, включая Gmail и Google Диск, для быстрого доступа к инструментам PDF."
+   },
+   "acrobatTouchPointInOtherSitesPreferenceTitle": {
+      "message": "Показывать значок \"Открыть в Acrobat\" на других веб-сайтах"
+   },
+   "acrobatTouchPointInOtherSurfacesPreferenceDescription": {
+      "message": "Интегрируйте Acrobat в веб-сайты, включая Gmail, Google Диск и Outlook, для быстрого доступа к инструментам PDF."
+   },
+   "addWebpageToProjectContextMenuTitle": {
+      "message": "Добавить в проект PDF..."
+   },
+   "adobeYoloErrorMessage": {
+      "message": "Ссылка недействительна"
+   },
+   "adobeYoloMessage": {
+      "message": "Вход в Acrobat..."
+   },
+   "aiAcBody": {
+      "message": "Быстро создавайте сводки веб-страниц и получайте ключевые тезисы, используя ИИ-помощник Acrobat."
+   },
+   "aiAcHeader": {
+      "message": "Новые возможности благодаря расширению Acrobat"
+   },
+   "aiMarkerTouchpointPreferenceDescription": {
+      "message": "Всегда показывать меню ИИ-помощника при наведении курсора на файлы PDF на веб-страницах."
+   },
+   "aiMarkerTouchpointPreferenceTitle": {
+      "message": "Контекстное меню ИИ-помощника"
+   },
+   "analyticsOptinTitle": {
+      "message": "Отправка данных об использовании"
+   },
+   "appearancePrefDesc": {
+      "message": "Переключение между темной и светлой темой"
+   },
+   "appearancePrefOp1": {
+      "message": "Использовать системные настройки"
+   },
+   "appearancePrefOp2": {
+      "message": "Темный режим"
+   },
+   "appearancePrefOp3": {
+      "message": "Светлый режим"
+   },
+   "appearancePrefTitle": {
+      "message": "Настройки темного режима"
+   },
+   "askAssistantBannerContentText": {
+      "message": "Получайте быстрые сводки и ключевые тезисы с веб-страниц благодаря ИИ-помощнику."
+   },
+   "askAssistantBannerTitle": {
+      "message": "ИИ-помощник для веб-страниц"
+   },
+   "canQuesBriefOverview": {
+      "message": "Создать краткий обзор этой статьи"
+   },
+   "canQuesCreateFAQ": {
+      "message": "Создать список часто задаваемых вопросов на основе этих сведений"
+   },
+   "canQuesDraftEmail": {
+      "message": "Составить черновик электронного письма со сводкой основных моментов"
+   },
+   "canQuesImpTopics": {
+      "message": "Составить список важных тем и ключевых слов"
+   },
+   "canQuesSummarise": {
+      "message": "Создать сводку этой статьи"
+   },
+   "closeButton": {
+      "message": "Закрыть"
+   },
+   "cropImageContextMenu": {
+      "message": "Обрезать изображение"
+   },
+   "dcWebBookmarkTitle": {
+      "message": "Главная страница Adobe Acrobat"
+   },
+   "doNotShowButton": {
+      "message": "Больше не показывать"
+   },
+   "domainPreferenceTitle": {
+      "message": "Веб-сайты, где окно ИИ-помощника скрыто"
+   },
+   "downloadBannerContinue": {
+      "message": "Включить"
+   },
+   "downloadBannerText": {
+      "message": "Открывать все загруженные файлы PDF в приложении Acrobat, установив его в качестве программы просмотра PDF по умолчанию в Chrome"
+   },
+   "editImageContextMenu": {
+      "message": "Редактирование изображения"
+   },
+   "editMegaVerbText": {
+      "message": "Изменить"
+   },
+   "effectsImageContextMenu": {
+      "message": "Применить эффекты"
+   },
+   "embeddedPDFHideIconForNow": {
+      "message": "Скрыть значок"
+   },
+   "embeddedPDFManagePreferences": {
+      "message": "Управление параметрами"
+   },
+   "embeddedPDFOpenInAcrobatTooltip": {
+      "message": "Открыть в Acrobat"
+   },
+   "embeddedPDFOpenPDFInAcrobat": {
+      "message": "Открыть PDF в Acrobat"
+   },
+   "embeddedPDFTouchPointFTEBody": {
+      "message": "Edit, summarize, and more right from the Acrobat extension. You can hide this shortcut anytime in Preferences."
+   },
+   "embeddedPDFTouchPointFTEHeader": {
+      "message": "Открыть этот файл PDF в Adobe Acrobat"
+   },
+   "enableGenAIFeaturesDescription": {
+      "message": "Файл будет обработан в облаке, чтобы вы могли использовать возможности генеративного ИИ. Отключение этой функции предотвращает обработку файла и отключает генеративный ИИ. В любое время ее можно включить повторно."
+   },
+   "enableGenAIFeaturesTitle": {
+      "message": "Включить функции генеративного ИИ в Acrobat"
+   },
+   "expressContextualFteCtaLabel": {
+      "message": "Закрыть"
+   },
+   "expressContextualFteDescription": {
+      "message": "С легкостью выполняйте обрезку, удаляйте фон и выполняйте другие действия. На базе Adobe Express."
+   },
+   "expressContextualFteTitle": {
+      "message": "Редактировать изображение в $surfaceName$",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "expressDropdownMenuTitle": {
+      "message": "Adobe Acrobat"
+   },
+   "expressDropdownMenuTooltip": {
+      "message": "С легкостью выполняйте обрезку, удаляйте фон и выполняйте другие действия. На базе Adobe Express."
+   },
+   "expressEditImageParentContextMenu": {
+      "message": "Редактирование изображения"
+   },
+   "expressEditImagePoweredByExpressContextMenu": {
+      "message": "На базе Adobe Express"
+   },
+   "expressExportOptionsDownloadLabel": {
+      "message": "Загрузить"
+   },
+   "expressExportOptionsSaveLabel": {
+      "message": "Сохранить"
+   },
+   "expressFTEDescription": {
+      "message": "Нажмите правую кнопку мыши, чтобы обрезать изображение, удалить фон или создать вариант с помощью ИИ."
+   },
+   "expressFTEFooter": {
+      "message": "Через \u003Cb>Adobe Acrobat\u003C/b>"
+   },
+   "expressFTETitle": {
+      "message": "Редактировать изображение с помощью Adobe Express"
+   },
+   "expressPopoverFTEDescription": {
+      "message": "Нажмите правой кнопкой мыши любое онлайн-изображение, чтобы быстро обрезать изображение, удалить его фон или создать вариант с помощью ИИ в Adobe Express."
+   },
+   "expressPopoverFTETitle": {
+      "message": "Редактируйте в браузере"
+   },
+   "expressPublishModalTitle": {
+      "message": "Загрузка изображения..."
+   },
+   "expressTouchpointPreferenceDescription": {
+      "message": "Расширение Adobe Acrobat позволяет редактировать изображения с помощью Adobe Express. При отключении этой функции вы теряете такую возможность. Повторная активация доступна в любое время."
+   },
+   "expressTouchpointPreferenceTitle": {
+      "message": "Включить действия Adobe Express в Acrobat"
+   },
+   "extensionMenuTitle": {
+      "message": "Расширение Acrobat — быстрый доступ ко всем инструментам для работы с PDF"
+   },
+   "failToastText": {
+      "message": "Произошла непредвиденная ошибка. Повторите попытку позже."
+   },
+   "fteOwnershipSideRedCardContent": {
+      "message": "Установите Acrobat как средство для работы с PDF по умолчанию в Chrome."
+   },
+   "fteSideCardPrimaryHeader": {
+      "message": "Используйте Acrobat"
+   },
+   "fteSideCardSecondaryHeader": {
+      "message": "прямо в Chrome"
+   },
+   "gDriveDVPAppListCoachMarkContent": {
+      "message": "Установите флажок \"Использовать по умолчанию\", чтобы напрямую открывать файлы PDF с Google Диска в Acrobat, начиная со следующего раза"
+   },
+   "gDriveDVPCoachMarkTitle": {
+      "message": "Установить Acrobat как средство просмотра по умолчанию"
+   },
+   "gDriveDVPManageAppCoachMarkContent": {
+      "message": "Нажмите 'Управление приложениями', чтобы просматривать, комментировать, редактировать файлы PDF, напрямую открывая все файлы PDF с Google Диска в Acrobat"
+   },
+   "gSuiteDVPAddOnDefaultDesc": {
+      "message": "Надстройка Acrobat теперь задана по умолчанию"
+   },
+   "genAIFabPreferenceDescription": {
+      "message": "Всегда отображать кнопку ИИ-помощника на краю окна браузера."
+   },
+   "genAIFabPreferenceTitle": {
+      "message": "Кнопка ИИ-помощника"
+   },
+   "generativeFillImageContextMenu": {
+      "message": "Генеративная заливка"
+   },
+   "genericDVPCoachMarkContent": {
+      "message": "Нажмите \"Управление приложениями\", затем прокрутите вниз до раздела \"Надстройка Acrobat\" и установите флажок \"Использовать по умолчанию\""
+   },
+   "getInsight": {
+      "message": "Получайте сведения благодаря ИИ-помощнику Acrobat"
+   },
+   "getSummary": {
+      "message": "Создать сводку PDF"
+   },
+   "gmailPromptFTETooltip": {
+      "message": "Открывайте файлы PDFs в Acrobat, чтобы использовать инструменты \"Редактировать\", \"Подписать\" и другие"
+   },
+   "gsuiteEditWithAcrobat": {
+      "message": "Редактировать в Acrobat"
+   },
+   "gsuiteOpenWithAcrobat": {
+      "message": "Открыть в Acrobat"
+   },
+   "hideFabForDomain": {
+      "message": "Отключить для этого сайта"
+   },
+   "hideForNow": {
+      "message": "Скрыть"
+   },
+   "hidePopup": {
+      "message": "Скрыть для этого сеанса"
+   },
+   "insertObjectImageContextMenu": {
+      "message": "Вставить объект"
+   },
+   "localFileBlockingPageOpenInChrome": {
+      "message": "Открыть этот файл в Chrome"
+   },
+   "localFileBlockingPageTitle": {
+      "message": "Включить расширение Acrobat"
+   },
+   "localFileOptionDesc": {
+      "message": "Предоставьте расширению Acrobat доступ к URL-адресам локальных файлов, чтобы открывать все свои файлы PDF в Acrobat в Chrome."
+   },
+   "localFileOptionTitle": {
+      "message": "Открытие локальных файлов PDF в Acrobat"
+   },
+   "localFilePromptContinueButton": {
+      "message": "Продолжить"
+   },
+   "localFilePromptDescription": {
+      "message": "Предоставьте Acrobat доступ к файлам на этом устройстве, чтобы использовать все инструменты для редактирования, конвертации и электронного подписания файлов PDF."
+   },
+   "localFilePromptHeader": {
+      "message": "Откройте в Acrobat для редактирования, подписания и др."
+   },
+   "localFteContinue": {
+      "message": "Перейти в настройки"
+   },
+   "localFteDescription": {
+      "message": "Используйте все преимущества расширения Acrobat и открывайте все файлы PDF с его помощью. Включите параметр «Разрешить доступ к URL-адресам файлов» в настройках расширения."
+   },
+   "localFteDontShowAgainText": {
+      "message": "Больше не показывать"
+   },
+   "localFteTitle": {
+      "message": "Перейдите в Acrobat, чтобы открыть локальные файлы"
+   },
+   "neverDisplayFab": {
+      "message": "Никогда не показывать"
+   },
+   "openInAcrobat": {
+      "message": "Открыть в Acrobat"
+   },
+   "openSettings": {
+      "message": "Управление в настройках"
+   },
+   "optionsFailurePrompt": {
+      "message": "Не удается сохранить изменения. Повторите попытку позже."
+   },
+   "optionsSuccessPrompt": {
+      "message": "Настройки сохранены."
+   },
+   "optionsSuccessPromptReloadRequired": {
+      "message": "Изменение вступит в силу после перезагрузки"
+   },
+   "outlookErrorToastDescription": {
+      "message": "Произошла ошибка. Закройте файл и повторите попытку."
+   },
+   "outlookErrorToastTitle": {
+      "message": "Не удалось открыть файл"
+   },
+   "outlookPDFTouchPointFTEBody": {
+      "message": "Редактируйте файлы PDF, создавайте их сводки и подписывайте их, открывая в Acrobat."
+   },
+   "outlookPDFTouchPointFTEHeader": {
+      "message": "Открыть этот файл PDF в Adobe Acrobat"
+   },
+   "pdfOwnerShipDmbConfirmBtn": {
+      "message": "Продолжить"
+   },
+   "pdfOwnerShipSideRedCardConfirmBtn": {
+      "message": "Продолжить"
+   },
+   "pdfOwnershipDefSideCardcontent": {
+      "message": "Установите Adobe Acrobat как средство просмотра PDF по умолчанию, чтобы просматривать, комментировать, подписывать файлы, заполнять формы и делать много другое."
+   },
+   "pdfOwnershipExploreAcrobat": {
+      "message": "Использование Acrobat в Chrome"
+   },
+   "pdfOwnershipExploreAcrobatEdge": {
+      "message": "Использование Acrobat в Microsoft Edge"
+   },
+   "pdfOwnershipExploreOptionsDescription": {
+      "message": "Установите Acrobat как средство просмотра PDF по умолчанию для браузера для быстрого доступа к инструментам комментирования, заполнения, подписания и другим."
+   },
+   "pdfOwnershipExploreOptionsTitle": {
+      "message": "Открывать все файлы в Acrobat"
+   },
+   "pdfOwnershipPromptCancel": {
+      "message": "Не сейчас"
+   },
+   "pdfOwnershipPromptContent": {
+      "message": "Установите Adobe Acrobat в качестве средства просмотра документов по умолчанию и пользуйтесь всеми возможностями работы с файлами PDF в Chrome."
+   },
+   "pdfOwnershipPromptContent2": {
+      "message": "Установите Acrobat как средство просмотра PDF по умолчанию, чтобы работать с файлами PDF прямо в Google Chrome. Комментируйте, заполняйте, подписывайте документы и попробуйте инструменты для преобразования и сжатия файлов."
+   },
+   "pdfOwnershipPromptContentEdge": {
+      "message": "Установите Adobe Acrobat в качестве средства просмотра документов по умолчанию и пользуйтесь всеми возможностями работы с файлами PDF в Microsoft Edge."
+   },
+   "pdfOwnershipPromptDeny": {
+      "message": "Нет, спасибо"
+   },
+   "pdfOwnershipPromptOk": {
+      "message": "Установить"
+   },
+   "pdfOwnershipPromptOkFullscreen": {
+      "message": "Попробовать"
+   },
+   "popupNoConnection": {
+      "message": "Нет подключения"
+   },
+   "popupOfflineMessage": {
+      "message": "Обратитесь к администратору, чтобы восстановить подключение"
+   },
+   "preferences": {
+      "message": "Установки"
+   },
+   "removeBackgroundImageContextMenu": {
+      "message": "Удаление фона"
+   },
+   "removeObjectImageContextMenu": {
+      "message": "Удалить объект"
+   },
+   "saveLocationOp1": {
+      "message": "Спрашивать каждый раз"
+   },
+   "saveLocationOp2": {
+      "message": "Adobe"
+   },
+   "saveLocationOp3": {
+      "message": "Мой компьютер"
+   },
+   "saveLocationPreferenceDescription": {
+      "message": "Выбрать расположение для сохранения файлов"
+   },
+   "saveLocationPreferenceTitle": {
+      "message": "Расположение для сохранения файлов"
+   },
+   "sharepointPreferenceMessage": {
+      "message": "Разрешить извлечение файлов SharePoint в Acrobat"
+   },
+   "sidepanelLocationPreferenceButtonText": {
+      "message": "Изменить в настройках браузера"
+   },
+   "sidepanelLocationPreferenceDescription": {
+      "message": "Поместите боковую панель в левой или правой части окна браузера. Боковая панель доступна только в Google Chrome 11.4 или более поздней версии."
+   },
+   "sidepanelLocationPreferenceTitle": {
+      "message": "Местоположения панели ИИ-помощника"
+   },
+   "stripTextOpenAcrobat": {
+      "message": "Открыть в Acrobat"
+   },
+   "stripTextOpenFillnSign": {
+      "message": "Заполнить и подписать в Acrobat"
+   },
+   "successToastText": {
+      "message": "Загруженные файлы PDF откроются в Adobe Acrobat"
+   },
+   "surfaceNameGdrive": {
+      "message": "Google Диск"
+   },
+   "surfaceNameGmail": {
+      "message": "Gmail"
+   },
+   "tooltipTextDisabled": {
+      "message": "ИИ-помощник недоступен для этой веб-страницы"
+   },
+   "tooltipTextEnabled": {
+      "message": "Получайте сводки и ключевые тезисы, используя ИИ-помощник"
+   },
+   "tooltipTextSubText": {
+      "message": "на базе Adobe Acrobat"
+   },
+   "unsupportedFileTypeToastText": {
+      "message": "Этот тип файла не поддерживается. Попробуйте отредактировать другой файл."
+   },
+   "userLocale": {
+      "message": "Язык пользователя"
+   },
+   "web2pdfAddButtonText": {
+      "message": "Добавить в текущий PDF"
+   },
+   "web2pdfAlwaysShow": {
+      "message": "Автоматически показывать для PDF"
+   },
+   "web2pdfAppendLinkContextMenu": {
+      "message": "Добавить содержимое по ссылке в существующий файл PDF"
+   },
+   "web2pdfAppendPageContextMenu": {
+      "message": "Добавить веб-страницу в существующий файл PDF..."
+   },
+   "web2pdfBadVersion": {
+      "message": "Эта версия Chrome не поддерживает Adobe Acrobat. Минимальная версия: $version$",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfBadVersionEdge": {
+      "message": "Эта версия Edge не поддерживает Adobe Acrobat. Минимальная версия: $version$",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfClickToOpen": {
+      "message": "Нажмите ссылку ниже, чтобы открыть файл PDF в Acrobat."
+   },
+   "web2pdfConvertButtonToolTip": {
+      "message": "Расширение Acrobat — быстрый доступ ко всем инструментам для работы с PDF."
+   },
+   "web2pdfConvertButtonToolTipERPReader": {
+      "message": "Расширение Acrobat Reader отключено. Обратитесь к своему ИТ-администратору."
+   },
+   "web2pdfConvertButtonToolTipReader": {
+      "message": "Открыть PDF в Acrobat Reader"
+   },
+   "web2pdfConvertLinkContextMenu": {
+      "message": "Преобразовать содержимое по ссылке в файл Adobe PDF"
+   },
+   "web2pdfConvertPageContextMenu": {
+      "message": "Преобразовать веб-страницу в файл Adobe PDF..."
+   },
+   "web2pdfCopyText": {
+      "message": "Копирование в Acrobat"
+   },
+   "web2pdfDestinationText": {
+      "message": "Папка назначения:"
+   },
+   "web2pdfDoneButtonText": {
+      "message": "Готово"
+   },
+   "web2pdfExtnDescription": {
+      "message": "Используйте Acrobat для браузера для просмотра, преобразования, сжатия и подписания файлов PDF"
+   },
+   "web2pdfExtnDescriptionBeta": {
+      "message": "Используйте Acrobat для браузера для просмотра, преобразования, сжатия и подписания файлов PDF"
+   },
+   "web2pdfExtnDescriptionChrome": {
+      "message": "Работайте над документами PDF прямо в Google Chrome с удобными инструментами Adobe Acrobat: просмотр, заполнение, комментирование, подпись, преобразование и сжатие файлов."
+   },
+   "web2pdfExtnDescriptionEdge": {
+      "message": "Работайте c PDF прямо в Microsoft Edge с инструментами Adobe Acrobat. Комментируйте, подписывайте, редактируйте и преобразовывайте."
+   },
+   "web2pdfExtnName": {
+      "message": "Adobe Acrobat: редактирование, преобразование и подписание PDF"
+   },
+   "web2pdfExtnNameBeta": {
+      "message": "Adobe Acrobat (бета)"
+   },
+   "web2pdfExtnNameEdge": {
+      "message": "Adobe Acrobat: редактирование, преобразование и подписание PDF"
+   },
+   "web2pdfExtnNameStage": {
+      "message": "Этап Adobe Acrobat"
+   },
+   "web2pdfFileLockedError": {
+      "message": "Невозможно сохранить файл, так как он используется другим процессом."
+   },
+   "web2pdfFilename": {
+      "message": "Имя файла:"
+   },
+   "web2pdfFrictionlessToggleDescription": {
+      "message": "Расширение Adobe Acrobat предлагает инструменты, которые помогут вам выполнять задачи с файлами PDF. Эта функция работает на основе ваших результатов поиска и применяется на вашем устройстве. Данные поиска не отправляются в Adobe."
+   },
+   "web2pdfFrictionlessUrl": {
+      "message": "https://www.adobe.com/go/fl_chromeext_ru"
+   },
+   "web2pdfFrictionlessUrlEdge": {
+      "message": "https://www.adobe.com/ru/acrobat/online.html?x_api_client_id=edge_extension&x_api_client_location=trefoil&mv=other&mv2=edge_extension:trefoil&trackingid=HM85XB76"
+   },
+   "web2pdfHTMLJSError": {
+      "message": "Ошибка обработки веб-страницы."
+   },
+   "web2pdfHTMLTooLarge": {
+      "message": "Размер содержимого HTML превышает допустимый для обработки."
+   },
+   "web2pdfInfoHoverPopup": {
+      "message": "Расширение Adobe Acrobat предлагает инструменты для различных задач с файлами PDF. Рекомендации основаны на ваших результатах поиска. Эта функция применяется на вашем устройстве. Данные поиска не отправляются в Adobe. Нажмите \u003Cspan class = \"tooltip-content-settings\">здесь\u003C/span>, чтобы отключить функцию."
+   },
+   "web2pdfLoaderTitle": {
+      "message": "Загрузка..."
+   },
+   "web2pdfMissingMac": {
+      "message": "Программа Adobe Acrobat для Chrome пока недоступна для Mac"
+   },
+   "web2pdfMissingMacEdge": {
+      "message": "Программа Adobe Acrobat для Microsoft Edge пока недоступна для macOS"
+   },
+   "web2pdfNoFoldersText": {
+      "message": "Нет папок в хранилище Acrobat DC."
+   },
+   "web2pdfNoWritePermissionOnSelectedFile": {
+      "message": "У вас нет прав на запись в выбранный файл."
+   },
+   "web2pdfOpenButtonText": {
+      "message": "Открыть в Acrobat"
+   },
+   "web2pdfOpenButtonTextOlder": {
+      "message": "Загрузить Adobe PDF"
+   },
+   "web2pdfOpenButtonTextReader": {
+      "message": "Открыть в Acrobat Reader"
+   },
+   "web2pdfOpenConvertedPDFDescription": {
+      "message": "После преобразования веб-страницы в формат PDF автоматически открывает готовый файл PDF в Acrobat."
+   },
+   "web2pdfOpenConvertedPDFTitle": {
+      "message": "Автоматически открывать преобразованные файлы PDF в Acrobat"
+   },
+   "web2pdfOpenInDCButtonText": {
+      "message": "Открыть PDF в Acrobat"
+   },
+   "web2pdfOptOut": {
+      "message": "Для совершенствования функций приложение отправляет Adobe данные о том, как вы его используете."
+   },
+   "web2pdfOptOutDisabled": {
+      "message": "Ни одна из ваших данных об использовании не передается."
+   },
+   "web2pdfOptions": {
+      "message": "Параметры"
+   },
+   "web2pdfOptionsTitle": {
+      "message": "Установки Adobe Acrobat"
+   },
+   "web2pdfPDFOpenFailed": {
+      "message": "Не удалось открыть PDF"
+   },
+   "web2pdfPDFOpenFailedv2": {
+      "message": "Сбой при открытии"
+   },
+   "web2pdfPDFOpened": {
+      "message": "PDF открыт"
+   },
+   "web2pdfPDFOpening": {
+      "message": "Открытие файла PDF"
+   },
+   "web2pdfPreferencesButtonText": {
+      "message": "Установки..."
+   },
+   "web2pdfPreferencesNewText": {
+      "message": "Настройки преобразования..."
+   },
+   "web2pdfPrivacy": {
+      "message": "О программе Adobe Acrobat"
+   },
+   "web2pdfReplaceWarning": {
+      "message": "уже существует.\n Заменить?"
+   },
+   "web2pdfSave": {
+      "message": "Сохранить"
+   },
+   "web2pdfSaveButton": {
+      "message": "Сохранить настройки"
+   },
+   "web2pdfShowPDFTools": {
+      "message": "Показ с результатами поиска Google"
+   },
+   "web2pdfShowPDFViewerOption": {
+      "message": "Использовать Acrobat как средство просмотра по умолчанию"
+   },
+   "web2pdfShowPersistentOpen": {
+      "message": "Показывать \"Открыть в Acrobat\""
+   },
+   "web2pdfShowPersistentOpenAlways": {
+      "message": "Всегда показывать \"Открыть в Acrobat\""
+   },
+   "web2pdfShowPersistentOpenDescription": {
+      "message": "Каждый раз отображает опцию для открытия файла PDF."
+   },
+   "web2pdfStatusCancelled": {
+      "message": "Конвертация отменена"
+   },
+   "web2pdfStatusComplete": {
+      "message": "Завершено"
+   },
+   "web2pdfStatusDownloading": {
+      "message": "Загрузка для выполнения преобразования..."
+   },
+   "web2pdfStatusDownloadingPDF": {
+      "message": "Загрузка файла PDF"
+   },
+   "web2pdfStatusFailure": {
+      "message": "Сбой конвертации"
+   },
+   "web2pdfStatusInProgress": {
+      "message": "Выполняется преобразование..."
+   },
+   "web2pdfStatusUnknownFailure": {
+      "message": "Неизвестная ошибка"
+   },
+   "web2pdfStatusWaiting": {
+      "message": "Ожидается преобразование..."
+   },
+   "web2pdfTitle": {
+      "message": "Adobe Acrobat"
+   },
+   "web2pdfUnsupportedAcrobatVersion": {
+      "message": "Поддерживаемая версия Acrobat не найдена. Установите \u003Ca target='_blank' href='https://acrobat.adobe.com/ru/ru/free-trial-download.html?trackingid=29NMCS7T&mv=other'>бесплатную пробную версию на 7 дней\u003C/a>."
+   },
+   "web2pdfUntitledFileName": {
+      "message": "без имени"
+   },
+   "webpagePDFConversion": {
+      "message": "Настройка конвертации веб-страницы в PDF"
+   },
+   "webpagePDFConversionDescription": {
+      "message": "При сохранении веб-страниц в качестве файлов PDF можно указать поля, шрифты и другие сведения о макете"
+   }
+}

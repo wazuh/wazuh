@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "CREAR"
+   },
+   "explanationofflinedisabled": {
+      "message": "No tienes conexión. Para usar Documentos de Google sin conexión a Internet, ve a Configuración en la página principal de Documentos de Google y activa la sincronización sin conexión la próxima vez que te conectes a Internet."
+   },
+   "explanationofflineenabled": {
+      "message": "No tienes conexión. Aun así, puedes crear archivos o editar los que estén disponibles."
+   },
+   "extdesc": {
+      "message": "Edita, crea y consulta tus documentos, hojas de cálculo y presentaciones; todo ello, sin acceso a Internet."
+   },
+   "extname": {
+      "message": "Documentos de Google sin conexión"
+   },
+   "learnmore": {
+      "message": "Más información"
+   },
+   "popuphelptext": {
+      "message": "Escribe o edita contenido y colabora con otras personas desde cualquier lugar, con o sin conexión a Internet."
+   }
+}

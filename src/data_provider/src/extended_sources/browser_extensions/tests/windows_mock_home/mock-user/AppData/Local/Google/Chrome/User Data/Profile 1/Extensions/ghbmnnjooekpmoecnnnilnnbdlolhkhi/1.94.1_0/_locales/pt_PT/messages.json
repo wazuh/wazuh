@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "CRIAR NOVO"
+   },
+   "explanationofflinedisabled": {
+      "message": "Está offline. Para utilizar o Google Docs sem uma ligação à Internet, aceda às definições na página inicial do Google Docs e ative a sincronização offline da próxima vez que estiver ligado à Internet."
+   },
+   "explanationofflineenabled": {
+      "message": "Está offline, mas continua a poder editar os ficheiros disponíveis ou criar novos ficheiros."
+   },
+   "extdesc": {
+      "message": "Edite, crie e veja os documentos, as folhas de cálculo e as apresentações, tudo sem precisar de aceder à Internet."
+   },
+   "extname": {
+      "message": "Google Docs offline"
+   },
+   "learnmore": {
+      "message": "Saber mais"
+   },
+   "popuphelptext": {
+      "message": "Escreva edite e colabore onde quer que esteja, com ou sem uma ligação à Internet."
+   }
+}

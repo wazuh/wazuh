@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "新規作成"
+   },
+   "explanationofflinedisabled": {
+      "message": "現在オフラインです。インターネットに接続せずに Google ドキュメントを使用するには、次回インターネットに接続したときに Google ドキュメントのホーム画面から [設定] にアクセスし、[オフライン同期] をオンにしてください。"
+   },
+   "explanationofflineenabled": {
+      "message": "現在オフラインですが、アクセス可能なファイルの編集や新規ファイルの作成は引き続き行えます。"
+   },
+   "extdesc": {
+      "message": "インターネットに接続していなくても、ドキュメント、スプレッドシート、プレゼンテーションを編集、作成、表示できます。"
+   },
+   "extname": {
+      "message": "Google オフライン ドキュメント"
+   },
+   "learnmore": {
+      "message": "詳細"
+   },
+   "popuphelptext": {
+      "message": "インターネットに接続していなくてもファイルの作成、編集、共同作業を継続できます。"
+   }
+}

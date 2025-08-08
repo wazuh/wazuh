@@ -9,7 +9,8 @@ set(SRC_FILES "")
 
 include_directories(
   include
-  ${CMAKE_SOURCE_DIR}/../external/nlohmann/
+  ${SRC_FOLDER}/external/nlohmann/
+  ${SRC_FOLDER}/external/openssl/include/
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
@@ -19,15 +20,60 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
   list(APPEND SRC_FILES 
     src/safari_darwin.cpp
+    src/chrome_darwin.cpp
   )
 
   add_library(browser_extensions STATIC ${SRC_FILES})
   target_link_libraries(browser_extensions
     ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a
+    ${SRC_FOLDER}/external/openssl/libcrypto.a
+  )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/linux
   )
 
-  if(UNIT_TEST)
-    target_link_libraries(browser_extensions -fprofile-arcs)
-    add_subdirectory(tests)
-  endif(UNIT_TEST)
+  list(APPEND SRC_FILES 
+    src/chrome_linux.cpp
+  )
+
+  add_library(browser_extensions STATIC ${SRC_FILES})
+  target_link_libraries(browser_extensions
+    ${SRC_FOLDER}/external/openssl/libcrypto.a
+  )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/
+  )
+
+  list(APPEND SRC_FILES 
+    src/chrome_windows.cpp
+  )
+
+  add_library(browser_extensions STATIC ${SRC_FILES})
+  target_link_libraries(browser_extensions
+    ${SRC_FOLDER}/external/openssl/libcrypto.a
+    # user32
+    ws2_32
+    crypt32
+    # wtsapi32
+  )
+
+  add_executable(chrome_windows src/main.cpp)
+  target_link_libraries(chrome_windows
+    browser_extensions
+    -static-libgcc
+    -static-libstdc++
+    -static
+  )
 endif()
+
+if(UNIT_TEST)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_link_libraries(browser_extensions -fprofile-arcs)
+    else()
+        target_link_libraries(browser_extensions gcov)
+    endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+    add_subdirectory(tests)
+endif(UNIT_TEST)

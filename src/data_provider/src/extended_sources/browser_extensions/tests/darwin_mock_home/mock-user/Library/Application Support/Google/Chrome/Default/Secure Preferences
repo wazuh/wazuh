@@ -1,0 +1,1477 @@
+{
+  "extensions": {
+    "settings": {
+      "ahfgeienlihckogmohjhadlkjgocpleb": {
+        "active_permissions": {
+          "api": [
+            "management",
+            "system.display",
+            "system.storage",
+            "webstorePrivate",
+            "system.cpu",
+            "system.memory",
+            "system.network"
+          ],
+          "explicit_host": [],
+          "manifest_permissions": [],
+          "scriptable_host": []
+        },
+        "app_launcher_ordinal": "t",
+        "commands": {},
+        "content_settings": [],
+        "creation_flags": 1,
+        "events": [],
+        "first_install_time": "13338748509377993",
+        "from_webstore": false,
+        "incognito_content_settings": [],
+        "incognito_preferences": {},
+        "last_update_time": "13338748509377993",
+        "location": 5,
+        "manifest": {
+          "app": {
+            "launch": {
+              "web_url": "https://chrome.google.com/webstore"
+            },
+            "urls": [
+              "https://chrome.google.com/webstore"
+            ]
+          },
+          "description": "Discover great apps, games, extensions and themes for Google Chrome.",
+          "icons": {
+            "128": "webstore_icon_128.png",
+            "16": "webstore_icon_16.png"
+          },
+          "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCtl3tO0osjuzRsf6xtD2SKxPlTfuoy7AWoObysitBPvH5fE1NaAA1/2JkPWkVDhdLBWLaIBPYeXbzlHp3y4Vv/4XG+aN5qFE3z+1RU/NqkzVYHtIpVScf3DjTYtKVL66mzVGijSoAIwbFCC3LpGdaoe6Q1rSRDp76wR6jjFzsYwQIDAQAB",
+          "name": "Web Store",
+          "permissions": [
+            "webstorePrivate",
+            "management",
+            "system.cpu",
+            "system.display",
+            "system.memory",
+            "system.network",
+            "system.storage"
+          ],
+          "version": "0.2"
+        },
+        "page_ordinal": "n",
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/116.0.5845.179/Resources/web_store",
+        "preferences": {},
+        "regular_only_preferences": {},
+        "state": 1,
+        "was_installed_by_default": false,
+        "was_installed_by_oem": false
+      },
+      "efaidnbmnnnibpcajpcglclefindmkaj": {
+        "account_extension_type": 2,
+        "active_bit": false,
+        "active_permissions": {
+          "api": [
+            "alarms",
+            "contextMenus",
+            "cookies",
+            "downloads",
+            "nativeMessaging",
+            "storage",
+            "tabs",
+            "webNavigation",
+            "webRequest",
+            "scripting",
+            "offscreen",
+            "sidePanel"
+          ],
+          "explicit_host": [
+            "\u003Call_urls>"
+          ],
+          "manifest_permissions": [],
+          "scriptable_host": [
+            "\u003Call_urls>",
+            "file:///*",
+            "http://*/*",
+            "https://*/*",
+            "https://acrobat.adobe.com/*",
+            "https://documentcloud.adobe.com/*",
+            "https://drive.google.com/*",
+            "https://drive.usercontent.google.com/download*",
+            "https://mail.google.com/*",
+            "https://outlook.live.com/*",
+            "https://outlook.office.com/*",
+            "https://outlook.office365.com/*",
+            "https://web.whatsapp.com/*",
+            "https://www.google.com/*",
+            "https://www.instagram.com/*"
+          ]
+        },
+        "allowlist": 1,
+        "commands": {},
+        "content_settings": [],
+        "creation_flags": 9,
+        "cws-info": {
+          "is-live": true,
+          "is-present": true,
+          "last-updated-time-millis": "1753686000000",
+          "no-privacy-practice": false,
+          "unpublished-long-ago": false,
+          "violation-type": 0
+        },
+        "disable_reasons": [],
+        "filtered_service_worker_events": {
+          "webNavigation.onBeforeNavigate": [
+            {
+              "frameType": "outermost_frame"
+            }
+          ],
+          "windows.onRemoved": [
+            {}
+          ]
+        },
+        "first_install_time": "13390078625371004",
+        "from_webstore": true,
+        "granted_permissions": {
+          "api": [
+            "alarms",
+            "contextMenus",
+            "cookies",
+            "downloads",
+            "nativeMessaging",
+            "storage",
+            "tabs",
+            "webNavigation",
+            "webRequest",
+            "scripting",
+            "offscreen",
+            "sidePanel"
+          ],
+          "explicit_host": [
+            "\u003Call_urls>"
+          ],
+          "manifest_permissions": [],
+          "scriptable_host": [
+            "\u003Call_urls>",
+            "file:///*",
+            "http://*/*",
+            "https://*/*",
+            "https://acrobat.adobe.com/*",
+            "https://documentcloud.adobe.com/*",
+            "https://drive.google.com/*",
+            "https://drive.usercontent.google.com/download*",
+            "https://mail.google.com/*",
+            "https://outlook.live.com/*",
+            "https://outlook.office.com/*",
+            "https://outlook.office365.com/*",
+            "https://web.whatsapp.com/*",
+            "https://www.google.com/*",
+            "https://www.instagram.com/*"
+          ]
+        },
+        "incognito": false,
+        "incognito_content_settings": [],
+        "incognito_preferences": {},
+        "last_update_time": "13398350223513028",
+        "location": 1,
+        "manifest": {
+          "action": {
+            "default_icon": "browser/images/acrobat_dc_appicon_24.png",
+            "default_popup": "browser/js/popup.html",
+            "default_title": "Acrobat Extension - Shortcut to all your PDF tools"
+          },
+          "background": {
+            "service_worker": "service-worker.js",
+            "type": "module"
+          },
+          "content_scripts": [
+            {
+              "js": [
+                "libs/jquery-3.1.1.min.js",
+                "browser/js/ch-settings.js",
+                "content_scripts/content-util.js",
+                "content_scripts/SidePanel/GenAIWebpageBlocklist.js",
+                "content_scripts/SidePanel/ActionableCoachmark.js",
+                "content_scripts/embeddedpdfs/EmbeddedPDFTouchPointCoachMark.js",
+                "content_scripts/express/express_whatsapp/whatsapp-express-fte.js",
+                "content_scripts/express/gmail/gmail-express-fte.js",
+                "content_scripts/outlook/outlook-fte.js",
+                "content_scripts/gmail/GmailAcrobatFteCoachmark.js",
+                "content_scripts/SidePanel/FABManager.js",
+                "content_scripts/SidePanel/GenAIWebpageEligibilityService.js",
+                "content_scripts/SidePanel/AttributionManager.js",
+                "content_scripts/SidePanel/AnimateCannedQuestions.js",
+                "content_scripts/content-script-utils.js",
+                "content_scripts/ch-content-script.js",
+                "content_scripts/injectBannerIframe.js",
+                "content_scripts/prompts/ShowOneChild.js"
+              ],
+              "matches": [
+                "file://*/*",
+                "http://*/*",
+                "https://*/*"
+              ],
+              "run_at": "document_start"
+            },
+            {
+              "css": [
+                "browser/css/outlook-content-script.css",
+                "browser/css/gsuite-fte.css"
+              ],
+              "js": [
+                "content_scripts/outlook/outlook-content-script.js"
+              ],
+              "matches": [
+                "https://outlook.office365.com/*",
+                "https://outlook.office.com/*",
+                "https://outlook.live.com/*"
+              ],
+              "run_at": "document_end"
+            },
+            {
+              "css": [
+                "browser/css/express-tooltip.css"
+              ],
+              "js": [
+                "content_scripts/content-script-idle.js"
+              ],
+              "matches": [
+                "http://*/*",
+                "https://*/*"
+              ],
+              "run_at": "document_idle"
+            },
+            {
+              "js": [
+                "content_scripts/ch-content-script-dend.js",
+                "content_scripts/injectAIMarker.js"
+              ],
+              "matches": [
+                "file://*/*",
+                "http://*/*",
+                "https://*/*"
+              ],
+              "run_at": "document_end"
+            },
+            {
+              "all_frames": true,
+              "css": [
+                "browser/css/embedded-pdf-touch-point.css",
+                "browser/css/gsuite-fte.css"
+              ],
+              "js": [
+                "content_scripts/embeddedpdfs/embedded-pdf-touch-point.js"
+              ],
+              "matches": [
+                "\u003Call_urls>"
+              ],
+              "run_at": "document_end"
+            },
+            {
+              "css": [
+                "browser/css/gdrive-content-script.css",
+                "browser/css/gdrive-touchpoint-service.css"
+              ],
+              "js": [
+                "content_scripts/gdrive-content-script.js"
+              ],
+              "matches": [
+                "https://drive.google.com/*"
+              ],
+              "run_at": "document_start"
+            },
+            {
+              "js": [
+                "content_scripts/express/express_whatsapp/whatsapp-content-script.js"
+              ],
+              "matches": [
+                "https://web.whatsapp.com/*"
+              ],
+              "run_at": "document_idle"
+            },
+            {
+              "js": [
+                "content_scripts/express/google-image-preview/google-image-preview-content-script.js"
+              ],
+              "matches": [
+                "https://www.google.com/*"
+              ],
+              "run_at": "document_idle"
+            },
+            {
+              "js": [
+                "content_scripts/gdrive-download-page-content-script.js"
+              ],
+              "matches": [
+                "https://drive.usercontent.google.com/download*"
+              ],
+              "run_at": "document_end"
+            },
+            {
+              "css": [
+                "browser/css/gmail-content-script.css"
+              ],
+              "js": [
+                "content_scripts/gmail-content-script.js"
+              ],
+              "matches": [
+                "https://mail.google.com/*"
+              ],
+              "run_at": "document_start"
+            },
+            {
+              "js": [
+                "content_scripts/acrobat-content-script.js"
+              ],
+              "matches": [
+                "https://acrobat.adobe.com/*",
+                "https://documentcloud.adobe.com/*"
+              ],
+              "run_at": "document_end"
+            }
+          ],
+          "content_security_policy": {
+            "extension_pages": "script-src 'self'; child-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline'; frame-src https://use.typekit.net https://assets.adobedtm.com https://*.adobecontent.io https://*.adobelogin.com https://local-test.acrobat.com:* https://local-test.acrobat.adobe.com:* https://*.acrobat.com https://*.adobe.com https://*.adobe.io"
+          },
+          "current_locale": "en_US",
+          "default_locale": "en",
+          "description": "Do more in Google Chrome with Adobe Acrobat PDF tools. View, fill, comment, sign, and try convert and compress tools.",
+          "externally_connectable": {
+            "ids": [
+              "bngnhmnppadfcmpggglniifohlkmddfc"
+            ],
+            "matches": [
+              "https://*.adobe.com/*",
+              "https://*.acrobat.com/*",
+              "https://adobe.com/*",
+              "https://www.adobe.com/*"
+            ]
+          },
+          "host_permissions": [
+            "\u003Call_urls>"
+          ],
+          "icons": {
+            "128": "browser/images/acrobat_dc_appicon_128.png",
+            "16": "browser/images/acrobat_dc_appicon_16.png",
+            "48": "browser/images/acrobat_dc_appicon_48.png"
+          },
+          "incognito": "not_allowed",
+          "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCZBtDwJUnqCebbFbTP819W+x0Tk9Com3yrxaCi/D0t/1FPWBuOvyyiQtFr/FmloZu/2ml8LFYNGNE6gQSSIgGXZceAFCRxzj+EXSI37kNIPISrdKznCTdkA6oSKUpFEVOcoD959DQFqeNbliB9MV+ZrZST+DOVxApdMSJzsCczIwIDAQAB",
+          "manifest_version": 3,
+          "minimum_chrome_version": "107.0",
+          "name": "Adobe Acrobat: PDF edit, convert, sign tools",
+          "optional_permissions": [
+            "history",
+            "bookmarks"
+          ],
+          "options_page": "browser/js/options.html",
+          "permissions": [
+            "contextMenus",
+            "tabs",
+            "downloads",
+            "nativeMessaging",
+            "webRequest",
+            "webNavigation",
+            "storage",
+            "scripting",
+            "alarms",
+            "offscreen",
+            "cookies",
+            "sidePanel"
+          ],
+          "storage": {
+            "managed_schema": "schema.json"
+          },
+          "update_url": "https://clients2.google.com/service/update2/crx",
+          "version": "25.7.2.0",
+          "web_accessible_resources": [
+            {
+              "matches": [
+                "\u003Call_urls>"
+              ],
+              "resources": [
+                "viewer.html",
+                "signInHandler.html",
+                "signInAdobeYolo.html",
+                "browser/js/check-cookies.html",
+                "browser/js/express.html",
+                "browser/js/frame.html",
+                "browser/js/frameUI.html",
+                "browser/js/local-fte.html",
+                "browser/js/local-file/local-file-blocking-page.html",
+                "browser/js/local-file/local-file-prompt.html",
+                "browser/js/lsCopy.html",
+                "browser/js/gdrive-inject.js",
+                "browser/js/viewer/localFileSignInRedirection.html",
+                "browser/js/viewer/localFileSignInRedirection.html",
+                "browser/js/download-banner.html",
+                "browser/js/successToast.html",
+                "browser/js/failToast.html",
+                "browser/js/assistantPopup.html",
+                "browser/images/SDC_GenAIGradientTrefoil_24_N.svg",
+                "browser/css/fonts/AdobeClean-Regular.otf",
+                "browser/css/fonts/AdobeClean-Bold.otf",
+                "browser/images/dc_trefoil_red_32_n.svg",
+                "browser/images/acrobat_dc_appicon_128.png",
+                "browser/images/acrobat_dc_trefoil_24_white.svg",
+                "browser/images/cross_10_n.svg",
+                "browser/images/ExpressRemoveBackground.png",
+                "browser/images/ExpressApplyEffects.png",
+                "browser/images/ExpressCropImage.png",
+                "browser/images/SDC_ShowMenu_18_N_24_D.svg",
+                "browser/images/SDC_ShowMenu_18_N_24_D_ActiveState.svg",
+                "content_scripts/express/express-fte.js",
+                "content_scripts/express/express-fte-utils.js",
+                "content_scripts/gsuite/fte-utils.js",
+                "resources/SidePanel/sidePanelUpsellSuccess.html",
+                "resources/SidePanel/sidePanelButton.html",
+                "resources/SidePanel/index.html",
+                "resources/SidePanel/ActionableCoachmark.html",
+                "resources/SidePanel/FABViewSettings.html",
+                "resources/SidePanel/signInSuccess.html",
+                "resources/SidePanel/sidePanelUtil.js",
+                "common/local-storage.js",
+                "libs/*"
+              ]
+            },
+            {
+              "matches": [
+                "https://mail.google.com/*"
+              ],
+              "resources": [
+                "content_scripts/gmail/gmail-inject.js",
+                "content_scripts/gmail/state.js",
+                "content_scripts/gmail/util.js",
+                "content_scripts/gsuite/util.js",
+                "content_scripts/gmail/gmail-response-service.js",
+                "content_scripts/gmail/native-viewer-touch-point-service.js",
+                "content_scripts/gmail/message-view-touch-point-service.js",
+                "content_scripts/gmail/list-view-touch-point-service.js",
+                "content_scripts/gmail/default-viewership-service.js",
+                "content_scripts/express/gmail/express-gmail-touchpoint-service.js",
+                "content_scripts/express/gmail/express-gmail-message-view-touchpoint-service.js"
+              ]
+            },
+            {
+              "matches": [
+                "https://drive.google.com/*"
+              ],
+              "resources": [
+                "content_scripts/gdrive/gdrive-inject.js",
+                "content_scripts/gdrive/get-auth-user.js",
+                "content_scripts/gdrive/state.js",
+                "content_scripts/gdrive/util.js",
+                "content_scripts/gsuite/util.js",
+                "content_scripts/gdrive/touchpoint-service.js",
+                "content_scripts/express/gdrive/express-gdrive-touchpoint-service.js",
+                "content_scripts/gdrive/search-handler.js",
+                "content_scripts/gdrive/default-viewership-service.js",
+                "content_scripts/gdrive/api-parsing-util.js"
+              ]
+            },
+            {
+              "matches": [
+                "https://web.whatsapp.com/*",
+                "https://mail.google.com/*",
+                "https://www.google.com/*",
+                "https://drive.google.com/*"
+              ],
+              "resources": [
+                "browser/images/express_edit.svg",
+                "browser/images/express_remove_background.svg",
+                "browser/images/express_apply_effects.svg",
+                "browser/images/express_crop_image.svg",
+                "browser/images/express_insert_objects.svg",
+                "browser/images/express_remove_objects.svg",
+                "browser/images/acrobat_prodc_appicon_24.svg",
+                "resources/express/expressDropdownMenu.html",
+                "content_scripts/express/dropdown-menu.js",
+                "resources/express/expressSingleClickCTA.html",
+                "content_scripts/express/single-click-cta.js",
+                "content_scripts/express/express-cta-tooltip.js",
+                "resources/express/expressContextualFTE.html",
+                "content_scripts/express/fte/express-contextual-fte.js"
+              ]
+            },
+            {
+              "matches": [
+                "https://outlook.office365.com/*",
+                "https://outlook.office.com/*",
+                "https://outlook.live.com/*"
+              ],
+              "resources": [
+                "content_scripts/outlook/outlook-inject.js",
+                "content_scripts/gsuite/util.js",
+                "content_scripts/outlook/state.js",
+                "browser/images/outlook-error-toast-icon.svg",
+                "browser/images/outlook-error-toast-close.svg",
+                "resources/outlook/error-toast.html",
+                "content_scripts/outlook/outlook-error-toast-service.js",
+                "content_scripts/outlook/outlook-fte-service.js"
+              ]
+            }
+          ]
+        },
+        "path": "efaidnbmnnnibpcajpcglclefindmkaj/25.7.2.0_0",
+        "preferences": {},
+        "regular_only_preferences": {},
+        "service_worker_registration_info": {
+          "version": "25.7.2.0"
+        },
+        "serviceworkerevents": [
+          "action.onUserSettingsChanged",
+          "alarms.onAlarm",
+          "contextMenus.onClicked",
+          "cookies.onChanged",
+          "downloads.onChanged",
+          "downloads.onCreated",
+          "runtime.onInstalled",
+          "runtime.onStartup",
+          "storage.managed.onChanged",
+          "storage.onChanged",
+          "tabs.onActivated",
+          "tabs.onMoved",
+          "tabs.onRemoved",
+          "tabs.onReplaced",
+          "tabs.onUpdated",
+          "webRequest.onBeforeRequest/s2",
+          "webRequest.onBeforeRequest/s4",
+          "webRequest.onBeforeSendHeaders/s3",
+          "webRequest.onHeadersReceived/s1"
+        ],
+        "uninstall_url": "https://acrobat.adobe.com/dc-chrome-extension/index.html?la=true&locale=en-US&theme=auto&callingApp=efaidnbmnnnibpcajpcglclefindmkaj&nu=0&acEx=%5B%22GDTT%22%5D#/uninstall",
+        "was_installed_by_default": false,
+        "was_installed_by_oem": false,
+        "withholding_permissions": false
+      },
+      "fignfifoniblkonapihmkfakmlgkbkcf": {
+        "account_extension_type": 0,
+        "active_permissions": {
+          "api": [
+            "metricsPrivate",
+            "systemPrivate",
+            "ttsEngine",
+            "offscreen"
+          ],
+          "explicit_host": [
+            "https://www.google.com/*"
+          ],
+          "manifest_permissions": [],
+          "scriptable_host": []
+        },
+        "commands": {},
+        "content_settings": [],
+        "creation_flags": 1,
+        "disable_reasons": [],
+        "first_install_time": "13398350223495125",
+        "from_webstore": false,
+        "incognito_content_settings": [],
+        "incognito_preferences": {},
+        "last_update_time": "13398350223495125",
+        "location": 5,
+        "manifest": {
+          "background": {
+            "service_worker": "service_worker.js"
+          },
+          "description": "Component extension providing speech via the Google network text-to-speech service.",
+          "host_permissions": [
+            "https://www.google.com/"
+          ],
+          "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5mnqF6oM8Q5tYd7YqL40YL7Keftt4PwydehlNOyNlCiWDM/7SiQYwxYvVHMj1i03z7B5lZXQinrcqhHhoIgcSHK1JrdzVSJxPRVdmV0rJLv0KQgmVwL8p8MfN6SmHs+72xz+1GoRWpd0WlHMil7RzGKJA4Ku+9jxxsXoxes9eeV1hCavkb1dSF+mlQbaNiw7u1hhvc5mmeuEcWjoce8r8B2R4wmnGbuTLfoSchZ6jkasynmOaFxyT4jiYDYgrNtWRTQ/9PuPduJ+uBWVT/o2ZhDK2XcywVwzUfYIXDLDblK+YdZi8w8ZBNvc7hP9/iZr6/eoUpfsLa8qlJgyLBQebwIDAQAB",
+          "manifest_version": 3,
+          "name": "Google Network Speech",
+          "permissions": [
+            "metricsPrivate",
+            "offscreen",
+            "systemPrivate",
+            "ttsEngine"
+          ],
+          "tts_engine": {
+            "voices": [
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "de-DE",
+                "remote": true,
+                "voice_name": "Google Deutsch"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "en-US",
+                "remote": true,
+                "voice_name": "Google US English"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "en-GB",
+                "remote": true,
+                "voice_name": "Google UK English Female"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "male",
+                "lang": "en-GB",
+                "remote": true,
+                "voice_name": "Google UK English Male"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "es-ES",
+                "remote": true,
+                "voice_name": "Google español"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "es-US",
+                "remote": true,
+                "voice_name": "Google español de Estados Unidos"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "fr-FR",
+                "remote": true,
+                "voice_name": "Google français"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "hi-IN",
+                "remote": true,
+                "voice_name": "Google हिन्दी"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "id-ID",
+                "remote": true,
+                "voice_name": "Google Bahasa Indonesia"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "it-IT",
+                "remote": true,
+                "voice_name": "Google italiano"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "ja-JP",
+                "remote": true,
+                "voice_name": "Google 日本語"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "ko-KR",
+                "remote": true,
+                "voice_name": "Google 한국의"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "nl-NL",
+                "remote": true,
+                "voice_name": "Google Nederlands"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "pl-PL",
+                "remote": true,
+                "voice_name": "Google polski"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "pt-BR",
+                "remote": true,
+                "voice_name": "Google português do Brasil"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "ru-RU",
+                "remote": true,
+                "voice_name": "Google русский"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "zh-CN",
+                "remote": true,
+                "voice_name": "Google 普通话（中国大陆）"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "zh-HK",
+                "remote": true,
+                "voice_name": "Google 粤語（香港）"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "zh-TW",
+                "remote": true,
+                "voice_name": "Google 國語（臺灣）"
+              }
+            ]
+          },
+          "version": "1.0"
+        },
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/138.0.7204.169/Resources/network_speech_synthesis/mv3",
+        "preferences": {},
+        "regular_only_preferences": {},
+        "service_worker_registration_info": {
+          "version": "1.0"
+        },
+        "serviceworkerevents": [
+          "ttsEngine.onPause",
+          "ttsEngine.onResume",
+          "ttsEngine.onSpeak",
+          "ttsEngine.onStop"
+        ],
+        "was_installed_by_default": false,
+        "was_installed_by_oem": false
+      },
+      "ghbmnnjooekpmoecnnnilnnbdlolhkhi": {
+        "ack_external": true,
+        "active_bit": false,
+        "active_permissions": {
+          "api": [
+            "alarms",
+            "storage",
+            "unlimitedStorage",
+            "offscreen"
+          ],
+          "explicit_host": [
+            "https://docs.google.com/*",
+            "https://drive.google.com/*"
+          ],
+          "manifest_permissions": [],
+          "scriptable_host": []
+        },
+        "allowlist": 1,
+        "commands": {},
+        "content_settings": [],
+        "creation_flags": 137,
+        "cws-info": {
+          "is-live": true,
+          "is-present": true,
+          "last-updated-time-millis": "1753081200000",
+          "no-privacy-practice": false,
+          "unpublished-long-ago": false,
+          "violation-type": 0
+        },
+        "disable_reasons": [],
+        "first_install_time": "13338748511797684",
+        "from_webstore": true,
+        "granted_permissions": {
+          "api": [
+            "alarms",
+            "storage",
+            "unlimitedStorage",
+            "offscreen"
+          ],
+          "explicit_host": [
+            "https://docs.google.com/*",
+            "https://drive.google.com/*"
+          ],
+          "manifest_permissions": [],
+          "scriptable_host": []
+        },
+        "incognito_content_settings": [],
+        "incognito_preferences": {},
+        "last_update_time": "13398197983283471",
+        "lastpingday": "13338716400009480",
+        "location": 6,
+        "manifest": {
+          "author": {
+            "email": "docs-hosted-app-own@google.com"
+          },
+          "background": {
+            "service_worker": "service_worker_bin_prod.js"
+          },
+          "content_capabilities": {
+            "matches": [
+              "https://docs.google.com/*",
+              "https://drive.google.com/*",
+              "https://drive-autopush.corp.google.com/*",
+              "https://drive-daily-0.corp.google.com/*",
+              "https://drive-daily-1.corp.google.com/*",
+              "https://drive-daily-2.corp.google.com/*",
+              "https://drive-daily-3.corp.google.com/*",
+              "https://drive-daily-4.corp.google.com/*",
+              "https://drive-daily-5.corp.google.com/*",
+              "https://drive-daily-6.corp.google.com/*",
+              "https://drive-preprod.corp.google.com/*",
+              "https://drive-staging.corp.google.com/*"
+            ],
+            "permissions": [
+              "clipboardRead",
+              "clipboardWrite",
+              "unlimitedStorage"
+            ]
+          },
+          "content_security_policy": {
+            "extension_pages": "script-src 'self'; object-src 'self'"
+          },
+          "current_locale": "en_US",
+          "default_locale": "en_US",
+          "description": "Edit, create, and view your documents, spreadsheets, and presentations — all without internet access.",
+          "externally_connectable": {
+            "matches": [
+              "https://docs.google.com/*",
+              "https://drive.google.com/*",
+              "https://drive-autopush.corp.google.com/*",
+              "https://drive-daily-0.corp.google.com/*",
+              "https://drive-daily-1.corp.google.com/*",
+              "https://drive-daily-2.corp.google.com/*",
+              "https://drive-daily-3.corp.google.com/*",
+              "https://drive-daily-4.corp.google.com/*",
+              "https://drive-daily-5.corp.google.com/*",
+              "https://drive-daily-6.corp.google.com/*",
+              "https://drive-preprod.corp.google.com/*",
+              "https://drive-staging.corp.google.com/*"
+            ]
+          },
+          "host_permissions": [
+            "https://docs.google.com/*",
+            "https://drive.google.com/*"
+          ],
+          "icons": {
+            "128": "128.png"
+          },
+          "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnF7RGLAxIon0/XeNZ4MLdP3DMkoORzEAKVg0sb89JpA/W2osTHr91Wqwdc9lW0mFcSpCYS9Y3e7cUMFo/M2ETASIuZncMiUzX2/0rrWtGQ3UuEj3KSe5PdaVZfisyJw/FebvHwirEWrhqcgzVUj9fL9YjE0G45d1zMKcc1umKvLqPyTznNuKBZ9GJREdGLRJCBmUgCkI8iwtwC+QZTUppmaD50/ksnEUXv+QkgGN07/KoNA5oAgo49Jf1XBoMv4QXtVZQlBYZl84zAsI82hb63a6Gu29U/4qMWDdI7+3Ne5TRvo6Zi3EI4M2NQNplJhik105qrz+eTLJJxvf4slrWwIDAQAB",
+          "manifest_version": 3,
+          "minimum_chrome_version": "88",
+          "name": "Google Docs Offline",
+          "permissions": [
+            "alarms",
+            "storage",
+            "unlimitedStorage",
+            "offscreen"
+          ],
+          "storage": {
+            "managed_schema": "dasherSettingSchema.json"
+          },
+          "update_url": "https://clients2.google.com/service/update2/crx",
+          "version": "1.94.1",
+          "web_accessible_resources": [
+            {
+              "matches": [
+                "\u003Call_urls>"
+              ],
+              "resources": [
+                "page_embed_script.js"
+              ]
+            }
+          ]
+        },
+        "path": "ghbmnnjooekpmoecnnnilnnbdlolhkhi/1.94.1_0",
+        "preferences": {},
+        "regular_only_preferences": {},
+        "service_worker_registration_info": {
+          "version": "1.94.1"
+        },
+        "serviceworkerevents": [
+          "alarms.onAlarm",
+          "runtime.onConnectExternal"
+        ],
+        "was_installed_by_default": true,
+        "was_installed_by_oem": false,
+        "withholding_permissions": false
+      },
+      "mhjfbmdgcfjbbpaeojofohoefgiehjai": {
+        "active_permissions": {
+          "api": [
+            "contentSettings",
+            "fileSystem",
+            "fileSystem.write",
+            "metricsPrivate",
+            "tabs",
+            "resourcesPrivate",
+            "pdfViewerPrivate"
+          ],
+          "explicit_host": [
+            "chrome://resources/*",
+            "chrome://webui-test/*"
+          ],
+          "manifest_permissions": [],
+          "scriptable_host": []
+        },
+        "commands": {},
+        "content_settings": [],
+        "creation_flags": 1,
+        "events": [],
+        "first_install_time": "13338748509379174",
+        "from_webstore": false,
+        "incognito_content_settings": [],
+        "incognito_preferences": {},
+        "last_update_time": "13338748509379174",
+        "location": 5,
+        "manifest": {
+          "content_security_policy": "script-src 'self' 'wasm-eval' blob: filesystem: chrome://resources chrome://webui-test; object-src * blob: externalfile: file: filesystem: data:",
+          "description": "",
+          "incognito": "split",
+          "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDN6hM0rsDYGbzQPQfOygqlRtQgKUXMfnSjhIBL7LnReAVBEd7ZmKtyN2qmSasMl4HZpMhVe2rPWVVwBDl6iyNE/Kok6E6v6V3vCLGsOpQAuuNVye/3QxzIldzG/jQAdWZiyXReRVapOhZtLjGfywCvlWq7Sl/e3sbc0vWybSDI2QIDAQAB",
+          "manifest_version": 2,
+          "mime_types": [
+            "application/pdf"
+          ],
+          "mime_types_handler": "index.html",
+          "name": "Chrome PDF Viewer",
+          "offline_enabled": true,
+          "permissions": [
+            "chrome://resources/",
+            "chrome://webui-test/",
+            "contentSettings",
+            "metricsPrivate",
+            "pdfViewerPrivate",
+            "resourcesPrivate",
+            "tabs",
+            {
+              "fileSystem": [
+                "write"
+              ]
+            }
+          ],
+          "version": "1"
+        },
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/116.0.5845.179/Resources/pdf",
+        "preferences": {},
+        "regular_only_preferences": {},
+        "state": 1,
+        "was_installed_by_default": false,
+        "was_installed_by_oem": false
+      },
+      "neajdppkdcdipfabeoofebfddakdcjhd": {
+        "active_permissions": {
+          "api": [
+            "metricsPrivate",
+            "systemPrivate",
+            "ttsEngine",
+            "offscreen"
+          ],
+          "explicit_host": [
+            "https://www.google.com/*"
+          ],
+          "manifest_permissions": [],
+          "scriptable_host": []
+        },
+        "commands": {},
+        "content_settings": [],
+        "creation_flags": 1,
+        "events": [
+          "ttsEngine.onPause",
+          "ttsEngine.onResume",
+          "ttsEngine.onSpeak",
+          "ttsEngine.onStop"
+        ],
+        "first_install_time": "13338748509380301",
+        "from_webstore": false,
+        "incognito_content_settings": [],
+        "incognito_preferences": {},
+        "last_update_time": "13338748509380301",
+        "location": 5,
+        "manifest": {
+          "background": {
+            "persistent": false,
+            "scripts": [
+              "tts_extension.js"
+            ]
+          },
+          "description": "Component extension providing speech via the Google network text-to-speech service.",
+          "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA8GSbNUMGygqQTNDMFGIjZNcwXsHLzkNkHjWbuY37PbNdSDZ4VqlVjzbWqODSe+MjELdv5Keb51IdytnoGYXBMyqKmWpUrg+RnKvQ5ibWr4MW9pyIceOIdp9GrzC1WZGgTmZismYR3AjaIpufZ7xDdQQv+XrghPWCkdVqLN+qZDA1HU+DURznkMICiDDSH2sU0egm9UbWfS218bZqzKeQDiC3OnTPlaxcbJtKUuupIm5knjze3Wo9Ae9poTDMzKgchg0VlFCv3uqox+wlD8sjXBoyBCCK9HpImdVAF1a7jpdgiUHpPeV/26oYzM9/grltwNR3bzECQgSpyXp0eyoegwIDAQAB",
+          "manifest_version": 2,
+          "name": "Google Network Speech",
+          "permissions": [
+            "systemPrivate",
+            "ttsEngine",
+            "https://www.google.com/"
+          ],
+          "tts_engine": {
+            "voices": [
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "de-DE",
+                "remote": true,
+                "voice_name": "Google Deutsch"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "en-US",
+                "remote": true,
+                "voice_name": "Google US English"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "en-GB",
+                "remote": true,
+                "voice_name": "Google UK English Female"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "male",
+                "lang": "en-GB",
+                "remote": true,
+                "voice_name": "Google UK English Male"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "es-ES",
+                "remote": true,
+                "voice_name": "Google español"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "es-US",
+                "remote": true,
+                "voice_name": "Google español de Estados Unidos"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "fr-FR",
+                "remote": true,
+                "voice_name": "Google français"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "hi-IN",
+                "remote": true,
+                "voice_name": "Google हिन्दी"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "id-ID",
+                "remote": true,
+                "voice_name": "Google Bahasa Indonesia"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "it-IT",
+                "remote": true,
+                "voice_name": "Google italiano"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "ja-JP",
+                "remote": true,
+                "voice_name": "Google 日本語"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "ko-KR",
+                "remote": true,
+                "voice_name": "Google 한국의"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "nl-NL",
+                "remote": true,
+                "voice_name": "Google Nederlands"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "pl-PL",
+                "remote": true,
+                "voice_name": "Google polski"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "pt-BR",
+                "remote": true,
+                "voice_name": "Google português do Brasil"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "ru-RU",
+                "remote": true,
+                "voice_name": "Google русский"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "zh-CN",
+                "remote": true,
+                "voice_name": "Google 普通话（中国大陆）"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "zh-HK",
+                "remote": true,
+                "voice_name": "Google 粤語（香港）"
+              },
+              {
+                "event_types": [
+                  "start",
+                  "end",
+                  "error"
+                ],
+                "gender": "female",
+                "lang": "zh-TW",
+                "remote": true,
+                "voice_name": "Google 國語（臺灣）"
+              }
+            ]
+          },
+          "version": "1.0"
+        },
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/116.0.5845.179/Resources/network_speech_synthesis",
+        "preferences": {},
+        "regular_only_preferences": {},
+        "service_worker_registration_info": {
+          "version": "1.0"
+        },
+        "serviceworkerevents": [
+          "ttsEngine.onPause",
+          "ttsEngine.onResume",
+          "ttsEngine.onSpeak",
+          "ttsEngine.onStop"
+        ],
+        "state": 1,
+        "was_installed_by_default": false,
+        "was_installed_by_oem": false
+      },
+      "nkeimhogjdpnpccoofpliimaahmaaome": {
+        "account_extension_type": 0,
+        "active_permissions": {
+          "api": [
+            "processes",
+            "webrtcLoggingPrivate",
+            "system.cpu",
+            "enterprise.hardwarePlatform"
+          ],
+          "explicit_host": [],
+          "manifest_permissions": [],
+          "scriptable_host": []
+        },
+        "commands": {},
+        "content_settings": [],
+        "creation_flags": 1,
+        "disable_reasons": [],
+        "events": [
+          "runtime.onConnectExternal"
+        ],
+        "first_install_time": "13338748509379860",
+        "from_webstore": false,
+        "incognito_content_settings": [],
+        "incognito_preferences": {},
+        "last_update_time": "13391640943276844",
+        "location": 5,
+        "manifest": {
+          "background": {
+            "page": "background.html",
+            "persistent": false
+          },
+          "externally_connectable": {
+            "ids": [
+              "moklfjoegmpoolceggbebbmgbddlhdgp",
+              "ldmpofkllgeicjiihkimgeccbhghhmfj",
+              "denipklgekfpcdmbahmbpnmokgajnhma",
+              "kjfhgcncjdebkoofmbjoiemiboifnpbo",
+              "ikfcpmgefdpheiiomgmhlmmkihchmdlj",
+              "jlgegmdnodfhciolbdjciihnlaljdbjo",
+              "lkbhffjfgpmpeppncnimiiikojibkhnm",
+              "acdafoiapclbpdkhnighhilgampkglpc",
+              "hkamnlhnogggfddmjomgbdokdkgfelgg"
+            ],
+            "matches": [
+              "https://*.meet.google.com/*"
+            ]
+          },
+          "incognito": "split",
+          "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDAQt2ZDdPfoSe/JI6ID5bgLHRCnCu9T36aYczmhw/tnv6QZB2I6WnOCMZXJZlRdqWc7w9jo4BWhYS50Vb4weMfh/I0On7VcRwJUgfAxW2cHB+EkmtI1v4v/OU24OqIa1Nmv9uRVeX0GjhQukdLNhAE6ACWooaf5kqKlCeK+1GOkQIDAQAB",
+          "manifest_version": 2,
+          "name": "Google Hangouts",
+          "permissions": [
+            "enterprise.hardwarePlatform",
+            "processes",
+            "system.cpu",
+            "webrtcLoggingPrivate"
+          ],
+          "version": "1.3.24"
+        },
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/136.0.7103.93/Resources/hangout_services",
+        "preferences": {},
+        "regular_only_preferences": {},
+        "state": 1,
+        "was_installed_by_default": false,
+        "was_installed_by_oem": false
+      },
+      "nmmhkkegccagdldgiimedpiccmgmieda": {
+        "ack_external": true,
+        "active_bit": false,
+        "active_permissions": {
+          "api": [
+            "identity",
+            "webview"
+          ],
+          "explicit_host": [
+            "https://payments.google.com/*",
+            "https://sandbox.google.com/*",
+            "https://www.google.com/*",
+            "https://www.googleapis.com/*"
+          ],
+          "manifest_permissions": [],
+          "scriptable_host": []
+        },
+        "allowlist": 1,
+        "commands": {},
+        "content_settings": [],
+        "creation_flags": 137,
+        "cws-info": {
+          "is-live": true,
+          "is-present": true,
+          "last-updated-time-millis": "1611820800000",
+          "no-privacy-practice": false,
+          "unpublished-long-ago": false,
+          "violation-type": 0
+        },
+        "events": [
+          "app.runtime.onLaunched",
+          "runtime.onConnectExternal"
+        ],
+        "first_install_time": "13338748511767844",
+        "from_webstore": true,
+        "granted_permissions": {
+          "api": [
+            "identity",
+            "webview"
+          ],
+          "explicit_host": [
+            "https://payments.google.com/*",
+            "https://sandbox.google.com/*",
+            "https://www.google.com/*",
+            "https://www.googleapis.com/*"
+          ],
+          "manifest_permissions": [],
+          "scriptable_host": []
+        },
+        "incognito_content_settings": [],
+        "incognito_preferences": {},
+        "last_update_time": "13338748511767844",
+        "lastpingday": "13338716400009480",
+        "location": 10,
+        "manifest": {
+          "app": {
+            "background": {
+              "scripts": [
+                "craw_background.js"
+              ]
+            }
+          },
+          "current_locale": "en_US",
+          "default_locale": "en",
+          "description": "Chrome Web Store Payments",
+          "display_in_launcher": false,
+          "display_in_new_tab_page": false,
+          "icons": {
+            "128": "images/icon_128.png",
+            "16": "images/icon_16.png"
+          },
+          "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCrKfMnLqViEyokd1wk57FxJtW2XXpGXzIHBzv9vQI/01UsuP0IV5/lj0wx7zJ/xcibUgDeIxobvv9XD+zO1MdjMWuqJFcKuSS4Suqkje6u+pMrTSGOSHq1bmBVh0kpToN8YoJs/P/yrRd7FEtAXTaFTGxQL4C385MeXSjaQfiRiQIDAQAB",
+          "manifest_version": 2,
+          "minimum_chrome_version": "29",
+          "name": "Chrome Web Store Payments",
+          "oauth2": {
+            "auto_approve": true,
+            "client_id": "203784468217.apps.googleusercontent.com",
+            "scopes": [
+              "https://www.googleapis.com/auth/sierra",
+              "https://www.googleapis.com/auth/sierrasandbox",
+              "https://www.googleapis.com/auth/chromewebstore",
+              "https://www.googleapis.com/auth/chromewebstore.readonly"
+            ]
+          },
+          "permissions": [
+            "identity",
+            "webview",
+            "https://www.google.com/",
+            "https://www.googleapis.com/*",
+            "https://payments.google.com/payments/v4/js/integrator.js",
+            "https://sandbox.google.com/payments/v4/js/integrator.js"
+          ],
+          "update_url": "https://clients2.google.com/service/update2/crx",
+          "version": "1.0.0.6"
+        },
+        "path": "nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0",
+        "preferences": {},
+        "regular_only_preferences": {},
+        "running": false,
+        "was_installed_by_default": true,
+        "was_installed_by_oem": false
+      },
+      "ojagfgibjiofppmilfbgmipfelkhcccn": {
+        "app_launcher_ordinal": "zy",
+        "lastpingday": "13398159600740188",
+        "page_ordinal": "n"
+      }
+    }
+  }
+}
