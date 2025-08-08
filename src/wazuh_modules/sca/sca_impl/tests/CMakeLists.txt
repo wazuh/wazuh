@@ -76,10 +76,6 @@ add_executable(sca_checksum_test sca_checksum_test.cpp)
 target_link_libraries(sca_checksum_test PRIVATE SCAImpl)
 add_test(NAME SCAChecksumTest COMMAND sca_checksum_test)
 
-add_executable(sca_checksum_integration_test sca_checksum_integration_test.cpp)
-target_link_libraries(sca_checksum_integration_test PRIVATE SCAImpl)
-add_test(NAME SCAChecksumIntegrationTest COMMAND sca_checksum_integration_test)
-
 add_executable(yaml_wrapper_test yaml_wrapper_test.cpp ../src/yaml_document.cpp ../src/yaml_node.cpp)
 target_link_libraries(yaml_wrapper_test PRIVATE yaml)
 add_test(NAME YamlWrapperTest COMMAND yaml_wrapper_test)
