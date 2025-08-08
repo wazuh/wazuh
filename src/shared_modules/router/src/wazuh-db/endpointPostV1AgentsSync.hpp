@@ -56,6 +56,7 @@ class TEndpointPostV1AgentsSync final
     }
 
 public:
+    virtual ~TEndpointPostV1AgentsSync() = default; // LCOV_EXCL_LINE
     /**
      * @brief Call the endpoint implementation. This function write the data to the database with the received
      * request body. Basically this function is used to update the agent status.
@@ -71,7 +72,7 @@ public:
         {
             if (jsonBody.contains("syncreq"))
             {
-                DBStatement stmt(db,
+                DBStatement stmt(db, // LCOV_EXCL_LINE
                                  "UPDATE agent SET config_sum = ?, ip = ?, manager_host = ?, merged_sum = "
                                  "?, name = ?, node_name = ?, os_arch = ?, os_build = ?, "
                                  "os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, "
@@ -80,9 +81,10 @@ public:
                                  "?, group_config_status = ?, status_code= ?, "
                                  "sync_status = 'synced' WHERE id = ?;");
 
-                DBStatement stmtDeleteLabels(db, "DELETE FROM labels WHERE id = ?;");
+                DBStatement stmtDeleteLabels(db, "DELETE FROM labels WHERE id = ?;"); // LCOV_EXCL_LINE
 
-                DBStatement stmtInsertLabels(db, "INSERT INTO labels (id, key, value) VALUES (?, ?, ?);");
+                DBStatement stmtInsertLabels(db, // LCOV_EXCL_LINE
+                                             "INSERT INTO labels (id, key, value) VALUES (?, ?, ?);");
 
                 const auto& syncReq = jsonBody.at("syncreq");
                 for (const auto& agent : syncReq)
@@ -135,7 +137,7 @@ public:
         {
             if (jsonBody.contains("syncreq_keepalive"))
             {
-                DBStatement stmt(db,
+                DBStatement stmt(db, // LCOV_EXCL_LINE
                                  "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'),sync_status = 'synced',"
                                  "connection_status = 'active',disconnection_time = 0,"
                                  "status_code = 0 WHERE id = ?;");
@@ -152,7 +154,7 @@ public:
         {
             if (jsonBody.contains("syncreq_status"))
             {
-                DBStatement stmt(
+                DBStatement stmt( // LCOV_EXCL_LINE
                     db,
                     "UPDATE agent SET connection_status = ?, sync_status = 'synced', disconnection_time = ?, "
                     "status_code = ? WHERE id = ?;");
@@ -171,6 +173,8 @@ public:
     }
 };
 
+// LCOV_EXCL_START
 using EndpointPostV1AgentsSync = TEndpointPostV1AgentsSync<>;
+// LCOV_EXCL_STOP
 
 #endif /* _ENDPOINT_POST_V1_AGENTS_SYNC_HPP */

@@ -25,16 +25,16 @@ json::Json ApiLoader::load() const
     // Send the request to the API
     std::string json_response {};
 
-    struct PostRequestParameters postRequestParameters {
-        .onSuccess = [&json_response](const std::string& msg) mutable -> void { json_response = msg; },
-        .onError = [](const std::string& msg, const long responseCode) mutable -> void
-        {
-            throw std::runtime_error(
-                fmt::format("Error while loading configuration from API: '{}' - '{}'", msg, responseCode));
-        }};
-
     UNIXSocketRequest::instance().get(
-        RequestParameters {.url = HttpUnixSocketURL(SOCKET_CONFIG, URL_CONFIG)}, postRequestParameters, {});
+        RequestParameters {.url = HttpUnixSocketURL(SOCKET_CONFIG, URL_CONFIG)},
+        PostRequestParametersRValue {
+            .onSuccess = [&json_response](std::string&& msg) mutable -> void { json_response = std::move(msg); },
+            .onError = [](const std::string& msg, const long responseCode) mutable -> void
+            {
+                throw std::runtime_error(
+                    fmt::format("Error while loading configuration from API: '{}' - '{}'", msg, responseCode));
+            }},
+        {});
 
     // Parse the response
     json::Json config {};

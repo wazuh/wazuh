@@ -377,7 +377,7 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
             retval = 0;
         }
     } else {
-        buffer_append(tmpstr);
+        buffer_append(tmpstr, -1);
         retval = 0;
     }
 
@@ -391,6 +391,95 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
 int SendMSG(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc) {
     os_wait();
     return SendMSGAction(queue, message, locmsg, loc);
+}
+
+int SendBinaryMSGAction(__attribute__((unused)) int queue, const void *message, size_t message_len, const char *locmsg, char loc)
+{
+    char loc_buff[OS_SIZE_8192 + 1] = {0};
+    char tmpstr[OS_MAXSTR + 1] = {0};
+    DWORD dwWaitResult;
+    int retval = -1;
+
+    // Using a mutex to synchronize the writes
+    while (1) {
+        dwWaitResult = WaitForSingleObject(hMutex, 1000000L);
+
+        if (dwWaitResult != WAIT_OBJECT_0) {
+            switch (dwWaitResult) {
+                case WAIT_TIMEOUT:
+                    mdebug2("Sending mutex timeout.");
+                    sleep(5);
+                    continue;
+                case WAIT_ABANDONED:
+                    merror("Error waiting mutex (abandoned).");
+                    return retval;
+                default:
+                    merror("Error waiting mutex.");
+                    return retval;
+            }
+        } else {
+            // Lock acquired, proceed
+            break;
+        }
+    }
+
+    // Escape the location string.
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+        merror(FORMAT_ERROR);
+        ReleaseMutex(hMutex); // Release mutex on error
+        return retval;
+    }
+
+    // Manually construct the binary message
+    char *p = tmpstr;
+    size_t loc_buff_len = strlen(loc_buff);
+    size_t header_len = 3 + loc_buff_len; // Format "loc:loc_buff:"
+    size_t total_len = header_len + message_len;
+
+    // Safety check: Ensure the message fits in the fixed-size buffer.
+    if (total_len > OS_MAXSTR) {
+        mwarn("Binary message is too large to be sent (%zu bytes required, %d max). Payload of %zu bytes for module '%s' was dropped.",
+                total_len, OS_MAXSTR, message_len, locmsg);
+        ReleaseMutex(hMutex); // Release mutex on error
+        return retval;
+    }
+
+    // Build the header
+    *p++ = loc;
+    *p++ = ':';
+    memcpy(p, loc_buff, loc_buff_len);
+    p += loc_buff_len;
+    *p++ = ':';
+
+    // Append the binary payload
+    memcpy(p, message, message_len);
+
+    // Dispatch the message (either to buffer or directly)
+    if (!agt->buffer) {
+        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+        // Pass the constructed message and its *actual size*.
+        if (send_msg(tmpstr, total_len) >= 0) {
+            retval = 0;
+        }
+    } else {
+        // Pass the constructed message and its *actual size* to the buffer.
+        if (buffer_append(tmpstr, total_len) >= 0) {
+            retval = 0;
+        }
+    }
+
+    // Release the mutex
+    if (!ReleaseMutex(hMutex)) {
+        merror("Error releasing mutex.");
+    }
+
+    return retval;
+}
+
+/* SendBinaryMSG for Windows */
+int SendBinaryMSG(__attribute__((unused)) int queue, const void *message, size_t message_len, const char *locmsg, char loc) {
+    os_wait();
+    return SendBinaryMSGAction(queue, message, message_len, locmsg, loc);
 }
 
 /* SendMSGPredicated for Windows */

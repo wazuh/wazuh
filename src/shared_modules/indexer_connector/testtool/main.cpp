@@ -162,13 +162,8 @@ int main(const int argc, const char* argv[])
                 logFile.flush();
             });
 
-        if (!cmdArgParser.getAgentIdSyncEvent().empty())
+        if (cmdArgParser.getAgentIdSyncEvent().empty())
         {
-            indexerConnector.sync(cmdArgParser.getAgentIdSyncEvent());
-        }
-        else
-        {
-
             // Read events file.
             // If the events file path is empty, then the events are generated
             // automatically.
