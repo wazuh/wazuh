@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "YENİSİNİ YARADIN"
+   },
+   "explanationofflinedisabled": {
+      "message": "Oflaynsınız. Google Sənədi internet bağlantısı olmadan istifadə etmək istəyirsinizsə, Google Sənədin əsas səhifəsində ayarlara gedin və növbəti dəfə internetə qoşulanda oflayn sinxronizasiyanı aktiv edin."
+   },
+   "explanationofflineenabled": {
+      "message": "Oflaynsınız, amma mövcud faylları redaktə edə və yenilərini yarada bilərsiniz."
+   },
+   "extdesc": {
+      "message": "Sənəd, cədvəl və təqdimatların hamısını internet olmadan redaktə edin, yaradın və baxın."
+   },
+   "extname": {
+      "message": "Google Sənəd Oflayn"
+   },
+   "learnmore": {
+      "message": "Ətraflı Məlumat"
+   },
+   "popuphelptext": {
+      "message": "Harda olmağınızdan və internetə qoşulu olub-olmadığınızdan asılı olmayaraq, yazın, redaktə edin və əməkdaşlıq edin."
+   }
+}

@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "SKEP NUWE"
+   },
+   "explanationofflinedisabled": {
+      "message": "Jy is vanlyn. As jy Google Dokumente sonder 'n internetverbinding wil gebruik, moet jy die volgende keer as jy aan die internet gekoppel is na instellings op die Google Dokumente-tuisblad gaan en vanlynsinkronisering aanskakel."
+   },
+   "explanationofflineenabled": {
+      "message": "Jy is vanlyn, maar jy kan nog steeds beskikbare lêers redigeer of nuwes skep."
+   },
+   "extdesc": {
+      "message": "Skep, wysig en bekyk jou dokumente, sigblaaie en aanbiedings – alles sonder toegang tot die internet."
+   },
+   "extname": {
+      "message": "Google Vanlyn Dokumente"
+   },
+   "learnmore": {
+      "message": "Kom meer te wete"
+   },
+   "popuphelptext": {
+      "message": "Skryf, redigeer en werk saam, waar jy ook al is, met of sonder 'n internetverbinding."
+   }
+}

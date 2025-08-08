@@ -1,0 +1,23 @@
+{
+   "createnew": {
+      "message": "LUO UUSI"
+   },
+   "explanationofflinedisabled": {
+      "message": "Olet offline-tilassa. Jos haluat käyttää Google Docsia ilman internetyhteyttä, siirry Google Docsin etusivulle ja ota asetuksissa käyttöön offline-synkronointi, kun seuraavan kerran olet yhteydessä internetiin."
+   },
+   "explanationofflineenabled": {
+      "message": "Olet offline-tilassa. Voit kuitenkin muokata käytettävissä olevia tiedostoja tai luoda uusia."
+   },
+   "extdesc": {
+      "message": "Muokkaa, luo ja katso dokumentteja, laskentataulukoita ja esityksiä ilman internetyhteyttä."
+   },
+   "extname": {
+      "message": "Google Docsin offline-tila"
+   },
+   "learnmore": {
+      "message": "Lisätietoja"
+   },
+   "popuphelptext": {
+      "message": "Kirjoita, muokkaa ja tee yhteistyötä paikasta riippumatta, myös ilman internetyhteyttä."
+   }
+}
