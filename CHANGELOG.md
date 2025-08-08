@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.3]
 
+### Other
+
+#### Changed
+
+- Updated `requests` to version 2.32.4 (backport from 4.14.0). ([#30829](https://github.com/wazuh/wazuh/pull/30829))
+- Updated `urllib3` to version 2.5.0 and `protobuf` to version 5.29.5 (backport from 4.14.0). ([#30829](https://github.com/wazuh/wazuh/pull/30829))
+- Updated dependencies: setuptools, Jinja2, and PyJWT (backport from 4.14.0). ([#29933](https://github.com/wazuh/wazuh/pull/29933))
+
 
 ## [v4.10.2]
 
