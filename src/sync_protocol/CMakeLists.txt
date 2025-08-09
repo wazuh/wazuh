@@ -119,4 +119,6 @@ target_link_libraries(agent_sync_protocol
 
 if(UNIT_TEST)
   add_subdirectory(tests)
+else()
+  add_subdirectory(testtool)
 endif()

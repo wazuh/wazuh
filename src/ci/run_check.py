@@ -211,6 +211,9 @@ def runCoverage(moduleName):
     elif moduleName == "syscheckd":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
+    elif moduleName == "sync_protocol":
+        paths = [root for root, _, _ in os.walk(
+            (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
     else:
         moduleCMakeFiles = os.path.join(currentDir,
                                         "build/tests/*/CMakeFiles/*.dir")
@@ -536,9 +539,9 @@ def runTests(moduleName):
     utils.printHeader(moduleName=moduleName,
                       headerKey="tests")
     tests = []
-    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test\
-                      |.*interface_test|.*integration_test.exe\
-                      |.*interface_test.exe")
+    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test"
+                     "|.*interface_test|.*integration_test.exe"
+                     "|.*interface_test.exe|.*_tests")
     currentDir = utils.moduleDirPathBuild(moduleName=moduleName)
 
     if not moduleName == "shared_modules/utils":
@@ -659,9 +662,9 @@ def runValgrind(moduleName):
     utils.printHeader(moduleName=moduleName,
                       headerKey="valgrind")
     tests = []
-    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test\
-                     |.*interface_test|.*integration_test.exe\
-                     |.*interface_test.exe")
+    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test"
+                     "|.*interface_test|.*integration_test.exe"
+                     "|.*interface_test.exe|.*_tests")
     currentDir = ""
     if moduleName == "shared_modules/utils":
         currentDir = os.path.join(utils.moduleDirPath(moduleName=moduleName),

@@ -132,6 +132,7 @@ src/shared_modules/rsync/coverage_report/
 src/shared_modules/utils/coverage_report/
 src/shared_modules/utils/tests/coverage_report
 src/wazuh_modules/syscollector/coverage_report/
+src/sync_protocol/coverage_report/
 src/ossec.test
 src/tap_*
 etc/preloaded-vars.conf

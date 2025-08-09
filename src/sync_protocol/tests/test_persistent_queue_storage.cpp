@@ -12,6 +12,7 @@
 
 struct QueueScenario
 {
+    std::string name;
     std::vector<PersistedData> initial;
     bool doFetchAndSync;
     std::vector<PersistedData> eventsInSync;
@@ -20,6 +21,11 @@ struct QueueScenario
     size_t expectedRows;
     Operation expectedOp;
 };
+
+inline void PrintTo(const QueueScenario& q, std::ostream* os)
+{
+    *os << q.name;
+}
 
 class PersistentQueueFullParamTest :
     public ::testing::TestWithParam<QueueScenario>
@@ -86,9 +92,10 @@ INSTANTIATE_TEST_SUITE_P(
     FullQueueCases,
     PersistentQueueFullParamTest,
     ::testing::Values(
-        // 1. CREATE
-        QueueScenario
+// 1. CREATE
+QueueScenario
 {
+    "Case 1",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     false, {}, false, false,
     1, Operation::CREATE
@@ -96,6 +103,7 @@ INSTANTIATE_TEST_SUITE_P(
 // 2. CREATE + MODIFY no sync -> MODIFY
 QueueScenario
 {
+    "Case 2",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
         PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY}
@@ -106,6 +114,7 @@ QueueScenario
 // 3. CREATE + DELETE no sync -> row deleted
 QueueScenario
 {
+    "Case 3",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
         PersistedData{0, "id1", "idx", "{}", Operation::DELETE}
@@ -116,6 +125,7 @@ QueueScenario
 // 4. MODIFY + DELETE no sync -> DELETE
 QueueScenario
 {
+    "Case 4",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::MODIFY},
         PersistedData{0, "id1", "idx", "{}", Operation::DELETE}
@@ -126,6 +136,7 @@ QueueScenario
 // 5. DELETE
 QueueScenario
 {
+    "Case 5",
     { PersistedData{0, "id1", "idx", "{}", Operation::DELETE} },
     false, {}, false, false,
     1, Operation::DELETE
@@ -133,6 +144,7 @@ QueueScenario
 // 6. CREATE + Sync + MODIFY during  sync + sync success -> MODIFY
 QueueScenario
 {
+    "Case 6",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true,
     { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY} },
@@ -142,6 +154,7 @@ QueueScenario
 // 7. CREATE + Sync + DELETE during  sync + sync success -> DELETE
 QueueScenario
 {
+    "Case 7",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true,
     { PersistedData{0, "id1", "idx", "{}", Operation::DELETE} },
@@ -151,6 +164,7 @@ QueueScenario
 // 8. CREATE + Sync + DELETE during  sync + sync fail -> row deleted
 QueueScenario
 {
+    "Case 8",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true,
     { PersistedData{0, "id1", "idx", "{}", Operation::DELETE} },
@@ -160,6 +174,7 @@ QueueScenario
 // 9. CREATE + Sync + MODIFY during  sync + fail -> MODIFY
 QueueScenario
 {
+    "Case 9",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true,
     { PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY} },
@@ -169,6 +184,7 @@ QueueScenario
 // 10. DELETE + MODIFY -> MODIFY
 QueueScenario
 {
+    "Case 10",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
         PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY}
@@ -179,6 +195,7 @@ QueueScenario
 // 11. Sync
 QueueScenario
 {
+    "Case 11",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true, {}, true, false,
     0, Operation::CREATE
@@ -186,6 +203,7 @@ QueueScenario
 // 12. Two MODIFY -> MODIFY
 QueueScenario
 {
+    "Case 12",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::MODIFY},
         PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY},
@@ -196,6 +214,7 @@ QueueScenario
 // 13. Two IDs
 QueueScenario
 {
+    "Case 13",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
         PersistedData{0, "id2", "idx", "{}", Operation::MODIFY}
@@ -206,6 +225,7 @@ QueueScenario
 // 14. MODIFY + Sync + DELETE + CREATE + DELETE during sync + sync fail -> DELETE
 QueueScenario
 {
+    "Case 14",
     { PersistedData{0, "id1", "idx", "{}", Operation::MODIFY} },
     true,
     {
@@ -219,6 +239,7 @@ QueueScenario
 // 15. CREATE -> DELETE -> CREATE -> CREATE
 QueueScenario
 {
+    "Case 15",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
         PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
@@ -230,6 +251,7 @@ QueueScenario
 // 16. CREATE + Sync + MODIFY + DELETE + MODIFY during sync + sync success -> MODIFY
 QueueScenario
 {
+    "Case 16",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true,
     {
@@ -243,6 +265,7 @@ QueueScenario
 // 17. CREATE + Sync + DELETE + CREATE during sync + sync fail -> CREATE
 QueueScenario
 {
+    "Case 17",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true,
     {
