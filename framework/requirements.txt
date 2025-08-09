@@ -82,7 +82,7 @@ secure==0.3.0
 six==1.16.0
 sniffio==1.3.0
 SQLAlchemy==2.0.23
-starlette==0.42.0
+starlette==0.47.2
 tabulate==0.8.9
 typing-extensions==4.12.2
 typing-inspect==0.7.1
