@@ -17,7 +17,9 @@ file(GLOB DBENGINE_UNITTEST_SRC
     "*.cpp")
 
 file(GLOB SQLITE_ENGINE_SRC
-    "${CMAKE_SOURCE_DIR}/src/sqlite/sqlite_dbengine.cpp")
+    "${CMAKE_SOURCE_DIR}/src/sqlite/sqlite_dbengine.cpp"
+    "${CMAKE_SOURCE_DIR}/src/sqlite/sqlite_wrapper.cpp"
+)
 
 add_executable(dbengine_unit_test 
     ${DBENGINE_UNITTEST_SRC} 
@@ -33,6 +35,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         optimized gtest_main
         optimized gmock_main
         pthread
+        sqlite3
+        cjson
         -static-libgcc -static-libstdc++
     )
 else()
@@ -46,6 +50,8 @@ else()
         optimized gtest_main
         optimized gmock_main
         pthread
+        sqlite3
+        cjson
         dl
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
