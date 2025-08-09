@@ -16,6 +16,7 @@
 #include "router.h"
 #include "sym_load.h"
 #include "agent_messages_adapter.h"
+#include "indexed_queue_op.h"
 
 
 #ifdef WAZUH_UNIT_TESTING
@@ -75,7 +76,7 @@ static void * rem_handler_main(void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue);
+STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -123,9 +124,29 @@ char *str_family_address[FAMILY_ADDRESS_SIZE] = {
 typedef struct {
     keyentry * key; ///< Pointer to the key entry of agent to which the message belongs
     char * message; ///< Raw message received
-    size_t length;  ///< Length of the message
     int agent_id;   ///< Agent ID
+    int is_startup; ///< Validation result: is startup message
+    int is_shutdown; ///< Validation result: is shutdown message
 } w_ctrl_msg_data_t;
+
+/**
+ * @brief Free control message data
+ *
+ * @param ptr_ctrl_msg_data Pointer to the control message data to be freed
+ * @warning The ctrl_msg_data pointer will be invalid after this function call.
+ */
+static void w_free_ctrl_msg_data(w_ctrl_msg_data_t * ctrl_msg_data) {
+
+    if (ctrl_msg_data == NULL) {
+        return;
+    }
+
+    if (ctrl_msg_data->key) {
+        OS_FreeKey(ctrl_msg_data->key);
+    }
+    os_free(ctrl_msg_data->message);
+    os_free(ctrl_msg_data);
+}
 
 /**
  * @brief Thread function to save control messages
@@ -144,7 +165,10 @@ void HandleSecure()
     const int protocol = logr.proto[logr.position];
     int n_events = 0;
 
-    w_linked_queue_t * control_msg_queue = linked_queue_init(); ///< Pointer to the control message queue
+
+    size_t ctrl_msg_queue_size = (size_t) getDefine_Int("remoted", "control_msg_queue_size", 4096, 0x1 << 20); // 1MB
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
+    indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
@@ -437,7 +461,7 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
 // Message handler thread
 void * rem_handler_main(void * args) {
     message_t * message;
-    w_linked_queue_t * control_msg_queue = (w_linked_queue_t *) args;
+    w_indexed_queue_t * control_msg_queue = (w_indexed_queue_t *) args;
     mdebug1("Message handler thread started.");
 
     while (1) {
@@ -512,7 +536,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue) {
+STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -798,8 +822,14 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
             // The critical section for readers closes within this function
             rem_inc_recv_ctrl(key->id);
 
-            // Send the control message to the queue for processing in the control thread
-            {
+            // Validate control message before potentially queuing it
+            char *cleaned_msg = NULL;
+            int is_startup = 0, is_shutdown = 0;
+            size_t tmp_msg_length = msg_length - 3; // Exclude the header length (3 characters)
+            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+
+            if (validation_result == 1) {
+                // Message should be queued for database processing
                 w_ctrl_msg_data_t * ctrl_msg_data;
                 os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
 
@@ -807,14 +837,46 @@ STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * con
                 ctrl_msg_data->key = key;
                 key = NULL;
 
-                ctrl_msg_data->length = msg_length - 3;
                 os_calloc(msg_length, sizeof(char), ctrl_msg_data->message);
-                memcpy(ctrl_msg_data->message, tmp_msg, ctrl_msg_data->length);
+                // Use cleaned message from validation if available, otherwise use original
+                memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, tmp_msg_length);
 
-                linked_queue_push_ex(control_msg_queue, ctrl_msg_data);
+                // Store validation results in the control message data structure
+                ctrl_msg_data->is_startup = is_startup;
+                ctrl_msg_data->is_shutdown = is_shutdown;
 
-                rem_inc_ctrl_msg_queue_usage();
-                mdebug2("Control message pushed to queue.");
+                // Create key based on agent_id for indexing
+                char agent_key[32];
+                snprintf(agent_key, sizeof(agent_key), "%d", agentid);
+
+                // Use upsert to allow updating existing control messages for the same agent
+                int res = indexed_queue_upsert_ex(control_msg_queue, agent_key, ctrl_msg_data);
+                if (res == 1) {
+                    mdebug2("Control message updated in queue for agent ID '%s'.", agent_key);
+                } else if (res == 0) {
+                    mdebug2("Control message pushed in queue for agent ID '%s'.", agent_key);
+                    rem_inc_ctrl_msg_queue_usage();
+                } else {
+                    mwarn("Failed to insert control message for agent ID '%s'.", agent_key);
+                    w_free_ctrl_msg_data(ctrl_msg_data);
+                }
+            } else if (validation_result == 0) {
+                // Message was handled directly (HC_REQUEST), don't queue it
+                mdebug2("Control message processed directly, not queued.");
+                if (key) {
+                    OS_FreeKey(key);
+                }
+            } else {
+                // Error in validation
+                mwarn("Error validating control message from agent ID '%s'.", key->id);
+                if (key) {
+                    OS_FreeKey(key);
+                }
+            }
+
+            // Free cleaned message if allocated
+            if (cleaned_msg) {
+                os_free(cleaned_msg);
             }
 
         } else {
@@ -1057,31 +1119,28 @@ void *current_timestamp(__attribute__((unused)) void *none)
 void * save_control_thread(void * control_msg_queue)
 {
     assert(control_msg_queue != NULL);
-    w_linked_queue_t * queue = (w_linked_queue_t *)control_msg_queue;
+    w_indexed_queue_t * queue = (w_indexed_queue_t *)control_msg_queue;
     w_ctrl_msg_data_t * ctrl_msg_data = NULL;
     int wdb_sock = -1;
 
     while (FOREVER()) {
-        if ((ctrl_msg_data = (w_ctrl_msg_data_t *)linked_queue_pop_ex(queue))) {
+        if ((ctrl_msg_data = (w_ctrl_msg_data_t *)indexed_queue_pop_ex(queue))) {
 
             rem_dec_ctrl_msg_queue_usage();
 
             bool is_startup = ctrl_msg_data->key->is_startup;
 
-            // Process the control message
-            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, ctrl_msg_data->length, &wdb_sock, &is_startup);
+            // Process the control message with the validation results
+            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, 
+                          &wdb_sock, &is_startup, ctrl_msg_data->is_startup, ctrl_msg_data->is_shutdown);
 
-            // Update agent is_startup flag in case it changed
             if (ctrl_msg_data->key->is_startup != is_startup) {
                 key_lock_read();
                 keys.keyentries[ctrl_msg_data->agent_id]->is_startup = is_startup;
                 key_unlock();
             }
 
-            // Free the key entry
-            OS_FreeKey(ctrl_msg_data->key);
-            os_free(ctrl_msg_data->message);
-            os_free(ctrl_msg_data);
+            w_free_ctrl_msg_data(ctrl_msg_data);
         }
     }
 

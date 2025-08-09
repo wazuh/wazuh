@@ -92,7 +92,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 /* Notify the manager */
-#define NOTIFY_TIME     10      // ... every 10 seconds
+#define NOTIFY_TIME     20      // ... every 20 seconds
 #define RECONNECT_TIME  60      // Time to reconnect
 
 /* User Configuration */
