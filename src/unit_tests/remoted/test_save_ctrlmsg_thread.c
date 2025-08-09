@@ -18,7 +18,7 @@
 #include "../../remoted/remoted.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
-#include "../wrappers/wazuh/shared/queue_op_wrappers.h"
+#include "../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
 
 #include "../wrappers/wazuh/remoted/queue_wrappers.h"
 #include "../wrappers/wazuh/remoted/manager_wrappers.h"
@@ -29,8 +29,8 @@ void * save_control_thread(void * control_msg_queue);
 void test_save_control_message_empty(void **state)
 {
     will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_queue_pop_ex, (w_queue_t *) -1);
-    expect_value(__wrap_queue_pop_ex, queue, 0x1);
+    will_return(__wrap_indexed_queue_pop_ex, (w_linked_queue_t *) 0);
+    expect_value(__wrap_indexed_queue_pop_ex, queue, 0x1);
 
 
     will_return(__wrap_FOREVER, 0);
@@ -41,7 +41,8 @@ void test_save_control_message_empty(void **state)
 
 void test_save_control_message_ok(void **state)
 {
-    w_queue_t * queue = queue_init(10);
+    w_indexed_queue_t * queue = indexed_queue_init(10);
+    assert_non_null(queue);
 
     w_ctrl_msg_data_t * ctrl_msg_data;
     os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
@@ -51,11 +52,11 @@ void test_save_control_message_ok(void **state)
     os_calloc(len, sizeof(char), ctrl_msg_data->message);
     memcpy(ctrl_msg_data->message, "test message", len);
 
-    queue_push(queue, ctrl_msg_data);
+    indexed_queue_push(queue, "001", ctrl_msg_data);
 
     will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_queue_pop_ex, (void *) ctrl_msg_data);
-    expect_value(__wrap_queue_pop_ex, queue, queue);
+    will_return(__wrap_indexed_queue_pop_ex, (void *) ctrl_msg_data);
+    expect_value(__wrap_indexed_queue_pop_ex, queue, queue);
 
     expect_value(__wrap_save_controlmsg, key, ctrl_msg_data->key);
     expect_value(__wrap_save_controlmsg, r_msg, ctrl_msg_data->message);
@@ -64,7 +65,7 @@ void test_save_control_message_ok(void **state)
     will_return(__wrap_FOREVER, 0);
 
     assert_null(save_control_thread((void *) queue));
-    queue_free(queue);
+    indexed_queue_free(queue);    
 }
 
 
