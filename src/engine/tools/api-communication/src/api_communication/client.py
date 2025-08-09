@@ -13,6 +13,8 @@ from api_communication.proto.engine_pb2 import GenericStatus_Response
 from api_communication.proto.engine_pb2 import ReturnStatus
 
 
+DEFAULT_TIMEOUT = 10
+
 class APIClient:
     """Client to communicate with the Engine API socket
     """
@@ -88,7 +90,7 @@ class APIClient:
         try:
             client = httpx.Client(transport=self.transport)
             response = client.post(
-                f'http://localhost/{endpoint}', data=body, headers=header)
+                f'http://localhost/{endpoint}', data=body, headers=header, timeout=DEFAULT_TIMEOUT)
 
             if response.status_code != 200:
                 # Check if the error contains a message
