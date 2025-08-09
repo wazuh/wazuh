@@ -29,28 +29,11 @@ typedef struct wm_sca_policy_t {
 typedef struct wm_sca_t {
     int enabled;
     int scan_on_start;
-    int skip_nfs;
-    int msg_delay;
-    unsigned int summary_delay;
-    unsigned int request_db_interval;
-    char* scan_time;
     wm_sca_policy_t** policies;
-    char **alert_msg;
-    int queue;
     int remote_commands:1;
     int commands_timeout;
     sched_scan_config scan_config;
 } wm_sca_t;
-
-typedef struct cis_db_info_t {
-    char *result;
-    cJSON *event;
-    int id;
-} cis_db_info_t;
-
-typedef struct cis_db_hash_info_t {
-    cis_db_info_t **elem;
-} cis_db_hash_info_t;
 
 extern const wm_context WM_SCA_CONTEXT;
 

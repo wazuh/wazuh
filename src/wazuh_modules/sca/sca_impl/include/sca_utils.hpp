@@ -32,6 +32,14 @@ namespace sca
         NotRun
     };
 
+    /// @brief Structure to pass policy data.
+    struct PolicyData
+    {
+        std::string path;
+        bool isEnabled;
+        bool isRemote;
+    };
+
     /// @brief Converts a CheckResult enum value to its string representation.
     /// @param result The CheckResult enum value to convert.
     /// @return The string representation of the CheckResult enum value.

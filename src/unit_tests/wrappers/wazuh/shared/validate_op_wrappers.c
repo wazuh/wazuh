@@ -18,11 +18,6 @@ int __wrap_getDefine_Int(__attribute__((unused)) const char *high_name,
                          __attribute__((unused)) int min,
                          __attribute__((unused)) int max) {
     // For SCA
-    if (!strcmp(low_name, "request_db_interval")) {
-        return 5;
-    }
-
-    // For SCA
     if (!strcmp(low_name, "commands_timeout")) {
         return 300;
     }

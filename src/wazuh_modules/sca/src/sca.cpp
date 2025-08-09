@@ -110,32 +110,29 @@ void SCA::setup(const struct wm_sca_t* sca_config)
 {
     if (m_sca && sca_config) {
         // Extract configuration values from wm_sca_t
-        bool enabled = sca_config->enabled != 0;
-        bool scan_on_start = sca_config->scan_on_start != 0;
+        const bool enabled = sca_config->enabled != 0;
+        const bool scan_on_start = sca_config->scan_on_start != 0;
+        const int commandsTimeout = sca_config->commands_timeout;
+        const bool remoteEnabled = sca_config->remote_commands != 0;
 
         // Extract scan interval from scan_config (default to 3600 seconds if not set)
         const auto scanInterval = sca_config->scan_config.interval > 0 ?
             static_cast<std::time_t>(sca_config->scan_config.interval) : 3600;
 
         // Extract policy paths if available
-        std::vector<std::string> policies;
-        std::vector<std::string> disabledPolicies;
+        std::vector<sca::PolicyData> policies;
 
         if (sca_config->policies) {
             for (int i = 0; sca_config->policies[i] != nullptr; i++) {
                 wm_sca_policy_t* policy = sca_config->policies[i];
                 if (policy->policy_path) {
-                    if (policy->enabled) {
-                        policies.push_back(std::string(policy->policy_path));
-                    } else {
-                        disabledPolicies.push_back(std::string(policy->policy_path));
-                    }
+                    policies.emplace_back(sca::PolicyData{std::string(policy->policy_path), policy->enabled == 1, policy->remote == 1});
                 }
             }
         }
 
         // Call Setup only once during initialization
-        m_sca->Setup(enabled, scan_on_start, scanInterval, policies, disabledPolicies);
+        m_sca->Setup(enabled, scan_on_start, scanInterval, commandsTimeout, remoteEnabled, policies);
     }
 }
 

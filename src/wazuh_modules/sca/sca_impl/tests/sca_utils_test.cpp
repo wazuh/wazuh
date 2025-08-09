@@ -1,10 +1,25 @@
 #include "sca_utils.hpp"
 #include <gtest/gtest.h>
 
+#include "logging_helper.hpp"
+
 using namespace sca;
 
+class ParseRuleTypeTest : public ::testing::Test
+{
+protected:
+    void SetUp() override
+    {
+        // Set up the logging callback to avoid "Log callback not set" errors
+        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
+            // Mock logging callback that does nothing
+        });
+
+    }
+};
+
 // NOLINTBEGIN(bugprone-unchecked-optional-access, modernize-raw-string-literal)
-TEST(ParseRuleTypeTest, ValidTypes)
+TEST_F(ParseRuleTypeTest, ValidTypes)
 {
     auto result = ParseRuleType("f:/path");
     ASSERT_TRUE(result);
@@ -28,7 +43,7 @@ TEST(ParseRuleTypeTest, ValidTypes)
     EXPECT_EQ(result->first, WM_SCA_TYPE_COMMAND);
 }
 
-TEST(ParseRuleTypeTest, NegatedKey)
+TEST_F(ParseRuleTypeTest, NegatedKey)
 {
     const auto result = ParseRuleType("!f:/negated");
     ASSERT_TRUE(result);
@@ -36,7 +51,7 @@ TEST(ParseRuleTypeTest, NegatedKey)
     EXPECT_EQ(result->second, "/negated");
 }
 
-TEST(ParseRuleTypeTest, InvalidInputs)
+TEST_F(ParseRuleTypeTest, InvalidInputs)
 {
     EXPECT_FALSE(ParseRuleType("x:invalid"));
     EXPECT_FALSE(ParseRuleType(":missing"));
@@ -272,3 +287,4 @@ TEST(PatternMatchesTest, REG_MULTI_SZtest)
 }
 
 // NOLINTEND(bugprone-unchecked-optional-access, modernize-raw-string-literal)
+
