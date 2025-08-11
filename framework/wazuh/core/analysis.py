@@ -106,28 +106,6 @@ class RulesetReloadResponse:
         """
         return self.success
 
-    def update_affected_items(self, results: AffectedItemsWazuhResult, error_code: int):
-        """
-        Update the results object with warnings or raise an error if the reload failed.
-
-        Parameters
-        ----------
-        results : AffectedItemsWazuhResult
-            Object to update with warning messages.
-        error_code : int
-            Error code to use if raising a WazuhError.
-
-        Raises
-        ------
-        WazuhError
-            If the reload operation was not successful.
-        """
-        if self.is_ok():
-            if self.has_warnings():
-                results.all_msg = ','.join(self.warnings)
-        else:
-            raise WazuhError(error_code, extra_message=','.join(self.errors))
-
 def send_reload_ruleset_msg(origin: dict[str, str]) -> RulesetReloadResponse:
     """Send the reload ruleset command to Analysisd socket.
 
