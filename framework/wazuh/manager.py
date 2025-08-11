@@ -7,6 +7,7 @@ from os.path import exists
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
+from wazuh.core.analysis import send_reload_ruleset_msg
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
@@ -206,14 +207,37 @@ def restart() -> AffectedItemsWazuhResult:
 
     return result
 
+_restart_ruleset_default_result_kwargs = {
+    'all_msg': f"Reload request sent to {'all specified nodes' if node_id != 'manager' else ''}",
+    'some_msg': "Could not send reload request to some specified nodes",
+    'none_msg': "Could not send reload request to any node",
+    'sort_casting': ['str']
+}
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
-                  post_proc_kwargs={'default_result_kwargs': _restart_default_result_kwargs})
+                  post_proc_kwargs={'default_result_kwargs': _restart_ruleset_default_result_kwargs})
 def reload_ruleset() -> AffectedItemsWazuhResult:
-    pass
+    results = AffectedItemsWazuhResult(**_restart_ruleset_default_result_kwargs)
+
+    try:
+        if node_id == 'manager':
+            socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
+            if socket_response.is_ok():
+                affected_item = {'name': node_id, 'msg': ''}
+                if socket_response.has_warnings():
+                    affected_item['msg'] = ', '.join(socket_response.warnings)
+
+                results.affected_items.append(affected_item)
+            else:
+                results.add_failed_item(id_=node_id, error=WazuhError(code=1914, extra_message=', '.join(socket_response.errors)))
+    except WazuhError as e:
+        results.add_failed_item(id_=node_id, error=e)
+
+    results.total_affected_items = len(results.affected_items)
+    return results
 
 
 _validation_default_result_kwargs = {
