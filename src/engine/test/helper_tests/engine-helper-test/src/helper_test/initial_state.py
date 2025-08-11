@@ -44,14 +44,6 @@ def cpy_conf(env_path: Path, conf_path: Path) -> Path:
     # Replace path placeholder
     conf_str = conf_str.replace(Constants.PLACEHOLDER, env_path.as_posix())
 
-    # Get current system user and group
-    current_user = pwd.getpwuid(os.geteuid()).pw_name
-    current_group = grp.getgrgid(os.getegid()).gr_name
-
-    # Perform chained replacements for user and group
-    conf_str = conf_str.replace(Constants.AUTOMATIC_USER_PLACEHOLDER, current_user)
-    conf_str = conf_str.replace(Constants.AUTOMATIC_GROUP_PLACEHOLDER, current_group)
-
     # Write updated config to destination
     dest_conf_file.write_text(conf_str)
 
