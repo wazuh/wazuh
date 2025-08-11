@@ -597,7 +597,6 @@ stages:
               command: !anything
               global: !anything
               localfile: !anything
-              osquery: !anything
               remote: !anything
               rootcheck: !anything
               ruleset: !anything
@@ -630,7 +629,6 @@ stages:
               command: !anything
               global: !anything
               localfile: !anything
-              osquery: !anything
               remote: !anything
               rootcheck: !anything
               ruleset: !anything
