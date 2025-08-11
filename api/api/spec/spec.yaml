@@ -3944,8 +3944,6 @@ components:
           type: object
         open-scap:
           type: object
-        osquery:
-          type: object
         syscollector:
           type: object
 
@@ -4343,8 +4341,6 @@ components:
           wazuh-modulesd:download:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:oscap:
-            $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:osquery:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:syscollector:
             $ref: '#/components/schemas/LogSummary'
@@ -6706,7 +6702,6 @@ components:
         - cis-cat
         - docker-listener
         - open-scap
-        - osquery
         - syscollector
     field:
       in: query
@@ -10669,12 +10664,6 @@ paths:
                         scan-on-start: yes
                         java_path: wodles/java
                         ciscat_path: wodles/ciscat
-                      osquery:
-                        disabled: yes
-                        run_daemon: yes
-                        log_path: /var/log/osquery/osqueryd.results.log
-                        config_path: /etc/osquery/osquery.conf
-                        add_labels: yes
                       syscollector:
                         disabled: no
                         interval: "1h"
