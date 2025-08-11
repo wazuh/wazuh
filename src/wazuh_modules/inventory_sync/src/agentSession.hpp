@@ -17,6 +17,7 @@
 #include "context.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "gapSet.hpp"
+#include "loggerHelper.h"
 #include "responseDispatcher.hpp"
 #include "rocksDBWrapper.hpp"
 #include <functional>
@@ -115,8 +116,11 @@ public:
                                                        .agentId = data->agent_id(),
                                                        .moduleName = data->module_()->str()});
 
-        std::cout << "AgentSessionImpl: " << m_context->sessionId << " " << m_context->agentId << " "
-                  << m_context->moduleName << std::endl;
+        logDebug2(LOGGER_INV_SYNC_TAG,
+                  "New session for module '%s' by agent %d. (Session %d)",
+                  m_context->moduleName.c_str(),
+                  m_context->agentId,
+                  m_context->sessionId);
 
         responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Ok, m_context);
     }
@@ -144,6 +148,8 @@ public:
     {
         const auto seq = data->seq();
         const auto session = data->session();
+
+        logDebug2(LOGGER_INV_SYNC_TAG, "Handling sequence number '%d' for session '%d'", seq, session);
 
         m_store.put(std::to_string(session) + "_" + std::to_string(seq),
                     rocksdb::Slice(dataRaw.data(), dataRaw.size()));
@@ -174,7 +180,7 @@ public:
         m_endReceived = true;
         if (m_gapSet->empty())
         {
-            std::cout << "End received and gap set is empty\n";
+            logDebug2(LOGGER_INV_SYNC_TAG, "End received and gap set is empty");
             m_indexerQueue.push(Response {ResponseStatus::Ok, m_context});
         }
         else
