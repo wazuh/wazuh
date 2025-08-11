@@ -102,9 +102,8 @@ class InventorySyncFacadeImpl final
             logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing message...");
             if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Data)
             {
-                std::unique_lock lock(m_agentSessionsMutex);
-                // Check if session already exists.
-                if (m_agentSessions.contains(sessionId))
+                const auto data = syncMessage->content_as<Wazuh::SyncSchema::Data>();
+                if (!data)
                 {
                     throw InventorySyncException("Invalid data message");
                 }
