@@ -354,33 +354,10 @@ class LocalServerMaster(LocalServer):
 
         self.tasks.extend([self.dapi.run, self.sendsync.run])
 
-class AsyncReloadRulesetFlag:
-    def __init__(self):
-        self._lock = asyncio.Lock()
-        self._flag = False
-
-    async def set(self):
-        async with self._lock:
-            self._flag = True
-
-    async def clear(self):
-        async with self._lock:
-            self._flag = False
-
-    async def is_set(self):
-        async with self._lock:
-            return self._flag
-
 class LocalServerHandlerWorker(LocalServerHandler):
     """
     The local server handler instance that runs in worker nodes.
     """
-
-    def __init__(self, server, loop: asyncio.AbstractEventLoop, fernet_key: str,
-                 cluster_items: Dict, logger: logging.Logger = None, tag: str = "Client"):
-        super().__init__(server=server, loop=loop, fernet_key=fernet_key, cluster_items=cluster_items,
-                         logger=logger, tag=tag)
-        self.reload_ruleset_flag = AsyncReloadRulesetFlag()
 
     def process_request(self, command: bytes, data: bytes):
         """Define available requests in the local server.
@@ -430,7 +407,8 @@ class LocalServerHandlerWorker(LocalServerHandler):
             return super().process_request(command, data)
 
     async def set_reload_ruleset_flag(self):
-        await self.reload_ruleset_flag.set()
+        async with self.server.node.client.reload_ruleset_flag:
+            self.server.node.client.reload_ruleset_flag.set()
 
     def get_nodes(self, arguments) -> Tuple[bytes, bytes]:
         """Forward 'get_nodes' request to the master node.

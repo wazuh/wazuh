@@ -15,7 +15,7 @@ from time import perf_counter
 from typing import Tuple, Dict, Callable, List
 from typing import Union
 
-from wazuh.core import cluster as metadata, common, exception, utils
+from wazuh.core import cluster as metadata, common, exception, utils, analysis
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.cluster.dapi import dapi
@@ -117,6 +117,28 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         super().done_callback(future)
 
 
+class AsyncReloadRulesetFlag:
+    def __init__(self):
+        self._lock = asyncio.Lock()
+        self._flag = False
+
+    async def __aenter__(self):
+        await self._lock.acquire()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        self._lock.release()
+
+    def set(self):
+        self._flag = True
+
+    def clear(self):
+        self._flag = False
+
+    def is_set(self):
+        return self._flag
+
+
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     """
     Handle connection with the master node.
@@ -142,6 +164,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         # Flag to prevent a new Integrity check if Integrity sync is in progress.
         self.check_integrity_free = True
+
+        # Async flag used to indicate when the worker should reload the ruleset after the next sync
+        self.reload_ruleset_flag = AsyncReloadRulesetFlag()
 
         # Every task logger is configured to log using a tag describing the synchronization process. For example,
         # a log coming from the "Integrity" logger will look like this:
@@ -214,7 +239,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         self.logger.debug(f"Command received: '{command}'")
         if command == b'syn_m_c_ok':
-            return self.sync_integrity_ok_from_master()
+            self.sync_integrity_ok_from_master()
+            asyncio.create_task(self.sync_integrity_ok_from_master())
+            return b'ok', b'Thanks'
         elif command == b'syn_m_c':
             return self.setup_receive_files_from_master()
         elif command == b'syn_m_c_e':
@@ -340,7 +367,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         return super().error_receiving_file(task_id_and_error_details=data, logger_tag='Integrity sync')
 
-    def sync_integrity_ok_from_master(self) -> Tuple[bytes, bytes]:
+    async def sync_integrity_ok_from_master(self) -> Tuple[bytes, bytes]:
         """Function called when the master sends the "syn_m_c_ok" command.
 
         Returns
@@ -354,7 +381,26 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         integrity_logger.info(
             f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
             f"Sync not required.")
-        return b'ok', b'Thanks'
+
+        with self.reload_ruleset_flag:
+            if self.reload_ruleset_flag.is_set():
+                response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
+                if response.is_ok():
+                    if response.has_warnings():
+                        integrity_logger.warning(
+                            f"Ruleset reloaded with warnings after cluster integrity check: {', '.join(response.warnings)}"
+                        )
+                    else:
+                        integrity_logger.info(
+                            "Ruleset reload triggered by cluster integrity check: reload message sent successfully."
+                        )
+                else:
+                    integrity_logger.error(
+                        f"Ruleset reload failed after cluster integrity check: {', '.join(response.errors)}"
+                    )
+
+                # Clear the flag
+                self.reload_ruleset_flag.clear()
 
     async def compare_agent_groups_checksums(self, master_checksum, logger):
         """Compare the checksum of the local database with the checksum of the master node to check if these differ.
@@ -682,6 +728,26 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 log_subprocess_execution(self.task_loggers['Integrity sync'], logs)
                 logger.debug("Updating local files: End.")
 
+            async with self.reload_ruleset_flag:
+                if self.reload_ruleset_flag.is_set():
+                    response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
+                    if response.is_ok():
+                        if response.has_warnings():
+                            self.logger.warning(
+                                f"Ruleset reloaded with warnings after cluster integrity check: {', '.join(response.warnings)}"
+                            )
+                        else:
+                            self.logger.info(
+                                "Ruleset reload triggered by cluster integrity check: reload message sent successfully."
+                            )
+                    else:
+                        self.logger.error(
+                            f"Ruleset reload failed after cluster integrity check: {', '.join(response.errors)}"
+                        )
+
+                    # Clear the flag
+                    self.reload_ruleset_flag.clear()
+
             logger.info(f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
         except Exception as e:
             logger.error(f"Error synchronizing files: {e}")
@@ -805,7 +871,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
             except Exception as e:
                 result_logs['generic_errors'].append(f"Error reloading ruleset {e}")
-
 
         if sum(errors.values()) > 0:
             result_logs['generic_errors'].append(f"Found errors: {errors['shared']} overwriting, "
