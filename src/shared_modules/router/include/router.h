@@ -21,6 +21,31 @@
 #endif
 
 #include "logging_helper.h"
+#include <stddef.h>
+
+/**
+ * @brief Agent context structure containing agent information.
+ *
+ * This structure holds the essential information about an agent that can be
+ * used for routing messages and identifying the source of communications.
+ */
+struct agent_ctx
+{
+    /** @brief Unique identifier for the agent */
+    const char* id;
+
+    /** @brief Human-readable name of the agent */
+    const char* name;
+
+    /** @brief IP address of the agent */
+    const char* ip;
+
+    /** @brief Version string of the agent software */
+    const char* version;
+
+    /** @brief Module of the agent */
+    const char* module;
+};
 
 #ifdef __cplusplus
 extern "C"
@@ -91,6 +116,21 @@ extern "C"
     EXPORTED int router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema);
 
     /**
+     * @brief Send a message to the router provider using flatbuffers and agent context.
+     *
+     * @param handle Handle to the router provider.
+     * @param message Message to send.
+     * @param message_size Size of the message.
+     * @param agent_ctx Agent context.
+     * @return true if the message was sent successfully.
+     * @return false if the message was not sent successfully.
+     */
+    EXPORTED int router_provider_send_fb_agent_ctx(ROUTER_PROVIDER_HANDLE handle,
+                                                   const char* message,
+                                                   const size_t message_size,
+                                                   const struct agent_ctx* agent_ctx);
+
+    /**
      * @brief Destroy a router provider.
      *
      * @param handle Handle to the router provider.
@@ -124,6 +164,11 @@ typedef bool (*router_provider_send_func)(ROUTER_PROVIDER_HANDLE handle,
                                           const char* message,
                                           unsigned int message_size);
 typedef bool (*router_provider_send_fb_func)(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema);
+
+typedef bool (*router_provider_send_fb_agent_ctx_func)(ROUTER_PROVIDER_HANDLE handle,
+                                                       const char* message,
+                                                       const size_t message_size,
+                                                       const struct agent_ctx* agent_ctx);
 
 typedef void (*router_provider_destroy_func)(ROUTER_PROVIDER_HANDLE handle);
 

@@ -9,6 +9,8 @@
  * Foundation.
  */
 
+#include "router.h"
+#include "flatbuffers/include/agentInfo_generated.h"
 #include "logging_helper.h"
 #include <functional>
 #include <string>
@@ -316,6 +318,52 @@ extern "C"
         {
             PROVIDERS.erase(it);
         }
+    }
+
+    int router_provider_send_fb_agent_ctx(ROUTER_PROVIDER_HANDLE handle,
+                                          const char* message,
+                                          const size_t message_size,
+                                          const agent_ctx* agent_ctx)
+    {
+        int retVal = -1;
+        try
+        {
+            if (!message)
+            {
+                throw std::runtime_error("Error sending message to provider. Message is empty");
+            }
+            else
+            {
+                logMessage(modules_log_level_t::LOG_DEBUG, "Sending message to provider");
+                // Build agent info message
+                flatbuffers::FlatBufferBuilder builder;
+                std::vector<uint8_t> messageVector(message, message + message_size);
+                auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
+                                                                    agent_ctx->id,
+                                                                    agent_ctx->name,
+                                                                    agent_ctx->ip,
+                                                                    agent_ctx->version,
+                                                                    agent_ctx->module,
+                                                                    &messageVector);
+                builder.Finish(agentInfo);
+
+                if (builder.GetSize() == 0)
+                {
+                    throw std::runtime_error("Error building message to provider. Message is empty");
+                }
+
+                std::vector<char> data(builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize());
+
+                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
+                PROVIDERS.at(handle)->send(data);
+                retVal = 0;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
+        }
+        return retVal;
     }
 
     void router_register_api_endpoint(const char* module,

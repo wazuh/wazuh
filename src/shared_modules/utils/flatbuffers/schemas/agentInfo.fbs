@@ -1,0 +1,12 @@
+namespace Wazuh.Sync;
+
+table AgentInfo {
+    id: string;
+    name: string;
+    ip: string;
+    version: string;
+    module: string;
+    data: [ubyte];
+}
+
+root_type AgentInfo;

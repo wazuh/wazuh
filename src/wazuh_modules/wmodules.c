@@ -101,8 +101,8 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
-    // Inventory harvester
-    if ((module = wm_inventory_harvester_read()))
+    // Inventory sync
+    if ((module = wm_inventory_sync_read()))
         wm_add(module);
 
 #endif
