@@ -545,8 +545,6 @@ std::enable_if_t<IsReflectable<T>::value, std::string> serializeToJSON(const T& 
                      const auto& data = obj.*(std::get<2>(field));
                      if constexpr (NOEMPTY)
                      {
-                         std::cout << "2NOEMPTY" << std::endl;
-                         std::cout << NOEMPTY << std::endl;
                          if (isEmpty(data))
                          {
                              return;
