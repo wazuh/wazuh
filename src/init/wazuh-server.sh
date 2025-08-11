@@ -27,7 +27,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-engine wazuh-execd wazuh-db wazuh-authd wazuh-apid"
+DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-engine wazuh-execd wazuh-db wazuh-authd wazuh-apid wazuh-forwarder"
 OP_DAEMONS="wazuh-clusterd"
 DEPRECATED_DAEMONS="ossec-authd"
 
