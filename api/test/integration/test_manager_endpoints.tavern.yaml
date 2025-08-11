@@ -77,7 +77,6 @@ marks:
        - command
        - global
        - localfile
-       - osquery
        - remote
        - rootcheck
        - ruleset
@@ -148,7 +147,6 @@ stages:
               command: !anything
               global: !anything
               localfile: !anything
-              osquery: !anything
               remote: !anything
               rootcheck: !anything
               ruleset: !anything
