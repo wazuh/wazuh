@@ -8,7 +8,7 @@
  */
 
 #include "ichrome_extensions_wrapper.hpp"
-#include "chrome_darwin.hpp"
+#include "chrome.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "filesystemHelper.h"

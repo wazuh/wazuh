@@ -5,7 +5,9 @@ project(browser_extensions)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(SRC_FILES "")
+set(SRC_FILES
+  src/chrome.cpp
+)
 
 include_directories(
   include
@@ -20,7 +22,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
   list(APPEND SRC_FILES 
     src/safari_darwin.cpp
-    src/chrome_darwin.cpp
   )
 
   add_library(browser_extensions STATIC ${SRC_FILES})
@@ -33,10 +34,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/linux
   )
 
-  list(APPEND SRC_FILES 
-    src/chrome_linux.cpp
-  )
-
   add_library(browser_extensions STATIC ${SRC_FILES})
   target_link_libraries(browser_extensions
     ${SRC_FOLDER}/external/openssl/libcrypto.a
@@ -46,25 +43,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/
   )
 
-  list(APPEND SRC_FILES 
-    src/chrome_windows.cpp
-  )
-
   add_library(browser_extensions STATIC ${SRC_FILES})
   target_link_libraries(browser_extensions
     ${SRC_FOLDER}/external/openssl/libcrypto.a
-    # user32
     ws2_32
     crypt32
-    # wtsapi32
-  )
-
-  add_executable(chrome_windows src/main.cpp)
-  target_link_libraries(chrome_windows
-    browser_extensions
-    -static-libgcc
-    -static-libstdc++
-    -static
   )
 endif()
 
