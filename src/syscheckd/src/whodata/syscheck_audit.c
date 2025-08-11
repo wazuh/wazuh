@@ -37,7 +37,7 @@ unsigned int count_reload_retries;
 static const char *const AUDISP_OLD_CONFIGURATION = "active = yes\ndirection = out\npath = builtin_af_unix\n"
                                                 "type = builtin\nargs = 0640 %s\nformat = string\n";
 static const char *const AUDISP_CONFIGURATION = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
-                                                "type = always\nargs = 0640 %s string\nformat = binary\n";
+                                                "type = always\nargs = 0640 %s\nformat = binary\n";
 
 w_queue_t * audit_queue;
 
@@ -85,9 +85,10 @@ int check_auditd_enabled(void) {
 
 int configure_audisp(const char *audisp_path, const char *abs_path_socket, const char *audisp_config) {
     FILE *fp;
+    char buffer[PATH_MAX] = {'\0'};
     struct stat st;
 
-    minfo(FIM_AUDIT_SOCKET, audisp_path);
+    minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
 
     if (lstat(audisp_path, &st) == 0) {
         if (unlink(audisp_path) < 0) {
@@ -103,29 +104,38 @@ int configure_audisp(const char *audisp_path, const char *abs_path_socket, const
         }
     }
 
-    fp = wfopen(audisp_path, "w");
+    abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
+
+    fp = wfopen(AUDIT_CONF_FILE, "w");
     if (!fp) {
-        merror(FOPEN_ERROR, audisp_path, errno, strerror(errno));
-        return -1;
-    }
-
-    if (fchmod(fileno(fp), 0640) < 0) {
-        merror("Unable to set permissions on %s: %s", audisp_path, strerror(errno));
-        fclose(fp);
-        return -1;
-    }
-
-    if (fchown(fileno(fp), 0, 0) < 0) {
-        merror("Unable to set owner on %s: %s", audisp_path, strerror(errno));
-        fclose(fp);
+        merror(FOPEN_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
     }
 
     fwrite(audisp_config, sizeof(char), strlen(audisp_config), fp);
 
     if (fclose(fp)) {
-        merror(FCLOSE_ERROR, audisp_path, errno, strerror(errno));
+        merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
+    }
+
+    if (symlink(buffer, audisp_path) < 0) {
+        switch (errno) {
+        case EEXIST:
+            if (unlink(audisp_path) < 0) {
+                merror(UNLINK_ERROR, audisp_path, errno, strerror(errno));
+                return -1;
+            }
+
+            if (symlink(buffer, audisp_path) == 0) {
+                break;
+            }
+
+        // Fallthrough
+        default:
+            merror(LINK_ERROR, audisp_path, AUDIT_CONF_FILE, errno, strerror(errno));
+            return -1;
+        }
     }
 
     if (syscheck.restart_audit) {
