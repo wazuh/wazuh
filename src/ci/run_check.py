@@ -559,7 +559,7 @@ def runTests(moduleName):
         for test in tests:
             path = os.path.join(currentDir, test)
             if ".exe" in test:
-                if moduleName == "data_provider":
+                if moduleName == "data_provider" or moduleName == "sync_protocol":
                     rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
                                             "bin")
                     stdcpp = utils.findFile(name="libstdc++-6.dll",
