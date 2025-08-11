@@ -820,9 +820,10 @@ async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = F
     dapi = DistributedAPI(f=manager.reload_ruleset,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
+                          local_client_arg='lc',
                           broadcasting=nodes_list == '*',
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           nodes=nodes
