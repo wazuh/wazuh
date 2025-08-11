@@ -390,7 +390,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *sta
                         return;
                     }
                 } else {
-                    merror("Error getting version from agent '%s'", key->id);
+                    mwarn("Unable to get version from agent '%s' on startup message", key->id);
                     send_wrong_version_response(key->id, HC_RETRIEVE_VERSION, ERR_VERSION_RECV, NULL, wdb_sock);
                     cJSON_Delete(agent_info);
                     return;
