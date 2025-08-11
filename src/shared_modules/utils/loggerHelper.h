@@ -23,6 +23,7 @@
 #include <unordered_map>
 
 auto constexpr LOGGER_DEFAULT_TAG {"logger-helper"};
+auto constexpr LOGGER_INV_SYNC_TAG {"inventory-sync"};
 
 // We can't use std::source_location until C++20
 #define LogEndl                                                                                                        \
