@@ -11,7 +11,20 @@ link_directories(${CMAKE_SOURCE_DIR}/../external/googletest/lib/)
 
 set(TEST_SRC "main.cpp")
 
-list(APPEND TEST_SRC test_safari_darwin.cpp)
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  list(APPEND TEST_SRC 
+    test_safari_darwin.cpp
+    test_chrome_darwin.cpp
+  )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  list(APPEND TEST_SRC 
+    test_chrome_linux.cpp
+  )
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  list(APPEND TEST_SRC 
+    test_chrome_windows.cpp
+  )
+endif()
 
 add_executable(extended_sources_browser_extensions_unit_test ${TEST_SRC})
 target_link_libraries(extended_sources_browser_extensions_unit_test
@@ -22,5 +35,4 @@ target_link_libraries(extended_sources_browser_extensions_unit_test
   gmock_maind
   pthread
 )
-
 add_test(NAME BrowsersExtensionsTests COMMAND extended_sources_browser_extensions_unit_test)
