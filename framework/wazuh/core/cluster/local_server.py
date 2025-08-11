@@ -5,9 +5,10 @@
 import asyncio
 import functools
 import json
+import logging
 import os
 import random
-from typing import Tuple, Union
+from typing import Tuple, Union, Dict
 
 import uvloop
 from wazuh.core import common
@@ -353,11 +354,33 @@ class LocalServerMaster(LocalServer):
 
         self.tasks.extend([self.dapi.run, self.sendsync.run])
 
+class AsyncReloadRulesetFlag:
+    def __init__(self):
+        self._lock = asyncio.Lock()
+        self._flag = False
+
+    async def set(self):
+        async with self._lock:
+            self._flag = True
+
+    async def clear(self):
+        async with self._lock:
+            self._flag = False
+
+    async def is_set(self):
+        async with self._lock:
+            return self._flag
 
 class LocalServerHandlerWorker(LocalServerHandler):
     """
     The local server handler instance that runs in worker nodes.
     """
+
+    def __init__(self, server, loop: asyncio.AbstractEventLoop, fernet_key: str,
+                 cluster_items: Dict, logger: logging.Logger = None, tag: str = "Client"):
+        super().__init__(server=server, loop=loop, fernet_key=fernet_key, cluster_items=cluster_items,
+                         logger=logger, tag=tag)
+        self.reload_ruleset_flag = AsyncReloadRulesetFlag()
 
     def process_request(self, command: bytes, data: bytes):
         """Define available requests in the local server.
@@ -398,8 +421,16 @@ class LocalServerHandlerWorker(LocalServerHandler):
             asyncio.create_task(self.log_exceptions(
                 self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
             return b'ok', b'Added request to sendsync requests queue'
+        elif command == b'ruleset_reload':
+            if self.server.node.client is None:
+                raise WazuhClusterError(3023)
+            asyncio.create_task(self.log_exceptions(self.set_reload_ruleset_flag()))
+            return b'ok', b'Reload ruleset flag set'
         else:
             return super().process_request(command, data)
+
+    async def set_reload_ruleset_flag(self):
+        await self.reload_ruleset_flag.set()
 
     def get_nodes(self, arguments) -> Tuple[bytes, bytes]:
         """Forward 'get_nodes' request to the master node.

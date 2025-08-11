@@ -8,7 +8,9 @@ from os.path import exists
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.analysis import send_reload_ruleset_msg
+from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
+from wazuh.core.cluster.control import set_reload_ruleset_flag
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
@@ -219,7 +221,7 @@ _restart_ruleset_default_result_kwargs = {
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _restart_ruleset_default_result_kwargs})
-def reload_ruleset() -> AffectedItemsWazuhResult:
+async def reload_ruleset(lc: local_client.LocalClient) -> AffectedItemsWazuhResult:
     results = AffectedItemsWazuhResult(**_restart_ruleset_default_result_kwargs)
 
     try:
@@ -233,6 +235,12 @@ def reload_ruleset() -> AffectedItemsWazuhResult:
                 results.affected_items.append(affected_item)
             else:
                 results.add_failed_item(id_=node_id, error=WazuhError(code=1914, extra_message=', '.join(socket_response.errors)))
+
+        else:
+            lc = local_client.LocalClient()
+            await set_reload_ruleset_flag(lc)
+
+            results.affected_items.append({'name': node_id, 'msg': ''})
     except WazuhError as e:
         results.add_failed_item(id_=node_id, error=e)
 

@@ -221,3 +221,12 @@ async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
         raise result
 
     return result
+
+async def set_reload_ruleset_flag(lc: local_client.LocalClient) -> dict:
+    response = await lc.execute(command=b"ruleset_reload", data=b"")
+    result = json.loads(response, object_hook=as_wazuh_object)
+
+    if isinstance(result, Exception):
+        raise result
+
+    return result
