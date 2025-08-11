@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(sca)
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
 enable_testing()
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -35,7 +37,7 @@ else()
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
 endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
-if(FSANITIZE)
+if(FSANITIZE AND NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
@@ -94,12 +96,19 @@ if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(sca -fprofile-arcs)
   else()
-    target_link_libraries(sca gcov)
+    add_definitions(-fprofile-arcs -ftest-coverage)
+    # Link ASAN first to avoid library ordering issues
+    # target_link_libraries(sca -fsanitize=address,leak,undefined gcov -fprofile-arcs)
+    # target_link_libraries(sca asan ubsan cmocka gcov -fprofile-arcs)  
+    if(NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+      target_link_libraries(sca asan ubsan cmocka gcov -fprofile-arcs)
+    else()
+      target_link_libraries(sca cmocka gcov -fprofile-arcs)
+    endif()
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-
-  # add_subdirectory(tests)
 else()
-  if(FSANITIZE)
-    target_link_libraries(sca gcov)
+  if(FSANITIZE AND NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    #target_link_libraries(sca -fsanitize=address,leak,undefined gcov)
+    target_link_libraries(sca gcov asan ubsan)
   endif(FSANITIZE)
 endif(UNIT_TEST)
