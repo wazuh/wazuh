@@ -11,12 +11,12 @@
 #include <tuple>
 #include <iostream>
 #include <fstream>
-#include <unistd.h>
 #include <algorithm>
-#include "cppcodec/base64_rfc4648.hpp"
 #include "openssl/sha.h"
 #include "stringHelper.h"
 #include "filesystemHelper.h"
+
+#define MAX_PATH_LENGTH 1000
 
 namespace chrome
 {
@@ -43,10 +43,14 @@ namespace chrome
             result += item.get<std::string>() + ", ";
         }
 
-        if (result.back() == ' ')
+        if (!result.empty() && result.back() == ' ')
         {
-            result.pop_back(); // Remove trailing comma
-            result.pop_back();
+            result.pop_back(); // Remove trailing space
+
+            if (!result.empty() && result.back() == ',')
+            {
+                result.pop_back(); // Remove trailing comma
+            }
         }
 
         return result;
@@ -81,7 +85,7 @@ namespace chrome
 
     void ChromeExtensionsProvider::localizeParameters(ChromeExtension& extension)
     {
-        std::string extensionPath(extension.path);
+        const std::string& extensionPath = extension.path;
         std::string localesPath = Utils::joinPaths(extensionPath, kExtensionLocalesDir);
         std::string defaultLocalePath = Utils::joinPaths(localesPath, extension.default_locale);
         std::string messagesFilePath = Utils::joinPaths(defaultLocalePath, kExtensionLocaleMessagesFile);
@@ -125,11 +129,45 @@ namespace chrome
         return result;
     }
 
+    std::string ChromeExtensionsProvider::base64Decode(const std::string& input)
+    {
+        static const std::string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        std::string decoded;
+        std::vector<int> T(256, -1);
+
+        // Build lookup table
+        for (int i = 0; i < 64; i++) T[chars[i]] = i;
+
+        int val = 0, valb = -8;
+
+        for (unsigned char c : input)
+        {
+            if (T[c] == -1) break;
+
+            val = (val << 6) + T[c];
+            valb += 6;
+
+            if (valb >= 0)
+            {
+                decoded.push_back(char((val >> valb) & 0xFF));
+                valb -= 8;
+            }
+        }
+
+        return decoded;
+    }
+
     std::string ChromeExtensionsProvider::generateIdentifier(const std::string& key)
     {
-        auto decodedVector = cppcodec::base64_rfc4648::decode(key);
+        // Decode to string first
+        std::string decodedString = base64Decode(key);
+
+        // Convert to vector<uint8_t> to match original behavior exactly
+        std::vector<uint8_t> decodedVector(decodedString.begin(), decodedString.end());
+
         uint8_t hash[SHA256_DIGEST_LENGTH];
         SHA256(decodedVector.data(), decodedVector.size(), hash);
+
         std::string letters_string = hashToLetterString(hash, SHA256_DIGEST_LENGTH);
         return letters_string.substr(0, 32);
     }
@@ -242,7 +280,21 @@ namespace chrome
         }
 
         std::ifstream preferencesFile(preferencesFilePath);
-        nlohmann::json preferencesJson = nlohmann::json::parse(preferencesFile);
+        nlohmann::json preferencesJson;
+
+        try
+        {
+            preferencesJson = nlohmann::json::parse(preferencesFile);
+        }
+        catch (const nlohmann::json::parse_error& e)
+        {
+            // Log error and return empty list
+            return ChromeExtensionList();
+        }
+        catch (const std::exception& e)
+        {
+            return ChromeExtensionList();
+        }
 
         const nlohmann::json& settings = preferencesJson["extensions"]["settings"];
         ChromeExtensionList extensions;
@@ -251,10 +303,17 @@ namespace chrome
         {
             if (item.value().contains("path"))
             {
-                std::string extensionPath(item.value()["path"]);
+                std::string extensionPath = item.value()["path"];
 
                 if (!Utils::isAbsolutePath(extensionPath))
                 {
+                    if (extensionPath.find("..") != std::string::npos ||
+                            extensionPath.find("//") != std::string::npos ||
+                            extensionPath.empty() || extensionPath.length() > MAX_PATH_LENGTH)
+                    {
+                        return ChromeExtensionList();
+                    }
+
                     extensionPath = Utils::joinPaths(Utils::joinPaths(profilePath, kExtensionsDir), extensionPath);
                 }
 
@@ -273,7 +332,21 @@ namespace chrome
                     parsePreferenceSettings(extension, item.key(), item.value());
 
                     std::ifstream manifestFile(manifestPath);
-                    nlohmann::json manifestJson = nlohmann::json::parse(manifestFile);
+                    nlohmann::json manifestJson;
+
+                    try
+                    {
+                        manifestJson = nlohmann::json::parse(manifestFile);
+                    }
+                    catch (const nlohmann::json::parse_error& e)
+                    {
+                        continue; // Skip this extension and continue with next
+                    }
+                    catch (const std::exception& e)
+                    {
+                        continue;
+                    }
+
                     parseManifest(manifestJson, extension);
 
                     extension.identifier = generateIdentifier(extension.key);
@@ -307,8 +380,27 @@ namespace chrome
         std::ifstream preferencesFile(preferencesFilePath);
         std::ifstream securePreferencesFile(securePreferencesFilePath);
 
-        nlohmann::json preferencesJson = nlohmann::json::parse(preferencesFile);
-        nlohmann::json securePreferencesJson = nlohmann::json::parse(securePreferencesFile);
+        nlohmann::json preferencesJson;
+
+        try
+        {
+            preferencesJson = nlohmann::json::parse(preferencesFile);
+        }
+        catch (const nlohmann::json::parse_error& e)
+        {
+            return "";
+        }
+
+        nlohmann::json securePreferencesJson;
+
+        try
+        {
+            securePreferencesJson = nlohmann::json::parse(securePreferencesFile);
+        }
+        catch (const nlohmann::json::parse_error& e)
+        {
+            return "";
+        }
 
         if (preferencesJson.contains("profile") && preferencesJson["profile"].contains("name"))
         {
@@ -377,8 +469,6 @@ namespace chrome
             return ChromeExtensionList();
         }
 
-        std::ifstream preferencesFile(preferencesFilePath);
-        nlohmann::json preferencesJson = nlohmann::json::parse(preferencesFile);
         std::string profileName = getProfileFromPreferences(preferencesFilePath, securePreferencesFilePath);
         ChromeExtensionList extensions;
 
@@ -409,7 +499,17 @@ namespace chrome
                     getCommonSettings(extension, manifestPath);
 
                     std::ifstream manifestFile(manifestPath);
-                    nlohmann::json manifestJson = nlohmann::json::parse(manifestFile);
+                    nlohmann::json manifestJson;
+
+                    try
+                    {
+                        manifestJson = nlohmann::json::parse(manifestFile);
+                    }
+                    catch (const nlohmann::json::parse_error& e)
+                    {
+                        return ChromeExtensionList();
+                    }
+
                     parseManifest(manifestJson, extension);
 
                     extension.identifier = generateIdentifier(extension.key);

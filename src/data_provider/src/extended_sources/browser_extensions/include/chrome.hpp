@@ -152,6 +152,7 @@ namespace chrome
             nlohmann::json toJson(const chrome::ChromeExtensionList& extensions);
             bool isValidChromeProfile(const std::string& profilePath);
             std::string jsonArrayToString(const nlohmann::json& jsonArray);
+            std::string base64Decode(const std::string& input);
             bool isSnakeCase(const std::string& s);
             void localizeParameters(chrome::ChromeExtension& extension);
             std::string hashToLetterString(const uint8_t* hash, size_t length);
