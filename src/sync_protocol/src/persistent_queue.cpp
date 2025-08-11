@@ -50,18 +50,42 @@ void PersistentQueue::submit(const std::string& id,
 
 std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    return m_storage->fetchAndMarkForSync();
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_storage->fetchAndMarkForSync();
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error obtaining items for sync: ") + ex.what());
+        throw;
+    }
 }
 
 void PersistentQueue::clearSyncedItems()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_storage->removeAllSynced();
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_storage->removeAllSynced();
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error clrearing synchronized items: ") + ex.what());
+        throw;
+    }
 }
 
 void PersistentQueue::resetSyncingItems()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_storage->resetAllSyncing();
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_storage->resetAllSyncing();
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error resetting items: ") + ex.what());
+        throw;
+    }
 }

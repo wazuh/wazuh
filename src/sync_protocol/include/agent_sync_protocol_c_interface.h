@@ -81,10 +81,10 @@ void asp_destroy(AgentSyncProtocolHandle* handle);
 /// @param index Target index or destination for the diff.
 /// @param data JSON string representing the data to persist.
 void asp_persist_diff(AgentSyncProtocolHandle* handle,
-                        const char* id,
-                        int operation,
-                        const char* index,
-                        const char* data);
+                      const char* id,
+                      int operation,
+                      const char* index,
+                      const char* data);
 
 // @brief Triggers synchronization of a module.
 ///
