@@ -666,6 +666,28 @@ TEST_F(StringUtilsTest, splitToNumbers)
     EXPECT_ANY_THROW({ ret = Utils::splitToNumbers("1.1.1", ' '); });
 }
 
+TEST_F(StringUtilsTest, splitMaintainerField)
+{
+    std::string name;
+    std::string email;
+
+    Utils::splitMaintainerField("Test name <test@example.com>", name, email);
+    EXPECT_EQ(name,  "Test name");
+    EXPECT_EQ(email, "test@example.com");
+
+    Utils::splitMaintainerField("<test@example.com>", name, email);
+    EXPECT_EQ(name,  "");
+    EXPECT_EQ(email, "test@example.com");
+
+    Utils::splitMaintainerField("Test name", name, email);
+    EXPECT_EQ(name,  "Test name");
+    EXPECT_EQ(email, "");
+
+    Utils::splitMaintainerField("", name, email);
+    EXPECT_EQ(name,  "");
+    EXPECT_EQ(email, "");
+}
+
 #if __cplusplus >= 201703L
 
 TEST_F(StringUtilsTest, SplitEmptyStringSV)
