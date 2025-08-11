@@ -16,7 +16,7 @@
 #include "stringHelper.h"
 #include "filesystemHelper.h"
 
-#define MAX_PATH_LENGTH 1000
+#define MAX_PATH_LENGTH 4096
 
 namespace chrome
 {
@@ -30,8 +30,16 @@ namespace chrome
 
     bool ChromeExtensionsProvider::isValidChromeProfile(const std::string& profilePath)
     {
-        return Utils::existsRegular(Utils::joinPaths(profilePath, kPreferencesFile)) ||
-               Utils::existsRegular(Utils::joinPaths(profilePath, kSecurePreferencesFile));
+        if (profilePath.empty() ||
+                profilePath.find("..") != std::string::npos ||
+                profilePath.length() > MAX_PATH_LENGTH
+           )
+        {
+            return false;
+        }
+
+        return Utils::existsRegular(Utils::joinPaths(profilePath, PREFERENCES_FILE)) ||
+               Utils::existsRegular(Utils::joinPaths(profilePath, SECURE_PREFERENCES_FILE));
     }
 
     std::string ChromeExtensionsProvider::jsonArrayToString(const nlohmann::json& jsonArray)
@@ -86,9 +94,9 @@ namespace chrome
     void ChromeExtensionsProvider::localizeParameters(ChromeExtension& extension)
     {
         const std::string& extensionPath = extension.path;
-        std::string localesPath = Utils::joinPaths(extensionPath, kExtensionLocalesDir);
+        std::string localesPath = Utils::joinPaths(extensionPath, EXTENSION_LOCALES_DIR);
         std::string defaultLocalePath = Utils::joinPaths(localesPath, extension.default_locale);
-        std::string messagesFilePath = Utils::joinPaths(defaultLocalePath, kExtensionLocaleMessagesFile);
+        std::string messagesFilePath = Utils::joinPaths(defaultLocalePath, EXTENSION_LOCALES_MESSAGES_FILE);
 
         if (Utils::existsRegular(messagesFilePath))
         {
@@ -142,7 +150,7 @@ namespace chrome
 
         for (unsigned char c : input)
         {
-            if (T[c] == -1) break;
+            if (c >= 256 || T[c] == -1) break;
 
             val = (val << 6) + T[c];
             valb += 6;
@@ -191,7 +199,7 @@ namespace chrome
 
         if (!file)
         {
-            throw std::runtime_error("Cannot open file: " + filepath);
+            return ""; // Return empty hash
         }
 
         SHA256_CTX sha256;
@@ -213,9 +221,27 @@ namespace chrome
 
     std::string ChromeExtensionsProvider::webkitToUnixTime(std::string webkit_timestamp)
     {
-        int64_t timestamp = std::stoll(webkit_timestamp);
-        std::time_t unix_timestap = (timestamp - 11644473600000000LL) / 1000000;
-        return std::to_string(unix_timestap);
+        try
+        {
+            if (webkit_timestamp.empty() || !std::all_of(webkit_timestamp.begin(), webkit_timestamp.end(), ::isdigit))
+            {
+                return "0";
+            }
+
+            int64_t timestamp = std::stoll(webkit_timestamp);
+
+            if (timestamp < 11644473600000000LL || timestamp > 253402300799000000LL)
+            {
+                return "0";
+            }
+
+            std::time_t unix_timestamp = (timestamp - 11644473600000000LL) / 1000000;
+            return std::to_string(unix_timestamp);
+        }
+        catch (const std::exception& e)
+        {
+            return "0";
+        }
     }
 
     void ChromeExtensionsProvider::parseManifest(nlohmann::json& manifestJson, ChromeExtension& extension)
@@ -314,10 +340,10 @@ namespace chrome
                         return ChromeExtensionList();
                     }
 
-                    extensionPath = Utils::joinPaths(Utils::joinPaths(profilePath, kExtensionsDir), extensionPath);
+                    extensionPath = Utils::joinPaths(Utils::joinPaths(profilePath, EXTENSIONS_DIR), extensionPath);
                 }
 
-                std::string manifestPath = Utils::joinPaths(extensionPath, kExtensionManifestFile);
+                std::string manifestPath = Utils::joinPaths(extensionPath, EXTENSION_MANIFEST_FILE);
 
                 if (Utils::existsDir(extensionPath) && Utils::existsRegular(manifestPath))
                 {
@@ -416,8 +442,8 @@ namespace chrome
 
     ChromeExtensionList ChromeExtensionsProvider::getReferencedExtensions(const std::string& profilePath)
     {
-        std::string preferencesFilePath = Utils::joinPaths(profilePath, kPreferencesFile);
-        std::string securePreferencesFilePath = Utils::joinPaths(profilePath, kSecurePreferencesFile);
+        std::string preferencesFilePath = Utils::joinPaths(profilePath, PREFERENCES_FILE);
+        std::string securePreferencesFilePath = Utils::joinPaths(profilePath, SECURE_PREFERENCES_FILE);
         std::string profileName = getProfileFromPreferences(preferencesFilePath, securePreferencesFilePath);
 
         ChromeExtensionList preferencesFileExtensions = getExtensionsFromPreferences(profilePath, preferencesFilePath, profileName);
@@ -443,7 +469,7 @@ namespace chrome
 
     ChromeExtensionList ChromeExtensionsProvider::getUnreferencedExtensions(const std::string& profilePath)
     {
-        std::string extensionPath = Utils::joinPaths(profilePath, kExtensionsDir);
+        std::string extensionPath = Utils::joinPaths(profilePath, EXTENSIONS_DIR);
 
         if (!Utils::existsDir(extensionPath))
         {
@@ -452,8 +478,8 @@ namespace chrome
             return ChromeExtensionList();
         }
 
-        std::string preferencesFilePath = Utils::joinPaths(profilePath, kPreferencesFile);
-        std::string securePreferencesFilePath = Utils::joinPaths(profilePath, kSecurePreferencesFile);
+        std::string preferencesFilePath = Utils::joinPaths(profilePath, PREFERENCES_FILE);
+        std::string securePreferencesFilePath = Utils::joinPaths(profilePath, SECURE_PREFERENCES_FILE);
 
         if (!Utils::existsRegular(preferencesFilePath))
         {
@@ -484,7 +510,7 @@ namespace chrome
 
                 if (!Utils::existsDir(subSubDir)) continue;
 
-                std::string manifestPath = Utils::joinPaths(subSubDir, kExtensionManifestFile);
+                std::string manifestPath = Utils::joinPaths(subSubDir, EXTENSION_MANIFEST_FILE);
 
                 if (Utils::existsRegular(manifestPath))
                 {
@@ -520,41 +546,6 @@ namespace chrome
         }
 
         return extensions;
-    }
-
-    void ChromeExtensionsProvider::printExtensions(const ChromeExtensionList& extensions)
-    {
-        for (const auto& extension : extensions)
-        {
-            std::cout << "<-------------------------------Extension----------------------------->" << std::endl
-                      << extension.author << std::endl
-                      << extension.browser_type << std::endl
-                      << extension.current_locale << std::endl
-                      << extension.default_locale << std::endl
-                      << extension.description << std::endl
-                      << extension.from_webstore << std::endl
-                      << extension.identifier << std::endl
-                      << extension.install_time << std::endl
-                      << extension.install_timestamp << std::endl
-                      << extension.manifest_hash << std::endl
-                      << extension.name << std::endl
-                      << extension.optional_permissions << std::endl
-                      << extension.path << std::endl
-                      << extension.permissions << std::endl
-                      << extension.persistent << std::endl
-                      << extension.profile << std::endl
-                      << extension.profile_path << std::endl
-                      << extension.referenced << std::endl
-                      << extension.referenced_identifier << std::endl
-                      << extension.state << std::endl
-                      << extension.uid << std::endl
-                      << extension.update_url << std::endl
-                      << extension.version << std::endl
-                      << extension.permissions_json << std::endl
-                      << extension.optional_permissions_json << std::endl
-                      << extension.manifest_json << std::endl
-                      << extension.key << std::endl;
-        }
     }
 
     nlohmann::json ChromeExtensionsProvider::toJson(const ChromeExtensionList& extensions)
@@ -633,12 +624,12 @@ namespace chrome
 
 #if defined(_WIN32) || defined(_WIN64)
 
-            for (const auto& browser : kWindowsPathList)
+            for (const auto& browser : WINDOWS_PATH_LIST)
 #elif defined(__APPLE__) && defined(__MACH__)
 
-            for (const auto& browser : kMacOsPathList)
+            for (const auto& browser : MACOS_PATH_LIST)
 #elif defined(__linux__)
-            for (const auto& browser : kLinuxPathList)
+            for (const auto& browser : LINUX_PATH_LIST)
 #endif
             {
                 std::string browserPath = std::get<1>(browser);
@@ -650,7 +641,7 @@ namespace chrome
                     continue;
                 }
 
-                m_currentBrowserType = kChromeBrowserTypeToString.at(std::get<0>(browser));
+                m_currentBrowserType = CHROME_BROWSER_TYPES.at(std::get<0>(browser));
 
                 // The profile path exists, now let's find the profile.
                 if (isValidChromeProfile(profilePath))
