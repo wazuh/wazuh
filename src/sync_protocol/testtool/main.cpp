@@ -9,6 +9,7 @@
 #include "agent_sync_protocol.hpp"
 #include "persistent_queue.hpp"
 #include "persistent_queue_storage.hpp"
+#include "logging_helper.hpp"
 
 static AgentSyncProtocol* g_proto = nullptr;
 static uint64_t g_session = 1;
@@ -56,6 +57,11 @@ static int mq_send_binary_stub(int, const void* msg, size_t, const char*, char) 
 }
 
 int main() {
+    // Forward logs to stdout to avoid exceptions
+    LoggingHelper::setLogCallback([](modules_log_level_t, const char* log) {
+        std::cout << log << std::endl;
+    });
+
     // Use an in-memory SQLite DB to avoid filesystem issues while exercising real persistence
     auto storage = std::make_shared<PersistentQueueStorage>(":memory:");
     auto queue = std::make_shared<PersistentQueue>(storage);

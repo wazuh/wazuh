@@ -42,11 +42,13 @@ extern "C" {
     {
         if (!mq_funcs) return nullptr;
 
-        if (logger) {
+        if (logger)
+        {
             LoggingHelper::setLogCallback(
-                [logger](const modules_log_level_t level, const char* msg) {
-                    logger(level, msg);
-                }
+                [logger](const modules_log_level_t level, const char* msg)
+            {
+                logger(level, msg);
+            }
             );
         }
 

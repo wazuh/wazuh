@@ -15,6 +15,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/google
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/flatbuffers/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../shared_modules/utils/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../headers/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../)
 
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/lib/)

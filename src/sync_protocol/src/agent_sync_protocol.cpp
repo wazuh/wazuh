@@ -482,13 +482,15 @@ bool AgentSyncProtocol::validatePhaseAndSession(const SyncPhase receivedPhase, c
 {
     if (m_syncState.phase != receivedPhase)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Discarded. Received phase '" + std::to_string(static_cast<int>(receivedPhase)) + "' but current phase is '" + std::to_string(static_cast<int>(m_syncState.phase)) + "'.");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Discarded. Received phase '" + std::to_string(static_cast<int>(receivedPhase)) + "' but current phase is '" +
+                                         std::to_string(static_cast<int>(m_syncState.phase)) + "'.");
         return false;
     }
 
     if (m_syncState.session != incomingSession)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Discarded. Session mismatch. Expected session '" + std::to_string(m_syncState.session) + "' but session received is '" + std::to_string(incomingSession) + "'.");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Discarded. Session mismatch. Expected session '" + std::to_string(m_syncState.session) + "' but session received is '" +
+                                         std::to_string(incomingSession) + "'.");
         return false;
     }
 

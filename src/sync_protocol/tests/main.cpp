@@ -9,9 +9,16 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <iostream>
+#include "logging_helper.hpp"
 
 int main(int argc, char** argv)
 {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+  // Forward logs to stdout to avoid exceptions
+  LoggingHelper::setLogCallback([](modules_log_level_t, const char* log) {
+    std::cout << log << std::endl;
+  });
+
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
