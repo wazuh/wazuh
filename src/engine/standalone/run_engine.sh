@@ -7,7 +7,7 @@ DATA_PATH="$SCRIPT_DIR/data"
 SOCKET_PATH="$SCRIPT_DIR/sockets"
 
 export WAZUH_TZDB_PATH="${DATA_PATH}/tzdb"
-export WAZUH_LOG_LEVEL="debug"
+export WAZUH_LOG_LEVEL="info"
 export WAZUH_STORE_PATH="${DATA_PATH}/store"
 export WAZUH_KVDB_PATH="${DATA_PATH}/kvdb"
 export WAZUH_SERVER_API_SOCKET="${SOCKET_PATH}/engine-api.sock"

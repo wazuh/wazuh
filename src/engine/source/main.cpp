@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
 
     // Load the configuration
 
-    auto confManager = conf::Conf(std::make_shared<conf::ApiLoader>());
+    auto confManager = conf::Conf(std::make_shared<conf::FileLoader>());
     try
     {
         confManager.load();
