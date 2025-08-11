@@ -18,125 +18,247 @@
 #ifndef _GAP_SET_HPP
 #define _GAP_SET_HPP
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <set>
 #include <vector>
 
 /**
- * @brief The GapSet class tracks the receipt of expected sequence numbers.
- * It uses a bitmap for memory efficiency and a dirty flag to optimize gap range queries.
+ * @brief Efficient GapSet for sparse sequence number tracking.
+ * Maintains sorted intervals of observed ranges for O(log n) operations.
  */
 class GapSet final
 {
-public:
-    /**
-     * @brief Constructs a new GapSet instance.
-     * @param size The total number of expected chunks.
-     */
-    explicit GapSet(const uint64_t size)
-        : m_size(size)
-        , m_observed(size, false)
+private:
+    // Represents a closed interval [start, end]
+    struct Interval
     {
+        uint64_t start;
+        uint64_t end;
+
+        Interval(uint64_t startValue, uint64_t endValue)
+            : start(startValue)
+            , end(endValue)
+        {
+        }
+
+        // Proper strict weak ordering by start, then by end
+        bool operator<(const Interval& other) const
+        {
+            if (start != other.start)
+            {
+                return start < other.start;
+            }
+            return end < other.end;
+        }
+
+        bool contains(uint64_t seq) const
+        {
+            return seq >= start && seq <= end;
+        }
+
+        bool canMergeWith(const Interval& other) const
+        {
+            // Adjacent or overlapping intervals can be merged
+            return start <= other.end + 1 && other.start <= end + 1;
+        }
+
+        Interval mergeWith(const Interval& other) const
+        {
+            return {std::min(start, other.start), std::max(end, other.end)};
+        }
+    };
+
+public:
+    explicit GapSet(uint64_t size)
+        : m_size(size)
+    {
+        if (size == 0)
+        {
+            m_allObserved = true;
+        }
     }
 
     /**
      * @brief Marks a sequence number as observed.
-     * @param seq The sequence number to mark.
-     *
-     * If the number is out of bounds or already seen, the call is a no-op.
-     * Updates last activity timestamp and invalidates the gap cache.
+     * O(log n) complexity where n is number of intervals.
      */
-    void observe(const uint64_t seq)
+    void observe(uint64_t seq)
     {
-        if (seq >= m_size || m_observed[seq])
+        if (seq >= m_size || m_allObserved)
         {
             return;
         }
 
+        // Find the first interval that starts at or after seq
+        auto it = m_intervals.lower_bound(Interval(seq, seq));
+
+        // Check if seq is already covered by the previous interval
+        if (it != m_intervals.begin())
+        {
+            auto prev = std::prev(it);
+            if (prev->contains(seq))
+            {
+                return; // Already observed
+            }
+        }
+
+        // Check if seq is covered by current interval
+        if (it != m_intervals.end() && it->contains(seq))
+        {
+            return; // Already observed
+        }
+
         m_lastUpdate = std::chrono::steady_clock::now();
-        m_observed[seq] = true;
         ++m_observedCount;
-        m_gapCacheDirty = true;
+
+        // Create new interval for this sequence
+        Interval newInterval(seq, seq);
+
+        // Collect intervals to merge with
+        std::vector<std::set<Interval>::iterator> toErase;
+
+        // Check if we can merge with previous interval
+        if (it != m_intervals.begin())
+        {
+            auto prev = std::prev(it);
+            if (prev->canMergeWith(newInterval))
+            {
+                newInterval = prev->mergeWith(newInterval);
+                toErase.push_back(prev);
+            }
+        }
+
+        // Check if we can merge with following intervals
+        while (it != m_intervals.end() && newInterval.canMergeWith(*it))
+        {
+            newInterval = newInterval.mergeWith(*it);
+            toErase.push_back(it);
+            ++it;
+        }
+
+        // Remove intervals that were merged
+        for (auto eraseIt : toErase)
+        {
+            m_intervals.erase(eraseIt);
+        }
+
+        // Insert the merged interval
+        m_intervals.insert(newInterval);
+
+        // Check if we've observed everything
+        if (m_intervals.size() == 1 && m_intervals.begin()->start == 0 && m_intervals.begin()->end == m_size - 1)
+        {
+            m_allObserved = true;
+        }
     }
 
     /**
-     * @brief Checks whether all expected values have been observed.
-     * @return true if all values from 0 to size-1 have been seen.
+     * @brief Checks if all sequences are observed.
+     * O(1) complexity.
      */
     bool empty() const
     {
-        return m_observedCount == m_size;
+        if (m_size == 0)
+        {
+            return true;
+        }
+        return m_allObserved;
     }
 
     /**
-     * @brief Checks whether a specific sequence number has been observed.
-     * @param seq The sequence number to query.
-     * @return true if it has been marked as received.
+     * @brief Checks if a sequence is observed.
+     * O(log n) complexity.
      */
-    bool contains(const uint64_t seq) const
+    bool contains(uint64_t seq) const
     {
-        return seq < m_size && m_observed[seq];
+        if (seq >= m_size)
+        {
+            return false;
+        }
+        if (m_allObserved)
+        {
+            return true;
+        }
+
+        // Find first interval starting at or after seq
+        auto it = m_intervals.lower_bound(Interval(seq, seq));
+
+        // Check if seq is in current interval
+        if (it != m_intervals.end() && it->contains(seq))
+        {
+            return true;
+        }
+
+        // Check if seq is in previous interval
+        if (it != m_intervals.begin())
+        {
+            --it;
+            return it->contains(seq);
+        }
+
+        return false;
     }
 
     /**
-     * @brief Returns the ranges of missing sequence numbers.
-     * Uses cached result unless invalidated by a new observation.
-     * @return A vector of (start, end) pairs of missing ranges.
+     * @brief Returns gap ranges.
+     * O(k) where k is number of intervals.
      */
-    const std::vector<std::pair<uint64_t, uint64_t>>& ranges()
+    std::vector<std::pair<uint64_t, uint64_t>> ranges() const
     {
-        if (!m_gapCacheDirty)
+        std::vector<std::pair<uint64_t, uint64_t>> gaps;
+
+        if (m_size == 0 || m_allObserved)
         {
-            return m_cachedRanges;
+            return gaps;
         }
 
-        m_cachedRanges.clear();
-        bool inGap = false;
-        uint64_t gapStart = 0;
-
-        for (uint64_t i = 0; i < m_size; ++i)
+        if (m_intervals.empty())
         {
-            if (!m_observed[i])
+            gaps.emplace_back(0, m_size - 1);
+            return gaps;
+        }
+
+        uint64_t pos = 0;
+        for (const auto& interval : m_intervals)
+        {
+            if (pos < interval.start)
             {
-                if (!inGap)
-                {
-                    inGap = true;
-                    gapStart = i;
-                }
+                gaps.emplace_back(pos, interval.start - 1);
             }
-            else if (inGap)
-            {
-                m_cachedRanges.emplace_back(gapStart, i - 1);
-                inGap = false;
-            }
+            pos = interval.end + 1;
         }
 
-        if (inGap)
+        if (pos < m_size)
         {
-            m_cachedRanges.emplace_back(gapStart, m_size - 1);
+            gaps.emplace_back(pos, m_size - 1);
         }
 
-        m_gapCacheDirty = false;
-        return m_cachedRanges;
+        return gaps;
     }
 
-    /**
-     * @brief Returns the last update time.
-     * @return The last update time set
-     */
     std::chrono::time_point<std::chrono::steady_clock> lastUpdate() const
     {
         return m_lastUpdate;
     }
 
+    // Debug/monitoring methods
+    size_t intervalCount() const
+    {
+        return m_intervals.size();
+    }
+    uint64_t observedCount() const
+    {
+        return m_observedCount;
+    }
+
 private:
-    uint64_t m_size {0};          ///< Total expected number of entries
-    std::vector<bool> m_observed; ///< Observed entries (bitmap)
-    uint64_t m_observedCount {0}; ///< Count of observed entries
-    std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate {
-        std::chrono::steady_clock::now()};                     ///< Last update time
-    bool m_gapCacheDirty {true};                               ///< Whether the gap cache is dirty
-    std::vector<std::pair<uint64_t, uint64_t>> m_cachedRanges; ///< Cached result of gap ranges
+    uint64_t m_size;
+    uint64_t m_observedCount {0};
+    bool m_allObserved {false};
+    std::set<Interval> m_intervals;
+    std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate {std::chrono::steady_clock::now()};
 };
 
 #endif // _GAP_SET_HPP
