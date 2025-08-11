@@ -21,7 +21,8 @@ DELETE_FOLDER_DIC = {
     'shared_modules/file_helper':   ['build'],
     'data_provider':                ['build', 'smokeTests/output'],
     'syscheckd':                    ['build', 'src/db/smokeTests/output',
-                                     'coverage_report']
+                                     'coverage_report'],
+    'wazuh_modules/sca':            ['build'],
 }
 
 
