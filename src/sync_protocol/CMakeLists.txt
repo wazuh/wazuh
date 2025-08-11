@@ -92,13 +92,23 @@ add_subdirectory(${FLATBUFFERS_ROOT_DIR} flatbuffers_build EXCLUDE_FROM_ALL)
 # -----------------------------------------------------------------------------
 # Build the static library
 # -----------------------------------------------------------------------------
-add_library(agent_sync_protocol STATIC
-  src/agent_sync_protocol.cpp
-  src/persistent_queue.cpp
-  src/persistent_queue_storage.cpp
-  ${GENERATED_HEADER}
-  src/agent_sync_protocol_c_interface.cpp
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_library(agent_sync_protocol SHARED
+    src/agent_sync_protocol.cpp
+    src/persistent_queue.cpp
+    src/persistent_queue_storage.cpp
+    ${GENERATED_HEADER}
+    src/agent_sync_protocol_c_interface.cpp
+  )
+else()
+  add_library(agent_sync_protocol STATIC
+    src/agent_sync_protocol.cpp
+    src/persistent_queue.cpp
+    src/persistent_queue_storage.cpp
+    ${GENERATED_HEADER}
+    src/agent_sync_protocol_c_interface.cpp
+  )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
 target_include_directories(agent_sync_protocol
@@ -116,6 +126,21 @@ target_link_libraries(agent_sync_protocol
     flatbuffers
     ${CMAKE_CURRENT_SOURCE_DIR}/../external/sqlite/libsqlite3.a
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set_target_properties(
+    agent_sync_protocol PROPERTIES LINK_FLAGS "-Wl,--add-stdcall-alias -Wl,--output-def,libagent_sync_protocol.def")
+
+  find_program(DLLTOOL i686-w64-mingw32-dlltool)
+  if(NOT DLLTOOL)
+    message(FATAL_ERROR "DLL tool for delayed load libraries not found.")
+  endif(NOT DLLTOOL)
+
+  add_custom_command(TARGET agent_sync_protocol POST_BUILD
+    COMMAND "${DLLTOOL}" -D "libagent_sync_protocol.dll" --def "libagent_sync_protocol.def" --output-delaylib "libagent_sync_protocol.lib"
+    COMMAND cp "libagent_sync_protocol.lib" "${CMAKE_BINARY_DIR}/bin/libagent_sync_protocol.lib"
+    COMMENT "Creating delayed load library for agent_sync_protocol.")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
   add_subdirectory(tests)

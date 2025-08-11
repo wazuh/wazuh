@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(wazuh-syscheckd)
+project(wazuh-syscheckd C CXX)
 
 enable_testing()
 
@@ -89,9 +89,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_compile_definitions(wazuh-syscheckd-event PUBLIC -D_WIN32_WINNT=0x600 -DEVENTCHANNEL_SUPPORT)
 else()
     add_executable(wazuh-syscheckd ${SYSCHECKD_SRC})
+    set_target_properties(wazuh-syscheckd PROPERTIES LINKER_LANGUAGE CXX)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(wazuh-syscheckd fimdb wazuhext pthread wazuh rootcheck agent_sync_protocol stdc++)
+target_link_libraries(wazuh-syscheckd fimdb wazuhext pthread wazuh rootcheck agent_sync_protocol)
 
 if (UNIX)
     target_link_libraries(wazuh-syscheckd dl)
@@ -133,5 +134,8 @@ if(UNIT_TEST)
 else()
   if(FSANITIZE)
     target_link_libraries(wazuh-syscheckd gcov asan ubsan)
+  elseif(CMAKE_BUILD_TYPE STREQUAL "Debug" AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    # Link against gcov when coverage is enabled in Debug mode
+    target_link_libraries(wazuh-syscheckd gcov)
   endif(FSANITIZE)
 endif(UNIT_TEST)

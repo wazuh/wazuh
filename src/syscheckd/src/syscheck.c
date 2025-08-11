@@ -19,6 +19,7 @@
 #include "db/include/db.h"
 #include "db/include/fimCommonDefs.h"
 #include "ebpf/include/ebpf_whodata.h"
+#include "agent_sync_protocol_c_interface.h"
 
 // Global variables
 syscheck_config syscheck;

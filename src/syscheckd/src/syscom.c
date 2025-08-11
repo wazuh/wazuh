@@ -14,6 +14,7 @@
 #include "../os_net/os_net.h"
 #include "../wazuh_modules/wmodules.h"
 #include "db/include/db.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */

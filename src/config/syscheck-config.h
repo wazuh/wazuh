@@ -148,7 +148,12 @@ typedef enum fdb_stmt {
 #include "integrity_op.h"
 #include "../external/sqlite/sqlite3.h"
 #include "../headers/list_op.h"
-#include "agent_sync_protocol_c_interface.h"
+
+/// @brief Opaque handle to the AgentSyncProtocol C++ object.
+///
+/// Used to interact with the AgentSyncProtocol instance from C code.
+typedef struct AgentSyncProtocol AgentSyncProtocolHandle;
+
 
 #ifdef WIN32
 typedef struct whodata_dir_status whodata_dir_status;

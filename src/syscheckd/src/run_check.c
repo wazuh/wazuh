@@ -24,6 +24,7 @@
 #include "../rootcheck/rootcheck.h"
 #include "file/file.h"
 #include "ebpf/include/ebpf_whodata.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 unsigned int files_read = 0;
