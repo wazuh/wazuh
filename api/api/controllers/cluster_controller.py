@@ -798,7 +798,7 @@ async def put_restart(pretty: bool = False, wait_for_complete: bool = False,
 
 async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = False,
                                nodes_list: str = '*') -> ConnexionResponse:
-    """Restart the analysisd process on all nodes in the cluster, or a list of them.
+    """Reloads the analysisd process on all nodes in the cluster, or a list of them.
 
     Parameters
     ----------
