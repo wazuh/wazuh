@@ -6,6 +6,7 @@ project(SCAImpl)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DWIN32=1)
@@ -40,6 +41,10 @@ include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
+
+if(FSANITIZE AND NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+endif()
 
 # Dependencies should be built externally and made available
 # Use find_library to locate dependencies, but fall back to target names if not found
@@ -122,6 +127,24 @@ target_link_libraries(
 )
 
 if(UNIT_TEST)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(SCAImpl PRIVATE -fprofile-arcs)
+  else()
+    add_definitions(-fprofile-arcs -ftest-coverage)
+    # Link ASAN first to avoid library ordering issues
+    # target_link_libraries(SCAImpl PRIVATE -fsanitize=address,leak,undefined gcov)
+    if(NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+      target_link_libraries(SCAImpl PRIVATE -fsanitize=address,leak,undefined gcov)
+    else()
+      target_link_libraries(SCAImpl PRIVATE gcov)
+    endif()
+  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+  enable_testing()
+  add_subdirectory(tests)
+
+  else()
+  if(FSANITIZE AND NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    target_link_libraries(SCAImpl PRIVATE -fsanitize=address,leak,undefined gcov)
+  endif()
+endif(UNIT_TEST)
