@@ -822,7 +822,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
             // Update keystore startup status immediately after validation
             if (is_startup) {
-                keys.keyentries[agentid]->is_startup = true;
+                keys.keyentries[agentid]->post_startup = true;
             }
 
             key_unlock();
@@ -1136,20 +1136,20 @@ void * save_control_thread(void * control_msg_queue)
         if ((ctrl_msg_data = (w_ctrl_msg_data_t *)indexed_queue_pop_ex(queue))) {
             rem_inc_ctrl_queue_processed();
 
-            bool is_startup = ctrl_msg_data->key->is_startup;
+            bool post_startup = ctrl_msg_data->key->post_startup;
 
             // Process the control message with the validation results
             save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message,
-                          &wdb_sock, &is_startup, ctrl_msg_data->is_startup, ctrl_msg_data->is_shutdown);
+                          &wdb_sock, &post_startup, ctrl_msg_data->is_startup, ctrl_msg_data->is_shutdown);
 
             // Update startup flag after processing the first keepalive post-startup
-            if (ctrl_msg_data->key->is_startup != is_startup) {
+            if (ctrl_msg_data->key->post_startup != post_startup) {
                 key_lock_read();
 
                 // Use efficient tree lookup to find the key index
                 int key_index = OS_IsAllowedID(&keys, ctrl_msg_data->key->id);
                 if (key_index >= 0 && key_index < (int)keys.keysize) {
-                    keys.keyentries[key_index]->is_startup = is_startup;
+                    keys.keyentries[key_index]->post_startup = post_startup;
                 }
 
                 key_unlock();

@@ -356,7 +356,7 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
  * wait_for_msgs (other thread) is going to deal with it
  * (only if message changed)
  */
-void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *startup_msg, int is_startup, int is_shutdown)
+void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *post_startup, int is_startup, int is_shutdown)
 {
     char *msg = NULL;
     char *end = NULL;
@@ -418,9 +418,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *sta
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
-        char *sync_status = logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced";
+        char *sync_status = logr.worker_node ? (*post_startup ? "syncreq" : "syncreq_keepalive") : "synced";
 
-        *startup_msg = false;
+        *post_startup = false;
 
         agent_id = atoi(key->id);
 
@@ -444,7 +444,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *sta
         if (is_startup) {
             w_mutex_unlock(&lastmsg_mutex);
 
-            *startup_msg = true;
+            *post_startup = true;
 
             agent_id = atoi(key->id);
 
@@ -560,9 +560,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *sta
 
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
-            os_strdup(logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+            os_strdup(logr.worker_node ? (*post_startup ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
 
-            *startup_msg = false;
+            *post_startup = false;
 
             w_mutex_lock(&lastmsg_mutex);
 

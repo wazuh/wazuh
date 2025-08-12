@@ -4843,7 +4843,7 @@ void test_save_controlmsg_agent_invalid_version(void** state)
 
     bool is_startup = true;
     bool is_shutdown = false;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
     strcpy(r_msg, "agent startup {\"version\":\"v4.6.0\"}");
     snprintf(s_msg,
              OS_FLSIZE,
@@ -4876,7 +4876,7 @@ void test_save_controlmsg_agent_invalid_version(void** state)
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     free_keyentry(&key);
 }
@@ -4889,7 +4889,7 @@ void test_save_controlmsg_get_agent_version_fail(void** state)
 
     bool is_startup = true;
     bool is_shutdown = false;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
     strcpy(r_msg, "agent startup {\"test\":\"fail\"}");
     snprintf(s_msg, OS_FLSIZE, "%s%s%s%s%s", CONTROL_HEADER, HC_ERROR, "{\"message\":\"", HC_RETRIEVE_VERSION, "\"}");
 
@@ -4912,7 +4912,7 @@ void test_save_controlmsg_get_agent_version_fail(void** state)
     expect_string(__wrap__mwarn, formatted_msg, "Unable to set status code for agent: '001'");
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     free_keyentry(&key);
 }
@@ -4926,7 +4926,7 @@ void test_save_controlmsg_could_not_add_pending_data(void** state)
 
     bool is_startup = false;
     bool is_shutdown = false;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
 
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
@@ -4948,7 +4948,7 @@ void test_save_controlmsg_could_not_add_pending_data(void** state)
 
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     free_keyentry(&key);
 }
@@ -4961,7 +4961,7 @@ void test_save_controlmsg_unable_to_save_last_keepalive(void** state)
 
     bool is_startup = false;
     bool is_shutdown = false;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
 
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
@@ -4992,7 +4992,7 @@ void test_save_controlmsg_unable_to_save_last_keepalive(void** state)
                   formatted_msg,
                   "Unable to save last keepalive and set connection status as active for agent: 001");
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     free_keyentry(&key);
     os_free(data.message);
@@ -5006,7 +5006,7 @@ void test_save_controlmsg_update_msg_error_parsing(void** state)
 
     bool is_startup = false;
     bool is_shutdown = false;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
 
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
@@ -5064,7 +5064,7 @@ void test_save_controlmsg_update_msg_error_parsing(void** state)
 
     expect_string(__wrap__merror, formatted_msg, "Error parsing message for agent '001'");
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     os_free(agent_data);
     free_keyentry(&key);
@@ -5081,7 +5081,7 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void** state)
 
     bool is_startup = false;
     bool is_shutdown = false;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
 
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
@@ -5156,7 +5156,7 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void** state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to update information in global.db for agent: 001");
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     os_free(group->name);
     os_free(group);
@@ -5180,7 +5180,7 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
     bool is_startup = false;
     bool is_shutdown = false;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
 
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
@@ -5230,7 +5230,7 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to update information in global.db for agent: 001");
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     os_free(agent_data->manager_host);
     os_free(agent_data);
@@ -5250,7 +5250,7 @@ void test_save_controlmsg_startup(void **state)
 
     bool is_startup = true;
     bool is_shutdown = false;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
 
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
@@ -5284,7 +5284,7 @@ void test_save_controlmsg_startup(void **state)
     expect_string(__wrap__mwarn, formatted_msg, "Unable to save last keepalive and set connection status as pending for agent: 001");
 
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     free_keyentry(&key);
     os_free(message);
@@ -5299,7 +5299,7 @@ void test_save_controlmsg_shutdown(void **state)
 
     bool is_startup = false;
     bool is_shutdown = true;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
 
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
@@ -5354,7 +5354,7 @@ void test_save_controlmsg_shutdown(void **state)
     // expect_string(__wrap_OSHash_Delete_ex, key, "001");
     // expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     free_keyentry(&key);
     os_free(message);
@@ -5368,7 +5368,7 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
 
     bool is_startup = false;
     bool is_shutdown = true;
-    bool startup_msg; // Output parameter for save_controlmsg
+    bool post_startup; // Output parameter for save_controlmsg
 
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "10.2.2.5", NULL);
@@ -5402,7 +5402,7 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     // expect_string(__wrap_OSHash_Delete_ex, key, "001");
     // expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
-    save_controlmsg(&key, r_msg, &wdb_sock, &startup_msg, is_startup, is_shutdown);
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
     free_keyentry(&key);
     os_free(message);
