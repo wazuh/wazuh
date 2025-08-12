@@ -34,6 +34,7 @@ class TEndpointGetV1AgentsParamGroups final
     };
 
 public:
+    virtual ~TEndpointGetV1AgentsParamGroups() = default; // LCOV_EXCL_LINE
     /**
      * @brief Call the endpoint implementation. This function populates a Response object with the
      * data from the database. This particular implementation returns the groups for a specific agent.
@@ -53,8 +54,9 @@ public:
             return;
         }
 
-        DBStatement stmt(db,
-                         "SELECT name FROM belongs JOIN `group` ON id = id_group WHERE id_agent = ? order by priority");
+        DBStatement stmt( // LCOV_EXCL_LINE
+            db,
+            "SELECT name FROM belongs JOIN `group` ON id = id_group WHERE id_agent = ? order by priority");
 
         stmt.bind(1, std::stoi(it->second));
 
@@ -68,6 +70,8 @@ public:
     }
 };
 
+// LCOV_EXCL_START
 using EndpointGetV1AgentsParamGroups = TEndpointGetV1AgentsParamGroups<>;
+// LCOV_EXCL_STOP
 
 #endif /* _ENDPOINT_GET_V1_AGENTS_PARAM_GROUPS_HPP */

@@ -45,6 +45,7 @@ namespace Utils
         virtual void createColumn(const std::string& columnName) = 0;
         virtual bool columnExists(const std::string& columnName) const = 0;
         virtual void deleteAll() = 0;
+        virtual void deleteByPrefix(const std::string& prefix) = 0;
         virtual void flush() = 0;
         virtual std::vector<std::string> getAllColumns() = 0;
         virtual RocksDBIterator seek(std::string_view key, const std::string& columnName = "") = 0; // NOLINT
@@ -684,6 +685,18 @@ namespace Utils
             }
         }
 
+        /**
+         * @brief Deletes by prefix
+         */
+        void deleteByPrefix(const std::string& prefix) override
+        {
+            rocksdb::WriteOptions write_options;
+            m_db->DeleteRange(write_options,
+                              getColumnFamilyBasedOnName(rocksdb::kDefaultColumnFamilyName).handle(),
+                              rocksdb::Slice(prefix),
+                              rocksdb::Slice(prefix + "\xFF"));
+        }
+
     private:
         std::shared_ptr<T> m_db;                                     ///< RocksDB instance.
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
@@ -953,6 +966,14 @@ namespace Utils
         std::vector<std::string> getAllColumns() override
         {
             return m_dbWrapper->getAllColumns();
+        }
+
+        /**
+         * @brief Deletes by prefix
+         */
+        void deleteByPrefix(const std::string& prefix) override
+        {
+            m_dbWrapper->deleteByPrefix(prefix);
         }
 
         /**

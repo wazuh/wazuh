@@ -107,9 +107,23 @@ size_t syscom_dispatch(char * command, char ** output){
             os_set_restart_syscheck();
             return 0;
         }
-    } else if (strncmp(command, HC_FIM_SYNC, strlen(HC_FIM_SYNC)) == 0) {
+    } else if (strncmp(command, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
         if (syscheck.enable_synchronization) {
-            // fim_sync_push_msg(command);
+            char *data = command;
+
+            data += strlen(FIM_SYNC_HEADER);
+
+            mdebug2("WMCOM Syncing module with data '%s'.", data);
+
+            int ret = 0;
+            // ret fim_sync_push_msg(data);
+
+            if (ret != 0) {
+                mdebug1("WMCOM Error syncing module");
+                os_strdup("err Error syncing module", *output);
+                return strlen(*output);
+            }
+
             return 0;
         } else {
             mdebug1("FIM synchronization is disabled");

@@ -34,6 +34,7 @@ class TEndpointGetV1AgentsIdsGroups final
     };
 
 public:
+    virtual ~TEndpointGetV1AgentsIdsGroups() = default; // LCOV_EXCL_LINE
     /**
      * @brief Call the endpoint implementation, this functions populates a Response object with the
      * data from the database. This particular implementation returns the agent ids and the
@@ -45,7 +46,7 @@ public:
      */
     static void call(const DBConnection& db, [[maybe_unused]] const httplib::Request& req, httplib::Response& res)
     {
-        DBStatement stmt(db,
+        DBStatement stmt(db, // LCOV_EXCL_LINE
                          "SELECT b.id_agent AS id_agent, g.name AS group_name FROM belongs b JOIN 'group' g ON "
                          "b.id_group=g.id WHERE b.id_agent > 0;");
 
@@ -61,6 +62,8 @@ public:
     }
 };
 
+// LCOV_EXCL_START
 using EndpointGetV1AgentsIdsGroups = TEndpointGetV1AgentsIdsGroups<>;
+// LCOV_EXCL_STOP
 
 #endif /* _ENDPOINT_GET_V1_AGENTS_IDS_GROUPS_HPP */

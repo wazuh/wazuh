@@ -77,6 +77,89 @@ int MQReconnectPredicated(const char *path, bool (*fn_ptr)()) {
     return (rc);
 }
 
+/**
+ * @brief Sends a binary message through the queue.
+ *
+ * This function is designed to send binary data (like FlatBuffers) that may contain
+ * null bytes. It constructs the final message manually using memcpy to avoid truncating
+ * the binary payload, unlike SendMSGAction which uses string functions.
+ *
+ * @param queue The message queue file descriptor.
+ * @param message Pointer to the start of the binary data payload.
+ * @param message_len The length of the binary data payload.
+ * @param locmsg The location message (module name, etc.), treated as a C string.
+ * @param loc The location character (e.g., SYNC_MQ).
+ * @return 0 on success, -1 on failure.
+ */
+STATIC int SendBinaryMSGAction(int queue, const void *message, size_t message_len, const char *locmsg, char loc) {
+    int __mq_rcode;
+    char tmpstr[OS_MAXSTR + 1] = {0};
+    char loc_buff[OS_SIZE_8192 + 1] = {0};
+    char *p = tmpstr; // A pointer to build the message in tmpstr.
+    static int reported = 0;
+    size_t header_len;
+    size_t total_len;
+
+    // Escape the location string, as in the original SendMSGAction.
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), (char *) locmsg, '|', ':')) {
+        merror(FORMAT_ERROR);
+        return (-1);
+    }
+
+    // Check for unsupported modes.
+    if (loc == SECURE_MQ) {
+        // This mode involves text parsing of the message payload, which is incompatible with binary data.
+        merror("SendBinaryMSGAction does not support SECURE_MQ mode.");
+        return (-1);
+    }
+
+    // Send the fully constructed message.
+    if (queue < 0) {
+        return (-1);
+    }
+
+    // Calculate the total size required for the final message BEFORE building it.
+    // Header format is "loc:loc_buff:", so its length is 1 + 1 + strlen(loc_buff) + 1.
+    size_t loc_buff_len = strlen(loc_buff);
+    header_len = 3 + loc_buff_len;
+    total_len = header_len + message_len;
+
+    // Ensure the total message will fit in our fixed-size buffer
+    if (total_len > OS_MAXSTR) {
+        mwarn("Binary message is too large to be sent (%zu bytes required, %d max). Payload of %zu bytes for module '%s' was dropped.",
+              total_len, OS_MAXSTR, message_len, locmsg);
+        return (-1);
+    }
+
+    // Add header (e.g., "s:fim:")
+    *p++ = loc;
+    *p++ = ':';
+    memcpy(p, loc_buff, loc_buff_len);
+    p += loc_buff_len;
+    *p++ = ':';
+
+    // Add binary payload
+    memcpy(p, message, message_len);
+
+    if ((__mq_rcode = OS_SendUnix(queue, tmpstr, total_len)) < 0) {
+        // Error on the socket
+        if (__mq_rcode == OS_SOCKTERR) {
+            merror("socketerr (not available).");
+            close(queue);
+            return (-1);
+        }
+
+        mdebug2("Socket busy, discarding binary message.");
+
+        if (!reported) {
+            reported = 1;
+            mwarn("Socket busy, discarding binary message.");
+        }
+    }
+
+    return (0);
+}
+
 /* Send message primitive. */
 STATIC int SendMSGAction(int queue, const char *message, const char *locmsg, char loc) {
     int __mq_rcode;
@@ -147,6 +230,13 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc) {
     /* Check for global locks */
     os_wait();
     return SendMSGAction(queue, message, locmsg, loc);
+}
+
+/* Send a message to the queue */
+int SendBinaryMSG(int queue, const void *message, size_t message_len, const char *locmsg, char loc) {
+    /* Check for global locks */
+    os_wait();
+    return SendBinaryMSGAction(queue, message, message_len, locmsg, loc);
 }
 
 /* Send a message to socket */
