@@ -1173,7 +1173,7 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/SyscollectorNetwork'
-    
+
     AllItemsResponseSyscollectorUsers:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1186,7 +1186,7 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/SyscollectorUser'
-    
+
     AllItemsResponseSyscollectorGroups:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -3941,8 +3941,6 @@ components:
         cis-cat:
           type: object
         docker-listener:
-          type: object
-        open-scap:
           type: object
         syscollector:
           type: object
@@ -6701,7 +6699,6 @@ components:
         - azure-logs
         - cis-cat
         - docker-listener
-        - open-scap
         - syscollector
     field:
       in: query
@@ -17313,7 +17310,7 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-  
+
   /syscollector/{agent_id}/users:
     get:
       tags:
@@ -17395,7 +17392,7 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-  
+
   /syscollector/{agent_id}/groups:
     get:
       tags:
