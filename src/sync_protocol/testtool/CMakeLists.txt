@@ -22,8 +22,20 @@ add_executable(sync_protocol_test_tool
   ${CMAKE_SOURCE_DIR}/testtool/main.cpp
 )
 
-target_link_libraries(sync_protocol_test_tool
-  PRIVATE
-  agent_sync_protocol
-  pthread
-)
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+	target_link_libraries(sync_protocol_test_tool
+    agent_sync_protocol
+    pthread
+  )
+elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+	target_link_libraries(sync_protocol_test_tool
+    agent_sync_protocol
+    pthread
+  )
+else()
+	target_link_libraries(sync_protocol_test_tool
+    agent_sync_protocol
+    pthread
+    dl
+  )
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
