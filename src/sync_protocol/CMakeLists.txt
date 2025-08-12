@@ -54,10 +54,22 @@ include(ExternalProject)
 
 set(FLATBUFFERS_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/flatbuffers")
 
+find_program(HOST_C_COMPILER NAMES cc gcc)
+find_program(HOST_CXX_COMPILER NAMES c++ g++)
+
+if(NOT HOST_C_COMPILER OR NOT HOST_CXX_COMPILER)
+  message(FATAL_ERROR "Could not find native C/C++ compilers for host tools.")
+endif()
+
+message(STATUS "Using native host C compiler: ${HOST_C_COMPILER}")
+message(STATUS "Using native host CXX compiler: ${HOST_CXX_COMPILER}")
+
 ExternalProject_Add(
   flatc_host_tool
   SOURCE_DIR ${FLATBUFFERS_ROOT_DIR}
-  CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=OFF
+  CMAKE_ARGS -DCMAKE_C_COMPILER=${HOST_C_COMPILER}
+             -DCMAKE_CXX_COMPILER=${HOST_CXX_COMPILER}
+             -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=OFF
              -DFLATBUFFERS_BUILD_FLATLIB=OFF -DFLATBUFFERS_BUILD_FLATC=ON
              -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR>
   BUILD_ALWAYS 1
