@@ -128,6 +128,7 @@ typedef struct {
     int agent_id;   ///< Agent ID
     int is_startup; ///< Validation result: is startup message
     int is_shutdown; ///< Validation result: is shutdown message
+    bool post_startup; ///< Keystore flag: pending full sync after startup
 } w_ctrl_msg_data_t;
 
 /**
@@ -825,6 +826,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 keys.keyentries[agentid]->post_startup = true;
             }
 
+            // Read post_startup state before unlocking
+            bool post_startup = keys.keyentries[agentid]->post_startup;
+
             key_unlock();
 
             if (sock_idle >= 0) {
@@ -849,6 +853,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 // Store validation results in the control message data structure
                 ctrl_msg_data->is_startup = is_startup;
                 ctrl_msg_data->is_shutdown = is_shutdown;
+                ctrl_msg_data->post_startup = post_startup;
 
                 // Create key based on agent_id for indexing
                 char agent_key[32];
@@ -1136,14 +1141,14 @@ void * save_control_thread(void * control_msg_queue)
         if ((ctrl_msg_data = (w_ctrl_msg_data_t *)indexed_queue_pop_ex(queue))) {
             rem_inc_ctrl_queue_processed();
 
-            bool post_startup = ctrl_msg_data->key->post_startup;
+            bool post_startup = ctrl_msg_data->post_startup;
 
             // Process the control message with the validation results
             save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message,
                           &wdb_sock, &post_startup, ctrl_msg_data->is_startup, ctrl_msg_data->is_shutdown);
 
             // Update startup flag after processing the first keepalive post-startup
-            if (ctrl_msg_data->key->post_startup != post_startup) {
+            if (ctrl_msg_data->post_startup != post_startup) {
                 key_lock_read();
 
                 // Use efficient tree lookup to find the key index
