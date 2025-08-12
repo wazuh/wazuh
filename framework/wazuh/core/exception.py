@@ -54,8 +54,7 @@ class WazuhException(Exception):
                'remediation': 'Please check `WAZUH_HOME/logs`'},
 
         # Configuration: 1100 - 1199
-        1101: {'message': 'Requested component does not exist',
-               'remediation': 'Run `WAZUH_PATH/bin/wazuh-logtest -t` to check your configuration'},
+        1101: {'message': 'Requested component does not exist'},
         1102: {'message': 'Invalid section',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
