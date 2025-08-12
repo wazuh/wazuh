@@ -40,11 +40,7 @@ target_link_libraries(agent_sync_protocol_tests
     agent_sync_protocol
     debug gtestd
     debug gmockd
-    debug gtest_maind
-    debug gmock_maind
     optimized gtest
     optimized gmock
-    optimized gtest_main
-    optimized gmock_main
     pthread
 )
