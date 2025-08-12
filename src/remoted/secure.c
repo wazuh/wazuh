@@ -852,11 +852,16 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                 // Use upsert to allow updating existing control messages for the same agent
                 int res = indexed_queue_upsert_ex(control_msg_queue, agent_key, ctrl_msg_data);
-                if (res == 1) {
-                    mdebug2("Control message updated in queue for agent ID '%s'.", agent_key);
-                } else if (res == 0) {
+                switch (res) {
+                case 0:
                     mdebug2("Control message pushed in queue for agent ID '%s'.", agent_key);
-                } else {
+                    rem_inc_ctrl_queue_inserted();
+                    break;
+                case 1:
+                    mdebug2("Control message updated in queue for agent ID '%s'.", agent_key);
+                    rem_inc_ctrl_queue_replaced();
+                    break;
+                default:
                     mwarn("Failed to insert control message for agent ID '%s'.", agent_key);
                     w_free_ctrl_msg_data(ctrl_msg_data);
                 }
@@ -1125,12 +1130,12 @@ void * save_control_thread(void * control_msg_queue)
 
     while (FOREVER()) {
         if ((ctrl_msg_data = (w_ctrl_msg_data_t *)indexed_queue_pop_ex(queue))) {
-
+            rem_inc_ctrl_queue_processed();
 
             bool is_startup = ctrl_msg_data->key->is_startup;
 
             // Process the control message with the validation results
-            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message, 
+            save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message,
                           &wdb_sock, &is_startup, ctrl_msg_data->is_startup, ctrl_msg_data->is_shutdown);
 
             if (ctrl_msg_data->key->is_startup != is_startup) {

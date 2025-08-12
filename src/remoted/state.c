@@ -206,11 +206,17 @@ int rem_write_state() {
         "\n"
         "# Control messages queue usage\n"
         "ctrl_msg_queue_usage='%zu'\n"
+        "\n"
+        "# Control messages queue breakdown\n"
+        "ctrl_msg_queue_inserted='%u'\n"
+        "ctrl_msg_queue_replaced='%u'\n"
+        "ctrl_msg_queue_processed='%u'\n"
         "\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
         state_cpy.recv_breakdown.evt_count, state_cpy.recv_breakdown.ctrl_count, state_cpy.recv_breakdown.discarded_count,
         state_cpy.sent_bytes, state_cpy.recv_bytes, state_cpy.recv_breakdown.dequeued_count,
-        control_msg_queue ? indexed_queue_size(control_msg_queue) : 0);
+        control_msg_queue ? indexed_queue_size(control_msg_queue) : 0,
+        state_cpy.ctrl_queue_breakdown.inserted_count, state_cpy.ctrl_queue_breakdown.replaced_count, state_cpy.ctrl_queue_breakdown.processed_count);
 
     fclose(fp);
 
@@ -537,6 +543,24 @@ void rem_inc_keys_reload() {
     w_mutex_unlock(&state_mutex);
 }
 
+void rem_inc_ctrl_queue_inserted() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.ctrl_queue_breakdown.inserted_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_ctrl_queue_replaced() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.ctrl_queue_breakdown.replaced_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
+void rem_inc_ctrl_queue_processed() {
+    w_mutex_lock(&state_mutex);
+    remoted_state.ctrl_queue_breakdown.processed_count++;
+    w_mutex_unlock(&state_mutex);
+}
+
 cJSON* rem_create_state_json() {
     remoted_state_t state_cpy;
 
@@ -607,6 +631,13 @@ cJSON* rem_create_state_json() {
     cJSON_AddNumberToObject(_metrics, "tcp_sessions", state_cpy.tcp_sessions);
 
     cJSON_AddNumberToObject(_metrics, "control_messages_queue_usage", control_msg_queue ? indexed_queue_size(control_msg_queue) : 0);
+
+    cJSON *_ctrl_queue_breakdown = cJSON_CreateObject();
+    cJSON_AddItemToObject(_metrics, "control_messages_queue_breakdown", _ctrl_queue_breakdown);
+
+    cJSON_AddNumberToObject(_ctrl_queue_breakdown, "inserted", state_cpy.ctrl_queue_breakdown.inserted_count);
+    cJSON_AddNumberToObject(_ctrl_queue_breakdown, "replaced", state_cpy.ctrl_queue_breakdown.replaced_count);
+    cJSON_AddNumberToObject(_ctrl_queue_breakdown, "processed", state_cpy.ctrl_queue_breakdown.processed_count);
 
     return rem_state_json;
 }
