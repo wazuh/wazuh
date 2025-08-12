@@ -171,6 +171,11 @@ rm -f %{_localstatedir}/tmp/add_localfiles.sh
 
 chmod 0660 %{_localstatedir}/etc/ossec.conf
 
+# Remove deprecated binaries
+if [ -f %{_localstatedir}/bin/agent-auth ]; then
+  rm -f %{_localstatedir}/bin/agent-auth
+fi
+
 # Remove old ossec user and group if exists and change ownwership of files
 
 if grep "^ossec:" /etc/group > /dev/null 2>&1; then
