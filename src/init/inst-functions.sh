@@ -1334,7 +1334,6 @@ InstallAgent()
 
     InstallSecurityConfigurationAssessmentFiles "agent"
 
-    ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids

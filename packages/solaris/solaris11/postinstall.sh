@@ -58,6 +58,14 @@ rm -rf ${install_path}/logs/ossec/
 rm -rf ${install_path}/queue/ossec/
 rm -rf ${SCA_TMP_DIR}
 
+# Remove deprecated binaries
+if [ -f ${DIR}/bin/manage_agents ]; then
+    rm -f ${DIR}/bin/manage_agents
+fi
+if [ -f ${DIR}/bin/agent-auth ]; then
+    rm -f ${DIR}/bin/agent-auth
+fi
+
 # Remove upgrade files after install/upgrade
 rm -rf ${install_path}/installation_scripts/
 rm -rf /lib/svc/manifest/site/post-install.xml

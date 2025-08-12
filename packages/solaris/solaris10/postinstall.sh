@@ -35,6 +35,14 @@ if [ -f /etc/init.d/wazuh-agent ]; then
         /etc/init.d/wazuh-agent stop > /dev/null 2>&1
 fi
 
+# Remove deprecated binaries
+if [ -f ${DIR}/bin/manage_agents ]; then
+    rm -f ${DIR}/bin/manage_agents
+fi
+if [ -f ${DIR}/bin/agent-auth ]; then
+    rm -f ${DIR}/bin/agent-auth
+fi
+
 ## Delete tmp directory
 if [ -d ${OSSEC_HIDS_TMP_DIR} ]; then
     rm -r ${OSSEC_HIDS_TMP_DIR}

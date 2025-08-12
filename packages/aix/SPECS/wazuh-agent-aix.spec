@@ -171,6 +171,14 @@ rm -f %{_localstatedir}/tmp/add_localfiles.sh
 
 chmod 0660 %{_localstatedir}/etc/ossec.conf
 
+# Remove deprecated binaries
+if [ -f %{_localstatedir}/bin/manage_agents ]; then
+  rm -f %{_localstatedir}/bin/manage_agents
+fi
+if [ -f %{_localstatedir}/bin/agent-auth ]; then
+  rm -f %{_localstatedir}/bin/agent-auth
+fi
+
 # Remove old ossec user and group if exists and change ownwership of files
 
 if grep "^ossec:" /etc/group > /dev/null 2>&1; then
@@ -227,7 +235,6 @@ rm -fr %{buildroot}
 
 %dir %attr(750, root, wazuh) %{_localstatedir}
 %attr(440, wazuh, wazuh) %{_localstatedir}/VERSION.json
-%attr(750, root, wazuh) %{_localstatedir}/agentless
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response/bin
@@ -242,7 +249,6 @@ rm -fr %{buildroot}
 %attr(660, root, wazuh) %config(noreplace) %{_localstatedir}/etc/ossec.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/wpk_root.pem
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
-%attr(660, root, wazuh) %config(missingok,noreplace) %{_localstatedir}/etc/shared/*
 %dir %attr(750, root, system) %{_localstatedir}/lib
 %attr(750, root, wazuh) %{_localstatedir}/lib/*
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/logs

@@ -52,6 +52,14 @@ case "$1" in
         chown root:${GROUP} ${DIR}/etc/localtime
     fi
 
+    # Remove deprecated binaries
+    if [ -f ${DIR}/bin/manage_agents ]; then
+        rm -f ${DIR}/bin/manage_agents
+    fi
+    if [ -f ${DIR}/bin/agent-auth ]; then
+        rm -f ${DIR}/bin/agent-auth
+    fi
+
     # Restore the local rules, client.keys and local_decoder
     if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
         cp ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
