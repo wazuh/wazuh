@@ -83,10 +83,6 @@ CONF_SECTIONS = MappingProxyType({
         'type': 'last',
         'list_options': ['nodes']
     },
-    'osquery': {
-        'type': 'merge',
-        'list_options': ['pack']
-    },
     'labels': {
         'type': 'duplicate',
         'list_options': ['label']
