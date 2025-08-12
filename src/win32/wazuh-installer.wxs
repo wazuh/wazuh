@@ -226,6 +226,9 @@
                     <Component Id="FIMDB_DLL" DiskId="1" Guid="15806BCA-876E-41D7-A82E-623EEEC63C3A">
                         <File Id="FIMDB_DLL" Name="libfimdb.dll" Source="..\syscheckd\build\bin\libfimdb.dll" />
                     </Component>
+                    <Component Id="AGENT_SYNC_PROTOCOL_DLL" DiskId="1" Guid="0B6A98BA-DC42-4DD4-8F60-E18987A36A75">
+                        <File Id="AGENT_SYNC_PROTOCOL_DLL" Name="libagent_sync_protocol.dll" Source="..\sync_protocol/build/bin/libagent_sync_protocol.dll" />
+                    </Component>
 
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
                     <Component Id="LOCAL_INTERNAL_OPTIONS.CONF" DiskId="1" Guid="10245598-2EE7-4EDB-A114-5398F01A21F9" NeverOverwrite="yes" Permanent="yes">
@@ -632,6 +635,7 @@
             <ComponentRef Id="RSYNC_DLL" />
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
+            <ComponentRef Id="AGENT_SYNC_PROTOCOL_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />

@@ -412,12 +412,11 @@ AR_LDFLAGS+=${OFLAGS}
 
 DBSYNC_LIB+=-ldbsync
 RSYNC_LIB+=-lrsync
-SYNC_PROTOCOL_LIB+=-lagent_sync_protocol
+SYNC_PROTOCOL_LIB+=-llibagent_sync_protocol
 
 ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
 	OSSEC_LDFLAGS+=-L${RSYNC}build/bin
-	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/lib
 else
 	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
 	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
@@ -558,7 +557,7 @@ SYSINFO_LIB+=-lsysinfo
 ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/bin
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
-	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/lib
+	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/bin
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/lib
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/bin
 else
