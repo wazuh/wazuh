@@ -175,6 +175,11 @@ if [ -f ${DIR}/queue/alerts/sockets ]; then
     rm ${DIR}/queue/alerts/sockets
 fi
 
+# Remove deprecated binaries
+if [ -f ${DIR}/bin/agent-auth ]; then
+  rm -f ${DIR}/bin/agent-auth
+fi
+
 if [ -n "${upgrade}" ] && [ -n "${restart}" ]; then
     echo "Restarting Wazuh..."
     launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist
