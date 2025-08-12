@@ -246,36 +246,24 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput1)
 
     const nlohmann::json output = handler->ProcessStateful(input);
 
-    ASSERT_TRUE(output.contains("event"));
-    ASSERT_TRUE(output.contains("metadata"));
+    EXPECT_EQ(output["checksum"]["hash"]["sha1"], "abc123");
+    EXPECT_EQ(output["check"]["id"], "chk1");
+    EXPECT_EQ(output["check"]["name"], "Ensure firewall is active");
+    EXPECT_EQ(output["check"]["description"], "Verifies that the firewall is running");
+    EXPECT_EQ(output["check"]["rationale"], "Security best practices");
+    EXPECT_EQ(output["check"]["status"], "passed");
+    EXPECT_EQ(output["check"]["condition"], "all");
+    EXPECT_TRUE(output["check"].contains("compliance"));
+    EXPECT_TRUE(output["check"].contains("remediation"));
+    EXPECT_TRUE(output["check"].contains("references"));
+    EXPECT_TRUE(output["check"].contains("rules"));
 
-    auto event = output["event"];
-    auto metadata = output["metadata"];
-
-    EXPECT_EQ(event["check"]["checksum"], "abc123");
-    EXPECT_EQ(event["check"]["id"], "chk1");
-    EXPECT_EQ(event["check"]["name"], "Ensure firewall is active");
-    EXPECT_EQ(event["check"]["description"], "Verifies that the firewall is running");
-    EXPECT_EQ(event["check"]["rationale"], "Security best practices");
-    EXPECT_EQ(event["check"]["status"], "passed");
-    EXPECT_EQ(event["check"]["condition"], "all");
-    EXPECT_TRUE(event["check"].contains("compliance"));
-    EXPECT_TRUE(event["check"].contains("remediation"));
-    EXPECT_TRUE(event["check"].contains("references"));
-    EXPECT_TRUE(event["check"].contains("rules"));
-
-    EXPECT_EQ(event["policy"]["id"], "pol1");
-    EXPECT_EQ(event["policy"]["name"], "CIS Ubuntu Benchmark");
-    EXPECT_EQ(event["policy"]["rationale"], "SMBv1 is outdated and insecure.");
-    EXPECT_TRUE(event["policy"].contains("description"));
-    EXPECT_TRUE(event["policy"].contains("references"));
-    EXPECT_TRUE(event["policy"].contains("file"));
-
-    EXPECT_TRUE(event.contains("timestamp"));
-
-    EXPECT_EQ(metadata["operation"], "update");
-    EXPECT_EQ(metadata["module"], "sca");
-    EXPECT_TRUE(metadata.contains("id"));
+    EXPECT_EQ(output["policy"]["id"], "pol1");
+    EXPECT_EQ(output["policy"]["name"], "CIS Ubuntu Benchmark");
+    EXPECT_EQ(output["policy"]["rationale"], "SMBv1 is outdated and insecure.");
+    EXPECT_TRUE(output["policy"].contains("description"));
+    EXPECT_TRUE(output["policy"].contains("references"));
+    EXPECT_TRUE(output["policy"].contains("file"));
 }
 
 TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput2)
@@ -303,36 +291,23 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput2)
 
     const nlohmann::json output = handler->ProcessStateful(input);
 
-    ASSERT_TRUE(output.contains("event"));
-    ASSERT_TRUE(output.contains("metadata"));
-
-    auto event = output["event"];
-    auto metadata = output["metadata"];
-
-    EXPECT_EQ(event["check"]["checksum"], "abc123");
-    EXPECT_EQ(event["check"]["id"], "chk1");
-    EXPECT_EQ(event["check"]["name"], "Ensure firewall is active");
-    EXPECT_EQ(event["check"]["description"], "Verifies that the firewall is running");
-    EXPECT_EQ(event["check"]["rationale"], "Security best practices");
-    EXPECT_EQ(event["check"]["status"], "passed");
-    EXPECT_TRUE(event["check"].contains("condition"));
-    EXPECT_TRUE(event["check"].contains("compliance"));
-    EXPECT_TRUE(event["check"].contains("remediation"));
-    EXPECT_TRUE(event["check"].contains("references"));
-    EXPECT_TRUE(event["check"].contains("rules"));
-
-    EXPECT_EQ(event["policy"]["id"], "pol1");
-    EXPECT_EQ(event["policy"]["name"], "CIS Ubuntu Benchmark");
-    EXPECT_EQ(event["policy"]["rationale"], "SMBv1 is outdated and insecure.");
-    EXPECT_TRUE(event["policy"].contains("description"));
-    EXPECT_TRUE(event["policy"].contains("references"));
-    EXPECT_TRUE(event["policy"].contains("file"));
-
-    EXPECT_TRUE(event.contains("timestamp"));
-
-    EXPECT_EQ(metadata["operation"], "create");
-    EXPECT_EQ(metadata["module"], "sca");
-    EXPECT_TRUE(metadata.contains("id"));
+    EXPECT_EQ(output["checksum"]["hash"]["sha1"], "abc123");
+    EXPECT_EQ(output["check"]["id"], "chk1");
+    EXPECT_EQ(output["check"]["name"], "Ensure firewall is active");
+    EXPECT_EQ(output["check"]["description"], "Verifies that the firewall is running");
+    EXPECT_EQ(output["check"]["rationale"], "Security best practices");
+    EXPECT_EQ(output["check"]["status"], "passed");
+    EXPECT_TRUE(output["check"].contains("condition"));
+    EXPECT_TRUE(output["check"].contains("compliance"));
+    EXPECT_TRUE(output["check"].contains("remediation"));
+    EXPECT_TRUE(output["check"].contains("references"));
+    EXPECT_TRUE(output["check"].contains("rules"));
+    EXPECT_EQ(output["policy"]["id"], "pol1");
+    EXPECT_EQ(output["policy"]["name"], "CIS Ubuntu Benchmark");
+    EXPECT_EQ(output["policy"]["rationale"], "SMBv1 is outdated and insecure.");
+    EXPECT_TRUE(output["policy"].contains("description"));
+    EXPECT_TRUE(output["policy"].contains("references"));
+    EXPECT_TRUE(output["policy"].contains("file"));
 }
 
 TEST_F(SCAEventHandlerTest, ProcessStateful_InvalidInput1)
@@ -390,42 +365,33 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
     // Call to your function
     const nlohmann::json output = handler->ProcessStateless(input);
 
-    // Assertions to check the presence of keys
-    ASSERT_TRUE(output.contains("event"));
-    ASSERT_TRUE(output.contains("metadata"));
+    EXPECT_EQ(output["collector"], "check");
+    EXPECT_EQ(output["module"], "sca");
 
-    // Extract event and metadata
-    auto event = output["event"];
-    auto metadata = output["metadata"];
-
-    ASSERT_TRUE(event["check"].contains("checksum"));
-    ASSERT_TRUE(event["check"].contains("id"));
-    ASSERT_TRUE(event["check"].contains("result"));
-    ASSERT_TRUE(event["check"].contains("previous"));
-    ASSERT_TRUE(event["check"]["previous"].contains("result"));
-    ASSERT_TRUE(event["check"].contains("compliance"));
-    ASSERT_TRUE(event["check"].contains("condition"));
-    ASSERT_TRUE(event["check"].contains("description"));
-    ASSERT_TRUE(event["check"].contains("rationale"));
-    ASSERT_TRUE(event["check"].contains("references"));
-    ASSERT_TRUE(event["check"].contains("remediation"));
-    ASSERT_TRUE(event["check"].contains("rules"));
-    ASSERT_TRUE(event["check"].contains("name"));
-
-    ASSERT_TRUE(event["policy"].contains("id"));
-    ASSERT_TRUE(event["policy"].contains("description"));
-    ASSERT_TRUE(event["policy"].contains("previous"));
-    ASSERT_TRUE(event["policy"]["previous"].contains("description"));
-    ASSERT_TRUE(event["policy"].contains("name"));
-    ASSERT_TRUE(event["policy"].contains("file"));
-
-    ASSERT_TRUE(event["event"].contains("changed_fields"));
-    ASSERT_EQ(event["event"]["changed_fields"].size(), 2);
-
-    ASSERT_TRUE(metadata.contains("module"));
-    ASSERT_TRUE(metadata.contains("collector"));
-    ASSERT_EQ(metadata["module"], "sca");
-    ASSERT_EQ(metadata["collector"], "check");
+    const auto data = output["data"];
+    ASSERT_TRUE(data["check"].contains("checksum"));
+    ASSERT_TRUE(data["check"].contains("id"));
+    ASSERT_TRUE(data["check"].contains("result"));
+    ASSERT_TRUE(data["check"].contains("previous"));
+    ASSERT_TRUE(data["check"]["previous"].contains("result"));
+    ASSERT_TRUE(data["check"].contains("compliance"));
+    ASSERT_TRUE(data["check"].contains("condition"));
+    ASSERT_TRUE(data["check"].contains("description"));
+    ASSERT_TRUE(data["check"].contains("rationale"));
+    ASSERT_TRUE(data["check"].contains("references"));
+    ASSERT_TRUE(data["check"].contains("remediation"));
+    ASSERT_TRUE(data["check"].contains("rules"));
+    ASSERT_TRUE(data["check"].contains("name"));
+    ASSERT_TRUE(data["policy"].contains("id"));
+    ASSERT_TRUE(data["policy"].contains("description"));
+    ASSERT_TRUE(data["policy"].contains("previous"));
+    ASSERT_TRUE(data["policy"]["previous"].contains("description"));
+    ASSERT_TRUE(data["policy"].contains("name"));
+    ASSERT_TRUE(data["policy"].contains("file"));
+    ASSERT_TRUE(data["event"].contains("changed_fields"));
+    ASSERT_EQ(data["event"]["changed_fields"].size(), 2);
+    ASSERT_TRUE(data["event"].contains("created"));
+    ASSERT_TRUE(data["event"].contains("type"));
 }
 
 TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
@@ -453,45 +419,32 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
 
     const nlohmann::json output = handler->ProcessStateless(input);
 
-    ASSERT_TRUE(output.contains("event"));
-    ASSERT_TRUE(output.contains("metadata"));
+    EXPECT_EQ(output["collector"], "check");
+    EXPECT_EQ(output["module"], "sca");
 
-    auto event = output["event"];
-    auto metadata = output["metadata"];
+    const auto data = output["data"];
 
-    ASSERT_TRUE(event["check"].contains("checksum"));
-    EXPECT_EQ(event["check"]["checksum"], "abc123");
-
-    ASSERT_TRUE(event["check"].contains("id"));
-    EXPECT_EQ(event["check"]["id"], "chk1");
-
-    ASSERT_TRUE(event["check"].contains("result"));
-    EXPECT_EQ(event["check"]["result"], "failed");
-
-    ASSERT_TRUE(event["check"].contains("compliance"));
-    ASSERT_TRUE(event["check"].contains("condition"));
-    ASSERT_TRUE(event["check"].contains("description"));
-    ASSERT_TRUE(event["check"].contains("rationale"));
-    ASSERT_TRUE(event["check"].contains("references"));
-    ASSERT_TRUE(event["check"].contains("remediation"));
-    ASSERT_TRUE(event["check"].contains("rules"));
-    ASSERT_TRUE(event["check"].contains("name"));
-
-    ASSERT_TRUE(event["policy"].contains("id"));
-    EXPECT_EQ(event["policy"]["id"], "pol1");
-
-    ASSERT_TRUE(event["policy"].contains("description"));
-    EXPECT_EQ(event["policy"]["description"], "Ensure firewall is running");
-
-    ASSERT_TRUE(event["policy"].contains("name"));
-    ASSERT_TRUE(event["policy"].contains("file"));
-    ASSERT_TRUE(event["policy"].contains("references"));
-
-    ASSERT_TRUE(event["event"].contains("changed_fields"));
-    ASSERT_GE(event["event"]["changed_fields"].size(), 0);
-
-    EXPECT_EQ(metadata["module"], "sca");
-    EXPECT_EQ(metadata["collector"], "check");
+    ASSERT_TRUE(data["check"].contains("id"));
+    EXPECT_EQ(data["check"]["id"], "chk1");
+    ASSERT_TRUE(data["check"].contains("result"));
+    EXPECT_EQ(data["check"]["result"], "failed");
+    ASSERT_TRUE(data["check"].contains("compliance"));
+    ASSERT_TRUE(data["check"].contains("condition"));
+    ASSERT_TRUE(data["check"].contains("description"));
+    ASSERT_TRUE(data["check"].contains("rationale"));
+    ASSERT_TRUE(data["check"].contains("references"));
+    ASSERT_TRUE(data["check"].contains("remediation"));
+    ASSERT_TRUE(data["check"].contains("rules"));
+    ASSERT_TRUE(data["check"].contains("name"));
+    ASSERT_TRUE(data["policy"].contains("id"));
+    EXPECT_EQ(data["policy"]["id"], "pol1");
+    ASSERT_TRUE(data["policy"].contains("description"));
+    EXPECT_EQ(data["policy"]["description"], "Ensure firewall is running");
+    ASSERT_TRUE(data["policy"].contains("name"));
+    ASSERT_TRUE(data["policy"].contains("file"));
+    ASSERT_TRUE(data["policy"].contains("references"));
+    ASSERT_TRUE(data["event"].contains("changed_fields"));
+    ASSERT_GE(data["event"]["changed_fields"].size(), 0);
 }
 
 TEST_F(SCAEventHandlerTest, ProcessStateless_InvalidInput)
