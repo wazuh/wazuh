@@ -292,7 +292,6 @@ nlohmann::json SCAEventHandler::ProcessStateful(const nlohmann::json& event) con
     nlohmann::json check;
     nlohmann::json policy;
     nlohmann::json jsonEvent;
-    nlohmann::json jsonMetadata;
 
     try
     {
@@ -343,16 +342,13 @@ nlohmann::json SCAEventHandler::ProcessStateful(const nlohmann::json& event) con
         }
 
         jsonEvent = {{"checksum", checksumObj}, {"check", check}, {"policy", policy}};
-        jsonMetadata = {{"id", CalculateHashId(jsonEvent)},
-                        {"operation", STATEFUL_OPERATION_MAP.at(event["result"])},
-                        {"module", "sca"}};
     }
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, std::string("Error processing stateful event: ") + e.what());
     }
 
-    return nlohmann::json {{"event", jsonEvent}, {"metadata", jsonMetadata}};
+    return jsonEvent;
 }
 
 nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) const
@@ -361,7 +357,6 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
     nlohmann::json policy;
     nlohmann::json changedFields = nlohmann::json::array();
     nlohmann::json jsonEvent;
-    nlohmann::json jsonMetadata;
 
     try
     {
@@ -449,15 +444,13 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                 {"policy", policy}
             }}
         };
-
-        jsonMetadata = {{"module", "sca"}, {"collector", event.at("collector")}};
     }
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, std::string("Error processing stateless event: ") + e.what());
     }
 
-    return nlohmann::json {{"event", jsonEvent}, {"metadata", jsonMetadata}};
+    return jsonEvent;
 }
 
 std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
