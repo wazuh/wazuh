@@ -29,6 +29,7 @@
 #ifndef INDEXED_QUEUE_OP_H
 #define INDEXED_QUEUE_OP_H
 
+#include <stdatomic.h>
 #include <pthread.h>
 #include "queue_linked_op.h"
 #include "rbtree_op.h"
@@ -56,7 +57,7 @@ typedef struct w_indexed_queue {
     pthread_cond_t available;           ///< Condition variable when queue is empty
     pthread_cond_t available_not_full;  ///< Condition variable when queue is full
     size_t max_size;                    ///< Maximum size (0 = unlimited)
-    size_t current_size;                ///< Current number of elements
+    _Atomic size_t current_size;        ///< Current number of elements
     void (*dispose)(void *);            ///< Function to dispose data elements
 } w_indexed_queue_t;
 

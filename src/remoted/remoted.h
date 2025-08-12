@@ -20,6 +20,7 @@
 #include "../config/global-config.h"
 #include "../os_crypto/md5/md5_op.h"
 #include "sec.h"
+#include "indexed_queue_op.h"
 
 #define FD_LIST_INIT_VALUE 1024
 #define REMOTED_MSG_HEADER "1:" ARGV0 ":"
@@ -192,6 +193,7 @@ size_t rem_getCounter(int fd);
 
 extern keystore keys;
 extern remoted logr;
+extern w_indexed_queue_t *control_msg_queue;
 extern char* node_name;
 extern int timeout;
 extern int pass_empty_keyfile;

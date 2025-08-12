@@ -203,13 +203,14 @@ int rem_write_state() {
         "\n"
         "# Messages dequeued after the agent closes the connection\n"
         "dequeued_after_close='%u'\n"
+        "\n"
         "# Control messages queue usage\n"
-        "ctrl_msg_queue_usage='%u'\n"
+        "ctrl_msg_queue_usage='%zu'\n"
         "\n",
         __local_name, refresh_time, rem_get_qsize(), rem_get_tsize(), state_cpy.tcp_sessions,
         state_cpy.recv_breakdown.evt_count, state_cpy.recv_breakdown.ctrl_count, state_cpy.recv_breakdown.discarded_count,
         state_cpy.sent_bytes, state_cpy.recv_bytes, state_cpy.recv_breakdown.dequeued_count,
-        state_cpy.ctrl_msg_queue_usage);
+        control_msg_queue ? indexed_queue_size(control_msg_queue) : 0);
 
     fclose(fp);
 
@@ -373,19 +374,6 @@ void rem_dec_tcp() {
     remoted_state.tcp_sessions--;
     w_mutex_unlock(&state_mutex);
 }
-
-void rem_inc_ctrl_msg_queue_usage() {
-    w_mutex_lock(&state_mutex);
-    remoted_state.ctrl_msg_queue_usage++;
-    w_mutex_unlock(&state_mutex);
-}
-
-void rem_dec_ctrl_msg_queue_usage() {
-    w_mutex_lock(&state_mutex);
-    remoted_state.ctrl_msg_queue_usage--;
-    w_mutex_unlock(&state_mutex);
-}
-
 
 void rem_add_recv(unsigned long bytes) {
     w_mutex_lock(&state_mutex);
@@ -618,7 +606,7 @@ cJSON* rem_create_state_json() {
 
     cJSON_AddNumberToObject(_metrics, "tcp_sessions", state_cpy.tcp_sessions);
 
-    cJSON_AddNumberToObject(_metrics, "control_messages_queue_usage", state_cpy.ctrl_msg_queue_usage);
+    cJSON_AddNumberToObject(_metrics, "control_messages_queue_usage", control_msg_queue ? indexed_queue_size(control_msg_queue) : 0);
 
     return rem_state_json;
 }

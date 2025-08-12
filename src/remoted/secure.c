@@ -28,6 +28,7 @@
 
 /* Global variables */
 int sender_pool;
+w_indexed_queue_t *control_msg_queue = NULL;
 
 netbuffer_t netbuffer_recv;
 netbuffer_t netbuffer_send;
@@ -167,7 +168,7 @@ void HandleSecure()
 
 
     size_t ctrl_msg_queue_size = (size_t) getDefine_Int("remoted", "control_msg_queue_size", 4096, 0x1 << 20); // 1MB
-    w_indexed_queue_t * control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
+    control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
 
     struct sockaddr_storage peer_info;
@@ -855,7 +856,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     mdebug2("Control message updated in queue for agent ID '%s'.", agent_key);
                 } else if (res == 0) {
                     mdebug2("Control message pushed in queue for agent ID '%s'.", agent_key);
-                    rem_inc_ctrl_msg_queue_usage();
                 } else {
                     mwarn("Failed to insert control message for agent ID '%s'.", agent_key);
                     w_free_ctrl_msg_data(ctrl_msg_data);
@@ -1126,7 +1126,6 @@ void * save_control_thread(void * control_msg_queue)
     while (FOREVER()) {
         if ((ctrl_msg_data = (w_ctrl_msg_data_t *)indexed_queue_pop_ex(queue))) {
 
-            rem_dec_ctrl_msg_queue_usage();
 
             bool is_startup = ctrl_msg_data->key->is_startup;
 

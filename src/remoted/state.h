@@ -50,7 +50,6 @@ typedef struct _remoted_state_t {
     uint64_t sent_bytes;
     uint32_t tcp_sessions;
     uint32_t keys_reload_count;
-    uint32_t ctrl_msg_queue_usage;
     recv_msgs_t recv_breakdown;
     sent_msgs_t sent_breakdown;
 } remoted_state_t;
@@ -85,15 +84,6 @@ void rem_inc_tcp();
  */
 void rem_dec_tcp();
 
-/**
- * @brief Increment control message queue usage
- */
-void rem_inc_ctrl_msg_queue_usage();
-
-/**
- * @brief Decrement control message queue usage
- */
-void rem_dec_ctrl_msg_queue_usage();
 
 /**
  * @brief Increment bytes received
