@@ -814,20 +814,24 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 w_mutex_unlock(&keys.keyentries[agentid]->mutex);
             }
 
+            // Validate control message before unlocking to update startup status safely
+            char *cleaned_msg = NULL;
+            int is_startup = 0, is_shutdown = 0;
+            size_t tmp_msg_length = msg_length - 3; // Exclude the header length (3 characters)
+            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown);
+
+            // Update keystore startup status immediately after validation
+            if (is_startup) {
+                keys.keyentries[agentid]->is_startup = true;
+            }
+
             key_unlock();
 
             if (sock_idle >= 0) {
                 _close_sock(&keys, sock_idle);
             }
 
-            // The critical section for readers closes within this function
             rem_inc_recv_ctrl(key->id);
-
-            // Validate control message before potentially queuing it
-            char *cleaned_msg = NULL;
-            int is_startup = 0, is_shutdown = 0;
-            size_t tmp_msg_length = msg_length - 3; // Exclude the header length (3 characters)
-            int validation_result = validate_control_msg(key, tmp_msg, tmp_msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
             if (validation_result == 1) {
                 // Message should be queued for database processing
@@ -1138,9 +1142,16 @@ void * save_control_thread(void * control_msg_queue)
             save_controlmsg(ctrl_msg_data->key, ctrl_msg_data->message,
                           &wdb_sock, &is_startup, ctrl_msg_data->is_startup, ctrl_msg_data->is_shutdown);
 
+            // Update startup flag after processing the first keepalive post-startup
             if (ctrl_msg_data->key->is_startup != is_startup) {
                 key_lock_read();
-                keys.keyentries[ctrl_msg_data->agent_id]->is_startup = is_startup;
+
+                // Use efficient tree lookup to find the key index
+                int key_index = OS_IsAllowedID(&keys, ctrl_msg_data->key->id);
+                if (key_index >= 0 && key_index < (int)keys.keysize) {
+                    keys.keyentries[key_index]->is_startup = is_startup;
+                }
+
                 key_unlock();
             }
 
