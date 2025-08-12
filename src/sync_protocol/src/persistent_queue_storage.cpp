@@ -14,7 +14,7 @@
 using namespace SQLite;
 
 PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath)
-    : m_connection(createOrOpenDatabase(dbPath.empty() ? DEFAULT_DB_PATH : dbPath))
+    : m_connection(createOrOpenDatabase(dbPath))
 {
     try
     {

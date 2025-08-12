@@ -113,14 +113,13 @@ void send_syscheck_msg(const cJSON *_msg) {
 }
 
 // Persist a syscheck message
-void persist_syscheck_msg(const cJSON* _msg) {
+void persist_syscheck_msg(const char *id, const int operation, const char *index, const cJSON* _msg) {
     if (syscheck.enable_synchronization) {
         char* msg = cJSON_PrintUnformatted(_msg);
 
         mdebug2(FIM_PERSIST, msg);
 
-        // TODO: Use real value for id/index
-        asp_persist_diff(syscheck.sync_handle, "idfim", 1, "fim index", msg);
+        asp_persist_diff(syscheck.sync_handle, id, operation, index, msg);
 
         os_free(msg);
     } else {

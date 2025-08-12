@@ -31,9 +31,10 @@ class PersistentQueue : public IPersistentQueue
 {
     public:
         /// @brief Constructs a PersistentQueue with the given storage backend.
+        /// @param dbPath Path to the SQLite database file for this protocol instance.
         /// @param storage Optional shared pointer to a custom storage backend.
         ///                If null, a default PersistentQueueStorage is used.
-        explicit PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
+        explicit PersistentQueue(const std::string& dbPath, std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
 
         /// @brief Destructor.
         ~PersistentQueue() override;

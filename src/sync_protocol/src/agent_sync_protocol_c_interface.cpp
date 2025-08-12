@@ -6,18 +6,6 @@
 #include <memory>
 #include <string>
 
-/// @brief Provides a shared persistent queue instance for all AgentSyncProtocol instances.
-///
-/// This function returns a singleton `std::shared_ptr` to a `PersistentQueue`, ensuring
-/// that all AgentSyncProtocol objects created through the C interface share the same queue.
-///
-/// @return A shared pointer to the persistent queue instance.
-std::shared_ptr<IPersistentQueue> sharedQueue()
-{
-    static std::shared_ptr<IPersistentQueue> queue = std::make_shared<PersistentQueue>();
-    return queue;
-}
-
 /// @brief Wrapper struct that encapsulates the C++ AgentSyncProtocol implementation.
 ///
 /// This wrapper is used to bridge the C interface and the internal C++ logic.
@@ -31,18 +19,19 @@ struct AgentSyncProtocolWrapper
     /// @brief Constructs the wrapper and initializes the AgentSyncProtocol instance.
     ///
     /// @param module Name of the module associated with this instance.
+    /// @param db_path Path to the SQLite database file for this protocol instance.
     /// @param mq_funcs Structure containing the MQ callback functions provided from C.
-    AgentSyncProtocolWrapper(const std::string& module, const MQ_Functions& mq_funcs)
-        : impl(std::make_unique<AgentSyncProtocol>(module, mq_funcs, sharedQueue())) {}
+    AgentSyncProtocolWrapper(const std::string& module, const std::string& db_path, const MQ_Functions& mq_funcs)
+        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, mq_funcs)) {}
 };
 
 extern "C" {
 
-    AgentSyncProtocolHandle* asp_create(const char* module, const MQ_Functions* mq_funcs, asp_logger_t logger)
+    AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger)
     {
         try
         {
-            if (!mq_funcs) return nullptr;
+            if (!mq_funcs || !db_path) return nullptr;
 
             if (logger)
             {
@@ -54,7 +43,7 @@ extern "C" {
                 );
             }
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, *mq_funcs));
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, db_path, *mq_funcs));
         }
         catch (const std::exception& ex)
         {

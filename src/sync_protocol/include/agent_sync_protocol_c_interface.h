@@ -63,10 +63,11 @@ typedef struct MQ_Functions
 /// @brief Creates an instance of AgentSyncProtocol.
 ///
 /// @param module Name of the module associated with this instance.
+/// @param db_path The full path to the SQLite database file to be used.
 /// @param mq_funcs Pointer to a MQ_Functions struct containing the MQ callbacks.
 /// @param logger Callback function used for logging messages.
 /// @return A pointer to an opaque AgentSyncProtocol handle, or NULL on failure.
-AgentSyncProtocolHandle* asp_create(const char* module, const MQ_Functions* mq_funcs, asp_logger_t logger);
+AgentSyncProtocolHandle* asp_create(const char* module, const char* db_path, const MQ_Functions* mq_funcs, asp_logger_t logger);
 
 /// @brief Destroys an AgentSyncProtocol instance.
 ///

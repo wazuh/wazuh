@@ -63,6 +63,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char *diff = NULL;
     char *path = NULL;
     char iso_time[32];
+    int sync_operation = -1;
 
     callback_ctx *txn_context = (callback_ctx *) user_data;
 
@@ -90,10 +91,12 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     switch (resultType) {
         case INSERTED:
             txn_context->event->type = FIM_ADD;
+            sync_operation = 0;
             break;
 
         case MODIFIED:
             txn_context->event->type = FIM_MODIFICATION;
+            sync_operation = 1;
             break;
 
         case DELETED:
@@ -101,6 +104,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
                 fim_diff_process_delete_file(path);
             }
             txn_context->event->type = FIM_DELETE;
+            sync_operation = 2;
             break;
 
         case MAX_ROWS:
@@ -210,7 +214,10 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    persist_syscheck_msg(stateful_event);
+    char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(path, -1, file_path_sha1);
+
+    persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event);
 
 end:
     os_free(diff);

@@ -19,13 +19,13 @@
 
 constexpr char SYNC_MQ = 's';
 
-AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue)
+AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue)
     : m_moduleName(moduleName),
       m_mqFuncs(mqFuncs)
 {
     try
     {
-        m_persistentQueue = queue ? std::move(queue) : std::make_shared<PersistentQueue>();
+        m_persistentQueue = queue ? std::move(queue) : std::make_shared<PersistentQueue>(dbPath);
     }
     catch (const std::exception& ex)
     {

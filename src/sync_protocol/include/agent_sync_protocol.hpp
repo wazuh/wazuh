@@ -24,9 +24,10 @@ class AgentSyncProtocol : public IAgentSyncProtocol
     public:
         /// @brief Constructs the synchronization protocol handler.
         /// @param moduleName Name of the module associated with this instance.
+        /// @param dbPath Path to the SQLite database file for this protocol instance.
         /// @param mqFuncs Functions used to interact with MQueue.
         /// @param queue Optional persistent queue to use for message storage and retrieval.
-        explicit AgentSyncProtocol(const std::string& moduleName, MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue = nullptr);
+        explicit AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,

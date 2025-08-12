@@ -125,6 +125,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     char *path = NULL;
     int arch = -1;
     char iso_time[32];
+    int sync_operation = -1;
 
     fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
 
@@ -154,14 +155,17 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     switch (resultType) {
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
+            sync_operation = 0;
             break;
 
         case MODIFIED:
             event_data->evt_data->type = FIM_MODIFICATION;
+            sync_operation = 1;
             break;
 
         case DELETED:
             event_data->evt_data->type = FIM_DELETE;
+            sync_operation = 2;
             break;
 
         case MAX_ROWS:
@@ -272,7 +276,13 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    persist_syscheck_msg(stateful_event);
+    char id_source_string[OS_MAXSTR] = {0};
+    snprintf(id_source_string, OS_MAXSTR - 1, "%d:%s", arch, path);
+
+    char registry_key_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(id_source_string, -1, registry_key_sha1);
+
+    persist_syscheck_msg(registry_key_sha1, sync_operation, FIM_REGISTRY_KEYS_SYNC_INDEX, stateful_event);
 
 end:
     cJSON_Delete(stateless_event);
@@ -302,6 +312,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     char *value = NULL;
     int arch = -1;
     char iso_time[32];
+    int sync_operation = -1;
 
     fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
 
@@ -335,10 +346,12 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     switch (resultType) {
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
+            sync_operation = 0;
             break;
 
         case MODIFIED:
             event_data->evt_data->type = FIM_MODIFICATION;
+            sync_operation = 1;
             break;
 
         case DELETED:
@@ -346,6 +359,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
                 fim_diff_process_delete_value(path, value, arch);
             }
             event_data->evt_data->type = FIM_DELETE;
+            sync_operation = 2;
             break;
 
         case MAX_ROWS:
@@ -462,7 +476,13 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    persist_syscheck_msg(stateful_event);
+    char id_source_string[OS_MAXSTR] = {0};
+    snprintf(id_source_string, OS_MAXSTR - 1, "%s:%d:%s", path, arch, value);
+
+    char registry_value_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(id_source_string, -1, registry_value_sha1);
+
+    persist_syscheck_msg(registry_value_sha1, sync_operation, FIM_REGISTRY_VALUES_SYNC_INDEX, stateful_event);
 
 end:
     os_free(event_data->diff);

@@ -62,17 +62,13 @@ int main() {
         std::cout << log << std::endl;
     });
 
-    // Use an in-memory SQLite DB to avoid filesystem issues while exercising real persistence
-    auto storage = std::make_shared<PersistentQueueStorage>(":memory:");
-    auto queue = std::make_shared<PersistentQueue>(storage);
-
     MQ_Functions mq{&mq_start_stub, &mq_send_binary_stub};
-    AgentSyncProtocol proto{"sync_protocol", mq, queue};
+    AgentSyncProtocol proto{"sync_protocol", ":memory:", mq};
     g_proto = &proto;
-  
+
     proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}");
     proto.persistDifference("id2", Operation::MODIFY, "idx2", "{\"k\":\"v2\"}");
-  
+
     bool ok = proto.synchronizeModule(Wazuh::SyncSchema::Mode::Full, std::chrono::seconds{2}, 1, 0);
     std::cout << (ok ? "OK" : "FAIL") << std::endl;
     return ok ? 0 : 1;
