@@ -12,8 +12,10 @@
 
 #include "agent_sync_protocol.hpp"
 #include "ipersistent_queue.hpp"
+#include "logging_helper.hpp"
 
 #include <thread>
+#include <iostream>
 
 using ::testing::_;
 using ::testing::Return;
@@ -35,6 +37,15 @@ public:
 class AgentSyncProtocolTest : public ::testing::Test
 {
 protected:
+    void SetUp() override
+    {
+        // Ensure logging callback is set before each test to prevent "Log callback not set." exceptions
+        LoggingHelper::setLogCallback([](modules_log_level_t, const char* log) {
+            // Log to stdout for testing
+            std::cout << log << std::endl;
+        });
+    }
+
     std::shared_ptr<MockPersistentQueue> mockQueue;
     std::unique_ptr<AgentSyncProtocol> protocol;
     const uint64_t session = 1234;
