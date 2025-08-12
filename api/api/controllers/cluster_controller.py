@@ -823,7 +823,6 @@ async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = F
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          local_client_arg='lc',
                           broadcasting=nodes_list == '*',
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           nodes=nodes

@@ -239,7 +239,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         self.logger.debug(f"Command received: '{command}'")
         if command == b'syn_m_c_ok':
-            self.sync_integrity_ok_from_master()
             asyncio.create_task(self.sync_integrity_ok_from_master())
             return b'ok', b'Thanks'
         elif command == b'syn_m_c':

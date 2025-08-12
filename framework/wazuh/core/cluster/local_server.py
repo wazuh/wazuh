@@ -398,7 +398,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
             asyncio.create_task(self.log_exceptions(
                 self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
             return b'ok', b'Added request to sendsync requests queue'
-        elif command == b'ruleset_reload':
+        elif command == b'sendrreload':
             if self.server.node.client is None:
                 raise WazuhClusterError(3023)
             asyncio.create_task(self.log_exceptions(self.set_reload_ruleset_flag()))
