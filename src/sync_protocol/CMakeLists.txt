@@ -156,6 +156,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
   add_subdirectory(tests)
-else()
-  add_subdirectory(testtool)
 endif()
+
+add_subdirectory(testtool)
+
