@@ -118,24 +118,49 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
 
 
 class AsyncReloadRulesetFlag:
+    """
+    Asynchronous flag with locking to control ruleset reload operations in worker nodes.
+
+    This class provides an async context manager for safely setting and clearing a boolean flag
+    used to indicate when the ruleset should be reloaded.
+    """
+
     def __init__(self):
+        """Initializes the asynchronous lock and the flag state."""
         self._lock = asyncio.Lock()
         self._flag = False
 
     async def __aenter__(self):
+        """Acquire the lock asynchronously when entering the context.
+
+        Returns
+        -------
+        AsyncReloadRulesetFlag
+            The instance itself.
+        """
         await self._lock.acquire()
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        """Release the lock when exiting the context."""
         self._lock.release()
 
     def set(self):
+        """Set the flag to True, indicating a reload is required."""
         self._flag = True
 
     def clear(self):
+        """Clear the flag, indicating no reload is required."""
         self._flag = False
 
     def is_set(self):
+        """Check if the flag is set.
+
+        Returns
+        -------
+        bool
+            True if the flag is set, False otherwise.
+        """
         return self._flag
 
 

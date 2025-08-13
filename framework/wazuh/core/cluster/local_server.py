@@ -407,6 +407,11 @@ class LocalServerHandlerWorker(LocalServerHandler):
             return super().process_request(command, data)
 
     async def set_reload_ruleset_flag(self):
+        """Set the reload ruleset flag asynchronously for the worker node.
+
+        This method acquires the reload_ruleset_flag lock and sets the flag,
+        indicating that the ruleset should be reloaded.
+        """
         async with self.server.node.client.reload_ruleset_flag:
             self.server.node.client.reload_ruleset_flag.set()
 
