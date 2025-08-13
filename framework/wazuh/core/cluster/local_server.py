@@ -402,7 +402,7 @@ class LocalServerHandlerWorker(LocalServerHandler):
             if self.server.node.client is None:
                 raise WazuhClusterError(3023)
             asyncio.create_task(self.log_exceptions(self.set_reload_ruleset_flag()))
-            return b'ok', b'Reload ruleset flag set'
+            return b'ok', json.dumps({'msg': 'Reload ruleset flag set successfully'}).encode()
         else:
             return super().process_request(command, data)
 
