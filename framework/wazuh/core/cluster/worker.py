@@ -239,8 +239,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         self.logger.debug(f"Command received: '{command}'")
         if command == b'syn_m_c_ok':
-            asyncio.create_task(self.sync_integrity_ok_from_master())
-            return b'ok', b'Thanks'
+            asyncio.create_task(self.log_exceptions(self.sync_integrity_ok_from_master()))
+            return b'ok'
         elif command == b'syn_m_c':
             return self.setup_receive_files_from_master()
         elif command == b'syn_m_c_e':
