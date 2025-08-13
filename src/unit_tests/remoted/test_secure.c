@@ -580,7 +580,6 @@ void test_HandleSecureMessage_shutdown_message(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Control message pushed in queue for agent ID '0'.");
 
     expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
 
@@ -846,7 +845,6 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Control message pushed in queue for agent ID '0'.");
 
     expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
 
@@ -1777,7 +1775,6 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Control message pushed in queue for agent ID '1'.");
 
     expect_string(__wrap_rem_inc_recv_ctrl, agent_id, "001");
 
