@@ -4649,6 +4649,29 @@ void test_validate_control_msg_shutdown_success(void** state)
     expect_string(__wrap_OSHash_Delete_ex, key, "001");
     expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
+    // Now expect SendMSG calls in validate_control_msg
+    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'agent1->192.168.1.1'.");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (agent1) 192.168.1.1");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, -1);
+
+    will_return(__wrap_strerror, "fail");
+    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
+
+    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
+    expect_value(__wrap_StartMQ, type, WRITE);
+    will_return(__wrap_StartMQ, -1);
+
+    expect_string(__wrap__minfo, formatted_msg, "Successfully reconnected to 'queue/sockets/queue'");
+
+    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'agent1->192.168.1.1'.");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (agent1) 192.168.1.1");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, -1);
+
+    will_return(__wrap_strerror, "fail");
+    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
+
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
     assert_int_equal(result, 1); // Should be queued
@@ -5327,32 +5350,6 @@ void test_save_controlmsg_shutdown(void **state)
     expect_string(__wrap_wdb_update_agent_connection_status, connection_status, AGENT_CS_DISCONNECTED);
     expect_string(__wrap_wdb_update_agent_connection_status, sync_status, "synced");
     will_return(__wrap_wdb_update_agent_connection_status, OS_SUCCESS);
-
-    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'NEW_AGENT->10.2.2.5'.");
-    expect_string(__wrap_SendMSG, locmsg, "[001] (NEW_AGENT) 10.2.2.5");
-    expect_any(__wrap_SendMSG, loc);
-    will_return(__wrap_SendMSG, -1);
-
-    will_return(__wrap_strerror, "fail");
-    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
-
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, -1);
-
-    expect_string(__wrap__minfo, formatted_msg, "Successfully reconnected to 'queue/sockets/queue'");
-
-    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'NEW_AGENT->10.2.2.5'.");
-    expect_string(__wrap_SendMSG, locmsg, "[001] (NEW_AGENT) 10.2.2.5");
-    expect_any(__wrap_SendMSG, loc);
-    will_return(__wrap_SendMSG, -1);
-
-    will_return(__wrap_strerror, "fail");
-    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
-
-    // will_return(__wrap_OSHash_Delete_ex, NULL);
-    // expect_string(__wrap_OSHash_Delete_ex, key, "001");
-    // expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
     save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
