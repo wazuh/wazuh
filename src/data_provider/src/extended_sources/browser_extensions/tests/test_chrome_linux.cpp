@@ -53,7 +53,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["current_locale"], "");
             EXPECT_EQ(jsonElement["default_locale"], "en");
             EXPECT_EQ(jsonElement["description"], "Chrome Web Store Payments");
-            EXPECT_EQ(jsonElement["from_webstore"], "true");
+            EXPECT_EQ(jsonElement["from_webstore"], "1");
             EXPECT_EQ(jsonElement["identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
             EXPECT_EQ(jsonElement["install_time"], "13394392373345452");
             EXPECT_EQ(jsonElement["install_timestamp"], "1749918773");
