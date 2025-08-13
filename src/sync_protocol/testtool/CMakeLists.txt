@@ -25,7 +25,6 @@ add_executable(sync_protocol_test_tool
 target_link_libraries(sync_protocol_test_tool PRIVATE agent_sync_protocol pthread)
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND 
-   NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin" AND
-   NOT CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
+   NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_link_libraries(sync_protocol_test_tool PRIVATE dl)
 endif()

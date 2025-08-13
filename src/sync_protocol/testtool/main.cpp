@@ -3,14 +3,10 @@
  */
 
 #include <iostream>
-#include <filesystem>
 #include <chrono>
 
 #include "agent_sync_protocol.hpp"
-#include "persistent_queue.hpp"
-#include "persistent_queue_storage.hpp"
 #include "agent_sync_protocol_c_interface.h"
-#include "logging_helper.hpp"
 
 static AgentSyncProtocol* g_proto = nullptr;
 static uint64_t g_session = 1;
@@ -59,14 +55,8 @@ static int mq_send_binary_stub(int, const void* msg, size_t, const char*, char) 
 
 int main() {
 
-    // Set logger for native runs (agent)
-    LoggingHelper::setLogCallback([](modules_log_level_t, const char* log) {
-        std::cout << log << std::endl;
-    });
-
-#if defined(_WIN32) || defined(__CYGWIN__)
-    // Initialize the logger inside the Windows DLL instance to avoid cross-DLL singleton issues
-    MQ_Functions mqFuncs{
+    // Set logger via asp_create
+    MQ_Functions tmpMq{
         [](const char*, short, short) { return 0; },
         [](int, const void*, size_t, const char*, char) { return 0; }
     };
@@ -74,11 +64,10 @@ int main() {
     auto handle = asp_create(
         "test_module",
         ":memory:",
-        &mqFuncs,
+        &tmpMq,
         +[](modules_log_level_t, const char* s) { std::cout << s << std::endl; }
     );
     asp_destroy(handle);
-#endif
 
     MQ_Functions mq{&mq_start_stub, &mq_send_binary_stub};
     AgentSyncProtocol proto{"sync_protocol", ":memory:", mq};

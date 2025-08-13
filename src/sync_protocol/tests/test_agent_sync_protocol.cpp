@@ -13,7 +13,6 @@
 #include "agent_sync_protocol.hpp"
 #include "ipersistent_queue.hpp"
 #include "agent_sync_protocol_c_interface.h"
-#include "logging_helper.hpp"
 
 #include <thread>
 #include <iostream>
@@ -40,14 +39,8 @@ class AgentSyncProtocolTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        // Set logger for native runs (agent)
-        LoggingHelper::setLogCallback([](modules_log_level_t, const char* log) {
-            std::cout << log << std::endl;
-        });
-
-#if defined(_WIN32) || defined(__CYGWIN__)
-        // Initialize the logger inside the Windows DLL instance to avoid cross-DLL singleton issues
-        MQ_Functions mqFuncs{
+        // Set logger via asp_create
+        MQ_Functions tmpMq{
             [](const char*, short, short) { return 0; },
             [](int, const void*, size_t, const char*, char) { return 0; }
         };
@@ -55,11 +48,10 @@ protected:
         auto handle = asp_create(
             "test_module",
             ":memory:",
-            &mqFuncs,
+            &tmpMq,
             +[](modules_log_level_t, const char* s) { std::cout << s << std::endl; }
         );
         asp_destroy(handle);
-#endif
     }
 
     std::shared_ptr<MockPersistentQueue> mockQueue;
