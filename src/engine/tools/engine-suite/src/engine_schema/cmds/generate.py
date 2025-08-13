@@ -20,14 +20,17 @@ ECS field modules and apply changes on an engine instance through the API socket
 
     ecs_version = args['ecs_version']
     output_dir = args['output_dir']
+    allowed_fields_path = args['allowed_fields_path']
     modules = modules_get_args(args)
-    jproperties, jmappings, jlogpar, jengine = generate(
-        ecs_version, modules, resource_handler)
+    decoder_fields_schema, rule_fields_schema, jmappings, jlogpar, jengine = generate(
+        ecs_version, modules, resource_handler, allowed_fields_path)
 
     # Save generated files
     print(f'Saving files to "{output_dir}"...')
     resource_handler.save_file(
-        output_dir, 'fields', jproperties, rs.Format.JSON)
+        output_dir, 'fields_decoder', decoder_fields_schema, rs.Format.JSON)
+    resource_handler.save_file(
+        output_dir, 'fields_rule', rule_fields_schema, rs.Format.JSON)
     resource_handler.save_file(
         output_dir, 'wazuh-template', jmappings, rs.Format.JSON)
     resource_handler.save_file(
@@ -51,6 +54,10 @@ def configure(subparsers):
 
     parser_generate.add_argument('--output-dir', type=str, default=DEFAULT_OUTPUT_DIR,
                                  help=f'[default="{DEFAULT_OUTPUT_DIR}"] Root directory to store generated files')
+
+    parser_generate.add_argument('--allowed-fields-path', type=str, required=True,
+                                 help='Path to the allowed fields JSON file. It will be used to filter \
+                                the generated schema.')
 
     generate_subparsers = parser_generate.add_subparsers(title='subcommands')
     modules_configure(generate_subparsers)

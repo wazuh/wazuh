@@ -1,10 +1,24 @@
 name: Engine Standalone
 
 on:
-  # Triggers the workflow on push to main branch
-  push:
-    branches:
-      - main
+  # Triggers the workflow on demand
+  workflow_dispatch:
+    inputs:
+      wazuh-branch:
+        description: 'Wazuh branch'
+        required: false
+        type: string
+        default: 'main'
+
+      build-type:
+        type: choice
+        description: 'Choose the CMake build type'
+        required: false
+        default: 'release'
+        options:
+          - debug
+          - release
+
   # Triggers the workflow on pull request but only changes in the src/engine/ directory.
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
@@ -19,6 +33,8 @@ env:
   ENGINE_DIR: ${{github.workspace}}/src/engine
   ENGINE_STANDALONE_DIR: wazuh-engine-standalone
   ENGINE_STANDALONE_SOCKET: wazuh-engine-standalone/sockets/engine-api.sock
+  WAZUH_BRANCH: ${{ github.event.inputs.wazuh-branch || 'main' }}
+  BUILD_TYPE: ${{ github.event.inputs.build-type || 'release' }}
 
 jobs:
   build:
@@ -26,6 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || env.WAZUH_BRANCH }}
 
       - name: Set tag and container name
         run: |
@@ -41,6 +59,7 @@ jobs:
         run: |
           sed -i "s/option(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE \\\"Enable reverse order decoders\\\" OFF)/option(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE \\\"Enable reverse order decoders\\\" ON)/" src/engine/CMakeLists.txt
           docker run --entrypoint /workspace/wazuh/src/engine/standalone/docker-entrypoint.sh \
+            -e BUILD_TYPE="${BUILD_TYPE}" \
             -t -v ${{github.workspace}}:/workspace/wazuh:Z \
             -v ${{github.workspace}}/packages/output:/var/local/wazuh:Z \
             ${CONTAINER_NAME}:${TAG}
@@ -112,6 +131,7 @@ jobs:
           wazuh-engine-standalone/data/store/schema/allowed-fields \
           wazuh-engine-standalone/data/kvdb \
           wazuh-engine-standalone/data/tzdb \
+          wazuh-engine-standalone/schemas \
           wazuh-engine-standalone/logs \
           wazuh-engine-standalone/sockets
         touch wazuh-engine-standalone/bin/lib/.keep
@@ -123,6 +143,11 @@ jobs:
         cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/engine-schema.json wazuh-engine-standalone/data/store/schema/engine-schema/0
         cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-logpar-overrides.json  wazuh-engine-standalone/data/store/schema/wazuh-logpar-overrides/0
         cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/allowed-fields.json  wazuh-engine-standalone/data/store/schema/allowed-fields/0
+        cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/fields_decoder.json wazuh-engine-standalone/schemas/
+        cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/fields_rule.json  wazuh-engine-standalone/schemas/
+        cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-decoders.json  wazuh-engine-standalone/schemas/
+        cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-rules.json  wazuh-engine-standalone/schemas/
+        cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/wazuh-filters.json  wazuh-engine-standalone/schemas/
         cp -r ${{ env.ENGINE_DIR }}/standalone/run_engine.sh wazuh-engine-standalone/
         chmod +x wazuh-engine-standalone/run_engine.sh
         cp ${{ env.ENGINE_DIR }}/standalone/README.md wazuh-engine-standalone/
