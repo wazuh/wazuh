@@ -76,6 +76,7 @@ w_indexed_queue_t *indexed_queue_init(size_t max_size) {
     queue->max_size = max_size;
     queue->current_size = 0;
     queue->dispose = NULL;
+    queue->get_key = NULL;
 
     return queue;
 }
@@ -114,6 +115,14 @@ void indexed_queue_set_dispose(w_indexed_queue_t *queue, void (*dispose)(void *)
     if (queue) {
         pthread_mutex_lock(&queue->mutex);
         queue->dispose = dispose;
+        pthread_mutex_unlock(&queue->mutex);
+    }
+}
+
+void indexed_queue_set_get_key(w_indexed_queue_t *queue, char *(*get_key)(void *)) {
+    if (queue) {
+        pthread_mutex_lock(&queue->mutex);
+        queue->get_key = get_key;
         pthread_mutex_unlock(&queue->mutex);
     }
 }
@@ -311,23 +320,30 @@ void *indexed_queue_pop(w_indexed_queue_t *queue) {
         return NULL;
     }
 
-    // Find and remove from index
-    // We need to find which key corresponds to this data
-    // This is inefficient, but necessary for this design
-    char **keys = rbtree_keys(queue->index);
-    if (keys) {
-        for (int i = 0; keys[i]; i++) {
-            w_indexed_queue_entry_t *entry = rbtree_get(queue->index, keys[i]);
-            if (entry && entry->data == data) {
-                rbtree_delete(queue->index, keys[i]);
-                break;
+    // Find and remove from index using get_key callback if available
+    if (queue->get_key) {
+        // O(log n) key lookup using callback
+        char *key = queue->get_key(data);
+        if (key) {
+            rbtree_delete(queue->index, key);
+        }
+    } else {
+        // Fallback to O(n) search if no callback is set
+        char **keys = rbtree_keys(queue->index);
+        if (keys) {
+            for (int i = 0; keys[i]; i++) {
+                w_indexed_queue_entry_t *entry = rbtree_get(queue->index, keys[i]);
+                if (entry && entry->data == data) {
+                    rbtree_delete(queue->index, keys[i]);
+                    break;
+                }
             }
+            // Free keys array
+            for (int i = 0; keys[i]; i++) {
+                free(keys[i]);
+            }
+            free(keys);
         }
-        // Free keys array
-        for (int i = 0; keys[i]; i++) {
-            free(keys[i]);
-        }
-        free(keys);
     }
 
     atomic_fetch_sub(&queue->current_size, 1);

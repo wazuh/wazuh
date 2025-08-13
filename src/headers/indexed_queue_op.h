@@ -59,6 +59,7 @@ typedef struct w_indexed_queue {
     size_t max_size;                    ///< Maximum size (0 = unlimited)
     _Atomic size_t current_size;        ///< Current number of elements
     void (*dispose)(void *);            ///< Function to dispose data elements
+    char *(*get_key)(void *);           ///< Function to get key from data element
 } w_indexed_queue_t;
 
 /**
@@ -83,6 +84,14 @@ void indexed_queue_free(w_indexed_queue_t *queue);
  * @param dispose Function to call when disposing elements
  */
 void indexed_queue_set_dispose(w_indexed_queue_t *queue, void (*dispose)(void *));
+
+/**
+ * @brief Set function to get key from data element
+ *
+ * @param queue The indexed queue
+ * @param get_key Function to call to get key from data element
+ */
+void indexed_queue_set_get_key(w_indexed_queue_t *queue, char *(*get_key)(void *));
 
 /**
  * @brief Check if the queue is empty
