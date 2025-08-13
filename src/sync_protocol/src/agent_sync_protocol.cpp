@@ -419,106 +419,114 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
         return false;
     }
 
-    const auto* message = Wazuh::SyncSchema::GetMessage(data);
-    const auto messageType = message->content_type();
-
-    std::unique_lock<std::mutex> lock(m_syncState.mtx);
-
-    switch (messageType)
+    try
     {
-        case Wazuh::SyncSchema::MessageType::StartAck:
-            {
-                if (m_syncState.phase == SyncPhase::WaitingStartAck)
-                {
-                    const auto* startAck = message->content_as_StartAck();
+        const auto* message = Wazuh::SyncSchema::GetMessage(data);
+        const auto messageType = message->content_type();
 
-                    if (startAck->status() == Wazuh::SyncSchema::Status::Error ||
-                            startAck->status() == Wazuh::SyncSchema::Status::Offline)
+        std::unique_lock<std::mutex> lock(m_syncState.mtx);
+
+        switch (messageType)
+        {
+            case Wazuh::SyncSchema::MessageType::StartAck:
+                {
+                    if (m_syncState.phase == SyncPhase::WaitingStartAck)
                     {
-                        LoggingHelper::getInstance().log(LOG_ERROR, "Received StartAck with error status. Aborting synchronization.");
+                        const auto* startAck = message->content_as_StartAck();
+
+                        if (startAck->status() == Wazuh::SyncSchema::Status::Error ||
+                                startAck->status() == Wazuh::SyncSchema::Status::Offline)
+                        {
+                            LoggingHelper::getInstance().log(LOG_ERROR, "Received StartAck with error status. Aborting synchronization.");
+                            m_syncState.syncFailed = true;
+                            m_syncState.cv.notify_all();
+                            break;
+                        }
+
+                        const uint64_t incomingSession = startAck->session();
+                        m_syncState.session = incomingSession;
+                        m_syncState.startAckReceived = true;
+                        m_syncState.cv.notify_all();
+
+                        LoggingHelper::getInstance().log(LOG_DEBUG, "Received and accepted for new session: " + std::to_string(static_cast<int>(m_syncState.session)));
+                    }
+                    else
+                    {
+                        LoggingHelper::getInstance().log(LOG_DEBUG, "Discarded. Not in WaitingStartAck phase. Current phase: " + std::to_string(static_cast<int>(m_syncState.phase)));
+                    }
+
+                    break;
+                }
+
+            case Wazuh::SyncSchema::MessageType::EndAck:
+                {
+                    const auto* endAck = message->content_as_EndAck();
+                    const uint64_t incomingSession = endAck->session();
+
+                    if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
+                    {
+                        LoggingHelper::getInstance().log(LOG_DEBUG, "Parsing EndAck, invalid phase or session.");
+                        break;
+                    }
+
+                    if (endAck->status() == Wazuh::SyncSchema::Status::Error ||
+                            endAck->status() == Wazuh::SyncSchema::Status::Offline)
+                    {
+                        LoggingHelper::getInstance().log(LOG_ERROR, "Received EndAck with error status. Aborting synchronization.");
                         m_syncState.syncFailed = true;
                         m_syncState.cv.notify_all();
                         break;
                     }
 
-                    const uint64_t incomingSession = startAck->session();
-                    m_syncState.session = incomingSession;
-                    m_syncState.startAckReceived = true;
+                    m_syncState.endAckReceived = true;
                     m_syncState.cv.notify_all();
 
-                    LoggingHelper::getInstance().log(LOG_DEBUG, "Received and accepted for new session: " + std::to_string(static_cast<int>(m_syncState.session)));
-                }
-                else
-                {
-                    LoggingHelper::getInstance().log(LOG_DEBUG, "Discarded. Not in WaitingStartAck phase. Current phase: " + std::to_string(static_cast<int>(m_syncState.phase)));
-                }
-
-                break;
-            }
-
-        case Wazuh::SyncSchema::MessageType::EndAck:
-            {
-                const auto* endAck = message->content_as_EndAck();
-                const uint64_t incomingSession = endAck->session();
-
-                if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
-                {
-                    LoggingHelper::getInstance().log(LOG_DEBUG, "Parsing EndAck, invalid phase or session.");
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "EndAck session '" + std::to_string(incomingSession) + "' ended" );
                     break;
                 }
 
-                if (endAck->status() == Wazuh::SyncSchema::Status::Error ||
-                        endAck->status() == Wazuh::SyncSchema::Status::Offline)
+            case Wazuh::SyncSchema::MessageType::ReqRet:
                 {
-                    LoggingHelper::getInstance().log(LOG_ERROR, "Received EndAck with error status. Aborting synchronization.");
-                    m_syncState.syncFailed = true;
-                    m_syncState.cv.notify_all();
-                    break;
-                }
+                    const auto* reqRet = message->content_as_ReqRet();
+                    const uint64_t incomingSession = reqRet->session();
 
-                m_syncState.endAckReceived = true;
-                m_syncState.cv.notify_all();
-
-                LoggingHelper::getInstance().log(LOG_DEBUG, "EndAck session '" + std::to_string(incomingSession) + "' ended" );
-                break;
-            }
-
-        case Wazuh::SyncSchema::MessageType::ReqRet:
-            {
-                const auto* reqRet = message->content_as_ReqRet();
-                const uint64_t incomingSession = reqRet->session();
-
-                if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
-                {
-                    LoggingHelper::getInstance().log(LOG_DEBUG, "Parsing ReqRet, invalid phase or session.");
-                    break;
-                }
-
-                m_syncState.reqRetRanges.clear();
-
-                if (reqRet->seq())
-                {
-                    for (const auto* pair : *reqRet->seq())
+                    if (!validatePhaseAndSession(SyncPhase::WaitingEndAck, incomingSession))
                     {
-                        m_syncState.reqRetRanges.emplace_back(pair->begin(), pair->end());
+                        LoggingHelper::getInstance().log(LOG_DEBUG, "Parsing ReqRet, invalid phase or session.");
+                        break;
                     }
+
+                    m_syncState.reqRetRanges.clear();
+
+                    if (reqRet->seq())
+                    {
+                        for (const auto* pair : *reqRet->seq())
+                        {
+                            m_syncState.reqRetRanges.emplace_back(pair->begin(), pair->end());
+                        }
+                    }
+
+                    m_syncState.reqRetReceived = true;
+
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "ReqRet received '" + std::to_string(m_syncState.reqRetRanges.size()) + "' ranges" );
+                    m_syncState.cv.notify_all();
+                    break;
                 }
 
-                m_syncState.reqRetReceived = true;
+            default:
+                {
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "Unknown message type: " + std::to_string(static_cast<int>(messageType)));
+                    return false;
+                }
+        }
 
-                LoggingHelper::getInstance().log(LOG_DEBUG, "ReqRet received '" + std::to_string(m_syncState.reqRetRanges.size()) + "' ranges" );
-                m_syncState.cv.notify_all();
-                break;
-            }
-
-        default:
-            {
-                LoggingHelper::getInstance().log(LOG_DEBUG, "Unknown message type: " + std::to_string(static_cast<int>(messageType)));
-                return false;
-            }
+        return true;
     }
-
-    return true;
+    catch (const std::exception& e)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("Exception while parsing response buffer: ") + e.what());
+        return false;
+    }
 }
 
 bool AgentSyncProtocol::validatePhaseAndSession(const SyncPhase receivedPhase, const uint64_t incomingSession)
