@@ -1311,7 +1311,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - "c:dpkg-query -s gdm3 -> r:package 'gdm3' is not installed'"
+      - "c:dpkg-query -s gdm3 -> r:package 'gdm3' is not installed"
 
   # 1.7.2 Ensure GDM login banner is configured. (Automated)
    - id: 35553
@@ -6401,7 +6401,7 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
+     condition: any
      rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow -> r:0 root \d+ shadow|0 root 0 root && r:640|604|600|400|500'
 
@@ -6425,7 +6425,7 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
+     condition: any
      rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shadow- -> r:0 root \d+ shadow|0 root 0 root && r:640|604|600|400|500'
 
@@ -6449,7 +6449,7 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
+     condition: any
      rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow -> r:0 root \d+ shadow|0 root 0 root && r:640|604|600|400|500'
 
@@ -6473,7 +6473,7 @@ checks:
        - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
        - pci_dss_v4.0: ["1.3.1", "7.1"]
        - soc_2: ["CC5.2", "CC6.1"]
-     condition: all
+     condition: any
      rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/gshadow- -> r:0 root \d+ shadow|0 root 0 root && r: r:640|604|600|400|500'
 
