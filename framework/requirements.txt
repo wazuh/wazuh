@@ -55,7 +55,7 @@ mypy-extensions==0.4.3
 numpy==1.26.0
 openapi-schema-validator==0.6.2
 openapi-spec-validator==0.7.1
-packaging==20.9
+packaging==25.0
 pathable==0.4.3
 pathlib==1.0.1
 proto-plus==1.26.0
