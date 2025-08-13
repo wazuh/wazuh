@@ -223,6 +223,13 @@ _restart_ruleset_default_result_kwargs = {
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _restart_ruleset_default_result_kwargs})
 async def reload_ruleset() -> AffectedItemsWazuhResult:
+    """Reload the ruleset on the current node.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result of the reload operation, including affected and failed items.
+    """
     results = AffectedItemsWazuhResult(**_restart_ruleset_default_result_kwargs)
 
     try:
