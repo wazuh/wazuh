@@ -227,7 +227,7 @@
                         <File Id="FIMDB_DLL" Name="libfimdb.dll" Source="..\syscheckd\build\bin\libfimdb.dll" />
                     </Component>
                     <Component Id="AGENT_SYNC_PROTOCOL_DLL" DiskId="1" Guid="0B6A98BA-DC42-4DD4-8F60-E18987A36A75">
-                        <File Id="AGENT_SYNC_PROTOCOL_DLL" Name="libagent_sync_protocol.dll" Source="..\sync_protocol/build/bin/libagent_sync_protocol.dll" />
+                        <File Id="AGENT_SYNC_PROTOCOL_DLL" Name="libagent_sync_protocol.dll" Source="..\sync_protocol\build\bin\libagent_sync_protocol.dll" />
                     </Component>
 
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->
