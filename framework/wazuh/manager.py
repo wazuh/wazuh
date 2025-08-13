@@ -22,6 +22,7 @@ from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
+node_type = get_node().get('type') if cluster_enabled else 'master'
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
@@ -225,12 +226,14 @@ async def reload_ruleset() -> AffectedItemsWazuhResult:
     results = AffectedItemsWazuhResult(**_restart_ruleset_default_result_kwargs)
 
     try:
-        if node_id == 'manager':
+        if node_type == 'master':
             socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
             if socket_response.is_ok():
                 affected_item = {'name': node_id, 'msg': ''}
                 if socket_response.has_warnings():
                     affected_item['msg'] = ', '.join(socket_response.warnings)
+                else:
+                    affected_item['msg'] = 'Ruleset reload request sent successfully'
 
                 results.affected_items.append(affected_item)
             else:
@@ -238,9 +241,15 @@ async def reload_ruleset() -> AffectedItemsWazuhResult:
 
         else:
             lc = local_client.LocalClient()
-            await set_reload_ruleset_flag(lc)
+            result = await set_reload_ruleset_flag(lc)
 
-            results.affected_items.append({'name': node_id, 'msg': ''})
+            # Replace technical details
+            if isinstance(result, dict) and 'msg' in result:
+                result = result['msg']
+            if result == 'Reload ruleset flag set successfully':
+                result = 'Ruleset reload request sent successfully'
+
+            results.affected_items.append({'name': node_id, 'msg': result})
     except WazuhError as e:
         results.add_failed_item(id_=node_id, error=e)
 
