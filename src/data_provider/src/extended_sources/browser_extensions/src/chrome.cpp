@@ -12,7 +12,10 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include "openssl/sha.h"
+#include <openssl/evp.h>
+#include <vector>
+#include <fstream>
+#include <string>
 #include "stringHelper.h"
 #include "filesystemHelper.h"
 
@@ -150,7 +153,7 @@ namespace chrome
 
         for (unsigned char c : input)
         {
-            if (c >= 256 || T[c] == -1) break;
+            if (T[c] == -1) break;
 
             val = (val << 6) + T[c];
             valb += 6;
@@ -170,13 +173,45 @@ namespace chrome
         // Decode to string first
         std::string decodedString = base64Decode(key);
 
+        if (decodedString.empty())
+        {
+            return "";
+        }
+
         // Convert to vector<uint8_t> to match original behavior exactly
         std::vector<uint8_t> decodedVector(decodedString.begin(), decodedString.end());
 
-        uint8_t hash[SHA256_DIGEST_LENGTH];
-        SHA256(decodedVector.data(), decodedVector.size(), hash);
+        EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
 
-        std::string letters_string = hashToLetterString(hash, SHA256_DIGEST_LENGTH);
+        if (!mdctx)
+        {
+            return "";
+        }
+
+        if (EVP_DigestInit_ex(mdctx, EVP_sha256(), nullptr) != 1)
+        {
+            EVP_MD_CTX_free(mdctx);
+            return "";
+        }
+
+        if (EVP_DigestUpdate(mdctx, decodedVector.data(), decodedVector.size()) != 1)
+        {
+            EVP_MD_CTX_free(mdctx);
+            return "";
+        }
+
+        unsigned char hash[EVP_MAX_MD_SIZE];
+        unsigned int hashLen = 0;
+
+        if (EVP_DigestFinal_ex(mdctx, hash, &hashLen) != 1)
+        {
+            EVP_MD_CTX_free(mdctx);
+            return "";
+        }
+
+        EVP_MD_CTX_free(mdctx);
+
+        std::string letters_string = hashToLetterString(hash, hashLen);
         return letters_string.substr(0, 32);
     }
 
@@ -199,24 +234,45 @@ namespace chrome
 
         if (!file)
         {
-            return ""; // Return empty hash
+            return "";
         }
 
-        SHA256_CTX sha256;
-        SHA256_Init(&sha256);
+        EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+
+        if (!mdctx)
+        {
+            return "";
+        }
+
+        if (EVP_DigestInit_ex(mdctx, EVP_sha256(), nullptr) != 1)
+        {
+            EVP_MD_CTX_free(mdctx);
+            return "";
+        }
 
         std::vector<char> buffer(8192);
 
         while (file.read(buffer.data(), buffer.size()) || file.gcount() > 0)
         {
-            SHA256_Update(&sha256, buffer.data(), file.gcount());
+            if (EVP_DigestUpdate(mdctx, buffer.data(), file.gcount()) != 1)
+            {
+                EVP_MD_CTX_free(mdctx);
+                return "";
+            }
         }
 
-        uint8_t hash[SHA256_DIGEST_LENGTH];
-        SHA256_Final(hash, &sha256);
+        unsigned char hash[EVP_MAX_MD_SIZE];
+        unsigned int length = 0;
 
-        // Reuse the same hex function if needed
-        return hashToHexString(hash, SHA256_DIGEST_LENGTH);
+        if (EVP_DigestFinal_ex(mdctx, hash, &length) != 1)
+        {
+            EVP_MD_CTX_free(mdctx);
+            return "";
+        }
+
+        EVP_MD_CTX_free(mdctx);
+
+        return hashToHexString(hash, length);
     }
 
     std::string ChromeExtensionsProvider::webkitToUnixTime(std::string webkit_timestamp)
@@ -277,11 +333,11 @@ namespace chrome
 
         if (value.contains("from_webstore"))
         {
-            extension.from_webstore = value["from_webstore"].get<bool>() ? "true" : "false";
+            extension.from_webstore = value["from_webstore"].get<bool>() ? "1" : "0";
         }
         else
         {
-            extension.from_webstore = "";
+            extension.from_webstore = "0";
         }
 
         extension.install_time = value.contains("first_install_time") ? value["first_install_time"].get<std::string>() : "0";
