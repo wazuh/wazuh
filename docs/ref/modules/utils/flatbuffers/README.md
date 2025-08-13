@@ -1,14 +1,12 @@
 # Flatbuffers
 
-Various modules, such as the Vulnerability Detector and Inventory Harvester, use FlatBuffers. FlatBuffers is a library that enables high-performance data serialization and deserialization without the need of unpacking or parsing, providing direct access to the required information.
+Various modules, such as the Vulnerability Detector, use FlatBuffers. FlatBuffers is a library that enables high-performance data serialization and deserialization without the need of unpacking or parsing, providing direct access to the required information.
 
 Although the synchronization events received by Remoted are in JSON format, they require to augmentate the event data with additional **agent context** within this module. As a result, deserializing and re-serializing the data becomes unavoidable. Given this requirement, the augmented synchronization events—processed through dbsync and rsync—are converted to FlatBuffers.
 
 Another key use of FlatBuffers in the Vulnerability Detector module is for processing vulnerability feeds, specifically those following the CVE5 schema. In this case, FlatBuffers are used to avoid the deserialization overhead during scanning.
 
 Due to the nature of FlatBuffers, the deserialization cost is significantly lower compared to JSON, regardless of the JSON library used. This makes FlatBuffers particularly well-suited for scanning operations, where deserialization performance is a critical factor.
-
-For the inventory harvester the data is converted into FlatBuffers and send it to wazuh-modulesd through the router module(IPC).
 
 ## Flatbuffer schemas
 
