@@ -113,7 +113,7 @@ void send_syscheck_msg(const cJSON *_msg) {
 }
 
 // Persist a syscheck message
-void persist_syscheck_msg(const char *id, const int operation, const char *index, const cJSON* _msg) {
+void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg) {
     if (syscheck.enable_synchronization) {
         char* msg = cJSON_PrintUnformatted(_msg);
 
@@ -525,7 +525,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     while (FOREVER()) {
         mdebug1("Running inventory synchronization.");
 
-        asp_sync_module(syscheck.sync_handle, 0, syscheck.sync_response_timeout, 3, syscheck.sync_max_eps);
+        asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, SYNC_RETRIES, syscheck.sync_max_eps);
 
         mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
         sleep(syscheck.sync_interval);

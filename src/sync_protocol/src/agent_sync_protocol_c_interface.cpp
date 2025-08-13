@@ -31,17 +31,14 @@ extern "C" {
     {
         try
         {
-            if (!mq_funcs || !db_path) return nullptr;
+            if (!mq_funcs || !db_path || !module || !logger) return nullptr;
 
-            if (logger)
+            LoggingHelper::setLogCallback(
+                [logger](const modules_log_level_t level, const char* msg)
             {
-                LoggingHelper::setLogCallback(
-                    [logger](const modules_log_level_t level, const char* msg)
-                {
-                    logger(level, msg);
-                }
-                );
+                logger(level, msg);
             }
+            );
 
             return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, db_path, *mq_funcs));
         }
@@ -75,7 +72,7 @@ extern "C" {
 
     void asp_persist_diff(AgentSyncProtocolHandle* handle,
                           const char* id,
-                          int operation,
+                          Operation_t operation,
                           const char* index,
                           const char* data)
     {
@@ -99,7 +96,7 @@ extern "C" {
     }
 
     bool asp_sync_module(AgentSyncProtocolHandle* handle,
-                         int mode,
+                         Mode_t mode,
                          unsigned int sync_timeout,
                          unsigned int retries,
                          size_t max_eps)

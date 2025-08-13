@@ -10,7 +10,7 @@
 #ifndef AGENT_SYNC_PROTOCOL_HPP
 #define AGENT_SYNC_PROTOCOL_HPP
 
-#include "agent_sync_protocol_c_interface.h"
+#include "agent_sync_protocol_c_interface_types.h"
 #include "iagent_sync_protocol.hpp"
 
 #include <atomic>

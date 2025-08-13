@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include "agent_sync_protocol_c_interface_types.h"
+
 #include <cstdint>
 #include <string>
 #include <optional>
@@ -17,10 +19,10 @@
 /// @brief Defines the type of modification operation.
 enum class Operation : int
 {
-    CREATE = 0, ///< The operation is to create a new record.
-    MODIFY = 1, ///< The operation is to modify an existing record.
-    DELETE = 2, ///< The operation is to delete a record.
-    NO_OP = 3   ///< No specific operation is being synchronized. Represents a neutral state.
+    CREATE = OPERATION_CREATE, ///< The operation is to create a new record.
+    MODIFY = OPERATION_MODIFY, ///< The operation is to modify an existing record.
+    DELETE = OPERATION_DELETE, ///< The operation is to delete a record.
+    NO_OP  = OPERATION_NO_OP   ///< No specific operation is being synchronized. Represents a neutral state.
 };
 
 /// @brief Represents a persisted message used in module synchronization.

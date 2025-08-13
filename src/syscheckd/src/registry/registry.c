@@ -125,7 +125,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     char *path = NULL;
     int arch = -1;
     char iso_time[32];
-    int sync_operation = -1;
+    Operation_t sync_operation = OPERATION_NO_OP;
 
     fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
 
@@ -155,17 +155,17 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     switch (resultType) {
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
-            sync_operation = 0;
+            sync_operation = OPERATION_CREATE;
             break;
 
         case MODIFIED:
             event_data->evt_data->type = FIM_MODIFICATION;
-            sync_operation = 1;
+            sync_operation = OPERATION_MODIFY;
             break;
 
         case DELETED:
             event_data->evt_data->type = FIM_DELETE;
-            sync_operation = 2;
+            sync_operation = OPERATION_DELETE;
             break;
 
         case MAX_ROWS:
@@ -312,7 +312,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     char *value = NULL;
     int arch = -1;
     char iso_time[32];
-    int sync_operation = -1;
+    Operation_t sync_operation = OPERATION_NO_OP;
 
     fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
 
@@ -346,12 +346,12 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     switch (resultType) {
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
-            sync_operation = 0;
+            sync_operation = OPERATION_CREATE;
             break;
 
         case MODIFIED:
             event_data->evt_data->type = FIM_MODIFICATION;
-            sync_operation = 1;
+            sync_operation = OPERATION_MODIFY;
             break;
 
         case DELETED:
@@ -359,7 +359,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
                 fim_diff_process_delete_value(path, value, arch);
             }
             event_data->evt_data->type = FIM_DELETE;
-            sync_operation = 2;
+            sync_operation = OPERATION_DELETE;
             break;
 
         case MAX_ROWS:
