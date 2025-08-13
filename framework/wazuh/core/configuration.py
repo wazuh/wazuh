@@ -1293,14 +1293,6 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data
 
-        # Include password if auth->use_password enabled and authd.pass file exists
-        if data.get('auth', {}).get('use_password') == 'yes':
-            try:
-                with open(os_path.join(common.WAZUH_PATH, "etc", "authd.pass"), 'r') as f:
-                    data['authd.pass'] = f.read().rstrip()
-            except IOError:
-                pass
-
         return data
     else:
         raise WazuhError(1117 if "No such file or directory" in rec_data or "Cannot send request" in rec_data else 1116,
