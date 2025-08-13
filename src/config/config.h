@@ -26,7 +26,7 @@
 #define CAGENT_CONFIG 0000010000
 #define CAGENTLESS    0000020000
 #define CREPORTS      0000040000
-#define CINTEGRATORD  0000100000
+// TODO: should I update the flags to follow 1 2 4
 #define CWMODULE      0000200000
 #define CLABELS       0000400000
 #define CAUTHD        0001000000
@@ -46,10 +46,9 @@
                             (modules & CREMOTE       ) | (modules & CCLIENT       ) | (modules & CMAIL         ) |\
                             (modules & CAR           ) | (modules & CDBD          ) | (modules & CSYSLOGD      ) |\
                             (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      ) |\
-                            (modules & CINTEGRATORD  ) | (modules & CWMODULE      ) | (modules & CLABELS       ) |\
-                            (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
-                            (modules & CLGCSOCKET    ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) |\
-                            (modules & CANDSOCKET    ) )
+                            (modules & CWMODULE      ) | (modules & CLABELS       ) | (modules & CAUTHD        ) |\
+                            (modules & CBUFFER       ) | (modules & CCLUSTER      ) | (modules & CLGCSOCKET    ) |\
+                            (modules & CLOGTEST      ) | (modules & WAZUHDB       ) | (modules & CANDSOCKET    ) )
 
 typedef enum needed_tags {
     JSONOUT_OUTPUT = 0,

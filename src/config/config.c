@@ -36,7 +36,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osbuffer = "client_buffer";                     /* Agent Buffer Config  */
     const char *oscommand = "command";                          /* ? Config      */
-    const char *osintegratord = "integration";                  /* Server Config */
     const char *osactive_response = "active-response";          /* Agent Config  */
     const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
     const char *oslabels = "labels";                            /* Labels Config */
@@ -87,10 +86,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, oscsyslogd) == 0)) {
             if ((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if(chld_node && (strcmp(node[i]->element, osintegratord) == 0)) {
-            if((modules & CINTEGRATORD) && (Read_Integrator(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oscagentless) == 0)) {
