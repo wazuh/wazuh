@@ -264,9 +264,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENTLESSDIR        "agentless"
 #define AGENTLESS_ENTRYDIR  "queue/agentless"
 
-/* Integration directory. */
-#define INTEGRATORDIR "integrations"
-
 
 /* Internal definitions files */
 #ifndef WIN32
