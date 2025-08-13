@@ -29,13 +29,10 @@
             value: GROUPS_SCAN
         - users:
             value: USERS_SCAN
-<<<<<<< HEAD
         - services:
             value: SERVICES_SCAN
-=======
         - browser_extensions:
             value: BROWSER_EXTENSIONS_SCAN
->>>>>>> 8abd902613 (feat: add browser extensions table to syscollector)
         - synchronization:
             elements:
               - max_eps:

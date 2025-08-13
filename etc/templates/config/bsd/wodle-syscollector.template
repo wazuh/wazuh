@@ -11,11 +11,8 @@
     <processes>no</processes>
     <users>no</users>
     <groups>no</groups>
-<<<<<<< HEAD
     <services>no</services>
-=======
     <browser_extensions>no</browser_extensions>
->>>>>>> 8abd902613 (feat: add browser extensions table to syscollector)
 
     <!-- Database synchronization settings -->
     <synchronization>
