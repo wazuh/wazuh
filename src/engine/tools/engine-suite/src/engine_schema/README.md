@@ -49,6 +49,8 @@ options:
                         [default="v8.17.0"] ECS version to use for the schema generation
   --output-dir OUTPUT_DIR
                         [default="./"] Root directory to store generated files
+  --allowed-fields-path ALLOWED_FIELDS_PATH
+                        Path to the allowed fields JSON file. If provided, it will be used to filter the generated schema.
 
 subcommands:
   {integration}
@@ -87,11 +89,14 @@ Success.
 It will output the following files under the specified directory (working directory by default):
 - `engine-schema.json`: Schema configuration for the engine module.
 - `fields.json`: Contains the Visual Code schema for the assets.
+- `fields_decoder.json`: Contains the Visual Code schema for the decoders.
+- `fields_rule.json`: Contains the Visual Code schema for the rules.
 - `wazuh-logpar-types.json`: Configuration for the engine parser module.
 - `wazuh-template.json`: Configuration for the Wazuh indexer.
 
 We must format the documents and replace them in their respective folders:
 - engine-schema.json -> wazuh/src/engine/ruleset/schemas/engine-schema.json
-- fields.json -> wazuh/src/engine/ruleset/schemas/fields.json
+- fields_decoder.json -> wazuh/src/engine/ruleset/schemas/fields_decoder.json
+- fields_rule.json -> wazuh/src/engine/ruleset/schemas/fields_rule.json
 - wazuh-logpar-types.json -> wazuh/src/engine/ruleset/schemas/wazuh-logpar-types.json
 - wazuh-template.json -> wazuh/src/engine/extension/elasticsearch/7.x/wazuh-template.json
