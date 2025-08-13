@@ -260,6 +260,53 @@ void test_start_mq_write_inf_fail(void ** state){
     ret = StartMQ(path, type, n_attempts);
 }
 
+void test_start_mq_predicated_write_success(void ** state){
+    (void)state; // Unused
+
+    /* Function parameters */
+    short int n_attempts = 0;
+    short int type = WRITE;
+    char * path = "/test";
+
+    int ret = 0;
+    char messages[2][OS_SIZE_64];
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, 0);
+
+    snprintf(messages[0], OS_SIZE_64,"Connected succesfully to '%s' after %d attempts", path, 0);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[0]);
+
+    snprintf(messages[1], OS_SIZE_64, "(unix_domain) Maximum send buffer set to: '%d'.",SOCKET_SIZE);
+    expect_string(__wrap__mdebug1, formatted_msg, messages[1]);
+
+    ret = StartMQPredicated(path, type, n_attempts, ptr_function);
+    assert_false(ret);
+}
+
+void test_start_mq_predicated_write_fail(void ** state){
+    (void)state; // Unused
+
+    /* Function parameters */
+    short int n_attempts = 0;
+    short int type = WRITE;
+    char * path = "/test";
+
+    int ret = 0;
+    errno = ERRNO;
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Reconnection attempts terminated due to the shutdown of FIM.");
+
+    ret = StartMQPredicated(path, type, n_attempts, ptr_function);
+    assert_int_equal(ret, -1);
+}
+
 void test_reconnect_mq_simple_success(void ** state){
     (void)state; // Unused
 
@@ -438,6 +485,8 @@ int main(void){
        cmocka_unit_test(test_reconnect_mq_simple_fail),
        cmocka_unit_test(test_reconnect_mq_complex_true),
        cmocka_unit_test(test_reconnect_mq_simple_success),
+       cmocka_unit_test(test_start_mq_predicated_write_success),
+       cmocka_unit_test(test_start_mq_predicated_write_fail),
        // Test test_SendMSGAction
        cmocka_unit_test(test_SendMSGAction_format_error),
        cmocka_unit_test(test_SendMSGAction_queue_not_available),
