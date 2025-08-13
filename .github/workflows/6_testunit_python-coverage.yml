@@ -9,7 +9,7 @@ on:
         default: 'main'
   pull_request:
     paths:
-      - '.github/workflows/5_testunit_python-coverage.yml'
+      - '.github/workflows/6_testunit_python-coverage.yml'
 
 jobs:
   build:
