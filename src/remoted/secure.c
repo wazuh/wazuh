@@ -125,7 +125,6 @@ char *str_family_address[FAMILY_ADDRESS_SIZE] = {
 typedef struct {
     keyentry * key; ///< Pointer to the key entry of agent to which the message belongs
     char * message; ///< Raw message received
-    int agent_id;   ///< Agent ID
     int is_startup; ///< Validation result: is startup message
     int is_shutdown; ///< Validation result: is shutdown message
     bool post_startup; ///< Keystore flag: pending full sync after startup
@@ -151,6 +150,20 @@ static void w_free_ctrl_msg_data(w_ctrl_msg_data_t * ctrl_msg_data) {
 }
 
 /**
+ * @brief Get key from control message data for indexed queue
+ *
+ * @param data Pointer to w_ctrl_msg_data_t structure
+ * @return Pointer to agent_id string (must not be freed by caller)
+ */
+static char *w_ctrl_msg_get_key(void *data) {
+    w_ctrl_msg_data_t *ctrl_msg_data = (w_ctrl_msg_data_t *)data;
+    if (ctrl_msg_data && ctrl_msg_data->key) {
+        return ctrl_msg_data->key->id;
+    }
+    return NULL;
+}
+
+/**
  * @brief Thread function to save control messages
  *
  * This function is executed by the control message thread pool. It waits for messages to be pushed into the queue and processes them.
@@ -171,6 +184,7 @@ void HandleSecure()
     size_t ctrl_msg_queue_size = (size_t) getDefine_Int("remoted", "control_msg_queue_size", 4096, 0x1 << 20); // 1MB
     control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
+    indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
@@ -842,9 +856,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 w_ctrl_msg_data_t * ctrl_msg_data;
                 os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
 
-                ctrl_msg_data->agent_id = agentid;
                 ctrl_msg_data->key = key;
-                key = NULL;
 
                 os_calloc(msg_length, sizeof(char), ctrl_msg_data->message);
                 // Use cleaned message from validation if available, otherwise use original
@@ -855,23 +867,18 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 ctrl_msg_data->is_shutdown = is_shutdown;
                 ctrl_msg_data->post_startup = post_startup;
 
-                // Create key based on agent_id for indexing
-                char agent_key[32];
-                snprintf(agent_key, sizeof(agent_key), "%d", agentid);
-
                 // Use upsert to allow updating existing control messages for the same agent
-                int res = indexed_queue_upsert_ex(control_msg_queue, agent_key, ctrl_msg_data);
+                int res = indexed_queue_upsert_ex(control_msg_queue, key->id, ctrl_msg_data);
+                key = NULL;
+
                 switch (res) {
                 case 0:
-                    mdebug2("Control message pushed in queue for agent ID '%s'.", agent_key);
                     rem_inc_ctrl_queue_inserted();
                     break;
                 case 1:
-                    mdebug2("Control message updated in queue for agent ID '%s'.", agent_key);
                     rem_inc_ctrl_queue_replaced();
                     break;
                 default:
-                    mwarn("Failed to insert control message for agent ID '%s'.", agent_key);
                     w_free_ctrl_msg_data(ctrl_msg_data);
                 }
             } else if (validation_result == 0) {
