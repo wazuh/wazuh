@@ -145,7 +145,7 @@ typedef enum fdb_stmt {
 #endif
 
 #include "../os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
-#include "integrity_op.h"
+#include "shared.h"
 #include "../external/sqlite/sqlite3.h"
 #include "../headers/list_op.h"
 
