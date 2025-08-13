@@ -33,6 +33,6 @@ bool __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
                             unsigned int retries,
                             size_t max_eps);
 
-int __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data);
+bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data);
 
 #endif

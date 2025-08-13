@@ -14,7 +14,6 @@
 #include "logging_helper.hpp"
 
 #include <flatbuffers/flatbuffers.h>
-#include <iostream>
 #include <thread>
 
 constexpr char SYNC_MQ = 's';

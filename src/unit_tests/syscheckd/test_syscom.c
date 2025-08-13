@@ -159,7 +159,7 @@ void test_syscom_dispatch_sync_success(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "WMCOM Syncing module with data 'test-data'.");
     expect_value(__wrap_asp_parse_response_buffer, handle, syscheck.sync_handle);
     expect_memory(__wrap_asp_parse_response_buffer, data, "test-data", strlen("test-data"));
-    will_return(__wrap_asp_parse_response_buffer, 0);
+    will_return(__wrap_asp_parse_response_buffer, true);
 
     ret = syscom_dispatch(command, &output);
 
@@ -197,7 +197,7 @@ void test_syscom_dispatch_sync_error(void **state)
     expect_string(__wrap__mdebug2, formatted_msg, "WMCOM Syncing module with data 'test-data'.");
     expect_value(__wrap_asp_parse_response_buffer, handle, syscheck.sync_handle);
     expect_memory(__wrap_asp_parse_response_buffer, data, "test-data", strlen("test-data"));
-    will_return(__wrap_asp_parse_response_buffer, -1);
+    will_return(__wrap_asp_parse_response_buffer, false);
 
     expect_string(__wrap__mdebug1, formatted_msg, "WMCOM Error syncing module");
 

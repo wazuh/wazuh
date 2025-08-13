@@ -46,8 +46,8 @@ bool __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
     return mock_type(bool);
 }
 
-int __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data) {
+bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data) {
     check_expected_ptr(handle);
     check_expected_ptr(data);
-    return mock_type(int);
+    return mock_type(bool);
 }

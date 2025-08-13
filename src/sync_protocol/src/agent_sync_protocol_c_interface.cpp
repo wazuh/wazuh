@@ -123,24 +123,24 @@ extern "C" {
         }
     }
 
-    int asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data)
+    bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data)
     {
         try
         {
-            if (!handle || !data) return -1;
+            if (!handle || !data) return false;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            return wrapper->impl->parseResponseBuffer(data) ? 0 : -1;
+            return wrapper->impl->parseResponseBuffer(data);
         }
         catch (const std::exception& ex)
         {
             LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, std::string("asp_parse_response_buffer exception: ") + ex.what());
-            return -1;
+            return false;
         }
         catch (...)
         {
             LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, "asp_parse_response_buffer unknown exception");
-            return -1;
+            return false;
         }
     }
 
