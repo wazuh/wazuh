@@ -223,6 +223,18 @@ async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
     return result
 
 async def set_reload_ruleset_flag(lc: local_client.LocalClient) -> dict:
+    """Set the reload ruleset flag on the specified cluster node.
+
+    Parameters
+    ----------
+    lc : LocalClient
+        LocalClient instance.
+
+    Returns
+    -------
+    dict
+        Dictionary with results.
+    """
     response = await lc.execute(command=b"sendrreload", data=b"")
     result = json.loads(response, object_hook=as_wazuh_object)
 
