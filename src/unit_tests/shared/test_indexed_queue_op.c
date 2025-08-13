@@ -55,6 +55,26 @@ void test_data_dispose(void *data) {
     free(data);
 }
 
+// Test structure for callback testing
+typedef struct {
+    char *key;
+    int value;
+} test_keyed_data_t;
+
+// Test callback function to extract key from test_keyed_data_t
+char *test_get_key_callback(void *data) {
+    test_keyed_data_t *keyed_data = (test_keyed_data_t *)data;
+    return keyed_data ? keyed_data->key : NULL;
+}
+
+void test_keyed_data_dispose(void *data) {
+    test_keyed_data_t *keyed_data = (test_keyed_data_t *)data;
+    if (keyed_data) {
+        free(keyed_data->key);
+        free(keyed_data);
+    }
+}
+
 /****************SIMPLE PTHREAD WRAPPERS******************/
 // No-op wrappers to avoid mock complexities
 
@@ -392,6 +412,115 @@ void test_indexed_queue_null_parameters(void **state) {
     indexed_queue_free(queue);
 }
 
+void test_indexed_queue_get_key_callback(void **state) {
+    w_indexed_queue_t *queue = *state;
+
+    // Set up callback and dispose functions
+    indexed_queue_set_get_key(queue, test_get_key_callback);
+    indexed_queue_set_dispose(queue, test_keyed_data_dispose);
+
+    // Create test data with embedded keys
+    test_keyed_data_t *data1 = malloc(sizeof(test_keyed_data_t));
+    data1->key = strdup("test_key_1");
+    data1->value = 100;
+
+    test_keyed_data_t *data2 = malloc(sizeof(test_keyed_data_t));
+    data2->key = strdup("test_key_2");
+    data2->value = 200;
+
+    // Push data using the embedded keys
+    assert_int_equal(indexed_queue_push(queue, "test_key_1", data1), 0);
+    assert_int_equal(indexed_queue_push(queue, "test_key_2", data2), 0);
+    assert_int_equal(indexed_queue_size(queue), 2);
+
+    // Pop should use callback to efficiently remove from index
+    test_keyed_data_t *popped = (test_keyed_data_t *)indexed_queue_pop(queue);
+    assert_non_null(popped);
+    assert_string_equal(popped->key, "test_key_1");
+    assert_int_equal(popped->value, 100);
+    assert_int_equal(indexed_queue_size(queue), 1);
+
+    // Verify first item was removed from index
+    void *not_found = indexed_queue_get(queue, "test_key_1");
+    assert_null(not_found);
+
+    // Second item should still be accessible
+    test_keyed_data_t *still_there = (test_keyed_data_t *)indexed_queue_get(queue, "test_key_2");
+    assert_non_null(still_there);
+    assert_int_equal(still_there->value, 200);
+
+    // Clean up manually freed data
+    test_keyed_data_dispose(popped);
+
+    // Pop and clean up remaining data before resetting callbacks
+    test_keyed_data_t *remaining = (test_keyed_data_t *)indexed_queue_pop(queue);
+    if (remaining) {
+        test_keyed_data_dispose(remaining);
+    }
+
+    // Reset callbacks to NULL
+    indexed_queue_set_get_key(queue, NULL);
+    indexed_queue_set_dispose(queue, NULL);
+}
+
+void test_indexed_queue_callback_fallback(void **state) {
+    w_indexed_queue_t *queue = *state;
+
+    // Test without callback (should use O(n) fallback)
+    int *data1 = malloc(sizeof(int));
+    *data1 = 42;
+    int *data2 = malloc(sizeof(int));
+    *data2 = 99;
+
+    assert_int_equal(indexed_queue_push(queue, "fallback_key_1", data1), 0);
+    assert_int_equal(indexed_queue_push(queue, "fallback_key_2", data2), 0);
+
+    // Pop should still work using O(n) search
+    int *popped = (int *)indexed_queue_pop(queue);
+    assert_non_null(popped);
+    assert_int_equal(*popped, 42);
+
+    // Verify removal from index worked
+    void *not_found = indexed_queue_get(queue, "fallback_key_1");
+    assert_null(not_found);
+
+    free(popped);
+}
+
+void test_indexed_queue_callback_null_key(void **state) {
+    w_indexed_queue_t *queue = *state;
+
+    // Set callback that returns NULL for some data
+    indexed_queue_set_get_key(queue, test_get_key_callback);
+
+    // Create data with NULL key
+    test_keyed_data_t *data_null_key = malloc(sizeof(test_keyed_data_t));
+    data_null_key->key = NULL;  // This will make callback return NULL
+    data_null_key->value = 999;
+
+    // Push with explicit key
+    assert_int_equal(indexed_queue_push(queue, "explicit_key", data_null_key), 0);
+
+    // Pop should handle NULL key gracefully (won't find in index but shouldn't crash)
+    test_keyed_data_t *popped = (test_keyed_data_t *)indexed_queue_pop(queue);
+    assert_non_null(popped);
+    assert_int_equal(popped->value, 999);
+
+    // Clean up
+    free(data_null_key);
+    indexed_queue_set_get_key(queue, NULL);
+}
+
+void test_indexed_queue_set_callbacks_null_queue(void **state) {
+    (void) state;
+
+    // Test setting callbacks on NULL queue (should not crash)
+    indexed_queue_set_get_key(NULL, test_get_key_callback);
+    indexed_queue_set_dispose(NULL, test_keyed_data_dispose);
+
+    // No assertions needed - just verify no crash
+}
+
 /****************MAIN******************/
 
 int main(void) {
@@ -409,6 +538,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_indexed_queue_fifo_order, setup_indexed_queue_unlimited, teardown_indexed_queue),
         cmocka_unit_test_setup_teardown(test_indexed_queue_mixed_operations, setup_indexed_queue_unlimited, teardown_indexed_queue),
         cmocka_unit_test(test_indexed_queue_null_parameters),
+        cmocka_unit_test_setup_teardown(test_indexed_queue_get_key_callback, setup_indexed_queue_unlimited, teardown_indexed_queue),
+        cmocka_unit_test_setup_teardown(test_indexed_queue_callback_fallback, setup_indexed_queue_unlimited, teardown_indexed_queue),
+        cmocka_unit_test_setup_teardown(test_indexed_queue_callback_null_key, setup_indexed_queue_unlimited, teardown_indexed_queue),
+        cmocka_unit_test(test_indexed_queue_set_callbacks_null_queue),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
