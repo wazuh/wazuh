@@ -19,7 +19,6 @@
 
 
 int OS_MD5_SHA1_SHA256_File(const char *fname,
-                            char **prefilter_cmd,
                             os_md5 md5output,
                             os_sha1 sha1output,
                             os_sha256 sha256output,
@@ -44,34 +43,11 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
     sha256output[0] = '\0';
     buf[OS_BUFFER_SIZE + 1] = '\0';
 
-    /* Use prefilter_cmd if set */
-    if (prefilter_cmd == NULL) {
-        fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
-        if (!fp) {
-            return (-1);
-        }
-    } else {
-        char **command = NULL;
-        int cnt = 0;
-        while(prefilter_cmd[cnt] != NULL) {
-            cnt++;
-        }
-        os_calloc(cnt + 2, sizeof(char *), command);
-        for (cnt = 0; prefilter_cmd[cnt]; cnt++) {
-            os_strdup(prefilter_cmd[cnt], command[cnt]);
-        }
-
-        os_strdup(fname, command[cnt]);
-
-        wfd = wpopenv(*command, command, W_BIND_STDOUT);
-        free_strarray(command);
-
-        if (wfd == NULL) {
-            return -1;
-        }
-
-        fp = wfd->file_out;
+    fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
+    if (!fp) {
+        return (-1);
     }
+
 
     /* Initialize all hashes */
     sha1_ctx = EVP_MD_CTX_new();
@@ -88,11 +64,8 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
             read = read + n;
             if (read >= max_size) {     // Maximum filesize error
                 mwarn("'%s' filesize is larger than the maximum allowed (%d MB). File skipped.", fname, (int)max_size/1048576); // max_size is in bytes
-                if (prefilter_cmd == NULL) {
-                    fclose(fp);
-                } else {
-                    wpclose(wfd);
-                }
+                fclose(fp);
+
                 EVP_MD_CTX_free(sha1_ctx);
                 EVP_MD_CTX_free(md5_ctx);
                 EVP_MD_CTX_free(sha256_ctx);
@@ -134,11 +107,7 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
     }
 
     /* Close it */
-    if (prefilter_cmd == NULL) {
-        fclose(fp);
-    } else {
-        wpclose(wfd);
-    }
+    fclose(fp);
 
     return (0);
 }
