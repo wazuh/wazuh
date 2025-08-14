@@ -23,7 +23,7 @@
   metadata:
     protocol: 'TCP'
     command_request: 'agent getconfig client'
-    expected_answer: '{"client":{"config-profile":"centos8","notify_time":10,"time-reconnect":60}}'
+    expected_answer: '{"client":{"config-profile":"centos8","notify_time":20,"time-reconnect":60}}'
 
 - name: test request agent info
   description: test request agent info
@@ -32,7 +32,7 @@
   metadata:
     protocol: 'UDP'
     command_request: 'agent getconfig client'
-    expected_answer: '{"client":{"config-profile":"centos8","notify_time":10,"time-reconnect":60}}'
+    expected_answer: '{"client":{"config-profile":"centos8","notify_time":20,"time-reconnect":60}}'
 
 - name: test request agent info
   description: test request agent info

@@ -17,8 +17,8 @@ Group:       System Environment/Daemons
 Source0:     %{name}-%{version}.tar.gz
 URL:         https://www.wazuh.com/
 BuildRoot:   %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Vendor:      Wazuh, Inc <info@wazuh.com>
-Packager:    Wazuh, Inc <info@wazuh.com>
+Vendor:      Wazuh <info@wazuh.com>
+Packager:    Wazuh <info@wazuh.com>
 Requires(pre):    /usr/sbin/groupadd /usr/sbin/useradd
 Requires(postun): /usr/sbin/groupdel /usr/sbin/userdel
 Conflicts:   ossec-hids ossec-hids-agent wazuh-manager wazuh-local
@@ -793,11 +793,11 @@ rm -fr %{buildroot}
 %changelog
 * Thu Dec 18 2025 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
+* Wed Oct 01 2025 support <info@wazuh.com> - 4.14.1
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html
 * Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
-* Wed Jul 30 2025 support <info@wazuh.com> - 4.13.1
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-13-1.html
-* Wed Jul 16 2025 support <info@wazuh.com> - 4.13.0
+* Tue Aug 05 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html
