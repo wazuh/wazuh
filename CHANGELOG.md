@@ -59,39 +59,6 @@ All notable changes to this project will be documented in this file.
 - Upgraded Python embedded interpreter to 3.10.18. ([#30916](https://github.com/wazuh/wazuh/pull/30916))
 
 
-## [v4.13.1]
-
-### Manager
-
-#### Fixed
-
-- Fixed DFM graceful shutdown. ([#30627](https://github.com/wazuh/wazuh/pull/30627))
-- Fixed inode field as string in FIM JSON messages to ensure schema consistency. ([#30718](https://github.com/wazuh/wazuh/pull/30718))
-
-### Agent
-
-#### Added
-
-- Added Ms-Graph token validation before performing requests. ([#30377](https://github.com/wazuh/wazuh/pull/30377))
-- Added support for UTF-8 characters in file paths for FIM. ([#30763](https://github.com/wazuh/wazuh/pull/30763))
-
-#### Fixed
-
-- Fixed the loss of precision of the FIM inode field at values higher than 2ˆ53. ([#30552](https://github.com/wazuh/wazuh/pull/30552))
-- Fixed expanded file list in logcollector getconfig output. ([#30614](https://github.com/wazuh/wazuh/pull/30614))
-
-### RESTful API
-
-#### Added
-
-- Added /agents/summary endpoint. ([#29589](https://github.com/wazuh/wazuh/pull/29589))
-- Added support for hot ruleset reload via API. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
-
-#### Changed
-
-- Removed internal_key from queries filters. ([#30637](https://github.com/wazuh/wazuh/pull/30637))
-
-
 ## [v4.13.0]
 
 ### Manager
@@ -108,6 +75,10 @@ All notable changes to this project will be documented in this file.
 - Fixed race condition in agent status synchronization between worker and master. ([#29624](https://github.com/wazuh/wazuh/pull/29624))
 - Fixed agent-group assignment for missing agents with improved error handling. ([#30534](https://github.com/wazuh/wazuh/pull/30534))
 - Fixed missing OS info updates in global inventory after first scan. ([#30818](https://github.com/wazuh/wazuh/pull/30818))
+- Fixed wazuh-db failure during agent restarts by updating the restart query to use HTTP. ([#31048](https://github.com/wazuh/wazuh/pull/31048))
+- Fixed DFM graceful shutdown. ([#30627](https://github.com/wazuh/wazuh/pull/30627))
+- Fixed inode field as string in FIM JSON messages to ensure schema consistency. ([#30718](https://github.com/wazuh/wazuh/pull/30718))
+- Fixed duplicate OS vulnerabilities detected due to inventory after OS version change. ([#30837](https://github.com/wazuh/wazuh/pull/30837))
 
 #### Changed
 
@@ -119,6 +90,7 @@ All notable changes to this project will be documented in this file.
 - Separated control messages from the connection handling in remoted. ([29153](https://github.com/wazuh/wazuh/pull/29153))
 - Added capability to re-index CVEs if documents have changed in Vulnerability detector. ([#29916](https://github.com/wazuh/wazuh/pull/29916))
 - Improved exception handling in `run_local` SDK funcition. ([#30851](https://github.com/wazuh/wazuh/pull/30851))
+- Improved Authd connection management using epoll for better handling of concurrent agent registration requests. ([#29135](https://github.com/wazuh/wazuh/pull/29135))
 
 ### Agent
 
@@ -128,6 +100,8 @@ All notable changes to this project will be documented in this file.
 - Added handling of CentOS 9 SCA files in package specs. ([#29393](https://github.com/wazuh/wazuh-packages/pull/29393))
 - Added SCA support for Oracle Linux 10. ([#29139](https://github.com/wazuh/wazuh/pull/29139))
 - Added Rootcheck rule to detect root-owned files with world-writable permissions. ([#30556](https://github.com/wazuh/wazuh/pull/30556))
+- Added Ms-Graph token validation before performing requests. ([#30377](https://github.com/wazuh/wazuh/pull/30377))
+- Added support for UTF-8 characters in file paths for FIM. ([#30763](https://github.com/wazuh/wazuh/pull/30763))
 
 #### Fixed
 
@@ -139,6 +113,9 @@ All notable changes to this project will be documented in this file.
 - Replaced `select()` with `sleep()` in Logcollector to prevent errors during Docker deployment. ([#29905](https://github.com/wazuh/wazuh/pull/29905))
 - Fixed NetNTLMv2 exposure by filtering UNC paths and mapped drives in Windows agent. ([#30060](https://github.com/wazuh/wazuh/pull/30060))
 - Fixed Windows agent not starting after manual upgrade by deferring service start to post-install. ([#29820](https://github.com/wazuh/wazuh/pull/29820))
+- Fixed the loss of precision of the FIM inode field at values higher than 2ˆ53. ([#30552](https://github.com/wazuh/wazuh/pull/30552))
+- Fixed expanded file list in logcollector getconfig output. ([#30614](https://github.com/wazuh/wazuh/pull/30614))
+- Fixed authd.pass ACL permissions to match client.keys security level in Windows agent installer. ([#31187](https://github.com/wazuh/wazuh/pull/31187))
 
 #### Changed
 
@@ -148,12 +125,15 @@ All notable changes to this project will be documented in this file.
 - Improved Azure module logging capabilities. ([#29930](https://github.com/wazuh/wazuh/pull/29930))
 - Improved restart on macOS agents after an upgrade. ([#29940](https://github.com/wazuh/wazuh/pull/29940))
 - Standarized different services timeouts. ([#29443](https://github.com/wazuh/wazuh/pull/29443))
+- Removed internal_key from queries filters. ([#30637](https://github.com/wazuh/wazuh/pull/30637))
 
 ### RESTful API
 
 #### Added
 
 - Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
+- Added /agents/summary endpoint. ([#29589](https://github.com/wazuh/wazuh/pull/29589))
+- Added support for hot ruleset reload via API. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
 
 #### Fixed
 
@@ -175,6 +155,7 @@ All notable changes to this project will be documented in this file.
 - Fixed multiple checks in RHEL 9, RHEL 10, Rocky Linux 8 and Rocky Linux 9 SCA policies. ([#29040](https://github.com/wazuh/wazuh/pull/29040))
 - Fixed diff causing false negatives in rootcheck. ([#28982](https://github.com/wazuh/wazuh/pull/28982))
 - Fixed multiple RHEL 8 and CentOS 7 SCA checks generating incorrect results. ([#28711](https://github.com/wazuh/wazuh/pull/28711))
+- Fixed false positives in Benchmark Ubuntu 24.04. ([#30827](https://github.com/wazuh/wazuh/pull/30827))
 
 ### Other
 

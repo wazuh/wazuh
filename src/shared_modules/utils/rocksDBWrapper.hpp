@@ -16,6 +16,7 @@
 #include "rocksDBColumnFamily.hpp"
 #include "rocksDBIterator.hpp"
 #include "rocksDBOptions.hpp"
+#include "rocksDBSharedBuffers.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <memory>
@@ -69,12 +70,25 @@ namespace Utils
          * @param repairIfCorrupt Whether to repair the database if it is found corrupt while opening.
          *                        WARNING: this process might not recover all data.
          */
-        explicit TRocksDBWrapper(std::string dbPath, const bool enableWal = true, const bool repairIfCorrupt = true)
+        explicit TRocksDBWrapper(std::string dbPath,
+                                 const bool enableWal = true,
+                                 const bool repairIfCorrupt = true,
+                                 const bool useSharedBuffers = false)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
         {
-            m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
-            m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
+
+            if (useSharedBuffers)
+            {
+                auto& sharedBuffers = RocksDBSharedBuffers::getInstance();
+                m_readCache = sharedBuffers.getReadCache();
+                m_writeManager = sharedBuffers.getWriteBufferManager();
+            }
+            else
+            {
+                m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
+                m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
+            }
 
             rocksdb::Options options = RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
             rocksdb::ColumnFamilyOptions columnFamilyOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);

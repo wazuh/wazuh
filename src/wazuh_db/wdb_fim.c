@@ -453,7 +453,7 @@ int wdb_fim_insert_entry2(wdb_t * wdb, const cJSON * data) {
             } else if (strcmp(element->string, "value_type") == 0) {
                 sqlite3_bind_text(stmt, 20, element->valuestring, -1, NULL);
             } else if (strcmp(element->string, "inode") == 0) {
-                // New 4.13.1 version of the message, inode is a string.
+                // New 4.13.0 version of the message, inode is a string.
                 if(element->valuestring) {
                     char* end_ptr = NULL;
                     errno = 0;

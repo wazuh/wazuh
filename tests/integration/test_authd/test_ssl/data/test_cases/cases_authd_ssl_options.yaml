@@ -5,7 +5,7 @@
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: output
-    input: OSSEC A:'user1'
+    input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
     ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
     protocol: ssl_tlsv1_2
@@ -18,7 +18,7 @@
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: open_error
-    input: OSSEC A:'user1'
+    input: "OSSEC A:'user1'\n"
     output:
     ciphers: CAMELLIA
     protocol: ssl_tlsv1_2
@@ -57,7 +57,7 @@
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: output
-    input: OSSEC A:'user1'
+    input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
     ciphers: SHA256
     protocol: ssl_tlsv1_2
@@ -83,7 +83,7 @@
     SSL_AUTO_NEGOTIATE: 'yes'
   metadata:
     expect: output
-    input: OSSEC A:'user1'
+    input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
     ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
     protocol: ssl_tlsv1_1
@@ -96,7 +96,7 @@
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: output
-    input: OSSEC A:'user1'
+    input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
     ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
     protocol: ssl_tlsv1_2
@@ -109,7 +109,7 @@
     SSL_AUTO_NEGOTIATE: 'no'
   metadata:
     expect: output
-    input: OSSEC A:'user1'
+    input: "OSSEC A:'user1'\n"
     output: OSSEC K:'
     ciphers: HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH
     protocol: ssl_tlsv1_2

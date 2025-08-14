@@ -184,7 +184,7 @@ INSERT INTO sys_hwinfo VALUES (2089525312, '2019/03/21 11:25:00', '0', 'Intel(R)
                                1992.001, 492832, 64032, 88);
 
 INSERT INTO sys_programs VALUES (95033803, '2019/03/21 13:25:00', 'deb', 'wazuh-manager', 'extra', 'admin', 320462,
-                                 'Wazuh, Inc <info@wazuh.com>', null, '3.9.0-1', 'amd64', null, null,
+                                 'Wazuh', null, '3.9.0-1', 'amd64', null, null,
                                  'Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring',
                                  null, 0);
 INSERT INTO sys_programs VALUES (95033803, '2019/03/21 13:25:00', 'deb', 'curl', 'optional', 'web', 386,
