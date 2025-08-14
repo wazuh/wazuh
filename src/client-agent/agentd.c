@@ -65,10 +65,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     minfo(ENC_READ);
     OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
-    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
-    if (agt->force_reconnect_interval) {
-        minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
-    }
+    minfo("Using notify time: %d", agt->notify_time);
 
     if (!getuname()) {
         merror(MEM_ERROR, errno, strerror(errno));
