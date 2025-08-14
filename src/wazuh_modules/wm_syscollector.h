@@ -34,6 +34,7 @@ typedef struct wm_sys_flags_t {
     unsigned int running:1;                 // The module is running
     unsigned int groups:1;                  // Groups inventory
     unsigned int users:1;                   // Users inventory
+    unsigned int browser_extensions:1;      // Browser extensions inventory
 } wm_sys_flags_t;
 
 typedef struct wm_sys_state_t {

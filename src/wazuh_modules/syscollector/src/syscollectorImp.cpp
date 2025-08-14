@@ -45,7 +45,7 @@ static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
     // LCOV_EXCL_START
     {MODIFIED, "MODIFIED"},
-    {DELETED, "DELETED"},
+    {DELETED,  "DELETED" },
     {INSERTED, "INSERTED"},
     {MAX_ROWS, "MAX_ROWS"},
     {DB_ERROR, "DB_ERROR"},
@@ -225,6 +225,7 @@ Syscollector::Syscollector()
     , m_notify { false }
     , m_groups { false }
     , m_users { false }
+    , m_browserExtensions { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -242,6 +243,7 @@ std::string Syscollector::getCreateStatement() const
     ret += NETADDR_SQL_STATEMENT;
     ret += GROUPS_SQL_STATEMENT;
     ret += USERS_SQL_STATEMENT;
+    ret += BROWSER_EXTENSIONS_SQL_STATEMENT;
     return ret;
 }
 
@@ -368,6 +370,13 @@ void Syscollector::registerWithRsync()
                                   reportSyncWrapper);
     }
 
+    if (m_browserExtensions)
+    {
+        m_spRsync->registerSyncID("syscollector_browser_extensions",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(BROWSER_EXTENSIONS_SYNC_CONFIG_STATEMENT),
+                                  reportSyncWrapper);
+    }
 }
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
@@ -388,6 +397,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool hotfixes,
                         const bool groups,
                         const bool users,
+                        const bool browserExtensions,
                         const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
@@ -407,6 +417,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_notify = notifyOnFirstScan;
     m_groups = groups;
     m_users = users;
+    m_browserExtensions = browserExtensions;
 
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
     auto remoteSync = std::make_unique<RemoteSync>();
@@ -816,6 +827,24 @@ void Syscollector::scanPorts()
     }
 }
 
+nlohmann::json Syscollector::getBrowserExtensionsData()
+{
+    nlohmann::json ret;
+    auto extensions = m_spInfo->browserExtensions();
+
+    if (!extensions.is_null())
+    {
+        for (auto& extension : extensions)
+        {
+            sanitizeJsonValue(extension);
+            extension["checksum"] = getItemChecksum(extension);
+            ret.push_back(std::move(extension));
+        }
+    }
+
+    return ret;
+}
+
 void Syscollector::syncPorts()
 {
     m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
@@ -896,6 +925,22 @@ void Syscollector::syncUsers()
     m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(USERS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
+void Syscollector::scanBrowserExtensions()
+{
+    if (m_browserExtensions)
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting browser extensions scan");
+        const auto& extensionsData { getBrowserExtensionsData() };
+        updateChanges(BROWSER_EXTENSIONS_TABLE, extensionsData);
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending browser extensions scan");
+    }
+}
+
+void Syscollector::syncBrowserExtensions()
+{
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(BROWSER_EXTENSIONS_START_CONFIG_STATEMENT), m_reportSyncFunction);
+}
+
 void Syscollector::scan()
 {
     m_logFunction(LOG_INFO, "Starting evaluation.");
@@ -910,6 +955,7 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanProcesses);
     TRY_CATCH_TASK(scanGroups);
     TRY_CATCH_TASK(scanUsers);
+    TRY_CATCH_TASK(scanBrowserExtensions);
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
@@ -926,6 +972,7 @@ void Syscollector::sync()
     TRY_CATCH_TASK(syncProcesses);
     TRY_CATCH_TASK(syncGroups);
     TRY_CATCH_TASK(syncUsers);
+    TRY_CATCH_TASK(syncBrowserExtensions);
     m_logFunction(LOG_DEBUG, "Ending syscollector sync");
 }
 
