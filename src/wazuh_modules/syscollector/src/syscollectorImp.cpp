@@ -225,6 +225,7 @@ Syscollector::Syscollector()
     , m_notify { false }
     , m_groups { false }
     , m_users { false }
+    , m_services { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -242,6 +243,7 @@ std::string Syscollector::getCreateStatement() const
     ret += NETADDR_SQL_STATEMENT;
     ret += GROUPS_SQL_STATEMENT;
     ret += USERS_SQL_STATEMENT;
+    ret += SERVICES_SQL_STATEMENT;
     return ret;
 }
 
@@ -368,6 +370,14 @@ void Syscollector::registerWithRsync()
                                   reportSyncWrapper);
     }
 
+    if (m_services)
+    {
+        m_spRsync->registerSyncID("syscollector_services",
+                                  m_spDBSync->handle(),
+                                  nlohmann::json::parse(SERVICES_SYNC_CONFIG_STATEMENT),
+                                  reportSyncWrapper);
+    }
+
 }
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
@@ -388,6 +398,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool hotfixes,
                         const bool groups,
                         const bool users,
+                        const bool services,
                         const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
@@ -407,6 +418,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_notify = notifyOnFirstScan;
     m_groups = groups;
     m_users = users;
+    m_services = services;
 
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
     auto remoteSync = std::make_unique<RemoteSync>();
@@ -779,14 +791,15 @@ nlohmann::json Syscollector::getPortsData()
 nlohmann::json Syscollector::getGroupsData()
 {
     nlohmann::json ret;
-    auto data = m_spInfo->groups();
+    auto groups = m_spInfo->groups();
 
-    if (!data.is_null())
+    if (!groups.is_null())
     {
-        for (auto& item : data)
+        for (auto& group : groups)
         {
-            item["checksum"] = getItemChecksum(item);
-            ret.push_back(item);
+            sanitizeJsonValue(group);
+            group["checksum"] = getItemChecksum(group);
+            ret.push_back(std::move(group));
         }
     }
 
@@ -795,14 +808,38 @@ nlohmann::json Syscollector::getGroupsData()
 
 nlohmann::json Syscollector::getUsersData()
 {
-    auto allUsers = m_spInfo->users();
+    nlohmann::json ret;
+    auto users = m_spInfo->users();
 
-    for (auto& user : allUsers)
+    if (!users.is_null())
     {
-        user["checksum"] = getItemChecksum(user);
+        for (auto& user : users)
+        {
+            sanitizeJsonValue(user);
+            user["checksum"] = getItemChecksum(user);
+            ret.push_back(std::move(user));
+        }
     }
 
-    return allUsers;
+    return ret;
+}
+
+nlohmann::json Syscollector::getServicesData()
+{
+    nlohmann::json ret;
+    auto services = m_spInfo->services();
+
+    if (!services.is_null())
+    {
+        for (auto& service : services)
+        {
+            sanitizeJsonValue(service);
+            service["checksum"] = getItemChecksum(service);
+            ret.push_back(std::move(service));
+        }
+    }
+
+    return ret;
 }
 
 void Syscollector::scanPorts()
@@ -896,6 +933,22 @@ void Syscollector::syncUsers()
     m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(USERS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
+void Syscollector::scanServices()
+{
+    if (m_services)
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting services scan");
+        const auto& servicesData { getServicesData() };
+        updateChanges(SERVICES_TABLE, servicesData);
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending services scan");
+    }
+}
+
+void Syscollector::syncServices()
+{
+    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(SERVICES_START_CONFIG_STATEMENT), m_reportSyncFunction);
+}
+
 void Syscollector::scan()
 {
     m_logFunction(LOG_INFO, "Starting evaluation.");
@@ -910,6 +963,7 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanProcesses);
     TRY_CATCH_TASK(scanGroups);
     TRY_CATCH_TASK(scanUsers);
+    TRY_CATCH_TASK(scanServices);
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
@@ -926,6 +980,7 @@ void Syscollector::sync()
     TRY_CATCH_TASK(syncProcesses);
     TRY_CATCH_TASK(syncGroups);
     TRY_CATCH_TASK(syncUsers);
+    TRY_CATCH_TASK(syncServices);
     m_logFunction(LOG_DEBUG, "Ending syscollector sync");
 }
 

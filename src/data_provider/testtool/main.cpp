@@ -54,7 +54,7 @@ class SysInfoPrinter final
             m_data["ports"] = m_sysinfo.ports();
         }
 
-        void printHotfixes()
+        void printHotfixesInfo()
         {
             m_data["hotfixes"] = m_sysinfo.hotfixes();
         }
@@ -64,9 +64,14 @@ class SysInfoPrinter final
             m_data["groups"] = m_sysinfo.groups();
         }
 
-        void printUsers()
+        void printUsersInfo()
         {
             m_data["users"] = m_sysinfo.users();
+        }
+
+        void printServicesInfo()
+        {
+            m_data["services"] = m_sysinfo.services();
         }
 
         void printData()
@@ -110,8 +115,10 @@ int main(int argc, const char* argv[])
             printer.printPackagesInfo();
             printer.printProcessesInfo();
             printer.printPortsInfo();
-            printer.printHotfixes();
-            printer.printUsers();
+            printer.printHotfixesInfo();
+            printer.printUsersInfo();
+            printer.printGroupsInfo();
+            printer.printServicesInfo();
             printer.printData();
             printer.printPackagesInfoCallback();
             printer.printProcessesInfoCallback();
@@ -146,11 +153,11 @@ int main(int argc, const char* argv[])
             }
             else if (cmdLineArgs.hotfixesArg())
             {
-                printer.printHotfixes();
+                printer.printHotfixesInfo();
             }
             else if (cmdLineArgs.usersArg())
             {
-                printer.printUsers();
+                printer.printUsersInfo();
             }
             else if (cmdLineArgs.packagesCallbackArg())
             {
@@ -163,6 +170,10 @@ int main(int argc, const char* argv[])
             else if (cmdLineArgs.groupsArg())
             {
                 printer.printGroupsInfo();
+            }
+            else if (cmdLineArgs.servicesArg())
+            {
+                printer.printServicesInfo();
             }
             else
             {
