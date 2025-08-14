@@ -213,6 +213,18 @@ get_rbac_actions:
           - PUT /agents/upgrade
           - PUT /agents/upgrade_custom
           - GET /agents/upgrade_result
+      analysisd:reload:
+        description: Reloads Wazuh's ruleset
+        resources:
+          - node:id
+        example:
+          actions:
+            - analysisd:reload
+          resources:
+            - node:id:worker1
+          effect: allow
+        related_endpoints:
+          - PUT /cluster/analysisd/reload
       group:delete:
         description: Delete agent groups
         resources:
@@ -364,7 +376,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
-          - PUT /cluster/analysisd/reload
       lists:read:
         description: Read CDB lists files
         resources:

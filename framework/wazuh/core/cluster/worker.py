@@ -265,7 +265,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         self.logger.debug(f"Command received: '{command}'")
         if command == b'syn_m_c_ok':
             asyncio.create_task(self.log_exceptions(self.sync_integrity_ok_from_master()))
-            return b'ok'
+            return b'ok', b'Thanks'
         elif command == b'syn_m_c':
             return self.setup_receive_files_from_master()
         elif command == b'syn_m_c_e':
@@ -391,22 +391,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         return super().error_receiving_file(task_id_and_error_details=data, logger_tag='Integrity sync')
 
-    async def sync_integrity_ok_from_master(self) -> Tuple[bytes, bytes]:
-        """Function called when the master sends the "syn_m_c_ok" command.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            Response message.
-        """
+    async def sync_integrity_ok_from_master(self):
+        """Function called when the master sends the "syn_m_c_ok" command."""
         integrity_logger = self.task_loggers['Integrity check']
         integrity_logger.info(
             f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
             f"Sync not required.")
 
-        with self.reload_ruleset_flag:
+        async with self.reload_ruleset_flag:
             if self.reload_ruleset_flag.is_set():
                 response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
                 if response.is_ok():

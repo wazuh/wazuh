@@ -3,8 +3,6 @@ from json import dumps, loads
 from typing import List
 
 from wazuh.core import common
-from wazuh.core.exception import WazuhError
-from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.wazuh_socket import create_wazuh_socket_message, WazuhSocket
 
 RELOAD_RULESET_COMMAND = "reload-ruleset"
