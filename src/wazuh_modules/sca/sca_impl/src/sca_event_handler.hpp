@@ -78,14 +78,12 @@ protected:
     /// @brief Sends a stateful event using the push message callback.
     ///
     /// @param event The complete event data.
-    /// @param metadata Associated metadata (e.g., operation type and module).
-    void PushStateful(const nlohmann::json& event, const nlohmann::json& metadata) const;
+    void PushStateful(const nlohmann::json& event) const;
 
     /// @brief Sends a stateless (delta) event using the push message callback.
     ///
     /// @param event The delta event data.
-    /// @param metadata Associated metadata.
-    void PushStateless(const nlohmann::json& event, const nlohmann::json& metadata) const;
+    void PushStateless(const nlohmann::json& event) const;
 
     /// @brief Calculates a unique hash ID for an event.
     ///
