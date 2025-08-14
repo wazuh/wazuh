@@ -23,7 +23,7 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
         MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
 
-TEST(BrowserExtensionsTests, IgnoresNonExtensionApp)
+TEST(SafariExtensionsTests, IgnoresNonExtensionApp)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
     std::string appsPath = Utils::getParentPath(__FILE__) + "/input_files/apps_mock_dir";
@@ -36,7 +36,7 @@ TEST(BrowserExtensionsTests, IgnoresNonExtensionApp)
     ASSERT_EQ(extensionsJson.size(), static_cast<size_t>(2));
 }
 
-TEST(BrowserExtensionsTests, CollectReturnsExpectedJson)
+TEST(SafariExtensionsTests, CollectReturnsExpectedJson)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
     std::string appsPath = Utils::getParentPath(__FILE__) + "/input_files/apps_mock_dir";
