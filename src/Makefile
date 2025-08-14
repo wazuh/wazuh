@@ -2159,7 +2159,7 @@ endif
 
 #### Util ##########
 
-util_programs = agent_control
+util_programs = agent_control verify-agent-conf
 
 $(util_programs): $(BUILD_LIBS)
 
@@ -2171,6 +2171,9 @@ util_o := $(util_c:.c=.o)
 
 util/%.o: util/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./util -DARGV0=\"utils\" -c $^ -o $@
+
+verify-agent-conf: util/verify-agent-conf.o
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 agent_control: util/agent_control.o addagent/validate.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
