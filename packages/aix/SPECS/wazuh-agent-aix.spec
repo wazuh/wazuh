@@ -4,8 +4,8 @@ Version:     %{_version}
 Release:     %{_release}
 License:     GPL
 URL:         https://www.wazuh.com/
-Vendor:      Wazuh, Inc <info@wazuh.com>
-Packager:    Wazuh, Inc <info@wazuh.com>
+Vendor:      Wazuh <info@wazuh.com>
+Packager:    Wazuh <info@wazuh.com>
 Summary:     The Wazuh agent, used for threat detection, incident response and integrity monitoring.
 
 Group: System Environment/Daemons
@@ -285,9 +285,7 @@ rm -fr %{buildroot}
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html
 * Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
-* Wed Jul 30 2025 support <info@wazuh.com> - 4.13.1
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-13-1.html
-* Wed Jul 16 2025 support <info@wazuh.com> - 4.13.0
+* Tue Aug 05 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html

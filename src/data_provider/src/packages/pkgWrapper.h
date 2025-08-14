@@ -197,6 +197,11 @@ class PKGWrapper final : public IPackageWrapper
                                 if (Utils::findRegexInString(m_description, vendor, bundleIdRegex, 1))
                                 {
                                     m_vendor = vendor;
+
+                                    if (m_vendor.size() > 0 && islower(m_vendor[0]))
+                                    {
+                                        m_vendor[0] = toupper(m_vendor[0]);
+                                    }
                                 }
                             }
                         }
@@ -285,6 +290,11 @@ class PKGWrapper final : public IPackageWrapper
                                 if (i == 1)
                                 {
                                     m_vendor = reverseDomainName[i];
+
+                                    if (m_vendor.size() > 0 && islower(m_vendor[0]))
+                                    {
+                                        m_vendor[0] = toupper(m_vendor[0]);
+                                    }
                                 }
                                 else if (i > 1)
                                 {

@@ -382,7 +382,7 @@ WriteAgent()
         fi
       fi
     fi
-    echo "    <notify_time>10</notify_time>" >> $NEWCONFIG
+    echo "    <notify_time>20</notify_time>" >> $NEWCONFIG
     echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG

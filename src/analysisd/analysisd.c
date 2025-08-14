@@ -98,7 +98,7 @@ static int execdq = 0;
 /* Active response queue */
 static int arq = 0;
 
-static unsigned int hourly_events;
+static atomic_int_t hourly_events;
 static unsigned int hourly_syscheck;
 static unsigned int hourly_firewall;
 
@@ -304,7 +304,7 @@ int main_analysisd(int argc, char **argv)
     prev_year = 0;
     memset(prev_month, '\0', 4);
     hourly_alerts = 0;
-    hourly_events = 0;
+    hourly_events = (atomic_int_t) ATOMIC_INT_INITIALIZER(0);
     hourly_syscheck = 0;
     hourly_firewall = 0;
 
@@ -1187,9 +1187,9 @@ static void DumpLogstats()
     /* Print total for the hour */
     fprintf(flog, "%d--%d--%d--%d--%d\n\n",
             thishour,
-            hourly_alerts, hourly_events, hourly_syscheck, hourly_firewall);
+            hourly_alerts, atomic_int_get(&hourly_events), hourly_syscheck, hourly_firewall);
     w_guard_mutex_variable(hourly_alert_mutex, (hourly_alerts = 0));
-    hourly_events = 0;
+    atomic_int_set(&hourly_events, 0);
     hourly_syscheck = 0;
     hourly_firewall = 0;
 
@@ -1237,7 +1237,7 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
-                        hourly_events++;
+                        atomic_int_inc(&hourly_events);
                         hourly_syscheck++;
                     }
                 }
@@ -1259,7 +1259,7 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
-                        hourly_events++;
+                        atomic_int_inc(&hourly_events);
                     }
                 }
 
@@ -1280,7 +1280,7 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
-                        hourly_events++;
+                        atomic_int_inc(&hourly_events);
                     }
                 }
 
@@ -1301,7 +1301,7 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
-                        hourly_events++;
+                        atomic_int_inc(&hourly_events);
                     }
                 }
 
@@ -1322,7 +1322,7 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
-                        hourly_events++;
+                        atomic_int_inc(&hourly_events);
                     }
                 }
 
@@ -1343,7 +1343,7 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
-                        hourly_events++;
+                        atomic_int_inc(&hourly_events);
                     }
                 }
 
@@ -1364,7 +1364,7 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
-                        hourly_events++;
+                        atomic_int_inc(&hourly_events);
                     }
                 }
 
@@ -1385,7 +1385,7 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
-                        hourly_events++;
+                        atomic_int_inc(&hourly_events);
                     }
                 }
 
@@ -1406,7 +1406,7 @@ void * ad_input_main(void * args) {
                     if (result == -1) {
                         free(copy);
                     } else {
-                        hourly_events++;
+                        atomic_int_inc(&hourly_events);
                     }
                 }
 
