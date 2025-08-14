@@ -31,7 +31,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_ar_disabled = "disable-active-response";
     const char *xml_notify_time = "notify_time";
     const char *xml_max_time_reconnect_try = "time-reconnect";
-    const char *xml_force_reconnect_interval = "force_reconnect_interval";
     const char *xml_main_ip_update_interval = "ip_update_interval";
     const char *xml_profile_name = "config-profile";
     const char *xml_auto_restart = "auto_restart";
@@ -134,13 +133,8 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        } else if (strcmp(node[i]->element, xml_force_reconnect_interval) == 0) {
-            long t = w_parse_time(node[i]->content);
-            if (t < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                logr->force_reconnect_interval = t;
-            }
+        } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
+            mwarn("Client option 'force_reconnect_interval' is no longer configurable.");
         } else if (strcmp(node[i]->element, xml_main_ip_update_interval) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -230,9 +224,6 @@ int Read_Client_Shared(XML_NODE node, void *d1)
 {
     int i = 0;
 
-    /* XML definitions */
-    const char *xml_force_reconnect_interval = "force_reconnect_interval";
-
     agent * logr = (agent *)d1;
     logr->force_reconnect_interval = 0;
 
@@ -243,13 +234,8 @@ int Read_Client_Shared(XML_NODE node, void *d1)
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
-        } else if (strcmp(node[i]->element, xml_force_reconnect_interval) == 0) {
-            long t = w_parse_time(node[i]->content);
-            if (t < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                logr->force_reconnect_interval = t;
-            }
+        } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
+            mwarn("Client shared option 'force_reconnect_interval' is no longer configurable.");
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);

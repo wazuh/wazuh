@@ -165,10 +165,6 @@ int local_start()
     OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
     minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
-    if (agt->force_reconnect_interval) {
-        minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", \
-               w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
-    }
 
     /* Start execd thread */
     if (!WinExecdStart()) {
