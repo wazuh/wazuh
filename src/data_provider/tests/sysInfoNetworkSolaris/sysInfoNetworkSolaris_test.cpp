@@ -70,11 +70,11 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET)
 
     for (auto& element : ifaddr.at("IPv4"))
     {
-        EXPECT_EQ("192.168.0.47", element.at("address").get_ref<const std::string&>());
-        EXPECT_EQ("255.255.255.0", element.at("netmask").get_ref<const std::string&>());
-        EXPECT_EQ("192.168.0.255", element.at("broadcast").get_ref<const std::string&>());
-        EXPECT_EQ("0", element.at("metric").get_ref<const std::string&>());
-        EXPECT_EQ("disabled", element.at("dhcp").get_ref<const std::string&>());
+        EXPECT_EQ("192.168.0.47", element.at("network_ip").get_ref<const std::string&>());
+        EXPECT_EQ("255.255.255.0", element.at("network_netmask").get_ref<const std::string&>());
+        EXPECT_EQ("192.168.0.255", element.at("network_broadcast").get_ref<const std::string&>());
+        EXPECT_EQ("0", element.at("network_metric").get_ref<const std::string&>());
+        EXPECT_EQ("disabled", element.at("network_dhcp").get_ref<const std::string&>());
     }
 }
 
@@ -101,11 +101,11 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_INET6)
 
     for (auto& element : ifaddr.at("IPv6"))
     {
-        EXPECT_EQ("fe80::a00:27ff:fedd:cc5b", element.at("address").get_ref<const std::string&>());
-        EXPECT_EQ("ffc0::", element.at("netmask").get_ref<const std::string&>());
-        EXPECT_EQ("", element.at("broadcast").get_ref<const std::string&>());
-        EXPECT_EQ("0", element.at("metric").get_ref<const std::string&>());
-        EXPECT_EQ("enabled", element.at("dhcp").get_ref<const std::string&>());
+        EXPECT_EQ("fe80::a00:27ff:fedd:cc5b", element.at("network_ip").get_ref<const std::string&>());
+        EXPECT_EQ("ffc0::", element.at("network_netmask").get_ref<const std::string&>());
+        EXPECT_EQ("", element.at("network_broadcast").get_ref<const std::string&>());
+        EXPECT_EQ("0", element.at("network_metric").get_ref<const std::string&>());
+        EXPECT_EQ("enabled", element.at("network_dhcp").get_ref<const std::string&>());
     }
 }
 
@@ -124,23 +124,23 @@ TEST_F(SysInfoNetworkSolarisTest, Test_AF_UNSPEC)
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("10.0.2.2"));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::SOLARIS>::create(mock)->buildNetworkData(ifaddr));
 
-    EXPECT_EQ("net0", ifaddr.at("name").get_ref<const std::string&>());
-    EXPECT_EQ("", ifaddr.at("adapter").get_ref<const std::string&>());
-    EXPECT_EQ("up", ifaddr.at("state").get_ref<const std::string&>());
-    EXPECT_EQ("Ethernet", ifaddr.at("type").get_ref<const std::string&>());
-    EXPECT_EQ("", ifaddr.at("mac").get_ref<const std::string&>());
+    EXPECT_EQ("net0", ifaddr.at("interface_name").get_ref<const std::string&>());
+    EXPECT_EQ("", ifaddr.at("interface_alias").get_ref<const std::string&>());
+    EXPECT_EQ("up", ifaddr.at("interface_state").get_ref<const std::string&>());
+    EXPECT_EQ("Ethernet", ifaddr.at("interface_type").get_ref<const std::string&>());
+    EXPECT_EQ("", ifaddr.at("host_mac").get_ref<const std::string&>());
 
-    EXPECT_EQ(220902u, ifaddr.at("tx_packets").get<uint32_t>());
-    EXPECT_EQ(436300u, ifaddr.at("rx_packets").get<uint32_t>());
-    EXPECT_EQ(12252455u, ifaddr.at("tx_bytes").get<uint32_t>());
-    EXPECT_EQ(641204623u, ifaddr.at("rx_bytes").get<uint32_t>());
-    EXPECT_EQ(0u, ifaddr.at("tx_errors").get<uint32_t>());
-    EXPECT_EQ(0u, ifaddr.at("rx_errors").get<uint32_t>());
-    EXPECT_EQ(0u, ifaddr.at("tx_dropped").get<uint32_t>());
-    EXPECT_EQ(0u, ifaddr.at("rx_dropped").get<uint32_t>());
+    EXPECT_EQ(220902u, ifaddr.at("host_network_egress_packages").get<uint32_t>());
+    EXPECT_EQ(436300u, ifaddr.at("host_network_ingress_packages").get<uint32_t>());
+    EXPECT_EQ(12252455u, ifaddr.at("host_network_egress_bytes").get<uint32_t>());
+    EXPECT_EQ(641204623u, ifaddr.at("host_network_ingress_bytes").get<uint32_t>());
+    EXPECT_EQ(0u, ifaddr.at("host_network_egress_errors").get<uint32_t>());
+    EXPECT_EQ(0u, ifaddr.at("host_network_ingress_errors").get<uint32_t>());
+    EXPECT_EQ(0u, ifaddr.at("host_network_egress_drops").get<uint32_t>());
+    EXPECT_EQ(0u, ifaddr.at("host_network_ingress_drops").get<uint32_t>());
 
-    EXPECT_EQ(1500u, ifaddr.at("mtu").get<uint32_t>());
-    EXPECT_EQ("10.0.2.2", ifaddr.at("gateway").get_ref<const std::string&>());
+    EXPECT_EQ(1500u, ifaddr.at("interface_mtu").get<uint32_t>());
+    EXPECT_EQ("10.0.2.2", ifaddr.at("network_gateway").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkSolarisTest, Test_THROW_NULLPTR)

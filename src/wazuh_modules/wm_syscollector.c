@@ -21,7 +21,6 @@
 
 #ifndef CLIENT
 #include "router.h"
-#include "utils/flatbuffers/include/rsync_schema.h"
 #include "utils/flatbuffers/include/syscollector_deltas_schema.h"
 #include "agent_messages_adapter.h"
 #endif // CLIENT
@@ -35,7 +34,6 @@ static void wm_sys_destroy(wm_sys_t *data);      // Destroy data
 static void wm_sys_stop(wm_sys_t *sys);         // Module stopper
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 cJSON *wm_sys_dump(const wm_sys_t *sys);
-int wm_sync_message(const char *data);
 pthread_cond_t sys_stop_condition = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool need_shutdown_wait = false;
@@ -47,7 +45,7 @@ const wm_context WM_SYS_CONTEXT = {
     .start = (wm_routine)wm_sys_main,
     .destroy = (void(*)(void *))wm_sys_destroy,
     .dump = (cJSON * (*)(const void *))wm_sys_dump,
-    .sync = (int(*)(const char*))wm_sync_message,
+    .sync = NULL,
     .stop = (void(*)(void *))wm_sys_stop,
     .query = NULL,
 };
@@ -55,13 +53,11 @@ const wm_context WM_SYS_CONTEXT = {
 void *syscollector_module = NULL;
 syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
-syscollector_sync_message_func syscollector_sync_message_ptr = NULL;
 
 #ifndef CLIENT
 void *router_module_ptr = NULL;
 router_provider_create_func router_provider_create_func_ptr = NULL;
 router_provider_send_fb_func router_provider_send_fb_func_ptr = NULL;
-ROUTER_PROVIDER_HANDLE rsync_handle = NULL;
 ROUTER_PROVIDER_HANDLE syscollector_handle = NULL;
 int disable_manager_scan = 1;
 #endif // CLIENT
@@ -107,20 +103,6 @@ static void wm_sys_send_diff_message(const void* data) {
         char* msg_to_send = adapt_delta_message(data, "localhost", "000", "127.0.0.1", NULL);
         if (msg_to_send && router_provider_send_fb_func_ptr) {
             router_provider_send_fb_func_ptr(syscollector_handle, msg_to_send, syscollector_deltas_SCHEMA);
-        }
-        cJSON_free(msg_to_send);
-    }
-#endif // CLIENT
-}
-
-static void wm_sys_send_dbsync_message(const void* data) {
-    wm_sys_send_message(data, DBSYNC_MQ);
-#ifndef CLIENT
-    if(!disable_manager_scan)
-    {
-        char* msg_to_send = adapt_sync_message(data, "localhost", "000", "127.0.0.1", NULL);
-        if (msg_to_send && router_provider_send_fb_func_ptr) {
-            router_provider_send_fb_func_ptr(rsync_handle, msg_to_send, rsync_SCHEMA);
         }
         cJSON_free(msg_to_send);
     }
@@ -177,19 +159,7 @@ void* wm_sys_main(wm_sys_t *sys) {
     {
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
-        syscollector_sync_message_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_message");
 
-        void* rsync_module = NULL;
-        if(rsync_module = so_check_module_loaded("rsync"), rsync_module) {
-            rsync_initialize_full_log_func rsync_initialize_log_function_ptr = so_get_function_sym(rsync_module, "rsync_initialize_full_log_function");
-            if(rsync_initialize_log_function_ptr) {
-                rsync_initialize_log_function_ptr(mtLoggingFunctionsWrapper);
-            }
-            // Even when the RTLD_NOLOAD flag was used for dlopen(), we need a matching call to dlclose()
-#ifndef WIN32
-            so_free_library(rsync_module);
-#endif
-        }
 #ifndef CLIENT
         // Load router module only for manager if is enabled
         disable_manager_scan = getDefine_Int("vulnerability-detection", "disable_scan_manager", 0, 1);
@@ -230,15 +200,10 @@ void* wm_sys_main(wm_sys_t *sys) {
             if(syscollector_handle = router_provider_create_func_ptr("deltas-syscollector", true), !syscollector_handle) {
                 mdebug2("Failed to create router handle for 'syscollector'.");
             }
-
-            if (rsync_handle = router_provider_create_func_ptr("rsync-syscollector", true), !rsync_handle) {
-                mdebug2("Failed to create router handle for 'rsync'.");
-            }
         }
 #endif // CLIENT
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
-                               wm_sys_send_dbsync_message,
                                taggedLogFunction,
                                SYSCOLLECTOR_DB_DISK_PATH,
                                SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
@@ -258,7 +223,6 @@ void* wm_sys_main(wm_sys_t *sys) {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
         pthread_exit(NULL);
     }
-    syscollector_sync_message_ptr = NULL;
     syscollector_start_ptr = NULL;
     syscollector_stop_ptr = NULL;
 
@@ -296,7 +260,6 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
     data->flags.running = false;
 
     mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
-    syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
         shutdown_process_started = true;
         syscollector_stop_ptr();
@@ -334,15 +297,4 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     cJSON_AddItemToObject(root,"syscollector",wm_sys);
 
     return root;
-}
-
-int wm_sync_message(const char *data)
-{
-    int ret_val = 0;
-
-    if (syscollector_sync_message_ptr) {
-        ret_val = syscollector_sync_message_ptr(data);
-    }
-
-    return ret_val;
 }

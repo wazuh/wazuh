@@ -41,14 +41,14 @@ namespace PackageLinuxHelper
         {
             ret["name"]         = package.name;
             ret["size"]         = package.size;
-            ret["install_time"] = package.installTime;
-            ret["location"]     = UNKNOWN_VALUE;
-            ret["groups"]       = package.group;
+            ret["installed"]    = package.installTime;
+            ret["path"]         = UNKNOWN_VALUE;
+            ret["category"]     = package.group;
             ret["version"]      = version;
             ret["priority"]     = UNKNOWN_VALUE;
             ret["architecture"] = package.architecture;
             ret["source"]       = UNKNOWN_VALUE;
-            ret["format"]       = "rpm";
+            ret["type"]         = "rpm";
             ret["vendor"]       = package.vendor.empty() ? UNKNOWN_VALUE : package.vendor;
             ret["description"]  = package.description;
         }

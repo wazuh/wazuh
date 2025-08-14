@@ -38,11 +38,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformation)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -64,11 +64,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationLibRpm)
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("3:1.5-24.el5", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -104,11 +104,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationUnknownInEmpty)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("curl", jsPackageInfo["name"]);
     EXPECT_EQ(0, jsPackageInfo["size"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["install_time"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["groups"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["installed"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["category"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["vendor"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["description"]);
 }
@@ -125,11 +125,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpoch)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1.5-24.el5", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -149,11 +149,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochNoReleaseLibRpm)
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("4.16", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -174,11 +174,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmNoEpochLibRpm)
     const auto& jsPackageInfo { PackageLinuxHelper::parseRpm(input) };
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1:4.16", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -194,11 +194,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochNonRelease)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1.5", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -214,11 +214,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonRelease)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("3:1.5", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -234,11 +234,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochWithNone)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1.5-24.el5", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -254,11 +254,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonReleaseWithNone)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("3:1.5", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -274,11 +274,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseRpmInformationNonEpochNonReleaseWith
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("mktemp", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1425472738", jsPackageInfo["install_time"]);
-    EXPECT_EQ("System Environment/Base", jsPackageInfo["groups"]);
+    EXPECT_EQ("1425472738", jsPackageInfo["installed"]);
+    EXPECT_EQ("System Environment/Base", jsPackageInfo["category"]);
     EXPECT_EQ("1.5", jsPackageInfo["version"]);
     EXPECT_EQ("x86_64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("rpm", jsPackageInfo["format"]);
+    EXPECT_EQ("rpm", jsPackageInfo["type"]);
     EXPECT_EQ("CentOS", jsPackageInfo["vendor"]);
     EXPECT_EQ("A small utility for safely making /tmp files.", jsPackageInfo["description"]);
 }
@@ -319,11 +319,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_EQ("zlib1g-dev", jsPackageInfo["name"]);
     EXPECT_EQ("optional", jsPackageInfo["priority"]);
     EXPECT_EQ(4111221760, jsPackageInfo["size"]);
-    EXPECT_EQ("libdevel", jsPackageInfo["groups"]);
+    EXPECT_EQ("libdevel", jsPackageInfo["category"]);
     EXPECT_EQ("same", jsPackageInfo["multiarch"]);
     EXPECT_EQ("1:1.2.11.dfsg-2ubuntu1.2", jsPackageInfo["version"]);
     EXPECT_EQ("amd64", jsPackageInfo["architecture"]);
-    EXPECT_EQ("deb", jsPackageInfo["format"]);
+    EXPECT_EQ("deb", jsPackageInfo["type"]);
     EXPECT_EQ("Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>", jsPackageInfo["vendor"]);
     EXPECT_EQ("compression library - development", jsPackageInfo["description"]);
     EXPECT_EQ("zlib", jsPackageInfo["source"]);
@@ -359,11 +359,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ(PKG_NAME, jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["install_time"]);
-    EXPECT_EQ(PKG_GROUP, jsPackageInfo["groups"]);
+    EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["installed"]);
+    EXPECT_EQ(PKG_GROUP, jsPackageInfo["category"]);
     EXPECT_EQ(PKG_VERSION, jsPackageInfo["version"]);
     EXPECT_EQ(PKG_ARCH, jsPackageInfo["architecture"]);
-    EXPECT_EQ("pacman", jsPackageInfo["format"]);
+    EXPECT_EQ("pacman", jsPackageInfo["type"]);
     EXPECT_EQ("Arch Linux", jsPackageInfo["vendor"]);
     EXPECT_EQ(PKG_DESC, jsPackageInfo["description"]);
 }
@@ -400,7 +400,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanMultipleGroups)
 
     const auto& jsPackageInfo { PackageLinuxHelper::parsePacman(&mock) };
     EXPECT_FALSE(jsPackageInfo.empty());
-    EXPECT_EQ("Wazuh-test-Arch-lorem", jsPackageInfo["groups"]);
+    EXPECT_EQ("Wazuh-test-Arch-lorem", jsPackageInfo["category"]);
 }
 
 TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
@@ -427,11 +427,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("", jsPackageInfo["name"]);
     EXPECT_EQ(0, jsPackageInfo["size"]);
-    EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["install_time"]);
-    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["groups"]);
+    EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["installed"]);
+    EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["category"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
-    EXPECT_EQ("pacman", jsPackageInfo["format"]);
+    EXPECT_EQ("pacman", jsPackageInfo["type"]);
     EXPECT_EQ("Arch Linux", jsPackageInfo["vendor"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["description"]);
 }
@@ -474,7 +474,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseApkArchitectureKeyNotFound)
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo.at("architecture"));
     EXPECT_EQ(4111222333, jsPackageInfo.at("size"));
     EXPECT_EQ("the musl c library (libc) implementation", jsPackageInfo.at("description"));
-    EXPECT_EQ("apk", jsPackageInfo.at("format"));
+    EXPECT_EQ("apk", jsPackageInfo.at("type"));
     EXPECT_EQ("Alpine Linux", jsPackageInfo.at("vendor"));
 }
 
@@ -519,7 +519,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseApkSizeValueEmpty)
     EXPECT_EQ("x86_64", jsPackageInfo.at("architecture"));
     EXPECT_EQ(0, jsPackageInfo.at("size"));
     EXPECT_EQ("the musl c library (libc) implementation", jsPackageInfo.at("description"));
-    EXPECT_EQ("apk", jsPackageInfo.at("format"));
+    EXPECT_EQ("apk", jsPackageInfo.at("type"));
     EXPECT_EQ("Alpine Linux", jsPackageInfo.at("vendor"));
 }
 
@@ -537,7 +537,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseApkSuccess)
     EXPECT_EQ("1.2.3-r4", jsPackageInfo.at("version"));
     EXPECT_EQ(4111222333, jsPackageInfo.at("size"));
     EXPECT_EQ("the musl c library (libc) implementation", jsPackageInfo.at("description"));
-    EXPECT_EQ("apk", jsPackageInfo.at("format"));
+    EXPECT_EQ("apk", jsPackageInfo.at("type"));
     EXPECT_EQ("Alpine Linux", jsPackageInfo.at("vendor"));
 }
 
@@ -586,11 +586,11 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapCorrectMapping)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("gnome-3-38-2004", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("2022/11/23 20:33:59", jsPackageInfo["install_time"]);
-    EXPECT_EQ(" ", jsPackageInfo["groups"]);
+    EXPECT_EQ("2022/11/23 20:33:59", jsPackageInfo["installed"]);
+    EXPECT_EQ(" ", jsPackageInfo["category"]);
     EXPECT_EQ("0+git.6f39565", jsPackageInfo["version"]);
     EXPECT_EQ(" ", jsPackageInfo["architecture"]);
-    EXPECT_EQ("snap", jsPackageInfo["format"]);
+    EXPECT_EQ("snap", jsPackageInfo["type"]);
     EXPECT_EQ("Canonical", jsPackageInfo["vendor"]);
     EXPECT_EQ("Shared GNOME 3.38 Ubuntu stack", jsPackageInfo["description"]);
 }

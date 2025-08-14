@@ -47,11 +47,11 @@ TEST_F(SysInfoHardwareMacTest, Test_BuildHardwareData_Succeed)
     EXPECT_CALL(*mock, ramUsage()).WillOnce(Return(50));
     EXPECT_NO_THROW(FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildHardwareData(hardware));
 
-    EXPECT_EQ("H2WH91N3Q6NY", hardware.at("board_serial").get_ref<nlohmann::json::string_t&>());
+    EXPECT_EQ("H2WH91N3Q6NY", hardware.at("serial_number").get_ref<nlohmann::json::string_t&>());
     EXPECT_EQ("Macmini9,1", hardware.at("cpu_name").get_ref<nlohmann::json::string_t&>());
     EXPECT_EQ((int)8, hardware.at("cpu_cores").get_ref<nlohmann::json::number_integer_t&>());
-    EXPECT_EQ((double)3204.0, hardware.at("cpu_mhz").get_ref<nlohmann::json::number_float_t&>());
-    EXPECT_EQ((uint64_t)16777216, hardware.at("ram_total").get_ref<nlohmann::json::number_unsigned_t&>());
-    EXPECT_EQ((uint64_t)8388608, hardware.at("ram_free").get_ref<nlohmann::json::number_unsigned_t&>());
-    EXPECT_EQ((uint64_t)50, hardware.at("ram_usage").get_ref<nlohmann::json::number_unsigned_t&>());
+    EXPECT_EQ((double)3204.0, hardware.at("cpu_speed").get_ref<nlohmann::json::number_float_t&>());
+    EXPECT_EQ((uint64_t)16777216, hardware.at("memory_total").get_ref<nlohmann::json::number_unsigned_t&>());
+    EXPECT_EQ((uint64_t)8388608, hardware.at("memory_free").get_ref<nlohmann::json::number_unsigned_t&>());
+    EXPECT_EQ((uint64_t)50, hardware.at("memory_used").get_ref<nlohmann::json::number_unsigned_t&>());
 }

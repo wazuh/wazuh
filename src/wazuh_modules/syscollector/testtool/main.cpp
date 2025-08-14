@@ -16,7 +16,6 @@
 #include <chrono>
 #include "defs.h"
 #include "dbsync.hpp"
-#include "rsync.hpp"
 #include "sysInfo.hpp"
 #include "syscollector.hpp"
 
@@ -48,14 +47,6 @@ int main(int argc, const char* argv[])
             std::cout << payload << std::endl;
         }
     };
-    const auto reportSyncFunction
-    {
-        [](const std::string & payload)
-        {
-            std::cout << "sync output payload:" << std::endl;
-            std::cout << payload << std::endl;
-        }
-    };
 
     const auto logFunction
     {
@@ -81,7 +72,6 @@ int main(int argc, const char* argv[])
     };
 
     const auto spInfo{ std::make_shared<SysInfo>() };
-    RemoteSync::initialize(logErrorFunction);
     DBSync::initialize(logErrorFunction);
 
     try
@@ -105,7 +95,6 @@ int main(int argc, const char* argv[])
 
         Syscollector::instance().init(spInfo,
                                       reportDiffFunction,
-                                      reportSyncFunction,
                                       logFunction,
                                       SYSCOLLECTOR_DB_DISK_PATH,
                                       SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
@@ -134,7 +123,6 @@ int main(int argc, const char* argv[])
         std::cout << ex.what() << std::endl;
     }
 
-    RemoteSync::teardown();
     DBSync::teardown();
     return 0;
 }

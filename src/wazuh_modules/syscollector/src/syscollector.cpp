@@ -20,7 +20,6 @@ extern "C" {
 
 void syscollector_start(const unsigned int inverval,
                         send_data_callback_t callbackDiff,
-                        send_data_callback_t callbackSync,
                         log_callback_t callbackLog,
                         const char* dbPath,
                         const char* normalizerConfigPath,
@@ -42,14 +41,6 @@ void syscollector_start(const unsigned int inverval,
         [callbackDiff](const std::string & data)
         {
             callbackDiff(data.c_str());
-        }
-    };
-
-    std::function<void(const std::string&)> callbackSyncWrapper
-    {
-        [callbackSync](const std::string & data)
-        {
-            callbackSync(data.c_str());
         }
     };
 
@@ -75,7 +66,6 @@ void syscollector_start(const unsigned int inverval,
     {
         Syscollector::instance().init(std::make_shared<SysInfo>(),
                                       std::move(callbackDiffWrapper),
-                                      std::move(callbackSyncWrapper),
                                       std::move(callbackLogWrapper),
                                       dbPath,
                                       normalizerConfigPath,
@@ -102,23 +92,6 @@ void syscollector_stop()
 {
     Syscollector::instance().destroy();
 }
-
-int syscollector_sync_message(const char* data)
-{
-    int ret{-1};
-
-    try
-    {
-        Syscollector::instance().push(data);
-        ret = 0;
-    }
-    catch (...)
-    {
-    }
-
-    return ret;
-}
-
 
 #ifdef __cplusplus
 }

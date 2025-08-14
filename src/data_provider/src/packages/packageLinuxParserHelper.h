@@ -137,18 +137,17 @@ namespace PackageLinuxHelper
             }
 
             ret["priority"]     = priority;
-            ret["groups"]       = groups;
+            ret["category"]     = groups;
             ret["size"]         = size;
             ret["multiarch"]    = multiarch;
             ret["architecture"] = architecture;
             ret["source"]       = source;
             ret["version"]      = version;
-            ret["format"]       = "deb";
-            ret["location"]     = UNKNOWN_VALUE;
+            ret["type"]         = "deb";
+            ret["path"]         = UNKNOWN_VALUE;
             ret["vendor"]       = vendor;
-            ret["install_time"] = UNKNOWN_VALUE;
+            ret["installed"]    = UNKNOWN_VALUE;
             ret["description"]  = description;
-            ret["location"]     = UNKNOWN_VALUE;
         }
 
         return ret;
@@ -245,19 +244,19 @@ namespace PackageLinuxHelper
         }
 
         ret["name"]             = name;
-        ret["location"]         = "/snap/" + name;
+        ret["path"]             = "/snap/" + name;
         ret["version"]          = version;
         ret["vendor"]           = vendor;
-        ret["install_time"]     = install_time;
+        ret["installed"]        = install_time;
         ret["description"]      = description;
         ret["size"]             = size;
         ret["source"]           = "snapcraft";
-        ret["format"]           = "snap";
+        ret["type"]             = "snap";
 
         ret["priority"]         = UNKNOWN_VALUE;
         ret["multiarch"]        = UNKNOWN_VALUE;
         ret["architecture"]     = UNKNOWN_VALUE;
-        ret["groups"]           = UNKNOWN_VALUE;
+        ret["category"]         = UNKNOWN_VALUE;
 
         return ret;
     }

@@ -19,11 +19,11 @@
                         "type": "string",
                         "minLength": 1
                     },
-                    "install_time": {
+                    "installed": {
                         "type": "string",
                         "minLength": 1
                     },
-                    "location": {
+                    "path": {
                         "type": "string",
                         "minLength": 1
                     },
@@ -31,7 +31,7 @@
                         "type": "string",
                         "minLength": 1
                     },
-                    "groups": {
+                    "category": {
                         "type": "string",
                         "minLength": 1
                     },
@@ -53,7 +53,7 @@
                         "type": "string",
                         "minLength": 1
                     },
-                    "format": {
+                    "type": {
                         "type": "string",
                         "minLength": 1
                     }
@@ -62,15 +62,15 @@
                     "name",
                     "version",
                     "vendor",
-                    "install_time",
-                    "location",
+                    "installed",
+                    "path",
                     "architecture",
-                    "groups",
+                    "category",
                     "description",
                     "size",
                     "priority",
                     "source",
-                    "format"
+                    "type"
                 ]
             }
         }

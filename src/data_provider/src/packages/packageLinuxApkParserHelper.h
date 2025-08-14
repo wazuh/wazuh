@@ -36,11 +36,11 @@ namespace PackageLinuxHelper
 
         packageInfo["architecture"] = UNKNOWN_VALUE;
         packageInfo["size"] = 0;
-        packageInfo["format"] = "apk";
+        packageInfo["type"] = "apk";
         packageInfo["vendor"] = "Alpine Linux";
-        packageInfo["install_time"] = UNKNOWN_VALUE;
-        packageInfo["location"] = UNKNOWN_VALUE;
-        packageInfo["groups"] = UNKNOWN_VALUE;
+        packageInfo["installed"] = UNKNOWN_VALUE;
+        packageInfo["path"] = UNKNOWN_VALUE;
+        packageInfo["category"] = UNKNOWN_VALUE;
         packageInfo["priority"] = UNKNOWN_VALUE;
         packageInfo["source"] = UNKNOWN_VALUE;
         // The multiarch field won't have a default value

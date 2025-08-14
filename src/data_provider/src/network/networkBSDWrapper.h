@@ -42,7 +42,6 @@ static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 class NetworkBSDInterface final : public INetworkInterfaceWrapper
 {
         ifaddrs* m_interfaceAddress;
-        const std::string m_scanTime;
 
     public:
         explicit NetworkBSDInterface(ifaddrs* addrs)

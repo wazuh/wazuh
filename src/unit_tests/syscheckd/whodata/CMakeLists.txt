@@ -145,7 +145,7 @@ else()
                            -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
                            -Wl,--wrap=fim_db_transaction_deleted_rows,--wrap=fim_sync_push_msg \
                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
+                           -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
                            -Wl,--wrap=utf8_GetNamedSecurityInfo -Wl,--wrap=utf8_SetNamedSecurityInfo ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 

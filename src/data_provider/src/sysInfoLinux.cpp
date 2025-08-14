@@ -93,11 +93,12 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
     jsProcessInfo["pid"]        = std::to_string(process->tid);
     jsProcessInfo["name"]       = process->cmd;
     jsProcessInfo["state"]      = &process->state;
-    jsProcessInfo["ppid"]       = process->ppid;
+    jsProcessInfo["parent_pid"] = process->ppid;
     jsProcessInfo["utime"]      = process->utime;
     jsProcessInfo["stime"]      = process->stime;
     std::string commandLine;
     std::string commandLineArgs;
+    unsigned int commandLineCount = 0;
 
     if (process->cmdline && process->cmdline[0])
     {
@@ -115,32 +116,16 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
                 {
                     commandLineArgs += " ";
                 }
+
+                commandLineCount++;
             }
         }
     }
 
-    jsProcessInfo["cmd"]        = commandLine;
-    jsProcessInfo["argvs"]      = commandLineArgs;
-    jsProcessInfo["euser"]      = process->euser;
-    jsProcessInfo["ruser"]      = process->ruser;
-    jsProcessInfo["suser"]      = process->suser;
-    jsProcessInfo["egroup"]     = process->egroup;
-    jsProcessInfo["rgroup"]     = process->rgroup;
-    jsProcessInfo["sgroup"]     = process->sgroup;
-    jsProcessInfo["fgroup"]     = process->fgroup;
-    jsProcessInfo["priority"]   = process->priority;
-    jsProcessInfo["nice"]       = process->nice;
-    jsProcessInfo["size"]       = process->size;
-    jsProcessInfo["vm_size"]    = process->vm_size;
-    jsProcessInfo["resident"]   = process->vm_rss;
-    jsProcessInfo["share"]      = process->share;
-    jsProcessInfo["start_time"] = Utils::timeTick2unixTime(process->start_time);
-    jsProcessInfo["pgrp"]       = process->pgrp;
-    jsProcessInfo["session"]    = process->session;
-    jsProcessInfo["tgid"]       = process->tgid;
-    jsProcessInfo["tty"]        = process->tty;
-    jsProcessInfo["processor"]  = process->processor;
-    jsProcessInfo["nlwp"]       = process->nlwp;
+    jsProcessInfo["command_line"] = commandLine;
+    jsProcessInfo["args"]         = commandLineArgs;
+    jsProcessInfo["args_count"]   = commandLineCount;
+    jsProcessInfo["start"]        = Utils::timeTick2unixTime(process->start_time);
     return jsProcessInfo;
 }
 
@@ -271,18 +256,18 @@ static void getMemory(nlohmann::json& info)
     }
 
     const auto ramTotal { memTotal == 0 ? 1 : memTotal };
-    info["ram_total"] = ramTotal;
-    info["ram_free"] = memFree;
-    info["ram_usage"] = 100 - (100 * memFree / ramTotal);
+    info["memory_total"] = ramTotal;
+    info["memory_free"] = memFree;
+    info["memory_used"] = 100 - (100 * memFree / ramTotal);
 }
 
 nlohmann::json SysInfo::getHardware() const
 {
     nlohmann::json hardware;
-    hardware["board_serial"] = getSerialNumber();
+    hardware["serial_number"] = getSerialNumber();
     hardware["cpu_name"] = getCpuName();
     hardware["cpu_cores"] = getCpuCores();
-    hardware["cpu_mhz"] = double(getCpuMHz());
+    hardware["cpu_speed"] = double(getCpuMHz());
     getMemory(hardware);
     return hardware;
 }
@@ -369,11 +354,11 @@ nlohmann::json SysInfo::getOsInfo() const
 
     if (uname(&uts) >= 0)
     {
-        ret["sysname"] = uts.sysname;
+        ret["os_kernel_name"] = uts.sysname;
         ret["hostname"] = uts.nodename;
-        ret["version"] = uts.version;
+        ret["os_kernel_version"] = uts.version;
         ret["architecture"] = uts.machine;
-        ret["release"] = uts.release;
+        ret["os_kernel_release"] = uts.release;
     }
 
     return ret;
@@ -540,7 +525,7 @@ nlohmann::json SysInfo::getPorts() const
                     Utils::replaceAll(row, "\t", " ");
                     row = Utils::trimRepeated(row, ' ');
                     std::make_unique<PortImpl>(std::make_shared<LinuxPortWrapper>(portType.first, row))->buildPortData(port);
-                    inodes.push_back(port.at("inode"));
+                    inodes.push_back(port.at("file_inode"));
                     ports.push_back(std::move(port));
                 }
 
@@ -562,18 +547,18 @@ nlohmann::json SysInfo::getPorts() const
         {
             try
             {
-                auto portInode = port.at("inode");
+                auto portInode = port.at("file_inode");
 
                 if (ret.find(portInode) != ret.end())
                 {
                     std::pair<int32_t, std::string> processInfoPair = ret.at(portInode);
-                    port["pid"] = processInfoPair.first;
-                    port["process"] = processInfoPair.second;
+                    port["process_pid"] = processInfoPair.first;
+                    port["process_name"] = processInfoPair.second;
                 }
             }
             catch (const std::exception& e)
             {
-                std::cerr << "Error while parsing pid and process from ports: " << e.what() << std::endl;
+                std::cerr << "Error while parsing process_pid and process_name from ports: " << e.what() << std::endl;
             }
         }
     }
