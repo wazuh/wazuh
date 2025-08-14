@@ -123,7 +123,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.skip_fs.dev, 1);
     assert_int_equal(syscheck.skip_fs.sys, 1);
     assert_int_equal(syscheck.skip_fs.proc, 1);
-    assert_int_equal(syscheck.scan_on_start, 1);
     assert_int_equal(syscheck.time, 43200);
     assert_non_null(syscheck.ignore);
     assert_non_null(syscheck.ignore_regex);
@@ -198,7 +197,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.skip_fs.dev, 0);
     assert_int_equal(syscheck.skip_fs.sys, 0);
     assert_int_equal(syscheck.skip_fs.proc, 0);
-    assert_int_equal(syscheck.scan_on_start, 0);
     assert_int_equal(syscheck.time, 43200);
     assert_null(syscheck.ignore);
     assert_null(syscheck.ignore_regex);
@@ -250,7 +248,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.skip_fs.dev, 1);
     assert_int_equal(syscheck.skip_fs.sys, 1);
     assert_int_equal(syscheck.skip_fs.proc, 1);
-    assert_int_equal(syscheck.scan_on_start, 1);
     assert_int_equal(syscheck.time, 43200);
     assert_null(syscheck.ignore);
     assert_null(syscheck.ignore_regex);
@@ -340,8 +337,6 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_sys), "yes");
     cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
-    cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
-    assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
 
@@ -475,8 +470,6 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_sys), "no");
     cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "no");
-    cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
-    assert_string_equal(cJSON_GetStringValue(scan_on_start), "no");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
 #ifndef TEST_WINAGENT
@@ -604,8 +597,6 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_sys), "yes");
     cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
-    cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
-    assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
     cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
     cJSON *registry = cJSON_GetObjectItem(sys_items, "registry");
