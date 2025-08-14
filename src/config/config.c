@@ -29,7 +29,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osemailalerts = "email_alerts";                 /* Server Config */
     const char *osdbd = "database_output";                      /* Server Config */
     const char *oscsyslogd = "syslog_output";                   /* Server Config */
-    const char *oscagentless = "agentless";                     /* Server Config */
     const char *oslocalfile = "localfile";                      /* Agent Config  */
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
@@ -86,10 +85,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, oscsyslogd) == 0)) {
             if ((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, oscagentless) == 0)) {
-            if ((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
