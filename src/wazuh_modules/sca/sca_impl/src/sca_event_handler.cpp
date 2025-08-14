@@ -22,7 +22,7 @@ static const std::map<ReturnTypeCallback, std::string> STATEFUL_OPERATION_MAP {
 
 /// @brief Map of stateless operations
 static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP {
-    {MODIFIED, "change"},
+    {MODIFIED, "modified"},
     {DELETED, "deletion"},
     {INSERTED, "creation"},
 };
