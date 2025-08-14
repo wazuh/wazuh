@@ -7,22 +7,23 @@
  * Foundation.
  */
 
-#include "ifirefox_addons_wrapper.hpp"
+#include "browser_extensions_wrapper.hpp"
 #include "firefox.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "filesystemHelper.h"
 
-class MockFirefoxAddonsWrapper : public IFirefoxAddonsWrapper
+class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
     public:
+        MOCK_METHOD(std::string, getApplicationsPath, (), (override));
         MOCK_METHOD(std::string, getHomePath, (), (override));
         MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
 
 TEST(FirefoxAddonsTests, NumberOfExtensions)
 {
-    auto mockAddonsWrapper = std::make_shared<MockFirefoxAddonsWrapper>();
+    auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
     std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "linux_mock_home");
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
@@ -35,7 +36,7 @@ TEST(FirefoxAddonsTests, NumberOfExtensions)
 
 TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
 {
-    auto mockAddonsWrapper = std::make_shared<MockFirefoxAddonsWrapper>();
+    auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
     std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "linux_mock_home");
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
