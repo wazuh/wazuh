@@ -15,13 +15,13 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - ".github/workflows/5_testintegration_management_api.yml"
+      - ".github/workflows/6_testintegration_management_api.yml"
       - "apis/server_management/**"
       - "tests/integration/test_api/**"
 
 env:
     PACKAGE_REFERENCE: ${{ inputs.package_reference || github.head_ref || github.sha }}
-    S3_BUCKET_PATH: s3://packages-dev.internal.wazuh.com/development/wazuh/6.x/main/packages
+    S3_BUCKET_PATH: s3://xdrsiem-packages-dev-internal/development/wazuh/6.x/main/packages
 
 jobs:
 
@@ -67,7 +67,7 @@ jobs:
     needs: check_package_existence
     if: ${{ github.event_name == 'workflow_dispatch' && needs.check_package_existence.outputs.exists == 'false' }}
     secrets: inherit
-    uses: ./.github/workflows/5_builderpackage_server.yml
+    uses: ./.github/workflows/6_builderpackage_server.yml
     with:
       architecture: amd64
       system: deb

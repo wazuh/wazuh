@@ -2,7 +2,7 @@ name: Python lint
 on: 
   pull_request:
     paths:
-      - '.github/workflows/5_codelinter_python.yml'
+      - '.github/workflows/6_codelinter_python.yml'
       - 'apis/**/*.py'
       - 'framework/**/*.py'
 

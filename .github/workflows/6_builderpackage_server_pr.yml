@@ -16,7 +16,7 @@ jobs:
       matrix:
         architecture: [amd64]
         system: [deb, rpm]
-    uses: ./.github/workflows/5_builderpackage_server.yml
+    uses: ./.github/workflows/6_builderpackage_server.yml
     with:
       architecture: ${{ matrix.architecture }}
       system: ${{ matrix.system }}

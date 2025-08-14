@@ -6,7 +6,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - 'src/engine/**'
-      - '.github/workflows/5_testunit_engine-helpers.yml'
+      - '.github/workflows/6_testunit_engine-helpers.yml'
 
   workflow_dispatch:
     inputs:

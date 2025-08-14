@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - '.github/workflows/5_testunit_api.yml'
+      - '.github/workflows/6_testunit_api.yml'
       - 'apis/server_management/**'
       - 'src/Makefile'
 
