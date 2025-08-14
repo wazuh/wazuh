@@ -206,7 +206,33 @@ public:
         }
         else if constexpr (std::is_same_v<T, std::vector<std::string>>)
         {
-            return base::utils::string::splitEscaped(value, ',', '\\');
+            // Disallow bracket notation at the beginning and end (JSON style)
+            if (value.front() == '[' && value.back() == ']')
+            {
+                throw std::runtime_error(fmt::format("Invalid value for environment variable '{}': bracket notation "
+                                                     "'[...]' is not allowed (value: '{}').",
+                                                     m_env,
+                                                     value));
+            }
+
+            std::vector<std::string> result;
+            auto items = base::utils::string::splitEscaped(value, ',', '\\');
+
+            for (auto& item : items)
+            {
+                // Unescape characters
+                item = base::utils::string::unescapeString(item, '\\', ",\\", true);
+
+                result.emplace_back(std::move(item));
+            }
+
+            if (result.empty())
+            {
+                throw std::runtime_error(
+                    fmt::format("Invalid value for environment variable '{}': empty list.", m_env));
+            }
+
+            return result;
         }
         else if constexpr (std::is_same_v<T, bool>)
         {
