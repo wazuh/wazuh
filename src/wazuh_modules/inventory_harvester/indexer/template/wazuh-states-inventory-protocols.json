@@ -21,7 +21,7 @@
           "wazuh.cluster.node",
           "wazuh.schema.version"
         ],
-        "refresh_interval": "5s"
+        "refresh_interval": "2s"
       }
     },
     "mappings": {

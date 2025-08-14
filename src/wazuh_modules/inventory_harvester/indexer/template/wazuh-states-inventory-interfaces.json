@@ -11,11 +11,16 @@
         "number_of_shards": "1",
         "query.default_field": [
           "agent.id",
-          "agent.ip",
+          "agent.name",
+          "agent.version",
+          "agent.host.ip",
+          "host.mac",
           "interface.name",
-          "interface.alias"
+          "interface.alias",
+          "wazuh.cluster.name",
+          "wazuh.cluster.node"
         ],
-        "refresh_interval": "5s"
+        "refresh_interval": "2s"
       }
     },
     "mappings": {
