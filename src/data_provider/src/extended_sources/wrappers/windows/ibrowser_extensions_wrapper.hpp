@@ -11,11 +11,12 @@
 
 #include <string>
 
-class IFirefoxAddonsWrapper
+class IBrowserExtensionsWrapper
 {
     public:
         /// Destructor
-        virtual ~IFirefoxAddonsWrapper() = default;
+        virtual ~IBrowserExtensionsWrapper() = default;
         virtual std::string getHomePath() = 0;
+        virtual std::string getApplicationsPath() = 0;
         virtual std::string getUserId(std::string user) = 0;
 };

@@ -7,22 +7,23 @@
  * Foundation.
  */
 
-#include "ichrome_extensions_wrapper.hpp"
+#include "ibrowser_extensions_wrapper.hpp"
 #include "chrome.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include "filesystemHelper.h"
 
-class MockChromeExtensionsWrapper : public IChromeExtensionsWrapper
+class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
     public:
+        MOCK_METHOD(std::string, getApplicationsPath, (), (override));
         MOCK_METHOD(std::string, getHomePath, (), (override));
         MOCK_METHOD(std::string, getUserId, (std::string), (override));
 };
 
 TEST(ChromeExtensionsTests, NumberOfExtensions)
 {
-    auto mockExtensionsWrapper = std::make_shared<MockChromeExtensionsWrapper>();
+    auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
     std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "linux_mock_home");
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
@@ -35,7 +36,7 @@ TEST(ChromeExtensionsTests, NumberOfExtensions)
 
 TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 {
-    auto mockExtensionsWrapper = std::make_shared<MockChromeExtensionsWrapper>();
+    auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
     std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "linux_mock_home");
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
