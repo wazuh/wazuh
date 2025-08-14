@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - Fixed wazuh-db failure during agent restarts by updating the restart query to use HTTP. ([#31048](https://github.com/wazuh/wazuh/pull/31048))
 - Fixed DFM graceful shutdown. ([#30627](https://github.com/wazuh/wazuh/pull/30627))
 - Fixed inode field as string in FIM JSON messages to ensure schema consistency. ([#30718](https://github.com/wazuh/wazuh/pull/30718))
+- Fixed duplicate OS vulnerabilities detected due to inventory after OS version change. ([#30837](https://github.com/wazuh/wazuh/pull/30837))
 
 #### Changed
 
@@ -31,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Separated control messages from the connection handling in remoted. ([29153](https://github.com/wazuh/wazuh/pull/29153))
 - Added capability to re-index CVEs if documents have changed in Vulnerability detector. ([#29916](https://github.com/wazuh/wazuh/pull/29916))
 - Improved exception handling in `run_local` SDK funcition. ([#30851](https://github.com/wazuh/wazuh/pull/30851))
+- Improved Authd connection management using epoll for better handling of concurrent agent registration requests. ([#29135](https://github.com/wazuh/wazuh/pull/29135))
 
 ### Agent
 
@@ -59,6 +61,7 @@ All notable changes to this project will be documented in this file.
 - Fixed Windows agent not starting after manual upgrade by deferring service start to post-install. ([#29820](https://github.com/wazuh/wazuh/pull/29820))
 - Fixed the loss of precision of the FIM inode field at values higher than 2ˆ53. ([#30552](https://github.com/wazuh/wazuh/pull/30552))
 - Fixed expanded file list in logcollector getconfig output. ([#30614](https://github.com/wazuh/wazuh/pull/30614))
+- Fixed authd.pass ACL permissions to match client.keys security level in Windows agent installer. ([#31187](https://github.com/wazuh/wazuh/pull/31187))
 
 #### Changed
 
