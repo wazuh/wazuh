@@ -18,44 +18,47 @@ class NdJsonParserTest : public ::testing::TestWithParam<EventT>
 {
 };
 
-template<size_t repeatedEvents = 1, typename... Args>
+template<size_t multiplyOriginalJson = 1, typename... Args>
 std::string makeRawNdJson(Args&&... args)
 {
     std::string rawNdJson;
-    std::string last;
     (
         [&](const auto& arg)
         {
             rawNdJson += arg;
             rawNdJson += '\n';
-            last = arg;
         }(args),
         ...);
 
-    for (size_t i = 1; i < repeatedEvents; ++i)
+    // Store the original content to repeat
+    std::string originalContent = rawNdJson;
+    for (size_t i = 1; i < multiplyOriginalJson; ++i)
     {
-        rawNdJson += last;
-        rawNdJson += '\n';
+        rawNdJson += originalContent;
     }
     return rawNdJson;
 }
 
-template<size_t repeatedEvents = 1, typename... Args>
+template<size_t multiplyOriginalJson = 1, typename... Args>
 std::queue<base::Event> makeResult(Args&&... args)
 {
-    std::queue<base::Event> result;
+    // Store the events for one repetition
+    std::vector<base::Event> events;
     (
-        [&result](const auto& arg)
+        [&events](const auto& arg)
         {
             base::Event event = std::make_shared<json::Json>(arg);
-            result.push(event);
+            events.push_back(event);
         }(args),
         ...);
 
-    auto event = result.front();
-    for (size_t i = 1; i < repeatedEvents; ++i)
+    std::queue<base::Event> result;
+    for (size_t i = 0; i < multiplyOriginalJson; ++i)
     {
-        result.push(event);
+        for (const auto& event : events)
+        {
+            result.push(std::make_shared<json::Json>(*std::static_pointer_cast<json::Json>(event)));
+        }
     }
     return result;
 }
@@ -101,59 +104,35 @@ INSTANTIATE_TEST_SUITE_P(
     Api,
     NdJsonParserTest,
     ::testing::Values(
+        // No trailing newline
+        EventT(R"({"single":"event"})", SUCCESS(makeResult(R"({"single":"event"})"))),
         // Success 1 event
-        EventT(makeRawNdJson(R"({"header":"header"})",
-                             R"({"module":"module", "collector":"collector"})",
-                             R"({"original":"event"})"),
-               SUCCESS(makeResult(
-                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
+        EventT(makeRawNdJson(R"({"original":"event"})"),
+               SUCCESS(makeResult(R"({"original":"event"})"))),
         // Success 4 events
-        EventT(makeRawNdJson<4>(R"({"header":"header"})",
-                                R"({"module":"module", "collector":"collector"})",
+        EventT(makeRawNdJson<4>(R"({"field":"type"})",
+                                R"({"a":"abc", "number":2254})",
                                 R"({"original":"event"})"),
-               SUCCESS(makeResult<4>(
-                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
+               SUCCESS(makeResult<4>(R"({"field":"type"})",
+                                R"({"a":"abc", "number":2254})",
+                                R"({"original":"event"})"))),
         // Success 40 events
-        EventT(makeRawNdJson<40>(R"({"header":"header"})",
-                                 R"({"module":"module", "collector":"collector"})",
+        EventT(makeRawNdJson<40>(R"({"field":"type"})",
+                                 R"({"a":"abc", "number":2254})",
                                  R"({"original":"event"})"),
-               SUCCESS(makeResult<40>(
-                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
-        // Success Mixed subheader
-        EventT(makeRawNdJson(R"({"header":"header"})",
-                             R"({"module":"module", "collector":"collector"})",
-                             R"({"original":"event"})",
-                             R"({"module":"module", "collector":"collector"})",
-                             R"({"original":"event"})"),
-               SUCCESS(makeResult<2>(
-                   R"({"event":{"module":"module","collector":"collector"},"original":"event","header":"header"})"))),
-        // Failure Mixed subheader with empty lines
-        EventT(makeRawNdJson(R"({"header":"header"})",
-                             R"({"module":"module", "collector":"collector"})",
-                             R"({"original":"event"})",
-                             "",
-                             R"({"module":"module", "collector":"collector"})",
-                             R"({"original":"event"})",
-                             "",
-                             R"({"original":"event"})",
-                             R"({"module":"module", "collector":"collector"})"),
-               FAILURE()),
+               SUCCESS(makeResult<40>(R"({"field":"type"})",
+                                 R"({"a":"abc", "number":2254})",
+                                 R"({"original":"event"})"))),
         // Failure empty
         EventT("", FAILURE()),
-        // Failure not min size
-        EventT(makeRawNdJson(R"({"header":"header"})", R"({"module":"module", "collector":"collector"})"), FAILURE()),
-        // Failure invalid header
-        EventT(makeRawNdJson("header", R"({"module":"module", "collector":"collector"})", R"({"original":"event"})"),
+        // Mixed valid/invalid json
+        EventT(makeRawNdJson(R"({"field":"type"})", R"({"a":"abcd", "number":12365})", "event"),
                FAILURE()),
-        // Failure invalid subheader
-        EventT(makeRawNdJson(R"({"header":"header"})", "subheader", R"({"original":"event"})"), FAILURE()),
-        // Failure invalid event (empty result)
-        EventT(makeRawNdJson(R"({"header":"header"})", R"({"module":"module", "collector":"collector"})", "event"),
-               FAILURE()),
-        // Failure invalid mixed subheader (all events would use the same subheader)
-        EventT(makeRawNdJson(R"({"header":"header"})",
-                             R"({"module":"module", "collector":"collector"})",
-                             R"({"original":"event"})",
-                             R"({"module)",
-                             R"({"original":"event"})"),
-               FAILURE())));
+        // Mixed invalid/valid json
+        EventT(makeRawNdJson("invalid_json", R"({"valid":"first"})"), FAILURE()),
+        // Empty lines
+        EventT("line1\n\nline2", FAILURE()),
+        // Invalid JSON syntax
+        EventT(makeRawNdJson(R"({"invalid": json})"), FAILURE()),
+        EventT(makeRawNdJson(R"({"unclosed": "string)"), FAILURE())
+        ));
