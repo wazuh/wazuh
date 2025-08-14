@@ -53,15 +53,14 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
 };
 } // namespace
 
-std::shared_ptr<udsrv::Server> g_engineUdpServer {};
-std::shared_ptr<httpsrv::Server> g_engineHttpServer {};
+std::shared_ptr<udsrv::Server> g_engineLocalServer {};
 
 void sigintHandler(const int signum)
 {
-    if (g_engineUdpServer)
+    if (g_engineLocalServer)
     {
-        g_engineUdpServer->stop();
-        LOG_INFO("Received signal {}: Stopping the engine UDP server.", signum);
+        g_engineLocalServer->stop();
+        LOG_INFO("Received signal {}: Stopping the engine local server.", signum);
     }
 }
 
@@ -176,6 +175,7 @@ int main(int argc, char* argv[])
     // std::shared_ptr<IIndexerConnector> iConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
+    std::shared_ptr<httpsrv::Server> engineRemoteServer;
 
     try
     {
@@ -546,34 +546,29 @@ int main(int argc, char* argv[])
 
         // UDP Servers
         {
-            g_engineUdpServer =
+            g_engineLocalServer =
                 std::make_shared<udsrv::Server>([orchestrator, archiver](std::string_view msg)
                                                 { orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg)); },
                                                 confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
-            g_engineUdpServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
+            g_engineLocalServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
 
-            LOG_INFO("UDP engine's server initialized and started.");
+            LOG_INFO("Local engine's server initialized and started.");
         }
 
         // HTTP enriched events server
         {
-            g_engineHttpServer = std::make_shared<httpsrv::Server>("ENRICHED_EVENTS_SRV");
+            engineRemoteServer = std::make_shared<httpsrv::Server>("ENRICHED_EVENTS_SRV");
 
-            exitHandler.add(
-                []()
-                {
-                    g_engineHttpServer->stop();
-                    eMessage::ShutdownEMessageLibrary();
-                });
+            exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
-            g_engineHttpServer->addRoute(httpsrv::Method::POST,
+            engineRemoteServer->addRoute(httpsrv::Method::POST,
                 "/events/enriched", //TODO: Double check route
                 api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
 
             // starting in a new thread
-            g_engineHttpServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
+            engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
 
-            LOG_INFO("HTTP engine's server initialized and started.");
+            LOG_INFO("Remote engine's server initialized and started.");
         }
 
         /* Create PID file */
@@ -588,7 +583,7 @@ int main(int argc, char* argv[])
         }
 
         // Do not exit until the server is running
-        while (g_engineUdpServer->isRunning())
+        while (g_engineLocalServer->isRunning())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
