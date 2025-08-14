@@ -56,7 +56,7 @@ edit_value_tag() {
             unix_sed "s#<$1>.*</$1>#<$1>$2</$1>#g" "${file}"
         fi
     fi
-    
+
     if [ "$?" != "0" ]; then
         echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating $2 with variable $1." >> "${INSTALLDIR}/logs/ossec.log"
     fi
@@ -110,7 +110,7 @@ add_adress_block() {
                 echo "      <protocol>${PROTOCOLS[i]}</protocol>"
             else
                 echo "      <protocol>tcp</protocol>"
-            fi 
+            fi
             echo "    </server>"
         } >> "${TMP_SERVER}"
     done
@@ -247,7 +247,7 @@ add_auto_enrollment () {
             echo "      <agent_key_path>/path/to/agent.key</agent_key_path>"
             echo "      <authorization_pass_path>/path/to/authd.pass</authorization_pass_path>"
             echo "      <delay_after_enrollment>20</delay_after_enrollment>"
-            echo "    </enrollment>" 
+            echo "    </enrollment>"
         } >> "${TMP_ENROLLMENT}"
     fi
 
@@ -257,9 +257,9 @@ add_auto_enrollment () {
 concat_conf() {
 
     if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<\/crypto_method>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
+        ${sed} "/<\/auto_restart>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
     else
-        unix_sed "/<\/crypto_method>/r ${TMP_ENROLLMENT}/" "${CONF_FILE}"
+        unix_sed "/<\/auto_restart>/r ${TMP_ENROLLMENT}/" "${CONF_FILE}"
     fi
 
     rm -f "${TMP_ENROLLMENT}"
@@ -308,13 +308,13 @@ main () {
         fi
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
-        ADDRESSES=( ${WAZUH_MANAGER//,/ } ) 
+        ADDRESSES=( ${WAZUH_MANAGER//,/ } )
         PROTOCOLS=( $(tolower "${WAZUH_PROTOCOL//,/ }") )
         # Get uniques values if all protocols are the same
         if ( [ "${#PROTOCOLS[@]}" -ge "${#ADDRESSES[@]}" ] && ( ( ! echo "${PROTOCOLS[@]}" | grep -q -w "tcp" ) || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ) ) || [ ${#PROTOCOLS[@]} -eq 0 ] || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ; then
-            ADDRESSES=( $(echo "${ADDRESSES[@]}" |  tr ' ' '\n' | cat -n | sort -uk2 | sort -n | cut -f2- | tr '\n' ' ') ) 
+            ADDRESSES=( $(echo "${ADDRESSES[@]}" |  tr ' ' '\n' | cat -n | sort -uk2 | sort -n | cut -f2- | tr '\n' ' ') )
         fi
-        
+
         add_adress_block
     fi
 
@@ -335,7 +335,7 @@ main () {
         concat_conf
     fi
 
-            
+
     if [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         echo "${WAZUH_REGISTRATION_PASSWORD}" > "${INSTALLDIR}/${WAZUH_REGISTRATION_PASSWORD_PATH}"
         chmod 640 "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
