@@ -47,7 +47,7 @@ void test_md5_sha1_file(void **state)
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    assert_int_equal(OS_MD5_SHA1_File(file_name, NULL, md5buffer, sha1buffer, OS_TEXT), 0);
+    assert_int_equal(OS_MD5_SHA1_File(file_name, md5buffer, sha1buffer, OS_TEXT), 0);
 
     assert_string_equal(md5buffer, string_md5);
     assert_string_equal(sha1buffer, string_sha1);
@@ -70,7 +70,7 @@ void test_md5_sha1_cmd_file(void **state)
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    assert_int_equal(OS_MD5_SHA1_File(file_name, "cat ", md5buffer, sha1buffer, OS_TEXT), 0);
+    assert_int_equal(OS_MD5_SHA1_File(file_name, md5buffer, sha1buffer, OS_TEXT), 0);
 
     assert_string_equal(md5buffer, string_md5);
     assert_string_equal(sha1buffer, string_sha1);
@@ -81,7 +81,7 @@ void test_md5_sha1_cmd_file_fail(void **state)
     os_md5 md5buffer;
     os_sha1 sha1buffer;
 
-    assert_int_equal(OS_MD5_SHA1_File("not_existing_file", NULL, md5buffer, sha1buffer, OS_TEXT), -1);
+    assert_int_equal(OS_MD5_SHA1_File("not_existing_file", md5buffer, sha1buffer, OS_TEXT), -1);
 }
 
 void test_md5_sha1_cmd_file_snprintf_fail(void **state)
@@ -104,7 +104,7 @@ void test_md5_sha1_cmd_file_snprintf_fail(void **state)
 
     will_return(__wrap_snprintf, -1);
 
-    assert_int_equal(OS_MD5_SHA1_File(file_name, "cat ", md5buffer, sha1buffer, OS_TEXT), -1);
+    assert_int_equal(OS_MD5_SHA1_File(file_name, md5buffer, sha1buffer, OS_TEXT), -1);
 }
 
 void test_md5_sha1_cmd_file_popen_fail(void **state)
@@ -129,7 +129,7 @@ void test_md5_sha1_cmd_file_popen_fail(void **state)
 
     expect_popen("", "r", NULL);
 
-    assert_int_equal(OS_MD5_SHA1_File(file_name, "cat ", md5buffer, sha1buffer, OS_TEXT), -1);
+    assert_int_equal(OS_MD5_SHA1_File(file_name, md5buffer, sha1buffer, OS_TEXT), -1);
 }
 
 int main(void) {
