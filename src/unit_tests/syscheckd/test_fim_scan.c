@@ -252,6 +252,31 @@ static int setup_group(void **state) {
     return 0;
 }
 
+static int setup_fim_regex_group(void **state) {
+    if (setup_fim_data(state) != 0)
+        return -1;
+
+    test_mode = 0;
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    // Read and setup global values.
+    Read_Syscheck_Config("test_syscheck4.conf");
+
+    syscheck.rt_delay = 1;
+    syscheck.max_depth = 256;
+    syscheck.file_max_size = 1024;
+
+    test_mode = 1;
+
+    return 0;
+}
+
 static int setup_wildcards(void **state) {
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
@@ -735,7 +760,7 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
-    ret = fim_check_ignore("/EtC/dumPDateS");
+    ret = fim_check_ignore("/EtC/dumPDateS", FIM_REGULAR);
 
     assert_int_equal(ret, 1);
 }
@@ -754,13 +779,13 @@ static void test_fim_check_ignore_strncasecmp(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 
 
-    ret = fim_check_ignore(expanded_path);
+    ret = fim_check_ignore(expanded_path, FIM_REGULAR);
 
     assert_int_equal(ret, 1);
 }
 #endif
 
-static void test_fim_check_ignore_regex(void **state) {
+static void test_fim_check_ignore_regex_file(void **state) {
     int ret;
     char debug_msg[OS_MAXSTR];
 
@@ -773,7 +798,25 @@ static void test_fim_check_ignore_regex(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
 #endif
 
-    ret = fim_check_ignore("/test/files/test.swp");
+    ret = fim_check_ignore("/test/files/test.swp", FIM_REGULAR);
+
+    assert_int_equal(ret, 1);
+}
+
+static void test_fim_check_ignore_regex_directory(void **state) {
+    int ret;
+    char debug_msg[OS_MAXSTR];
+
+
+#ifndef TEST_WINAGENT
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/test_directory", "test_dir");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+#else
+    snprintf(debug_msg, OS_MAXSTR, FIM_IGNORE_SREGEX, "/test/test_directory", "test_dir");
+    expect_string(__wrap__mdebug2, formatted_msg, debug_msg);
+#endif
+
+    ret = fim_check_ignore("/test/test_directory", FIM_DIRECTORY);
 
     assert_int_equal(ret, 1);
 }
@@ -782,7 +825,7 @@ static void test_fim_check_ignore_regex(void **state) {
 static void test_fim_check_ignore_failure(void **state) {
    int ret;
 
-    ret = fim_check_ignore("/test/files/test.sp");
+    ret = fim_check_ignore("/test/files/test.sp", FIM_REGULAR);
 
     assert_int_equal(ret, 0);
 }
@@ -3815,11 +3858,6 @@ int main(void) {
         /* fim_audit_json */
         cmocka_unit_test_teardown(test_fim_audit_json, teardown_delete_json),
 
-        /* fim_check_ignore */
-        cmocka_unit_test(test_fim_check_ignore_strncasecmp),
-        cmocka_unit_test(test_fim_check_ignore_regex),
-        cmocka_unit_test(test_fim_check_ignore_failure),
-
         /* fim_check_restrict */
         cmocka_unit_test(test_fim_check_restrict_success),
         cmocka_unit_test(test_fim_check_restrict_failure),
@@ -3955,7 +3993,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
     };
-
+    const struct CMUnitTest fim_regex_tests[] = { 
+        /* fim_check_ignore */
+        cmocka_unit_test(test_fim_check_ignore_strncasecmp),
+        cmocka_unit_test(test_fim_check_ignore_regex_file),
+        cmocka_unit_test(test_fim_check_ignore_regex_directory),
+        cmocka_unit_test(test_fim_check_ignore_failure),
+    }; 
     const struct CMUnitTest root_monitor_tests[] = {
         cmocka_unit_test(test_fim_checker_root_ignore_file_under_recursion_level),
         cmocka_unit_test(test_fim_checker_root_file_within_recursion_level),
@@ -3969,6 +4013,7 @@ int main(void) {
     int retval;
 
     retval = cmocka_run_group_tests(tests, setup_group, teardown_group);
+    retval += cmocka_run_group_tests(fim_regex_tests, setup_fim_regex_group, teardown_group);
     retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
     retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
 

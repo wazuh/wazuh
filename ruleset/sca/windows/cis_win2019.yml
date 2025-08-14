@@ -47,8 +47,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare <= 365'
-      - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare > 0'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare <= 365'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MaximumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> r:MaximumPasswordAge = (\d+) compare > 0'
 
   # 1.1.3 (L1) Ensure 'Minimum password age' is set to '1 or more day(s)'. (Automated)
   - id: 16501
@@ -68,7 +68,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Minimum password age \(days\):\s+(\d+) compare >= 1'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MinimumPasswordAge"; Remove-Item $env:TEMP\secpol.cfg -> n:MinimumPasswordAge = (\d+) compare >= 1'
 
   # 1.1.4 (L1) Ensure 'Minimum password length' is set to '14 or more character(s)'. (Automated)
   - id: 16502
@@ -89,7 +89,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Minimum password length:\s+(\d+) compare >= 14'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "MinimumPasswordLength"; Remove-Item $env:TEMP\secpol.cfg -> n:MinimumPasswordLength = (\d+) compare >= 14'
 
   # 1.1.5 (L1) Ensure 'Password must meet complexity requirements' is set to 'Enabled'. (Automated) - Not Implemented
   # 1.1.6 (L1) Ensure 'Store passwords using reversible encryption' is set to 'Disabled'. (Automated) - Not Implemented
@@ -112,7 +112,7 @@ checks:
       - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare >= 15'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutDuration"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutDuration = (\d+) compare >= 15'
 
   # 1.2.2 (L1) Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'. (Automated)
   - id: 16504
@@ -132,8 +132,8 @@ checks:
       - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare > 0'
-      - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare <= 5'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutBadCount"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutBadCount = (\d+) compare <= 5'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "LockoutBadCount"; Remove-Item $env:TEMP\secpol.cfg -> n:LockoutBadCount = (\d+) compare > 0'
 
   # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'. (Manual) - Not Implemented
 
@@ -155,7 +155,7 @@ checks:
       - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
-      - 'c:net.exe accounts -> n:Lockout observation window \(minutes\):\s+(\d+) compare >= 15'
+      - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "ResetLockoutCount"; Remove-Item $env:TEMP\secpol.cfg -> n:ResetLockoutCount = (\d+) compare >= 15'
 
   # 2.2.1 (L1) Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'. (Automated) - Not Implemented
   # 2.2.2 (L1) Ensure 'Access this computer from the network' is set to 'Administrators, Authenticated Users, ENTERPRISE DOMAIN CONTROLLERS' (DC only). (Automated) - Not Implemented
@@ -237,8 +237,8 @@ checks:
       - soc_2: ["CC6.3"]
     condition: any
     rules:
-      - 'c:net user guest -> r:Account active\s+No'
-      - "c:net user guest -> r:The user name could not be found."
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:TRUE'
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:No Instance\(s\) Available.'
 
   # 2.3.1.3 (L1) Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'. (Automated)
   - id: 16508
@@ -276,7 +276,7 @@ checks:
       - soc_2: ["CC6.3"]
     condition: all
     rules:
-      - "c:net user administrator -> r:The user name could not be found."
+      - 'not c:net user -> r:Admin|Администратор|Amministratore|Beheerder|Järjestelmänvalvoja|Správce|Rendszergazda|Yönetici |Διαχειριστής|管理者|管理员|系統管理員|관리자|مسؤول | מנהל |ผู้ดูแลระบบ'
 
   # 2.3.1.5 (L1) Configure 'Accounts: Rename guest account'. (Automated)
   - id: 16510
@@ -291,9 +291,9 @@ checks:
       - pci_dss_v3.2.1: ["2.1", "2.1.1"]
       - pci_dss_v4.0: ["2.2.2", "2.3.1"]
       - soc_2: ["CC6.3"]
-    condition: all
-    rules:
-      - "c:net user guest -> r:The user name could not be found."
+   condition: all
+   rules:
+     - 'not c:net user -> r:guest|Guest|Gast|Invité|Invitado|Ospite|Convidado|Gäst |Gjest|Gæst|Vieras|Гость|Gość|Vendég|Host |Misafir|Επισκέπτης|ゲスト|来宾|來賓|게스트|ضيف|אורח|บัญชีผู้ใช้ทั่วไป'
 
   # 2.3.2.1 Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings is set to 'Enabled' (Automated)
   - id: 16511

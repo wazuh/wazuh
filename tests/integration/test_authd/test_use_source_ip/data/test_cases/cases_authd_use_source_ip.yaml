@@ -4,7 +4,7 @@
     USE_SOURCE_IP: 'yes'
   metadata:
     use_source_ip: 'yes'
-    input: "OSSEC A:'user1' IP:'src'"
+    input: "OSSEC A:'user1' IP:'src'\n"
     output:
       status: 'success'
       name: 'user1'
@@ -18,7 +18,7 @@
     USE_SOURCE_IP: 'yes'
   metadata:
     use_source_ip: 'yes'
-    input: "OSSEC A:'user1' IP:'10.10.10.10'"
+    input: "OSSEC A:'user1' IP:'10.10.10.10'\n"
     output:
       status: 'success'
       name: 'user1'
@@ -32,7 +32,7 @@
     USE_SOURCE_IP: 'yes'
   metadata:
     use_source_ip: 'yes'
-    input: "OSSEC A:'user1' "
+    input: "OSSEC A:'user1' \n"
     output:
       status: 'success'
       name: 'user1'
@@ -46,7 +46,7 @@
     USE_SOURCE_IP: 'yes'
   metadata:
     use_source_ip: 'yes'
-    input: "OSSEC A:'user1' IP:'src'"
+    input: "OSSEC A:'user1' IP:'src'\n"
     output:
       status: 'success'
       name: 'user1'
@@ -60,7 +60,7 @@
     USE_SOURCE_IP: 'yes'
   metadata:
     use_source_ip: 'yes'
-    input: "OSSEC A:'user1' "
+    input: "OSSEC A:'user1' \n"
     output:
       status: 'success'
       name: 'user1'
@@ -74,7 +74,7 @@
     USE_SOURCE_IP: 'no'
   metadata:
     use_source_ip: 'no'
-    input: "OSSEC A:'user1' IP:'src'"
+    input: "OSSEC A:'user1' IP:'src'\n"
     output:
       status: 'success'
       name: 'user1'
@@ -88,7 +88,7 @@
     USE_SOURCE_IP: 'no'
   metadata:
     use_source_ip: 'no'
-    input: "OSSEC A:'user1' IP:'10.10.10.10'"
+    input: "OSSEC A:'user1' IP:'10.10.10.10'\n"
     output:
       status: 'success'
       name: 'user1'
@@ -102,7 +102,7 @@
     USE_SOURCE_IP: 'no'
   metadata:
     use_source_ip: 'no'
-    input: "OSSEC A:'user1' "
+    input: "OSSEC A:'user1' \n"
     output:
       status: 'success'
       name: 'user1'
@@ -116,7 +116,7 @@
     USE_SOURCE_IP: 'no'
   metadata:
     use_source_ip: 'no'
-    input: "OSSEC A:'user1' IP:'src'"
+    input: "OSSEC A:'user1' IP:'src'\n"
     output:
       status: 'success'
       name: 'user1'
@@ -130,7 +130,7 @@
     USE_SOURCE_IP: 'no'
   metadata:
     use_source_ip: 'no'
-    input: "OSSEC A:'user1' "
+    input: "OSSEC A:'user1' \n"
     output:
       status: 'success'
       name: 'user1'

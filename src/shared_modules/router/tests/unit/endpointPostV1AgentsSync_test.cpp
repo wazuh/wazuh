@@ -129,11 +129,13 @@ TEST_F(EndpointPostV1AgentsSyncTest, KeepAliveThreeAgents)
 {
     auto stmt = mockStmt(qdump);
 
+    EXPECT_CALL(*stmt, bindStringView).Times(3);
     EXPECT_CALL(*stmt, bindInt64).Times(3);
     EXPECT_CALL(*stmt, step()).Times(3);
     EXPECT_CALL(*stmt, reset()).Times(3);
 
-    nlohmann::json body = R"({"syncreq_keepalive":[10,11,12]})"_json;
+    nlohmann::json body =
+        R"({"syncreq_keepalive":[{"id":10,"version":"v4.10.0"},{"id":11,"version":"v4.11.0"},{"id":12,"version":"v4.12.0"}]})"_json;
     req.body = body.dump();
 
     TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
@@ -141,14 +143,14 @@ TEST_F(EndpointPostV1AgentsSyncTest, KeepAliveThreeAgents)
     ASSERT_EQ(qdump->size(), 1);
     EXPECT_EQ((*qdump)[0],
               "UPDATE agent SET last_keepalive = STRFTIME('%s', 'NOW'),sync_status = 'synced',connection_status = "
-              "'active',disconnection_time = 0,status_code = 0 WHERE id = ?;");
+              "'active',disconnection_time = 0,status_code = 0, version = ? WHERE id = ?;");
 }
 
 TEST_F(EndpointPostV1AgentsSyncTest, StatusSingleAgent)
 {
     auto stmt = mockStmt(qdump);
 
-    EXPECT_CALL(*stmt, bindStringView).Times(1); // connection_status
+    EXPECT_CALL(*stmt, bindStringView).Times(2); // connection_status + version
     EXPECT_CALL(*stmt, bindInt64).Times(3);      // disconnection_time + status_code + id
     EXPECT_CALL(*stmt, step()).Times(1);
 
@@ -160,7 +162,8 @@ TEST_F(EndpointPostV1AgentsSyncTest, StatusSingleAgent)
     TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
 
     ASSERT_EQ(qdump->size(), 1);
-    EXPECT_EQ((*qdump)[0],
-              "UPDATE agent SET connection_status = ?, sync_status = 'synced', disconnection_time = ?, status_code = ? "
-              "WHERE id = ?;");
+    EXPECT_EQ(
+        (*qdump)[0],
+        "UPDATE agent SET connection_status = ?, sync_status = 'synced', disconnection_time = ?, status_code = ?, "
+        "version = ? WHERE id = ?;");
 }

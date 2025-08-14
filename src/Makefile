@@ -88,6 +88,7 @@ EXTERNAL_CONCURRENTQUEUE=external/concurrentqueue/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_LIBPCRE2=external/libpcre2/
+EXTERNAL_SIMDJSON=external/simdjson/
 ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
@@ -836,6 +837,7 @@ JEMALLOC_LIB = $(EXTERNAL_JEMALLOC)lib/libjemalloc.so.2
 ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
 ABSEILCPP_LIB = $(EXTERNAL_ABSEILCPP)build/build_result/lib*/libabsl_*.a
 RE2_LIB = $(EXTERNAL_RE2)build/libre2.a
+SIMDJSON_LIB = $(EXTERNAL_SIMDJSON)build/libsimdjson.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 SPDLOG_LIB = $(EXTERNAL_SPDLOG)build/libspdlog.a
 YAMLCPP_LIB = $(EXTERNAL_YAMLCPP)build/libyaml-cpp.a
@@ -861,7 +863,7 @@ endif
 
 # Adding libraries only for server
 ifeq (${TARGET},server)
-	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB)
+	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB) $(SIMDJSON_LIB)
 	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
 endif
 
@@ -904,7 +906,7 @@ endif
 endif
 
 ifeq (${TARGET},server)
-external: $(ROCKSDB_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)
+external: $(ROCKSDB_LIB) $(SIMDJSON_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)
 endif
 
 ifeq (${uname_S},Linux)
@@ -1007,6 +1009,9 @@ ${RE2_LIB}: $(ABSEILCPP_LIB)
 	-DCMAKE_POSITION_INDEPENDENT_CODE=ON \
 	-DCMAKE_INSTALL_PREFIX=./result && \
 	${MAKE}
+### simdjson ###
+${SIMDJSON_LIB}:
+	cd $(EXTERNAL_SIMDJSON) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSIMDJSON_DEVELOPER_MODE=OFF -DSIMDJSON_AVX512_ALLOWED=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
 
 ### flatbuffers ###
 ${FLATBUFFERS_LIB}:
@@ -1425,7 +1430,7 @@ EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
 	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float
+	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers simdjson spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float
 endif
 endif
 
@@ -2525,6 +2530,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_GOOGLE_TEST)build
 	rm -rf $(EXTERNAL_GOOGLE_BENCHMARK)build
 	rm -rf $(EXTERNAL_ROCKSDB)build
+	rm -rf $(EXTERNAL_SIMDJSON)build
 	rm -rf $(EXTERNAL_LIBBPF)build
 	rm -rf $(EXTERNAL_FLATBUFFERS)build
 	rm -rf $(EXTERNAL_FMT)

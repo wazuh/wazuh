@@ -54,7 +54,7 @@ void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
 /* Forward declarations */
 void * close_fp_main(void * args);
-void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue);
+void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue);
 
 /* Setup/teardown */
 
@@ -458,7 +458,7 @@ void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family)
     char buffer[OS_MAXSTR + 1] = "!1234!";
     message_t message = {.buffer = buffer, .size = 6, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -500,7 +500,7 @@ void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_invalid_family_address_af_unspec(void** state)
@@ -533,7 +533,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     char buffer[OS_MAXSTR + 1] = "#!-agent shutdown ";
     message_t message = {.buffer = buffer, .size = 18, .sock = 1, .counter = 10};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -543,6 +543,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     os_calloc(1, sizeof(keyentry), key);
 
     key->id = strdup("009");
+    key->name = strdup("test_agent");
     key->sock = 1;
     key->keyid = 1;
 
@@ -579,9 +580,14 @@ void test_HandleSecureMessage_shutdown_message(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Control message pushed to queue.");
 
     expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "agent shutdown ");
+    expect_value(__wrap_validate_control_msg, msg_length, 15);
+    will_return(__wrap_validate_control_msg, 1);
 
     // OS_FreeKey
     expect_value(__wrap_OS_FreeKey, key, key);
@@ -589,10 +595,9 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     HandleSecureMessage(&message, control_msg_queue);
 
     // Expect the control message to be added to the queue
-    w_ctrl_msg_data_t * node = linked_queue_pop(control_msg_queue);
+    w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "agent shutdown ");
-    assert_int_equal(node->length, strlen("agent shutdown "));
     assert_int_equal(node->key->keyid, 1);
     assert_int_equal(node->key->sock, 1);
     assert_string_equal(node->key->id, "009");
@@ -602,17 +607,192 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     os_free(node);
 
     os_free(key->id);
+    os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
+
+void test_HandleSecureMessage_HC_req_message(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "#!-req payload";
+    message_t message = {.buffer = buffer, .size = 14, .sock = 1, .counter = 11};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("009");
+    key->name = strdup("test_agent");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "#!-req payload");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, "#!-req payload");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    // OS_DupKeyEntry
+    expect_value(__wrap_OS_DupKeyEntry, key, key);
+    will_return(__wrap_OS_DupKeyEntry, key);
+
+    // OS_AddSocket
+    expect_value(__wrap_OS_AddSocket, keys, &keys);
+    expect_value(__wrap_OS_AddSocket, i, 0);
+    expect_value(__wrap_OS_AddSocket, sock, message.sock);
+    will_return(__wrap_OS_AddSocket, OS_ADDSOCKET_KEY_ADDED);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "TCP socket 1 added to keystore.");
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "req payload");
+    expect_value(__wrap_validate_control_msg, msg_length, 11);
+    will_return(__wrap_validate_control_msg, 0);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Control message processed directly, not queued.");
+
+
+    // OS_FreeKey
+    expect_value(__wrap_OS_FreeKey, key, key);
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    // Expect the control message to be added to the queue
+    assert_true(indexed_queue_empty(control_msg_queue));
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
+
+void test_HandleSecureMessage_invalid_HC_req_message(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "#!-req witouthCounter";
+    message_t message = {.buffer = buffer, .size = 21, .sock = 1, .counter = 11};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("009");
+    key->name = strdup("test_agent");
+    key->sock = 1;
+    key->keyid = 1;
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = 0x0100007F;
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, "#!-req witouthCounter");
+    expect_value(__wrap_ReadSecMSG, id, 0);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, "#!-req witouthCounter");
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    // OS_DupKeyEntry
+    expect_value(__wrap_OS_DupKeyEntry, key, key);
+    will_return(__wrap_OS_DupKeyEntry, key);
+
+    // OS_AddSocket
+    expect_value(__wrap_OS_AddSocket, keys, &keys);
+    expect_value(__wrap_OS_AddSocket, i, 0);
+    expect_value(__wrap_OS_AddSocket, sock, message.sock);
+    will_return(__wrap_OS_AddSocket, OS_ADDSOCKET_KEY_ADDED);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "TCP socket 1 added to keystore.");
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_value(__wrap_rem_getCounter, fd, 1);
+    will_return(__wrap_rem_getCounter, 10);
+
+    expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "req witouthCounter");
+    expect_value(__wrap_validate_control_msg, msg_length, 18);
+    will_return(__wrap_validate_control_msg, -1);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Error validating control message from agent ID '009'.");
+
+
+    // OS_FreeKey
+    expect_value(__wrap_OS_FreeKey, key, key);
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    // Expect the control message to be added to the queue
+    assert_true(indexed_queue_empty(control_msg_queue));
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
 
 void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "#!-agent startup ";
     message_t message = {.buffer = buffer, .size = 17, .sock = 1, .counter = 11};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -665,9 +845,14 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Control message pushed to queue.");
 
     expect_string(__wrap_rem_inc_recv_ctrl, agent_id, key->id);
+
+    // Should be added to the queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "agent startup ");
+    expect_value(__wrap_validate_control_msg, msg_length, 14);
+    will_return(__wrap_validate_control_msg, 1);
 
     // OS_FreeKey
     expect_value(__wrap_OS_FreeKey, key, key);
@@ -675,10 +860,9 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     HandleSecureMessage(&message, control_msg_queue);
 
     // Expect the control message to be added to the queue
-    w_ctrl_msg_data_t * node = linked_queue_pop(control_msg_queue);
+    w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "agent startup ");
-    assert_int_equal(node->length, strlen("agent startup "));
     assert_int_equal(node->key->keyid, 1);
     assert_int_equal(node->key->sock, 1);
     assert_string_equal(node->key->id, "009");
@@ -690,7 +874,7 @@ void test_HandleSecureMessage_NewMessage_NoShutdownMessage(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
@@ -698,7 +882,7 @@ void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
     char buffer[OS_MAXSTR + 1] = "#!-agent startup ";
     message_t message = {.buffer = buffer, .size = 17, .sock = 1, .counter = 5};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -741,7 +925,7 @@ void test_HandleSecureMessage_OldMessage_NoShutdownMessage(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_invalid_message(void** state)
@@ -749,7 +933,7 @@ void test_HandleSecureMessage_invalid_message(void** state)
     char buffer[OS_MAXSTR + 1] = "!1234!";
     message_t message = {.buffer = buffer, .size = 6, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     keyentry** keyentries;
     os_calloc(1, sizeof(keyentry*), keyentries);
@@ -809,7 +993,7 @@ void test_HandleSecureMessage_invalid_message(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_different_sock(void** state)
@@ -817,7 +1001,7 @@ void test_HandleSecureMessage_different_sock(void** state)
     char buffer[OS_MAXSTR + 1] = "!12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     logr.connection_overtake_time = 60;
 
@@ -879,7 +1063,7 @@ void test_HandleSecureMessage_different_sock(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_different_sock_2(void** state)
@@ -887,7 +1071,7 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     logr.connection_overtake_time = 60;
 
@@ -948,7 +1132,7 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     os_free(key->id);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock(void** state)
@@ -956,7 +1140,7 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     current_ts = 61;
 
@@ -1043,7 +1227,7 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_2(void** state)
@@ -1051,7 +1235,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     char buffer[OS_MAXSTR + 1] = "!12!AAA";
     message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     current_ts = 61;
 
@@ -1138,7 +1322,7 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
@@ -1146,7 +1330,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     current_ts = 61;
 
@@ -1212,7 +1396,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
@@ -1220,7 +1404,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
     char buffer[OS_MAXSTR + 1] = "!12!AAA";
     message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     current_ts = 61;
 
@@ -1287,7 +1471,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
@@ -1295,7 +1479,7 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 0, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     current_ts = 61;
 
@@ -1388,7 +1572,7 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
@@ -1396,7 +1580,7 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     current_ts = 61;
 
@@ -1498,15 +1682,15 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 {
     char buffer[OS_MAXSTR + 1] = "#!-12!";
-    message_t message = {.buffer = buffer, .size = 7, .sock = 1, .counter = 11};
+    message_t message = {.buffer = buffer, .size = 6, .sock = 1, .counter = 11};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     current_ts = 61;
 
@@ -1591,17 +1775,21 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Control message pushed to queue.");
 
     expect_string(__wrap_rem_inc_recv_ctrl, agent_id, "001");
 
+    // Should be added to the control message queue
+    expect_value(__wrap_validate_control_msg, key, key);
+    expect_string(__wrap_validate_control_msg, r_msg, "12!");
+    expect_value(__wrap_validate_control_msg, msg_length, 3);
+    will_return(__wrap_validate_control_msg, 1);
     // OS_FreeKey
     expect_value(__wrap_OS_FreeKey, key, key);
 
     HandleSecureMessage(&message, control_msg_queue);
 
     // Expect the control message to be added to the queue
-    w_ctrl_msg_data_t * node = linked_queue_pop(control_msg_queue);
+    w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "12!");
     assert_int_equal(node->key->keyid, 1);
@@ -1616,7 +1804,7 @@ void test_HandleSecureMessage_close_idle_sock_control_msg_succes(void** state)
     os_free(key->ip);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_same_sock(void** state)
@@ -1624,7 +1812,7 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     char buffer[OS_MAXSTR + 1] = "12!";
     message_t message = {.buffer = buffer, .size = 4, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     current_ts = 61;
 
@@ -1688,7 +1876,7 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_HandleSecureMessage_close_same_sock_2(void** state)
@@ -1696,7 +1884,7 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     char buffer[OS_MAXSTR + 1] = "!12!AAA";
     message_t message = {.buffer = buffer, .size = 7, .sock = 1};
     struct sockaddr_in peer_info;
-    w_linked_queue_t * control_msg_queue = linked_queue_init();
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
 
     current_ts = 61;
 
@@ -1761,7 +1949,7 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     os_free(key->name);
     os_free(key);
     os_free(keyentries);
-    linked_queue_free(control_msg_queue);
+    indexed_queue_free(control_msg_queue);
 }
 
 void test_handle_new_tcp_connection_success(void** state)
@@ -2092,655 +2280,6 @@ void test_handle_outgoing_data_to_tcp_socket_success(void** state)
     handle_outgoing_data_to_tcp_socket(sock_client);
 }
 
-// Tests router_message_forward
-void test_router_message_forward_non_syscollector_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "1:nonsyscollector:{\"message\":\"test\"}";
-
-    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 1:nonsyscollector:{\"message\":\"test\"}");
-
-    router_message_forward(message, data->agent_id, NULL, NULL);
-}
-
-void test_router_message_forward_create_sync_handle_fail(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "5:syscollector:{\"message\":\"valid\"}";
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'rsync' not available.");
-    router_rsync_handle = NULL;
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_malformed_sync_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "5:syscollector:{\"message\":fail";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_invalid_sync_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "5:syscollector:{\"message\":\"not_valid\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"}}";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, -1);
-
-    expect_string(__wrap__mdebug2,
-                  formatted_msg,
-                  "Unable to forward message "
-                  "'{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"}}' "
-                  "for agent '001'.");
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_integrity_check_global(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "5:syscollector:{\"component\":\"syscollector_hwinfo\",\"data\":{\"begin\":\"0\",\"checksum\":"
-                    "\"b66d0703ee882571cd1865f393bd34f7d5940339\","
-                    "\"end\":\"0\",\"id\":1691259777},\"type\":\"integrity_check_global\"}";
-    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
-                             "\"focal\"},\"data_type\":\"integrity_check_global\",\"data\":"
-                             "{\"attributes_type\":\"syscollector_hwinfo\",\"begin\":\"0\",\"checksum\":"
-                             "\"b66d0703ee882571cd1865f393bd34f7d5940339\",\"end\":\"0\",\"id\":1691259777}}";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_integrity_check_left(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message =
-        "5:syscollector:{\"component\":\"syscollector_packages\",\"data\":{\"begin\":"
-        "\"01113a00fcdafa43d111ecb669202119c946ebe5\",\"checksum\":\"54c13892eb9ee18b0012086b76a89f41e73d64a1\","
-        "\"end\":\"40795337f16a208e4d0a2280fbd5c794c9877dcb\",\"id\":1693338981,\"tail\":"
-        "\"408cb243d2d52ad6414ba602e375b3b6b5f5cd77\"},\"type\":\"integrity_check_global\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"integrity_check_global\",\"data\":"
-        "{\"attributes_type\":\"syscollector_packages\",\"begin\":\"01113a00fcdafa43d111ecb669202119c946ebe5\","
-        "\"checksum\":\"54c13892eb9ee18b0012086b76a89f41e73d64a1\",\"end\":"
-        "\"40795337f16a208e4d0a2280fbd5c794c9877dcb\",\"id\":1693338981,\"tail\":"
-        "\"408cb243d2d52ad6414ba602e375b3b6b5f5cd77\"}}";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_integrity_check_right(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message =
-        "5:syscollector:{\"component\":\"syscollector_packages\",\"data\":{\"begin\":"
-        "\"85c5676f6e5082ef99bba397b90559cd36fbbeca\",\"checksum\":\"d33c176f028188be38b394af5eed1e66bb8ad40e\","
-        "\"end\":\"ffee8da05f37fa760fc5eee75dd0ea9e71228d05\",\"id\":1693338981},\"type\":\"integrity_check_right\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"integrity_check_right\",\"data\":"
-        "{\"attributes_type\":\"syscollector_packages\",\"begin\":\"85c5676f6e5082ef99bba397b90559cd36fbbeca\","
-        "\"checksum\":\"d33c176f028188be38b394af5eed1e66bb8ad40e\",\"end\":"
-        "\"ffee8da05f37fa760fc5eee75dd0ea9e71228d05\",\"id\":1693338981}}";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_integrity_clear_hardware_provider(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "5:syscollector:{\"component\":\"syscollector_hwinfo\",\"data\":{\"id\":1693338619},\"type\":"
-                    "\"integrity_clear\"}";
-    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
-                             "\"focal\"},\"data_type\":\"integrity_clear\",\"data\":"
-                             "{\"attributes_type\":\"syscollector_hwinfo\",\"id\":1693338619}}";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_integrity_clear_os_provider(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "5:syscollector:{\"component\":\"syscollector_osinfo\",\"data\":{\"id\":1693338619},\"type\":"
-                    "\"integrity_clear\"}";
-    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
-                             "\"focal\"},\"data_type\":\"integrity_clear\",\"data\":"
-                             "{\"attributes_type\":\"syscollector_osinfo\",\"id\":1693338619}}";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_integrity_clear_packages_provider(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "5:syscollector:{\"component\":\"syscollector_packages\",\"data\":{\"id\":1693338619},\"type\":"
-                    "\"integrity_clear\"}";
-    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
-                             "\"focal\"},\"data_type\":\"integrity_clear\",\"data\":"
-                             "{\"attributes_type\":\"syscollector_packages\",\"id\":1693338619}}";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_integrity_clear_processes_provider(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "5:syscollector:{\"component\":\"syscollector_processes\",\"data\":{\"id\":1693338619},\"type\":"
-                    "\"integrity_clear\"}";
-    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
-                             "\"focal\"},\"data_type\":\"integrity_clear\",\"data\":"
-                             "{\"attributes_type\":\"syscollector_processes\",\"id\":1693338619}}";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_create_delta_handle_fail(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"message\":\"valid\"}";
-
-    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'syscollector' not available.");
-    router_syscollector_handle = NULL;
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_malformed_delta_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"message\":fail";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_invalid_delta_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"message\":\"not_valid\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"}}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    // This type of message must be discarded
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_delta_packages_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message =
-        "d:syscollector:{\"type\":\"dbsync_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":"
-        "\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
-        ",\"description\":\"library for GIF images "
-        "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-        ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"size\":72,\"source\":\"giflib\""
-        ",\"vendor\":\"Ubuntu Developers "
-        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"dbsync_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":"
-        "\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
-        ",\"description\":\"library for GIF images "
-        "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-        ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"size\":72,\"source\":\"giflib\""
-        ",\"vendor\":\"Ubuntu Developers "
-        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_delta_os_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message =
-        "d:syscollector:{\"type\":\"dbsync_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":"
-        "\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
-        ",\"description\":\"library for GIF images "
-        "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-        ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"size\":72,\"source\":\"giflib\""
-        ",\"vendor\":\"Ubuntu Developers "
-        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"dbsync_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":"
-        "\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
-        ",\"description\":\"library for GIF images "
-        "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-        ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"size\":72,\"source\":\"giflib\""
-        ",\"vendor\":\"Ubuntu Developers "
-        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_delta_netiface_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"type\":\"dbsync_network_iface\",\"data\":{\"adapter\":null,\"checksum\":"
-                    "\"078143285c1aff98e196c8fe7e01f5677f44bd44\""
-                    ",\"item_id\":\"7a60750dd3c25c53f21ff7f44b4743664ddbb66a\",\"mac\":\"02:bf:67:45:e4:dd\",\"mtu\":"
-                    "1500,\"name\":\"enp0s3\",\"rx_bytes\":972800985"
-                    ",\"rx_dropped\":0,\"rx_errors\":0,\"rx_packets\":670863,\"scan_time\":\"2023/08/04 "
-                    "19:56:11\",\"state\":\"up\",\"tx_bytes\":6151606,\"tx_dropped\":0"
-                    ",\"tx_errors\":0,\"tx_packets\":84746,\"type\":\"ethernet\"},\"operation\":\"MODIFIED\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"dbsync_network_iface\",\"data\":{\"adapter\":null,\"checksum\":\"078143285c1aff98e196c8fe7e01f5677f44bd44\""
-        ",\"item_id\":\"7a60750dd3c25c53f21ff7f44b4743664ddbb66a\",\"mac\":\"02:bf:67:45:e4:dd\",\"mtu\":1500,\"name\":"
-        "\"enp0s3\",\"rx_bytes\":972800985"
-        ",\"rx_dropped\":0,\"rx_errors\":0,\"rx_packets\":670863,\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"state\":\"up\",\"tx_bytes\":6151606,\"tx_dropped\":0"
-        ",\"tx_errors\":0,\"tx_packets\":84746,\"type\":\"ethernet\"},\"operation\":\"MODIFIED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_delta_netproto_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"type\":\"dbsync_network_protocol\",\"data\":{\"checksum\":"
-                    "\"ddd971d57316a79738a2cf93143966a4e51ede08\",\"dhcp\":\"unknown\""
-                    ",\"gateway\":\" "
-                    "\",\"iface\":\"enp0s9\",\"item_id\":\"33228317ee8778628d0f2f4fde53b75b92f15f1d\",\"metric\":\"0\","
-                    "\"scan_time\":\"2023/08/07 15:02:36\""
-                    ",\"type\":\"ipv4\"},\"operation\":\"DELETED\"}";
-    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
-                             "\"focal\"},\"data_type\":\"dbsync_network_protocol\",\"data\":{\"checksum\":"
-                             "\"ddd971d57316a79738a2cf93143966a4e51ede08\",\"dhcp\":\"unknown\""
-                             ",\"gateway\":\" "
-                             "\",\"iface\":\"enp0s9\",\"item_id\":\"33228317ee8778628d0f2f4fde53b75b92f15f1d\","
-                             "\"metric\":\"0\",\"scan_time\":\"2023/08/07 15:02:36\""
-                             ",\"type\":\"ipv4\"},\"operation\":\"DELETED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_delta_netaddr_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message =
-        "d:syscollector:{\"type\":\"dbsync_network_address\",\"data\":{\"address\":\"192.168.0.80\",\"broadcast\":"
-        "\"192.168.0.255\""
-        ",\"checksum\":\"c1f9511fa37815d19cee496f21524725ba84ab10\",\"iface\":\"enp0s9\",\"item_id\":"
-        "\"b333013c47d28eb3878068dd59c42e00178bd475\""
-        ",\"netmask\":\"255.255.255.0\",\"proto\":0,\"scan_time\":\"2023/08/07 15:02:36\"},\"operation\":\"DELETED\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"dbsync_network_address\",\"data\":{\"address\":\"192.168.0.80\",\"broadcast\":\"192.168.0.255\""
-        ",\"checksum\":\"c1f9511fa37815d19cee496f21524725ba84ab10\",\"iface\":\"enp0s9\",\"item_id\":"
-        "\"b333013c47d28eb3878068dd59c42e00178bd475\""
-        ",\"netmask\":\"255.255.255.0\",\"proto\":0,\"scan_time\":\"2023/08/07 15:02:36\"},\"operation\":\"DELETED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_delta_hardware_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"type\":\"dbsync_hwinfo\",\"data\":{\"board_serial\":\"0\",\"checksum\":"
-                    "\"f6eea592bc11465ecacc92ddaea188ef3faf0a1f\",\"cpu_cores\":8"
-                    ",\"cpu_mhz\":2592.0,\"cpu_name\":\"Intel(R) Core(TM) i7-10750H CPU @ "
-                    "2.60GHz\",\"ram_free\":11547184,\"ram_total\":12251492,\"ram_usage\":6"
-                    ",\"scan_time\":\"2023/08/04 19:56:11\"},\"operation\":\"MODIFIED\"}";
-    // Trailing zeros are truncated.
-    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
-                             "\"focal\"},\"data_type\":\"dbsync_hwinfo\",\"data\":{\"board_serial\":\"0\",\"checksum\":"
-                             "\"f6eea592bc11465ecacc92ddaea188ef3faf0a1f\",\"cpu_cores\":8"
-                             ",\"cpu_mhz\":2592,\"cpu_name\":\"Intel(R) Core(TM) i7-10750H CPU @ "
-                             "2.60GHz\",\"ram_free\":11547184,\"ram_total\":12251492,\"ram_usage\":6"
-                             ",\"scan_time\":\"2023/08/04 19:56:11\"},\"operation\":\"MODIFIED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_delta_ports_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"type\":\"dbsync_ports\",\"data\":{\"checksum\":"
-                    "\"03f522cdccc8dfbab964981db59b176b178b9dfd\",\"inode\":39968"
-                    ",\"item_id\":\"7f98c21162b40ca7871a8292d177a1812ca97547\",\"local_ip\":\"10.0.2.15\",\"local_"
-                    "port\":68,\"pid\":0,\"process\":null,\"protocol\":\"udp\""
-                    ",\"remote_ip\":\"0.0.0.0\",\"remote_port\":0,\"rx_queue\":0,\"scan_time\":\"2023/08/07 "
-                    "12:42:41\",\"state\":null,\"tx_queue\":0},\"operation\":\"INSERTED\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"dbsync_ports\",\"data\":{\"checksum\":\"03f522cdccc8dfbab964981db59b176b178b9dfd\",\"inode\":39968"
-        ",\"item_id\":\"7f98c21162b40ca7871a8292d177a1812ca97547\",\"local_ip\":\"10.0.2.15\",\"local_port\":68,"
-        "\"pid\":0,\"process\":null,\"protocol\":\"udp\""
-        ",\"remote_ip\":\"0.0.0.0\",\"remote_port\":0,\"rx_queue\":0,\"scan_time\":\"2023/08/07 "
-        "12:42:41\",\"state\":null,\"tx_queue\":0},\"operation\":\"INSERTED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_delta_processes_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message =
-        "d:syscollector:{\"type\":\"dbsync_processes\",\"data\":{\"checksum\":"
-        "\"5ca21c17ae78a0ef7463b3b2454126848473cf5b\",\"cmd\":\"C:\\\\Windows\\\\System32\\\\winlogon.exe\""
-        ",\"name\":\"winlogon.exe\",\"nlwp\":6,\"pid\":\"604\",\"ppid\":496,\"priority\":13,\"scan_time\":\"2023/08/07 "
-        "15:01:57\",\"session\":1,\"size\":3387392"
-        ",\"start_time\":1691420428,\"stime\":0,\"utime\":0,\"vm_size\":14348288},\"operation\":\"MODIFIED\"}";
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"dbsync_processes\",\"data\":{\"checksum\":\"5ca21c17ae78a0ef7463b3b2454126848473cf5b\",\"cmd\":\"C:"
-        "\\\\Windows\\\\System32\\\\winlogon.exe\""
-        ",\"name\":\"winlogon.exe\",\"nlwp\":6,\"pid\":\"604\",\"ppid\":496,\"priority\":13,\"scan_time\":\"2023/08/07 "
-        "15:01:57\",\"session\":1,\"size\":3387392"
-        ",\"start_time\":1691420428,\"stime\":0,\"utime\":0,\"vm_size\":14348288},\"operation\":\"MODIFIED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_valid_delta_hotfixes_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"type\":\"dbsync_hotfixes\",\"data\":{\"checksum\":"
-                    "\"f6eea592bc11465ecacc92ddaea188ef3faf0a1f\",\"hotfix\":\"KB4502496\""
-                    ",\"scan_time\":\"2023/08/0419:56:11\"},\"operation\":\"MODIFIED\"}";
-    char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":"
-                             "\"focal\"},\"data_type\":\"dbsync_hotfixes\",\"data\":{\"checksum\":"
-                             "\"f6eea592bc11465ecacc92ddaea188ef3faf0a1f\",\"hotfix\":\"KB4502496\""
-                             ",\"scan_time\":\"2023/08/0419:56:11\"},\"operation\":\"MODIFIED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_legacy_agent_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"type\":\"program\",\"ID\":710378877,\"timestamp\":\"2024/01/12 "
-                    "22:47:29\",\"program\":{\"format\":\"deb\","
-                    "\"name\":\"isc-dhcp-common\",\"priority\":\"important\",\"group\":\"net\",\"size\":163,\"vendor\":"
-                    "\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\""
-                    ",\"architecture\":\"amd64\",\"source\":\"isc-dhcp\",\"version\":\"4.4.1-2.1ubuntu9\","
-                    "\"description\":\"common manpages relevant to all of the isc-dhcp packages\"}}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    // This type of message must be discarded
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_legacy_agent_end_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message = "d:syscollector:{\"type\":\"process_end\",\"ID\":1998297930,\"timestamp\":\"2024/01/13 00:08:55\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    // This type of message must be discarded
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_delta_package_huge_size_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message =
-        "d:syscollector:{\"type\":\"dbsync_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":"
-        "\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
-        ",\"description\":\"library for GIF images "
-        "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-        ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"size\":3686061793,\"source\":\"giflib\""
-        ",\"vendor\":\"Ubuntu Developers "
-        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
-
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"dbsync_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":"
-        "\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
-        ",\"description\":\"library for GIF images "
-        "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-        ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"size\":3686061793,\"source\":\"giflib\""
-        ",\"vendor\":\"Ubuntu Developers "
-        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"operation\":\"INSERTED\"}";
-
-    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, syscollector_deltas_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, 0);
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
-void test_router_message_forward_sync_package_negative_size_json_message(void** state)
-{
-    test_agent_info* data = (test_agent_info*)(*state);
-    char* message =
-        "5:syscollector:{\"component\":\"syscollector_packages\",\"data\":{\"architecture\":\"amd64\",\"checksum\":"
-        "\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
-        ",\"description\":\"library for GIF images "
-        "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-        ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"size\":-608905503,\"source\":\"giflib\""
-        ",\"vendor\":\"Ubuntu Developers "
-        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"},\"type\":\"state\"}";
-
-    char* expected_message =
-        "{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"state\",\"data\""
-        ":{\"attributes_type\":\"syscollector_packages\",\"architecture\":\"amd64\",\"checksum\":"
-        "\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\""
-        ",\"description\":\"library for GIF images "
-        "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\""
-        ",\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"size\":-608905503,\"source\":\"giflib\""
-        ",\"vendor\":\"Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"}}";
-
-    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)(1);
-
-    expect_string(__wrap_router_provider_send_fb, msg, expected_message);
-    expect_string(__wrap_router_provider_send_fb, schema, rsync_SCHEMA);
-    will_return(__wrap_router_provider_send_fb, -1);
-
-    expect_string(
-        __wrap__mdebug2,
-        formatted_msg,
-        "Unable to forward message "
-        "'{\"agent_info\":{\"agent_id\":\"001\",\"agent_ip\":\"192.168.33.20\",\"agent_name\":\"focal\"},\"data_type\":"
-        "\"state\",\"data\":{\"attributes_type\":\"syscollector_packages\",\"architecture\":\"amd64\",\"checksum\":"
-        "\"1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce\",\"description\":\"library for GIF images "
-        "(library)\",\"format\":\"deb\",\"groups\":\"libs\",\"item_id\":\"ec465b7eb5fa011a336e95614072e4c7f1a65a53\","
-        "\"multiarch\":\"same\",\"name\":\"libgif7\",\"priority\":\"optional\",\"scan_time\":\"2023/08/04 "
-        "19:56:11\",\"size\":-608905503,\"source\":\"giflib\",\"vendor\":\"Ubuntu Developers "
-        "<ubuntu-devel-discuss@lists.ubuntu.com>\",\"version\":\"5.1.9-1\"}}' for agent '001'.");
-
-    will_return(__wrap_OSHash_Get_ex_dup, NULL);
-    expect_value(__wrap_OSHash_Get_ex_dup, self, (OSHash*)1);
-    expect_string(__wrap_OSHash_Get_ex_dup, key, data->agent_id);
-
-    router_message_forward(message, data->agent_id, data->agent_ip, data->agent_name);
-}
-
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2759,6 +2298,8 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_not_found),
         cmocka_unit_test(test_HandleSecureMessage_invalid_message),
         cmocka_unit_test(test_HandleSecureMessage_shutdown_message),
+        cmocka_unit_test(test_HandleSecureMessage_HC_req_message),
+        cmocka_unit_test(test_HandleSecureMessage_invalid_HC_req_message),
         cmocka_unit_test(test_HandleSecureMessage_NewMessage_NoShutdownMessage),
         cmocka_unit_test(test_HandleSecureMessage_OldMessage_NoShutdownMessage),
         cmocka_unit_test(test_HandleSecureMessage_different_sock),
@@ -2789,88 +2330,6 @@ int main(void)
         // Tests handle_outgoing_data_to_tcp_socket
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EAGAIN),
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE),
-        cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success),
-        // Tests router_message_forward
-        cmocka_unit_test_setup_teardown(test_router_message_forward_create_sync_handle_fail,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_non_syscollector_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_malformed_sync_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_invalid_sync_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_check_global,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_check_left,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_check_right,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_clear_hardware_provider,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_clear_os_provider,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_clear_packages_provider,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_integrity_clear_processes_provider,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_create_delta_handle_fail,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_malformed_delta_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_invalid_delta_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_packages_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_os_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_hardware_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_netiface_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_netproto_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_netaddr_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_ports_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_processes_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_valid_delta_hotfixes_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_legacy_agent_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_legacy_agent_end_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_sync_package_negative_size_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration),
-        cmocka_unit_test_setup_teardown(test_router_message_forward_delta_package_huge_size_json_message,
-                                        setup_remoted_configuration,
-                                        teardown_remoted_configuration)};
+        cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

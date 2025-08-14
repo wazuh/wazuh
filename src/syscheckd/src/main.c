@@ -191,7 +191,7 @@ int main(int argc, char **argv)
 
     /* Connect to the queue */
 
-    if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+    if ((syscheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 

@@ -96,7 +96,7 @@ int OS_AddKey(keystore *keys, const char *id, const char *name, const char *ip, 
     os_strdup(name, keys->keyentries[keys->keysize]->name);
 
     /* Initialize the variables */
-    keys->keyentries[keys->keysize]->is_startup = false;
+    keys->keyentries[keys->keysize]->post_startup = false;
     keys->keyentries[keys->keysize]->rcvd = 0;
     keys->keyentries[keys->keysize]->local = 0;
     keys->keyentries[keys->keysize]->keyid = keys->keysize;
@@ -657,7 +657,7 @@ keyentry * OS_DupKeyEntry(const keyentry * key) {
 
     os_calloc(1, sizeof(keyentry), copy);
 
-    copy->is_startup = key->is_startup;
+    copy->post_startup = key->post_startup;
     copy->rcvd = key->rcvd;
     copy->local = key->local;
     copy->keyid = key->keyid;

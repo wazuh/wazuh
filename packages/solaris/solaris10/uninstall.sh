@@ -12,9 +12,6 @@ fi
 /var/ossec/bin/${control_binary} stop
 rm -rf /var/ossec/
 
-## stop and unload dispatcher
-#/bin/launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist
-
 # remove launchdaemons
 rm -f /etc/init.d/wazuh-agent
 rm -rf /etc/rc2.d/S97wazuh-agent

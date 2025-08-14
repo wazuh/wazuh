@@ -11,7 +11,14 @@
 
 #include "rocksDBSafeQueue_test.hpp"
 #include "rocksDBWrapper.hpp"
+#include "rocksdb/cache.h"
+#include <atomic>
+#include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <sstream>
+#include <vector>
 
 void RocksDBSafeQueueTest::SetUp()
 {
@@ -393,4 +400,166 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndPendingElementsEmpty)
         EXPECT_NO_THROW(queue->popBulk(queueElements.size()));
     }
     EXPECT_TRUE(queue->empty());
+}
+
+namespace
+{
+    size_t getMemoryUsage()
+    {
+        std::ifstream statm("/proc/self/statm");
+        if (statm.is_open())
+        {
+            size_t size, resident, share, text, lib, data, dt;
+            statm >> size >> resident >> share >> text >> lib >> data >> dt;
+            return resident * 4096; // Convert pages to bytes (assuming 4KB pages)
+        }
+        return 0;
+    }
+
+    void printMemoryUsage(const std::string& label)
+    {
+        size_t memUsage = getMemoryUsage();
+        std::cout << label << ": " << std::fixed << std::setprecision(2)
+                  << static_cast<double>(memUsage) / (1024.0 * 1024.0) << " MB" << std::endl;
+    }
+
+    void printSharedBufferStats(const std::string& label)
+    {
+        std::cout << "\n=== " << label << " - Shared Buffer Statistics ===" << std::endl;
+
+        // Get shared buffers instance
+        auto& sharedBuffers = RocksDBSharedBuffers::getInstance();
+        auto writeManager = sharedBuffers.getWriteBufferManager();
+
+        // Print write buffer usage (this method should be available)
+        if (writeManager)
+        {
+            try
+            {
+                std::cout << "Write Buffer Usage: " << std::fixed << std::setprecision(2)
+                          << static_cast<double>(writeManager->memory_usage()) / (1024.0 * 1024.0) << " MB / "
+                          << static_cast<double>(writeManager->buffer_size()) / (1024.0 * 1024.0) << " MB" << std::endl;
+            }
+            catch (...)
+            {
+                std::cout << "Write Buffer: SHARED (128 MB capacity)" << std::endl;
+            }
+        }
+
+        printMemoryUsage("Total RSS");
+        std::cout << "======================================================\n" << std::endl;
+    }
+} // namespace
+
+TEST_F(RocksDBSafeQueueTest, StressTestMultipleQueuesAndThreads)
+{
+    const int NUM_QUEUES = 10;
+    const int NUM_THREADS = 10;
+    const int ELEMENTS_PER_THREAD = 1000000; // 1M elements per thread (testing stricter limits)
+
+    std::cout << "Starting stress test with " << NUM_QUEUES << " queues, " << NUM_THREADS << " threads, "
+              << ELEMENTS_PER_THREAD << " elements per thread" << std::endl;
+    std::cout << "Using SHARED BUFFERS optimization - memory should be significantly reduced!" << std::endl;
+
+    printSharedBufferStats("Initial state");
+
+    // Create 10 unique SafeQueue instances with different database names
+    std::vector<std::unique_ptr<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>> queues;
+
+    for (int i = 0; i < NUM_QUEUES; ++i)
+    {
+        std::string dbName = "stress_test_" + std::to_string(i) + ".db";
+        std::error_code ec;
+        std::filesystem::remove_all(dbName, ec);
+
+        queues.push_back(std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+            RocksDBQueue<std::string>(dbName, true)));
+    }
+
+    printSharedBufferStats("After creating 10 queues");
+
+    // Create threads for pushing data
+    std::vector<std::thread> threads;
+    std::atomic<int> threadsCompleted {0};
+
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    for (int threadId = 0; threadId < NUM_THREADS; ++threadId)
+    {
+        threads.emplace_back(
+            [&, threadId]()
+            {
+                int queueIndex = threadId % NUM_QUEUES; // Distribute threads across queues
+                auto& queue = queues[queueIndex];
+
+                for (int i = 0; i < ELEMENTS_PER_THREAD; ++i)
+                {
+                    std::string data = "thread_" + std::to_string(threadId) + "_element_" + std::to_string(i);
+                    queue->push(data);
+
+                    // Print progress every 500k elements
+                    if (i % 500000 == 0 && i > 0)
+                    {
+                        std::cout << "Thread " << threadId << " pushed " << i << " elements" << std::endl;
+                        printSharedBufferStats("Thread " + std::to_string(threadId) + " progress");
+                    }
+                }
+
+                threadsCompleted++;
+                std::cout << "Thread " << threadId << " completed. Total completed: " << threadsCompleted.load() << "/"
+                          << NUM_THREADS << std::endl;
+            });
+    }
+
+    // Monitor memory usage while threads are running
+    std::thread memoryMonitor(
+        [&threadsCompleted, NUM_THREADS]()
+        {
+            while (threadsCompleted.load() < NUM_THREADS)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(15));
+                printSharedBufferStats("Memory monitor");
+            }
+        });
+
+    // Wait for all threads to complete
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    memoryMonitor.join();
+
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime);
+
+    printSharedBufferStats("After all threads completed");
+
+    std::cout << "Stress test completed in " << duration.count() << " seconds" << std::endl;
+    std::cout << "Total elements pushed: " << (NUM_THREADS * ELEMENTS_PER_THREAD) << std::endl;
+
+    // Verify some elements exist in each queue
+    for (int i = 0; i < NUM_QUEUES; ++i)
+    {
+        EXPECT_FALSE(queues[i]->empty()) << "Queue " << i << " should not be empty";
+    }
+
+    printSharedBufferStats("Before cleanup");
+
+    // Cleanup: cancel all queues and clear the vector
+    for (auto& queue : queues)
+    {
+        queue->cancel();
+    }
+    queues.clear();
+
+    // Remove test databases
+    for (int i = 0; i < NUM_QUEUES; ++i)
+    {
+        std::string dbName = "stress_test_" + std::to_string(i) + ".db";
+        std::error_code ec;
+        std::filesystem::remove_all(dbName, ec);
+    }
+
+    printSharedBufferStats("After cleanup - buffers should persist");
 }
