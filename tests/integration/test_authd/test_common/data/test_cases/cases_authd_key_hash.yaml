@@ -5,7 +5,7 @@
   metadata:
     # SHA1(001 test_user any 48a99873149358e48b13273c4ad07c44ed402bcb71fc94869f3e76b2f27637db)
     # == 504f2f52d0e9d5fd9a12875aa86fa588dab2a43e
-    input: "OSSEC A:'test_user' K:'504f2f52d0e9d5fd9a12875aa86fa588dab2a43e'"
+    input: "OSSEC A:'test_user' K:'504f2f52d0e9d5fd9a12875aa86fa588dab2a43e'\n"
     output: 'ERROR: Duplicate agent name:'
     pre_existent_agents:
       -
@@ -21,7 +21,7 @@
   metadata:
     # SHA1(001 test_user any 48a99873149358e48b13273c4ad07c44ed402bcb71fc94869f3e76b2f27637db)
     # == 504f2f52d0e9d5fd9a12875aa86fa588dab2a43e
-    input: "OSSEC A:'test_user' G:'GroupName' IP:'100.100.10.1' K:'504f2f52d0e9d5fd9a12875aa86fa588dab2a43e'"
+    input: "OSSEC A:'test_user' G:'GroupName' IP:'100.100.10.1' K:'504f2f52d0e9d5fd9a12875aa86fa588dab2a43e'\n"
     output: 'ERROR: Duplicate agent name:'
     pre_existent_agents:
       -
@@ -37,7 +37,7 @@
   metadata:
     # SHA1(001 test_user any 48a99873149358e48b13273c4ad07c44ed402bcb71fc94869f3e76b2f27637db)
     # == 504f2f52d0e9d5fd9a12875aa86fa588dab2a43e
-    input: "OSSEC A:'test_user' G:'GroupName' K:'504f2f52d0e9d5fd9a12875aa86fa588dab2a43e'"
+    input: "OSSEC A:'test_user' G:'GroupName' K:'504f2f52d0e9d5fd9a12875aa86fa588dab2a43e'\n"
     output: 'ERROR: Duplicate agent name:'
     pre_existent_agents:
       -
@@ -53,7 +53,7 @@
   metadata:
     # SHA1(001 test_user any 48a99873149358e48b13273c4ad07c44ed402bcb71fc94869f3e76b2f27637db)
     # == 504f2f52d0e9d5fd9a12875aa86fa588dab2a43e
-    input: "OSSEC A:'userx' IP:'192.168.0.100' K:'504f2f52d0e9d5fd9a12875aa86fa588dab2a43e'"
+    input: "OSSEC A:'userx' IP:'192.168.0.100' K:'504f2f52d0e9d5fd9a12875aa86fa588dab2a43e'\n"
     output: 'ERROR: Duplicate IP:'
     pre_existent_agents:
       -

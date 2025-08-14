@@ -165,6 +165,54 @@ TEST_F(ReflectiveJsonTest, BasicStructSerializationWithEmptyFieldsDoNotIgnore)
     EXPECT_NE(json.find(R"("fieldThree":)"), std::string::npos);
 }
 
+TEST_F(ReflectiveJsonTest, BasicStructSerializationWithEmptyFieldsDoNotIgnoreComplex)
+{
+    struct NestedData
+    {
+        std::string innerField;
+        int64_t innerValue;
+
+        REFLECTABLE(MAKE_FIELD("innerField", &NestedData::innerField),
+                    MAKE_FIELD("innerValue", &NestedData::innerValue));
+    };
+
+    TestData<NestedData> obj;
+    obj.fieldOne = "";
+    obj.fieldTwo = DEFAULT_INT_VALUE;
+    obj.fieldThree.innerField = "";
+    obj.fieldThree.innerValue = DEFAULT_INT_VALUE;
+
+    std::string json;
+    serializeToJSON<TestData<NestedData>, false>(obj, json);
+
+    EXPECT_NE(json.find(R"("fieldOne":)"), std::string::npos);
+    EXPECT_NE(json.find(R"("fieldTwo":-9223372036854775808)"), std::string::npos);
+    EXPECT_NE(json.find(R"("fieldThree":{"innerField":"","innerValue":-9223372036854775808})"), std::string::npos);
+}
+
+TEST_F(ReflectiveJsonTest, BasicStructSerializationWithEmptyFieldsDoIgnoreComplex)
+{
+    struct NestedData
+    {
+        std::string innerField;
+        int64_t innerValue;
+
+        REFLECTABLE(MAKE_FIELD("innerField", &NestedData::innerField),
+                    MAKE_FIELD("innerValue", &NestedData::innerValue));
+    };
+
+    TestData<NestedData> obj;
+    obj.fieldOne = "";
+    obj.fieldTwo = DEFAULT_INT_VALUE;
+    obj.fieldThree.innerField = "";
+    obj.fieldThree.innerValue = DEFAULT_INT_VALUE;
+
+    std::string json;
+    serializeToJSON(obj, json);
+
+    EXPECT_EQ(json, "{}");
+}
+
 TEST_F(ReflectiveJsonTest, BasicStructSerializationWithWhiteSpace)
 {
     TestData<std::string_view> obj;
