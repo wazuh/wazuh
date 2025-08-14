@@ -12,7 +12,6 @@
 #include "headers/sec.h"
 #include "os_zlib/os_zlib.h"
 #include "os_crypto/md5/md5_op.h"
-#include "os_crypto/blowfish/bf_op.h"
 #include "os_crypto/aes/aes_op.h"
 #include "client-agent/agentd.h"
 
@@ -47,22 +46,7 @@ int _s_verify_counter = 1;
 int doEncryptByMethod(const char *input, char *output, const char *charkey,
     long size, short int action,int method)
 {
-    switch(method)
-    {
-        case W_METH_BLOWFISH:
-            return OS_BF_Str(input, output,
-                    charkey,
-                    size,
-                    action);
-        case W_METH_AES:
-            return OS_AES_Str(input, output,
-                charkey,
-                size,
-                action);
-
-        default:
-            return OS_INVALID;
-    }
+    return OS_AES_Str(input, output, charkey, size, action);
 }
 
 /* Set the agent crypto method read from the ossec.conf file */
@@ -299,18 +283,9 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 
     w_mutex_lock(&keys->keyentries[id]->mutex);
 
-    if(strncmp(buffer, "#AES", 4)==0){
-        buffer+=4;
-        #ifndef CLIENT
-            keys->keyentries[id]->crypto_method = W_METH_AES;
-        #endif
-    }
-    else{
-        #ifndef CLIENT
-            keys->keyentries[id]->crypto_method = W_METH_BLOWFISH;
-        #endif
-    }
-
+    #ifndef CLIENT
+        keys->keyentries[id]->crypto_method = W_METH_AES;
+    #endif
 
     if (*buffer == ':') {
         buffer++;
@@ -321,23 +296,11 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
     }
 
     /* Decrypt message */
-    switch((crypt_method)keys->keyentries[id]->crypto_method){
-        case W_METH_BLOWFISH:
-            if (!OS_BF_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
-                        buffer_size, OS_DECRYPT)) {
-                mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
-                w_mutex_unlock(&keys->keyentries[id]->mutex);
-                return KS_ENCKEY;
-            }
-            break;
-        case W_METH_AES:
-            if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
-                buffer_size-4, OS_DECRYPT)) {
-                mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
-                w_mutex_unlock(&keys->keyentries[id]->mutex);
-                return KS_ENCKEY;
-            }
-            break;
+    if (!OS_AES_Str(buffer, cleartext, keys->keyentries[id]->encryption_key,
+        buffer_size-4, OS_DECRYPT)) {
+        mwarn(ENCKEY_ERROR, keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+        w_mutex_unlock(&keys->keyentries[id]->mutex);
+        return KS_ENCKEY;
     }
 
     w_mutex_unlock(&keys->keyentries[id]->mutex);
@@ -565,18 +528,7 @@ size_t CreateSecMSG(const keystore *keys, const char *msg, size_t msg_length, ch
     }
 
     crypto_method = keys->keyentries[id]->crypto_method;
-
-    switch(crypto_method)
-    {
-        case W_METH_BLOWFISH:
-            memcpy(crypto_token,":",1);
-            break;
-        case W_METH_AES:
-            memcpy(crypto_token,"#AES:",5);
-            break;
-        default:
-            return OS_INVALID;
-    }
+    memcpy(crypto_token,"#AES:",5);
 
     /* Random number, take only 5 chars ~= 2^16=65536*/
     rand1 = (u_int16_t) os_random();

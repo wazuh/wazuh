@@ -24,7 +24,7 @@
 #define USING_UDP_NO_CLIENT_SOCKET  -1  ///< When using UDP, no valid client socket FD is set
 
 typedef enum _crypt_method {
-    W_METH_BLOWFISH, W_METH_AES
+    W_METH_AES
 } crypt_method;
 
 /**

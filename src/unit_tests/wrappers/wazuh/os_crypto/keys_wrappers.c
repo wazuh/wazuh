@@ -14,7 +14,6 @@
 #include "headers/shared.h"
 #include "headers/sec.h"
 #include "os_crypto/md5/md5_op.h"
-#include "os_crypto/blowfish/bf_op.h"
 #include "keys_wrappers.h"
 
 int __wrap_OS_IsAllowedDynamicID(__attribute__((unused)) keystore *keys, const char *id, const char *srcip) {
