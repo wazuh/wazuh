@@ -92,7 +92,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,189675,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,9471335,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,521864,0.1
-/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,1781032,0.1
+/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,1990696,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,479152,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2569758,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,579192,0.1
