@@ -219,7 +219,7 @@ _restart_ruleset_default_result_kwargs = {
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
+@expose_resources(actions=["analysisd:reload"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _restart_ruleset_default_result_kwargs})
 async def reload_ruleset() -> AffectedItemsWazuhResult:

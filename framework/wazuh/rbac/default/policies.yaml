@@ -301,6 +301,7 @@ default_policies:
           - cluster:read
           - cluster:restart
           - cluster:update_config
+          - analysisd:reload
         resources:
           - node:id:*
         effect: allow

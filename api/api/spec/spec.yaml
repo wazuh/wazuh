@@ -132,6 +132,14 @@ x-rbac-catalog:
         actions: ['agent:modify_group']
         resources: ['agent:id:004', 'agent:group:us-east']
         effect: "allow"
+    'analysisd:reload':
+      description: "Reloads Wazuh's ruleset"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+      example:
+        actions: [ 'analysisd:reload' ]
+        resources: [ 'node:id:worker1' ]
+        effect: "allow"
     'group:modify_assignments':
       description: "Change the agents assigned to the group"
       resources:
@@ -11523,7 +11531,7 @@ paths:
       operationId: api.controllers.cluster_controller.put_reload_analysisd
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/cluster:restart'
+        - $ref: '#/x-rbac-catalog/actions/analysisd:reload'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

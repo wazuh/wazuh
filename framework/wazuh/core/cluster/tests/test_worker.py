@@ -312,7 +312,7 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
     # Test the first condition
     with patch("wazuh.core.cluster.worker.WorkerHandler.sync_integrity_ok_from_master",
                return_value=b"ok") as ok_mock:
-        assert worker_handler.process_request(command=b"syn_m_c_ok", data=b"data") == b"ok"
+        assert worker_handler.process_request(command=b"syn_m_c_ok", data=b"data") ==  (b'ok', b'Thanks')
         ok_mock.assert_called_once()
         logger_mock.assert_called_with("Command received: 'b'syn_m_c_ok''")
     # Test the second condition
