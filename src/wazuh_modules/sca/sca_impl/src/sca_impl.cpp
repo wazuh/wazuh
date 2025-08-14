@@ -87,7 +87,12 @@ void SecurityConfigurationAssessment::Run()
                     m_scanOnStart,
                     [this](const std::string& policyId, const std::string& checkId, const std::string& result)
                     {
-                        const SCAEventHandler eventHandler(m_agentUUID, m_dBSync, m_pushMessage);
+                        const SCAEventHandler eventHandler(
+                            m_agentUUID,
+                            m_dBSync,
+                            m_pushStatelessMessage,
+                            m_pushStatefulMessage
+                        );
                         eventHandler.ReportCheckResult(policyId, checkId, result);
                     },
                     nullptr
@@ -116,7 +121,7 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
         return policyLoader.LoadPolicies(commandsTimeout, remoteEnabled,
             [this](auto policyData, auto checksData)
             {
-                const SCAEventHandler eventHandler(m_agentUUID, m_dBSync, m_pushMessage);
+                const SCAEventHandler eventHandler(m_agentUUID, m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
                 eventHandler.ReportPoliciesDelta(policyData, checksData);
             });
     }();
@@ -139,9 +144,14 @@ const std::string& SecurityConfigurationAssessment::Name() const
     return m_name;
 }
 
-void SecurityConfigurationAssessment::SetPushMessageFunction(const std::function<int(const std::string&)>& pushMessage)
+void SecurityConfigurationAssessment::SetPushStatelessMessageFunction(const std::function<int(const std::string&)>& pushMessage)
 {
-    m_pushMessage = pushMessage;
+    m_pushStatelessMessage = pushMessage;
+}
+
+void SecurityConfigurationAssessment::SetPushStatefulMessageFunction(const std::function<int(const std::string&)>& pushMessage)
+{
+    m_pushStatefulMessage = pushMessage;
 }
 
 void SecurityConfigurationAssessment::SetGlobalWmExecFunction(int (*wmExecFunc)(char*, char**, int*, int, const char*))
