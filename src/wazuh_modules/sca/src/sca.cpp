@@ -100,7 +100,8 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
 
         // Uncomment to see SCA events in the OSSEC log
         // Should be removed ultimately and replaced
-        m_sca->SetPushMessageFunction(simplePrintFunction);
+        m_sca->SetPushStatelessMessageFunction(simplePrintFunction);
+        m_sca->SetPushStatefulMessageFunction(simplePrintFunction);
     }
 
     // LoggingHelper::getInstance().log(LOG_INFO, "SCA module initialized successfully.");
