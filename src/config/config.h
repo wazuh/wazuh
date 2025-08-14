@@ -24,9 +24,7 @@
 #define CDBD          0000002000 /// Deprecated module
 #define CSYSLOGD      0000004000
 #define CAGENT_CONFIG 0000010000
-#define CAGENTLESS    0000020000
 #define CREPORTS      0000040000
-// TODO: should I update the flags to follow 1 2 4
 #define CWMODULE      0000200000
 #define CLABELS       0000400000
 #define CAUTHD        0001000000
@@ -45,10 +43,10 @@
                             (modules & CROOTCHECK    ) | (modules & CALERTS       ) | (modules & CLOCALFILE    ) |\
                             (modules & CREMOTE       ) | (modules & CCLIENT       ) | (modules & CMAIL         ) |\
                             (modules & CAR           ) | (modules & CDBD          ) | (modules & CSYSLOGD      ) |\
-                            (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      ) |\
-                            (modules & CWMODULE      ) | (modules & CLABELS       ) | (modules & CAUTHD        ) |\
-                            (modules & CBUFFER       ) | (modules & CCLUSTER      ) | (modules & CLGCSOCKET    ) |\
-                            (modules & CLOGTEST      ) | (modules & WAZUHDB       ) | (modules & CANDSOCKET    ) )
+                            (modules & CAGENT_CONFIG ) | (modules & CREPORTS      ) | (modules & CWMODULE      ) |\
+                            (modules & CLABELS       ) | (modules & CAUTHD        ) | (modules & CBUFFER       ) |\
+                            (modules & CCLUSTER      ) | (modules & CLGCSOCKET    ) | (modules & CLOGTEST      ) |\
+                            (modules & WAZUHDB       ) | (modules & CANDSOCKET    ) )
 
 typedef enum needed_tags {
     JSONOUT_OUTPUT = 0,
@@ -72,7 +70,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modu
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);
 int Read_CSyslog(XML_NODE node, void *config1, void *config2);
-int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Integrator(XML_NODE node, void *config1, void *config2);
 int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
