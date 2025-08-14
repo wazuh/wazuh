@@ -19,6 +19,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   list(APPEND TEST_SRC 
     test_chrome_linux.cpp
+    test_firefox_linux.cpp
   )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(APPEND TEST_SRC 
