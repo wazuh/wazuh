@@ -30,7 +30,7 @@ TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    PersistentQueue queue(mockStorage);
+    PersistentQueue queue(":memory:", mockStorage);
 }
 
 TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
@@ -38,7 +38,7 @@ TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
     EXPECT_CALL(*mockStorage, submitOrCoalesce(_)).Times(1);
 
-    PersistentQueue queue(mockStorage);
+    PersistentQueue queue(":memory:", mockStorage);
 
     queue.submit("id1", "index1", "{}", Operation::CREATE);
 }
@@ -51,7 +51,7 @@ TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)
     .WillOnce(testing::Throw(std::runtime_error("Simulated DB error")))
     .WillOnce(testing::Return());
 
-    PersistentQueue queue(mockStorage);
+    PersistentQueue queue(":memory:", mockStorage);
 
     EXPECT_THROW(queue.submit("id1", "idx1", "{}", Operation::CREATE), std::exception);
 
@@ -71,7 +71,7 @@ TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
     EXPECT_CALL(*mockStorage, fetchAndMarkForSync())
     .WillOnce(testing::Return(fakeData));
 
-    PersistentQueue queue(mockStorage);
+    PersistentQueue queue(":memory:", mockStorage);
 
     auto all = queue.fetchAndMarkForSync();
     EXPECT_EQ(all.size(), static_cast<size_t>(2));

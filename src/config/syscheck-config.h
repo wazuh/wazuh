@@ -149,6 +149,12 @@ typedef enum fdb_stmt {
 #include "../external/sqlite/sqlite3.h"
 #include "../headers/list_op.h"
 
+/// @brief Opaque handle to the AgentSyncProtocol C++ object.
+///
+/// Used to interact with the AgentSyncProtocol instance from C code.
+typedef struct AgentSyncProtocol AgentSyncProtocolHandle;
+
+
 #ifdef WIN32
 typedef struct whodata_dir_status whodata_dir_status;
 #endif
@@ -431,6 +437,8 @@ typedef struct _config {
     char **prefilter_cmd;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
     bool allow_remote_prefilter_cmd;
+
+    AgentSyncProtocolHandle *sync_handle;
 } syscheck_config;
 
 

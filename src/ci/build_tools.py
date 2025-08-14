@@ -21,6 +21,7 @@ DELETE_FOLDER_DIC = {
     'data_provider':                ['build', 'smokeTests/output'],
     'syscheckd':                    ['build', 'src/db/smokeTests/output',
                                      'coverage_report'],
+    'sync_protocol':                ['build', 'smokeTests/output', 'coverage_report']
 }
 
 

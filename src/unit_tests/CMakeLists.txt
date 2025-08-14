@@ -21,6 +21,7 @@ include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/msgpack/include)
 include_directories(${SRC_FOLDER}/shared_modules/common)
 include_directories(${SRC_FOLDER}/shared_modules/router/include/)
+include_directories(${SRC_FOLDER}/sync_protocol/include/)
 add_definitions(-DWAZUH_UNIT_TESTING)
 
 # Wazuh libraries

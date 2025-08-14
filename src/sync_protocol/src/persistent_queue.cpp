@@ -9,11 +9,12 @@
 
 #include "persistent_queue.hpp"
 #include "persistent_queue_storage.hpp"
+#include "logging_helper.hpp"
 
 #include <algorithm>
 
-PersistentQueue::PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storage)
-    : m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>())
+PersistentQueue::PersistentQueue(const std::string& dbPath, std::shared_ptr<IPersistentQueueStorage> storage)
+    : m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath))
 {
     try
     {
@@ -21,7 +22,7 @@ PersistentQueue::PersistentQueue(std::shared_ptr<IPersistentQueueStorage> storag
     }
     catch (const std::exception& ex)
     {
-        std::cerr << "[PersistentQueue] Error on DB: " << ex.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error on DB: ") + ex.what());
         throw;
     }
 }
@@ -42,25 +43,49 @@ void PersistentQueue::submit(const std::string& id,
     }
     catch (const std::exception& ex)
     {
-        std::cerr << "[PersistentQueue] Error persisting message: " << ex.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error persisting message: ") + ex.what());
         throw;
     }
 }
 
 std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    return m_storage->fetchAndMarkForSync();
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_storage->fetchAndMarkForSync();
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error obtaining items for sync: ") + ex.what());
+        throw;
+    }
 }
 
 void PersistentQueue::clearSyncedItems()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_storage->removeAllSynced();
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_storage->removeAllSynced();
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error clrearing synchronized items: ") + ex.what());
+        throw;
+    }
 }
 
 void PersistentQueue::resetSyncingItems()
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_storage->resetAllSyncing();
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_storage->resetAllSyncing();
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error resetting items: ") + ex.what());
+        throw;
+    }
 }

@@ -8,20 +8,23 @@
  */
 
 #include "persistent_queue_storage.hpp"
+#include "logging_helper.hpp"
 #include <filesystem>
 
 using namespace SQLite;
 
 PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath)
-    : m_connection(createOrOpenDatabase(dbPath.empty() ? DEFAULT_DB_PATH : dbPath))
+    : m_connection(createOrOpenDatabase(dbPath))
 {
     try
     {
         createTableIfNotExists();
+        m_connection.execute("PRAGMA synchronous = NORMAL;");
+        m_connection.execute("PRAGMA journal_mode = WAL;");
     }
     catch (const Sqlite3Error& ex)
     {
-        std::cerr << "[PersistentQueueStorage] SQLite error: " << ex.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         throw;
     }
 }
@@ -49,7 +52,7 @@ void PersistentQueueStorage::createTableIfNotExists()
     }
     catch (const std::exception& ex)
     {
-        std::cerr << "[PersistentQueueStorage] SQLite error: " << ex.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         throw;
     }
 }
@@ -158,7 +161,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[PersistentQueueStorage] Transaction failed in submitOrCoalesce: " << e.what() << ". Rolling back." << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in submitOrCoalesce: ") + e.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
@@ -201,31 +204,40 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
             return result;
         }
 
-        std::string updateQuery = "UPDATE persistent_queue SET sync_status = ? WHERE rowid IN (";
+        // SQLite has a limit on the number of parameters in a single query
+        // (typically 999). To handle an unlimited number of pending items,
+        // we process the UPDATE statement in batches.
+        constexpr size_t BATCH_SIZE = 500;
 
-        for (size_t i = 0; i < idsToUpdate.size(); ++i)
+        for (size_t i = 0; i < idsToUpdate.size(); i += BATCH_SIZE)
         {
-            updateQuery += (i == 0 ? "?" : ",?");
+            std::string updateQuery = "UPDATE persistent_queue SET sync_status = ? WHERE rowid IN (";
+
+            size_t batch_end = std::min(i + BATCH_SIZE, idsToUpdate.size());
+
+            for (size_t j = i; j < batch_end; ++j)
+            {
+                updateQuery += (j == i ? "?" : ",?");
+            }
+
+            updateQuery += ");";
+
+            Statement updateStmt(m_connection, updateQuery);
+            updateStmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
+
+            for (size_t j = i; j < batch_end; ++j)
+            {
+                updateStmt.bind(static_cast<int32_t>((j - i) + 2), idsToUpdate[j]);
+            }
+
+            updateStmt.step();
         }
-
-        updateQuery += ");";
-
-        Statement updateStmt(m_connection, updateQuery);
-        updateStmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
-
-        for (size_t i = 0; i < idsToUpdate.size(); ++i)
-        {
-            updateStmt.bind(static_cast<int32_t>(i + 2), idsToUpdate[i]);
-        }
-
-        updateStmt.step();
 
         m_connection.execute("COMMIT;");
     }
     catch (const std::exception& e)
     {
-        std::cerr << "[PersistentQueueStorage] Transaction failed in fetchAndMarkForSync: "
-                  << e.what() << ". Rolling back." << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in fetchAndMarkForSync: ") + e.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
@@ -260,7 +272,7 @@ void PersistentQueueStorage::removeAllSynced()
     }
     catch (const Sqlite3Error& ex)
     {
-        std::cerr << "[PersistentQueueStorage] SQLite error: " << ex.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
@@ -290,7 +302,7 @@ void PersistentQueueStorage::resetAllSyncing()
     }
     catch (const Sqlite3Error& ex)
     {
-        std::cerr << "[PersistentQueueStorage] SQLite error: " << ex.what() << std::endl;
+        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }

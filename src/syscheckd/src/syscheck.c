@@ -19,6 +19,7 @@
 #include "db/include/db.h"
 #include "db/include/fimCommonDefs.h"
 #include "ebpf/include/ebpf_whodata.h"
+#include "agent_sync_protocol_c_interface.h"
 
 // Global variables
 syscheck_config syscheck;
@@ -77,6 +78,14 @@ void read_internal(int debug_level)
     return;
 }
 
+static int fim_startmq(const char* key, short type, short attempts) {
+    return StartMQ(key, type, attempts);
+}
+
+static int fim_send_binary_msg (int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
+    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+}
+
 
 void fim_initialize() {
     // Create store data
@@ -104,6 +113,16 @@ void fim_initialize() {
 #ifndef WIN32
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL)
 #endif
+
+    MQ_Functions mq_funcs = {
+        .start = fim_startmq,
+        .send_binary = fim_send_binary_msg
+    };
+
+    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, &mq_funcs, loggingFunction);
+    if (!syscheck.sync_handle) {
+        merror_exit("Failed to initialize AgentSyncProtocol");
+    }
 }
 
 

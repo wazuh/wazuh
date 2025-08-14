@@ -15,6 +15,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/google
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/flatbuffers/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../shared_modules/utils/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../headers/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../)
 
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/lib/)
@@ -22,6 +23,7 @@ link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/lib/)
 # Add the test executable
 add_executable(agent_sync_protocol_tests
     main.cpp
+    test_agent_sync_protocol.cpp
     test_persistent_queue_storage.cpp
     test_persistent_queue.cpp
 )
@@ -38,11 +40,7 @@ target_link_libraries(agent_sync_protocol_tests
     agent_sync_protocol
     debug gtestd
     debug gmockd
-    debug gtest_maind
-    debug gmock_maind
     optimized gtest
     optimized gmock
-    optimized gtest_main
-    optimized gmock_main
     pthread
 )

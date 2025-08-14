@@ -36,12 +36,9 @@ enum class CreateStatus : int
 class PersistentQueueStorage : public IPersistentQueueStorage
 {
     public:
-        /// @brief Default path where the persistent SQLite database is created.
-        inline static constexpr const char* DEFAULT_DB_PATH = "queue/agent_modules_state.db";
-
         /// @brief Constructs the storage with the given database path.
         /// @param dbPath Path to the SQLite database file. If empty, DEFAULT_DB_PATH is used.
-        explicit PersistentQueueStorage(const std::string& dbPath = DEFAULT_DB_PATH);
+        explicit PersistentQueueStorage(const std::string& dbPath);
 
         /// @brief Default destructor.
         ~PersistentQueueStorage() override = default;
