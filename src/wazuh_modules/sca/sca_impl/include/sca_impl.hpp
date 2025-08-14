@@ -53,8 +53,13 @@ public:
     /// @copydoc IModule::Name
     const std::string& Name() const ;
 
-    /// @copydoc IModule::SetPushMessageFunction
-    void SetPushMessageFunction(const std::function<int(const std::string&)>& pushMessage) ;
+    /// @brief Set the function to be called for stateless messages
+    /// @param pushMessage Function to push stateless messages
+    void SetPushStatelessMessageFunction(const std::function<int(const std::string&)>& pushMessage);
+
+    /// @brief Set the function to be called for stateful messages
+    /// @param pushMessage Function to push stateful messages
+    void SetPushStatefulMessageFunction(const std::function<int(const std::string&)>& pushMessage);
 
     /// @brief Set the global wm_exec function pointer (static)
     /// @param wmExecFunc Function pointer to wm_exec
@@ -77,8 +82,11 @@ private:
     /// @brief Pointer to IDBSync
     std::shared_ptr<IDBSync> m_dBSync;
 
-    /// @brief Function for pushing event messages
-    std::function<int(const std::string&)> m_pushMessage;
+    /// @brief Function for pushing stateless event messages
+    std::function<int(const std::string&)> m_pushStatelessMessage;
+
+    /// @brief Function for pushing stateful event messages
+    std::function<int(const std::string&)> m_pushStatefulMessage;
 
     /// @brief Pointer to a file system wrapper
     std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;

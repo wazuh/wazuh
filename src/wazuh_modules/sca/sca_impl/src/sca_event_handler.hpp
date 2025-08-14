@@ -25,10 +25,12 @@ public:
     /// @brief Constructor
     /// @param agentUUID The UUID of the agent
     /// @param dBSync A shared pointer to a DBSync interface used for retrieving state info.
-    /// @param pushMessage Callback function used to push messages to the message queue.
+    /// @param pushStatelessMessage Callback function used to push stateless messages to the message queue.
+    /// @param pushStatefulMessage Callback function used to push stateful messages to the message queue.
     SCAEventHandler(std::string agentUUID,
                     std::shared_ptr<IDBSync> dBSync = nullptr,
-                    std::function<int(const std::string&)> pushMessage = nullptr);
+                    std::function<int(const std::string&)> pushStatelessMessage = nullptr,
+                    std::function<int(const std::string&)> pushStatefulMessage = nullptr);
 
     /// @brief Destructor
     virtual ~SCAEventHandler() = default;
@@ -136,6 +138,9 @@ private:
     /// @brief Pointer to the IDBSync object for database synchronization.
     std::shared_ptr<IDBSync> m_dBSync;
 
-    /// @brief Callback function used to push messages to the message queue.
-    std::function<int(const std::string&)> m_pushMessage;
+    /// @brief Callback function used to push stateless messages to the message queue.
+    std::function<int(const std::string&)> m_pushStatelessMessage;
+
+    /// @brief Callback function used to push stateful messages to the message queue.
+    std::function<int(const std::string&)> m_pushStatefulMessage;
 };
