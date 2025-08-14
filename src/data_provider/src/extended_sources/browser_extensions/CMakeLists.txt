@@ -34,6 +34,10 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/linux
   )
 
+  list(APPEND SRC_FILES
+    src/firefox.cpp
+  )
+
   add_library(browser_extensions STATIC ${SRC_FILES})
   target_link_libraries(browser_extensions
     ${SRC_FOLDER}/external/openssl/libcrypto.a
