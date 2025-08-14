@@ -11,7 +11,6 @@ import xmltodict
 
 import wazuh.core.configuration as configuration
 from wazuh.core import common
-from wazuh.core.analysis import send_reload_ruleset_msg
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
@@ -501,10 +500,6 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
 
             raise exc
 
-        # After uploading the file, reload rulesets
-        socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        socket_response.update_affected_items(results=result, error_code=1212)
-
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         backup_file and exists(backup_file) and remove(backup_file)
@@ -553,9 +548,6 @@ def delete_rule_file(filename: Union[str, list], relative_dirname: str = None) -
         else:
             raise WazuhError(1906)
 
-        # After deleting the file, reload rulesets
-        socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        socket_response.update_affected_items(results=result, error_code=1212)
     except WazuhError as exc:
         result.add_failed_item(id_=to_relative_path(full_path), error=exc)
     result.total_affected_items = len(result.affected_items)

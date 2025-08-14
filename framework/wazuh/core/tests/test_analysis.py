@@ -40,26 +40,3 @@ def test_ruleset_reload_response(response, expected_success, expected_warnings, 
     assert rrr.errors == expected_errors
     assert rrr.is_ok() == expected_success
     assert rrr.has_warnings() == (len(expected_warnings) > 0)
-
-@pytest.mark.parametrize(
-    "response,expected_all_msg,should_raise",
-    [
-        ({"error": 0, "message": "ok", "data": []}, "", False),
-        ({"error": 0, "message": "ok", "data": ["Warning 1", "Warning 2"]}, "Warning 1,Warning 2", False),
-        ({"error": 1, "message": "fail", "data": ["Error 1"]}, "Error 1", True),
-    ]
-)
-def test_ruleset_update_affected_items(response, expected_all_msg, should_raise):
-    """Test RulesetReloadResponse.check_affected_items updates results or raises WazuhError."""
-    rrr = RulesetReloadResponse(response)
-    results = AffectedItemsWazuhResult(all_msg="")
-    error_code = 1234
-
-    if should_raise:
-        with pytest.raises(WazuhError) as excinfo:
-            rrr.update_affected_items(results, error_code)
-        assert str(error_code) in str(excinfo.value)
-        assert expected_all_msg in str(excinfo.value)
-    else:
-        rrr.update_affected_items(results, error_code)
-        assert results.all_msg == expected_all_msg

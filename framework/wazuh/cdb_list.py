@@ -6,7 +6,6 @@ from os import remove
 from os.path import join, split, exists, isfile, dirname as path_dirname
 
 from wazuh.core import common
-from wazuh.core.analysis import send_reload_ruleset_msg
 from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS, delete_list, \
     get_filenames_paths, validate_cdb_list, LIST_FIELDS
 from wazuh.core.exception import WazuhError
@@ -151,10 +150,6 @@ def upload_list_file(filename: str = None, content: str = None, overwrite: bool 
 
         upload_file(content, to_relative_path(full_path), check_xml_formula_values=False)
 
-        # After uploading the file, reload rulesets
-        socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        socket_response.update_affected_items(results=result, error_code=1811)
-
         result.affected_items.append(to_relative_path(full_path))
         result.total_affected_items = len(result.affected_items)
         # Remove back up file if no exceptions were raised.
@@ -188,10 +183,6 @@ def delete_list_file(filename: list) -> AffectedItemsWazuhResult:
 
     try:
         delete_list(to_relative_path(full_path))
-
-        # After deleting the file, reload rulesets
-        socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-        socket_response.update_affected_items(results=result, error_code=1811)
 
         result.affected_items.append(to_relative_path(full_path))
     except WazuhError as e:

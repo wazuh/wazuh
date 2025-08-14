@@ -8,7 +8,6 @@ import sys
 import glob
 from unittest.mock import patch, MagicMock
 import pytest
-from wazuh.core.analysis import RulesetReloadResponse
 from wazuh.core.common import USER_DECODERS_PATH
 
 
@@ -281,9 +280,8 @@ def test_upload_file(mock_logtest, mock_safe_move, mock_remove, mock_upload_file
     with patch('wazuh.decoder.validate_upload_delete_dir', return_value=ret_validation):
         with patch('wazuh.decoder.exists', return_value=overwrite):
             with patch('wazuh.decoder.to_relative_path',
-                    side_effect=lambda x: os.path.relpath(x, wazuh.core.common.WAZUH_PATH)):
-                with patch('wazuh.decoder.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0})) as mock_reload:
-                    result = decoder.upload_decoder_file(filename=file, content=content,
+                       side_effect=lambda x: os.path.relpath(x, wazuh.core.common.WAZUH_PATH)):
+                result = decoder.upload_decoder_file(filename=file, content=content,
                                                             relative_dirname=relative_dirname,
                                                             overwrite=overwrite)
 
@@ -303,7 +301,6 @@ def test_upload_file(mock_logtest, mock_safe_move, mock_remove, mock_upload_file
                 'delete_decoder_file function not called with expected parameters'
                 mock_remove.assert_called_once()
                 mock_safe_move.assert_called_once()
-                mock_reload.assert_called_once()
 
 
 @patch('wazuh.decoder.delete_decoder_file', side_effect=WazuhError(1019))
@@ -377,11 +374,9 @@ def test_delete_decoder_file(filename, relative_dirname):
     with patch('wazuh.decoder.exists', return_value=True):
         # Assert returned type is AffectedItemsWazuhResult when everything is correct
         with patch('wazuh.decoder.remove'):
-            with patch('wazuh.decoder.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0})) as mock_reload:
-                assert(isinstance(decoder.delete_decoder_file(filename=filename,
-                                                              relative_dirname=relative_dirname),
-                                                              AffectedItemsWazuhResult))
-                mock_reload.assert_called_once()
+            assert(isinstance(decoder.delete_decoder_file(filename=filename,
+                                                          relative_dirname=relative_dirname),
+                              AffectedItemsWazuhResult))
 
 
 def test_delete_decoder_file_ko():
