@@ -70,7 +70,6 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->skip_fs.dev                     = 1;
     syscheck->skip_fs.sys                     = 1;
     syscheck->skip_fs.proc                    = 1;
-    syscheck->scan_on_start                   = 1;
     syscheck->time                            = 43200;
     syscheck->ignore                          = NULL;
     syscheck->ignore_regex                    = NULL;
@@ -1605,7 +1604,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
     const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";
-    const char *xml_scan_on_start = "scan_on_start";
     const char *xml_prefilter_cmd = "prefilter_cmd";
     const char *xml_skip_nfs = "skip_nfs";
     const char *xml_skip_dev = "skip_dev";
@@ -1816,15 +1814,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         }
 
         /* Get if xml_scan_on_start */
-        else if (strcmp(node[i]->element, xml_scan_on_start) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                syscheck->scan_on_start = 1;
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                syscheck->scan_on_start = 0;
-            } else {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
+        else if (strcmp(node[i]->element, "scan_on_start") == 0) {
+            mwarn("Syscheck option 'scan_on_start' is no longer configurable.");
         }
 
         /* Get if disabled */
