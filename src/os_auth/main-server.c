@@ -934,8 +934,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *copy_remove;
     struct keynode *cur;
     struct keynode *next;
-    char wdbquery[OS_SIZE_128];
-    char wdboutput[128];
     int wdb_sock = -1;
 
     authd_sigblock();
@@ -1055,12 +1053,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             }
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
-
-            snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", cur->id);
-            gettime(&t0);
-            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-            gettime(&t1);
-            mdebug2("[Writer] wdbc_query_ex(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             os_free(cur->id);
             os_free(cur->name);

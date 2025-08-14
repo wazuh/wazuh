@@ -12,13 +12,10 @@
 #include "wdb.h"
 #include "wdb_state.h"
 #include <os_net/os_net.h>
-#include "router.h"
 #include "config/config.h"
 #include "config/wazuh_db-config.h"
 
 #define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
-#define WDB_FIM_EVENTS_TOPIC "wdb-fim-events"
-#define WDB_INVENTORY_EVENTS_TOPIC "wdb-inventory-events"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -26,8 +23,8 @@ static void cleanup();
 static void * run_dealer(void * args);
 static void * run_worker(void * args);
 static void * run_gc(void * args);
-static void * run_up(void * args);
 static void * run_backup(void * args);
+static void * cleanup_deprecated_dbs(void * args);
 
 extern wdb_state_t wdb_state;
 
@@ -49,8 +46,8 @@ int main(int argc, char ** argv)
     pthread_t thread_dealer;
     pthread_t * worker_pool = NULL;
     pthread_t thread_gc;
-    pthread_t thread_up;
     pthread_t thread_backup;
+    pthread_t thread_cleanup;
 
     OS_SetName(ARGV0);
 
@@ -142,13 +139,6 @@ int main(int argc, char ** argv)
         nowDaemon();
     }
 
-    // Reset template. Basically, remove queue/db/.template.db
-    // The prefix is needed here, because we are not yet chrooted
-    char path_template[OS_FLSIZE + 1];
-    snprintf(path_template, sizeof(path_template), "%s/%s/%s", home_path, WDB2_DIR, WDB_PROF_NAME);
-    unlink(path_template);
-    mdebug1("Template file removed: %s", path_template);
-
     // Set max open files limit
     struct rlimit rlimit = { nofile, nofile };
 
@@ -205,22 +195,6 @@ int main(int argc, char ** argv)
 
     minfo(STARTUP_MSG, (int)getpid());
 
-    // Router module logging initialization
-    router_initialize(taggedLogFunction);
-
-    // Router provider initialization
-    if (router_agent_events_handle = router_provider_create(WDB_AGENT_EVENTS_TOPIC, false), !router_agent_events_handle) {
-        mdebug2("Failed to create router handle for 'wdb-agent-events'.");
-    }
-
-    if (router_fim_events_handle = router_provider_create(WDB_FIM_EVENTS_TOPIC, false), !router_fim_events_handle) {
-        mdebug2("Failed to create router handle for 'wdb-fim-events'.");
-    }
-
-    if (router_inventory_events_handle = router_provider_create(WDB_INVENTORY_EVENTS_TOPIC, false), !router_inventory_events_handle) {
-        mdebug2("Failed to create router handle for 'wdb-inventory-events'.");
-    }
-
     if (notify_queue = wnotify_init(1), !notify_queue) {
         merror_exit("at run_dealer(): wnotify_init(): %s (%d)",
                 strerror(errno), errno);
@@ -229,10 +203,6 @@ int main(int argc, char ** argv)
     // Global stats uptime
 
     wdb_state.uptime = time(NULL);
-
-    // Create template
-
-    wdb_create_profile();
 
     // Start threads
 
@@ -265,17 +235,17 @@ int main(int argc, char ** argv)
         goto failure;
     }
 
-    if (status = pthread_create(&thread_up, NULL, run_up, NULL), status != 0) {
-        merror("Couldn't create 'run_up' thread: %s", strerror(status));
-        goto failure;
-    }
-
     bool backups_enabled = wdb_check_backup_enabled();
     if (backups_enabled) {
         if (status = pthread_create(&thread_backup, NULL, run_backup, NULL), status != 0) {
             merror("Couldn't create 'run_backup' thread: %s", strerror(status));
             goto failure;
         }
+    }
+
+    if (status = pthread_create(&thread_cleanup, NULL, cleanup_deprecated_dbs, NULL), status != 0) {
+        merror("Couldn't create 'cleanup_deprecated_dbs' thread: %s", strerror(status));
+        goto failure;
     }
 
     // Join threads
@@ -289,20 +259,13 @@ int main(int argc, char ** argv)
 
     wnotify_close(notify_queue);
     free(worker_pool);
-    pthread_join(thread_up, NULL);
     pthread_join(thread_gc, NULL);
     if(backups_enabled) {
         pthread_join(thread_backup, NULL);
     }
+    pthread_join(thread_cleanup, NULL);
     wdb_close_all();
     wdb_free_conf();
-
-    // Reset template here too, remove queue/db/.template.db again
-    // Without the prefix, because chrooted at that point
-    snprintf(path_template, sizeof(path_template), "%s/%s", WDB2_DIR, WDB_PROF_NAME);
-    unlink(path_template);
-    mdebug1("Template file removed again: %s", path_template);
-    minfo("Graceful process shutdown.");
 
     return EXIT_SUCCESS;
 
@@ -520,60 +483,51 @@ void * run_backup(__attribute__((unused)) void * args) {
     return NULL;
 }
 
+void * cleanup_deprecated_dbs(__attribute__((unused)) void * args) {
+    char path[PATH_MAX];
+    char * end = NULL;
+    struct dirent * dirent = NULL;
+    DIR * dir;
 
-void * run_up(__attribute__((unused)) void * args) {
-    DIR *fd;
-    struct dirent *db = NULL;
-    wdb_t * wdb;
-    char * db_folder;
-    char * name;
-    char * entry;
-
-    os_calloc(PATH_MAX + 1, sizeof(char), db_folder);
-    snprintf(db_folder, PATH_MAX, "%s", WDB2_DIR);
-
-    fd = wopendir(db_folder);
-
-    if (!fd) {
-        mdebug1("Opening directory: '%s': %s", db_folder, strerror(errno));
-        os_free(db_folder);
+    if (!(dir = wopendir(WDB2_DIR))) {
+        merror("Couldn't open directory '%s': %s.", WDB2_DIR, strerror(errno));
         return NULL;
     }
 
-    while ((db = readdir(fd)) != NULL && running) {
-        if ((strcmp(db->d_name, ".") == 0) ||
-            (strcmp(db->d_name, "..") == 0) ||
-            (strcmp(db->d_name, ".template.db") == 0) ||
-            (strcmp(db->d_name, "000.db") == 0)) {
+    while ((dirent = readdir(dir)) != NULL) {
+        // Delete .template.db
+        if (strcmp(dirent->d_name, ".template.db") == 0) {
+            if (snprintf(path, sizeof(path), "%s/%s", WDB2_DIR, dirent->d_name) < (int)sizeof(path)) {
+                minfo("Removing deprecated template database: '%s'", path);
+                if (remove(path) < 0) {
+                    mdebug1(DELETE_ERROR, path, errno, strerror(errno));
+                }
+            }
             continue;
         }
 
-        os_strdup(db->d_name, entry);
-
-        if (name = strchr(entry, '-'), name) {
-            free(entry);
-            continue;
+        // Taking only databases with numbers as a first character in the names to
+        // exclude global.db, global.db-journal, wdb socket, and current directory.
+        if (dirent->d_name[0] >= '0' && dirent->d_name[0] <= '9') {
+            if (end = strchr(dirent->d_name, '.'), end) {
+                int id = (int)strtol(dirent->d_name, &end, 10);
+                if (id >= 0 && strncmp(end, ".db", 3) == 0) {
+                    // Delete all numeric databases (deprecated in this version)
+                    if (snprintf(path, sizeof(path), "%s/%s", WDB2_DIR, dirent->d_name) < (int)sizeof(path)) {
+                        minfo("Removing deprecated numeric database: '%s'", path);
+                        if (remove(path) < 0) {
+                            mdebug1(DELETE_ERROR, path, errno, strerror(errno));
+                        }
+                    }
+                }
+            } else {
+                mwarn("Strange file found: '%s/%s'", WDB2_DIR, dirent->d_name);
+            }
         }
-
-        if (name = strchr(entry, '.'), !name) {
-            free(entry);
-            continue;
-        }
-
-        *(name++) = '\0';
-        wdb = wdb_open_agent2(atoi(entry));
-
-        if (wdb != NULL) {
-            wdb_pool_leave(wdb);
-        }
-
-        free(entry);
-
-        sleep(1);
     }
 
-    os_free(db_folder);
-    closedir(fd);
+    closedir(dir);
+
     return NULL;
 }
 
