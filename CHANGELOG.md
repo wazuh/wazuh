@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added groups users tables in wazuh-db. ([#30404](https://github.com/wazuh/wazuh/pull/30404))
+- Added system users and groups to the inventory data. ([#30848](https://github.com/wazuh/wazuh/pull/30848))
 
 #### Fixed
 
@@ -15,11 +15,13 @@ All notable changes to this project will be documented in this file.
 - Fixed queue stats RC over wazuh-analysisd. ([#29673](https://github.com/wazuh/wazuh/pull/29673))
 - Fixed race condition in the event queue. ([#29672](https://github.com/wazuh/wazuh/pull/29672))
 - Fixed regexCompile race condition. ([#29699](https://github.com/wazuh/wazuh/pull/29699))
+- Fixed malformed alerts in alerts.log when `<group>` contains newline characters. ([#30653](https://github.com/wazuh/wazuh/pull/30653))
 
 #### Changed
 
 - Improved databaseFeedManagerTesttool. ([#30192](https://github.com/wazuh/wazuh/pull/30192))
 - Adapted wazuh-maild to RFC5322 standard. ([#30793](https://github.com/wazuh/wazuh/pull/30793))
+- Enhanced the active response endpoint performance. ([#31218](https://github.com/wazuh/wazuh/pull/31218))
 
 ### Agent
 
@@ -27,10 +29,13 @@ All notable changes to this project will be documented in this file.
 
 - Added support for parquet version 2 in AWS Wodle. ([#30235](https://github.com/wazuh/wazuh/pull/30235))
 - Added capability to do a hot configuration reload in Linux agents. ([#30797](https://github.com/wazuh/wazuh/pull/30797))
+- Added support for Amazon Inspector v2. ([#31163](https://github.com/wazuh/wazuh/pull/31163))
+- Added system users and groups to the inventory data. ([#30369](https://github.com/wazuh/wazuh/pull/30369))
 
 #### Fixed
 
 - Fixed errors with Azure Graph event fields. ([#30831](https://github.com/wazuh/wazuh/pull/30831))
+- Added the missing "provider" field to the whodata section in syscheckd JSON configuration. ([#30877](https://github.com/wazuh/wazuh/pull/30877))
 
 ### RESTful API
 
@@ -49,11 +54,23 @@ All notable changes to this project will be documented in this file.
 - Fixed multiple Rocky Linux SCA checks generating incorrect results. ([#29976](https://github.com/wazuh/wazuh/pull/29976))
 - Fixed missing Check (2.3.7.6) in Windows Server 2019 v2.0.0. ([#30173](https://github.com/wazuh/wazuh/pull/30173))
 - Fixed camel casing in ownCloud ruleset header. ([#30276](https://github.com/wazuh/wazuh/pull/30276))
+- Fixed false positive in check 2.3.3.2 of macOS 13, 14, and 15 SCA. ([#30489](https://github.com/wazuh/wazuh/pull/30489))
+- Fixed bug in rule 92657. ([#30529](https://github.com/wazuh/wazuh/pull/30529))
+- Fixed field names in Office 365 rules. ([#30528](https://github.com/wazuh/wazuh/pull/30528))
+- Fixed action field in Fortigate rules. ([#30515](https://github.com/wazuh/wazuh/pull/30515))
+- Fixed Auditd EXECVE sibling Decoders. ([#30612](https://github.com/wazuh/wazuh/pull/30612))
+- Fixed problems with other Windows OS languages except English. ([#31227](https://github.com/wazuh/wazuh/pull/31227))
+- Reworked SCA Policy for Debian Linux 12. ([#30717](https://github.com/wazuh/wazuh/pull/30717))
+
+#### Added
+
+- Added SCA content for Rocky Linux 10. ([#30745](https://github.com/wazuh/wazuh/pull/30745))
 
 ### Other
 
 #### Changed
 
+- Updated `packaging` dependency to 25.0. ([#31272](https://github.com/wazuh/wazuh/pull/31272))
 - Updated `requests` to version 2.32.4. ([#30536](https://github.com/wazuh/wazuh/pull/30536))
 - Updated `urllib3` to version 2.5.0 and `protobuf` to version 5.29.5. ([#30624](https://github.com/wazuh/wazuh/pull/30624))
 - Upgraded Python embedded interpreter to 3.10.18. ([#30916](https://github.com/wazuh/wazuh/pull/30916))
