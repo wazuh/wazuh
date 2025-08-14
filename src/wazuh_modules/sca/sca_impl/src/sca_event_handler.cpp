@@ -42,15 +42,15 @@ void SCAEventHandler::ReportPoliciesDelta(
 
     for (const auto& event : events)
     {
-        const nlohmann::json processedStatefulEvent = ProcessStateful(event);
+        const auto processedStatefulEvent = ProcessStateful(event);
         if (!processedStatefulEvent.empty())
         {
-            PushStateful(processedStatefulEvent["event"], processedStatefulEvent["metadata"]);
+            PushStateful(processedStatefulEvent);
         }
-        const nlohmann::json processedStatelessEvent = ProcessStateless(event);
+        const auto processedStatelessEvent = ProcessStateless(event);
         if (!processedStatelessEvent.empty())
         {
-            PushStateless(processedStatelessEvent["event"], processedStatelessEvent["metadata"]);
+            PushStateless(processedStatelessEvent);
         }
     }
 }
@@ -92,9 +92,10 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                 {"policy", policyData}, {"check", rowData}, {"result", result}, {"collector", "check"}};
 
             const auto stateful = ProcessStateful(event);
-            PushStateful(stateful["event"], stateful["metadata"]);
+            PushStateful(stateful);
+
             const auto stateless = ProcessStateless(event);
-            PushStateless(stateless["event"], stateless["metadata"]);
+            PushStateless(stateless);
         }
         else
         {
@@ -464,40 +465,28 @@ std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
     return Utils::asciiToHex(hash.hash());
 }
 
-void SCAEventHandler::PushStateful(const nlohmann::json& event, const nlohmann::json& metadata) const
+void SCAEventHandler::PushStateful(const nlohmann::json& event) const
 {
     if (!m_pushMessage)
     {
         throw std::runtime_error("Message queue not set, cannot send message.");
     }
 
-    const nlohmann::json statefulJson = {
-        {"type", "stateful"},
-        {"event", metadata["operation"] == "delete" ? nlohmann::json::object() : event},
-        {"module", metadata["module"]},
-        {"metadata", metadata}};
+    m_pushMessage(event.dump());
 
-    const auto statefulMessage = statefulJson.dump();
-
-    m_pushMessage(statefulMessage);
-
-    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE,
-                                     "Stateful event queued: " + event.dump() + ", metadata " + metadata.dump());
+    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + event.dump());
 }
 
-void SCAEventHandler::PushStateless(const nlohmann::json& event, const nlohmann::json& metadata) const
+void SCAEventHandler::PushStateless(const nlohmann::json& event) const
 {
     if (!m_pushMessage)
     {
         throw std::runtime_error("Message queue not set, cannot send message.");
     }
 
-    // The event already contains the complete structure we want to send
-    const auto statelessMessage = event.dump();
+    m_pushMessage(event.dump());
 
-    m_pushMessage(statelessMessage);
-    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE,
-                                     "Stateless event queued: " + event.dump() + ", metadata " + metadata.dump());
+    LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateless event queued: " + event.dump());
 }
 
 nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) const
