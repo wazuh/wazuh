@@ -312,7 +312,11 @@ class OpensearchManagement:
         url_search = f'http://localhost:9200/{Constants.INDEX_PATTERN}/_search'
         headers = {"Content-Type": "application/json"}
         terminate = False
-        for attempt in range(retries):
+        last_hits_count = 0
+        consecutive_same_count = 0
+        hits = []
+
+        while consecutive_same_count < retries and not terminate:
             try:
                 query = {
                     "size": outputs_number,
@@ -324,16 +328,33 @@ class OpensearchManagement:
                 response = requests.post(url_search, json=query, headers=headers)
                 response.raise_for_status()
                 hits = response.json()['hits']['hits']
-                if len(hits) == outputs_number:
+                current_hits_count = len(hits)
+
+                if current_hits_count == outputs_number:
                     terminate = True
                     self.check_custom_fields(custom_fields, all_custom_fields, hits)
                     break
+                elif current_hits_count > last_hits_count:
+                    # If the count increased, reset the consecutive same count
+                    consecutive_same_count = 0
+                    last_hits_count = current_hits_count
+                    print(f"{current_hits_count} documents found out of {outputs_number} pushed. Progress detected, continuing...")
+                elif current_hits_count == last_hits_count:
+                    # If the count is the same, increment the consecutive same count
+                    consecutive_same_count += 1
+                    print(f"{current_hits_count} documents found out of {outputs_number} pushed. No progress ({consecutive_same_count}/{retries})")
                 else:
-                    print(f"{len(hits)} documents found out of {outputs_number} pushed. Retrying")
+                    # If the count decreased, (rare case), reset the consecutive same count
+                    consecutive_same_count = 0
+                    last_hits_count = current_hits_count
+                    print(f"{current_hits_count} documents found out of {outputs_number} pushed. Count decreased, continuing...")
+
             except requests.ConnectionError as e:
                 print(f"Connection error: {e}. Retrying...")
+                consecutive_same_count += 1
 
-            time.sleep(delay)
+            if not terminate:
+                time.sleep(delay)
 
         if not terminate:
             sys.exit(f"{outputs_number - len(hits)} items not found")
@@ -635,7 +656,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
 
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
-                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "debug"})
 
     integrations: List[Path] = []
     CORE_WAZUH_DECODER_PATH = env_path / 'ruleset' / 'decoders' / 'wazuh-core' / 'core-wazuh-message.yml'
@@ -725,7 +746,7 @@ def rule_health_test(env_path: Path, integration_rule: Optional[str] = None, ski
 
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
-                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "debug"})
 
     results: List[Result] = []
     rules: List[Path] = []
