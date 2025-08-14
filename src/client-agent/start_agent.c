@@ -238,11 +238,6 @@ static void w_agentd_keys_init (void) {
         case W_METH_AES:
             minfo("Using AES as encryption method.");
             break;
-        case W_METH_BLOWFISH:
-            minfo("Using Blowfish as encryption method.");
-            break;
-        default:
-            merror("Invalid encryption method.");
     }
 }
 
