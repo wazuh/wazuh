@@ -19,6 +19,8 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath)
     try
     {
         createTableIfNotExists();
+        m_connection.execute("PRAGMA synchronous = NORMAL;");
+        m_connection.execute("PRAGMA journal_mode = WAL;");
     }
     catch (const Sqlite3Error& ex)
     {
@@ -202,24 +204,34 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
             return result;
         }
 
-        std::string updateQuery = "UPDATE persistent_queue SET sync_status = ? WHERE rowid IN (";
+        // SQLite has a limit on the number of parameters in a single query
+        // (typically 999). To handle an unlimited number of pending items,
+        // we process the UPDATE statement in batches.
+        constexpr size_t BATCH_SIZE = 500;
 
-        for (size_t i = 0; i < idsToUpdate.size(); ++i)
+        for (size_t i = 0; i < idsToUpdate.size(); i += BATCH_SIZE)
         {
-            updateQuery += (i == 0 ? "?" : ",?");
+            std::string updateQuery = "UPDATE persistent_queue SET sync_status = ? WHERE rowid IN (";
+
+            size_t batch_end = std::min(i + BATCH_SIZE, idsToUpdate.size());
+
+            for (size_t j = i; j < batch_end; ++j)
+            {
+                updateQuery += (j == i ? "?" : ",?");
+            }
+
+            updateQuery += ");";
+
+            Statement updateStmt(m_connection, updateQuery);
+            updateStmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
+
+            for (size_t j = i; j < batch_end; ++j)
+            {
+                updateStmt.bind(static_cast<int32_t>((j - i) + 2), idsToUpdate[j]);
+            }
+
+            updateStmt.step();
         }
-
-        updateQuery += ");";
-
-        Statement updateStmt(m_connection, updateQuery);
-        updateStmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
-
-        for (size_t i = 0; i < idsToUpdate.size(); ++i)
-        {
-            updateStmt.bind(static_cast<int32_t>(i + 2), idsToUpdate[i]);
-        }
-
-        updateStmt.step();
 
         m_connection.execute("COMMIT;");
     }
