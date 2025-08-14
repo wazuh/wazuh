@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Add users and groups to the inventory data. ([#30848](https://github.com/wazuh/wazuh/pull/30848))
+- Added system users and groups to the inventory data. ([#30848](https://github.com/wazuh/wazuh/pull/30848))
 
 #### Fixed
 
@@ -21,7 +21,7 @@ All notable changes to this project will be documented in this file.
 
 - Improved databaseFeedManagerTesttool. ([#30192](https://github.com/wazuh/wazuh/pull/30192))
 - Adapted wazuh-maild to RFC5322 standard. ([#30793](https://github.com/wazuh/wazuh/pull/30793))
-- Active response endpoint performance enhancement. ([#31218](https://github.com/wazuh/wazuh/pull/31218))
+- Enhanced the active response endpoint performance. ([#31218](https://github.com/wazuh/wazuh/pull/31218))
 
 ### Agent
 
@@ -29,13 +29,13 @@ All notable changes to this project will be documented in this file.
 
 - Added support for parquet version 2 in AWS Wodle. ([#30235](https://github.com/wazuh/wazuh/pull/30235))
 - Added capability to do a hot configuration reload in Linux agents. ([#30797](https://github.com/wazuh/wazuh/pull/30797))
-- Add support for Amazon Inspector v2. ([#31163](https://github.com/wazuh/wazuh/pull/31163))
-- Add users and groups to the inventory data. ([#30369](https://github.com/wazuh/wazuh/pull/30369))
+- Added support for Amazon Inspector v2. ([#31163](https://github.com/wazuh/wazuh/pull/31163))
+- Added system users and groups to the inventory data. ([#30369](https://github.com/wazuh/wazuh/pull/30369))
 
 #### Fixed
 
 - Fixed errors with Azure Graph event fields. ([#30831](https://github.com/wazuh/wazuh/pull/30831))
-- Add missing "provider" field to whodata section in syscheckd JSON configuration. ([#30877](https://github.com/wazuh/wazuh/pull/30877))
+- Added the missing "provider" field to the whodata section in syscheckd JSON configuration. ([#30877](https://github.com/wazuh/wazuh/pull/30877))
 
 ### RESTful API
 
@@ -58,7 +58,7 @@ All notable changes to this project will be documented in this file.
 - Fixed bug in rule 92657. ([#30529](https://github.com/wazuh/wazuh/pull/30529))
 - Fixed field names in Office 365 rules. ([#30528](https://github.com/wazuh/wazuh/pull/30528))
 - Fixed action field in Fortigate rules. ([#30515](https://github.com/wazuh/wazuh/pull/30515))
-- Fix Auditd EXECVE sibling Decoders. ([#30612](https://github.com/wazuh/wazuh/pull/30612))
+- Fixed Auditd EXECVE sibling Decoders. ([#30612](https://github.com/wazuh/wazuh/pull/30612))
 - Fixed problems with other Windows OS languages except English. ([#31227](https://github.com/wazuh/wazuh/pull/31227))
 - Reworked SCA Policy for Debian Linux 12. ([#30717](https://github.com/wazuh/wazuh/pull/30717))
 
@@ -70,7 +70,7 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Updated `packaging` dependency to 25.0 ([#31272](https://github.com/wazuh/wazuh/pull/31272))
+- Updated `packaging` dependency to 25.0. ([#31272](https://github.com/wazuh/wazuh/pull/31272))
 - Updated `requests` to version 2.32.4. ([#30536](https://github.com/wazuh/wazuh/pull/30536))
 - Updated `urllib3` to version 2.5.0 and `protobuf` to version 5.29.5. ([#30624](https://github.com/wazuh/wazuh/pull/30624))
 - Upgraded Python embedded interpreter to 3.10.18. ([#30916](https://github.com/wazuh/wazuh/pull/30916))
