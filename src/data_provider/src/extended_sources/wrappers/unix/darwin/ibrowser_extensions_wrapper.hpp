@@ -16,5 +16,7 @@ class IBrowserExtensionsWrapper
     public:
         /// Destructor
         virtual ~IBrowserExtensionsWrapper() = default;
+        virtual std::string getHomePath() = 0;
         virtual std::string getApplicationsPath() = 0;
+        virtual std::string getUserId(std::string user) = 0;
 };
