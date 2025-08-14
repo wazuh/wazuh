@@ -983,9 +983,12 @@ nlohmann::json SysInfo::getHotfixes() const
 
     for (auto& hotfix : hotfixes)
     {
-        nlohmann::json hotfixValue;
-        hotfixValue["hotfix"] = std::move(hotfix);
-        ret.push_back(std::move(hotfixValue));
+        if (!hotfix.empty())
+        {
+            nlohmann::json hotfixValue;
+            hotfixValue["hotfix"] = std::move(hotfix);
+            ret.push_back(std::move(hotfixValue));
+        }
     }
 
     return ret;
