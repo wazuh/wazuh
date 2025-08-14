@@ -29,10 +29,12 @@ static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP {
 
 SCAEventHandler::SCAEventHandler(std::string agentUUID,
                                  std::shared_ptr<IDBSync> dBSync,
-                                 std::function<int(const std::string&)> pushMessage)
+                                 std::function<int(const std::string&)> pushStatelessMessage,
+                                 std::function<int(const std::string&)> pushStatefulMessage)
     : m_agentUUID(std::move(agentUUID))
     , m_dBSync(std::move(dBSync))
-    , m_pushMessage(std::move(pushMessage)) {};
+    , m_pushStatelessMessage(std::move(pushStatelessMessage))
+    , m_pushStatefulMessage(std::move(pushStatefulMessage)) {};
 
 void SCAEventHandler::ReportPoliciesDelta(
     const std::unordered_map<std::string, nlohmann::json>& modifiedPoliciesMap,
@@ -467,24 +469,24 @@ std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
 
 void SCAEventHandler::PushStateful(const nlohmann::json& event) const
 {
-    if (!m_pushMessage)
+    if (!m_pushStatefulMessage)
     {
-        throw std::runtime_error("Message queue not set, cannot send message.");
+        throw std::runtime_error("PushStatefulMessage function not set, cannot send message.");
     }
 
-    m_pushMessage(event.dump());
+    m_pushStatefulMessage(event.dump());
 
     LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateful event queued: " + event.dump());
 }
 
 void SCAEventHandler::PushStateless(const nlohmann::json& event) const
 {
-    if (!m_pushMessage)
+    if (!m_pushStatelessMessage)
     {
-        throw std::runtime_error("Message queue not set, cannot send message.");
+        throw std::runtime_error("PushStatelessMessage function not set, cannot send message.");
     }
 
-    m_pushMessage(event.dump());
+    m_pushStatelessMessage(event.dump());
 
     LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, "Stateless event queued: " + event.dump());
 }

@@ -29,21 +29,30 @@ protected:
 TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
 {
     constexpr int expectedReturnValue = 123;
-    bool called = false;
+    bool statefulCalled = false;
+    bool statelessCalled = false;
 
-    auto lambda = [&](const std::string&) -> int // NOLINT(performance-unnecessary-value-param)
+    auto statefulLambda = [&](const std::string&) -> int // NOLINT(performance-unnecessary-value-param)
     {
-        called = true;
+        statefulCalled = true;
         return expectedReturnValue;
     };
 
-    m_sca->SetPushMessageFunction(lambda);
+
+    auto statelessLambda = [&](const std::string&) -> int // NOLINT(performance-unnecessary-value-param)
+    {
+        statelessCalled = true;
+        return expectedReturnValue;
+    };
+
+    m_sca->SetPushStatelessMessageFunction(statelessLambda);
+    m_sca->SetPushStatefulMessageFunction(statefulLambda);
 
     const std::string dummyMessage = R"({"key": "value"})";
-    const int result = lambda(dummyMessage);
+    const int result = statefulLambda(dummyMessage) + statelessLambda(dummyMessage);
 
-    EXPECT_TRUE(called);
-    EXPECT_EQ(result, expectedReturnValue);
+    EXPECT_TRUE(statefulCalled && statelessCalled);
+    EXPECT_EQ(result, expectedReturnValue * 2);
 }
 
 TEST_F(ScaTest, NameReturnsCorrectValue)
