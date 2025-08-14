@@ -45,10 +45,6 @@ All notable changes to this project will be documented in this file.
 - Added Ms-Graph token validation before performing requests. ([#30377](https://github.com/wazuh/wazuh/pull/30377))
 - Added support for UTF-8 characters in file paths for FIM. ([#30763](https://github.com/wazuh/wazuh/pull/30763))
 
-#### Changed
-
-- Removed internal_key from queries filters. ([#30637](https://github.com/wazuh/wazuh/pull/30637))
-
 #### Fixed
 
 - Fixed incorrect handling of events in the Custom logs bucket. ([#29312](https://github.com/wazuh/wazuh/pull/29312))
@@ -71,6 +67,7 @@ All notable changes to this project will be documented in this file.
 - Improved Azure module logging capabilities. ([#29930](https://github.com/wazuh/wazuh/pull/29930))
 - Improved restart on macOS agents after an upgrade. ([#29940](https://github.com/wazuh/wazuh/pull/29940))
 - Standarized different services timeouts. ([#29443](https://github.com/wazuh/wazuh/pull/29443))
+- Removed internal_key from queries filters. ([#30637](https://github.com/wazuh/wazuh/pull/30637))
 
 ### RESTful API
 
@@ -100,6 +97,7 @@ All notable changes to this project will be documented in this file.
 - Fixed multiple checks in RHEL 9, RHEL 10, Rocky Linux 8 and Rocky Linux 9 SCA policies. ([#29040](https://github.com/wazuh/wazuh/pull/29040))
 - Fixed diff causing false negatives in rootcheck. ([#28982](https://github.com/wazuh/wazuh/pull/28982))
 - Fixed multiple RHEL 8 and CentOS 7 SCA checks generating incorrect results. ([#28711](https://github.com/wazuh/wazuh/pull/28711))
+- Fixed false positives in Benchmark Ubuntu 24.04. ([#30827](https://github.com/wazuh/wazuh/pull/30827))
 
 ### Other
 
