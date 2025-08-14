@@ -15,15 +15,18 @@
 // Static member definition
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
 
-constexpr auto POLICY_SQL_STATEMENT {
+constexpr auto POLICY_SQL_STATEMENT
+{
     R"(CREATE TABLE IF NOT EXISTS sca_policy (
     id TEXT PRIMARY KEY,
     name TEXT,
     file TEXT,
     description TEXT,
-    refs TEXT);)"};
+    refs TEXT);)"
+};
 
-constexpr auto CHECK_SQL_STATEMENT {
+constexpr auto CHECK_SQL_STATEMENT
+{
     R"(CREATE TABLE IF NOT EXISTS sca_check (
     checksum TEXT NOT NULL,
     id TEXT PRIMARY KEY,
@@ -37,7 +40,8 @@ constexpr auto CHECK_SQL_STATEMENT {
     reason TEXT,
     condition TEXT,
     compliance TEXT,
-    rules TEXT);)"};
+    rules TEXT);)"
+};
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(
     std::string dbPath,
@@ -46,14 +50,14 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(
     std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_agentUUID(std::move(agentUUID))
     , m_dBSync(dbSync ? std::move(dbSync)
-                      : std::make_shared<DBSync>(
-                            HostType::AGENT,
-                            DbEngineType::SQLITE3,
-                            dbPath,
-                            GetCreateStatement(),
-                            DbManagement::PERSISTENT))
+               : std::make_shared<DBSync>(
+                   HostType::AGENT,
+                   DbEngineType::SQLITE3,
+                   dbPath,
+                   GetCreateStatement(),
+                   DbManagement::PERSISTENT))
     , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
-                                            : std::make_shared<file_system::FileSystemWrapper>())
+                          : std::make_shared<file_system::FileSystemWrapper>())
 {
     std::cout << "SecurityConfigurationAssessment initialized with agent UUID: " << m_agentUUID << std::endl;
 }
@@ -70,11 +74,12 @@ void SecurityConfigurationAssessment::Run()
 
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
 
-    while(m_keepRunning)
+    while (m_keepRunning)
     {
         if (m_scanOnStart)
         {
             LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
+
             for (auto& policy : m_policies)
             {
                 if (!m_keepRunning)
@@ -85,12 +90,12 @@ void SecurityConfigurationAssessment::Run()
                 policy->Run(
                     m_scanInterval,
                     m_scanOnStart,
-                    [this](const std::string& policyId, const std::string& checkId, const std::string& result)
-                    {
-                        const SCAEventHandler eventHandler(m_agentUUID, m_dBSync, m_pushMessage);
-                        eventHandler.ReportCheckResult(policyId, checkId, result);
-                    },
-                    nullptr
+                    [this](const std::string & policyId, const std::string & checkId, const std::string & result)
+                {
+                    const SCAEventHandler eventHandler(m_agentUUID, m_dBSync, m_pushMessage);
+                    eventHandler.ReportCheckResult(policyId, checkId, result);
+                },
+                nullptr
                 );
             }
         }
@@ -114,12 +119,13 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
     {
         const SCAPolicyLoader policyLoader(policies, m_fileSystemWrapper, m_dBSync);
         return policyLoader.LoadPolicies(commandsTimeout, remoteEnabled,
-            [this](auto policyData, auto checksData)
-            {
-                const SCAEventHandler eventHandler(m_agentUUID, m_dBSync, m_pushMessage);
-                eventHandler.ReportPoliciesDelta(policyData, checksData);
-            });
-    }();
+                                         [this](auto policyData, auto checksData)
+        {
+            const SCAEventHandler eventHandler(m_agentUUID, m_dBSync, m_pushMessage);
+            eventHandler.ReportPoliciesDelta(policyData, checksData);
+        });
+    }
+    ();
 }
 
 void SecurityConfigurationAssessment::Stop()

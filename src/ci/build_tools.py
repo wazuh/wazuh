@@ -22,6 +22,7 @@ DELETE_FOLDER_DIC = {
     'data_provider':                ['build', 'smokeTests/output'],
     'syscheckd':                    ['build', 'src/db/smokeTests/output',
                                      'coverage_report'],
+    'wazuh_modules/sca':            ['build'],
 }
 
 
@@ -386,10 +387,10 @@ def makeTarget(targetName, tests, debug):
         makeTargetCommand += " TEST=1"
     if debug:
         makeTargetCommand += " DEBUG=1"
-    makeTargetCommand += " -j{}".format(utils.getCpuCores())
+    makeTargetCommand += " VERBOSE=1 -j{}".format(utils.getCpuCores())
     out = subprocess.run(makeTargetCommand,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE,
+                         #stdout=subprocess.PIPE,
+                         #stderr=subprocess.PIPE,
                          shell=True,
                          check=False)
     if out.returncode == 0:

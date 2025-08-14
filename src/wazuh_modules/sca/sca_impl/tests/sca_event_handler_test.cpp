@@ -10,43 +10,52 @@ using namespace sca_event_handler;
 
 class SCAEventHandlerTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        // Set up the logging callback to avoid "Log callback not set" errors
-        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
-            // Mock logging callback that does nothing
-        });
+    protected:
+        void SetUp() override
+        {
+            // Set up the logging callback to avoid "Log callback not set" errors
+            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+            {
+                // Mock logging callback that does nothing
+            });
 
-        mockDBSync = std::make_shared<MockDBSync>();
-        handler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync);
-    }
+            mockDBSync = std::make_shared<MockDBSync>();
+            handler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync);
+        }
 
-    std::shared_ptr<MockDBSync> mockDBSync;
-    std::unique_ptr<sca_event_handler::SCAEventHandlerMock> handler;
+        std::shared_ptr<MockDBSync> mockDBSync;
+        std::unique_ptr<sca_event_handler::SCAEventHandlerMock> handler;
 };
 
 TEST_F(SCAEventHandlerTest, ProcessEvents_ModifiedPolicyOnly)
 {
     EXPECT_CALL(*handler, GetChecksForPolicy("cis_win11_enterprise_21H2"))
-        .WillOnce(testing::Return(nlohmann::json::array(
-            {{{"id", "26000"}, {"name", "Check 26000"}, {"policy_id", "cis_win11_enterprise_21H2"}},
-             {{"id", "26001"}, {"name", "Check 26001"}, {"policy_id", "cis_win11_enterprise_21H2"}}})));
+    .WillOnce(testing::Return(nlohmann::json::array(
+    {
+        {{"id", "26000"}, {"name", "Check 26000"}, {"policy_id", "cis_win11_enterprise_21H2"}},
+        {{"id", "26001"}, {"name", "Check 26001"}, {"policy_id", "cis_win11_enterprise_21H2"}}})));
 
     const std::unordered_map<std::string, nlohmann::json> modifiedPolicies = {{"cis_win11_enterprise_21H2",
-                                                                               {{"data",
-                                                                                 {{"id", "cis_win11_enterprise_21H2"},
-                                                                                  {"name", "CIS Policy"},
-                                                                                  {"file", "cis.yml"},
-                                                                                  {"description", "desc"},
-                                                                                  {"refs", "https://example.com"}}},
-                                                                                {"result", 1}}}};
+            {   {
+                    "data",
+                    {   {"id", "cis_win11_enterprise_21H2"},
+                        {"name", "CIS Policy"},
+                        {"file", "cis.yml"},
+                        {"description", "desc"},
+                        {"refs", "https://example.com"}
+                    }
+                },
+                {"result", 1}
+            }
+        }
+    };
 
     const std::unordered_map<std::string, nlohmann::json> modifiedChecks;
 
     const auto events = handler->ProcessEvents(modifiedPolicies, modifiedChecks);
 
     ASSERT_EQ(events.size(), 2);
+
     for (const auto& event : events)
     {
         EXPECT_EQ(event["collector"], "policy");
@@ -58,29 +67,38 @@ TEST_F(SCAEventHandlerTest, ProcessEvents_ModifiedPolicyOnly)
 TEST_F(SCAEventHandlerTest, ProcessEvents_ModifiedCheckOnly)
 {
     EXPECT_CALL(*handler, GetPolicyById("cis_policy_3"))
-        .Times(2)
-        .WillRepeatedly(
-            testing::Return(nlohmann::json({{"id", "cis_policy_3"},
-                                            {"name", "Custom Windows Hardening Policy"},
-                                            {"file", "custom_windows_policy.yml"},
-                                            {"description", "Custom internal hardening guidelines for Windows"},
-                                            {"refs", "https://internal.docs/policies/windows"}})));
+    .Times(2)
+    .WillRepeatedly(
+    testing::Return(nlohmann::json({{"id", "cis_policy_3"},
+        {"name", "Custom Windows Hardening Policy"},
+        {"file", "custom_windows_policy.yml"},
+        {"description", "Custom internal hardening guidelines for Windows"},
+        {"refs", "https://internal.docs/policies/windows"}})));
 
     const std::unordered_map<std::string, nlohmann::json> modifiedPolicies;
 
-    const std::unordered_map<std::string, nlohmann::json> modifiedChecks = {
-        {"3003",
-         {{"data", {{"new", {{"id", "3003"}, {"policy_id", "cis_policy_3"}, {"name", "Standalone Check"}}}}},
-          {"result", MODIFIED}}},
-        {"3004",
-         {{"data", {{"id", "3004"}, {"policy_id", "cis_policy_3"}, {"name", "Another Check"}}}, {"result", DELETED}}}};
+    const std::unordered_map<std::string, nlohmann::json> modifiedChecks =
+    {
+        {
+            "3003",
+            {   {"data", {{"new", {{"id", "3003"}, {"policy_id", "cis_policy_3"}, {"name", "Standalone Check"}}}}},
+                {"result", MODIFIED}
+            }
+        },
+        {
+            "3004",
+            {{"data", {{"id", "3004"}, {"policy_id", "cis_policy_3"}, {"name", "Another Check"}}}, {"result", DELETED}}
+        }
+    };
 
     const auto events = handler->ProcessEvents(modifiedPolicies, modifiedChecks);
 
     auto check3003Event = std::find_if(events.begin(),
                                        events.end(),
-                                       [](const auto& evt)
-                                       { return evt["check"].contains("new") && evt["check"]["new"]["id"] == "3003"; });
+                                       [](const auto & evt)
+    {
+        return evt["check"].contains("new") && evt["check"]["new"]["id"] == "3003";
+    });
 
     ASSERT_NE(check3003Event, events.end());
     EXPECT_EQ((*check3003Event)["collector"], "check");
@@ -90,7 +108,10 @@ TEST_F(SCAEventHandlerTest, ProcessEvents_ModifiedCheckOnly)
     auto check3004Event =
         std::find_if(events.begin(),
                      events.end(),
-                     [](const auto& evt) { return evt["check"].contains("id") && evt["check"]["id"] == "3004"; });
+                     [](const auto & evt)
+    {
+        return evt["check"].contains("id") && evt["check"]["id"] == "3004";
+    });
 
     ASSERT_NE(check3004Event, events.end());
     EXPECT_EQ((*check3004Event)["collector"], "check");
@@ -101,35 +122,50 @@ TEST_F(SCAEventHandlerTest, ProcessEvents_ModifiedCheckOnly)
 TEST_F(SCAEventHandlerTest, ProcessEvents_ModifiedCheckAndPolicy)
 {
     EXPECT_CALL(*handler, GetChecksForPolicy("cis_win11_enterprise_21H2"))
-        .WillOnce(testing::Return(nlohmann::json::array(
-            {{{"id", "26000"}, {"name", "Check 26000"}, {"policy_id", "cis_win11_enterprise_21H2"}},
-             {{"id", "26001"}, {"name", "Check 26001"}, {"policy_id", "cis_win11_enterprise_21H2"}}})));
+    .WillOnce(testing::Return(nlohmann::json::array(
+    {
+        {{"id", "26000"}, {"name", "Check 26000"}, {"policy_id", "cis_win11_enterprise_21H2"}},
+        {{"id", "26001"}, {"name", "Check 26001"}, {"policy_id", "cis_win11_enterprise_21H2"}}})));
 
-    const std::unordered_map<std::string, nlohmann::json> modifiedPolicies = {
-        {"cis_win11_enterprise_21H2",
-         {{"data",
-           {{"id", "cis_win11_enterprise_21H2"},
-            {"name", "CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0"},
-            {"file", "cis_win11_enterprise.yml"},
-            {"description", "This document provides prescriptive guidance for Windows 11 Enterprise"},
-            {"refs", "https://www.cisecurity.org/cis-benchmarks/"}}},
-          {"result", 1}}}};
+    const std::unordered_map<std::string, nlohmann::json> modifiedPolicies =
+    {
+        {
+            "cis_win11_enterprise_21H2",
+            {   {
+                    "data",
+                    {   {"id", "cis_win11_enterprise_21H2"},
+                        {"name", "CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0"},
+                        {"file", "cis_win11_enterprise.yml"},
+                        {"description", "This document provides prescriptive guidance for Windows 11 Enterprise"},
+                        {"refs", "https://www.cisecurity.org/cis-benchmarks/"}
+                    }
+                },
+                {"result", 1}
+            }
+        }
+    };
 
-    const std::unordered_map<std::string, nlohmann::json> modifiedChecks = {
-        {"26001",
-         {{"data", {{"new", {{"policy_id", "cis_win11_enterprise_21H2"}}}, {"id", "26001"}}}, {"result", MODIFIED}}}};
+    const std::unordered_map<std::string, nlohmann::json> modifiedChecks =
+    {
+        {
+            "26001",
+            {{"data", {{"new", {{"policy_id", "cis_win11_enterprise_21H2"}}}, {"id", "26001"}}}, {"result", MODIFIED}}
+        }
+    };
 
     const auto events = handler->ProcessEvents(modifiedPolicies, modifiedChecks);
 
     ASSERT_EQ(events.size(), 2);
 
     int policyCount = 0, checkCount = 0;
+
     for (const auto& event : events)
     {
         if (event["collector"] == "policy")
         {
             policyCount++;
         }
+
         if (event["collector"] == "check")
         {
             checkCount++;
@@ -143,12 +179,15 @@ TEST_F(SCAEventHandlerTest, ProcessEvents_ModifiedCheckAndPolicy)
 TEST_F(SCAEventHandlerTest, ProcessEvents_NoThrowException)
 {
     EXPECT_CALL(*handler, GetChecksForPolicy("cis_win11_enterprise_21H2"))
-        .WillOnce(testing::Return(nlohmann::json::array(
-            {{{"num", "26000"}, {"name", "Check 26000"}, {"policy_id", "cis_win11_enterprise_21H2"}},
-             {{"num", "26001"}, {"name", "Check 26001"}, {"policy_id", "cis_win11_enterprise_21H2"}}})));
+    .WillOnce(testing::Return(nlohmann::json::array(
+    {
+        {{"num", "26000"}, {"name", "Check 26000"}, {"policy_id", "cis_win11_enterprise_21H2"}},
+        {{"num", "26001"}, {"name", "Check 26001"}, {"policy_id", "cis_win11_enterprise_21H2"}}})));
 
-    const std::unordered_map<std::string, nlohmann::json> modifiedPolicies = {
-        {"cis_win11_enterprise_21H2", {{"data", {/* policy fields */}}, {"result", 0}}}};
+    const std::unordered_map<std::string, nlohmann::json> modifiedPolicies =
+    {
+        {"cis_win11_enterprise_21H2", {{"data", {/* policy fields */}}, {"result", 0}}}
+    };
 
     const std::unordered_map<std::string, nlohmann::json> modifiedChecks;
 
@@ -160,19 +199,26 @@ TEST_F(SCAEventHandlerTest, ProcessEvents_NoThrowException)
 TEST_F(SCAEventHandlerTest, GetPolicyById)
 {
     const std::string expectedId = "pol1";
-    const nlohmann::json expectedQuery = {
+    const nlohmann::json expectedQuery =
+    {
         {"table", "sca_policy"},
-        {"query",
-         {{"column_list", {"id", "name", "description", "file", "refs"}}, {"row_filter", "WHERE id = 'pol1'"}}}};
+        {
+            "query",
+            {{"column_list", {"id", "name", "description", "file", "refs"}}, {"row_filter", "WHERE id = 'pol1'"}}
+        }
+    };
     const nlohmann::json mockResult = {{"id", "pol1"},
-                                       {"name", "Policy Name"},
-                                       {"description", "Some Description"},
-                                       {"file", "policy.yml"},
-                                       {"refs", "ref-123"}};
+        {"name", "Policy Name"},
+        {"description", "Some Description"},
+        {"file", "policy.yml"},
+        {"refs", "ref-123"}
+    };
 
     EXPECT_CALL(*mockDBSync, selectRows(expectedQuery, testing::_))
-        .WillOnce([&](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& cb)
-                  { cb(SELECTED, mockResult); });
+    .WillOnce([&](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& cb)
+    {
+        cb(SELECTED, mockResult);
+    });
 
     const auto result = handler->GetPolicyById(expectedId);
 
@@ -184,33 +230,41 @@ TEST_F(SCAEventHandlerTest, GetChecksForPolicy)
     const std::string policyId = "polX";
 
     const nlohmann::json expectedQuery = {{"table", "sca_check"},
-                                          {"query",
-                                           {{"column_list",
-                                             {"checksum",
-                                              "id",
-                                              "policy_id",
-                                              "name",
-                                              "description",
-                                              "rationale",
-                                              "remediation",
-                                              "refs",
-                                              "result",
-                                              "reason",
-                                              "condition",
-                                              "compliance",
-                                              "rules"}},
-                                            {"row_filter", "WHERE policy_id = 'polX'"}}}};
+        {
+            "query",
+            {   {
+                    "column_list",
+                    {
+                        "checksum",
+                        "id",
+                        "policy_id",
+                        "name",
+                        "description",
+                        "rationale",
+                        "remediation",
+                        "refs",
+                        "result",
+                        "reason",
+                        "condition",
+                        "compliance",
+                        "rules"
+                    }
+                },
+                {"row_filter", "WHERE policy_id = 'polX'"}
+            }
+        }
+    };
 
     const nlohmann::json check1 = {{"id", "chk1"}, {"policy_id", "polX"}, {"name", "Check 1"}};
     const nlohmann::json check2 = {{"id", "chk2"}, {"policy_id", "polX"}, {"name", "Check 2"}};
 
     EXPECT_CALL(*mockDBSync, selectRows(expectedQuery, testing::_))
-        .WillOnce(
-            [&](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& cb)
-            {
-                cb(SELECTED, check1);
-                cb(SELECTED, check2);
-            });
+    .WillOnce(
+        [&](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& cb)
+    {
+        cb(SELECTED, check1);
+        cb(SELECTED, check2);
+    });
 
     const auto result = handler->GetChecksForPolicy(policyId);
 
@@ -222,27 +276,39 @@ TEST_F(SCAEventHandlerTest, GetChecksForPolicy)
 TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput1)
 {
     const nlohmann::json input = {{"check",
-                                   {{"new",
-                                     {{"checksum", "abc123"},
-                                      {"id", "chk1"},
-                                      {"name", "Ensure firewall is active"},
-                                      {"description", "Verifies that the firewall is running"},
-                                      {"rationale", "Security best practices"},
-                                      {"status", "passed"},
-                                      {"condition", "all"},
-                                      {"compliance", {"cis:1.1", "pci_dss:2.2"}},
-                                      {"remediation", "Enable the firewall service"},
-                                      {"refs", "Ref1, Ref2"},
-                                      {"rules", {"Rule1", "Rule2"}}}}}},
-                                  {"policy",
-                                   {{"new",
-                                     {{"id", "pol1"},
-                                      {"name", "CIS Ubuntu Benchmark"},
-                                      {"rationale", "SMBv1 is outdated and insecure."},
-                                      {"description", "Disable SMBv1"},
-                                      {"refs", "RefA, RefB"},
-                                      {"file", "policy_file.yml"}}}}},
-                                  {"result", 0}};
+            {   {
+                    "new",
+                    {   {"checksum", "abc123"},
+                        {"id", "chk1"},
+                        {"name", "Ensure firewall is active"},
+                        {"description", "Verifies that the firewall is running"},
+                        {"rationale", "Security best practices"},
+                        {"status", "passed"},
+                        {"condition", "all"},
+                        {"compliance", {"cis:1.1", "pci_dss:2.2"}},
+                        {"remediation", "Enable the firewall service"},
+                        {"refs", "Ref1, Ref2"},
+                        {"rules", {"Rule1", "Rule2"}}
+                    }
+                }
+            }
+        },
+        {
+            "policy",
+            {   {
+                    "new",
+                    {   {"id", "pol1"},
+                        {"name", "CIS Ubuntu Benchmark"},
+                        {"rationale", "SMBv1 is outdated and insecure."},
+                        {"description", "Disable SMBv1"},
+                        {"refs", "RefA, RefB"},
+                        {"file", "policy_file.yml"}
+                    }
+                }
+            }
+        },
+        {"result", 0}
+    };
 
     const nlohmann::json output = handler->ProcessStateful(input);
 
@@ -281,25 +347,31 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput1)
 TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput2)
 {
     const nlohmann::json input = {{"check",
-                                   {{"checksum", "abc123"},
-                                    {"id", "chk1"},
-                                    {"name", "Ensure firewall is active"},
-                                    {"description", "Verifies that the firewall is running"},
-                                    {"rationale", "Security best practices"},
-                                    {"status", "passed"},
-                                    {"condition", "all"},
-                                    {"compliance", {"cis:1.1", "pci_dss:2.2"}},
-                                    {"remediation", "Enable the firewall service"},
-                                    {"refs", "Ref1, Ref2"},
-                                    {"rules", {"Rule1", "Rule2"}}}},
-                                  {"policy",
-                                   {{"id", "pol1"},
-                                    {"name", "CIS Ubuntu Benchmark"},
-                                    {"rationale", "SMBv1 is outdated and insecure."},
-                                    {"description", "Disable SMBv1"},
-                                    {"refs", "RefA, RefB"},
-                                    {"file", "policy_file.yml"}}},
-                                  {"result", 2}};
+            {   {"checksum", "abc123"},
+                {"id", "chk1"},
+                {"name", "Ensure firewall is active"},
+                {"description", "Verifies that the firewall is running"},
+                {"rationale", "Security best practices"},
+                {"status", "passed"},
+                {"condition", "all"},
+                {"compliance", {"cis:1.1", "pci_dss:2.2"}},
+                {"remediation", "Enable the firewall service"},
+                {"refs", "Ref1, Ref2"},
+                {"rules", {"Rule1", "Rule2"}}
+            }
+        },
+        {
+            "policy",
+            {   {"id", "pol1"},
+                {"name", "CIS Ubuntu Benchmark"},
+                {"rationale", "SMBv1 is outdated and insecure."},
+                {"description", "Disable SMBv1"},
+                {"refs", "RefA, RefB"},
+                {"file", "policy_file.yml"}
+            }
+        },
+        {"result", 2}
+    };
 
     const nlohmann::json output = handler->ProcessStateful(input);
 
@@ -347,12 +419,15 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_InvalidInput1)
 TEST_F(SCAEventHandlerTest, ProcessStateful_InvalidInput2)
 {
     const nlohmann::json input = {{"check",
-                                   {{"checksum", "abc123"},
-                                    {"id", "chk1"},
-                                    {"name", "Ensure firewall is active"},
-                                    {"description", "Verifies that the firewall is running"},
-                                    {"rationale", "Security best practices"},
-                                    {"status", "passed"}}}};
+            {   {"checksum", "abc123"},
+                {"id", "chk1"},
+                {"name", "Ensure firewall is active"},
+                {"description", "Verifies that the firewall is running"},
+                {"rationale", "Security best practices"},
+                {"status", "passed"}
+            }
+        }
+    };
 
     const nlohmann::json output = handler->ProcessStateful(input);
 
@@ -363,29 +438,41 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
 {
     // Input data with shorter, placeholder values
     const nlohmann::json input = {{"check",
-                                   {{"new",
-                                     {{"checksum", "abc123"},
-                                      {"id", "chk1"},
-                                      {"result", "passed"},
-                                      {"compliance", {"cis:1.1", "cis_csc:13", "pci_dss:2.2", "tsc:CC6"}},
-                                      {"condition", "all"},
-                                      {"description", "Description of cramfs filesystem."},
-                                      {"rationale", "Disable unneeded filesystem types to reduce attack surface."},
-                                      {"refs", "Ref1, Ref2, https://example.com/reference"},
-                                      {"remediation", "Create CIS.conf and add: install cramfs /bin/true."},
-                                      {"rules", {"Rule1", "Rule2"}},
-                                      {"name", "Disable cramfs filesystems."}}},
-                                    {"old", {{"id", "chk1"}, {"result", "failed"}}}}},
-                                  {"policy",
-                                   {{"new",
-                                     {{"id", "pol1"},
-                                      {"description", "Ensure firewall is active"},
-                                      {"refs", "Ref1, Ref2, https://example.com/reference"},
-                                      {"name", "CIS Ubuntu Benchmark"},
-                                      {"file", "CIS_Ubuntu_Benchmark.yml"}}},
-                                    {"old", {{"id", "pol1"}, {"description", "Ensure firewall is running"}}}}},
-                                  {"collector", "check"},
-                                  {"result", 0}};
+            {   {
+                    "new",
+                    {   {"checksum", "abc123"},
+                        {"id", "chk1"},
+                        {"result", "passed"},
+                        {"compliance", {"cis:1.1", "cis_csc:13", "pci_dss:2.2", "tsc:CC6"}},
+                        {"condition", "all"},
+                        {"description", "Description of cramfs filesystem."},
+                        {"rationale", "Disable unneeded filesystem types to reduce attack surface."},
+                        {"refs", "Ref1, Ref2, https://example.com/reference"},
+                        {"remediation", "Create CIS.conf and add: install cramfs /bin/true."},
+                        {"rules", {"Rule1", "Rule2"}},
+                        {"name", "Disable cramfs filesystems."}
+                    }
+                },
+                {"old", {{"id", "chk1"}, {"result", "failed"}}}
+            }
+        },
+        {
+            "policy",
+            {   {
+                    "new",
+                    {   {"id", "pol1"},
+                        {"description", "Ensure firewall is active"},
+                        {"refs", "Ref1, Ref2, https://example.com/reference"},
+                        {"name", "CIS Ubuntu Benchmark"},
+                        {"file", "CIS_Ubuntu_Benchmark.yml"}
+                    }
+                },
+                {"old", {{"id", "pol1"}, {"description", "Ensure firewall is running"}}}
+            }
+        },
+        {"collector", "check"},
+        {"result", 0}
+    };
 
     // Call to your function
     const nlohmann::json output = handler->ProcessStateless(input);
@@ -431,25 +518,31 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
 TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
 {
     const nlohmann::json input = {{"check",
-                                   {{"checksum", "abc123"},
-                                    {"id", "chk1"},
-                                    {"result", "failed"},
-                                    {"compliance", {"cis:1.2", "pci_dss:1.1"}},
-                                    {"condition", "any"},
-                                    {"description", "Short check description"},
-                                    {"rationale", "Minimize risk"},
-                                    {"refs", "RefA, RefB"},
-                                    {"remediation", "Do something secure"},
-                                    {"rules", {"RuleA", "RuleB"}},
-                                    {"name", "Check some condition"}}},
-                                  {"policy",
-                                   {{"id", "pol1"},
-                                    {"description", "Ensure firewall is running"},
-                                    {"refs", "Ref1, Ref2"},
-                                    {"name", "Basic Security Policy"},
-                                    {"file", "basic_policy.yml"}}},
-                                  {"collector", "check"},
-                                  {"result", 1}};
+            {   {"checksum", "abc123"},
+                {"id", "chk1"},
+                {"result", "failed"},
+                {"compliance", {"cis:1.2", "pci_dss:1.1"}},
+                {"condition", "any"},
+                {"description", "Short check description"},
+                {"rationale", "Minimize risk"},
+                {"refs", "RefA, RefB"},
+                {"remediation", "Do something secure"},
+                {"rules", {"RuleA", "RuleB"}},
+                {"name", "Check some condition"}
+            }
+        },
+        {
+            "policy",
+            {   {"id", "pol1"},
+                {"description", "Ensure firewall is running"},
+                {"refs", "Ref1, Ref2"},
+                {"name", "Basic Security Policy"},
+                {"file", "basic_policy.yml"}
+            }
+        },
+        {"collector", "check"},
+        {"result", 1}
+    };
 
     const nlohmann::json output = handler->ProcessStateless(input);
 
@@ -569,10 +662,11 @@ TEST_F(SCAEventHandlerTest, StringToJsonArray_ValuesWithTabs)
 TEST_F(SCAEventHandlerTest, NormalizeCheck)
 {
     nlohmann::json check = {{"id", "1234"},
-                            {"refs", "ref1, ref2"},
-                            {"compliance", "cis:1.1.1, cis:1.1.2"},
-                            {"rules", "rule1, rule2"},
-                            {"policy_id", "my_policy"}};
+        {"refs", "ref1, ref2"},
+        {"compliance", "cis:1.1.1, cis:1.1.2"},
+        {"rules", "rule1, rule2"},
+        {"policy_id", "my_policy"}
+    };
 
     handler->NormalizeCheck(check);
 
@@ -589,8 +683,10 @@ TEST_F(SCAEventHandlerTest, NormalizeCheck)
 
 TEST_F(SCAEventHandlerTest, NormalizePolicy)
 {
-    nlohmann::json policy = {
-        {"id", "cis_001"}, {"name", "CIS Policy"}, {"refs", "https://cis.org, https://example.com"}};
+    nlohmann::json policy =
+    {
+        {"id", "cis_001"}, {"name", "CIS Policy"}, {"refs", "https://cis.org, https://example.com"}
+    };
 
     handler->NormalizePolicy(policy);
 

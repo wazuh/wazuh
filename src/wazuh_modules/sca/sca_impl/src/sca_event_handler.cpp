@@ -11,7 +11,8 @@
 #include "logging_helper.hpp"
 
 /// @brief Map of stateful operations
-static const std::map<ReturnTypeCallback, std::string> STATEFUL_OPERATION_MAP {
+static const std::map<ReturnTypeCallback, std::string> STATEFUL_OPERATION_MAP
+{
     {MODIFIED, "update"},
     {DELETED, "delete"},
     {INSERTED, "create"},
@@ -21,7 +22,8 @@ static const std::map<ReturnTypeCallback, std::string> STATEFUL_OPERATION_MAP {
 };
 
 /// @brief Map of stateless operations
-static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP {
+static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP
+{
     {MODIFIED, "change"},
     {DELETED, "deletion"},
     {INSERTED, "creation"},
@@ -43,11 +45,14 @@ void SCAEventHandler::ReportPoliciesDelta(
     for (const auto& event : events)
     {
         const nlohmann::json processedStatefulEvent = ProcessStateful(event);
+
         if (!processedStatefulEvent.empty())
         {
             PushStateful(processedStatefulEvent["event"], processedStatefulEvent["metadata"]);
         }
+
         const nlohmann::json processedStatelessEvent = ProcessStateless(event);
+
         if (!processedStatelessEvent.empty())
         {
             PushStateless(processedStatelessEvent["event"], processedStatelessEvent["metadata"]);
@@ -84,12 +89,14 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
     auto updateResultQuery = SyncRowQuery::builder().table("sca_check").data(checkData).returnOldData().build();
 
-    const auto callback = [&, this](ReturnTypeCallback result, const nlohmann::json& rowData)
+    const auto callback = [&, this](ReturnTypeCallback result, const nlohmann::json & rowData)
     {
         if (result == MODIFIED)
         {
-            const nlohmann::json event = {
-                {"policy", policyData}, {"check", rowData}, {"result", result}, {"collector", "check"}};
+            const nlohmann::json event =
+            {
+                {"policy", policyData}, {"check", rowData}, {"result", result}, {"collector", "check"}
+            };
 
             const auto stateful = ProcessStateful(event);
             PushStateful(stateful["event"], stateful["metadata"]);
@@ -110,6 +117,7 @@ SCAEventHandler::ProcessEvents(const std::unordered_map<std::string, nlohmann::j
                                const std::unordered_map<std::string, nlohmann::json>& modifiedChecksMap) const
 {
     nlohmann::json events = nlohmann::json::array();
+
     try
     {
         for (const auto& policyEntry : modifiedPoliciesMap)
@@ -129,8 +137,10 @@ SCAEventHandler::ProcessEvents(const std::unordered_map<std::string, nlohmann::j
                     continue;
                 }
 
-                const nlohmann::json event = {
-                    {"policy", policyData}, {"check", checkData}, {"result", policyResult}, {"collector", "policy"}};
+                const nlohmann::json event =
+                {
+                    {"policy", policyData}, {"check", checkData}, {"result", policyResult}, {"collector", "policy"}
+                };
                 events.push_back(event);
             }
         }
@@ -142,6 +152,7 @@ SCAEventHandler::ProcessEvents(const std::unordered_map<std::string, nlohmann::j
             int checkResult = checkEntry.second["result"];
 
             std::string policyId;
+
             if (checkResult == MODIFIED)
             {
                 policyId = checkData["new"]["policy_id"];
@@ -160,8 +171,10 @@ SCAEventHandler::ProcessEvents(const std::unordered_map<std::string, nlohmann::j
                 policyData = GetPolicyById(policyId);
             }
 
-            const nlohmann::json event = {
-                {"policy", policyData}, {"check", checkData}, {"result", checkResult}, {"collector", "check"}};
+            const nlohmann::json event =
+            {
+                {"policy", policyData}, {"check", checkData}, {"result", checkResult}, {"collector", "check"}
+            };
             events.push_back(event);
         }
     }
@@ -185,24 +198,24 @@ std::vector<nlohmann::json> SCAEventHandler::GetChecksForPolicy(const std::strin
 
     const std::string filter = "WHERE policy_id = '" + policyId + "'";
     auto selectQuery = SelectQuery::builder()
-                           .table("sca_check")
-                           .columnList({"checksum",
-                                        "id",
-                                        "policy_id",
-                                        "name",
-                                        "description",
-                                        "rationale",
-                                        "remediation",
-                                        "refs",
-                                        "result",
-                                        "reason",
-                                        "condition",
-                                        "compliance",
-                                        "rules"})
-                           .rowFilter(filter)
-                           .build();
+                       .table("sca_check")
+                       .columnList({"checksum",
+                                    "id",
+                                    "policy_id",
+                                    "name",
+                                    "description",
+                                    "rationale",
+                                    "remediation",
+                                    "refs",
+                                    "result",
+                                    "reason",
+                                    "condition",
+                                    "compliance",
+                                    "rules"})
+                       .rowFilter(filter)
+                       .build();
 
-    const auto callback = [&checks](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
+    const auto callback = [&checks](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
     {
         if (returnTypeCallback == SELECTED)
         {
@@ -227,12 +240,12 @@ nlohmann::json SCAEventHandler::GetPolicyById(const std::string& policyId) const
 
     const std::string filter = "WHERE id = '" + policyId + "'";
     auto selectQuery = SelectQuery::builder()
-                           .table("sca_policy")
-                           .columnList({"id", "name", "description", "file", "refs"})
-                           .rowFilter(filter)
-                           .build();
+                       .table("sca_policy")
+                       .columnList({"id", "name", "description", "file", "refs"})
+                       .rowFilter(filter)
+                       .build();
 
-    const auto callback = [&policy](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
+    const auto callback = [&policy](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
     {
         if (returnTypeCallback == SELECTED)
         {
@@ -257,24 +270,24 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
 
     const std::string filter = "WHERE id = '" + policyCheckId + "'";
     auto selectQuery = SelectQuery::builder()
-                           .table("sca_check")
-                           .columnList({"checksum",
-                                        "id",
-                                        "policy_id",
-                                        "name",
-                                        "description",
-                                        "rationale",
-                                        "remediation",
-                                        "refs",
-                                        "result",
-                                        "reason",
-                                        "condition",
-                                        "compliance",
-                                        "rules"})
-                           .rowFilter(filter)
-                           .build();
+                       .table("sca_check")
+                       .columnList({"checksum",
+                                    "id",
+                                    "policy_id",
+                                    "name",
+                                    "description",
+                                    "rationale",
+                                    "remediation",
+                                    "refs",
+                                    "result",
+                                    "reason",
+                                    "condition",
+                                    "compliance",
+                                    "rules"})
+                       .rowFilter(filter)
+                       .build();
 
-    const auto callback = [&check](ReturnTypeCallback returnTypeCallback, const nlohmann::json& resultData)
+    const auto callback = [&check](ReturnTypeCallback returnTypeCallback, const nlohmann::json & resultData)
     {
         if (returnTypeCallback == SELECTED)
         {
@@ -335,8 +348,9 @@ nlohmann::json SCAEventHandler::ProcessStateful(const nlohmann::json& event) con
 
         jsonEvent = {{"policy", policy}, {"check", check}, {"timestamp", Utils::getCurrentISO8601()}};
         jsonMetadata = {{"id", CalculateHashId(jsonEvent)},
-                        {"operation", STATEFUL_OPERATION_MAP.at(event["result"])},
-                        {"module", "sca"}};
+            {"operation", STATEFUL_OPERATION_MAP.at(event["result"])},
+            {"module", "sca"}
+        };
     }
     catch (const std::exception& e)
     {
@@ -378,9 +392,11 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                     {
                         continue;
                     }
+
                     previous[key] = value;
                     changedFields.push_back("check." + key);
                 }
+
                 check["previous"] = previous;
             }
         }
@@ -412,9 +428,11 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                     {
                         continue;
                     }
+
                     previous[key] = value;
                     changedFields.push_back("policy." + key);
                 }
+
                 policy["previous"] = previous;
             }
         }
@@ -427,18 +445,24 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
         NormalizeCheck(check);
         NormalizePolicy(policy);
 
-        jsonEvent = {
-            {"event",
-             {
-                 {"created", Utils::getCurrentISO8601()},
-                 {"category", {"configuration"}},
-                 {"type", STATELESS_OPERATION_MAP.at(event["result"])},
-                 {"action",
-                  {event.at("collector").get<std::string>() + "-" + STATELESS_OPERATION_MAP.at(event["result"])}},
-                 {"changed_fields", changedFields},
-             }},
+        jsonEvent =
+        {
+            {
+                "event",
+                {
+                    {"created", Utils::getCurrentISO8601()},
+                    {"category", {"configuration"}},
+                    {"type", STATELESS_OPERATION_MAP.at(event["result"])},
+                    {
+                        "action",
+                        {event.at("collector").get<std::string>() + "-" + STATELESS_OPERATION_MAP.at(event["result"])}
+                    },
+                    {"changed_fields", changedFields},
+                }
+            },
             {"policy", policy},
-            {"check", check}};
+            {"check", check}
+        };
 
         jsonMetadata = {{"module", "sca"}, {"collector", event.at("collector")}};
     }
@@ -468,11 +492,13 @@ void SCAEventHandler::PushStateful(const nlohmann::json& event, const nlohmann::
         throw std::runtime_error("Message queue not set, cannot send message.");
     }
 
-    const nlohmann::json statefulJson = {
+    const nlohmann::json statefulJson =
+    {
         {"type", "stateful"},
         {"event", metadata["operation"] == "delete" ? nlohmann::json::object() : event},
         {"module", metadata["module"]},
-        {"metadata", metadata}};
+        {"metadata", metadata}
+    };
 
     const auto statefulMessage = statefulJson.dump();
 
@@ -489,8 +515,10 @@ void SCAEventHandler::PushStateless(const nlohmann::json& event, const nlohmann:
         throw std::runtime_error("Message queue not set, cannot send message.");
     }
 
-    const nlohmann::json statelessJson = {
-        {"type", "stateless"}, {"event", event}, {"module", metadata["module"]}, {"metadata", metadata}};
+    const nlohmann::json statelessJson =
+    {
+        {"type", "stateless"}, {"event", event}, {"module", metadata["module"]}, {"metadata", metadata}
+    };
 
     const auto statelessMessage = statelessJson.dump();
 

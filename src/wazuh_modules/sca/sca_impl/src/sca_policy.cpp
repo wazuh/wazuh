@@ -22,8 +22,8 @@ SCAPolicy::SCAPolicy(SCAPolicy&& other) noexcept
 }
 
 void
-SCAPolicy::Run(std::time_t ,
-               bool ,
+SCAPolicy::Run(std::time_t,
+               bool,
                std::function<void(const std::string&, const std::string&, const std::string&)> reportCheckResult,
                std::function<void(std::chrono::milliseconds)> )
 {
@@ -49,6 +49,7 @@ void SCAPolicy::Scan(
             {
                 return;
             }
+
             resultEvaluator.AddResult(rule->Evaluate());
         }
 
@@ -71,6 +72,7 @@ void SCAPolicy::Scan(
                 {
                     return;
                 }
+
                 resultEvaluator.AddResult(rule->Evaluate());
             }
 

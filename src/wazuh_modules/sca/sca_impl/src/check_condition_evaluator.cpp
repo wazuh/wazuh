@@ -8,14 +8,17 @@ CheckConditionEvaluator CheckConditionEvaluator::FromString(const std::string& s
     {
         return CheckConditionEvaluator {ConditionType::All};
     }
+
     if (str == "any")
     {
         return CheckConditionEvaluator {ConditionType::Any};
     }
+
     if (str == "none")
     {
         return CheckConditionEvaluator {ConditionType::None};
     }
+
     throw std::invalid_argument("Invalid condition type: " + str);
 }
 
@@ -46,18 +49,23 @@ void CheckConditionEvaluator::AddResult(RuleResult result)
             {
                 m_result = false;
             }
+
             break;
+
         case ConditionType::Any:
             if (RuleResult::Found == result)
             {
                 m_result = true;
             }
+
             break;
+
         case ConditionType::None:
             if (RuleResult::Found == result)
             {
                 m_result = false;
             }
+
             break;
     }
 }
@@ -76,9 +84,16 @@ sca::CheckResult CheckConditionEvaluator::Result() const
 
     switch (m_type)
     {
-        case ConditionType::All: return sca::CheckResult::Passed;
-        case ConditionType::Any: return sca::CheckResult::Failed;
-        case ConditionType::None: return sca::CheckResult::Passed;
-        default: throw std::runtime_error("Invalid condition type");
+        case ConditionType::All:
+            return sca::CheckResult::Passed;
+
+        case ConditionType::Any:
+            return sca::CheckResult::Failed;
+
+        case ConditionType::None:
+            return sca::CheckResult::Passed;
+
+        default:
+            throw std::runtime_error("Invalid condition type");
     }
 }
