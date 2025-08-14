@@ -22,6 +22,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
   list(APPEND SRC_FILES 
     src/safari_darwin.cpp
+    src/firefox.cpp
   )
 
   add_library(browser_extensions STATIC ${SRC_FILES})
