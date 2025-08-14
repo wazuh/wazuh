@@ -29,8 +29,8 @@ void * save_control_thread(void * control_msg_queue);
 void test_save_control_message_empty(void **state)
 {
     will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_linked_queue_pop_ex, (w_linked_queue_t *) -1);
-    expect_value(__wrap_linked_queue_pop_ex, queue, 0x1);
+    will_return(__wrap_indexed_queue_pop_ex, (w_linked_queue_t *) 0);
+    expect_value(__wrap_indexed_queue_pop_ex, queue, 0x1);
 
 
     will_return(__wrap_FOREVER, 0);
@@ -41,21 +41,22 @@ void test_save_control_message_empty(void **state)
 
 void test_save_control_message_ok(void **state)
 {
-    w_linked_queue_t * queue = linked_queue_init();
+    w_indexed_queue_t * queue = indexed_queue_init(10);
+    assert_non_null(queue);
 
     w_ctrl_msg_data_t * ctrl_msg_data;
     os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
     os_calloc(sizeof(keyentry), 1, ctrl_msg_data->key);
 
-    ctrl_msg_data->length = strlen("test message") + 1;
-    os_calloc(ctrl_msg_data->length, sizeof(char), ctrl_msg_data->message);
-    memcpy(ctrl_msg_data->message, "test message", ctrl_msg_data->length);
+    size_t len = strlen("test message") + 1;
+    os_calloc(len, sizeof(char), ctrl_msg_data->message);
+    memcpy(ctrl_msg_data->message, "test message", len);
 
-    linked_queue_push(queue, ctrl_msg_data);
+    indexed_queue_push(queue, "001", ctrl_msg_data);
 
     will_return(__wrap_FOREVER, 1);
-    will_return(__wrap_linked_queue_pop_ex, (void *) ctrl_msg_data);
-    expect_value(__wrap_linked_queue_pop_ex, queue, queue);
+    will_return(__wrap_indexed_queue_pop_ex, (void *) ctrl_msg_data);
+    expect_value(__wrap_indexed_queue_pop_ex, queue, queue);
 
     expect_value(__wrap_save_controlmsg, key, ctrl_msg_data->key);
     expect_value(__wrap_save_controlmsg, r_msg, ctrl_msg_data->message);
@@ -64,7 +65,7 @@ void test_save_control_message_ok(void **state)
     will_return(__wrap_FOREVER, 0);
 
     assert_null(save_control_thread((void *) queue));
-    linked_queue_free(queue);
+    indexed_queue_free(queue);    
 }
 
 

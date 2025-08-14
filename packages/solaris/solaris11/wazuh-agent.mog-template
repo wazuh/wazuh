@@ -1,7 +1,7 @@
 set name=pkg.fmri value=wazuh-agent@<VERSION>,5.11-0
 set name=pkg.summary value="Wazuh agent"
 set name=pkg.description value="Wazuh agent monitoring utility"
-set name=info.maintainer value="Wazuh Inc. <support@wazuh.com>"
+set name=info.maintainer value="Wazuh <info@wazuh.com>"
 set name=info.source-url value=https://github.com/wazuh/wazuh/archive/<TAG>.tar.gz
 <transform dir path=var$ -> drop>
 <transform dir path=lib$ -> drop>

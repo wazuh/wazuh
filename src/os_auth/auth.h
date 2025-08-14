@@ -48,6 +48,9 @@ extern BIO *bio_err;
 #define DEFAULT_CENTRALIZED_GROUP "default"
 #define DEPRECATED_OPTION_WARN "Option '%s' is deprecated. Configure it in the file '%s'."
 #define MAX_SSL_PACKET_SIZE 16384
+#define MAX_SSL_MSG_SIZE (OS_SIZE_65536 + OS_SIZE_4096)
+#define SERVER_INDEX 0
+#define STOP_FD (AUTH_POOL+1)
 
 #define full(i, j) ((i + 1) % AUTH_POOL == j)
 #define empty(i, j) (i == j)
@@ -55,11 +58,27 @@ extern BIO *bio_err;
 
 struct client {
     int socket;
+    int index;
     union {
         struct in_addr *addr4;
         struct in6_addr *addr6;
     };
     bool is_ipv6;
+    SSL *ssl;
+    bool handshake_done;
+    bool enrollment_ok;
+    char ip[IPSIZE + 1];
+
+    char* read_buffer;
+    int  read_offset;
+
+    char* write_buffer;
+    int  write_offset;
+    int  write_len;
+
+    char* agentname;
+    char* centralized_group;
+    char* new_id;
 };
 
 struct keynode {

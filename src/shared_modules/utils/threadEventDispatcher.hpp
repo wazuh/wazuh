@@ -33,11 +33,12 @@ public:
     explicit TThreadEventDispatcher(Functor functor,
                                     const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    bool useSharedBuffers = false)
         : m_functor {std::move(functor)}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, useSharedBuffers))}
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
     }

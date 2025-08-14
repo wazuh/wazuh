@@ -9109,6 +9109,7 @@ void test_wdb_global_validate_groups_success(void **state) {
 void test_wdb_global_set_agent_groups_override_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
+    const char * agent_name = "agent001";
     int group_id = 1;
     char group_name[] = "GROUP";
     char hash[] = "19dcd0dd"; //"GROUP" hash
@@ -9123,6 +9124,7 @@ void test_wdb_global_set_agent_groups_override_success(void **state) {
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
         cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "name", cJSON_CreateString(agent_name));
         cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
         cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
 
@@ -9159,6 +9161,7 @@ void test_wdb_global_set_agent_groups_override_success(void **state) {
 void test_wdb_global_set_agent_groups_override_delete_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
+    const char * agent_name = "agent001";
     int group_id = 1;
     char group_name[] = "GROUP";
     char hash[] = "19dcd0dd"; //"GROUP" hash
@@ -9173,6 +9176,7 @@ void test_wdb_global_set_agent_groups_override_delete_error(void **state) {
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
         cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "name", cJSON_CreateString(agent_name));
         cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array, TRUE));
         cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
 
@@ -9212,6 +9216,7 @@ void test_wdb_global_set_agent_groups_override_delete_error(void **state) {
 void test_wdb_global_set_agent_groups_add_modes_assign_error(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
+    const char * agent_name = "agent001";
     char group_name[] = "GROUP";
     char hash[] = "19dcd0dd"; //"GROUP" hash
     char sync_status[] = "synced";
@@ -9227,6 +9232,7 @@ void test_wdb_global_set_agent_groups_add_modes_assign_error(void **state) {
     for (int i=0; i<AGENTS_SIZE; i++) {
         cJSON* j_agent_group = cJSON_CreateObject();
         cJSON_AddItemToObject(j_agent_group, "id", cJSON_CreateNumber(agent_id));
+        cJSON_AddItemToObject(j_agent_group, "name", cJSON_CreateString(agent_name));
         cJSON_AddItemToObject(j_agent_group, "groups", cJSON_Duplicate(j_group_array_invalid, TRUE));
         cJSON_AddItemToArray(j_agents_group_info, j_agent_group);
 
@@ -9872,6 +9878,7 @@ void test_wdb_global_recalculate_all_agent_groups_hash_recalculate_error(void **
 void test_wdb_global_assign_agent_group_agent_not_exists_success(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
+    const char* agent_name = "agent-01";
     int group_id = 1;
     int priority = 0;
     char group_name[] = "test_group";
@@ -9922,7 +9929,7 @@ void test_wdb_global_assign_agent_group_agent_not_exists_success(void **state) {
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2); // name
-    expect_string(__wrap_sqlite3_bind_text, buffer, "unknown");
+    expect_string(__wrap_sqlite3_bind_text, buffer, agent_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 3); // ip
     expect_string(__wrap_sqlite3_bind_text, buffer, "0.0.0.0");
@@ -9953,7 +9960,7 @@ void test_wdb_global_assign_agent_group_agent_not_exists_success(void **state) {
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
 
-    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority, true);
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority, agent_name);
 
     assert_int_equal(result, WDBC_OK);
     __real_cJSON_Delete(j_groups);
@@ -9962,6 +9969,7 @@ void test_wdb_global_assign_agent_group_agent_not_exists_success(void **state) {
 void test_wdb_global_assign_agent_group_agent_not_exists_insert_fail(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     int agent_id = 1;
+    const char* agent_name = "agent-01";
     int group_id = 1;
     int priority = 0;
     char group_name[] = "test_group";
@@ -10012,7 +10020,7 @@ void test_wdb_global_assign_agent_group_agent_not_exists_insert_fail(void **stat
     expect_value(__wrap_sqlite3_bind_int, value, agent_id);
     will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 2); // name
-    expect_string(__wrap_sqlite3_bind_text, buffer, "unknown");
+    expect_string(__wrap_sqlite3_bind_text, buffer, agent_name);
     will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
     expect_value(__wrap_sqlite3_bind_text, pos, 3); // ip
     expect_string(__wrap_sqlite3_bind_text, buffer, "0.0.0.0");
@@ -10045,7 +10053,7 @@ void test_wdb_global_assign_agent_group_agent_not_exists_insert_fail(void **stat
 
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to insert group 'test_group' for agent '1', retry failed after creating agent in never_connected state.");
 
-    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority, true);
+    wdbc_result result = wdb_global_assign_agent_group(data->wdb, agent_id, j_groups, priority, agent_name);
 
     assert_int_equal(result, WDBC_ERROR);
     __real_cJSON_Delete(j_groups);

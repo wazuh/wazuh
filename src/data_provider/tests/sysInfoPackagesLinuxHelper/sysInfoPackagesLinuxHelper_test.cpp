@@ -324,7 +324,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_EQ("1:1.2.11.dfsg-2ubuntu1.2", jsPackageInfo["version"]);
     EXPECT_EQ("amd64", jsPackageInfo["architecture"]);
     EXPECT_EQ("deb", jsPackageInfo["format"]);
-    EXPECT_EQ("Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>", jsPackageInfo["vendor"]);
+    EXPECT_EQ("Ubuntu Developers", jsPackageInfo["vendor"]);
     EXPECT_EQ("compression library - development", jsPackageInfo["description"]);
     EXPECT_EQ("zlib", jsPackageInfo["source"]);
 }

@@ -9,7 +9,7 @@
     <email_to>recipient@example.wazuh.com</email_to>
     <email_maxperhour>12</email_maxperhour>
     <email_log_source>alerts.log</email_log_source>
-    <agents_disconnection_time>10m</agents_disconnection_time>
+    <agents_disconnection_time>15m</agents_disconnection_time>
     <agents_disconnection_alert_time>0</agents_disconnection_alert_time>
     <update_check>yes</update_check>
   </global>
