@@ -133,8 +133,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define REMOTE_LOCAL_SOCK  "queue/sockets/remote"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
 #define MAIL_LOCAL_SOCK "queue/sockets/mail"
-#define LESSD_LOCAL_SOCK "queue/sockets/agentless"
-#define INTG_LOCAL_SOCK "queue/sockets/integrator"
 #define CSYS_LOCAL_SOCK  "queue/sockets/csyslog"
 #define MON_LOCAL_SOCK  "queue/sockets/monitor"
 #define CLUSTER_SOCK "queue/cluster/c-internal.sock"
@@ -259,11 +257,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #else
 #define AGENT_INFO_FILE ".agent_info"
 #endif
-
-/* Agentless directories */
-#define AGENTLESSDIR        "agentless"
-#define AGENTLESS_ENTRYDIR  "queue/agentless"
-
 
 /* Internal definitions files */
 #ifndef WIN32

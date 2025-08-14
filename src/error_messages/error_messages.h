@@ -314,11 +314,6 @@
 #define XML_INV_CSYSLOG    "(5301): Invalid client-syslog configuration."
 #define ERROR_SENDING_MSG  "(5302): Error sending message to '%s'."
 
-/* Agentless */
-#define XML_INV_AGENTLESS   "(7101): Invalid agentless configuration."
-#define XML_INV_MISSFREQ    "(7102): Frequency not set for the periodic option."
-#define XML_INV_MISSOPTS    "(7103): Missing agentless options."
-
 /* Database messages */
 #define DBINIT_ERROR          "(5201): Error initializing database handler."
 #define DBCONN_ERROR          "(5202): Error connecting to database '%s'(%s): ERROR: %s."
