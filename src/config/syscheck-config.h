@@ -427,9 +427,7 @@ typedef struct _config {
     rtfim *realtime;
     fdb_t *database;
 
-    char **prefilter_cmd;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
-    bool allow_remote_prefilter_cmd;
 } syscheck_config;
 
 

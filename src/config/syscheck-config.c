@@ -113,13 +113,11 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 #else
     syscheck->queue_size                      = 16384;
 #endif
-    syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
     syscheck->sync_response_timeout           = 30;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 50;
     syscheck->max_files_per_second            = 0;
-    syscheck->allow_remote_prefilter_cmd      = false;
     syscheck->disk_quota_enabled              = true;
     syscheck->disk_quota_limit                = 1024 * 1024; // 1 GB
     syscheck->file_size_enabled               = true;
@@ -1599,7 +1597,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
     const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";
-    const char *xml_prefilter_cmd = "prefilter_cmd";
     const char *xml_skip_nfs = "skip_nfs";
     const char *xml_skip_dev = "skip_dev";
     const char *xml_skip_sys = "skip_sys";
@@ -1623,7 +1620,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_process_priority = "process_priority";
     const char *xml_synchronization = "synchronization";
     const char *xml_max_eps = "max_eps";
-    const char *xml_allow_remote_prefilter_cmd = "allow_remote_prefilter_cmd";
     const char *xml_diff = "diff";
 
     /* Configuration example
@@ -1634,7 +1630,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
     syscheck_config *syscheck;
     syscheck = (syscheck_config *)configp;
-    char prefilter_cmd[OS_MAXSTR] = "";
 
     if (syscheck->disabled == SK_CONF_UNPARSED) {
         syscheck->disabled = SK_CONF_UNDEFINED;
@@ -1970,33 +1965,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             /* auto_ignore is not read here */
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             /* alert_new_files option is not read here */
-        } else if (strcmp(node[i]->element, xml_prefilter_cmd) == 0) {
-            struct stat statbuf;
-
-#ifdef WIN32
-            if(!ExpandEnvironmentStrings(node[i]->content, prefilter_cmd, sizeof(prefilter_cmd) - 1)){
-                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
-                continue;
-            }
-            str_lowercase(prefilter_cmd);
-#else
-            strncpy(prefilter_cmd, node[i]->content, sizeof(prefilter_cmd) - 1);
-            prefilter_cmd[sizeof(prefilter_cmd) - 1] = '\0';
-#endif
-
-            if (strlen(prefilter_cmd) > 0) {
-                char statcmd[OS_MAXSTR];
-                char *ix;
-                strncpy(statcmd, prefilter_cmd, sizeof(statcmd) - 1);
-                statcmd[sizeof(statcmd) - 1] = '\0';
-                if (NULL != (ix = strchr(statcmd, ' '))) {
-                    *ix = '\0';
-                }
-                if (w_stat(statcmd, &statbuf) != 0) {
-                    mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-            }
+        } else if (strcmp(node[i]->element, "prefilter_cmd") == 0) {
+            mwarn("Syscheck option 'prefilter_cmd' is no longer configurable.");
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
             // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
@@ -2131,21 +2101,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 syscheck->max_eps = value;
             }
         } /* Allow prefilter cmd */
-        else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
-            if (modules & CAGENT_CONFIG) {
-                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).",
-                      xml_allow_remote_prefilter_cmd);
-                i++;
-                continue;
-            }
-            if(strcmp(node[i]->content, "yes") == 0)
-                syscheck->allow_remote_prefilter_cmd = 1;
-            else if(strcmp(node[i]->content, "no") == 0)
-                syscheck->allow_remote_prefilter_cmd = 0;
-            else {
-                mwarn(XML_VALUEERR,node[i]->element,node[i]->content);
-                return(OS_INVALID);
-            }
+        else if (strcmp(node[i]->element, "allow_remote_prefilter_cmd") == 0) {
+            mwarn("Syscheck option 'allow_remote_prefilter_cmd' is no longer configurable.");
         }
         else if (strcmp(node[i]->element, xml_max_files_per_second) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
@@ -2156,30 +2113,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
         } else {
             mwarn(XML_INVELEM, node[i]->element);
-        }
-    }
-
-    // Set prefilter only if it's expressly allowed (ossec.conf in agent side).
-
-    if (prefilter_cmd[0]) {
-        if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
-            char *save_ptr;
-            int total_vectors = 2;
-
-            os_calloc(total_vectors, sizeof(char *), syscheck->prefilter_cmd);
-            strtok_r(prefilter_cmd, " ", &save_ptr);
-            os_strdup(prefilter_cmd, syscheck->prefilter_cmd[0]);
-            syscheck->prefilter_cmd[1] = NULL;
-
-            while (save_ptr != NULL && *save_ptr != '\0') {
-                os_realloc(syscheck->prefilter_cmd, (total_vectors + 1) * sizeof(char *), syscheck->prefilter_cmd);
-                syscheck->prefilter_cmd[total_vectors] = NULL;
-                os_strdup( save_ptr, syscheck->prefilter_cmd[total_vectors - 1]);
-                total_vectors++;
-                strtok_r(NULL, " ", &save_ptr);
-            }
-        } else if (!syscheck->allow_remote_prefilter_cmd) {
-            mwarn(FIM_WARN_ALLOW_PREFILTER, prefilter_cmd, xml_allow_remote_prefilter_cmd);
         }
     }
 
@@ -2420,9 +2353,6 @@ void Free_Syscheck(syscheck_config * config) {
             CloseEventLog(config->realtime->evt);
 #endif
             free(config->realtime);
-        }
-        if (config->prefilter_cmd) {
-            free_strarray(config->prefilter_cmd);
         }
 
         free_strarray(config->audit_key);

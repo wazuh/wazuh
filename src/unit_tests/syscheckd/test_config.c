@@ -144,7 +144,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_int_equal(syscheck.allow_remote_prefilter_cmd, true);
     assert_non_null(syscheck.prefilter_cmd);    // It should be a valid binary absolute path
     assert_int_equal(syscheck.sync_interval, 600);
     assert_int_equal(syscheck.max_eps, 200);
@@ -211,7 +210,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 0);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_int_equal(syscheck.allow_remote_prefilter_cmd, false);
     assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 600);
     assert_int_equal(syscheck.max_eps, 200);
@@ -263,7 +261,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_int_equal(syscheck.allow_remote_prefilter_cmd, false);
     assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 300);
     assert_int_equal(syscheck.max_eps, 50);
@@ -388,8 +385,6 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(whodata_provider), "audit");
 #endif
 
-    cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
-    assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "yes");
     cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
 #ifndef TEST_WINAGENT
     assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "/bin/ls");
@@ -504,11 +499,6 @@ void test_getSyscheckConfig_no_audit(void **state)
     cJSON *win_registry_ignore_regex = cJSON_GetObjectItem(sys_items, "key_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore_regex), 1);
 #endif
-
-    cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
-    assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
-    cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
-    assert_null(prefilter_cmd);
 
     cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
     cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");

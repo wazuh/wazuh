@@ -30,44 +30,22 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
     sha1output[0] = '\0';
     buf[2048 + 1] = '\0';
 
-    /* Use prefilter_cmd if set */
-    if (prefilter_cmd == NULL) {
-        fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
-        if (!fp) {
-            return (-1);
-        }
-    } else {
-        char cmd[OS_MAXSTR];
-        size_t target_length = strlen(prefilter_cmd) + 1 + strlen(fname);
-        int res = snprintf(cmd, sizeof(cmd), "%s %s", prefilter_cmd, fname);
-        if (res < 0 || (unsigned int)res != target_length) {
-            return (-1);
-        }
-        fp = popen(cmd, "r");
-        if (!fp) {
-            return (-1);
-        }
+    fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
+    if (!fp) {
+        return (-1);
     }
 
     /* Initialize both hashes */
     EVP_MD_CTX *md5_ctx = EVP_MD_CTX_new();
     if (!md5_ctx) {
-        if (prefilter_cmd == NULL) {
-            fclose(fp);
-        } else {
-            pclose(fp);
-        }
+        fclose(fp);
         return (-1);
     }
 
     EVP_MD_CTX *sha1_ctx = EVP_MD_CTX_new();
     if (!sha1_ctx) {
         EVP_MD_CTX_free(md5_ctx);
-        if (prefilter_cmd == NULL) {
-           fclose(fp);
-        } else {
-           pclose(fp);
-        }
+        fclose(fp);
         return (-1);
     }
 
@@ -100,11 +78,7 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
     EVP_MD_CTX_free(sha1_ctx);
 
     /* Close it */
-    if (prefilter_cmd == NULL) {
-        fclose(fp);
-    } else {
-        pclose(fp);
-    }
+    fclose(fp);
 
     return (0);
 }
