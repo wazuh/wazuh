@@ -310,18 +310,6 @@
                         "It may lead to false positives. Exiting. "
 #define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 
-/* Syslog output */
-#define XML_INV_CSYSLOG    "(5301): Invalid client-syslog configuration."
-#define ERROR_SENDING_MSG  "(5302): Error sending message to '%s'."
-
-/* Integrator daemon */
-#define XML_INV_INTEGRATOR "(5310): Invalid integratord configuration."
-
-/* Agentless */
-#define XML_INV_AGENTLESS   "(7101): Invalid agentless configuration."
-#define XML_INV_MISSFREQ    "(7102): Frequency not set for the periodic option."
-#define XML_INV_MISSOPTS    "(7103): Missing agentless options."
-
 /* Database messages */
 #define DBINIT_ERROR          "(5201): Error initializing database handler."
 #define DBCONN_ERROR          "(5202): Error connecting to database '%s'(%s): ERROR: %s."

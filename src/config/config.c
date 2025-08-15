@@ -28,15 +28,12 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osalerts = "alerts";                            /* Server Config */
     const char *osemailalerts = "email_alerts";                 /* Server Config */
     const char *osdbd = "database_output";                      /* Server Config */
-    const char *oscsyslogd = "syslog_output";                   /* Server Config */
-    const char *oscagentless = "agentless";                     /* Server Config */
     const char *oslocalfile = "localfile";                      /* Agent Config  */
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
     const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osbuffer = "client_buffer";                     /* Agent Buffer Config  */
     const char *oscommand = "command";                          /* ? Config      */
-    const char *osintegratord = "integration";                  /* Server Config */
     const char *osactive_response = "active-response";          /* Agent Config  */
     const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
     const char *oslabels = "labels";                            /* Labels Config */
@@ -83,18 +80,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, osemailalerts) == 0)) {
             if ((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, oscsyslogd) == 0)) {
-            if ((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if(chld_node && (strcmp(node[i]->element, osintegratord) == 0)) {
-            if((modules & CINTEGRATORD) && (Read_Integrator(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, oscagentless) == 0)) {
-            if ((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
