@@ -18,4 +18,8 @@ build_dir="/build_wazuh"
 
 make -C /workspace/wazuh/src deps TARGET=server
 
-make -j 2 -C /workspace/wazuh/src TARGET=server
+if [${BUILD_TYPE} == "debug" ]; then
+    make -j2 -C /workspace/wazuh/src TARGET=server DEBUG="yes"
+else
+    make -j2 -C /workspace/wazuh/src TARGET=server
+fi

@@ -8,10 +8,6 @@
     "^_.+": {
       "description": "Custom variable.",
       "ecs_type": null
-    },
-    ".+": {
-      "description": "Custom field not present in the schema.",
-      "ecs_type": null
     }
   },
   "properties": {}
