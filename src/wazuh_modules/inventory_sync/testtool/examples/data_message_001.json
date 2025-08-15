@@ -1,0 +1,12 @@
+{
+    "message_type": "data",
+    "content": {
+        "seq": 0,
+        "operation": "upsert",
+        "index": "syscollector_packages",
+        "id": "package_001",
+        "data": "{\"name\":\"vim\",\"version\":\"8.2\",\"architecture\":\"x86_64\"}",
+        "agent_id": 1,
+        "module": "syscollector"
+    }
+}

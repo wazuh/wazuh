@@ -222,7 +222,9 @@ public:
             // coverity[copy_constructor_call]
             [queue = m_workersQueue.get()](const std::vector<char>& message)
             {
-                logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Received message from router");
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: Received message from router: %s",
+                          std::string(message.begin(), message.end()).c_str());
                 queue->push(message);
             });
 

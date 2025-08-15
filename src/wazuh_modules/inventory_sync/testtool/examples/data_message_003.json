@@ -1,0 +1,12 @@
+{
+    "message_type": "data",
+    "content": {
+        "seq": 2,
+        "operation": "delete",
+        "index": "syscollector_packages",
+        "id": "package_003",
+        "data": "{\"name\":\"old_package\",\"version\":\"1.0.0\",\"architecture\":\"x86_64\"}",
+        "agent_id": 1,
+        "module": "syscollector"
+    }
+}

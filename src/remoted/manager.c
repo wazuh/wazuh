@@ -445,6 +445,16 @@ void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *pos
             mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
             return;
         }
+
+        rem_inc_recv_ctrl_keepalive(key->id);
+    }
+
+    if (is_shutdown == 0) {
+        /* Reply to the agent except on shutdown message*/
+        snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK); /// Aqui ejemplo de mensaje que se manda en rta al agente.
+        if (send_msg(key->id, msg_ack, -1) >= 0) {
+            rem_inc_send_ack(key->id);
+        }
     }
 
     w_mutex_lock(&lastmsg_mutex);
