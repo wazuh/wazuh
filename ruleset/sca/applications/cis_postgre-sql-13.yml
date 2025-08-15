@@ -80,7 +80,7 @@ checks:
   # 3.1.1
   # Not Applicable: Not covered
 
-  # 3.1.2 Ensure the log destinations are set correctly (Automated) --TODO--
+  # 3.1.2 Ensure the log destinations are set correctly (Automated)
   - id: 24001
     title: Ensure the log destinations are set correctly
     description: >
