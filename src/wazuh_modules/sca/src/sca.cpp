@@ -12,6 +12,13 @@ extern "C"
 #include "../wazuh_modules/wmodules_def.h"
 
 #include "logging_helper.hpp"
+#include "debug_op.h"
+#include "shared.h"
+#include "mq_op.h"
+#include "atomic.h"
+#include "defs.h"
+
+#include <unistd.h>
 
 /* SCA db directory */
 #ifndef WAZUH_UNIT_TESTING
@@ -24,8 +31,16 @@ extern "C"
 #endif // WIN32
 #endif // WAZUH_UNIT_TESTING
 
+int scaQueue = -1;
+bool shuttingDown = false;
+
+const long maxEps = 100000; // Hardcoded, but same as syscollector
+
+
 void sca_start(log_callback_t callbackLog, const struct wm_sca_t* sca_config)
 {
+    shuttingDown = false;
+
     std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper {
         [callbackLog](const modules_log_level_t level, const std::string& data)
         {
@@ -52,6 +67,7 @@ void sca_start(log_callback_t callbackLog, const struct wm_sca_t* sca_config)
 
 void sca_stop()
 {
+    shuttingDown = true;
     SCA::instance().destroy();
 }
 
@@ -76,6 +92,11 @@ void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback)
     SecurityConfigurationAssessment::SetGlobalWmExecFunction(wm_exec_callback);
 }
 
+bool isSCAShuttingDown()
+{
+    return shuttingDown;
+}
+
 SCA::SCA()
 {
 }
@@ -84,24 +105,55 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
 {
     LoggingHelper::setLogCallback(logFunction);
 
-    // TODO Start doing whatever the module does
+    scaQueue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+    if (scaQueue < 0)
+    {
+        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+    }
+
     if (!m_sca)
     {
         m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH, "agent-uuid-placeholder");
 
-        // TODO remove this, it's only for testing purposes
-        // Set a simple print function for m_pushMessage so we can see the SCA checks
-        // being processed in the OSSEC log
-        auto simplePrintFunction = [this](const std::string& message) -> int {
-                // Commented out to avoid printing to console and mess integration tests
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA Event:\n\n\n" + message + "\n\n\n");
+        auto persistStatefulMessage = [this](const std::string& message) -> int
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Persisting SCA event: " + message);
+            return 0;
+        };
+
+        auto sendStatelessMessage = [this](const std::string& message) -> int
+        {
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Sending SCA event: " + message);
+
+            if (SendMSGPredicated(scaQueue, message.c_str(), "sca", SCA_MQ, isSCAShuttingDown) < 0)
+            {
+                merror(QUEUE_SEND);
+
+                if ((scaQueue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0)
+                {
+                    merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
+                }
+
+                // Try to send it again
+                SendMSGPredicated(scaQueue, message.c_str(), "sca", SCA_MQ, isSCAShuttingDown);
+            }
+
+            static atomic_int_t n_msg_sent = ATOMIC_INT_INITIALIZER(0);
+
+            if (atomic_int_inc(&n_msg_sent) >= maxEps)
+            {
+                sleep(1);
+                atomic_int_set(&n_msg_sent, 0);
+            }
+
             return 0;
         };
 
         // Uncomment to see SCA events in the OSSEC log
         // Should be removed ultimately and replaced
-        m_sca->SetPushStatelessMessageFunction(simplePrintFunction);
-        m_sca->SetPushStatefulMessageFunction(simplePrintFunction);
+        m_sca->SetPushStatelessMessageFunction(sendStatelessMessage);
+        m_sca->SetPushStatefulMessageFunction(persistStatefulMessage);
     }
 
     // LoggingHelper::getInstance().log(LOG_INFO, "SCA module initialized successfully.");
