@@ -29,41 +29,33 @@ protected:
 TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
 {
     constexpr int expectedReturnValue = 123;
-    bool called = false;
+    bool statefulCalled = false;
+    bool statelessCalled = false;
 
-    auto lambda = [&](const std::string&) -> int // NOLINT(performance-unnecessary-value-param)
+    auto statefulLambda = [&](const std::string&) -> int // NOLINT(performance-unnecessary-value-param)
     {
-        called = true;
+        statefulCalled = true;
         return expectedReturnValue;
     };
 
-    m_sca->SetPushMessageFunction(lambda);
+
+    auto statelessLambda = [&](const std::string&) -> int // NOLINT(performance-unnecessary-value-param)
+    {
+        statelessCalled = true;
+        return expectedReturnValue;
+    };
+
+    m_sca->SetPushStatelessMessageFunction(statelessLambda);
+    m_sca->SetPushStatefulMessageFunction(statefulLambda);
 
     const std::string dummyMessage = R"({"key": "value"})";
-    const int result = lambda(dummyMessage);
+    const int result = statefulLambda(dummyMessage) + statelessLambda(dummyMessage);
 
-    EXPECT_TRUE(called);
-    EXPECT_EQ(result, expectedReturnValue);
+    EXPECT_TRUE(statefulCalled && statelessCalled);
+    EXPECT_EQ(result, expectedReturnValue * 2);
 }
 
 TEST_F(ScaTest, NameReturnsCorrectValue)
 {
     EXPECT_EQ(m_sca->Name(), "SCA");
-}
-
-TEST_F(ScaTest, EnqueueTaskExecutesTask)
-{
-    // bool taskExecuted = false;
-
-    // auto task = [&]() -> boost::asio::awaitable<void> // NOLINT(cppcoreguidelines-avoid-capturing-lambda-coroutines)
-    // {
-    //     taskExecuted = true;
-    //     m_sca->Stop();
-    //     // co_return;
-    // };
-
-    // m_sca->Setup(m_configurationParser);
-    // m_sca->EnqueueTask(task());
-    // m_sca->Run();
-    // EXPECT_TRUE(taskExecuted);
 }
