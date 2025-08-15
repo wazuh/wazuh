@@ -39,6 +39,11 @@ constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
 constexpr auto MINIMAL_ELEMENTS_PER_BULK {1};
 
+// Overhead is the fixed JSON scaffolding for one bulk item:
+// {"index":{"_index":"<index>","id":"<id>"}}
+constexpr auto FORMATTED_LENGTH {20 + 8 + 2 + 2 + 1};
+
+
 class IndexerResponse final
 {
 public:
@@ -403,7 +408,7 @@ public:
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
     {
-        constexpr auto FORMATTED_SIZE {20 + 8 + 2 + 2 + 1};
+        constexpr auto FORMATTED_SIZE {FORMATTED_LENGTH};
         constexpr auto ID_SIZE {64};
 
         std::string bulkData;
