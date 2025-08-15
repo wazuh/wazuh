@@ -1,0 +1,8 @@
+{
+    "message_type": "start",
+    "content": {
+        "agent_id": 1,
+        "module": "syscollector",
+        "size": 3
+    }
+}
