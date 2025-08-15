@@ -48,7 +48,7 @@
 #define HC_INVALID_VERSION              "Incompatible version"
 #define HC_RETRIEVE_VERSION             "Couldn't retrieve version"
 
-/* Sync responses */
+/* Sync responses */ // Mensaje de rta para agente. 
 #define SYNC_HEADER                     "_sync "
 #define FIM_SYNC_HEADER                 "fim" SYNC_HEADER
 #define SYSCOLECTOR_SYNC_HEADER         "syscollector" SYNC_HEADER

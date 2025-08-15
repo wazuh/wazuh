@@ -1,0 +1,12 @@
+{
+    "message_type": "data",
+    "content": {
+        "seq": 1,
+        "operation": "upsert",
+        "index": "syscollector_packages",
+        "id": "package_002",
+        "data": "{\"name\":\"gcc\",\"version\":\"9.4.0\",\"architecture\":\"x86_64\"}",
+        "agent_id": 1,
+        "module": "syscollector"
+    }
+}
