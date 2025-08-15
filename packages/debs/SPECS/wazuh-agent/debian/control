@@ -1,7 +1,7 @@
 Source: wazuh-agent
 Section: admin
 Priority: extra
-Maintainer: Wazuh, Inc <info@wazuh.com>
+Maintainer: Wazuh <info@wazuh.com>
 Build-Depends: debhelper (>= 7.0.50~), make, gcc, linux-libc-dev, gawk, libaudit-dev, selinux-basics
 Standards-Version: 3.8.4
 Homepage: https://www.wazuh.com

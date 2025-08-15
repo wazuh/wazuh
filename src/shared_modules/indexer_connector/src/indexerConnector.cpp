@@ -516,7 +516,8 @@ void IndexerConnector::preInitialization(
         throw std::runtime_error("Index name must be lowercase: " + m_indexName);
     }
 
-    m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
+    m_db = std::make_unique<Utils::RocksDBWrapper>(
+        std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, true, true, true);
 }
 
 IndexerConnector::IndexerConnector(
@@ -781,7 +782,9 @@ IndexerConnector::IndexerConnector(
             }
         },
         DATABASE_BASE_PATH + m_indexName,
-        ELEMENTS_PER_BULK);
+        ELEMENTS_PER_BULK,
+        UNLIMITED_QUEUE_SIZE,
+        true);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         // coverity[missing_lock]
@@ -909,7 +912,9 @@ IndexerConnector::IndexerConnector(
             }
         },
         DATABASE_BASE_PATH + m_indexName,
-        ELEMENTS_PER_BULK);
+        ELEMENTS_PER_BULK,
+        UNLIMITED_QUEUE_SIZE,
+        true);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         [](const std::string& agentId)

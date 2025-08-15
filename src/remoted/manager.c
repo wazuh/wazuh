@@ -245,26 +245,19 @@ void free_file_time(void *data) {
     }
 }
 
-/* Save a control message received from an agent
- * wait_for_msgs (other thread) is going to deal with it
- * (only if message changed)
+/* Pre process control message and return whether it should be queued for wdb processing
+ * Returns: 1 if message should be queued, 0 if not, -1 on error
  */
-void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *wdb_sock, bool *startup_msg)
+int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, char **cleaned_msg, int *is_startup, int *is_shutdown)
 {
-    char msg_ack[OS_FLSIZE + 1] = "";
-    char *msg = NULL;
     char *end = NULL;
-    pending_data_t *data = NULL;
-    agent_info_data *agent_data = NULL;
-    const char * agent_ip_label = "#\"_agent_ip\":";
-    const char * manager_label = "#\"_manager_hostname\":";
-    const char * node_label = "#\"_node_name\":";
-    const char * version_label = "#\"_wazuh_version\":";
-    int is_startup = 0;
-    int is_shutdown = 0;
-    int agent_id = 0;
-    int result = 0;
+    char msg_ack[OS_FLSIZE + 1] = "";
 
+    *is_startup = 0;
+    *is_shutdown = 0;
+    *cleaned_msg = NULL;
+
+    /* Handle HC_REQUEST messages immediately - don't queue them */
     if (strncmp(r_msg, HC_REQUEST, strlen(HC_REQUEST)) == 0) {
         char * counter = r_msg + strlen(HC_REQUEST);
         char * payload = NULL;
@@ -272,22 +265,21 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         if (payload = strchr(counter, ' '), !payload) {
             merror("Request control format error.");
             mdebug2("r_msg = \"%s\"", r_msg);
-            return;
+            return -1;
         }
 
         *(payload++) = '\0';
 
         req_save(counter, payload, msg_length - (payload - r_msg));
-
         rem_inc_recv_ctrl_request(key->id);
-        return;
+        return 0;  // Don't queue HC_REQUEST messages
     }
 
     /* Filter UTF-8 characters */
     char * clean = w_utf8_filter(r_msg, true);
-    r_msg = clean;
+    *cleaned_msg = clean;
 
-    if ((strncmp(r_msg, HC_STARTUP, strlen(HC_STARTUP)) == 0) || (strcmp(r_msg, HC_SHUTDOWN) == 0)) {
+    if ((strncmp(clean, HC_STARTUP, strlen(HC_STARTUP)) == 0) || (strcmp(clean, HC_SHUTDOWN) == 0)) {
         char aux_ip[IPSIZE + 1] = {0};
         switch (key->peer_info.ss_family) {
         case AF_INET:
@@ -299,14 +291,120 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         default:
             break;
         }
-        if (strncmp(r_msg, HC_STARTUP, strlen(HC_STARTUP)) == 0) {
+        if (strncmp(clean, HC_STARTUP, strlen(HC_STARTUP)) == 0) {
             mdebug1("Agent %s sent HC_STARTUP from '%s'", key->name, aux_ip);
+            cJSON *agent_info = NULL;
+            if (agent_info = cJSON_Parse(strchr(clean, '{')), agent_info) {
+                cJSON *version = NULL;
+                if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
+                    // Update agent data to keep context of events to forward
+                    OSHash_Set_ex(agent_data_hash, key->id, strdup(version->valuestring));
+                    if (!logr.allow_higher_versions &&
+                        compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
+
+                        // For version errors, we need database access, so queue the message
+                        cJSON_Delete(agent_info);
+                        *is_startup = 1;
+                        rem_inc_recv_ctrl_startup(key->id);
+                        return 1;
+                    }
+                } else {
+                    // For version errors, we need database access, so queue the message
+                    cJSON_Delete(agent_info);
+                    *is_startup = 1;
+                    rem_inc_recv_ctrl_startup(key->id);
+                    return 1;
+                }
+                cJSON_Delete(agent_info);
+            }
+            *is_startup = 1;
+            rem_inc_recv_ctrl_startup(key->id);
+        } else {
+            mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
+            *is_shutdown = 1;
+            rem_inc_recv_ctrl_shutdown(key->id);
+            void *deleted = OSHash_Delete_ex(agent_data_hash, key->id);
+            os_free(deleted);
+
+            /* Generate alert for shutdown */
+            char srcmsg[OS_SIZE_256];
+            char msg[OS_SIZE_1024];
+
+            memset(srcmsg, '\0', OS_SIZE_256);
+            memset(msg, '\0', OS_SIZE_1024);
+
+            snprintf(srcmsg, OS_SIZE_256, "[%s] (%s) %s", key->id, key->name, key->ip->ip);
+            snprintf(msg, OS_SIZE_1024, AG_STOP_MSG, key->name, key->ip->ip);
+
+            /* Send stopped message */
+            if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
+                merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+
+                // Try to reconnect infinitely
+                logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
+                minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
+
+                if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
+                    // Something went wrong sending a message after an immediate reconnection...
+                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+                }
+            }
+        }
+    } else {
+        /* Clean msg and shared files (remove random string) */
+
+        if ((clean = strchr(clean, '\n'))) {
+            /* Forward to random string (pass shared files) */
+            for (clean++; (end = strchr(clean, '\n')); clean = end + 1);
+            *clean = '\0';
+        } else {
+            mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
+            return -1;
+        }
+
+        rem_inc_recv_ctrl_keepalive(key->id);
+    }
+
+    /* Send ACK for non-shutdown messages */
+    if (*is_shutdown == 0) {
+        snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
+        if (send_msg(key->id, msg_ack, -1) >= 0) {
+            rem_inc_send_ack(key->id);
+        }
+    }
+
+    return 1;  // Queue the message
+}
+
+/* Save a control message received from an agent
+ * wait_for_msgs (other thread) is going to deal with it
+ * (only if message changed)
+ */
+void save_controlmsg(const keyentry * key, char *r_msg, int *wdb_sock, bool *post_startup, int is_startup, int is_shutdown)
+{
+    char *msg = NULL;
+    char *end = NULL;
+    pending_data_t *data = NULL;
+    agent_info_data *agent_data = NULL;
+    const char * agent_ip_label = "#\"_agent_ip\":";
+    const char * manager_label = "#\"_manager_hostname\":";
+    const char * node_label = "#\"_node_name\":";
+    const char * version_label = "#\"_wazuh_version\":";
+    int agent_id = 0;
+    int result = 0;
+
+    // Process only database-related operations here
+    // All validation and ACK sending was done in validate_control_msg
+    // Parameters is_startup and is_shutdown come from validation results
+
+    if (is_startup) {
+        // Handle startup version errors that require database access
+        if (strncmp(r_msg, HC_STARTUP, strlen(HC_STARTUP)) == 0) {
             cJSON *agent_info = NULL;
             if (agent_info = cJSON_Parse(strchr(r_msg, '{')), agent_info) {
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
-                    // Update agent data to keep context of events to forward
-                    OSHash_Set_ex(agent_data_hash, key->id, cJSON_Duplicate(agent_info, true));
                     if (!logr.allow_higher_versions &&
                         compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
 
@@ -314,28 +412,19 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                                                     INVALID_VERSION, version->valuestring,
                                                     wdb_sock);
                         cJSON_Delete(agent_info);
-                        os_free(clean);
                         return;
                     }
                 } else {
-                    merror("Error getting version from agent '%s'", key->id);
+                    mwarn("Unable to get version from agent '%s' on startup message", key->id);
                     send_wrong_version_response(key->id, HC_RETRIEVE_VERSION, ERR_VERSION_RECV, NULL, wdb_sock);
                     cJSON_Delete(agent_info);
-                    os_free(clean);
                     return;
                 }
                 cJSON_Delete(agent_info);
             }
-            is_startup = 1;
-            rem_inc_recv_ctrl_startup(key->id);
-        } else {
-            mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
-            is_shutdown = 1;
-            rem_inc_recv_ctrl_shutdown(key->id);
-            cJSON_Delete(OSHash_Delete_ex(agent_data_hash, key->id));
         }
-    } else {
-        /* Clean msg and shared files (remove random string) */
+    } else if (!is_shutdown) {
+        /* Clean msg and shared files (remove random string) for keepalive messages */
         msg = r_msg;
 
         if ((r_msg = strchr(r_msg, '\n'))) {
@@ -344,18 +433,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             *r_msg = '\0';
         } else {
             mwarn("Invalid message from agent: '%s' (%s)", key->name, key->id);
-            os_free(clean);
             return;
-        }
-
-        rem_inc_recv_ctrl_keepalive(key->id);
-    }
-
-    if (is_shutdown == 0) {
-        /* Reply to the agent except on shutdown message*/
-        snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-        if (send_msg(key->id, msg_ack, -1) >= 0) {
-            rem_inc_send_ack(key->id);
         }
     }
 
@@ -365,9 +443,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
     if (data = OSHash_Get(pending_data, key->id), data && data->changed && data->message && msg && strcmp(data->message, msg) == 0) {
         w_mutex_unlock(&lastmsg_mutex);
 
-        char *sync_status = logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced";
+        char *sync_status = logr.worker_node ? (*post_startup ? "syncreq" : "syncreq_keepalive") : "synced";
 
-        *startup_msg = false;
+        *post_startup = false;
 
         agent_id = atoi(key->id);
 
@@ -384,7 +462,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
                 merror("Couldn't add pending data into hash table.");
                 w_mutex_unlock(&lastmsg_mutex);
                 os_free(data);
-                os_free(clean);
                 return;
             }
         }
@@ -392,7 +469,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
         if (is_startup) {
             w_mutex_unlock(&lastmsg_mutex);
 
-            *startup_msg = true;
+            *post_startup = true;
 
             agent_id = atoi(key->id);
 
@@ -410,31 +487,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             if (OS_SUCCESS != result) {
                 mwarn("Unable to set connection status as disconnected for agent: %s", key->id);
-            } else {
-                /* Generate alert */
-                char srcmsg[OS_SIZE_256];
-                char msg[OS_SIZE_1024];
-
-                memset(srcmsg, '\0', OS_SIZE_256);
-                memset(msg, '\0', OS_SIZE_1024);
-
-                snprintf(srcmsg, OS_SIZE_256, "[%s] (%s) %s", key->id, key->name, key->ip->ip);
-                snprintf(msg, OS_SIZE_1024, AG_STOP_MSG, key->name, key->ip->ip);
-
-                /* Send stopped message */
-                if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
-                    merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-
-                    // Try to reconnect infinitely
-                    logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-
-                    minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
-
-                    if (SendMSG(logr.m_queue, msg, srcmsg, SECURE_MQ) < 0) {
-                        // Something went wrong sending a message after an immediate reconnection...
-                        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-                    }
-                }
             }
         } else {
             /* Update message */
@@ -477,7 +529,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             if (OS_SUCCESS != result) {
                 merror("Error parsing message for agent '%s'", key->id);
                 wdb_free_agent_info_data(agent_data);
-                os_free(clean);
                 return;
             }
 
@@ -509,9 +560,9 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
 
             agent_data->id = atoi(key->id);
             os_strdup(AGENT_CS_ACTIVE, agent_data->connection_status);
-            os_strdup(logr.worker_node ? (*startup_msg ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
+            os_strdup(logr.worker_node ? (*post_startup ? "syncreq" : "syncreq_keepalive") : "synced", agent_data->sync_status);
 
-            *startup_msg = false;
+            *post_startup = false;
 
             w_mutex_lock(&lastmsg_mutex);
 
@@ -541,8 +592,6 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             wdb_free_agent_info_data(agent_data);
         }
     }
-
-    os_free(clean);
 }
 
 /* Assign a group to an agent without group */
@@ -1802,7 +1851,7 @@ void manager_init()
  * @param data The cJSON pointer to remove.
  */
 void agent_data_hash_cleaner(void *data) {
-    cJSON_Delete((cJSON*)data);
+    os_free(data);
 }
 
 void manager_free() {

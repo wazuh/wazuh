@@ -158,6 +158,8 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         if 'service' in msg:
             msg['source'] = msg['service'].lower()
             del msg['service']
+        elif 'findingArn' in msg:
+            msg['source'] = 'inspector2'
         # cast createdAt
         if 'createdAt' in msg:
             msg['createdAt'] = datetime.strftime(msg['createdAt'], '%Y-%m-%dT%H:%M:%SZ')

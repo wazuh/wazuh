@@ -51,7 +51,7 @@ typedef struct _keyentry {
     char *raw_key;
     char *encryption_key;
     char *name;
-    _Atomic (bool) is_startup;
+    _Atomic (bool) post_startup;
 
     ino_t inode;
 

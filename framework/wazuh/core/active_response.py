@@ -247,14 +247,16 @@ class ARJsonMessage(ARMessageBuilder):
         return msg_queue
 
 
-def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = '', arguments: list = None,
-                    alert: dict = None) -> None:
+def send_ar_message(agent_id: str = '', agent_version = '', wq: WazuhQueue = None, command: str = '',
+                    arguments: list = None, alert: dict = None) -> None:
     """Send the active response message to the agent.
 
     Parameters
     ----------
     agent_id : str
         ID specifying the agent where the msg_queue will be sent to.
+    agent_version : str
+        Agent version.
     wq : WazuhQueue
         Used for the active response messages.
     command : str
@@ -267,21 +269,9 @@ def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = ''
 
     Raises
     ------
-    WazuhError(1707)
-        If the agent with ID agent_id is not active.
     WazuhError(1750)
         If active response is disabled in the specified agent.
     """
-    # Agent basic information
-    agent_info = Agent(agent_id).get_basic_information()
-
-    # Check if agent is active
-    if agent_info['status'].lower() != 'active':
-        raise WazuhError(1707)
-
-    # Once we know the agent is active, store version
-    agent_version = agent_info['version']
-
     # Check if AR is enabled
     agent_conf = Agent(agent_id).get_config('com', 'active-response', agent_version)
     if agent_conf['active-response']['disabled'] == 'yes':
@@ -292,6 +282,3 @@ def send_ar_message(agent_id: str = '', wq: WazuhQueue = None, command: str = ''
     msg_queue = message_builder.create_message(command=command, arguments=arguments, alert=alert)
 
     wq.send_msg_to_agent(msg=msg_queue, agent_id=agent_id, msg_type=WazuhQueue.AR_TYPE)
-
-
-
