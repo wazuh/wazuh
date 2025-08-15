@@ -30,6 +30,7 @@
 #include <utility>
 
 constexpr int SINGLE_THREAD_COUNT = 1;
+constexpr int DEFAULT_TIME {5};
 
 using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
 using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
@@ -159,7 +160,13 @@ public:
     {
         std::cout << "Starting InventorySyncFacade..." << std::endl;
 
-        std::filesystem::remove_all("inventory_sync");
+        std::error_code errorCodeFS;
+        std::filesystem::remove_all("inventory_sync", errorCodeFS);
+        if (errorCodeFS)
+        {
+            std::cerr << "Error removing inventory_sync directory: " << errorCodeFS.message() << std::endl;
+        }
+
         m_dataStore = std::make_unique<TRocksDBWrapper>("inventory_sync");
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
         m_indexerConnector = std::make_unique<TIndexerConnector>(
@@ -231,7 +238,7 @@ public:
                     const auto prefix = std::to_string(res.context->sessionId) + "_";
 
                     // Lock indexer connector to avoid process with the timeout mechanism.
-                    std::scoped_lock lock(m_indexerConnector->scopeLock());
+                    auto lock = m_indexerConnector->scopeLock();
 
                     // Send bulk query (with handling of 413 error).
                     for (const auto& [key, value] : m_dataStore->seek(prefix))
@@ -315,21 +322,26 @@ public:
         m_sessionTimeoutThread = std::thread(
             [this]()
             {
-                std::unique_lock lock(m_sessionTimeoutMutex);
                 while (!m_stopping.load())
                 {
-                    m_sessionTimeoutCv.wait(lock, [this]() { return m_stopping.load(); });
+                    std::unique_lock lock(m_sessionTimeoutMutex);
+                    m_sessionTimeoutCv.wait_for(
+                        lock, std::chrono::seconds(DEFAULT_TIME), [this]() { return m_stopping.load(); });
 
                     if (m_stopping.load())
                     {
                         break;
                     }
 
-                    for (auto& [sessionId, session] : m_agentSessions)
+                    for (auto it = m_agentSessions.begin(); it != m_agentSessions.end();)
                     {
-                        if (!session.isAlive(std::chrono::seconds(10)))
+                        if (!it->second.isAlive(std::chrono::seconds(DEFAULT_TIME * 2)))
                         {
-                            m_agentSessions.erase(sessionId);
+                            it = m_agentSessions.erase(it); // erase returns next iterator
+                        }
+                        else
+                        {
+                            ++it;
                         }
                     }
                 }

@@ -38,6 +38,23 @@ constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
 
+// JSON structure components for bulk operations
+constexpr auto INDEX_OPERATION_PREFIX {20};  // {"index":{"_index":"
+constexpr auto DELETE_OPERATION_PREFIX {21}; // {"delete":{"_index":"
+constexpr auto ID_FIELD_PREFIX {8};          // ","_id":"
+constexpr auto DELETE_ID_FIELD_PREFIX {9};   // ","_id":"
+constexpr auto CLOSING_BRACES {2};           // "}}
+constexpr auto NEWLINE_CHAR {1};             // \n
+
+// Overhead is the fixed JSON scaffolding for one bulk item:
+// {"index":{"_index":"<index>","_id":"<id>"}}
+constexpr auto FORMATTED_LENGTH {INDEX_OPERATION_PREFIX + ID_FIELD_PREFIX + CLOSING_BRACES + CLOSING_BRACES +
+                                 NEWLINE_CHAR};
+// Overhead for delete operations:
+// {"delete":{"_index":"<index>","_id":"<id>"}}
+constexpr auto DELETE_FORMATTED_LENGTH {DELETE_OPERATION_PREFIX + DELETE_ID_FIELD_PREFIX + CLOSING_BRACES +
+                                        NEWLINE_CHAR};
+
 template<typename TSelector,
          typename THttpRequest,
          size_t MaxBulkSize = 10 * 1024 * 1024,
@@ -457,7 +474,7 @@ public:
     }
     void bulkDelete(std::string_view id, std::string_view index)
     {
-        if (constexpr auto FORMATTED_SIZE {21 + 9 + 2 + 1};
+        if (constexpr auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
             m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() > MaxBulkSize)
         {
             processBulk();
@@ -472,7 +489,7 @@ public:
     }
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
     {
-        if (constexpr auto FORMATTED_SIZE {20 + 8 + 2 + 2 + 1};
+        if (constexpr auto FORMATTED_SIZE {FORMATTED_LENGTH};
             m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() + data.size() > MaxBulkSize)
         {
             processBulk();
@@ -497,9 +514,9 @@ public:
         }
     }
 
-    std::mutex& scopeLock()
+    [[nodiscard]] std::unique_lock<std::mutex> scopeLock()
     {
-        return m_mutex;
+        return std::unique_lock<std::mutex> {m_mutex};
     }
 
     void registerNotify(std::function<void()> callback)

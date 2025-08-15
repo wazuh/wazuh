@@ -190,7 +190,7 @@ public:
      */
     bool isAlive(const std::chrono::seconds timeout) const
     {
-        return m_gapSet->lastUpdate() + timeout < std::chrono::steady_clock::now();
+        return m_gapSet->lastUpdate() + timeout >= std::chrono::steady_clock::now();
     }
 };
 

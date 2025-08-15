@@ -22,6 +22,7 @@
 #include <chrono>
 #include <cstdint>
 #include <set>
+#include <stdexcept>
 #include <vector>
 
 /**
@@ -78,6 +79,7 @@ public:
         {
             m_allObserved = true;
         }
+        m_lastUpdate = std::chrono::steady_clock::now();
     }
 
     /**
@@ -86,7 +88,12 @@ public:
      */
     void observe(uint64_t seq)
     {
-        if (seq >= m_size || m_allObserved)
+        if (seq >= m_size)
+        {
+            throw std::out_of_range("Sequence number out of range");
+        }
+
+        if (m_allObserved)
         {
             return;
         }
@@ -254,11 +261,11 @@ public:
     }
 
 private:
-    uint64_t m_size;
-    uint64_t m_observedCount {0};
-    bool m_allObserved {false};
-    std::set<Interval> m_intervals;
-    std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate {std::chrono::steady_clock::now()};
+    uint64_t m_size;                                                 ///< Total size of the observed sequence
+    uint64_t m_observedCount {0};                                    ///< Total count of observed elements
+    bool m_allObserved {false};                                      ///< Flag to indicate if all elements are observed
+    std::set<Interval> m_intervals;                                  ///< Set of observed intervals
+    std::chrono::time_point<std::chrono::steady_clock> m_lastUpdate; ///< Last update time
 };
 
 #endif // _GAP_SET_HPP

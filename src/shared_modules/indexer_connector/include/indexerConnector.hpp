@@ -15,6 +15,7 @@
 #include <functional>
 #include <json.hpp>
 #include <memory>
+#include <mutex>
 #include <string_view>
 
 #if __GNUC__ >= 4
@@ -84,11 +85,28 @@ public:
     void flush();
 
     /**
-     * @brief Get the scope lock.
+     * @brief Acquires and returns a unique lock on the internal mutex.
      *
-     * @return std::mutex&
+     * This method encapsulates the synchronization mechanism of the class by
+     * returning a `std::unique_lock<std::mutex>` that locks the internal mutex
+     * upon creation and automatically releases it when the lock object goes out
+     * of scope.
+     *
+     * Using this method allows callers to perform multiple operations under a
+     * single critical section without directly accessing the internal mutex,
+     * preserving encapsulation while still enabling safe, multi-operation
+     * sequences.
+     *
+     * @note The returned `std::unique_lock` is movable but not copyable.
+     *       Callers should store it in a local variable for the duration of
+     *       the operations that require mutual exclusion.
+     *
+     * @return A `std::unique_lock<std::mutex>` object that owns a lock on the
+     *         internal mutex. The lock is released automatically when the
+     *         returned object is destroyed.
+     *
      */
-    std::mutex& scopeLock();
+    [[nodiscard]] std::unique_lock<std::mutex> scopeLock();
 
     /**
      * @brief Register a callback to be called when the indexer is flushed.

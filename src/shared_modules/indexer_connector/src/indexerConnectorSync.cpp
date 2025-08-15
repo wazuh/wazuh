@@ -56,7 +56,7 @@ public:
         m_impl.bulkIndex(id, index, data);
     }
 
-    std::mutex& scopeLock()
+    [[nodiscard]] std::unique_lock<std::mutex> scopeLock()
     {
         return m_impl.scopeLock();
     }
@@ -93,7 +93,7 @@ void IndexerConnectorSync::bulkIndex(std::string_view id, std::string_view index
     m_impl->bulkIndex(id, index, data);
 }
 
-std::mutex& IndexerConnectorSync::scopeLock()
+[[nodiscard]] std::unique_lock<std::mutex> IndexerConnectorSync::scopeLock()
 {
     return m_impl->scopeLock();
 }
