@@ -271,7 +271,7 @@ All notable changes to this project will be documented in this file.
 
 - Upgraded the curl dependency to 8.11.0. ([#27614](https://github.com/wazuh/wazuh/pull/27614))
 - Upgraded the cryptography library dependency to version 44.0.1. ([#28298](https://github.com/wazuh/wazuh/pull/28298))
-- Upgraded python-multipart to 0.0.20, starlette to 0.42.0 and Werkzeug to 3.1.3. ([#27451](https://github.com/wazuh/wazuh/pull/27451))
+- Upgraded python-multipart to 0.0.20, starlette to 0.47.2 and Werkzeug to 3.1.3. ([#27451](https://github.com/wazuh/wazuh/pull/27451))
 
 
 ## [v4.11.2]
