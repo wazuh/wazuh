@@ -12,6 +12,7 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.utils import callbacks
 from wazuh_testing.constants.platforms import WINDOWS
 
+SCA_ENABLED = r".*sca.*INFO: SCA module enabled."
 
 # Fixtures
 @pytest.fixture()
@@ -20,5 +21,5 @@ def wait_for_sca_enabled():
     Wait for the sca module to start.
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
+    log_monitor.start(callback=callbacks.generate_callback(SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
     assert log_monitor.callback_result
