@@ -47,35 +47,6 @@ struct agent_ctx
     const char* module;
 };
 
-enum msg_type
-{
-    MT_INVALID,
-    MT_SYS_DELTAS,
-    MT_SYNC,
-    MT_SYSCHECK_DELTAS,
-};
-
-/**
- * @brief Agent context structure containing agent information.
- *
- * This structure holds the essential information about an agent that can be
- * used for routing messages and identifying the source of communications.
- */
-struct agent_ctx
-{
-    /** @brief Unique identifier for the agent */
-    const char* agent_id;
-
-    /** @brief Human-readable name of the agent */
-    const char* agent_name;
-
-    /** @brief IP address of the agent */
-    const char* agent_ip;
-
-    /** @brief Version string of the agent software */
-    const char* agent_version;
-};
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -85,9 +56,6 @@ extern "C"
      * @brief Represents the handle associated with router manipulation.
      */
     typedef void* ROUTER_PROVIDER_HANDLE;
-
-    typedef struct agent_ctx agent_ctx;
-    typedef enum msg_type msg_type;
 
     /**
      * @brief Log callback function.

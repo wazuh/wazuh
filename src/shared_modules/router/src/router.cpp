@@ -32,10 +32,7 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
 #include "routerModuleGateway.hpp"
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
-#include "schemaAdapter.hpp"
-#include "shared_modules/utils/flatbuffers/include/rsync_schema.h"
-#include "shared_modules/utils/flatbuffers/include/syscheck_deltas_schema.h"
-#include "shared_modules/utils/flatbuffers/include/syscollector_deltas_schema.h"
+#include "shared_modules/utils/flatbuffers/include/inventorySync_schema.h"
 #include <filesystem>
 #include <malloc.h>
 #include <utility>
@@ -43,28 +40,19 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
 std::map<ROUTER_PROVIDER_HANDLE, std::shared_ptr<RouterProvider>> PROVIDERS;
 std::shared_mutex PROVIDERS_MUTEX;
 
-std::map<msg_type, flatbuffers::Parser> initSchemaParsers()
+flatbuffers::Parser initSchemaParsers()
 {
-    std::map<msg_type, flatbuffers::Parser> SCHEMA_PARSERS;
-    std::map<msg_type, const char*> SCHEMA_MAP = {
-        {MT_SYS_DELTAS, syscollector_deltas_SCHEMA},
-        {MT_SYNC, rsync_SCHEMA},
-        {MT_SYSCHECK_DELTAS, syscheck_deltas_SCHEMA},
-    };
+    flatbuffers::Parser parser;
+    parser.opts.skip_unexpected_fields_in_json = true;
+    parser.opts.zero_on_float_to_int =
+        true; // Avoids issues with float to int conversion, custom option made for Wazuh.
 
-    for (const auto& [type, schema] : SCHEMA_MAP)
+    if (!parser.Parse(inventorySync_SCHEMA))
     {
-        SCHEMA_PARSERS[type] = flatbuffers::Parser();
-        SCHEMA_PARSERS[type].opts.skip_unexpected_fields_in_json = true;
-        SCHEMA_PARSERS[type].opts.zero_on_float_to_int =
-            true; // Avoids issues with float to int conversion, custom option made for Wazuh.
-
-        if (!SCHEMA_PARSERS[type].Parse(schema))
-        {
-            throw std::runtime_error("Error parsing schema, " + std::string(SCHEMA_PARSERS[type].error_));
-        }
+        throw std::runtime_error("Error parsing schema, " + std::string(parser.error_));
     }
-    return SCHEMA_PARSERS;
+
+    return parser;
 }
 
 /**
@@ -338,55 +326,6 @@ extern "C"
         return retVal;
     }
 
-    int router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle,
-                                     const char* message,
-                                     const agent_ctx* agent_ctx,
-                                     const msg_type schema)
-    {
-        int retVal = -1;
-        try
-        {
-            if (!message)
-            {
-                throw std::runtime_error("Error sending message to provider. Message is empty");
-            }
-            else
-            {
-                static thread_local auto parserMap = initSchemaParsers();
-                static thread_local std::string buffer;
-
-                auto& parser = parserMap.at(schema);
-                parser.builder_.Clear();
-
-                buffer.clear();
-
-                SchemaAdapter::adaptJsonMessage(message, schema, agent_ctx, buffer);
-
-                if (buffer.empty())
-                {
-                    return 0;
-                }
-
-                if (!parser.Parse(buffer.c_str()))
-                {
-                    logMessage(modules_log_level_t::LOG_ERROR, "JSON message: " + buffer);
-                    throw std::runtime_error("Error parsing message, " + std::string(parser.error_));
-                }
-
-                std::vector<char> data(parser.builder_.GetBufferPointer(),
-                                       parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
-                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-                PROVIDERS.at(handle)->send(data);
-                retVal = 0;
-            }
-        }
-        catch (const std::exception& e)
-        {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
-        }
-        return retVal;
-    }
-
     void router_provider_destroy(ROUTER_PROVIDER_HANDLE handle)
     {
         std::unique_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
@@ -409,32 +348,31 @@ extern "C"
             {
                 throw std::runtime_error("Error sending message to provider. Message is empty");
             }
-            else
+
+            logMessage(modules_log_level_t::LOG_DEBUG,
+                       "Sending message to provider: " + std::string(message, message_size));
+            // Build agent info message
+            flatbuffers::FlatBufferBuilder builder;
+            std::vector<uint8_t> messageVector(message, message + message_size);
+            auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
+                                                                agent_ctx->id,
+                                                                agent_ctx->name,
+                                                                agent_ctx->ip,
+                                                                agent_ctx->version,
+                                                                agent_ctx->module,
+                                                                &messageVector);
+            builder.Finish(agentInfo);
+
+            if (builder.GetSize() == 0)
             {
-                logMessage(modules_log_level_t::LOG_DEBUG, "Sending message to provider");
-                // Build agent info message
-                flatbuffers::FlatBufferBuilder builder;
-                std::vector<uint8_t> messageVector(message, message + message_size);
-                auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
-                                                                    agent_ctx->id,
-                                                                    agent_ctx->name,
-                                                                    agent_ctx->ip,
-                                                                    agent_ctx->version,
-                                                                    agent_ctx->module,
-                                                                    &messageVector);
-                builder.Finish(agentInfo);
-
-                if (builder.GetSize() == 0)
-                {
-                    throw std::runtime_error("Error building message to provider. Message is empty");
-                }
-
-                std::vector<char> data(builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize());
-
-                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-                PROVIDERS.at(handle)->send(data);
-                retVal = 0;
+                throw std::runtime_error("Error building message to provider. Message is empty");
             }
+
+            std::vector<char> data(builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize());
+
+            std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
+            PROVIDERS.at(handle)->send(data);
+            retVal = 0;
         }
         catch (const std::exception& e)
         {

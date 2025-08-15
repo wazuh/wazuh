@@ -1,0 +1,7 @@
+{
+    "enabled": true,
+    "interval": 30,
+    "timeout": 10,
+    "retry_attempts": 3,
+    "log_level": "info"
+}

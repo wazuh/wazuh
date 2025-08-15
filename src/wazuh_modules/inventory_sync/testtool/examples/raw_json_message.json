@@ -1,0 +1,8 @@
+{
+    "action": "test",
+    "data": {
+        "message": "This is a raw JSON message for testing",
+        "timestamp": "2025-08-13T10:30:00Z",
+        "type": "test_message"
+    }
+}
