@@ -310,10 +310,6 @@
                         "It may lead to false positives. Exiting. "
 #define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 
-/* Syslog output */
-#define XML_INV_CSYSLOG    "(5301): Invalid client-syslog configuration."
-#define ERROR_SENDING_MSG  "(5302): Error sending message to '%s'."
-
 /* Database messages */
 #define DBINIT_ERROR          "(5201): Error initializing database handler."
 #define DBCONN_ERROR          "(5202): Error connecting to database '%s'(%s): ERROR: %s."
