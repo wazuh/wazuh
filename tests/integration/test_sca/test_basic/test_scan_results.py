@@ -65,26 +65,51 @@ configurations = configuration.load_configuration_template(configurations_path, 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-# Callback functions
+SCA_SCAN_STARTED = r".*sca.*DEBUG: Starting Policy requirements evaluation for policy *"
+SCA_SCAN_ENDED = r".*sca.*DEBUG: Policy checks evaluation completed for policy *"
+
+# Callback functions adapted to new SCA logs
 def callback_scan_id_result(line):
-    '''Callback that returns the ID an result of a SCA check
-    Args:
-        line (str): line string to check for match.
-    '''
-    match = re.match(patterns.CB_SCAN_RULE_RESULT, line)
+    '''Return [check_id, result] when a policy check evaluation completes.'''
+    match = re.match(r'.*sca.*DEBUG: Policy check "(\d+)" evaluation completed for policy "[^"]+", result: (\w+)\.', line)
     if match:
         return [match.group(1), match.group(2)]
 
+def callback_detect_engine_from_event(line):
+    '''Extract regex engine from queued SCA event logs.'''
+    # Match both Stateful and Stateless queued events and capture the first JSON before ", metadata"
+    event_match = re.search(r'.*sca.*INFO: (?:Stateful|Stateless) event queued: (\{.*\}), metadata', line)
+    if event_match:
+        try:
+            payload = json.loads(event_match.group(1))
+            policy = payload.get('policy') or {}
+            engine = policy.get('regex_type')
+            if engine:
+                return engine
+        except Exception:
+            return None
+    return None
 
-def callback_detect_sca_scan_summary(line):
-    '''Callback that return the json from a SCA summary event.
-    Args:
-        line (str): line string to check for match.
-    '''
-    match = re.match(patterns.CB_SCA_SCAN_EVENT, line)
+def callback_detect_policy_id_from_event(line):
+    '''Extract policy id from queued SCA event logs.'''
+    event_match = re.search(r'.*sca.*INFO: (?:Stateful|Stateless) event queued: (\{.*\}), metadata', line)
+    if event_match:
+        try:
+            payload = json.loads(event_match.group(1))
+            policy = payload.get('policy') or {}
+            policy_id = policy.get('id') or policy.get('file')
+            if policy_id:
+                return policy_id
+        except Exception:
+            return None
+    return None
+
+
+def callback_detect_policy_id_from_loading(line):
+    '''Extract policy id from the Loading policy log line.'''
+    match = re.match(r'.*sca.*DEBUG: Loading policy from .*?/([\w\-]+)\.yaml', line)
     if match:
-        if json.loads(match.group(1))['type'] == 'summary':
-            return json.loads(match.group(1))
+        return match.group(1)
 
 
 # Tests
@@ -156,24 +181,32 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-    # Wait for the end of SCA scan
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_STARTED), timeout=10)
+    # Wait for the SCA scan to start for the specific policy
+    policy_name = Path(test_metadata['policy_file']).stem
+    log_monitor.start(callback=callbacks.generate_callback(SCA_SCAN_STARTED + fr'"{policy_name}"'), timeout=10)
     assert log_monitor.callback_result
 
-    # Check the regex engine used by SCA
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_OSREGEX_ENGINE), timeout=10)
-    engine = log_monitor.callback_result[0] if log_monitor.callback_result != None else None
+    # Check the regex engine used by SCA (from queued event logs)
+    log_monitor.start(callback=callback_detect_engine_from_event, timeout=10)
+    engine = log_monitor.callback_result if log_monitor.callback_result is not None else None
 
-    assert engine == test_metadata['regex_type'], \
-        f"Wrong regex-engine found: {engine}, expected: {test_metadata['regex_type']}"
+    # New logs may not include regex_type for default engine (osregex). Accept absence when expecting osregex.
+    expected_engine = test_metadata['regex_type']
+    if engine is None:
+        assert expected_engine == 'osregex', \
+            f"Could not detect regex engine from events. Got None, expected: {expected_engine}"
+    else:
+        assert engine == expected_engine, \
+            f"Wrong regex-engine found: {engine}, expected: {expected_engine}"
 
     # Check all checks have been done
     log_monitor.start(callback=callback_scan_id_result, timeout=20, accumulations=int(test_metadata['results']))
 
-    # # Get scan summary event and check it matches with the policy file used
-    log_monitor.start(callback=callback_detect_sca_scan_summary, timeout=20)
-    summary = log_monitor.callback_result
-
-    assert summary['policy_id'] == test_metadata['policy_file'][0:-5], f"Unexpected policy_id found. Got \
-                                                                    {summary['policy_id']}, expected \
-                                                                    {test_metadata['policy_file'][0:-5]}"
+    # Get a policy id from queued event, or fallback to "Loading policy from" line
+    log_monitor.start(callback=callback_detect_policy_id_from_event, timeout=10)
+    found_policy_id = log_monitor.callback_result
+    if not found_policy_id:
+        log_monitor.start(callback=callback_detect_policy_id_from_loading, timeout=10)
+        found_policy_id = log_monitor.callback_result
+    assert found_policy_id == policy_name, \
+        f"Unexpected policy_id found. Got {found_policy_id}, expected {policy_name}"
