@@ -13,6 +13,7 @@
 #define _BUILD_SYSTEM_ELEMENT_HPP
 
 #include "chainOfResponsability.hpp"
+#include "elements/browserExtensionElement.hpp"
 #include "elements/groupElement.hpp"
 #include "elements/hotfixElement.hpp"
 #include "elements/hwElement.hpp"
@@ -89,6 +90,10 @@ public:
         else if (originTable == TContext::OriginTable::Groups)
         {
             data->m_serializedElement = serializeToJSON(GroupElement<TContext>::build(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::BrowserExtensions)
+        {
+            data->m_serializedElement = serializeToJSON(BrowserExtensionElement<TContext>::build(data.get()));
         }
         else
         {
