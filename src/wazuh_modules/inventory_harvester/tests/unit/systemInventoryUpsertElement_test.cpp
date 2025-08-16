@@ -943,3 +943,114 @@ TEST_F(SystemInventoryUpsertElement, negativeGroupID_Groups)
         context->m_serializedElement,
         R"({"id":"001_sudo","operation":"INSERTED","data":{"group":{"name":"sudo","id_signed":-80,"is_hidden":true,"users":["user1","user2","user3"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
+
+/*
+ * Test cases for SystemInventoryUpsertElement browser extensions scenario
+ * These tests check the behavior of the UpsertSystemElement class when handling requests.
+ */
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_BrowserExtensions)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyPackageName_BrowserExtensions)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, browserExtensionPackageName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validEmptyStrings_BrowserExtensions)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, browserName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionUserID()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageName()).WillOnce(testing::Return("UBlock Origin"));
+    EXPECT_CALL(*context, browserExtensionPackageID()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageVersion()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageDescription()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageVendor()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageBuildVersion()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackagePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserProfileName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserProfilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageReference()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackagePermissions()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, browserExtensionPackageAutoupdate()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, browserExtensionPackagePersistent()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, browserExtensionPackageFromWebstore()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, browserProfileReferenced()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, browserExtensionPackageInstalled()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionFileHashSha256()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_UBlock Origin","operation":"INSERTED","data":{"browser":{"profile":{"referenced":false}},"package":{"autoupdate":false,"enabled":false,"from_webstore":false,"name":"UBlock Origin","persistent":false},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validStrings_BrowserExtensions)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, browserName()).WillOnce(testing::Return("chrome"));
+    EXPECT_CALL(*context, browserExtensionUserID())
+        .WillOnce(testing::Return("S-1-5-21-1234567890-987654321-1122334455-1001"));
+    EXPECT_CALL(*context, browserExtensionPackageName()).WillOnce(testing::Return("UBlock Origin"));
+    EXPECT_CALL(*context, browserExtensionPackageID()).WillOnce(testing::Return("cjpalhdlnbpafiamejdnhcphjbkeiagm"));
+    EXPECT_CALL(*context, browserExtensionPackageVersion()).WillOnce(testing::Return("1.52.2"));
+    EXPECT_CALL(*context, browserExtensionPackageDescription())
+        .WillOnce(testing::Return("Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory."));
+    EXPECT_CALL(*context, browserExtensionPackageVendor()).WillOnce(testing::Return("Raymond Hill"));
+    EXPECT_CALL(*context, browserExtensionPackageBuildVersion()).WillOnce(testing::Return("1.52.2"));
+    EXPECT_CALL(*context, browserExtensionPackagePath())
+        .WillOnce(testing::Return("C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User "
+                                  "Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0"));
+    EXPECT_CALL(*context, browserProfileName()).WillOnce(testing::Return("Default"));
+    EXPECT_CALL(*context, browserProfilePath())
+        .WillOnce(testing::Return("C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default"));
+    EXPECT_CALL(*context, browserExtensionPackageReference())
+        .WillOnce(testing::Return("https://clients2.google.com/service/update2/crx"));
+    EXPECT_CALL(*context, browserExtensionPackagePermissions())
+        .WillOnce(testing::Return("[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]"));
+    EXPECT_CALL(*context, browserExtensionPackageType()).WillOnce(testing::Return("extension"));
+    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackageAutoupdate()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackagePersistent()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackageFromWebstore()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserProfileReferenced()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackageInstalled()).WillOnce(testing::Return("1710489821000"));
+    EXPECT_CALL(*context, browserExtensionFileHashSha256())
+        .WillOnce(testing::Return("a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_UBlock Origin","operation":"INSERTED","data":{"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":"1.52.2","description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":true,"from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":"1710489821000","name":"UBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","persistent":true,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2"},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
