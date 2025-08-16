@@ -64,6 +64,7 @@ subgraph WazuhAgent["Wazuh Agent"]
     Network["Networks"]
     Users["Users"]
     Groups["Groups"]
+    BrowserExtensions["Browser Extensions"]
   end
   subgraph WazuhModulesA["wazuh-modulesd"]
     SystemInventory["System inventory"]

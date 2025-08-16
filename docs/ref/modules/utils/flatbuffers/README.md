@@ -81,19 +81,20 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 ### Inventory Provider union table
 - Provider union table for inventory delta events.
 
-| Table                        | Type                    | Description |
-|------------------------------|-------------------------|-------------|
-| **Provider** (Union)         | dbsync_network_iface    | Network interfaces description. |
-|                              | dbsync_network_protocol | Network protocol configuration for detected interfaces. |
-|                              | dbsync_network_address  | Network address information for detected interfaces. |
-|                              | dbsync_osinfo           | Host operating system. |
-|                              | dbsync_hwinfo           | Hardware information. |
-|                              | dbsync_ports            | Listening ports. |
-|                              | dbsync_packages         | Installed packages. |
-|                              | dbsync_hotfixes         | Installed hotfixes. |
-|                              | dbsync_processes        | Running processes. |
-|                              | dbsync_users            | Operating system users. |
-|                              | dbsync_groups           | Operating system groups. |
+| Table                        | Type                      | Description |
+|------------------------------|---------------------------|-------------|
+| **Provider** (Union)         | dbsync_network_iface      | Network interfaces description. |
+|                              | dbsync_network_protocol   | Network protocol configuration for detected interfaces. |
+|                              | dbsync_network_address    | Network address information for detected interfaces. |
+|                              | dbsync_osinfo             | Host operating system. |
+|                              | dbsync_hwinfo             | Hardware information. |
+|                              | dbsync_ports              | Listening ports. |
+|                              | dbsync_packages           | Installed packages. |
+|                              | dbsync_hotfixes           | Installed hotfixes. |
+|                              | dbsync_processes          | Running processes. |
+|                              | dbsync_users              | Operating system users. |
+|                              | dbsync_groups             | Operating system groups. |
+|                              | dbsync_browser_extensions | Installed extensions for Firefox, Chrome, IE and Safari based web browsers. |
 
 ### Inventory providers
 - Provider tables for inventory delta events.

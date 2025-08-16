@@ -55,6 +55,7 @@ public:
         NetworkAddress,
         User,
         Group,
+        BrowserExtension,
         Invalid
     };
 
@@ -71,6 +72,7 @@ public:
         NetAddress,
         Users,
         Groups,
+        BrowserExtensions,
         Invalid
     };
     explicit SystemContext(
@@ -3413,6 +3415,644 @@ public:
         return "";
     }
 
+    // Browser extensions
+    std::string_view browserName() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->browser_name())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->browser_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->browser_name())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->browser_name()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionUserID() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() && m_delta->data_as_dbsync_browser_extensions()->user_id())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->user_id()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->user_id())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->user_id()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackageName() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_name())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_name())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_name()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/package_name"_json_pointer))
+            {
+                return m_jsonData->at("/data/package_name"_json_pointer).get<std::string_view>();
+            }
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackageID() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_id())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_id()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_id())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_id()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackageVersion() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_version())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_version()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_version())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_version()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackageDescription() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_description())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_description()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_description())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_description()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackageVendor() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_vendor())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_vendor()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_vendor())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_vendor()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackageBuildVersion() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_build_version())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_build_version()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_build_version())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_build_version()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackagePath() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_path())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_path()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_path())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_path()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserProfileName() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->browser_profile_name())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->browser_profile_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->browser_profile_name())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->browser_profile_name()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserProfilePath() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->browser_profile_path())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->browser_profile_path()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->browser_profile_path())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->browser_profile_path()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackageReference() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_reference())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_reference()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_reference())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_reference()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackagePermissions() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_permissions())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_permissions()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_permissions())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_permissions()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackageType() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_type())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_type()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_type())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_type()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    bool browserExtensionPackageEnabled() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_enabled()).has_value())
+            {
+                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_enabled()).value();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                std::optional<bool>(
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_enabled())
+                    .has_value())
+            {
+                return std::optional<bool>(m_syncMsg->data_as_state()
+                                               ->attributes_as_syscollector_browser_extensions()
+                                               ->package_enabled())
+                    .value();
+            }
+        }
+        else
+        {
+            return false;
+        }
+        return false;
+    }
+
+    bool browserExtensionPackageAutoupdate() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_autoupdate()).has_value())
+            {
+                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_autoupdate()).value();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                std::optional<bool>(
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_autoupdate())
+                    .has_value())
+            {
+                return std::optional<bool>(m_syncMsg->data_as_state()
+                                               ->attributes_as_syscollector_browser_extensions()
+                                               ->package_autoupdate())
+                    .value();
+            }
+        }
+        else
+        {
+            return false;
+        }
+        return false;
+    }
+
+    bool browserExtensionPackagePersistent() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_persistent()).has_value())
+            {
+                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_persistent()).value();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                std::optional<bool>(
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_persistent())
+                    .has_value())
+            {
+                return std::optional<bool>(m_syncMsg->data_as_state()
+                                               ->attributes_as_syscollector_browser_extensions()
+                                               ->package_persistent())
+                    .value();
+            }
+        }
+        else
+        {
+            return false;
+        }
+        return false;
+    }
+
+    bool browserExtensionPackageFromWebstore() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_from_webstore()).has_value())
+            {
+                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_from_webstore())
+                    .value();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                std::optional<bool>(m_syncMsg->data_as_state()
+                                        ->attributes_as_syscollector_browser_extensions()
+                                        ->package_from_webstore())
+                    .has_value())
+            {
+                return std::optional<bool>(m_syncMsg->data_as_state()
+                                               ->attributes_as_syscollector_browser_extensions()
+                                               ->package_from_webstore())
+                    .value();
+            }
+        }
+        else
+        {
+            return false;
+        }
+        return false;
+    }
+
+    bool browserProfileReferenced() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->browser_profile_referenced())
+                    .has_value())
+            {
+                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->browser_profile_referenced())
+                    .value();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                std::optional<bool>(m_syncMsg->data_as_state()
+                                        ->attributes_as_syscollector_browser_extensions()
+                                        ->browser_profile_referenced())
+                    .has_value())
+            {
+                return std::optional<bool>(m_syncMsg->data_as_state()
+                                               ->attributes_as_syscollector_browser_extensions()
+                                               ->browser_profile_referenced())
+                    .value();
+            }
+        }
+        else
+        {
+            return false;
+        }
+        return false;
+    }
+
+    std::string_view browserExtensionPackageInstalledRaw() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->package_installed())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->package_installed()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_installed())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_installed()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionPackageInstalled()
+    {
+        auto PackageInstalledRaw = browserExtensionPackageInstalledRaw();
+        if (PackageInstalledRaw.compare(" ") == 0)
+        {
+            return "";
+        }
+        m_browserExtensionPackageInstalled = Utils::rawTimestampToISO8601(PackageInstalledRaw);
+        return m_browserExtensionPackageInstalled;
+    }
+
+    std::string_view browserExtensionFileHashSha256() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() &&
+                m_delta->data_as_dbsync_browser_extensions()->file_hash_sha256())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->file_hash_sha256()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->file_hash_sha256())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->file_hash_sha256()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
     Operation operation() const
     {
         return m_operation;
@@ -3451,6 +4091,7 @@ private:
     std::string m_userCreatedISO8601;
     std::string m_userLastLoginISO8601;
     std::string m_userAuthFailedTimestampISO8601;
+    std::string m_browserExtensionPackageInstalled;
 
     /**
      * @brief Scan context.
@@ -3532,6 +4173,11 @@ private:
             {
                 m_affectedComponentType = AffectedComponentType::Group;
                 m_originTable = OriginTable::Groups;
+            }
+            else if (delta->data_type() == SyscollectorDeltas::Provider_dbsync_browser_extensions)
+            {
+                m_affectedComponentType = AffectedComponentType::BrowserExtension;
+                m_originTable = OriginTable::BrowserExtensions;
             }
             else
             {
@@ -3624,6 +4270,13 @@ private:
                 m_affectedComponentType = AffectedComponentType::Group;
                 m_originTable = OriginTable::Groups;
             }
+            else if (syncMsg->data_as_state()->attributes_type() ==
+                     Synchronization::AttributesUnion_syscollector_browser_extensions)
+            {
+                m_operation = Operation::Upsert;
+                m_affectedComponentType = AffectedComponentType::BrowserExtension;
+                m_originTable = OriginTable::BrowserExtensions;
+            }
             else
             {
                 throw std::runtime_error("Attributes type not found in sync message. => " +
@@ -3700,6 +4353,12 @@ private:
                     m_operation = Operation::DeleteAllEntries;
                     m_affectedComponentType = AffectedComponentType::Group;
                     m_originTable = OriginTable::Groups;
+                }
+                else if (attributesTypeStr.compare("syscollector_browser_extensions") == 0)
+                {
+                    m_operation = Operation::DeleteAllEntries;
+                    m_affectedComponentType = AffectedComponentType::BrowserExtension;
+                    m_originTable = OriginTable::BrowserExtensions;
                 }
                 else
                 {
@@ -3781,6 +4440,12 @@ private:
                     m_operation = Operation::IndexSync;
                     m_affectedComponentType = AffectedComponentType::Group;
                     m_originTable = OriginTable::Groups;
+                }
+                else if (attributesTypeStr.compare("syscollector_browser_extensions") == 0)
+                {
+                    m_operation = Operation::IndexSync;
+                    m_affectedComponentType = AffectedComponentType::BrowserExtension;
+                    m_originTable = OriginTable::BrowserExtensions;
                 }
                 else
                 {
@@ -3867,6 +4532,12 @@ private:
             m_operation = Operation::Delete;
             m_affectedComponentType = AffectedComponentType::Group;
             m_originTable = OriginTable::Groups;
+        }
+        else if (action.compare("deleteBrowserExtension") == 0)
+        {
+            m_operation = Operation::Delete;
+            m_affectedComponentType = AffectedComponentType::BrowserExtension;
+            m_originTable = OriginTable::BrowserExtensions;
         }
         else if (action.compare("upgradeAgentDB") == 0)
         {
