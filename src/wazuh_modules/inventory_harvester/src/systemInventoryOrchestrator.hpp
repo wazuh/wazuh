@@ -164,11 +164,11 @@ public:
             Log::GLOBAL_LOG_FUNCTION);
         m_indexerConnectorInstances[SystemContext::AffectedComponentType::BrowserExtension] =
             std::make_unique<IndexerConnector>(PolicyHarvesterManager::instance().buildIndexerConfig(
-                                                   "browser_extensions", InventoryType::SYSTEM_INVENTORY),
+                                                   "browser-extensions", InventoryType::SYSTEM_INVENTORY),
                                                PolicyHarvesterManager::instance().buildIndexerTemplatePath(
-                                                   "browser_extensions", InventoryType::SYSTEM_INVENTORY),
+                                                   "browser-extensions", InventoryType::SYSTEM_INVENTORY),
                                                PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath(
-                                                   "browser_extensions", InventoryType::SYSTEM_INVENTORY),
+                                                   "browser-extensions", InventoryType::SYSTEM_INVENTORY),
                                                false, // Don't use seek for delete operation
                                                Log::GLOBAL_LOG_FUNCTION);
 
