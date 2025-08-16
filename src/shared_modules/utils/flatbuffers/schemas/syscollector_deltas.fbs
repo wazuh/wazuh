@@ -199,6 +199,32 @@ table dbsync_groups {
     checksum:string;
 }
 
+table dbsync_browser_extensions {
+    scan_time:string;
+    browser_name:string;
+    user_id:string;
+    package_name:string;
+    package_id:string;
+    package_version:string;
+    package_description:string;
+    package_vendor:string;
+    package_build_version:string;
+    package_path:string;
+    browser_profile_name:string;
+    browser_profile_path:string;
+    package_reference:string;
+    package_permissions:string;
+    package_type:string;
+    package_enabled:bool = null;
+    package_autoupdate:bool = null;
+    package_persistent:bool = null;
+    package_from_webstore:bool = null;
+    browser_profile_referenced:bool = null;
+    package_installed:string;
+    file_hash_sha256:string;
+    checksum:string;
+}
+
 union Provider {
     dbsync_network_iface,
     dbsync_network_protocol,
@@ -210,7 +236,8 @@ union Provider {
     dbsync_hotfixes,
     dbsync_processes,
     dbsync_users,
-    dbsync_groups
+    dbsync_groups,
+    dbsync_browser_extensions
 }
 
 table AgentInfo {
