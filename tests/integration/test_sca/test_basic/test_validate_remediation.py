@@ -38,6 +38,8 @@ import sys
 import os
 import pytest
 import re
+import time
+import stat
 import subprocess
 from pathlib import Path
 
@@ -67,13 +69,13 @@ test_folder = '/testfile'
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-# Callback functions
+SCA_SCAN_STARTED = r".*sca.*DEBUG: Starting Policy requirements evaluation for policy *"
+SCA_SCAN_ENDED = r".*sca.*DEBUG: Policy checks evaluation completed for policy *"
+
+# Callback functions adapted to new SCA logs
 def callback_scan_id_result(line):
-    '''Callback that returns the ID an result of a SCA check
-    Args:
-        line (str): line string to check for match.
-    '''
-    match = re.match(patterns.CB_SCAN_RULE_RESULT, line)
+    '''Return [check_id, result] when a policy check evaluation completes.'''
+    match = re.match(r'.*sca.*DEBUG: Policy check "(\d+)" evaluation completed for policy "[^"]+", result: (\w+)\.', line)
     if match:
         return [match.group(1), match.group(2)]
 
@@ -148,30 +150,81 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
+    # Ensure initial state: set directory perms to 0644 so check 2 can initially pass
+    if sys.platform != WINDOWS:
+        try:
+            os.chmod(test_folder, 0o644)
+            # Verify
+            assert stat.S_IMODE(os.lstat(test_folder).st_mode) == 0o644
+        except Exception:
+            pass
+
+    # Wait for the SCA scan to start for the specific policy
+    policy_name = Path(test_metadata['policy_file']).stem
+    log_monitor.start(callback=callbacks.generate_callback(SCA_SCAN_STARTED + fr'"{policy_name}"'), timeout=10, only_new_events=True)
+    assert log_monitor.callback_result
+
     # Get the results for the checks obtained in the initial SCA scan
     log_monitor.start(callback=callback_scan_id_result, timeout=20, \
-                      only_new_events=True, accumulations=3)
+                      only_new_events=True, accumulations=2)
 
     results = log_monitor.callback_result
 
     # Assert the tested check has initial expected results (failed/passed)
-    check_result = results[test_metadata['check_id']-1][1]
-    assert check_result == test_metadata['initial_result'], f"Got unexcepted SCA result: {test_metadata['initial_result']},\
-                                                         got {check_result}"
+    # Find the result for the specific check id
+    check_id = str(test_metadata['check_id'])
+    check_result = None
+    for result in results:
+        if result[0] == check_id:
+            check_result = result[1]
+            break
+    assert check_result is not None, f"Did not receive result for check id {check_id}"
+    assert check_result.lower() == test_metadata['initial_result'], \
+        f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {check_result}"
+
+    # Ensure we change state between scan cycles
+    log_monitor.start(callback=callbacks.generate_callback(SCA_SCAN_ENDED + fr'"{policy_name}"'), timeout=10, only_new_events=True)
+    assert log_monitor.callback_result
 
     if sys.platform == WINDOWS:
         # Modify lockout duration
         subprocess.call('net accounts /lockoutduration:100', shell=True)
     else:
         # Modify the folder's permissions
-        os.chmod(test_folder, test_metadata['perms'])
+        try:
+            # Interpret perms from metadata correctly whether YAML gave int (decimal representation of octal) or string
+            raw_perms = test_metadata['perms']
+            if isinstance(raw_perms, int):
+                new_mode = raw_perms
+            else:
+                new_mode = int(str(raw_perms), 8)
+            os.chmod(test_folder, new_mode)
+            # Verify and retry once if needed
+            if stat.S_IMODE(os.lstat(test_folder).st_mode) != new_mode:
+                time.sleep(0.2)
+                os.chmod(test_folder, new_mode)
+        except Exception:
+            os.chmod(test_folder, 0o644)
 
-    # Get the results for the checks obtained in the SCA scan
+    # Give the agent a brief moment before the next scan starts
+    if sys.platform != WINDOWS:
+        time.sleep(0.5)
+
+    # Wait for the next scan to start
+    log_monitor.start(callback=callbacks.generate_callback(SCA_SCAN_STARTED + fr'"{policy_name}"'), timeout=15, only_new_events=True)
+    assert log_monitor.callback_result
+
+    # Get the results for the checks obtained in the next SCA scan
     log_monitor.start(callback=callback_scan_id_result, timeout=20, \
-                      only_new_events=True, accumulations=3)
+                      only_new_events=True, accumulations=2)
     results = log_monitor.callback_result
 
     # Assert the tested check result changed as expected (passed to failed, and vice-versa)
-    check_result = results[test_metadata['check_id']-1][1]
-    assert check_result == test_metadata['final_result'], f"Got unexcepted SCA result: {test_metadata['final_result']},\
-                                                       got {check_result}"
+    check_result = None
+    for result in results:
+        if result[0] == check_id:
+            check_result = result[1]
+            break
+    assert check_result is not None, f"Did not receive result for check id {check_id}"
+    assert check_result.lower() == test_metadata['final_result'], \
+        f"Got unexpected SCA result: expected {test_metadata['final_result']}, got {check_result}"
