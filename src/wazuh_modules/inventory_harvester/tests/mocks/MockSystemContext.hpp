@@ -41,6 +41,7 @@ public:
         NetAddress,
         Users,
         Groups,
+        BrowserExtensions,
         Invalid
     };
 
@@ -57,6 +58,7 @@ public:
         NetworkAddress,
         User,
         Group,
+        BrowserExtension,
         Invalid
     };
 
@@ -187,6 +189,29 @@ public:
     MOCK_METHOD(std::string_view, groupUuid, (), (const));
     MOCK_METHOD(bool, groupIsHidden, (), (const));
     MOCK_METHOD(std::string_view, groupUsers, (), (const));
+
+    // Browser extensions
+    MOCK_METHOD(std::string_view, browserName, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionUserID, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackageName, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackageID, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackageVersion, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackageDescription, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackageVendor, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackageBuildVersion, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackagePath, (), (const));
+    MOCK_METHOD(std::string_view, browserProfileName, (), (const));
+    MOCK_METHOD(std::string_view, browserProfilePath, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackageReference, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackagePermissions, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackageType, (), (const));
+    MOCK_METHOD(bool, browserExtensionPackageEnabled, (), (const));
+    MOCK_METHOD(bool, browserExtensionPackageAutoupdate, (), (const));
+    MOCK_METHOD(bool, browserExtensionPackagePersistent, (), (const));
+    MOCK_METHOD(bool, browserExtensionPackageFromWebstore, (), (const));
+    MOCK_METHOD(bool, browserProfileReferenced, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionPackageInstalled, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionFileHashSha256, (), (const));
 
     std::string m_serializedElement;
 };
