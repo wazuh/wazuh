@@ -154,6 +154,8 @@ typedef enum wdb_stmt {
     WDB_STMT_GROUP_INSERT2,
     WDB_STMT_BROWSER_EXTENSION_INSERT,
     WDB_STMT_BROWSER_EXTENSION_INSERT2,
+    WDB_STMT_SERVICES_INSERT,
+    WDB_STMT_SERVICES_INSERT2,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
     WDB_STMT_SCAN_INFO_UPDATEFS,
@@ -359,6 +361,13 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_BY_PK,
     WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_SELECT_CHECKSUM,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_DELETE_BY_PK,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_CLEAR,
+    WDB_STMT_SERVICES_DEL,
     WDB_STMT_SYS_HOTFIXES_GET,
     WDB_STMT_SYS_PROGRAMS_GET,
     WDB_STMT_SIZE // This must be the last constant
@@ -433,6 +442,7 @@ typedef enum {
     WDB_SYSCOLLECTOR_USERS,                 ///< Users info integrity monitoring.
     WDB_SYSCOLLECTOR_GROUPS,                ///< Groups info integrity monitoring.
     WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS,    ///< Browser extensions info integrity monitoring.
+    WDB_SYSCOLLECTOR_SERVICES,              ///< Services info integrity monitoring.
     WDB_GENERIC_COMPONENT,                  ///< Miscellaneous component
 } wdb_component_t;
 
@@ -976,6 +986,22 @@ int wdb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * 
 
 // Insert web browser extensions info tuple. Return 0 on success or -1 on error.
 int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace);
+
+// Save services information into DB.
+int wdb_services_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
+                      const char * description, const char * service_type, const char * start_type, const char * state,
+                      int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
+                      const char * sub_state, const char * unit_file_state, const char * status, const char * user,
+                      const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
+                      const char * item_id, const bool replace);
+
+// Insert service info tuple. Return 0 on success or -1 on error.
+int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
+                        const char * description, const char * service_type, const char * start_type, const char * state,
+                        int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
+                        const char * sub_state, const char * unit_file_state, const char * status, const char * user,
+                        const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
+                        const char * item_id, const bool replace);
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
 
