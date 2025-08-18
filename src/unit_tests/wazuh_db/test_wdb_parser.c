@@ -1,4 +1,3 @@
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -3113,6 +3112,176 @@ void test_wdb_parse_delete_db_file (void **state) {
     os_free(query);
 }
 
+/* wdb_parse_dbsync services */
+void test_wdb_parse_dbsync_services_extensions_no_operation(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services ", query);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "DBSYNC query: services");
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid dbsync query syntax, near 'services'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_services_extensions_no_delta_data(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services INSERTED ", query);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "DBSYNC query: services");
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid dbsync query syntax, near 'services'");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_services_extensions_delta_data_not_json(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services INSERTED {\"unclosed\":\"json", query);
+
+    expect_string(__wrap__mdebug1, formatted_msg, DB_DELTA_PARSING_ERR);
+    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: json");
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_services_extensions_invalid_operation(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services NOOP {}", query);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid operation type: NOOP");
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_services_extensions_insert_ok(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services INSERTED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, true);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_services_extensions_insert_err(void ** state) {
+
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services INSERTED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, false);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_services_extensions_modified_ok(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services MODIFIED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, true);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_services_extensions_modified_err(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services MODIFIED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_upsert_dbsync);
+    will_return(__wrap_wdb_upsert_dbsync, false);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err");
+    assert_int_equal(ret, OS_INVALID);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_services_extensions_deleted_ok(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services DELETED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_delete_dbsync);
+    will_return(__wrap_wdb_delete_dbsync, true);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
+void test_wdb_parse_dbsync_services_extensions_deleted_err(void ** state) {
+    test_struct_t * data = (test_struct_t *) *state;
+    char * query = NULL;
+
+    os_strdup("services DELETED {\"key\": \"value\"}", query);
+
+    expect_function_call(__wrap_wdb_delete_dbsync);
+    will_return(__wrap_wdb_delete_dbsync, false);
+
+    const int ret = wdb_parse_dbsync(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok ");
+    assert_int_equal(ret, OS_SUCCESS);
+
+    os_free(query);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -3269,6 +3438,17 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_browser_extensions_modified_err, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_browser_extensions_deleted_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_browser_extensions_deleted_err, test_setup, test_teardown),
+        /* dbsync tests services */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_no_operation, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_no_delta_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_delta_data_not_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_invalid_operation, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_insert_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_insert_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_modified_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_modified_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_deleted_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_deleted_err, test_setup, test_teardown),
         /* wdb_parse_global_backup */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup_global, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup_global, test_teardown),
