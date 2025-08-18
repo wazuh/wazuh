@@ -188,6 +188,7 @@ Section "Wazuh Agent (required)" MainSec
     File wazuh-agent.exe
     File wazuh-agent-eventchannel.exe
     File default-ossec.conf
+    File manage_agents.exe
     File /oname=win32ui.exe os_win32ui.exe
     File internal_options.conf
     File default-local_internal_options.conf
@@ -428,6 +429,23 @@ Section "Uninstall"
         ${EndIf}
     ServiceUninstallComplete:
 
+    ; make sure manage_agents.exe is not running
+    ManageAgents:
+        ${nsProcess::FindProcess} "manage_agents.exe" $0
+        ${If} $0 = 0
+            MessageBox MB_ABORTRETRYIGNORE|MB_ICONSTOP "$\r$\n\
+                Found manage_agents.exe is still running.$\r$\n$\r$\n\
+                Please close it before continuing.$\r$\n$\r$\n\
+                Click Abort to stop the installation,$\r$\n\
+                Retry to try again, or$\r$\n\
+                Ignore to skip this file." /SD IDABORT IDIGNORE ManageAgentsClosed IDRETRY ManageAgents
+
+            ${nsProcess::Unload}
+            SetErrorLevel 2
+            Abort
+        ${EndIf}
+    ManageAgentsClosed:
+
     ; make sure win32ui.exe is not running
     win32ui:
         ${nsProcess::FindProcess} "win32ui.exe" $0
@@ -454,6 +472,7 @@ Section "Uninstall"
 
     ; remove files and uninstaller
     Delete "$INSTDIR\wazuh-agent.exe"
+    Delete "$INSTDIR\manage_agents.exe"
     Delete "$INSTDIR\ossec.conf"
     Delete "$INSTDIR\uninstall.exe"
     Delete "$INSTDIR\*"
