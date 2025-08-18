@@ -1,8 +1,5 @@
 ---
 - actions:
-  - rootcheck:clear
-  - syscollector:read
-  - syscheck:clear
   - ciscat:read
   resources:
   - agent:id:001

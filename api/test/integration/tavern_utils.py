@@ -65,8 +65,7 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
     select_key : str
         Keys requested in select parameter. Lists and nested fields accepted e.g: id,cpu.mhz,json
     flag_nested_key_list : bool
-        Flag used to indicate that the nested key contains a list. Used to test endpoints like
-        GET /sca/{agent_id}/checks/{policy_id}.
+        Flag used to indicate that the nested key contains a list.
     """
     main_keys = set()
     nested_keys = dict()
@@ -98,9 +97,6 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
             try:
                 if not flag_nested_key_list:
                     set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
-
-                # If we are using select in endpoints like GET /sca/{agent_id}/checks/{policy_id},
-                # the nested field contains a list
                 else:
                     set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]][0].keys()))
 
