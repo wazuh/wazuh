@@ -158,7 +158,6 @@ int main(const int argc, const char* argv[])
                 flatbuffers::FlatBufferBuilder syncBuilder;
                 auto moduleOffset = syncBuilder.CreateString(module_name);
                 auto startBuilder = Wazuh::SyncSchema::StartBuilder(syncBuilder);
-                startBuilder.add_agent_id(agent_id);
                 startBuilder.add_size(num_messages);
                 startBuilder.add_module_(moduleOffset);
                 startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
@@ -170,7 +169,7 @@ int main(const int argc, const char* argv[])
 
                 // Now wrap it in AgentInfo message
                 flatbuffers::FlatBufferBuilder builder;
-                std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(), 
+                std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(),
                                                    syncBuilder.GetBufferPointer() + syncBuilder.GetSize());
                 auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
                                                                     std::to_string(agent_id).c_str(),
@@ -214,13 +213,13 @@ int main(const int argc, const char* argv[])
                 data_builder.add_data(vector_data);
                 auto data_offset = data_builder.Finish();
 
-                auto msg_offset =
-                    Wazuh::SyncSchema::CreateMessage(syncBuilder, Wazuh::SyncSchema::MessageType_Data, data_offset.Union());
+                auto msg_offset = Wazuh::SyncSchema::CreateMessage(
+                    syncBuilder, Wazuh::SyncSchema::MessageType_Data, data_offset.Union());
                 syncBuilder.Finish(msg_offset);
 
                 // Now wrap it in AgentInfo message
                 flatbuffers::FlatBufferBuilder builder;
-                std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(), 
+                std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(),
                                                    syncBuilder.GetBufferPointer() + syncBuilder.GetSize());
                 auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
                                                                     std::to_string(agent_id).c_str(),
@@ -244,13 +243,13 @@ int main(const int argc, const char* argv[])
                 end_builder.add_session(session_id);
                 auto end_offset = end_builder.Finish();
 
-                auto msg_offset =
-                    Wazuh::SyncSchema::CreateMessage(syncBuilder, Wazuh::SyncSchema::MessageType_End, end_offset.Union());
+                auto msg_offset = Wazuh::SyncSchema::CreateMessage(
+                    syncBuilder, Wazuh::SyncSchema::MessageType_End, end_offset.Union());
                 syncBuilder.Finish(msg_offset);
 
                 // Now wrap it in AgentInfo message
                 flatbuffers::FlatBufferBuilder builder;
-                std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(), 
+                std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(),
                                                    syncBuilder.GetBufferPointer() + syncBuilder.GetSize());
                 auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
                                                                     std::to_string(agent_id).c_str(),
@@ -304,11 +303,8 @@ int main(const int argc, const char* argv[])
 
                         // First create the original sync message
                         flatbuffers::FlatBufferBuilder syncBuilder;
-                        auto module_offset = syncBuilder.CreateString(module_name);
                         auto start_builder = Wazuh::SyncSchema::StartBuilder(syncBuilder);
-                        start_builder.add_agent_id(agent_id);
                         start_builder.add_size(size);
-                        start_builder.add_module_(module_offset);
                         start_builder.add_mode(Wazuh::SyncSchema::Mode_Full);
                         auto start_offset = start_builder.Finish();
 
@@ -318,7 +314,7 @@ int main(const int argc, const char* argv[])
 
                         // Now wrap it in AgentInfo message
                         flatbuffers::FlatBufferBuilder builder;
-                        std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(), 
+                        std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(),
                                                            syncBuilder.GetBufferPointer() + syncBuilder.GetSize());
                         auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
                                                                             std::to_string(agent_id).c_str(),
@@ -369,7 +365,7 @@ int main(const int argc, const char* argv[])
 
                         // Now wrap it in AgentInfo message
                         flatbuffers::FlatBufferBuilder builder;
-                        std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(), 
+                        std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(),
                                                            syncBuilder.GetBufferPointer() + syncBuilder.GetSize());
                         auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
                                                                             std::to_string(agent_id).c_str(),
@@ -402,7 +398,7 @@ int main(const int argc, const char* argv[])
 
                         // Now wrap it in AgentInfo message
                         flatbuffers::FlatBufferBuilder builder;
-                        std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(), 
+                        std::vector<uint8_t> messageVector(syncBuilder.GetBufferPointer(),
                                                            syncBuilder.GetBufferPointer() + syncBuilder.GetSize());
                         auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
                                                                             std::to_string(agent_id).c_str(),

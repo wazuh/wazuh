@@ -7,6 +7,7 @@
 #include "responseDispatcher.hpp"
 #include "rocksDBWrapper.hpp"
 #include "threadDispatcher.h"
+#include <charconv>
 #include <functional>
 #include <memory>
 #include <string>
@@ -56,6 +57,8 @@ class AgentSessionImpl final
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
+                              std::string_view agentId,
+                              std::string_view moduleName,
                               Wazuh::SyncSchema::Start const* data,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
@@ -73,20 +76,28 @@ public:
         {
             throw AgentSessionException("Invalid size");
         }
+
+        uint64_t agentIdConverted {};
+
+        auto [ptr, ec] = std::from_chars(agentId.data(), agentId.data() + agentId.size(), agentIdConverted);
+
+        if (ec == std::errc::result_out_of_range)
+        {
+            throw AgentSessionException("Agent ID out of range");
+        }
+
+        if (ec == std::errc::invalid_argument)
+        {
+            throw AgentSessionException("Agent ID invalid argument");
+        }
+
         m_gapSet = std::make_unique<GapSet>(data->size());
 
-        if (data->module_() == nullptr)
-        {
-            throw AgentSessionException("Invalid module");
-        }
-
-        if (data->agent_id() == 0)
-        {
-            throw AgentSessionException("Invalid id");
-        }
-
         m_context =
-            std::make_shared<Context>(Context {data->mode(), sessionId, data->agent_id(), data->module_()->str()});
+            std::make_shared<Context>(Context {.mode = data->mode(),
+                                               .sessionId = sessionId,
+                                               .agentId = agentIdConverted,
+                                               .moduleName = std::string(moduleName.data(), moduleName.size())});
 
         std::cout << "AgentSessionImpl: " << m_context->sessionId << " " << m_context->agentId << " "
                   << m_context->moduleName << std::endl;
@@ -111,7 +122,7 @@ public:
         {
             if (m_gapSet->empty())
             {
-                m_indexerQueue.push(Response({ResponseStatus::Ok, m_context}));
+                m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
             }
         }
     }
@@ -123,7 +134,7 @@ public:
         if (m_gapSet->empty())
         {
             std::cout << "End received and gap set is empty\n";
-            m_indexerQueue.push(Response({ResponseStatus::Ok, m_context}));
+            m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
         }
         else
         {

@@ -80,6 +80,14 @@ class InventorySyncFacadeImpl final
     {
         auto message = Wazuh::Sync::GetAgentInfo(dataRaw.data());
 
+        if (message->id() == nullptr || message->module_() == nullptr)
+        {
+            throw InventorySyncException("Invalid message buffer");
+        }
+
+        auto agentId = message->id()->string_view();
+        auto moduleName = message->module_()->string_view();
+
         flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(message->data()->data()),
                                        message->data()->size());
         logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Verifying message %s", message->data()->data());
@@ -120,13 +128,15 @@ class InventorySyncFacadeImpl final
                 {
                     std::unique_lock lock(m_agentSessionsMutex);
                     // Check if session already exists.
-                    if (m_agentSessions.find(sessionId) != m_agentSessions.end())
+                    if (m_agentSessions.contains(sessionId))
                     {
                         throw InventorySyncException("Session already exists");
                     }
 
                     m_agentSessions.try_emplace(sessionId,
                                                 sessionId,
+                                                agentId,
+                                                moduleName,
                                                 syncMessage->content_as<Wazuh::SyncSchema::Start>(),
                                                 *m_dataStore,
                                                 *m_indexerQueue,
