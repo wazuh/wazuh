@@ -33,20 +33,12 @@ int send_msg(const char *msg, ssize_t msg_length)
         return (-1);
     }
 
-    /* Send msg_size of crypt_msg */
-    if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-        retval = OS_SendUDPbySize(agt->sock, msg_size, crypt_msg);
+    w_mutex_lock(&send_mutex);
+    retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
 #ifndef WIN32
-        error = errno;
+    error = errno;
 #endif
-    } else {
-        w_mutex_lock(&send_mutex);
-        retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
-#ifndef WIN32
-        error = errno;
-#endif
-        w_mutex_unlock(&send_mutex);
-    }
+    w_mutex_unlock(&send_mutex);
 
     if (!retval) {
         w_agentd_state_update(INCREMENT_MSG_SEND, NULL);

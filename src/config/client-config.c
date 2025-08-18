@@ -23,7 +23,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     char f_ip[128] = {'\0'};
     char * rip = NULL;
     int port = DEFAULT_SECURE;
-    int protocol = IPPROTO_TCP;
 
     /* XML definitions */
     const char *xml_client_server = "server";
@@ -167,19 +166,9 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_protocol) == 0) {
-            mwarn("The <%s> tag is deprecated, please use <server><protocol> instead.", xml_protocol);
-
-            if (strcmp(node[i]->content, "tcp") == 0) {
-                protocol = IPPROTO_TCP;
-            } else if (strcmp(node[i]->content, "udp") == 0) {
-                protocol = IPPROTO_UDP;
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
+            mwarn("Deprecated option 'protocol' is no longer available. Method TCP is the only one allowed.");
         } else if(strcmp(node[i]->element, xml_crypto_method) == 0){
-            mwarn("Client option 'crypto_method' is no longer configurable. Method aes is the only one allowed.");
-            logr->crypto_method = W_METH_AES;
+            mwarn("Deprecated option 'crypto_method' is no longer available. Method AES is the only one allowed.");
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -190,7 +179,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
             os_realloc(logr->server, sizeof(agent_server) * (logr->server_count + 2), logr->server);
             os_strdup(rip, logr->server[logr->server_count].rip);
             logr->server[logr->server_count].port = 0;
-            logr->server[logr->server_count].protocol = 0;
             // Since these are new options we will only leave a default for legacy configurations
             logr->server[logr->server_count].max_retries = DEFAULT_MAX_RETRIES;
             logr->server[logr->server_count].retry_interval = DEFAULT_RETRY_INTERVAL;
@@ -199,15 +187,11 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         }
     }
 
-    // Assign global port and protocol to legacy configurations
+    // Assign global port to legacy configurations
 
     for (i = 0; i < logr->server_count; ++i) {
         if (!logr->server[i].port) {
             logr->server[i].port = port;
-        }
-
-        if (!logr->server[i].protocol) {
-            logr->server[i].protocol = protocol;
         }
     }
     return (0);
@@ -253,7 +237,6 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     /* Default values */
     uint32_t network_interface = 0;
     int port = DEFAULT_SECURE;
-    int protocol = IPPROTO_TCP;
     int max_retries = DEFAULT_MAX_RETRIES;
     int retry_interval = DEFAULT_RETRY_INTERVAL;
 
@@ -300,14 +283,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
             }
             network_interface = (uint32_t)interface_numeric;
         } else if (strcmp(node[j]->element, xml_protocol) == 0) {
-            if (strcmp(node[j]->content, "tcp") == 0) {
-                protocol = IPPROTO_TCP;
-            } else if (strcmp(node[j]->content, "udp") == 0) {
-                protocol = IPPROTO_UDP;
-            } else {
-                merror(XML_VALUEERR, node[j]->element, node[j]->content);
-                return (OS_INVALID);
-            }
+            mwarn("Deprecated option 'protocol' is no longer available. Method TCP is the only one allowed.");
         } else if (strcmp(node[j]->element, xml_max_retries) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
@@ -347,7 +323,6 @@ int Read_Client_Server(XML_NODE node, agent * logr)
     }
     logr->server[logr->server_count].network_interface = network_interface;
     logr->server[logr->server_count].port = port;
-    logr->server[logr->server_count].protocol = protocol;
     logr->server[logr->server_count].max_retries = max_retries;
     logr->server[logr->server_count].retry_interval = retry_interval;
     memset(logr->server + logr->server_count + 1, 0, sizeof(agent_server));
