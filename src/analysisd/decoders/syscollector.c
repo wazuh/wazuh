@@ -300,6 +300,34 @@ static struct deltas_fields_match_list const BROWSER_EXTENSION_FIELDS[] = {
   { .current = { "item_id", NULL }, .next = NULL}
 };
 
+/*
+ * Services fields mapping
+ * This mapping aligns syscollector/services DB sync fields to event keys (ECS-aligned where applicable).
+ */
+static struct deltas_fields_match_list const SERVICES_FIELDS[] = {
+    { .current = { "scan_time", NULL }, .next = &SERVICES_FIELDS[1]},
+    { .current = { "name", "service.id" }, .next = &SERVICES_FIELDS[2]},
+    { .current = { "display_name", "service.name" }, .next = &SERVICES_FIELDS[3]},
+    { .current = { "description", "service.description" }, .next = &SERVICES_FIELDS[4]},
+    { .current = { "service_type", "service.type" }, .next = &SERVICES_FIELDS[5]},
+    { .current = { "start_type", "service.start_type" }, .next = &SERVICES_FIELDS[6]},
+    { .current = { "state", "service.state" }, .next = &SERVICES_FIELDS[7]},
+    { .current = { "pid", "process.pid" }, .next = &SERVICES_FIELDS[8]},
+    { .current = { "ppid", NULL }, .next = &SERVICES_FIELDS[9]},
+    { .current = { "binary_path", "process.executable" }, .next = &SERVICES_FIELDS[10]},
+    { .current = { "load_state", "service.load_state" }, .next = &SERVICES_FIELDS[11]},
+    { .current = { "active_state", "service.state" }, .next = &SERVICES_FIELDS[12]},
+    { .current = { "sub_state", "service.sub_state" }, .next = &SERVICES_FIELDS[13]},
+    { .current = { "unit_file_state", "service.enabled" }, .next = &SERVICES_FIELDS[14]},
+    { .current = { "status", "service.state" }, .next = &SERVICES_FIELDS[15]},
+    { .current = { "user", "user.name" }, .next = &SERVICES_FIELDS[16]},
+    { .current = { "can_stop", "service.can_stop" }, .next = &SERVICES_FIELDS[17]},
+    { .current = { "can_reload", "service.can_reload" }, .next = &SERVICES_FIELDS[18]},
+    { .current = { "service_exit_code", "service.exit_code" }, .next = &SERVICES_FIELDS[19]},
+    { .current = { "checksum", NULL }, .next = &SERVICES_FIELDS[20]},
+    { .current = { "item_id", NULL }, .next = NULL}
+};
+
 void SyscollectorInit(){
 
     os_calloc(1, sizeof(OSDecoderInfo), sysc_decoder);
@@ -2104,8 +2132,9 @@ static const struct deltas_fields_match_list * get_field_list(const char *type) 
         ret_val = GROUP_FIELDS;
     } else if(strcmp(type, "browser_extensions") == 0) {
         ret_val = BROWSER_EXTENSION_FIELDS;
-    }
-    else {
+    } else if(strcmp(type, "services") == 0) {
+        ret_val = SERVICES_FIELDS;
+    } else {
         /* This could be a new type of synchronization that is not yet implemented or corrupted data. */
         merror(INVALID_TYPE, type);
     }
@@ -2186,6 +2215,8 @@ static const struct delta_values_mapping_list * get_mapping_list(const char *typ
     } else if(strcmp(type, "groups") == 0) {
         ret_val = NULL;
     } else if(strcmp(type, "browser_extensions") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "services") == 0) {
         ret_val = NULL;
     } else {
         merror(INVALID_TYPE, type);
