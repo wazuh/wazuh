@@ -9,7 +9,8 @@
  * Foundation.
  */
 
- #include "../../wmodules_def.h"
+#include "wmodules_def.h"
+
 #include "wmodules.h"
 #include <os_net/os_net.h>
 #include <sys/stat.h>
@@ -17,9 +18,23 @@
 #include "expression.h"
 #include "shared.h"
 #include "sym_load.h"
+#include "mq_op.h"
+#include "atomic.h"
+#include "defs.h"
 #include "logging_helper.h"
 
-#include "sca.h"
+#include "sca/include/sca.h"
+
+// SCA message queue variables
+static int g_sca_queue = -1;
+static int g_shutting_down = 0;
+static const long g_max_eps = 100000; // Hardcoded, but same as syscollector
+static atomic_int_t g_n_msg_sent = ATOMIC_INT_INITIALIZER(0);
+
+// Forward declarations
+static int wm_sca_send_stateless(const char* message);
+static int wm_sca_persist_stateful(const char* message);
+static bool wm_sca_is_shutting_down(void);
 
 #undef minfo
 #undef mwarn
@@ -63,6 +78,7 @@ sca_start_func sca_start_ptr = NULL;
 sca_stop_func sca_stop_ptr = NULL;
 sca_sync_message_func sca_sync_message_ptr = NULL;
 sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
+sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
 
 // Logging callback function for SCA module
 static void sca_log_callback(const modules_log_level_t level, const char* log, const char* tag) {
@@ -106,10 +122,16 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
         sca_sync_message_ptr = so_get_function_sym(sca_module, "sca_sync_message");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
+        sca_set_push_functions_ptr = so_get_function_sym(sca_module, "sca_set_push_functions");
 
         // Set the wm_exec function pointer in the SCA module
         if (sca_set_wm_exec_ptr) {
             sca_set_wm_exec_ptr(wm_exec);
+        }
+
+        // Set the push functions for message handling
+        if (sca_set_push_functions_ptr) {
+            sca_set_push_functions_ptr(wm_sca_send_stateless, wm_sca_persist_stateful);
         }
     } else {
         merror("Can't get SCA module handle.");
@@ -135,14 +157,29 @@ void * wm_sca_main(wm_sca_t * data) {
 }
 
 static int wm_sca_start(wm_sca_t *sca) {
+    // Initialize message queue
+    g_sca_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    if (g_sca_queue < 0) {
+        merror("Cannot initialize SCA message queue.");
+        return -1;
+    }
+
+    g_shutting_down = 0;
+    atomic_int_set(&g_n_msg_sent, 0);
+
+    minfo("SCA message queue initialized successfully.");
+
     sca_start_ptr(sca_log_callback, sca);
     return 0;
 }
 
 // Destroy data
 void wm_sca_destroy(wm_sca_t * data) {
+    g_shutting_down = 1;
 
-    sca_stop_ptr();
+    if (sca_stop_ptr) {
+        sca_stop_ptr();
+    }
 
     if (data) {
         os_free(data);
@@ -173,4 +210,48 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
 
 
     return root;
+}
+
+static int wm_sca_send_stateless(const char* message) {
+    if (!message) {
+        return -1;
+    }
+
+    mdebug1("Sending SCA event: %s", message);
+
+    if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0) {
+        merror("Error sending message to queue");
+
+        if ((g_sca_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            merror("Cannot restart SCA message queue");
+            return -1;
+        }
+
+        // Try to send it again
+        if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0) {
+            merror("Error sending message to queue after restart");
+            return -1;
+        }
+    }
+
+    if (atomic_int_inc(&g_n_msg_sent) >= g_max_eps) {
+        sleep(1);
+        atomic_int_set(&g_n_msg_sent, 0);
+    }
+
+    return 0;
+}
+
+static int wm_sca_persist_stateful(const char* message) {
+    if (!message) {
+        return -1;
+    }
+
+    mdebug1("Persisting SCA event: %s", message);
+    // For now, just log the message. In the future, this could persist to a database
+    return 0;
+}
+
+static bool wm_sca_is_shutting_down(void) {
+    return (bool)g_shutting_down;
 }
