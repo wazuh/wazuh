@@ -25,6 +25,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(APPEND TEST_SRC 
     test_chrome_windows.cpp
+    test_firefox_windows.cpp
   )
 endif()
 
