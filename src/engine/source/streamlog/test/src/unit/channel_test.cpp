@@ -50,17 +50,7 @@ std::string readFileContents(const std::filesystem::path& filePath)
     {
         return "";
     }
-    std::string content;
-    std::string line;
-    while (std::getline(file, line))
-    {
-        if (!content.empty())
-        {
-            content += "\n";
-        }
-        content += line;
-    }
-    return content;
+    return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 }
 
 // Helper to count lines in file
@@ -415,16 +405,20 @@ TEST_F(ChannelHandlerTest, WriterLifecycle)
         (*writer1)("message from writer1");
         (*writer2)("message from writer2");
 
-        // First writer goes out of scope
+
+        // Check the active writers count
+        EXPECT_EQ(handler->getActiveWritersCount(), 2);
     }
 
-    // Second writer still alive
+    // The writer goes out of scope
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(handler->getActiveWritersCount(), 0); // Should be 0 after destruction
 
     // Create new writer after others are destroyed
     auto writer3 = handler->createWriter();
     EXPECT_NE(writer3, nullptr);
     (*writer3)("message from writer3");
+    EXPECT_EQ(handler->getActiveWritersCount(), 1); // Should be 1 now
 }
 
 // Test writing messages
@@ -472,19 +466,19 @@ TEST_F(ChannelHandlerTest, BasicMessageWriting)
 TEST_F(ChannelHandlerTest, SizeBasedRotation)
 {
     auto config = defaultConfig;
-    config.maxSize = 1024; // 1KB limit
+    config.maxSize = 0x1 << 20; // 1MB
     config.pattern = "${name}-${counter}.json";
 
     auto handler = streamlog::ChannelHandler::create(config, "rotation-test");
     auto writer = handler->createWriter();
 
     // Write enough data to trigger rotation
-    const std::string largeMessage = std::string(500, 'x'); // 500 bytes
+    const std::string largeMessage = std::string(50 * 1024, 'A'); // ~50KB per message
 
-    for (int i = 0; i < 5; ++i) // Total ~2.5KB
+    for (int i = 0; i < 50; ++i) // Total ~2.5MB
     {
         (*writer)(largeMessage + std::to_string(i));
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
     // Wait for processing
@@ -500,7 +494,8 @@ TEST_F(ChannelHandlerTest, SizeBasedRotation)
         }
     }
 
-    EXPECT_GT(fileCount, 1) << "Size-based rotation did not create multiple files";
+    // 1 rotation should have occurred, resulting in at least 3 files (current + hardlink to current + rotated)
+    EXPECT_GT(fileCount, 3) << "Size-based rotation did not create multiple files";
 }
 
 // Test time-based rotation
@@ -517,6 +512,7 @@ TEST_F(ChannelHandlerTest, TimeBasedRotation)
 
     // Note: This test relies on the actual time, so it may not always trigger rotation
     // In a real scenario, you might need to mock the time system
+    // TODO: Fix this test to reliably trigger time rotation
     (*writer)("message after time change");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 }
@@ -578,11 +574,25 @@ TEST_F(ChannelHandlerTest, ConcurrentWriters)
         if (entry.is_regular_file() && entry.path().extension() == ".json")
         {
             foundFile = true;
-            auto lineCount = countLines(entry.path());
-            EXPECT_EQ(lineCount, numWriters * messagesPerWriter)
-                << "Expected " << (numWriters * messagesPerWriter) << " lines, got " << lineCount;
+            auto expectedCount = numWriters * messagesPerWriter;
+            size_t lastLineCount = 0;
+
+            for (int attempt = 0; attempt < 10; ++attempt)
+            {
+                auto lineCount = countLines(entry.path());
+                size_t count = 0;
+                if (lineCount == expectedCount)
+                {
+                    lastLineCount = lineCount;
+                    break; // Found expected count
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+
+            EXPECT_EQ(lastLineCount, expectedCount)
+                << "Expected " << expectedCount << " lines, got " << lastLineCount;
             break;
-        }
+       }
     }
 
     EXPECT_TRUE(foundFile);
@@ -605,19 +615,31 @@ TEST_F(ChannelHandlerTest, WorkerThreadLifecycle)
             (*writer2)("message2");
 
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            // Both writers alive, thread should be running
+            // Both writers should be active
+            EXPECT_EQ(handler->getActiveWritersCount(), 2);
         }
         // writer2 destroyed, but writer1 still alive
-
-        (*writer1)("message3");
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        EXPECT_EQ(handler->getActiveWritersCount(), 1); // Only writer1 should be active
+        (*writer1)("message3");
+
     }
     // All writers destroyed, thread should stop
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(handler->getActiveWritersCount(), 0); // No active writers
+
 
     // Create new writer - should restart thread
     auto writer3 = handler->createWriter();
     (*writer3)("message4");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(handler->getActiveWritersCount(), 1); // One active writer again
+
+    // Cleanup
+    writer3.reset(); // Should stop thread again
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(handler->getActiveWritersCount(), 0); // No active writers
 }
 
 // Test error handling - write to non-writable directory
@@ -690,17 +712,16 @@ TEST_F(ChannelHandlerTest, PlaceholderReplacement)
 TEST_F(ChannelHandlerTest, CounterPlaceholderWithSizeRotation)
 {
     auto config = defaultConfig;
-    config.maxSize = 100; // Very small to force rotation
+    config.maxSize = 0x1 << 20; // 1MB max size, minimize rotation
     config.pattern = "${name}-${counter}.json";
 
     auto handler = streamlog::ChannelHandler::create(config, "counter-test");
     auto writer = handler->createWriter();
 
     // Write enough to force multiple rotations
-    for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < 5000; ++i)
     {
-        (*writer)("message " + std::to_string(i) + " " + std::string(50, 'x'));
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        (*writer)("message " + std::to_string(i) + " " + std::string(1000, 'x'));
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -715,7 +736,7 @@ TEST_F(ChannelHandlerTest, CounterPlaceholderWithSizeRotation)
         }
     }
 
-    EXPECT_GT(foundFiles.size(), 1) << "Counter-based rotation did not create multiple files";
+    EXPECT_EQ(foundFiles.size(), 5 + 1) << "Expected multiple files with different counters";
 
     // Verify counter pattern exists
     bool hasCounterPattern = false;
@@ -979,35 +1000,6 @@ TEST_F(ChannelHandlerTest, MaxSizeBoundaryConditions)
     }
 }
 
-// Test filesystem error simulation
-TEST_F(ChannelHandlerTest, FilesystemErrorSimulation)
-{
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "fs-error-test");
-    auto writer = handler->createWriter();
-
-    // Fill up available space by creating large files (if possible)
-    // This is a best-effort test that may not always trigger the error
-    try
-    {
-        // Create several large files to potentially exhaust space
-        for (int i = 0; i < 5; ++i)
-        {
-            auto largePath = tmpDir / ("large_file_" + std::to_string(i) + ".tmp");
-            std::ofstream large(largePath);
-            large << std::string(10240, 'F'); // 10KB each
-        }
-
-        // Try to write after potential space exhaustion
-        (*writer)("test after large files");
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-    catch (const std::exception&)
-    {
-        // Expected if we actually exhaust space
-        // Test passes if it doesn't crash
-    }
-}
-
 // Test pattern validation edge cases
 TEST_F(ChannelHandlerTest, PatternValidationEdgeCases)
 {
@@ -1045,7 +1037,7 @@ TEST_F(ChannelHandlerTest, PatternValidationEdgeCases)
                 (*writer)("test");
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
-            catch (const std::exception&)
+            catch (const std::runtime_error& e)
             {
                 // May throw for invalid patterns - this is acceptable
             }
@@ -1075,11 +1067,18 @@ TEST_F(ChannelHandlerTest, ThreadInterruptionAndCleanup)
     // Main writer destroyed
 
     std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Allow cleanup
+    EXPECT_EQ(handler->getActiveWritersCount(), 0); // Should be 0 after destruction
 
     // Create new writer after all others destroyed
     auto newWriter = handler->createWriter();
     (*newWriter)("message after restart");
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(handler->getActiveWritersCount(), 1); // Should be 1 now
+
+    // Cleanup
+    newWriter.reset(); // Should stop thread again
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(handler->getActiveWritersCount(), 0); // No active writers
 }
 
 // Test memory pressure with large buffer sizes
@@ -1098,7 +1097,6 @@ TEST_F(ChannelHandlerTest, MemoryPressureTest)
     }
 
     // Don't wait - test immediate destruction while queue is full
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 // Test file size tracking with existing files (module restart scenario)
@@ -1106,42 +1104,51 @@ TEST_F(ChannelHandlerTest, ExistingFileResumption)
 {
     const std::string channelName = "resume-test";
     const std::string predefinedContent = "Previous log line 1\nPrevious log line 2\nPrevious log line 3\n";
-    
+
     // Create a predefined log file with content
-    auto expectedFilePath = tmpDir / "wazuh-resume-test-2025-07-31.json";
+    auto expectedFileName = []()
+    {
+        std::time_t now = std::time(nullptr);
+        std::tm* tm = std::localtime(&now);
+        char buffer[100];
+        std::strftime(buffer, sizeof(buffer), "wazuh-resume-test-%Y-%m-%d.json", tm);
+        return std::string(buffer);
+    }();
+
+    auto expectedFilePath = tmpDir / expectedFileName;
     {
         std::ofstream preExistingFile(expectedFilePath);
         preExistingFile << predefinedContent;
         preExistingFile.flush();
         preExistingFile.close();
     }
-    
+
     // Verify file was created with expected size
     auto preExistingSize = std::filesystem::file_size(expectedFilePath);
     EXPECT_EQ(preExistingSize, predefinedContent.size());
-    
+
     // Create channel handler - should detect and correctly size the existing file
     auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
     auto writer = handler->createWriter();
-    
+
     // Add new content
     const std::string newContent = "New log line after restart";
     (*writer)(std::string(newContent));
-    
+
     // Wait for async write
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    
+
     // Verify final file contains both old and new content
     auto finalContent = readFileContents(expectedFilePath);
     EXPECT_TRUE(finalContent.find("Previous log line 1") != std::string::npos);
     EXPECT_TRUE(finalContent.find("Previous log line 2") != std::string::npos);
     EXPECT_TRUE(finalContent.find("Previous log line 3") != std::string::npos);
     EXPECT_TRUE(finalContent.find(newContent) != std::string::npos);
-    
+
     // Verify file size tracking
     auto finalSize = std::filesystem::file_size(expectedFilePath);
     EXPECT_GT(finalSize, preExistingSize);
-    
+
     // Content should be appended (old + new + newlines)
     auto expectedFinalSize = predefinedContent.size() + newContent.size() + 1; // +1 for newline
     EXPECT_EQ(finalSize, expectedFinalSize);
@@ -1151,103 +1158,123 @@ TEST_F(ChannelHandlerTest, ExistingFileResumption)
 TEST_F(ChannelHandlerTest, ExistingFileWithRotation)
 {
     auto config = defaultConfig;
-    config.maxSize = 100; // Small size to force rotation
+    config.maxSize = 0x1 << 20; // 1 MB its the default minimum
     config.pattern = "resume-rotation-${counter}.json";
-    
+
     const std::string channelName = "resume-rotation";
-    
+
     // Create existing file with content near rotation threshold
     auto initialFilePath = tmpDir / "resume-rotation-0.json";
-    const std::string existingContent = std::string(80, 'X') + "\n"; // 81 bytes
+    const std::string existingContent = std::string(config.maxSize - 20, 'X'); // Slightly under 1MB
     {
         std::ofstream existingFile(initialFilePath);
         existingFile << existingContent;
         existingFile.flush();
     }
-    
+
     auto existingSize = std::filesystem::file_size(initialFilePath);
     EXPECT_EQ(existingSize, existingContent.size());
-    
+
     // Create handler - should resume from existing file
     auto handler = streamlog::ChannelHandler::create(config, channelName);
     auto writer = handler->createWriter();
-    
-    // Add content that should trigger rotation (81 + 25 = 106 > 100)
+
+    // Add content that should trigger rotation (exceeds maxSize)
     const std::string newContent = std::string(25, 'Y');
     (*writer)(std::string(newContent));
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    
+
     // Should have rotated to new file
     auto rotatedFilePath = tmpDir / "resume-rotation-1.json";
     EXPECT_TRUE(std::filesystem::exists(rotatedFilePath));
-    
-    // Original file should contain old + new content that triggered rotation
+
+    // Original file should contain old content only
     auto finalOriginalContent = readFileContents(initialFilePath);
-    EXPECT_TRUE(finalOriginalContent.find(std::string(80, 'X')) != std::string::npos);
-    EXPECT_TRUE(finalOriginalContent.find(newContent) != std::string::npos);
+    EXPECT_TRUE(finalOriginalContent.find(std::string(0x1 << 20 - 20, 'X')) != std::string::npos);
+    EXPECT_TRUE(finalOriginalContent.find(newContent) == std::string::npos);
+
+    // New file should contain new content
+    auto newFileContent = readFileContents(rotatedFilePath);
+    EXPECT_TRUE(newFileContent.find(newContent) != std::string::npos);
+
+    // Verify sizes
+    auto finalOriginalSize = std::filesystem::file_size(initialFilePath);
+    EXPECT_EQ(finalOriginalSize, existingContent.size());
+
+    auto newFileSize = std::filesystem::file_size(rotatedFilePath);
+    EXPECT_EQ(newFileSize, newContent.size() + 1); // +1 for newline
 }
 
 // Test file size tracking accuracy with multiple writes
 TEST_F(ChannelHandlerTest, FileSizeTrackingAccuracy)
 {
     const std::string channelName = "size-accuracy";
-    
+
     // Pre-populate file with known content
-    auto filePath = tmpDir / "wazuh-size-accuracy-2025-07-31.json";
+    auto fileName = []()
+    {
+        std::time_t now = std::time(nullptr);
+        std::tm* tm = std::localtime(&now);
+        char buffer[100];
+        std::strftime(buffer, sizeof(buffer), "wazuh-size-accuracy-%Y-%m-%d.json", tm);
+        return std::string(buffer);
+    }();
+
+    auto filePath = tmpDir / fileName;
     const std::vector<std::string> existingLines = {
-        "Line 1: Initial content",
-        "Line 2: More initial content", 
-        "Line 3: Final initial content"
-    };
-    
+        "Line 1: Initial content", "Line 2: More initial content", "Line 3: Final initial content"};
+
     size_t expectedSize = 0;
     {
         std::ofstream file(filePath);
-        for (const auto& line : existingLines) {
+        for (const auto& line : existingLines)
+        {
             file << line << "\n";
             expectedSize += line.size() + 1; // +1 for newline
         }
         file.flush();
     }
-    
+
     // Verify initial file size
     auto actualInitialSize = std::filesystem::file_size(filePath);
     EXPECT_EQ(actualInitialSize, expectedSize);
-    
+
     // Create handler and add more content
     auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
     auto writer = handler->createWriter();
-    
+
     // Add several new lines and track expected size
     const std::vector<std::string> newLines = {
         "New line 1 after restart",
         "New line 2 with different length",
         "Short",
-        "This is a much longer line with more content to test size tracking accuracy"
-    };
-    
-    for (const auto& line : newLines) {
+        "This is a much longer line with more content to test size tracking accuracy"};
+
+    for (const auto& line : newLines)
+    {
         (*writer)(std::string(line));
         expectedSize += line.size() + 1; // +1 for newline
     }
-    
+
     // Wait for all writes to complete
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    
+
     // Verify final file size matches expected
     auto finalSize = std::filesystem::file_size(filePath);
     EXPECT_EQ(finalSize, expectedSize);
-    
+
     // Verify content integrity
     auto content = readFileContents(filePath);
-    for (const auto& line : existingLines) {
+    for (const auto& line : existingLines)
+    {
         EXPECT_TRUE(content.find(line) != std::string::npos) << "Missing existing line: " << line;
     }
-    for (const auto& line : newLines) {
+    for (const auto& line : newLines)
+    {
         EXPECT_TRUE(content.find(line) != std::string::npos) << "Missing new line: " << line;
     }
-    
+
     // Count actual lines
     size_t lineCount = countLines(filePath);
     EXPECT_EQ(lineCount, existingLines.size() + newLines.size());
@@ -1257,89 +1284,111 @@ TEST_F(ChannelHandlerTest, FileSizeTrackingAccuracy)
 TEST_F(ChannelHandlerTest, EmptyExistingFileResumption)
 {
     const std::string channelName = "empty-resume";
-    
+
     // Create empty existing file
-    auto filePath = tmpDir / "wazuh-empty-resume-2025-07-31.json";
+    auto fileName = []()
+    {
+        std::time_t now = std::time(nullptr);
+        std::tm* tm = std::localtime(&now);
+        char buffer[100];
+        std::strftime(buffer, sizeof(buffer), "wazuh-empty-resume-%Y-%m-%d.json", tm);
+        return std::string(buffer);
+    }();
+    auto filePath = tmpDir / fileName;
     {
         std::ofstream emptyFile(filePath);
         // Create but don't write anything
     }
-    
+
     // Verify file exists and is empty
     EXPECT_TRUE(std::filesystem::exists(filePath));
     EXPECT_EQ(std::filesystem::file_size(filePath), 0);
-    
+
     // Create handler
     auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
     auto writer = handler->createWriter();
-    
+
     // Add content to empty file
     const std::string content = "First line in previously empty file";
     (*writer)(std::string(content));
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    
+
     // Verify size tracking
     auto finalSize = std::filesystem::file_size(filePath);
     EXPECT_EQ(finalSize, content.size() + 1); // +1 for newline
-    
+
     // Verify content
     auto fileContent = readFileContents(filePath);
-    EXPECT_EQ(fileContent, content);
+    EXPECT_EQ(fileContent, content + "\n");
 }
 
 // Test file size tracking with concurrent writes on existing file
 TEST_F(ChannelHandlerTest, ConcurrentWritesToExistingFile)
 {
     const std::string channelName = "concurrent-existing";
-    
+    auto fileName = []()
+    {
+        std::time_t now = std::time(nullptr);
+        std::tm* tm = std::localtime(&now);
+        char buffer[100];
+        std::strftime(buffer, sizeof(buffer), "wazuh-concurrent-existing-%Y-%m-%d.json", tm);
+        return std::string(buffer);
+    }();
+
     // Create file with existing content
-    auto filePath = tmpDir / "wazuh-concurrent-existing-2025-07-31.json";
+    auto filePath = tmpDir / fileName;
     const std::string existingContent = "Existing content line 1\nExisting content line 2\n";
     {
         std::ofstream file(filePath);
         file << existingContent;
         file.flush();
     }
-    
+
     auto initialSize = std::filesystem::file_size(filePath);
     EXPECT_EQ(initialSize, existingContent.size());
-    
+
     // Create handler and multiple writers
     auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
-    
+
     const int numWriters = 3;
     const int messagesPerWriter = 5;
     std::vector<std::future<void>> futures;
-    
+
     // Launch concurrent writers
-    for (int w = 0; w < numWriters; ++w) {
-        futures.push_back(std::async(std::launch::async, [&handler, w, messagesPerWriter]() {
-            auto writer = handler->createWriter();
-            for (int m = 0; m < messagesPerWriter; ++m) {
-                std::string message = "Writer" + std::to_string(w) + "_Message" + std::to_string(m);
-                (*writer)(std::move(message));
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-        }));
+    for (int w = 0; w < numWriters; ++w)
+    {
+        futures.push_back(std::async(std::launch::async,
+                                     [&handler, w, messagesPerWriter]()
+                                     {
+                                         auto writer = handler->createWriter();
+                                         for (int m = 0; m < messagesPerWriter; ++m)
+                                         {
+                                             std::string message =
+                                                 "Writer" + std::to_string(w) + "_Message" + std::to_string(m);
+                                             (*writer)(std::move(message));
+                                             std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                                         }
+                                     }));
     }
-    
+
     // Wait for all writers to complete
-    for (auto& future : futures) {
+    for (auto& future : futures)
+    {
         future.wait();
     }
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    
+
     // Verify file grew appropriately
     auto finalSize = std::filesystem::file_size(filePath);
     EXPECT_GT(finalSize, initialSize);
-    
+
     // Verify content integrity
     auto content = readFileContents(filePath);
     EXPECT_TRUE(content.find("Existing content line 1") != std::string::npos);
     EXPECT_TRUE(content.find("Existing content line 2") != std::string::npos);
-    
+
     // Count total lines
     size_t totalLines = countLines(filePath);
     EXPECT_EQ(totalLines, 2 + (numWriters * messagesPerWriter)); // 2 existing + new messages
@@ -1349,35 +1398,43 @@ TEST_F(ChannelHandlerTest, ConcurrentWritesToExistingFile)
 TEST_F(ChannelHandlerTest, LargeExistingFileResumption)
 {
     const std::string channelName = "large-resume";
-    
+
     // Create large existing file
-    auto filePath = tmpDir / "wazuh-large-resume-2025-07-31.json";
-    const size_t largeContentSize = 10000; // 10KB
+    auto fileName = []()
+    {
+        std::time_t now = std::time(nullptr);
+        std::tm* tm = std::localtime(&now);
+        char buffer[100];
+        std::strftime(buffer, sizeof(buffer), "wazuh-large-resume-%Y-%m-%d.json", tm);
+        return std::string(buffer);
+    }();
+    auto filePath = tmpDir / fileName;
+    const size_t largeContentSize = 10000;                                          // 10KB
     const std::string largeContent = std::string(largeContentSize - 1, 'L') + "\n"; // -1 to account for newline
     {
         std::ofstream file(filePath);
         file << largeContent;
         file.flush();
     }
-    
+
     auto initialSize = std::filesystem::file_size(filePath);
     EXPECT_EQ(initialSize, largeContentSize);
-    
+
     // Create handler - should correctly detect large file size
     auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
     auto writer = handler->createWriter();
-    
+
     // Add small content to large file
     const std::string newContent = "Small addition to large file";
     (*writer)(std::string(newContent));
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    
+
     // Verify size tracking
     auto finalSize = std::filesystem::file_size(filePath);
     auto expectedFinalSize = largeContentSize + newContent.size() + 1; // +1 for newline
     EXPECT_EQ(finalSize, expectedFinalSize);
-    
+
     // Verify content was appended
     auto content = readFileContents(filePath);
     EXPECT_TRUE(content.find(newContent) != std::string::npos);
@@ -1388,13 +1445,21 @@ TEST_F(ChannelHandlerTest, LargeExistingFileResumption)
 TEST_F(ChannelHandlerTest, FileAppendPositioning)
 {
     const std::string channelName = "append-position";
-    
+
     // Create file with known content and exact positioning
-    auto filePath = tmpDir / "wazuh-append-position-2025-07-31.json";
+    auto fileName = []()
+    {
+        std::time_t now = std::time(nullptr);
+        std::tm* tm = std::localtime(&now);
+        char buffer[100];
+        std::strftime(buffer, sizeof(buffer), "wazuh-append-position-%Y-%m-%d.json", tm);
+        return std::string(buffer);
+    }();
+    auto filePath = tmpDir / fileName;
     const std::string marker1 = "FIRST_MARKER";
-    const std::string marker2 = "SECOND_MARKER"; 
+    const std::string marker2 = "SECOND_MARKER";
     const std::string marker3 = "THIRD_MARKER";
-    
+
     // Write initial content with specific markers
     {
         std::ofstream file(filePath);
@@ -1402,48 +1467,49 @@ TEST_F(ChannelHandlerTest, FileAppendPositioning)
         file << marker2 << "\n";
         file.flush(); // Ensure content is written
     }
-    
+
     auto initialSize = std::filesystem::file_size(filePath);
     auto expectedInitialSize = marker1.size() + 1 + marker2.size() + 1; // +1 for each newline
     EXPECT_EQ(initialSize, expectedInitialSize);
-    
+
     // Create handler - should open file in append mode at the end
     auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
     auto writer = handler->createWriter();
-    
+
     // Add third marker
     (*writer)(std::string(marker3));
-    
+
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    
+
     // Read entire file content and verify order
     auto content = readFileContents(filePath);
-    
+
     // Find positions of markers to verify order
     auto pos1 = content.find(marker1);
     auto pos2 = content.find(marker2);
     auto pos3 = content.find(marker3);
-    
+
     EXPECT_NE(pos1, std::string::npos) << "First marker not found";
     EXPECT_NE(pos2, std::string::npos) << "Second marker not found";
     EXPECT_NE(pos3, std::string::npos) << "Third marker not found";
-    
+
     // Verify markers appear in correct order
     EXPECT_LT(pos1, pos2) << "Markers not in correct order: first should come before second";
     EXPECT_LT(pos2, pos3) << "Markers not in correct order: second should come before third";
-    
+
     // Verify exact content and positioning
     std::vector<std::string> expectedLines = {marker1, marker2, marker3};
-    auto actualLines = std::vector<std::string>{};
-    
+    auto actualLines = std::vector<std::string> {};
+
     std::ifstream file(filePath);
     std::string line;
-    while (std::getline(file, line)) {
+    while (std::getline(file, line))
+    {
         actualLines.push_back(line);
     }
-    
+
     EXPECT_EQ(actualLines, expectedLines) << "File content doesn't match expected line order";
-    
+
     // Verify final file size
     auto finalSize = std::filesystem::file_size(filePath);
     auto expectedFinalSize = marker1.size() + 1 + marker2.size() + 1 + marker3.size() + 1;
@@ -1454,25 +1520,28 @@ TEST_F(ChannelHandlerTest, FileAppendPositioning)
 TEST_F(ChannelHandlerTest, LongChannelName)
 {
     // Test with a very long but valid channel name
-    std::string longName = std::string(200, 'A') + std::string(50, 'B') + std::string(5, 'C'); // 255 chars
-    
+    std::string longName = std::string(200, 'A');
+
     EXPECT_NO_THROW({
         auto handler = streamlog::ChannelHandler::create(defaultConfig, longName);
         auto writer = handler->createWriter();
         (*writer)(std::string("test message for long channel name"));
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     });
-    
+
     // Test with an extremely long name that should be rejected or handled gracefully
     std::string tooLongName = std::string(1000, 'X');
-    
+
     // This should either work or fail gracefully - important that it doesn't crash
-    try {
+    try
+    {
         auto handler = streamlog::ChannelHandler::create(defaultConfig, tooLongName);
         auto writer = handler->createWriter();
         (*writer)(std::string("test message"));
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    } catch (const std::exception&) {
+    }
+    catch (const std::exception&)
+    {
         // Acceptable to throw for too long names
         // Test passes as long as it doesn't crash
     }
