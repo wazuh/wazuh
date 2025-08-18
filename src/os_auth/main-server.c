@@ -907,7 +907,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
             uint32_t index = events[i].data.u32;
             if (index == SERVER_INDEX)
             {
-                if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
+                if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) >= 0) {
                     struct client *new_client;
                     os_malloc(sizeof(struct client), new_client);
                     new_client->socket = client_sock;
