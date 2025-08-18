@@ -1,5 +1,5 @@
 /*
- * Wazuh inventory harvester
+ * Wazuh inventory sync
  * Copyright (C) 2015, Wazuh Inc.
  * January 20, 2025.
  *

@@ -41,12 +41,6 @@ time_t __wrap_time(time_t *__timer) {
     return 1;
 }
 
-int __wrap_wdb_create_profile(const char *path) {
-    check_expected(path);
-
-    return mock_type(int);
-}
-
 uid_t __wrap_Privsep_GetUser(const char *name) {
     check_expected(name);
 

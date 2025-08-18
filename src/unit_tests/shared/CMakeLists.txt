@@ -39,9 +39,6 @@ else()
                                     -Wl,--wrap=utf8_CreateFile -Wl,--wrap=utf8_stat64 ${DEBUG_OP_WRAPPERS}")
 endif()
 
-list(APPEND shared_tests_names "test_integrity_op")
-list(APPEND shared_tests_flags " ")
-
 list(APPEND shared_tests_names "test_rbtree_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")

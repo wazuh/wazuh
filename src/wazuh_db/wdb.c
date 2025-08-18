@@ -30,11 +30,6 @@
 #define BUSY_SLEEP 1
 #define MAX_ATTEMPTS 1000
 
-// Router provider variables
-ROUTER_PROVIDER_HANDLE router_agent_events_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_fim_events_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_inventory_events_handle = NULL;
-
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";
 static const char *SQL_TRUNCATE_TEMP_TABLE = "DELETE FROM s;";
 static const char *SQL_INSERT_INTO_TEMP_TABLE = "INSERT INTO s(pageno) SELECT pageno FROM dbstat ORDER BY path;";
@@ -49,123 +44,6 @@ static const char *SQL_BEGIN = "BEGIN;";
 static const char *SQL_COMMIT = "COMMIT;";
 static const char *SQL_ROLLBACK = "ROLLBACK;";
 static const char *SQL_STMT[] = {
-    [WDB_STMT_FIM_LOAD] = "SELECT changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE file = ?;",
-    [WDB_STMT_FIM_FIND_ENTRY] = "SELECT 1 FROM fim_entry WHERE file = ?",
-    [WDB_STMT_FIM_INSERT_ENTRY] = "INSERT INTO fim_entry (file, type, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, full_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_FIM_INSERT_ENTRY2] = "INSERT OR REPLACE INTO fim_entry (file, type, date, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, attributes, symbolic_path, checksum, arch, value_name, value_type, full_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_FIM_UPDATE_ENTRY] = "UPDATE fim_entry SET date = strftime('%s', 'now'), changes = ?, size = ?, perm = ?, uid = ?, gid = ?, md5 = ?, sha1 = ?, uname = ?, gname = ?, mtime = ?, inode = ?, sha256 = ?, attributes = ?, symbolic_path = ? WHERE file = ?;",
-    [WDB_STMT_FIM_DELETE] = "DELETE FROM fim_entry WHERE full_path = ?;",
-    [WDB_STMT_FIM_UPDATE_DATE] = "UPDATE fim_entry SET date = strftime('%s', 'now') WHERE file = ?;",
-    [WDB_STMT_FIM_FIND_DATE_ENTRIES] = "SELECT full_path, changes, size, perm, uid, gid, md5, sha1, uname, gname, mtime, inode, sha256, date, attributes, symbolic_path FROM fim_entry WHERE date < ?;",
-    [WDB_STMT_FIM_GET_ATTRIBUTES] = "SELECT file, attributes from fim_entry WHERE attributes IS NOT '0';",
-    [WDB_STMT_FIM_UPDATE_ATTRIBUTES] = "UPDATE fim_entry SET attributes = ? WHERE file = ?;",
-    [WDB_STMT_OSINFO_INSERT] = "INSERT INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, checksum, reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_OSINFO_INSERT2] = "INSERT OR REPLACE INTO sys_osinfo (scan_id, scan_time, hostname, architecture, os_name, os_version, os_codename, os_major, os_minor,  os_patch, os_build, os_platform, sysname, release, version, os_release, os_display_version, checksum, reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_OSINFO_DEL] = "DELETE FROM sys_osinfo;",
-    [WDB_STMT_OSINFO_GET] = "SELECT * FROM sys_osinfo;",
-    [WDB_STMT_PROGRAM_INSERT] = "INSERT INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_PROGRAM_INSERT2] = "INSERT OR REPLACE INTO sys_programs (scan_id, scan_time, format, name, priority, section, size, vendor, install_time, version, architecture, multiarch, source, description, location, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_PROGRAM_DEL] = "DELETE FROM sys_programs WHERE scan_id != ?;",
-    [WDB_STMT_PROGRAM_UPD] = "UPDATE SYS_PROGRAMS SET CPE = ?, MSU_NAME = ? WHERE SCAN_ID = ? AND FORMAT IS ? AND NAME IS ? AND VENDOR IS ? AND VERSION IS ? AND ARCHITECTURE IS ?;",
-    [WDB_STMT_PROGRAM_GET] = "SELECT CPE, MSU_NAME, FORMAT, NAME, VENDOR, VERSION, ARCHITECTURE FROM SYS_PROGRAMS WHERE SCAN_ID != ?;",
-    [WDB_STMT_PROGRAM_FIND] = "SELECT 1 FROM sys_programs WHERE item_id = ?;",
-    [WDB_STMT_HWINFO_INSERT] = "INSERT INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_HWINFO_INSERT2] = "INSERT OR REPLACE INTO sys_hwinfo (scan_id, scan_time, board_serial, cpu_name, cpu_cores, cpu_mhz, ram_total, ram_free, ram_usage, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_HOTFIX_INSERT] = "INSERT INTO sys_hotfixes (scan_id, scan_time, hotfix, checksum) VALUES (?, ?, ?, ?);",
-    [WDB_STMT_HOTFIX_INSERT2] = "INSERT OR REPLACE INTO sys_hotfixes (scan_id, scan_time, hotfix, checksum) VALUES (?, ?, ?, ?);",
-    [WDB_STMT_HWINFO_DEL] = "DELETE FROM sys_hwinfo;",
-    [WDB_STMT_HOTFIX_DEL] = "DELETE FROM sys_hotfixes WHERE scan_id != ?;",
-    [WDB_STMT_PORT_INSERT] = "INSERT INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_PORT_INSERT2] = "INSERT OR REPLACE INTO sys_ports (scan_id, scan_time, protocol, local_ip, local_port, remote_ip, remote_port, tx_queue, rx_queue, inode, state, PID, process, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_PORT_DEL] = "DELETE FROM sys_ports WHERE scan_id != ?;",
-    [WDB_STMT_PROC_INSERT] = "INSERT INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    [WDB_STMT_PROC_INSERT2] = "INSERT OR REPLACE INTO sys_processes (scan_id, scan_time, pid, name, state, ppid, utime, stime, cmd, argvs, euser, ruser, suser, egroup, rgroup, sgroup, fgroup, priority, nice, size, vm_size, resident, share, start_time, pgrp, session, nlwp, tgid, tty, processor, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    [WDB_STMT_PROC_DEL] = "DELETE FROM sys_processes WHERE scan_id != ?;",
-    [WDB_STMT_NETINFO_INSERT] = "INSERT INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_NETINFO_INSERT2] = "INSERT OR REPLACE INTO sys_netiface (scan_id, scan_time, name, adapter, type, state, mtu, mac, tx_packets, rx_packets, tx_bytes, rx_bytes, tx_errors, rx_errors, tx_dropped, rx_dropped, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_PROTO_INSERT] = "INSERT INTO sys_netproto (scan_id, iface, type, gateway, dhcp, metric, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_PROTO_INSERT2] = "INSERT OR REPLACE INTO sys_netproto (scan_id, iface, type, gateway, dhcp, metric, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_ADDR_INSERT] = "INSERT INTO sys_netaddr (scan_id, iface, proto, address, netmask, broadcast, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_ADDR_INSERT2] = "INSERT OR REPLACE INTO sys_netaddr (scan_id, iface, proto, address, netmask, broadcast, checksum, item_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_NETINFO_DEL] = "DELETE FROM sys_netiface WHERE scan_id != ?;",
-    [WDB_STMT_PROTO_DEL] = "DELETE FROM sys_netproto WHERE scan_id != ?;",
-    [WDB_STMT_ADDR_DEL] = "DELETE FROM sys_netaddr WHERE scan_id != ?;",
-    [WDB_STMT_USER_INSERT] = "INSERT INTO sys_users (scan_id, scan_time, user_name, user_full_name, user_home, user_id, user_uid_signed, user_uuid, user_groups, user_group_id, user_group_id_signed, user_created, user_roles, user_shell, user_type, user_is_hidden, user_is_remote, user_last_login, user_auth_failed_count, user_auth_failed_timestamp, user_password_last_change, user_password_expiration_date, user_password_hash_algorithm, user_password_inactive_days, user_password_max_days_between_changes, user_password_min_days_between_changes, user_password_status, user_password_warning_days_before_expiration, process_pid, host_ip, login_status, login_type, login_tty, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_USER_INSERT2] = "INSERT OR REPLACE INTO sys_users (scan_id, scan_time, user_name, user_full_name, user_home, user_id, user_uid_signed, user_uuid, user_groups, user_group_id, user_group_id_signed, user_created, user_roles, user_shell, user_type, user_is_hidden, user_is_remote, user_last_login, user_auth_failed_count, user_auth_failed_timestamp, user_password_last_change, user_password_expiration_date, user_password_hash_algorithm, user_password_inactive_days, user_password_max_days_between_changes, user_password_min_days_between_changes, user_password_status, user_password_warning_days_before_expiration, process_pid, host_ip, login_status, login_type, login_tty, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_GROUP_INSERT] = "INSERT INTO sys_groups (scan_id, scan_time, group_id, group_name, group_description, group_id_signed, group_uuid, group_is_hidden, group_users, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_GROUP_INSERT2] = "INSERT OR REPLACE INTO sys_groups (scan_id, scan_time, group_id, group_name, group_description, group_id_signed, group_uuid, group_is_hidden, group_users, checksum) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_CISCAT_INSERT] = "INSERT INTO ciscat_results (scan_id, scan_time, benchmark, profile, pass, fail, error, notchecked, unknown, score) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
-    [WDB_STMT_CISCAT_DEL] = "DELETE FROM ciscat_results WHERE scan_id != ?;",
-    [WDB_STMT_SCAN_INFO_UPDATEFS] = "UPDATE scan_info SET first_start = ?, start_scan = ? WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_UPDATEFE] = "UPDATE scan_info SET first_end = ?, end_scan = ? WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_UPDATESS] = "UPDATE scan_info SET start_scan = ? WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_UPDATEES] = "UPDATE scan_info SET end_scan = ? WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_UPDATE1C] = "UPDATE scan_info SET fim_first_check = ? WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_UPDATE2C] = "UPDATE scan_info SET fim_second_check = ? WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_UPDATE3C] = "UPDATE scan_info SET fim_third_check = ? WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_GETFS] = "SELECT first_start FROM scan_info WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_GETFE] = "SELECT first_end FROM scan_info WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_GETSS] = "SELECT start_scan FROM scan_info WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_GETES] = "SELECT end_scan FROM scan_info WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_GET1C] = "SELECT fim_first_check FROM scan_info WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_GET2C] = "SELECT fim_second_check FROM scan_info WHERE module = ?;",
-    [WDB_STMT_SCAN_INFO_GET3C] = "SELECT fim_third_check FROM scan_info WHERE module = ?;",
-    [WDB_STMT_SCA_FIND] = "SELECT id,result FROM sca_check WHERE id = ?;",
-    [WDB_STMT_SCA_UPDATE] = "UPDATE sca_check SET scan_id = ?, result = ?, reason = ? WHERE id = ?;",
-    [WDB_STMT_SCA_INSERT] = "INSERT INTO sca_check (id,scan_id,title,description,rationale,remediation,file,directory,process,registry,`references`,result,policy_id,command,reason,condition) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);",
-    [WDB_STMT_SCA_SCAN_INFO_INSERT] = "INSERT INTO sca_scan_info (start_scan,end_scan,id,policy_id,pass,fail,invalid,total_checks,score,hash) VALUES (?,?,?,?,?,?,?,?,?,?);",
-    [WDB_STMT_SCA_SCAN_INFO_UPDATE] = "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
-    [WDB_STMT_SCA_INSERT_COMPLIANCE] = "INSERT INTO sca_check_compliance (id_check,`key`,`value`) VALUES(?,?,?);",
-    [WDB_STMT_SCA_INSERT_RULES] = "INSERT INTO sca_check_rules (id_check,`type`, rule) VALUES(?,?,?);",
-    [WDB_STMT_SCA_FIND_SCAN] = "SELECT policy_id,hash,id FROM sca_scan_info WHERE policy_id = ?;",
-    [WDB_STMT_SCA_SCAN_INFO_UPDATE_START] = "UPDATE sca_scan_info SET start_scan = ?, end_scan = ?, id = ?, pass = ?, fail = ?, invalid = ?, total_checks = ?, score = ?, hash = ? WHERE policy_id = ?;",
-    [WDB_STMT_SCA_POLICY_FIND] = "SELECT id FROM sca_policy WHERE id = ?;",
-    [WDB_STMT_SCA_POLICY_SHA256] = "SELECT hash_file FROM sca_policy WHERE id = ?;",
-    [WDB_STMT_SCA_POLICY_INSERT] = "INSERT INTO sca_policy (name,file,id,description,`references`,hash_file) VALUES(?,?,?,?,?,?);",
-    [WDB_STMT_SCA_CHECK_GET_ALL_RESULTS] = "SELECT result FROM sca_check WHERE policy_id = ? ORDER BY id;",
-    [WDB_STMT_SCA_POLICY_GET_ALL] = "SELECT id FROM sca_policy;",
-    [WDB_STMT_SCA_POLICY_DELETE] = "DELETE FROM sca_policy WHERE id = ?;",
-    [WDB_STMT_SCA_CHECK_DELETE] = "DELETE FROM sca_check WHERE policy_id = ?;",
-    [WDB_STMT_SCA_SCAN_INFO_DELETE] = "DELETE FROM sca_scan_info WHERE policy_id = ?;",
-    [WDB_STMT_SCA_CHECK_COMPLIANCE_DELETE] = "DELETE FROM sca_check_compliance WHERE id_check NOT IN ( SELECT id FROM sca_check);",
-    [WDB_STMT_SCA_CHECK_RULES_DELETE] = "DELETE FROM sca_check_rules WHERE id_check NOT IN ( SELECT id FROM sca_check);",
-    [WDB_STMT_SCA_CHECK_DELETE_DISTINCT] = "DELETE FROM sca_check WHERE scan_id != ? AND policy_id = ?;",
-    [WDB_STMT_FIM_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry ORDER BY file;",
-    [WDB_STMT_FIM_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE file BETWEEN ? and ? ORDER BY file;",
-    [WDB_STMT_FIM_DELETE_AROUND] = "DELETE FROM fim_entry WHERE file < ? OR file > ? RETURNING file;",
-    [WDB_STMT_FIM_DELETE_RANGE] = "DELETE FROM fim_entry WHERE file > ? AND file < ? RETURNING file;",
-    [WDB_STMT_FIM_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE file = ? RETURNING file;",
-    [WDB_STMT_FIM_CLEAR] = "DELETE FROM fim_entry;",
-    [WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY] = "UPDATE sync_info SET last_attempt = ? WHERE component = ?;",
-    [WDB_STMT_SYNC_UPDATE_ATTEMPT] = "UPDATE sync_info SET last_attempt = ?, last_agent_checksum = ?, last_manager_checksum = ?, n_attempts = n_attempts + 1 WHERE component = ?;",
-    [WDB_STMT_SYNC_UPDATE_COMPLETION] = "UPDATE sync_info SET last_attempt = ?, last_completion = ?, last_agent_checksum = ?, last_manager_checksum = ?, n_attempts = n_attempts + 1, n_completions = n_completions + 1 WHERE component = ?;",
-    [WDB_STMT_SYNC_SET_COMPLETION] = "UPDATE sync_info SET last_completion = ? WHERE component = ?;",
-    [WDB_STMT_SYNC_GET_INFO] = "SELECT * FROM sync_info WHERE component = ?;",
-    [WDB_STMT_FIM_FILE_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE type='file' ORDER BY file;",
-    [WDB_STMT_FIM_FILE_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE type='file' AND file BETWEEN ? and ? ORDER BY file;",
-    [WDB_STMT_FIM_FILE_CLEAR] = "DELETE FROM fim_entry WHERE type='file';",
-    [WDB_STMT_FIM_FILE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE type='file' AND (file < ? OR file > ?) RETURNING file;",
-    [WDB_STMT_FIM_FILE_DELETE_RANGE] = "DELETE FROM fim_entry WHERE type='file' AND (file > ? AND file < ?) RETURNING file;",
-    [WDB_STMT_FIM_FILE_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE type='file' AND file = ? RETURNING file;",
-    [WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE (type='registry_key' OR type='registry_value') ORDER BY full_path",
-    [WDB_STMT_FIM_REGISTRY_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND full_path BETWEEN ? AND ? ORDER BY full_path",
-    [WDB_STMT_FIM_REGISTRY_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_key' OR type='registry_value';",
-    [WDB_STMT_FIM_REGISTRY_DELETE_AROUND] = "DELETE FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND (full_path < ? OR full_path > ?) RETURNING full_path;",
-    [WDB_STMT_FIM_REGISTRY_DELETE_RANGE] = "DELETE FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND (full_path > ? AND full_path < ?) RETURNING full_path;",
-    [WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE type='registry_key' ORDER BY full_path",
-    [WDB_STMT_FIM_REGISTRY_KEY_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE type='registry_key' AND full_path BETWEEN ? AND ? ORDER BY full_path",
-    [WDB_STMT_FIM_REGISTRY_KEY_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_key';",
-    [WDB_STMT_FIM_REGISTRY_KEY_DELETE_AROUND] = "DELETE FROM fim_entry WHERE type='registry_key' AND (full_path < ? OR full_path > ?) RETURNING full_path;",
-    [WDB_STMT_FIM_REGISTRY_KEY_DELETE_RANGE] = "DELETE FROM fim_entry WHERE type='registry_key' AND (full_path > ? AND full_path < ?) RETURNING full_path;",
-    [WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM] = "SELECT checksum FROM fim_entry WHERE type='registry_value' ORDER BY full_path",
-    [WDB_STMT_FIM_REGISTRY_VALUE_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM fim_entry WHERE type='registry_value' AND full_path BETWEEN ? AND ? ORDER BY full_path",
-    [WDB_STMT_FIM_REGISTRY_VALUE_CLEAR] = "DELETE FROM fim_entry WHERE type='registry_value';",
-    [WDB_STMT_FIM_REGISTRY_VALUE_DELETE_AROUND] = "DELETE FROM fim_entry WHERE type='registry_value' AND (full_path < ? OR full_path > ?) RETURNING full_path;",
-    [WDB_STMT_FIM_REGISTRY_VALUE_DELETE_RANGE] = "DELETE FROM fim_entry WHERE type='registry_value' AND (full_path > ? AND full_path < ?) RETURNING full_path;",
-    [WDB_STMT_FIM_REGISTRY_DELETE_BY_PK] = "DELETE FROM fim_entry WHERE (type='registry_key' OR type='registry_value') AND full_path = ? RETURNING full_path;",
-    [WDB_STMT_ROOTCHECK_INSERT_PM] = "INSERT INTO pm_event (date_first, date_last, log, pci_dss, cis) VALUES (?, ?, ?, ?, ?);",
-    [WDB_STMT_ROOTCHECK_UPDATE_PM] = "UPDATE pm_event SET date_last = ? WHERE log = ?;",
-    [WDB_STMT_ROOTCHECK_DELETE_PM] = "DELETE FROM pm_event;",
     [WDB_STMT_GLOBAL_INSERT_AGENT] = "INSERT INTO agent (id, name, ip, register_ip, internal_key, date_add, `group`) VALUES (?,?,?,?,?,?,?);",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_NAME] = "UPDATE agent SET name = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_VERSION] = "UPDATE agent SET os_name = ?, os_version = ?, os_major = ?, os_minor = ?, os_codename = ?, os_platform = ?, os_build = ?, os_uname = ?, os_arch = ?, version = ?, config_sum = ?, merged_sum = ?, manager_host = ?, node_name = ?, last_keepalive = (CASE WHEN id = 0 THEN 253402300799 ELSE STRFTIME('%s', 'NOW') END), connection_status = ?, sync_status = ?, group_config_status = ? WHERE id = ?;",
@@ -227,74 +105,6 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
     [WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL] = "PRAGMA synchronous=1;",
-    [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_processes WHERE checksum != 'legacy' AND checksum != '' ORDER BY pid;",
-    [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_processes WHERE pid BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY pid;",
-    [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND] = "DELETE FROM sys_processes WHERE pid < ? OR pid > ? OR checksum = 'legacy' OR checksum = '' RETURNING pid;",
-    [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_RANGE] = "DELETE FROM sys_processes WHERE pid > ? AND pid < ? RETURNING pid;",
-    [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_BY_PK] = "DELETE FROM sys_processes WHERE pid = ? RETURNING pid;",
-    [WDB_STMT_SYSCOLLECTOR_PROCESSES_CLEAR] = "DELETE FROM sys_processes;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_programs WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_programs WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_AROUND] = "DELETE FROM sys_programs WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '' RETURNING name, version, architecture, format, location, item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_RANGE] = "DELETE FROM sys_programs WHERE item_id > ? AND item_id < ? RETURNING name, version, architecture, format, location, item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_DELETE_BY_PK] = "DELETE FROM sys_programs WHERE item_id = ? RETURNING name, version, architecture, format, location, item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PACKAGES_CLEAR] = "DELETE FROM sys_programs;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_hotfixes WHERE checksum != 'legacy' AND checksum != '' ORDER BY hotfix;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hotfixes WHERE hotfix BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY hotfix;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_AROUND] = "DELETE FROM sys_hotfixes WHERE hotfix < ? OR hotfix > ? OR checksum = 'legacy' OR checksum = '' RETURNING hotfix;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_RANGE] = "DELETE FROM sys_hotfixes WHERE hotfix > ? AND hotfix < ? RETURNING hotfix;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_DELETE_BY_PK] = "DELETE FROM sys_hotfixes WHERE hotfix = ? RETURNING hotfix;",
-    [WDB_STMT_SYSCOLLECTOR_HOTFIXES_CLEAR] = "DELETE FROM sys_hotfixes;",
-    [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM] = "SELECT checksum FROM sys_ports WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PORTS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_ports WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_AROUND] = "DELETE FROM sys_ports WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '' RETURNING protocol, local_ip, local_port, inode, item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_RANGE] = "DELETE FROM sys_ports WHERE item_id > ? AND item_id < ? RETURNING protocol, local_ip, local_port, inode, item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PORTS_DELETE_BY_PK] = "DELETE FROM sys_ports WHERE item_id = ? RETURNING protocol, local_ip, local_port, inode, item_id;",
-    [WDB_STMT_SYSCOLLECTOR_PORTS_CLEAR] = "DELETE FROM sys_ports;",
-    [WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM] = "SELECT checksum FROM sys_netproto WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETPROTO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netproto WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_AROUND] = "DELETE FROM sys_netproto WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '' RETURNING item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_RANGE] = "DELETE FROM sys_netproto WHERE item_id > ? AND item_id < ? RETURNING item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETPROTO_DELETE_BY_PK] = "DELETE FROM sys_netproto WHERE item_id = ? RETURNING item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETPROTO_CLEAR] = "DELETE FROM sys_netproto;",
-    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM] = "SELECT checksum FROM sys_netaddr WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netaddr WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_AROUND] = "DELETE FROM sys_netaddr WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '' RETURNING item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_RANGE] = "DELETE FROM sys_netaddr WHERE item_id > ? AND item_id < ? RETURNING item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_DELETE_BY_PK] = "DELETE FROM sys_netaddr WHERE item_id = ? RETURNING item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETADDRESS_CLEAR] = "DELETE FROM sys_netaddr;",
-    [WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM] = "SELECT checksum FROM sys_netiface WHERE checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_netiface WHERE item_id BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_AROUND] = "DELETE FROM sys_netiface WHERE item_id < ? OR item_id > ? OR checksum = 'legacy' OR checksum = '' RETURNING item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_RANGE] = "DELETE FROM sys_netiface WHERE item_id > ? AND item_id < ? RETURNING item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETINFO_DELETE_BY_PK] = "DELETE FROM sys_netiface WHERE item_id = ? RETURNING item_id;",
-    [WDB_STMT_SYSCOLLECTOR_NETINFO_CLEAR] = "DELETE FROM sys_netiface;",
-    [WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM] = "SELECT checksum FROM sys_hwinfo WHERE checksum != 'legacy' AND checksum != '' ORDER BY board_serial;",
-    [WDB_STMT_SYSCOLLECTOR_HWINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_hwinfo WHERE board_serial BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY board_serial;",
-    [WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_AROUND] = "DELETE FROM sys_hwinfo WHERE board_serial < ? OR board_serial > ? OR checksum = 'legacy' OR checksum = '' RETURNING board_serial;",
-    [WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_RANGE] = "DELETE FROM sys_hwinfo WHERE board_serial > ? AND board_serial < ? RETURNING board_serial;",
-    [WDB_STMT_SYSCOLLECTOR_HWINFO_DELETE_BY_PK] = "DELETE FROM sys_hwinfo WHERE board_serial = ? RETURNING board_serial;",
-    [WDB_STMT_SYSCOLLECTOR_HWINFO_CLEAR] = "DELETE FROM sys_hwinfo;",
-    [WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM] = "SELECT checksum FROM sys_osinfo WHERE checksum != 'legacy' AND checksum != '' ORDER BY os_name;",
-    [WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_osinfo WHERE os_name BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY os_name;",
-    [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_AROUND] = "DELETE FROM sys_osinfo WHERE os_name < ? OR os_name > ? OR checksum = 'legacy' OR checksum = '' RETURNING os_name;",
-    [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_RANGE] = "DELETE FROM sys_osinfo WHERE os_name > ? AND os_name < ? RETURNING os_name;",
-    [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_BY_PK] = "DELETE FROM sys_osinfo WHERE os_name = ? RETURNING os_name;",
-    [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
-    [WDB_STMT_SYSCOLLECTOR_USERS_SELECT_CHECKSUM] = "SELECT checksum FROM sys_users WHERE checksum != 'legacy' AND checksum != '' ORDER BY user_name;",
-    [WDB_STMT_SYSCOLLECTOR_USERS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_users WHERE user_name BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY user_name;",
-    [WDB_STMT_SYSCOLLECTOR_USERS_DELETE_AROUND] = "DELETE FROM sys_users WHERE user_name < ? OR user_name > ? OR checksum = 'legacy' OR checksum = '' RETURNING user_name;",
-    [WDB_STMT_SYSCOLLECTOR_USERS_DELETE_RANGE] = "DELETE FROM sys_users WHERE user_name > ? AND user_name < ? RETURNING user_name;",
-    [WDB_STMT_SYSCOLLECTOR_USERS_DELETE_BY_PK] = "DELETE FROM sys_users WHERE user_name = ? RETURNING user_name;",
-    [WDB_STMT_SYSCOLLECTOR_USERS_CLEAR] = "DELETE FROM sys_users;",
-    [WDB_STMT_SYSCOLLECTOR_GROUPS_SELECT_CHECKSUM] = "SELECT checksum FROM sys_groups WHERE checksum != 'legacy' AND checksum != '' ORDER BY group_name;",
-    [WDB_STMT_SYSCOLLECTOR_GROUPS_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_groups WHERE group_name BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY group_name;",
-    [WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_AROUND] = "DELETE FROM sys_groups WHERE group_name < ? OR group_name > ? OR checksum = 'legacy' OR checksum = '' RETURNING group_name;",
-    [WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_RANGE] = "DELETE FROM sys_groups WHERE group_name > ? AND group_name < ? RETURNING group_name;",
-    [WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_BY_PK] = "DELETE FROM sys_groups WHERE group_name = ? RETURNING group_name;",
-    [WDB_STMT_SYSCOLLECTOR_GROUPS_CLEAR] = "DELETE FROM sys_groups;",
-    [WDB_STMT_SYS_HOTFIXES_GET] = "SELECT HOTFIX FROM SYS_HOTFIXES;",
-    [WDB_STMT_SYS_PROGRAMS_GET] = "SELECT DISTINCT NAME, VERSION, ARCHITECTURE, VENDOR, FORMAT, SOURCE, CPE, MSU_NAME, ITEM_ID, DESCRIPTION, LOCATION, SIZE, INSTALL_TIME FROM SYS_PROGRAMS;",
 };
 
 /**
@@ -393,50 +203,6 @@ wdb_t * wdb_open_global() {
     return wdb;
 }
 
-// Open database for agent and store in DB pool. It returns a locked database or NULL
-wdb_t * wdb_open_agent2(int agent_id) {
-    char sagent_id[64];
-    char path[PATH_MAX + 1];
-
-    snprintf(sagent_id, sizeof(sagent_id), "%03d", agent_id);
-    wdb_t * wdb = wdb_pool_get_or_create(sagent_id);
-
-    if (wdb->db != NULL) {
-        return wdb;
-    }
-
-    // Try to open DB
-
-    snprintf(path, sizeof(path), "%s/%s.db", WDB2_DIR, sagent_id);
-
-    if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
-        mdebug1("No SQLite database found for agent '%s', creating.", sagent_id);
-        wdb_close(wdb, false);
-
-        if (wdb_create_agent_db2(sagent_id) < 0) {
-            merror("Couldn't create SQLite database '%s'", path);
-            wdb_pool_leave(wdb);
-            return NULL;
-        }
-
-        // Retry to open
-
-        if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite database '%s': %s", path, sqlite3_errmsg(wdb->db));
-            wdb_close(wdb, false);
-            wdb_pool_leave(wdb);
-            return NULL;
-        }
-    } else {
-        if (wdb_upgrade(wdb) == NULL) {
-            wdb_pool_leave(wdb);
-            return NULL;
-        }
-    }
-
-    return wdb;
-}
-
 // Opens tasks database and stores it in DB pool. It returns a locked database or NULL
 wdb_t * wdb_open_tasks() {
     char path[PATH_MAX + 1] = "";
@@ -468,80 +234,6 @@ wdb_t * wdb_open_tasks() {
     }
 
     return wdb;
-}
-
-/* Create database for agent from profile. Returns 0 on success or -1 on error. */
-int wdb_create_agent_db2(const char * agent_id) {
-    char path[OS_FLSIZE + 1];
-    char path_temp[OS_FLSIZE + 1];
-    char buffer[4096];
-    FILE *source;
-    FILE *dest;
-    size_t nbytes;
-    int result = 0;
-    static pthread_mutex_t profile_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-    w_mutex_lock(&profile_mutex);
-
-    if (!(source = wfopen(WDB_PROF_PATH, "r"))) {
-        mdebug1("Profile database not found, creating.");
-
-        if (wdb_create_profile() < 0) {
-            w_mutex_unlock(&profile_mutex);
-            return -1;
-        }
-
-        // Retry to open
-
-        if (!(source = wfopen(WDB_PROF_PATH, "r"))) {
-            w_mutex_unlock(&profile_mutex);
-            merror("Couldn't open profile '%s'.", WDB_PROF_PATH);
-            return -1;
-        }
-    }
-
-    w_mutex_unlock(&profile_mutex);
-    snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
-    snprintf(path_temp, OS_FLSIZE, "%s.new", path);
-
-    if (!(dest = wfopen(path_temp, "w"))) {
-        merror("Couldn't create database '%s': %s (%d)", path, strerror(errno), errno);
-        fclose(source);
-        return -1;
-    }
-
-    while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
-        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
-            unlink(path_temp);
-            result = -1;
-            break;
-        }
-    }
-
-    fclose(source);
-    if (fclose(dest) == -1) {
-        merror("Couldn't create file %s completely", path_temp);
-        return -1;
-    }
-
-    if (result < 0) {
-        unlink(path_temp);
-        return -1;
-    }
-
-    if (chmod(path_temp, 0640) < 0) {
-        merror(CHMOD_ERROR, path_temp, errno, strerror(errno));
-        unlink(path_temp);
-        return -1;
-    }
-
-    if (OS_MoveFile(path_temp, path) < 0) {
-        merror(RENAME_ERROR, path_temp, path, errno, strerror(errno));
-        unlink(path_temp);
-        return -1;
-    }
-
-    return 0;
 }
 
 /* Prepare SQL query with availability waiting */
@@ -609,11 +301,6 @@ int wdb_create_global(const char *path) {
         return OS_INVALID;
     else
         return OS_SUCCESS;
-}
-
-/* Create profile database */
-int wdb_create_profile() {
-    return wdb_create_file(WDB_PROF_PATH, schema_agents_sql);
 }
 
 /* Create new database file from SQL script */
@@ -1419,84 +1106,6 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
     return result;
 }
 
-/* Delete a database file */
-int wdb_remove_database(const char * agent_id) {
-    char path[PATH_MAX];
-
-    snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, agent_id);
-    int result = unlink(path);
-
-    if (result == -1) {
-        mdebug1(UNLINK_ERROR, path, errno, strerror(errno));
-    }
-
-    return result;
-}
-
-cJSON *wdb_remove_multiple_agents(char *agent_list) {
-    cJSON *response = NULL;
-    cJSON *json_agents = NULL;
-    wdb_t *wdb;
-    char **agents;
-    char *next;
-    char *json_formated;
-    char path[PATH_MAX];
-    char agent[OS_SIZE_128];
-    long int agent_id;
-    int n = 0;
-
-    if (!agent_list || strcmp(agent_list, "") == 0 || strcmp(agent_list, " ") == 0) {
-        return json_agents;
-    }
-
-    response = cJSON_CreateObject();
-    cJSON_AddItemToObject(response, "agents", json_agents = cJSON_CreateObject());
-
-    // Get agents id separated by whitespace
-    agents = w_strtok(agent_list);
-
-    for (n = 0; agents && agents[n]; n++) {
-        if (strcmp(agents[n], "") != 0) {
-            next = agents[n + 1];
-            agent_id = strtol(agents[n], &next, 10);
-            const char * result = "ok";
-
-            // Check for valid ID
-            if ((errno == ERANGE) || (errno == EINVAL) || *next) {
-                mwarn("Invalid agent ID when deleting database '%s'\n", agents[n]);
-                result = "Invalid agent ID";
-            } else {
-                snprintf(path, PATH_MAX, "%s/%03ld.db", WDB2_DIR, agent_id);
-                snprintf(agent, OS_SIZE_128, "%03ld", agent_id);
-
-                // Close the database only if it was open
-
-                wdb = wdb_pool_get(agent);
-                if (wdb) {
-                    if (wdb_close(wdb, FALSE) < 0) {
-                        result = "Can't close";
-                    }
-                    wdb_pool_leave(wdb);
-                }
-
-                mdebug1("Removing db for agent '%s'", agent);
-
-                if (wdb_remove_database(agent) < 0) {
-                    result = "Can't delete";
-                }
-            }
-
-            cJSON_AddStringToObject(json_agents, agent, result);
-        }
-    }
-
-    free_strarray(agents);
-    json_formated = cJSON_PrintUnformatted(response);
-    mdebug1("Deleting databases. JSON output: %s", json_formated);
-    os_free(json_formated);
-    return response;
-}
-
 // Set the database journal mode to write-ahead logging
 int wdb_journal_wal(sqlite3 *db) {
     char *sql_error = NULL;
@@ -1706,4 +1315,93 @@ int wdb_set_synchronous_normal(wdb_t * wdb) {
     }
 
     return returnState;
+}
+
+int wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest) {
+    if (OS_SUCCESS == wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_READ, hexdigest)) {
+        mdebug2("Using global group hash from cache");
+        return OS_SUCCESS;
+    } else {
+        if(!wdb) {
+            mdebug1("Database structure not initialized. Unable to calculate global group hash.");
+            return OS_INVALID;
+        }
+
+        sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_HASH_GET);
+        if (!stmt) {
+            return OS_INVALID;
+        }
+
+        if(wdb_calculate_stmt_checksum(wdb, stmt, hexdigest)) {
+            wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_WRITE, hexdigest);
+            mdebug2("New global group hash calculated and stored in cache.");
+            return OS_SUCCESS;
+        } else {
+            hexdigest[0] = 0;
+            mdebug2("No group hash was found to calculate the global group hash.");
+            return OS_SUCCESS;
+        }
+    }
+}
+
+int wdb_global_group_hash_cache(wdb_global_group_hash_operations_t operation, os_sha1 hexdigest) {
+    static os_sha1 global_group_hash = {0};
+
+    if (WDB_GLOBAL_GROUP_HASH_READ == operation) {
+        if (global_group_hash[0] == 0) {
+            return OS_INVALID;
+        } else {
+            memcpy(hexdigest, global_group_hash, sizeof(os_sha1));
+            return OS_SUCCESS;
+        }
+    } else if (WDB_GLOBAL_GROUP_HASH_WRITE == operation) {
+        memcpy(global_group_hash, hexdigest, sizeof(os_sha1));
+        return OS_SUCCESS;
+    } else if (WDB_GLOBAL_GROUP_HASH_CLEAR == operation) {
+        global_group_hash[0] = 0;
+        return OS_SUCCESS;
+    } else {
+        mdebug2("Invalid mode for global group hash operation.");
+        return OS_INVALID;
+    }
+}
+
+int wdb_calculate_stmt_checksum(wdb_t * wdb, sqlite3_stmt * stmt, os_sha1 hexdigest) {
+    assert(wdb != NULL);
+    assert(stmt != NULL);
+    assert(hexdigest != NULL);
+
+    int step = wdb_step(stmt);
+
+    if (step != SQLITE_ROW) {
+        return 0;
+    }
+
+    EVP_MD_CTX * ctx = EVP_MD_CTX_create();
+    EVP_DigestInit(ctx, EVP_sha1());
+
+    size_t row_count = 0;
+    for (; step == SQLITE_ROW; step = wdb_step(stmt)) {
+        ++row_count;
+
+        char * checksum = (char *)sqlite3_column_text(stmt, 0);
+
+        if (checksum == NULL) {
+            mdebug1("DB(%s) has a NULL checksum.", wdb->id);
+            continue;
+        }
+
+        EVP_DigestUpdate(ctx, checksum, strlen((const char *)checksum));
+    }
+
+    // Get the hex SHA-1 digest
+    unsigned char digest[EVP_MAX_MD_SIZE];
+    unsigned int digest_size;
+
+    EVP_DigestFinal_ex(ctx, digest, &digest_size);
+    EVP_MD_CTX_destroy(ctx);
+
+    OS_SHA1_Hexdigest(digest, hexdigest);
+
+    return 1;
 }
