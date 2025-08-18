@@ -66,10 +66,9 @@ std::string ChannelHandler::replacePlaceholders(const std::chrono::system_clock:
  * changed.
  *
  * @param messageSize The size of the incoming log message to be written.
- * @return true If rotation is required due to size or time pattern change.
- * @return false If no rotation is needed.
+ * @return `RotationRequirement` indicating whether rotation is needed and what type (size or time).
  */
-bool ChannelHandler::needsRotation(const size_t messageSize)
+ChannelHandler::RotationRequirement ChannelHandler::needsRotation(const size_t messageSize) const
 {
     try
     {
@@ -80,7 +79,8 @@ bool ChannelHandler::needsRotation(const size_t messageSize)
         const size_t newSize = m_stateData.currentSize + messageSize;
         if (m_config.maxSize >= 0 && newSize >= m_config.maxSize)
         {
-            return true;
+            LOG_DEBUG("Channel '{}' needs rotation due to size: {} >= {}", m_channelName, newSize, m_config.maxSize);
+            return RotationRequirement::Size;
         }
 
         // Check if date pattern actually changed by comparing hour boundaries
@@ -91,7 +91,7 @@ bool ChannelHandler::needsRotation(const size_t messageSize)
         if (nowHour != lastHour)
         {
             auto candidatePath = std::filesystem::path(replacePlaceholders(now));
-            return (m_stateData.currentFile != candidatePath);
+            return (m_stateData.currentFile != candidatePath) ? RotationRequirement::Time : RotationRequirement::No;
         }
     }
     catch (const std::exception& e)
@@ -100,7 +100,7 @@ bool ChannelHandler::needsRotation(const size_t messageSize)
         m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
     }
 
-    return false;
+    return RotationRequirement::No;
 }
 
 /**
@@ -114,21 +114,26 @@ bool ChannelHandler::needsRotation(const size_t messageSize)
  * The function ensures that the new log file is opened for writing and logs any errors encountered during
  * directory creation, file opening, or link updates.
  *
+ * @param rotationType The type of rotation needed (size or time).
+ * @throws std::runtime_error If an error occurs during file path generation, file opening, or link creation.
+ * @throws std::logic_error If an invalid rotation type is provided.
  * @note The function assumes that m_config, m_stateData, and m_channelName are properly initialized.
  *       Error handling is performed via logging, but some TODOs remain for more robust error management.
  */
-void ChannelHandler::rotateFile()
+void ChannelHandler::rotateFile(RotationRequirement rotationType)
 {
     const auto& now = m_stateData.lastRotationCheck;
 
     // Set the counter based on size rotation
     m_stateData.counter = [&]() -> size_t
     {
-        if (m_config.maxSize > 0 && m_stateData.currentSize >= m_config.maxSize)
+        switch (rotationType)
         {
-            return m_stateData.counter + 1;
+            case RotationRequirement::Size: return m_stateData.counter + 1; // Increment counter for size-based rotation
+            case RotationRequirement::Time: return 0;                       // Reset counter for time-based rotation
+            default: std::logic_error("Invalid rotation type for counter update");
+                return 0; // Fallback
         }
-        return 0; // Reset counter if not rotating by size
     }();
 
     // Try update the file path with the current time and counter
@@ -255,9 +260,9 @@ void ChannelHandler::workerThreadFunc()
         // Check if we need to rotate the file
         if (m_stateData.queue->waitPop(message, 1000) && !message.empty())
         {
-            if (needsRotation(message.size()))
+            if (const auto rType = needsRotation(message.size()); rType != RotationRequirement::No)
             {
-                rotateFile();
+                rotateFile(rType);
             }
             if (m_stateData.channelState->load(std::memory_order_relaxed) != ChannelState::Running)
             {
@@ -378,6 +383,15 @@ void ChannelHandler::validateAndNormalizeConfig(RotationConfig& config)
     {
         throw std::runtime_error("Log pattern cannot exceed 255 characters");
     }
+    else if (config.pattern.find_first_of("<>:\"\\|?*") != std::string::npos)
+    {
+        throw std::runtime_error("Log pattern cannot contain invalid characters for a path: " + config.pattern);
+    }
+    else if (config.pattern.find("../") != std::string::npos)
+    {
+        throw std::runtime_error("Log pattern cannot contain parent directory references (../): " + config.pattern);
+    }
+    
 
     // Add counter placeholder if maxSize is set and not already present
     if (config.maxSize > 0 && config.pattern.find("${counter}") == std::string::npos)
@@ -522,7 +536,7 @@ ChannelHandler::~ChannelHandler()
  */
 std::shared_ptr<ChannelWriter> ChannelHandler::createWriter()
 {
-    std::lock_guard<std::mutex> lock(m_writersMutex);
+    std::lock_guard<std::mutex> lock(m_activeWriters.mutex);
 
     const auto currentState = m_stateData.channelState->load(std::memory_order_relaxed);
     if (currentState == ChannelState::ErrorClosed)
@@ -532,20 +546,20 @@ std::shared_ptr<ChannelWriter> ChannelHandler::createWriter()
     }
 
     // Check if we need to start the worker thread (first writer)
-    if (m_activeWriters.load(std::memory_order_relaxed) == 0)
+    if (m_activeWriters.count == 0)
     {
         LOG_DEBUG("Starting worker thread for channel '{}' - first writer created", m_channelName);
         startWorkerThread();
     }
 
     // Increment the active writers count
-    m_activeWriters.fetch_add(1, std::memory_order_relaxed);
+    ++m_activeWriters.count;
 
     auto writer = std::make_shared<ChannelWriter>(m_stateData.queue, m_stateData.channelState, weak_from_this());
 
     LOG_DEBUG("Created ChannelWriter for channel '{}'. Active writers: {}",
               m_channelName,
-              m_activeWriters.load(std::memory_order_relaxed));
+              m_activeWriters.count);
 
     return writer;
 }
@@ -557,9 +571,10 @@ std::shared_ptr<ChannelWriter> ChannelHandler::createWriter()
  */
 void ChannelHandler::onWriterDestroyed()
 {
-    std::lock_guard<std::mutex> lock(m_writersMutex);
+    std::lock_guard<std::mutex> lock(m_activeWriters.mutex);
 
-    size_t currentWriters = m_activeWriters.fetch_sub(1, std::memory_order_relaxed) - 1;
+    --m_activeWriters.count;
+    size_t currentWriters = m_activeWriters.count;
 
     LOG_DEBUG("ChannelWriter destroyed for channel '{}'. Active writers: {}", m_channelName, currentWriters);
 

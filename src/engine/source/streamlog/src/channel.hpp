@@ -80,11 +80,27 @@ public:
  **********************************************************************************************************************/
 class ChannelHandler : public std::enable_shared_from_this<ChannelHandler>
 {
+public:
+    /**
+     * @brief Enum to indicate if rotation is needed based on size or time.
+     */
+    enum class RotationRequirement
+    {
+        No,   ///< No rotation needed.
+        Size, ///< Rotation needed due to size limit.
+        Time  ///< Rotation needed due to time pattern change.
+    };
+
 private:
     const RotationConfig m_config;           ///< The rotation configuration for the log channel.
     const std::string m_channelName;         ///< The name of the log channel.
-    mutable std::mutex m_writersMutex;       ///< Mutex to protect the writers reference count
-    std::atomic<size_t> m_activeWriters {0}; ///< Count of active ChannelWriter instances
+
+    struct ActiveWriters
+    {
+        mutable std::mutex mutex;       ///< Mutex to protect the writers reference count
+        size_t count {0};              ///< Count of active ChannelWriter instances (protected by m_writersMutex)
+    } m_activeWriters; ///< Active writers count, protected by m_writersMutex
+    
 
     struct AsyncChannelData
     {
@@ -100,12 +116,11 @@ private:
         std::filesystem::path latestLink;  ///< Path to the latest log file link. (Hard link to currentFile)
 
         // State and performance optimization
-        std::chrono::system_clock::time_point lastRotation;      ///< The last time the log file was rotated.
-        std::chrono::system_clock::time_point lastRotationCheck; ///< Timestamp of the last rotation check.
-        size_t currentSize {0};                                  ///< Current size of the log file in bytes.
+        std::chrono::system_clock::time_point lastRotation;              ///< The last time the log file was rotated.
+        mutable std::chrono::system_clock::time_point lastRotationCheck; ///< Timestamp of the last rotation check.
+        size_t currentSize {0};                                          ///< Current size of the log file in bytes.
         size_t counter {0}; ///< Counter for the number of rotations (max size rotations).
-
-    } m_stateData; ///< State data for the channel.
+    } m_stateData;          ///< State data for the channel.
 
     /**
      * @brief Replaces placeholders in a pattern string with corresponding values.
@@ -115,12 +130,12 @@ private:
     /**
      * @brief Rotation check
      */
-    bool needsRotation(size_t messageSize);
+    RotationRequirement needsRotation(size_t messageSize) const;
 
     /**
      * @brief Rotates the log file for the current channel based
      */
-    void rotateFile();
+    void rotateFile(RotationRequirement rotationType);
 
     /**
      * @brief Opens the output file for the current channel and creates or updates a hard link to the latest file.
@@ -179,6 +194,22 @@ public:
      * @return A shared_ptr to a new ChannelWriter instance
      */
     std::shared_ptr<ChannelWriter> createWriter();
+
+    /**
+     * @brief Gets the name of the channel
+     * @return The name of the channel
+     */
+    const std::string& getChannelName() const { return m_channelName; }
+
+    /**
+     * @brief Gets the number of active writers for this channel
+     * @return The number of active ChannelWriter instances
+     */
+    size_t getActiveWritersCount() const { 
+        std::lock_guard<std::mutex> lock(m_activeWriters.mutex); 
+        return m_activeWriters.count; 
+    }
+
 
     /**
      * @brief Gets the current rotation configuration
