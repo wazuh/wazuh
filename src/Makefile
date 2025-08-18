@@ -674,7 +674,6 @@ BUILD_SERVER+=wazuh-execd -
 BUILD_SERVER+=wazuh-logcollector -
 BUILD_SERVER+=wazuh-remoted
 BUILD_SERVER+=wazuh-agentd
-BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
 BUILD_SERVER+=wazuh-syscheckd
