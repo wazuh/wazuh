@@ -14,6 +14,7 @@
 
 #include "loggerHelper.h"
 #include "rocksDBOptions.hpp"
+#include "rocksDBSharedBuffers.hpp"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/table.h"
@@ -79,13 +80,23 @@ private:
     }
 
 public:
-    explicit RocksDBQueueCF(const std::string& path)
+    explicit RocksDBQueueCF(const std::string& path, bool useSharedBuffers = false)
     {
         // RocksDB initialization.
         // Read cache is used to cache the data read from the disk.
         m_readCache = rocksdb::NewLRUCache(Utils::ROCKSDB_BLOCK_CACHE_SIZE);
-        // Write buffer manager is used to manage the memory used for writing data to the disk.
-        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(Utils::ROCKSDB_WRITE_BUFFER_MANAGER_SIZE);
+        // RocksDB initialization using shared buffers.
+        // Get shared buffers to reduce memory usage across multiple instances
+        if (useSharedBuffers)
+        {
+            auto& sharedBuffers = RocksDBSharedBuffers::getInstance();
+            m_writeManager = sharedBuffers.getWriteBufferManager();
+        }
+        else
+        {
+            // Write buffer manager is used to manage the memory used for writing data to the disk.
+            m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(Utils::ROCKSDB_WRITE_BUFFER_MANAGER_SIZE);
+        }
 
         rocksdb::Options options = Utils::RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
         rocksdb::ColumnFamilyOptions columnFamilyOptions = Utils::RocksDBOptions::buildColumnFamilyOptions(m_readCache);
