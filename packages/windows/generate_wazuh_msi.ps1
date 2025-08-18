@@ -136,12 +136,10 @@ function ExtractDebugSymbols(){
   #compress every pdb file in current folder
 	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
 
-  $ZIP_NAME = "$($MSI_NAME.Replace('.msi', '-debug-symbols.zip'))"
+    $ZIP_NAME = $MSI_NAME -replace 'wazuh-agent', 'wazuh-agent-debug-symbols' -replace '\.msi$', '.zip'
 
 	Write-Host "Compressing debug symbols to $ZIP_NAME"
 	Compress-Archive -Path $pdbFiles -Force -DestinationPath "$ZIP_NAME"
-
-  dir "*debug-symbols.zip"
 
 	Remove-Item -Path "*.pdb"
 }
