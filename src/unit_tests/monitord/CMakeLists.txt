@@ -3,11 +3,11 @@ file(GLOB monitord_files
     ${SRC_FOLDER}/monitord/*.o)
 
 # Generate os_maild library
-file(GLOB os_maild_files
-    ${SRC_FOLDER}/os_maild/*.o)
+# file(GLOB os_maild_files
+#     ${SRC_FOLDER}/os_maild/*.o)
 
 add_library(MONITOR_O STATIC ${monitord_files})
-add_library(MAILD_O STATIC ${os_maild_files})
+# add_library(MAILD_O STATIC ${os_maild_files})
 
 set_source_files_properties(
     ${monitord_files}
@@ -16,12 +16,12 @@ set_source_files_properties(
     GENERATED true
 )
 
-set_source_files_properties(
-    ${os_maild_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-)
+# set_source_files_properties(
+#     ${os_maild_files}
+#     PROPERTIES
+#     EXTERNAL_OBJECT true
+#     GENERATED true
+# )
 
 set_target_properties(
     MONITOR_O
@@ -29,14 +29,14 @@ set_target_properties(
     LINKER_LANGUAGE C
 )
 
-set_target_properties(
-    MAILD_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-)
+# set_target_properties(
+#     MAILD_O
+#     PROPERTIES
+#     LINKER_LANGUAGE C
+# )
 
 target_link_libraries(MONITOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
-target_link_libraries(MAILD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+# target_link_libraries(MAILD_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
@@ -69,7 +69,7 @@ foreach(counter RANGE ${count})
         ${WAZUHLIB}
         ${WAZUHEXT}
         MONITOR_O
-        MAILD_O
+        # MAILD_O
         ${TEST_DEPS}
     )
 
