@@ -42,7 +42,6 @@ int ClientConf(const char *cfgfile)
     agt->buflength = 5000;
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
-    agt->crypto_method = W_METH_AES;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;
     agt->main_ip_update_interval = 0;
@@ -119,7 +118,6 @@ cJSON *getClientConfig(void) {
             cJSON_AddNumberToObject(server, "max_retries", agt->server[i].max_retries);
             cJSON_AddNumberToObject(server, "retry_interval", agt->server[i].retry_interval);
 
-            if (agt->server[i].protocol == IPPROTO_UDP) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
             cJSON_AddItemToArray(servers,server);
         }
         cJSON_AddItemToObject(client,"server",servers);

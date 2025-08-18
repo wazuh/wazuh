@@ -121,7 +121,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
 
     input_description: An external YAML file (wazuh_conf.yaml) includes configuration settings for the agent.
                        Two test cases are found in the test module and include parameters
-                       for the environment setup using the TCP and UDP protocols.
+                       for the environment setup using the TCP protocols.
 
     expected_output:
         - r'Valid key received'
@@ -133,7 +133,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         - keys
     '''
     # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
+    remoted_server = RemotedSimulator(protocol = 'tcp')
     remoted_server.start()
 
     # Wait until Agent is notifying Manager
@@ -143,7 +143,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
     remoted_server.destroy()
 
     # Start rejecting Agent
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'], mode = 'WRONG_KEY')
+    remoted_server = RemotedSimulator(protocol = 'tcp', mode = 'WRONG_KEY')
     remoted_server.start()
 
     # Start AuthdSimulator
@@ -157,7 +157,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
     remoted_server.destroy()
 
     # Start responding Agent
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
+    remoted_server = RemotedSimulator(protocol = 'tcp')
     remoted_server.start()
 
     # Wait until Agent is notifying Manager
