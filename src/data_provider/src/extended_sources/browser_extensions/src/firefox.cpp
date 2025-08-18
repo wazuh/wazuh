@@ -46,7 +46,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
             continue;
         }
 
-        std::string username = userHome.path().filename();
+        std::string username = userHome.path().filename().string();
 
         for (const auto& path : kFirefoxPaths)
         {

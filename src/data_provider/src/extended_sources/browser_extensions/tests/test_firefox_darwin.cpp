@@ -47,21 +47,21 @@ TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
 
     for (const auto& jsonElement : extensionsJson)
     {
-        if (jsonElement.contains("creator") && jsonElement["creator"] == "mozilla.org")
+        if (jsonElement.contains("name") && jsonElement["name"] == "Add-ons Search Detection")
         {
             EXPECT_EQ(jsonElement["active"], true);
             EXPECT_EQ(jsonElement["autoupdate"], true);
-            EXPECT_EQ(jsonElement["creator"], "mozilla.org");
-            EXPECT_EQ(jsonElement["description"], "Firefox Language Pack for English (US) (en-US)");
+            EXPECT_EQ(jsonElement["creator"], "");
+            EXPECT_EQ(jsonElement["description"], "");
             EXPECT_EQ(jsonElement["disabled"], false);
-            EXPECT_EQ(jsonElement["identifier"], "langpack-en-US@firefox.mozilla.org");
-            EXPECT_EQ(jsonElement["location"], "app-profile");
-            EXPECT_EQ(jsonElement["name"], "Language: English (US)");
-            EXPECT_EQ(jsonElement["path"], "/home/rodric/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi");
+            EXPECT_EQ(jsonElement["identifier"], "addons-search-detection@mozilla.com");
+            EXPECT_EQ(jsonElement["location"], "app-builtin-addons");
+            EXPECT_EQ(jsonElement["name"], "Add-ons Search Detection");
+            EXPECT_EQ(jsonElement["path"], "");
             EXPECT_EQ(jsonElement["source_url"], "");
-            EXPECT_EQ(jsonElement["type"], "locale");
+            EXPECT_EQ(jsonElement["type"], "extension");
             EXPECT_EQ(jsonElement["uid"], "123");
-            EXPECT_EQ(jsonElement["version"], "141.0.20250806.102122");
+            EXPECT_EQ(jsonElement["version"], "2.0.0");
             EXPECT_EQ(jsonElement["visible"], true);
         }
     }
