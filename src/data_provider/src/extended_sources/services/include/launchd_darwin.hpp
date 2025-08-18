@@ -55,7 +55,8 @@ class LaunchdProvider
 
     private:
         /// @brief Standard launchd search paths.
-        const std::vector<std::string> m_launchdSearchPaths = {
+        const std::vector<std::string> m_launchdSearchPaths =
+        {
             "/System/Library/LaunchDaemons",
             "/Library/LaunchDaemons",
             "/System/Library/LaunchAgents",
@@ -65,12 +66,14 @@ class LaunchdProvider
         };
 
         /// @brief User-specific launchd search paths.
-        const std::vector<std::string> m_userLaunchdSearchPaths = {
+        const std::vector<std::string> m_userLaunchdSearchPaths =
+        {
             "/Library/LaunchAgents",
         };
 
         /// @brief Mapping of plist keys to service structure fields for string values.
-        const std::map<std::string, std::string> m_launchdTopLevelStringKeys = {
+        const std::map<std::string, std::string> m_launchdTopLevelStringKeys =
+        {
             {"Label", "label"},
             {"RunAtLoad", "run_at_load"},
             {"KeepAlive", "keep_alive"},
@@ -90,7 +93,8 @@ class LaunchdProvider
         };
 
         /// @brief Mapping of plist keys to service structure fields for array values.
-        const std::map<std::string, std::string> m_launchdTopLevelArrayKeys = {
+        const std::map<std::string, std::string> m_launchdTopLevelArrayKeys =
+        {
             {"ProgramArguments", "program_arguments"},
             {"WatchPaths", "watch_paths"},
             {"QueueDirectories", "queue_directories"},
