@@ -8,12 +8,12 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Rocky Linux 9 Benchmark v1.0.0 - 03-29-2022
+# Center for Internet Security Rocky Linux 9 Benchmark v2.0.0 - 06-25-2024
 
 policy:
   id: "cis_rocky_linux_9"
   file: "cis_rocky_linux_9.yml"
-  name: "CIS Rocky Linux 9 Benchmark v1.0.0"
+  name: "CIS Rocky Linux 9 Benchmark v2.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Rocky Linux 9 systems running on x86_64 platforms.This document was tested against Rocky Linux 9."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -29,15 +29,15 @@ variables:
   $sshd_file: /etc/ssh/sshd_config
 
 checks:
-  # 1.1.1.1 Ensure mounting of squashfs filesystems is disabled. (Automated)
+  # 1.1.1.6 Ensure squashfs kernel module is not available (Automated)
   - id: 31500
-    title: "Ensure mounting of squashfs filesystems is disabled."
+    title: "Ensure squashfs kernel module is not available."
     description: "The squashfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A squashfs image can be used without having to first decompress the image."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
-    impact: 'As Snap packages utilizes squashfs as a compressed filesystem, disabling squashfs will cause Snap packages to fail. Snap application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software''s end-user. Snaps themselves have no dependency on any external store ("App store"), can be obtained from any source and can be therefore used for upstream software deployment.'
+    impact: 'Snap application packages of software are self-contained and work across a range of Linux distributions. This is unlike traditional Linux package management approaches, like APT or RPM, which require specifically adapted packages per Linux distribution on an application update and delay therefore application deployment from developers to their software's end-user. Snaps themselves have no dependency on any external store ("App store"), can be obtained from any source and can be therefore used for upstream software deployment.'
     remediation: "Run the following script to disable squashfs: #!/usr/bin/env bash { l_mname=\"squashfs\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
     compliance:
-      - cis: ["1.1.1.1"]
+      - cis: ["1.1.1.6"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -54,15 +54,15 @@ checks:
       - "not c:lsmod -> r:squashfs"
       - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+squashfs'
 
-  # 1.1.1.2 Ensure mounting of udf filesystems is disabled. (Automated)
+  # 1.1.1.7 Ensure udf kernel module is not available (Automated)
   - id: 31501
-    title: "Ensure mounting of udf filesystems is disabled."
+    title: "Ensure udf kernel module is not available."
     description: "The udf filesystem type is the universal disk format used to implement ISO/IEC 13346 and ECMA-167 specifications. This is an open vendor filesystem type for data storage on a broad range of media. This filesystem type is necessary to support writing DVDs and newer optical disc formats."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
     impact: "Microsoft Azure requires the usage of udf. udf should not be disabled on systems run on Microsoft Azure."
     remediation: "Run the following script to disable the udf filesystem: #!/usr/bin/env bash { l_mname=\"udf\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
     compliance:
-      - cis: ["1.1.1.2"]
+      - cis: ["1.1.1.7"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -741,14 +741,14 @@ checks:
       - 'c:findmnt --kernel /dev/shm -> r:^/dev/shm\s'
       - "c:findmnt --kernel /dev/shm -> r:nosuid"
 
-  # 1.1.9 Disable USB Storage. (Automated)
+  # 1.1.1.8 Ensure usb-storage kernel module is not available (Automated)
   - id: 31528
-    title: "Disable USB Storage."
+    title: "Ensure usb-storage kernel module is not available."
     description: "USB storage provides a means to transfer and store files ensuring persistence and availability of the files independent of network connection status. Its popularity and utility has led to USB-based malware being a simple and common means for network infiltration and a first step to establishing a persistent threat within a networked environment."
     rationale: "Restricting USB access on the system will decrease the physical attack surface for a device and diminish the possible vectors to introduce malware."
     remediation: "Run the following script to disable usb-storage: #!/usr/bin/env bash { l_mname=\"usb-storage\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$(tr '-' '_' <<< \"$l_mname\")\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
     compliance:
-      - cis: ["1.1.9"]
+      - cis: ["1.1.1.8"]
       - cis_csc_v8: ["10.3"]
       - cis_csc_v7: ["13.7"]
       - cmmc_v2.0: ["MP.L2-3.8.7"]
@@ -876,7 +876,7 @@ checks:
   # 1.4 Secure Boot Settings
   ###############################################
   # 1.4.1 Ensure bootloader password is set. (Automated) - Not Implemented
-  # 1.4.2 Ensure permissions on bootloader config are configured. (Automated) - Not Implemented
+  # 1.4.2 Ensure access to bootloader config is configured (Automated) - Not Implemented
 
   ###############################################
   # 1.5 Additional Process Hardening
@@ -915,7 +915,7 @@ checks:
     rules:
       - 'f:/etc/systemd/coredump.conf -> r:^\s*ProcessSizeMax\s*=\s*0'
 
-  # 1.5.3 Ensure address space layout randomization (ASLR) is enabled. (Automated) - Not Implemented
+  # 1.5.1 Ensure address space layout randomization is enabled (Automated) - Not Implemented
 
   ###############################################
   # 1.6 Mandatory Access Control
@@ -1164,9 +1164,9 @@ checks:
     rules:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|rocky'
 
-  # 1.7.4 Ensure permissions on /etc/motd are configured. (Automated)
+  # 1.7.4 Ensure access to /etc/motd is configured (Automated)
   - id: 31546
-    title: "Ensure permissions on /etc/motd are configured."
+    title: "Ensure access to /etc/motd is configured."
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root /etc/motd # chmod u-x,go-wx /etc/motd."
@@ -1188,9 +1188,9 @@ checks:
     rules:
       - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 1.7.5 Ensure permissions on /etc/issue are configured. (Automated)
+  # 1.7.5 Ensure access to /etc/issue is configured (Automated)
   - id: 31547
-    title: "Ensure permissions on /etc/issue are configured."
+    title: "Ensure access to /etc/issue is configured."
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root /etc/issue # chmod u-x,go-wx /etc/issue."
@@ -1212,9 +1212,9 @@ checks:
     rules:
       - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 1.7.6 Ensure permissions on /etc/issue.net are configured. (Automated)
+  # 1.7.6 Ensure access to /etc/issue.net is configured (Automated)
   - id: 31548
-    title: "Ensure permissions on /etc/issue.net are configured."
+    title: "Ensure access to /etc/issue.net is configured."
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
     remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root /etc/issue.net # chmod u-x,go-wx /etc/issue.net."
@@ -1288,9 +1288,9 @@ checks:
   # 1.8.8 Ensure GDM autorun-never is enabled. (Automated) - Not Implemented
   # 1.8.9 Ensure GDM autorun-never is not overridden. (Automated) - Not Implemented
 
-  # 1.8.10 Ensure XDCMP is not enabled. (Automated)
+  # 1.8.10 Ensure XDMCP is not enabled (Automated)
   - id: 31551
-    title: "Ensure XDCMP is not enabled."
+    title: "Ensure XDMCP is not enabled."
     description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
     rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
     remediation: "Edit the file /etc/gdm/custom.conf and remove the line: Enable=true."
@@ -1310,12 +1310,11 @@ checks:
     rules:
       - "not f:/etc/gdm3"
       - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
-
   # 1.9 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
 
-  # 1.10 Ensure system-wide crypto policy is not legacy. (Automated)
+  # 1.6.1 Ensure system wide crypto policy is not set to legacy (Automated)
   - id: 31553
-    title: "Ensure system-wide crypto policy is not legacy."
+    title: "Ensure system wide crypto policy is not set to legacy."
     description: "The system-wide crypto-policies followed by the crypto core components allow consistently deprecating and disabling algorithms system-wide. The individual policy levels (DEFAULT, LEGACY, FUTURE, and FIPS) are included in the crypto-policies(7) package."
     rationale: "If the Legacy system-wide crypto policy is selected, it includes support for TLS 1.0, TLS 1.1, and SSH2 protocols or later. The algorithms DSA, 3DES, and RC4 are allowed, while RSA and Diffie-Hellman parameters are accepted if larger than 1023-bits. These legacy protocols and algorithms can make the system vulnerable to attacks, including those listed in RFC 7457."
     impact: "Environments that require compatibility with older insecure protocols may require the use of the less secure LEGACY policy level."
@@ -1323,7 +1322,7 @@ checks:
     references:
       - "https://access.redhat.com/articles/3642912#what-polices-are-provided-1"
     compliance:
-      - cis: ["1.10"]
+      - cis: ["1.6.1"]
       - cis_csc_v8: ["3.10"]
       - cis_csc_v7: ["14.4"]
       - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
@@ -1394,15 +1393,15 @@ checks:
   # 2.2 Special Purpose Services
   ###############################################
 
-  # 2.2.1 Ensure xorg-x11-server-common is not installed. (Automated)
+  # 2.1.20 Ensure X window server services are not in use (Automated)
   - id: 31556
-    title: "Ensure xorg-x11-server-common is not installed."
+    title: "Ensure X window server services are not in use."
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
     rationale: "Unless your organization specifically requires graphical login access via X Windows, remove it to reduce the potential attack surface."
     impact: 'Many Linux systems run applications which require a Java runtime. Some Linux Java packages have a dependency on specific X Windows xorg-x11-fonts. One workaround to avoid this dependency is to use the "headless" Java packages for your specific Java runtime.'
     remediation: "Run the following command to remove the X Windows Server packages: # dnf remove xorg-x11-server-common."
     compliance:
-      - cis: ["2.2.1"]
+      - cis: ["2.1.20"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1418,14 +1417,14 @@ checks:
     rules:
       - "c:rpm -q xorg-x11-server-common -> r:^package xorg-x11-server-common is not installed"
 
-  # 2.2.2 Ensure Avahi Server is not installed. (Automated)
+  # 2.1.2 Ensure avahi daemon services are not in use (Automated)
   - id: 31557
-    title: "Ensure Avahi Server is not installed."
+    title: "Ensure avahi daemon services are not in use."
     description: "Avahi is a free zeroconf implementation, including a system for multicast DNS/DNS-SD service discovery. Avahi allows programs to publish and discover services and hosts running on a local network with no specific configuration. For example, a user can plug a computer into a network and Avahi automatically finds printers to print to, files to look at and people to talk to, as well as network services running on the machine."
     rationale: "Automatic discovery of network services is not normally required for system functionality. It is recommended to remove this package to reduce the potential attack surface."
     remediation: "Run the following commands to stop, mask and remove avahi: # systemctl stop avahi-daemon.socket avahi-daemon.service # dnf remove avahi."
     compliance:
-      - cis: ["2.2.2"]
+      - cis: ["2.1.2"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1442,9 +1441,9 @@ checks:
       - "c:rpm -q avahi-autoipd -> r:^package avahi-autoipd is not installed"
       - "c:rpm -q avahi -> r:^package avahi is not installed"
 
-  # 2.2.3 Ensure CUPS is not installed. (Automated)
+  # 2.1.11 Ensure print server services are not in use (Automated)
   - id: 31558
-    title: "Ensure CUPS is not installed."
+    title: "Ensure print server services are not in use."
     description: "The Common Unix Print System (CUPS) provides the ability to print to both local and network printers. A system running CUPS can also accept print jobs from remote systems and print them to local printers. It also provides a web based remote administration capability."
     rationale: "If the system does not need to print jobs or accept print jobs from other systems, it is recommended that CUPS be removed to reduce the potential attack surface. Note: Removing CUPS will prevent printing from the system."
     impact: "Disabling CUPS will prevent printing from the system, a common task for workstation systems."
@@ -1452,7 +1451,7 @@ checks:
     references:
       - "http://www.cups.org."
     compliance:
-      - cis: ["2.2.3"]
+      - cis: ["2.1.11"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1468,14 +1467,14 @@ checks:
     rules:
       - "c:rpm -q cups -> r:^package cups is not installed"
 
-  # 2.2.4 Ensure DHCP Server is not installed. (Automated)
+  # 2.1.3 Ensure dhcp server services are not in use. (Automated)
   - id: 31559
-    title: "Ensure DHCP Server is not installed."
+    title: "Ensure dhcp server services are not in use."
     description: "The Dynamic Host Configuration Protocol (DHCP) is a service that allows machines to be dynamically assigned IP addresses."
     rationale: "Unless a system is specifically set up to act as a DHCP server, it is recommended that the dhcp-server package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove dhcp: # dnf remove dhcp-server."
     compliance:
-      - cis: ["2.2.4"]
+      - cis: ["2.1.3"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1491,14 +1490,14 @@ checks:
     rules:
       - "c:rpm -q dhcp-server -> r:^package dhcp-server is not installed"
 
-  # 2.2.5 Ensure DNS Server is not installed. (Automated)
+  # 2.1.4 Ensure dns server services are not in use (Automated)
   - id: 31560
-    title: "Ensure DNS Server is not installed."
+    title: "Ensure dns server services are not in use."
     description: "The Domain Name System (DNS) is a hierarchical naming system that maps names to IP addresses for computers, services and other resources connected to a network."
     rationale: "Unless a system is specifically designated to act as a DNS server, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove bind: # dnf remove bind."
     compliance:
-      - cis: ["2.2.5"]
+      - cis: ["2.1.4"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1514,14 +1513,14 @@ checks:
     rules:
       - "c:rpm -q bind -> r:^package bind is not installed"
 
-  # 2.2.6 Ensure VSFTP Server is not installed. (Automated)
+  # 2.1.7 Ensure ftp server services are not in use (Automated)
   - id: 31561
-    title: "Ensure VSFTP Server is not installed."
+    title: "Ensure ftp server services are not in use."
     description: "FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring files between a server and clients over a network, especially where no authentication is necessary (permits anonymous users to connect to a server)."
     rationale: "Unless there is a need to run the system as a FTP server, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove vsftpd: # dnf remove vsftpd."
     compliance:
-      - cis: ["2.2.6"]
+      - cis: ["2.1.7"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1537,15 +1536,15 @@ checks:
     rules:
       - "c:rpm -q vsftpd -> r:^package vsftpd is not installed"
 
-  # 2.2.7 Ensure TFTP Server is not installed. (Automated)
+  # 2.1.16 Ensure tftp server services are not in use (Automated)
   - id: 31562
-    title: "Ensure TFTP Server is not installed."
+    title: "Ensure tftp server services are not in use."
     description: "Trivial File Transfer Protocol (TFTP) is a simple protocol for exchanging files between two TCP/IP machines. TFTP servers allow connections from a TFTP Client for sending and receiving files."
     rationale: "Unless there is a need to run the system as a TFTP server, it is recommended that the package be removed to reduce the potential attack surface. TFTP does not have built-in encryption, access control or authentication. This makes it very easy for an attacker to exploit TFTP to gain access to files."
     impact: "TFTP is often used to provide files for network booting such as for PXE based installation of servers."
     remediation: "Run the following command to remove tftp-server: # dnf remove tftp-server."
     compliance:
-      - cis: ["2.2.7"]
+      - cis: ["2.1.16"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1561,14 +1560,14 @@ checks:
     rules:
       - "c:rpm -q tftp-server -> r:^package tftp-server is not installed"
 
-  # 2.2.8 Ensure a web server is not installed. (Automated)
+  # 2.1.18 Ensure web server services are not in use (Automated)
   - id: 31563
-    title: "Ensure a web server is not installed."
+    title: "Ensure web server services are not in use."
     description: "Web servers provide the ability to host web site content."
     rationale: "Unless there is a need to run the system as a web server, it is recommended that the packages be removed to reduce the potential attack surface. Note: Several http servers exist. They should also be audited, and removed, if not required."
     remediation: "Run the following command to remove httpd and nginx: # dnf remove httpd nginx."
     compliance:
-      - cis: ["2.2.8"]
+      - cis: ["2.1.18"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1585,14 +1584,14 @@ checks:
       - "c:rpm -q nginx -> r:^package nginx is not installed"
       - "c:rpm -q httpd -> r:^package httpd is not installed"
 
-  # 2.2.9 Ensure IMAP and POP3 server is not installed. (Automated)
+  # 2.1.8 Ensure message access server services are not in use (Automated)
   - id: 31564
-    title: "Ensure IMAP and POP3 server is not installed."
+    title: "Ensure message access server services are not in use."
     description: "dovecot is an open source IMAP and POP3 server for Linux based systems."
     rationale: "Unless POP3 and/or IMAP servers are to be provided by this system, it is recommended that the package be removed to reduce the potential attack surface. Note: Several IMAP/POP3 servers exist and can use other service names. These should also be audited and the packages removed if not required."
     remediation: "Run the following command to remove dovecot and cyrus-imapd: # dnf remove dovecot cyrus-imapd."
     compliance:
-      - cis: ["2.2.9"]
+      - cis: ["2.1.8"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1609,14 +1608,14 @@ checks:
       - "c:rpm -q dovecot -> r:^package dovecot is not installed"
       - "c:rpm -q cyrus-imapd -> r:^package cyrus-imapd is not installed"
 
-  # 2.2.10 Ensure Samba is not installed. (Automated)
+  # 2.1.6 Ensure samba file server services are not in use (Automated)
   - id: 31565
-    title: "Ensure Samba is not installed."
+    title: "Ensure samba file server services are not in use."
     description: "The Samba daemon allows system administrators to configure their Linux systems to share file systems and directories with Windows desktops. Samba will advertise the file systems and directories via the Server Message Block (SMB) protocol. Windows desktop users will be able to mount these directories and file systems as letter drives on their systems."
     rationale: "If there is no need to mount directories and file systems to Windows systems, then this package can be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove samba: # dnf remove samba."
     compliance:
-      - cis: ["2.2.10"]
+      - cis: ["2.1.6"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1632,14 +1631,14 @@ checks:
     rules:
       - "c:rpm -q samba -> r:^package samba is not installed"
 
-  # 2.2.11 Ensure HTTP Proxy Server is not installed. (Automated)
+  # 2.1.17 Ensure web proxy server services are not in use (Automated)
   - id: 31566
-    title: "Ensure HTTP Proxy Server is not installed."
+    title: "Ensure web proxy server services are not in use."
     description: "Squid is a standard proxy server used in many distributions and environments."
     rationale: "Unless a system is specifically set up to act as a proxy server, it is recommended that the squid package be removed to reduce the potential attack surface. Note: Several HTTP proxy servers exist. These should be checked and removed unless required."
     remediation: "Run the following command to remove the squid package: # dnf remove squid."
     compliance:
-      - cis: ["2.2.11"]
+      - cis: ["2.1.17"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1655,14 +1654,14 @@ checks:
     rules:
       - "c:rpm -q squid -> r:^package squid is not installed"
 
-  # 2.2.12 Ensure net-snmp is not installed. (Automated)
+  # 2.1.14 Ensure snmp services are not in use (Automated)
   - id: 31567
-    title: "Ensure net-snmp is not installed."
+    title: "Ensure snmp services are not in use."
     description: 'Simple Network Management Protocol (SNMP) is a widely used protocol for monitoring the health and welfare of network equipment, computer equipment and devices like UPSs. Net-SNMP is a suite of applications used to implement SNMPv1 (RFC 1157), SNMPv2 (RFCs 1901-1908), and SNMPv3 (RFCs 3411-3418) using both IPv4 and IPv6. Support for SNMPv2 classic (a.k.a. "SNMPv2 historic" - RFCs 1441-1452) was dropped with the 4.0 release of the UCD-snmp package. The Simple Network Management Protocol (SNMP) server is used to listen for SNMP commands from an SNMP management system, execute the commands or collect the information and then send results back to the requesting system.'
     rationale: "The SNMP server can communicate using SNMPv1, which transmits data in the clear and does not require authentication to execute commands. SNMPv3 replaces the simple/clear text password sharing used in SNMPv2 with more securely encoded parameters. If the the SNMP service is not required, the net-snmp package should be removed to reduce the attack surface of the system. Note: If SNMP is required: - The server should be configured for SNMP v3 only. User Authentication and Message Encryption should be configured. If SNMP v2 is absolutely necessary, modify the community strings' values. -."
     remediation: "Run the following command to remove net-snmpd: # dnf remove net-snmp."
     compliance:
-      - cis: ["2.2.12"]
+      - cis: ["2.1.14"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["2.6", "9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1678,14 +1677,14 @@ checks:
     rules:
       - "c:rpm -q net-snmp -> r:^package net-snmp is not installed"
 
-  # 2.2.13 Ensure telnet-server is not installed. (Automated)
+  # 2.1.15 Ensure telnet server services are not in use (Automated)
   - id: 31568
-    title: "Ensure telnet-server is not installed."
+    title: "Ensure telnet server services are not in use."
     description: "The telnet-server package contains the telnet daemon, which accepts connections from users from other systems via the telnet protocol."
     rationale: "The telnet protocol is insecure and unencrypted. The use of an unencrypted transmission medium could allow a user with access to sniff network traffic the ability to steal credentials. The ssh package provides an encrypted session and stronger security."
     remediation: "Run the following command to remove the telnet-server package: # dnf remove telnet-server."
     compliance:
-      - cis: ["2.2.13"]
+      - cis: ["2.1.15"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["2.6", "9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1701,14 +1700,14 @@ checks:
     rules:
       - "c:rpm -q telnet-server -> r:^package telnet-server is not installed"
 
-  # 2.2.14 Ensure dnsmasq is not installed. (Automated)
+  # 2.1.5 Ensure dnsmasq services are not in use (Automated)
   - id: 31569
-    title: "Ensure dnsmasq is not installed."
+    title: "Ensure dnsmasq services are not in use."
     description: "dnsmasq is a lightweight tool that provides DNS caching, DNS forwarding and DHCP (Dynamic Host Configuration Protocol) services."
     rationale: "Unless a system is specifically designated to act as a DNS caching, DNS forwarding and/or DHCP server, it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove dnsmasq: # dnf remove dnsmasq."
     compliance:
-      - cis: ["2.2.14"]
+      - cis: ["2.1.5"]
       - mitre_mitigations: ["M1042"]
       - mitre_tactics: ["TA0008"]
       - mitre_techniques: ["T1203", "T1210", "T1543", "T1543.002"]
@@ -1717,14 +1716,14 @@ checks:
     rules:
       - "c:rpm -q dnsmasq -> r:^package dnsmasq is not installed"
 
-  # 2.2.15 Ensure mail transfer agent is configured for local-only mode. (Automated)
+  # 2.1.21 Ensure mail transfer agents are configured for local-only mode (Automated)
   - id: 31570
-    title: "Ensure mail transfer agent is configured for local-only mode."
+    title: "Ensure mail transfer agents are configured for local-only mode."
     description: "Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to listen for incoming mail and transfer the messages to the appropriate user or mail server. If the system is not intended to be a mail server, it is recommended that the MTA be configured to only process local mail."
     rationale: "The software for all Mail Transfer Agents is complex and most have a long history of security issues. While it is important to ensure that the system can process local mail messages, it is not necessary to have the MTA's daemon listening on a port unless the server is intended to be a mail server that receives and processes mail from other systems. Note: - This recommendation is designed around the postfix mail server. - Depending on your environment you may have an alternative MTA installed such as sendmail. If this is the case consult the documentation for your installed MTA to configure the recommended state."
     remediation: "Edit /etc/postfix/main.cf and add the following line to the RECEIVING MAIL section. If the line already exists, change it to look like the line below: inet_interfaces = loopback-only Run the following command to restart postfix: # systemctl restart postfix."
     compliance:
-      - cis: ["2.2.15"]
+      - cis: ["2.1.21"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1739,15 +1738,15 @@ checks:
     rules:
       - 'not c:ss -lntu -> r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
 
-  # 2.2.16 Ensure nfs-utils is not installed or the nfs-server service is masked. (Automated)
+  # 2.1.9 Ensure network file system services are not in use (Automated)
   - id: 31571
-    title: "Ensure nfs-utils is not installed or the nfs-server service is masked."
+    title: "Ensure network file system services are not in use."
     description: "The Network File System (NFS) is one of the first and most widely distributed file systems in the UNIX environment. It provides the ability for systems to mount file systems of other servers through the network."
     rationale: "If the system does not require network shares, it is recommended that the nfs-utils package be removed to reduce the attack surface of the system."
     impact: "Many of the libvirt packages used by Enterprise Linux virtualization are dependent on the nfs-utils package. If the nfs-utils package is required as a dependency, the nfs-server service should be disabled and masked to reduce the attack surface of the system."
     remediation: "Run the following command to remove nfs-utils: # dnf remove nfs-utils OR If the nfs-utils package is required as a dependency, run the following command to stop and mask the nfs-server service: # systemctl --now mask nfs-server."
     compliance:
-      - cis: ["2.2.16"]
+      - cis: ["2.1.9"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1763,15 +1762,15 @@ checks:
       - "c:rpm -q nfs-utils -> r:^package nfs-utils is not installed"
       - "c:systemctl is-enabled nfs-server -> r:masked|No such file or directory"
 
-  # 2.2.17 Ensure rpcbind is not installed or the rpcbind services are masked. (Automated)
+  # 2.1.12 Ensure rpcbind services are not in use (Automated)
   - id: 31572
-    title: "Ensure rpcbind is not installed or the rpcbind services are masked."
+    title: "Ensure rpcbind services are not in use."
     description: "The rpcbind utility maps RPC services to the ports on which they listen. RPC processes notify rpcbind when they start, registering the ports they are listening on and the RPC program numbers they expect to serve. The client system then contacts rpcbind on the server with a particular RPC program number. The rpcbind service redirects the client to the proper port number so it can communicate with the requested service Portmapper is an RPC service, which always listens on tcp and udp 111, and is used to map other RPC services (such as nfs, nlockmgr, quotad, mountd, etc.) to their corresponding port number on the server. When a remote host makes an RPC call to that server, it first consults with portmap to determine where the RPC server is listening."
     rationale: "A small request (~82 bytes via UDP) sent to the Portmapper generates a large response (7x to 28x amplification), which makes it a suitable tool for DDoS attacks. If rpcbind is not required, it is recommended that the rpcbind package be removed to reduce the attack surface of the system."
     impact: "Many of the libvirt packages used by Enterprise Linux virtualization, and the nfs-utils package used for The Network File System (NFS), are dependent on the rpcbind package. If the rpcbind package is required as a dependency, the services rpcbind.service and rpcbind.socket should be stopped and masked to reduce the attack surface of the system."
     remediation: "Run the following command to remove nfs-utils: # dnf remove rpcbind OR If the rpcbind package is required as a dependency, run the following commands to stop and mask the rpcbind.service and rpcbind.socket systemd units: # systemctl --now mask rpcbind.service # systemctl --now mask rpcbind.socket."
     compliance:
-      - cis: ["2.2.17"]
+      - cis: ["2.1.12"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1787,15 +1786,15 @@ checks:
       - "c:rpm -q rpcbind -> r:^package rpcbind is not installed"
       - "not c:systemctl status rpcbind rpcbind.socket -> r:Loaded: && !r: masked"
 
-  # 2.2.18 Ensure rsync-daemon is not installed or the rsyncd service is masked. (Automated)
+  # 2.1.13 Ensure rsync services are not in use (Automated)
   - id: 31573
-    title: "Ensure rsync-daemon is not installed or the rsyncd service is masked."
+    title: "Ensure rsync services are not in use."
     description: "The rsyncd service can be used to synchronize files between systems over network links."
     rationale: "Unless required, the rsync-daemon package should be removed to reduce the attack surface area of the system. The rsyncd service presents a security risk as it uses unencrypted protocols for communication. Note: If a required dependency exists for the rsync-daemon package, but the rsyncd service is not required, the service should be masked."
     impact: "There are packages that are dependent on the rsync package. If the rsync package is removed, these packages will be removed as well. Before removing the rsync-daemon package, review any dependent packages to determine if they are required on the system. If a dependent package is required, mask the rsyncd service and leave the rsync-daemon package installed."
     remediation: "Run the following command to remove the rsync package: # dnf remove rsync-daemon OR Run the following command to mask the rsyncd service: # systemctl --now mask rsyncd."
     compliance:
-      - cis: ["2.2.18"]
+      - cis: ["2.1.13"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1835,15 +1834,15 @@ checks:
     rules:
       - "c:rpm -q telnet -> r:^package telnet is not installed"
 
-  # 2.3.2 Ensure LDAP client is not installed. (Automated)
+  # 2.2.2 Ensure ldap client is not installed (Automated)
   - id: 31575
-    title: "Ensure LDAP client is not installed."
+    title: "Ensure ldap client is not installed."
     description: "The Lightweight Directory Access Protocol (LDAP) was introduced as a replacement for NIS/YP. It is a service that provides a method for looking up information from a central database."
     rationale: "If the system will not need to act as an LDAP client, it is recommended that the software be removed to reduce the potential attack surface."
     impact: "Removing the LDAP client will prevent or inhibit using LDAP for authentication in your environment."
     remediation: "Run the following command to remove the openldap-clients package: # dnf remove openldap-clients."
     compliance:
-      - cis: ["2.3.2"]
+      - cis: ["2.2.2"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["2.6"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1859,14 +1858,14 @@ checks:
     rules:
       - "c:rpm -q openldap-clients -> r:^package openldap-clients is not installed"
 
-  # 2.3.3 Ensure TFTP client is not installed. (Automated)
+  # 2.2.5 Ensure tftp client is not installed (Automated)
   - id: 31576
-    title: "Ensure TFTP client is not installed."
+    title: "Ensure tftp client is not installed."
     description: "Trivial File Transfer Protocol (TFTP) is a simple protocol for exchanging files between two TCP/IP machines. TFTP servers allow connections from a TFTP Client for sending and receiving files."
     rationale: "TFTP does not have built-in encryption, access control or authentication. This makes it very easy for an attacker to exploit TFTP to gain access to files."
     remediation: "Run the following command to remove tftp: # dnf remove tftp."
     compliance:
-      - cis: ["2.3.3"]
+      - cis: ["2.2.5"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1882,14 +1881,14 @@ checks:
     rules:
       - "c:rpm -q tftp -> r:^package tftp is not installed"
 
-  # 2.3.4 Ensure FTP client is not installed. (Automated)
+  # 2.2.1 Ensure ftp client is not installed (Automated)
   - id: 31577
-    title: "Ensure FTP client is not installed."
+    title: "Ensure ftp client is not installed."
     description: "FTP (File Transfer Protocol) is a traditional and widely used standard tool for transferring files between a server and clients over a network, especially where no authentication is necessary (permits anonymous users to connect to a server)."
     rationale: "FTP does not protect the confidentiality of data or authentication credentials. It is recommended SFTP be used if file transfer is required. Unless there is a need to run the system as a FTP server (for example, to allow anonymous downloads), it is recommended that the package be removed to reduce the potential attack surface."
     remediation: "Run the following command to remove ftp: # dnf remove ftp."
     compliance:
-      - cis: ["2.3.4"]
+      - cis: ["2.2.1"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
