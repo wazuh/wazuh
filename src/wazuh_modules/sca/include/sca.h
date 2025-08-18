@@ -27,7 +27,9 @@ extern "C"
 
     typedef void((*send_data_callback_t)(const void* buffer));
 
-    typedef int (*wm_exec_callback_t)(char *command, char **output, int *exitcode, int secs, const char * add_path);
+    typedef int (*wm_exec_callback_t)(char* command, char** output, int* exitcode, int secs, const char* add_path);
+    typedef int (*push_stateless_func)(const char* message);
+    typedef int (*push_stateful_func)(const char* message);
 
     EXPORTED void sca_start(log_callback_t callbackLog, const struct wm_sca_t* sca_config);
 
@@ -36,6 +38,8 @@ extern "C"
     EXPORTED int sca_sync_message(const char* data);
 
     EXPORTED void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback);
+
+    EXPORTED void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_func stateful_func);
 
 #ifdef __cplusplus
 }
@@ -47,6 +51,9 @@ typedef void (*sca_stop_func)();
 
 typedef int (*sca_sync_message_func)(const char* data);
 
-typedef void (*sca_set_wm_exec_func)(int (*wm_exec_callback)(char *command, char **output, int *exitcode, int secs, const char * add_path));
+typedef void (*sca_set_wm_exec_func)(
+    int (*wm_exec_callback)(char* command, char** output, int* exitcode, int secs, const char* add_path));
+
+typedef void (*sca_set_push_functions_func)(push_stateless_func stateless_func, push_stateful_func stateful_func);
 
 #endif //_SCA_H

@@ -12,11 +12,6 @@ extern "C"
 #include "../wazuh_modules/wmodules_def.h"
 
 #include "logging_helper.hpp"
-#include "debug_op.h"
-#include "shared.h"
-#include "mq_op.h"
-#include "atomic.h"
-#include "defs.h"
 
 #include <unistd.h>
 
@@ -31,16 +26,17 @@ extern "C"
 #endif // WIN32
 #endif // WAZUH_UNIT_TESTING
 
-int scaQueue = -1;
-bool shuttingDown = false;
+static push_stateless_func g_push_stateless_func = NULL;
+static push_stateful_func g_push_stateful_func = NULL;
 
-const long maxEps = 100000; // Hardcoded, but same as syscollector
-
+void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_func stateful_func)
+{
+    g_push_stateless_func = stateless_func;
+    g_push_stateful_func = stateful_func;
+}
 
 void sca_start(log_callback_t callbackLog, const struct wm_sca_t* sca_config)
 {
-    shuttingDown = false;
-
     std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper {
         [callbackLog](const modules_log_level_t level, const std::string& data)
         {
@@ -67,7 +63,6 @@ void sca_start(log_callback_t callbackLog, const struct wm_sca_t* sca_config)
 
 void sca_stop()
 {
-    shuttingDown = true;
     SCA::instance().destroy();
 }
 
@@ -92,11 +87,6 @@ void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback)
     SecurityConfigurationAssessment::SetGlobalWmExecFunction(wm_exec_callback);
 }
 
-bool isSCAShuttingDown()
-{
-    return shuttingDown;
-}
-
 SCA::SCA()
 {
 }
@@ -105,49 +95,26 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
 {
     LoggingHelper::setLogCallback(logFunction);
 
-    scaQueue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-
-    if (scaQueue < 0)
-    {
-        merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-    }
-
     if (!m_sca)
     {
         m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH, "agent-uuid-placeholder");
 
-        auto persistStatefulMessage = [this](const std::string& message) -> int
+        auto persistStatefulMessage = [](const std::string& message) -> int
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Persisting SCA event: " + message);
-            return 0;
+            if (g_push_stateful_func) {
+                return g_push_stateful_func(message.c_str());
+            }
+            LoggingHelper::getInstance().log(LOG_WARNING, "No stateful message handler set");
+            return -1;
         };
 
-        auto sendStatelessMessage = [this](const std::string& message) -> int
+        auto sendStatelessMessage = [](const std::string& message) -> int
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Sending SCA event: " + message);
-
-            if (SendMSGPredicated(scaQueue, message.c_str(), "sca", SCA_MQ, isSCAShuttingDown) < 0)
-            {
-                merror(QUEUE_SEND);
-
-                if ((scaQueue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0)
-                {
-                    merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
-                }
-
-                // Try to send it again
-                SendMSGPredicated(scaQueue, message.c_str(), "sca", SCA_MQ, isSCAShuttingDown);
+            if (g_push_stateless_func) {
+                return g_push_stateless_func(message.c_str());
             }
-
-            static atomic_int_t n_msg_sent = ATOMIC_INT_INITIALIZER(0);
-
-            if (atomic_int_inc(&n_msg_sent) >= maxEps)
-            {
-                sleep(1);
-                atomic_int_set(&n_msg_sent, 0);
-            }
-
-            return 0;
+            LoggingHelper::getInstance().log(LOG_WARNING, "No stateless message handler set");
+            return -1;
         };
 
         m_sca->SetPushStatelessMessageFunction(sendStatelessMessage);
