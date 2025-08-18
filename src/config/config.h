@@ -22,8 +22,11 @@
 #define CMAIL         0000000400
 #define CAR           0000001000
 #define CDBD          0000002000 /// Deprecated module
+#define CSYSLOGD      0000004000 /// Deprecated module
 #define CAGENT_CONFIG 0000010000
+#define CAGENTLESS    0000020000 /// Deprecated module
 #define CREPORTS      0000040000
+#define CINTEGRATORD  0000100000 /// Deprecated module
 #define CWMODULE      0000200000
 #define CLABELS       0000400000
 #define CAUTHD        0001000000
@@ -41,8 +44,9 @@
                             (modules & CGLOBAL       ) | (modules & CRULES        ) | (modules & CSYSCHECK     ) |\
                             (modules & CROOTCHECK    ) | (modules & CALERTS       ) | (modules & CLOCALFILE    ) |\
                             (modules & CREMOTE       ) | (modules & CCLIENT       ) | (modules & CMAIL         ) |\
-                            (modules & CAR           ) | (modules & CDBD          ) | (modules & CAGENT_CONFIG ) |\
-                            (modules & CREPORTS      ) | (modules & CWMODULE      ) | (modules & CLABELS       ) |\
+                            (modules & CAR           ) | (modules & CDBD          ) | (modules & CSYSLOGD      ) |\
+                            (modules & CAGENT_CONFIG ) | (modules & CAGENTLESS    ) | (modules & CREPORTS      ) |\
+                            (modules & CINTEGRATORD  ) | (modules & CWMODULE      ) | (modules & CLABELS       ) |\
                             (modules & CAUTHD        ) | (modules & CBUFFER       ) | (modules & CCLUSTER      ) |\
                             (modules & CLGCSOCKET    ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) |\
                             (modules & CANDSOCKET    ) )
