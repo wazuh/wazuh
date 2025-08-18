@@ -8,7 +8,6 @@
  * Foundation
  */
 
-#include "defs.h"
 #include "shared.h"
 #include "../os_net/os_net.h"
 #include "remoted.h"
