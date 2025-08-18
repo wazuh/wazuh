@@ -15,6 +15,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     list(APPEND TEST_SRC test_services_windows.cpp)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND TEST_SRC test_systemd_units_linux.cpp)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    list(APPEND TEST_SRC test_launchd_darwin.cpp)
 endif()
 
 add_executable(extended_sources_services_unit_test ${TEST_SRC})
