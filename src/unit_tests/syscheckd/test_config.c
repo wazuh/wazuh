@@ -144,7 +144,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_non_null(syscheck.prefilter_cmd);    // It should be a valid binary absolute path
     assert_int_equal(syscheck.sync_interval, 600);
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.disk_quota_enabled, true);
@@ -210,7 +209,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 0);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 600);
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.disk_quota_enabled, true);
@@ -261,7 +259,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 300);
     assert_int_equal(syscheck.max_eps, 50);
     assert_int_equal(syscheck.disk_quota_enabled, true);
@@ -383,13 +380,6 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(whodata_startup_healthcheck), "yes");
     cJSON *whodata_provider = cJSON_GetObjectItem(sys_whodata, "provider");
     assert_string_equal(cJSON_GetStringValue(whodata_provider), "audit");
-#endif
-
-    cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
-#ifndef TEST_WINAGENT
-    assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "/bin/ls");
-#else
-    assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "c:\\windows\\system32\\cmd.exe");
 #endif
 
     cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
@@ -591,8 +581,6 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(windows_audit_interval->valueint, 0);
     cJSON *registry = cJSON_GetObjectItem(sys_items, "registry");
     assert_int_equal(cJSON_GetArraySize(registry), 0);
-    cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
-    assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
     cJSON *max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
     assert_int_equal(max_eps->valueint, 50);
     cJSON *process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
