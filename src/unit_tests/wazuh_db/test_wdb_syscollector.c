@@ -4243,6 +4243,79 @@ void test_wdb_browser_extensions_save_success(void **state) {
     output = wdb_browser_extensions_save(data, &browser_extension_record, true);
     assert_int_equal(output, 0);
 }
+/* wdb_services_extensions_insert */
+static void test_wdb_services_extensions_insert_sql_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_extensions_insert(): cannot cache statement");
+
+    ret = wdb_services_extensions_insert(data->wdb, "scan_id", "scan_time", "service_name", "extension_name", "version", "checksum", false);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+/* Test wdb_services_extensions_save */
+static void test_wdb_services_extensions_save_transaction_fail(void **state) {
+    int ret = OS_INVALID;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 0;
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_extensions_save(): cannot begin transaction");
+
+    ret = wdb_services_extensions_save(data, "scan_id", "scan_time", "service_name", "extension_name", "version", "checksum", false);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_services_extensions_save_insert_fail(void **state) {
+    int ret = OS_INVALID;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 1;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_extensions_insert(): cannot cache statement");
+
+    ret = wdb_services_extensions_save(data, "scan_id", "scan_time", "service_name", "extension_name", "version", "checksum", false);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_services_extensions_save_success(void **state) {
+    int ret = OS_INVALID;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 1;
+
+    will_return(__wrap_wdb_stmt_cache, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "service_name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "extension_name");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "version");
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
+    will_return(__wrap_sqlite3_bind_text, 0);
+
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    ret = wdb_services_extensions_save(data, "scan_id", "scan_time", "service_name", "extension_name", "version", "checksum", false);
+
+    assert_int_equal(ret, OS_SUCCESS);
+}
 
 /* Test wdb_syscollector_save2 */
 void test_wdb_syscollector_save2_parser_json_fail(void **state) {
@@ -6108,6 +6181,12 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_browser_extensions_save_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_browser_extensions_save_insert_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_browser_extensions_save_success, test_setup, test_teardown),
+        /* Test wdb_services_extensions_insert */
+        cmocka_unit_test_setup_teardown(test_wdb_services_extensions_insert_sql_fail, test_setup, test_teardown),
+        /* Test wdb_services_extensions_save */
+        cmocka_unit_test_setup_teardown(test_wdb_services_extensions_save_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_extensions_save_insert_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_extensions_save_success, test_setup, test_teardown),
         /* Test wdb_syscollector_save2 */
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_parser_json_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_get_attributes_fail, test_setup, test_teardown),
