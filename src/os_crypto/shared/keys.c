@@ -11,6 +11,7 @@
 #include "headers/shared.h"
 #include "headers/sec.h"
 #include "os_crypto/md5/md5_op.h"
+#include "os_crypto/blowfish/bf_op.h"
 
 /* Prototypes */
 static void __memclear(char *id, char *name, char *ip, char *key, size_t size) __attribute((nonnull));

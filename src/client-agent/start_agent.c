@@ -59,7 +59,7 @@ bool connect_server(int server_id, bool verbose)
                 minfo("Closing connection to server ([%s]:%d/%s).",
                     agt->server[agt->rip_id].rip,
                     agt->server[agt->rip_id].port,
-                    agt->server[agt->rip_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+                    "tcp");
             }
         }
     }
@@ -91,33 +91,22 @@ bool connect_server(int server_id, bool verbose)
         minfo("Trying to connect to server ([%s]:%d/%s).",
             agt->server[server_id].rip,
             agt->server[server_id].port,
-            agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+            "tcp");
     }
-    if (agt->server[server_id].protocol == IPPROTO_UDP) {
-        agt->sock = OS_ConnectUDP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
-    } else {
-        agt->sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
-    }
+
+    agt->sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
 
     if (agt->sock < 0) {
         agt->sock = -1;
 
         if (verbose) {
             #ifdef WIN32
-                merror(CONNS_ERROR, ip_address, agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp", win_strerror(WSAGetLastError()));
+                merror(CONNS_ERROR, ip_address, agt->server[server_id].port, "tcp", win_strerror(WSAGetLastError()));
             #else
-                merror(CONNS_ERROR, ip_address, agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp", strerror(errno));
+                merror(CONNS_ERROR, ip_address, agt->server[server_id].port, "tcp", strerror(errno));
             #endif
         }
     } else {
-        #ifdef WIN32
-            if (agt->server[server_id].protocol == IPPROTO_UDP) {
-                int bmode = 1;
-
-                /* Set socket to non-blocking */
-                ioctlsocket(agt->sock, FIONBIO, (u_long FAR *) &bmode);
-            }
-        #endif
         agt->rip_id = server_id;
         last_connection_time = (int)time(NULL);
         os_free(ip_address);
@@ -232,17 +221,12 @@ static void w_agentd_keys_init (void) {
                         agt->profile);
 
     /* Set the crypto method for the agent */
-    os_set_agent_crypto_method(&keys,agt->crypto_method);
-
-    switch (agt->crypto_method) {
-        case W_METH_AES:
-            minfo("Using AES as encryption method.");
-            break;
-    }
+    os_set_agent_crypto_method(&keys, W_METH_AES);
+    minfo("Using AES as encryption method.");
 }
 
 /**
- * @brief Holds the message reception logic for UDP and TCP
+ * @brief Holds the message reception logic for TCP
  * @param buffer pointer to buffer where the information will be stored
  * @param max_length size of buffer
  * @return Integer value indicating the status code.
@@ -263,13 +247,8 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
             break;
 
         default:
-            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-                /* Receive response UDP*/
-                recv_b = recv(agt->sock, buffer, max_lenght, MSG_DONTWAIT);
-            } else {
-                /* Receive response TCP*/
-                recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
-            }
+            /* Receive response TCP*/
+            recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
 
             /* Successful response */
             if (recv_b > 0) {
@@ -306,7 +285,7 @@ int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
         /* Successfull enroll, read keys */
         OS_UpdateKeys(&keys);
         /* Set the crypto method for the agent */
-        os_set_agent_crypto_method(&keys,agt->crypto_method);
+        os_set_agent_crypto_method(&keys, W_METH_AES);
     }
     return enroll_result;
 }
@@ -356,7 +335,7 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                         available_server = time(0);
 
                         minfo(AG_CONNECTED, agt->server[server_id].rip,
-                                agt->server[server_id].port, agt->server[server_id].protocol == IPPROTO_UDP ? "udp" : "tcp");
+                                agt->server[server_id].port, "tcp");
 
                         if (is_startup) {
                             send_msg_on_startup();
