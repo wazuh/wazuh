@@ -49,29 +49,11 @@ w_indexed_queue_t *indexed_queue_init(size_t max_size) {
 
     rbtree_set_dispose(queue->index, indexed_queue_entry_free);
 
-    if (pthread_mutex_init(&queue->mutex, NULL) != 0) {
-        rbtree_destroy(queue->index);
-        linked_queue_free(queue->queue);
-        free(queue);
-        return NULL;
-    }
+    w_mutex_init(&queue->mutex, NULL);
 
-    if (pthread_cond_init(&queue->available, NULL) != 0) {
-        pthread_mutex_destroy(&queue->mutex);
-        rbtree_destroy(queue->index);
-        linked_queue_free(queue->queue);
-        free(queue);
-        return NULL;
-    }
+    w_cond_init(&queue->available, NULL);
 
-    if (pthread_cond_init(&queue->available_not_full, NULL) != 0) {
-        pthread_cond_destroy(&queue->available);
-        pthread_mutex_destroy(&queue->mutex);
-        rbtree_destroy(queue->index);
-        linked_queue_free(queue->queue);
-        free(queue);
-        return NULL;
-    }
+    w_cond_init(&queue->available_not_full, NULL);
 
     queue->max_size = max_size;
     queue->current_size = 0;
@@ -86,7 +68,7 @@ void indexed_queue_free(w_indexed_queue_t *queue) {
         return;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
 
     // Free all remaining data if dispose function is set
     if (queue->dispose) {
@@ -101,29 +83,29 @@ void indexed_queue_free(w_indexed_queue_t *queue) {
         }
     }
 
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
 
     rbtree_destroy(queue->index);
     linked_queue_free(queue->queue);
-    pthread_cond_destroy(&queue->available_not_full);
-    pthread_cond_destroy(&queue->available);
-    pthread_mutex_destroy(&queue->mutex);
+    w_cond_destroy(&queue->available_not_full);
+    w_cond_destroy(&queue->available);
+    w_mutex_destroy(&queue->mutex);
     free(queue);
 }
 
 void indexed_queue_set_dispose(w_indexed_queue_t *queue, void (*dispose)(void *)) {
     if (queue) {
-        pthread_mutex_lock(&queue->mutex);
+        w_mutex_lock(&queue->mutex);
         queue->dispose = dispose;
-        pthread_mutex_unlock(&queue->mutex);
+        w_mutex_unlock(&queue->mutex);
     }
 }
 
 void indexed_queue_set_get_key(w_indexed_queue_t *queue, char *(*get_key)(void *)) {
     if (queue) {
-        pthread_mutex_lock(&queue->mutex);
+        w_mutex_lock(&queue->mutex);
         queue->get_key = get_key;
-        pthread_mutex_unlock(&queue->mutex);
+        w_mutex_unlock(&queue->mutex);
     }
 }
 
@@ -196,19 +178,19 @@ int indexed_queue_push_ex(w_indexed_queue_t *queue, const char *key, void *data)
         return -1;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
 
     // Wait if queue is full
     while (indexed_queue_full(queue)) {
-        pthread_cond_wait(&queue->available_not_full, &queue->mutex);
+        w_cond_wait(&queue->available_not_full, &queue->mutex);
     }
 
     int result = indexed_queue_push(queue, key, data);
     if (result == 0) {
-        pthread_cond_signal(&queue->available);
+        w_cond_signal(&queue->available);
     }
 
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
     return result;
 }
 
@@ -238,7 +220,7 @@ int indexed_queue_upsert_ex(w_indexed_queue_t *queue, const char *key, void *dat
         return -1;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
 
     w_indexed_queue_entry_t *entry = rbtree_get(queue->index, key);
     if (entry) {
@@ -248,20 +230,20 @@ int indexed_queue_upsert_ex(w_indexed_queue_t *queue, const char *key, void *dat
         }
         entry->data = data;
         entry->queue_node->data = data;
-        pthread_mutex_unlock(&queue->mutex);
+        w_mutex_unlock(&queue->mutex);
         return 1;
     } else {
         // Wait if queue is full for new insertions
         while (indexed_queue_full(queue)) {
-            pthread_cond_wait(&queue->available_not_full, &queue->mutex);
+            w_cond_wait(&queue->available_not_full, &queue->mutex);
         }
 
         int result = indexed_queue_push(queue, key, data);
         if (result == 0) {
-            pthread_cond_signal(&queue->available);
+            w_cond_signal(&queue->available);
         }
 
-        pthread_mutex_unlock(&queue->mutex);
+        w_mutex_unlock(&queue->mutex);
         return result;
     }
 }
@@ -280,9 +262,9 @@ void *indexed_queue_get_ex(w_indexed_queue_t *queue, const char *key) {
         return NULL;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
     void *data = indexed_queue_get(queue, key);
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
     return data;
 }
 
@@ -303,9 +285,9 @@ void *indexed_queue_peek_ex(w_indexed_queue_t *queue) {
         return NULL;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
     void *data = indexed_queue_peek(queue);
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
     return data;
 }
 
@@ -355,16 +337,16 @@ void *indexed_queue_pop_ex(w_indexed_queue_t *queue) {
         return NULL;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
 
     while (indexed_queue_empty(queue)) {
-        pthread_cond_wait(&queue->available, &queue->mutex);
+        w_cond_wait(&queue->available, &queue->mutex);
     }
 
     void *data = indexed_queue_pop(queue);
-    pthread_cond_signal(&queue->available_not_full);
+    w_cond_signal(&queue->available_not_full);
 
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
     return data;
 }
 
@@ -373,24 +355,20 @@ void *indexed_queue_pop_ex_timedwait(w_indexed_queue_t *queue, const struct time
         return NULL;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
 
     while (indexed_queue_empty(queue)) {
         int result = pthread_cond_timedwait(&queue->available, &queue->mutex, abstime);
-        if (result == ETIMEDOUT) {
-            pthread_mutex_unlock(&queue->mutex);
-            return NULL;
-        }
         if (result != 0) {
-            pthread_mutex_unlock(&queue->mutex);
+            w_mutex_unlock(&queue->mutex);
             return NULL;
         }
     }
 
     void *data = indexed_queue_pop(queue);
-    pthread_cond_signal(&queue->available_not_full);
+    w_cond_signal(&queue->available_not_full);
 
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
     return data;
 }
 
@@ -443,12 +421,12 @@ int indexed_queue_delete_ex(w_indexed_queue_t *queue, const char *key) {
         return 0;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
     int result = indexed_queue_delete(queue, key);
     if (result) {
-        pthread_cond_signal(&queue->available_not_full);
+        w_cond_signal(&queue->available_not_full);
     }
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
     return result;
 }
 
@@ -474,8 +452,8 @@ void *indexed_queue_update_ex(w_indexed_queue_t *queue, const char *key, void *d
         return NULL;
     }
 
-    pthread_mutex_lock(&queue->mutex);
+    w_mutex_lock(&queue->mutex);
     void *old_data = indexed_queue_update(queue, key, data);
-    pthread_mutex_unlock(&queue->mutex);
+    w_mutex_unlock(&queue->mutex);
     return old_data;
 }
