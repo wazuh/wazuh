@@ -8,7 +8,6 @@
  * Foundation
  */
 
-#include "defs.h"
 #include "shared.h"
 #include "../os_net/os_net.h"
 #include "remoted.h"
@@ -528,7 +527,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(const message_t *message, w_linked_queue_t * control_msg_queue) {
+STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];

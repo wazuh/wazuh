@@ -18,11 +18,9 @@ static int mq_send_binary_stub(int, const void* msg, size_t, const char*, char) 
     switch (m->content_type()) {
         case Wazuh::SyncSchema::MessageType::Start: {
             flatbuffers::FlatBufferBuilder builder;
-            auto module = builder.CreateString("sync_protocol");
             Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
             startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
             startAckBuilder.add_session(g_session);
-            startAckBuilder.add_module_(module);
             auto startAckOffset = startAckBuilder.Finish();
             auto message = Wazuh::SyncSchema::CreateMessage(
                 builder,
@@ -34,11 +32,9 @@ static int mq_send_binary_stub(int, const void* msg, size_t, const char*, char) 
         }
         case Wazuh::SyncSchema::MessageType::End: {
             flatbuffers::FlatBufferBuilder builder;
-            auto module = builder.CreateString("sync_protocol");
             Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
             endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
             endAckBuilder.add_session(g_session);
-            endAckBuilder.add_module_(module);
             auto endAckOffset = endAckBuilder.Finish();
             auto message = Wazuh::SyncSchema::CreateMessage(
                 builder,
