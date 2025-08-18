@@ -31,7 +31,7 @@ runs:
           make deps TARGET=server -j2
           make build_gtest TARGET=server -j2
           make build_benchmark TARGET=server -j2
-          make libwazuhext.so TARGET=server -j2          
+          make libwazuhext.so TARGET=server -j2
           make external/simdjson/build/libsimdjson.a TARGET=server -j2
         shell: bash
 
@@ -53,4 +53,14 @@ runs:
           cd shared_modules/keystore
           mkdir -p build && cd build
           cmake .. -DCMAKE_PROJECT_NAME=keystore -DSRC_FOLDER=${SRC_FOLDER} && make -j2
+        shell: bash
+
+      - name: Build flatbuffer schemas
+        run: |
+          cd src
+          SRC_FOLDER=$(pwd)
+
+          cd shared_modules/utils/flatbuffers
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_PROJECT_NAME=flatbuffer_tool -DSRC_FOLDER=${SRC_FOLDER} && make compile_schemas_input -j2
         shell: bash
