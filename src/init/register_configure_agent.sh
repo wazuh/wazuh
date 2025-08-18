@@ -106,11 +106,6 @@ add_adress_block() {
             echo "    <server>"
             echo "      <address>${ADDRESSES[i]}</address>"
             echo "      <port>1514</port>"
-            if [ -n "${PROTOCOLS[i]}" ]; then
-                echo "      <protocol>${PROTOCOLS[i]}</protocol>"
-            else
-                echo "      <protocol>tcp</protocol>"
-            fi
             echo "    </server>"
         } >> "${TMP_SERVER}"
     done
@@ -295,11 +290,6 @@ main () {
 
     get_deprecated_vars
 
-    if [ -z "${WAZUH_MANAGER}" ] && [ -n "${WAZUH_PROTOCOL}" ]; then
-        PROTOCOLS=( $(tolower "${WAZUH_PROTOCOL//,/ }") )
-        edit_value_tag "protocol" "${PROTOCOLS[0]}"
-    fi
-
     if [ -n "${WAZUH_MANAGER}" ]; then
         if [ ! -f "${INSTALLDIR}/logs/ossec.log" ]; then
             touch -f "${INSTALLDIR}/logs/ossec.log"
@@ -309,11 +299,6 @@ main () {
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
         ADDRESSES=( ${WAZUH_MANAGER//,/ } )
-        PROTOCOLS=( $(tolower "${WAZUH_PROTOCOL//,/ }") )
-        # Get uniques values if all protocols are the same
-        if ( [ "${#PROTOCOLS[@]}" -ge "${#ADDRESSES[@]}" ] && ( ( ! echo "${PROTOCOLS[@]}" | grep -q -w "tcp" ) || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ) ) || [ ${#PROTOCOLS[@]} -eq 0 ] || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ; then
-            ADDRESSES=( $(echo "${ADDRESSES[@]}" |  tr ' ' '\n' | cat -n | sort -uk2 | sort -n | cut -f2- | tr '\n' ' ') )
-        fi
 
         add_adress_block
     fi
