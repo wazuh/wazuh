@@ -19,7 +19,7 @@ static int wdb_adjust_global_upgrade(wdb_t *wdb, int upgrade_step);
 /* SQL statements used for the global.db upgrade */
 typedef enum wdb_stmt_global {
     WDB_STMT_GLOBAL_CHECK_MANAGER_KEEPALIVE,
-} wdb_stmt_metadata;
+} wdb_stmt_global;
 
 static const char *SQL_GLOBAL_STMT[] = {
     "SELECT COUNT(*) FROM agent WHERE id=0 AND last_keepalive=253402300799;",
