@@ -235,6 +235,32 @@ static struct column_list const TABLE_GROUPS[GROUPS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
 };
 
+#define SERVICES_FIELD_COUNT 22
+static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_SERVICES[1]},
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_SERVICES[2]},
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "name", {.text = ""}, true}, .next = &TABLE_SERVICES[3]},
+    { .value = { FIELD_TEXT, 4, false, false, NULL, "display_name", {.text = ""}, true}, .next = &TABLE_SERVICES[4]},
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "description", {.text = ""}, true}, .next = &TABLE_SERVICES[5]},
+    { .value = { FIELD_TEXT, 6, false, false, NULL, "service_type", {.text = ""}, true}, .next = &TABLE_SERVICES[6]},
+    { .value = { FIELD_TEXT, 7, false, false, NULL, "start_type", {.text = ""}, true}, .next = &TABLE_SERVICES[7]},
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "state", {.text = ""}, true}, .next = &TABLE_SERVICES[8]},
+    { .value = { FIELD_INTEGER, 9, false, false, NULL, "pid", {.integer = 0}, true}, .next = &TABLE_SERVICES[9]},
+    { .value = { FIELD_INTEGER, 10, false, false, NULL, "ppid", {.integer = 0}, true}, .next = &TABLE_SERVICES[10]},
+    { .value = { FIELD_TEXT, 11, false, false, NULL, "binary_path", {.text = ""}, true}, .next = &TABLE_SERVICES[11]},
+    { .value = { FIELD_TEXT, 12, false, false, NULL, "load_state", {.text = ""}, true}, .next = &TABLE_SERVICES[12]},
+    { .value = { FIELD_TEXT, 13, false, false, NULL, "active_state", {.text = ""}, true}, .next = &TABLE_SERVICES[13]},
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "sub_state", {.text = ""}, true}, .next = &TABLE_SERVICES[14]},
+    { .value = { FIELD_TEXT, 15, false, false, NULL, "unit_file_state", {.text = ""}, true}, .next = &TABLE_SERVICES[15]},
+    { .value = { FIELD_TEXT, 16, false, false, NULL, "status", {.text = ""}, true}, .next = &TABLE_SERVICES[16]},
+    { .value = { FIELD_TEXT, 17, false, false, NULL, "user", {.text = ""}, true}, .next = &TABLE_SERVICES[17]},
+    { .value = { FIELD_TEXT, 18, false, false, NULL, "can_stop", {.text = ""}, true}, .next = &TABLE_SERVICES[18]},
+    { .value = { FIELD_TEXT, 19, false, false, NULL, "can_reload", {.text = ""}, true}, .next = &TABLE_SERVICES[19]},
+    { .value = { FIELD_INTEGER, 20, false, false, NULL, "service_exit_code", {.integer = 0}, true}, .next = &TABLE_SERVICES[20]},
+    { .value = { FIELD_TEXT, 21, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_SERVICES[21]},
+    { .value = { FIELD_TEXT, 22, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL}
+};
+
 static struct kv_list const TABLE_MAP[] = {
     { .current = { "network_iface", "sys_netiface", false, TABLE_NETIFACE, NETIFACE_FIELD_COUNT }, .next = &TABLE_MAP[1]},
     { .current = { "network_protocol", "sys_netproto", false, TABLE_NETPROTO, NETPROTO_FIELD_COUNT }, .next = &TABLE_MAP[2]},
@@ -246,7 +272,8 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "hotfixes", "sys_hotfixes",  false, TABLE_HOTFIXES, HOTFIXES_FIELD_COUNT }, .next = &TABLE_MAP[8]},
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = &TABLE_MAP[9]},
     { .current = { "users", "sys_users", false, TABLE_USERS, USERS_FIELD_COUNT }, .next = &TABLE_MAP[10]},
-    { .current = { "groups", "sys_groups", false, TABLE_GROUPS, GROUPS_FIELD_COUNT }, .next = NULL}
+    { .current = { "groups", "sys_groups", false, TABLE_GROUPS, GROUPS_FIELD_COUNT }, .next = &TABLE_MAP[11]},
+    { .current = { "services", "sys_services", false, TABLE_SERVICES, SERVICES_FIELD_COUNT }, .next = NULL}
 };
 
 #define AGENT_ID_LEN 64
@@ -2048,6 +2075,12 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         w_inc_agent_syscollector_groups();
         component = WDB_SYSCOLLECTOR_GROUPS;
         mdebug2("DB(%s) syscollector_groups Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_services") == 0)
+    {
+        w_inc_agent_syscollector_services();
+        component = WDB_SYSCOLLECTOR_SERVICES;
+        mdebug2("DB(%s) syscollector_services Syscollector query. ", wdb->id);
     }
     else
     {
