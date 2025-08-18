@@ -3,7 +3,7 @@
 
 #include <time.h>
 
-/* Common structure for socket forwarding in Analysisd and logcollector */
+/* Common structure for socket forwarding in modulesd and logcollector */
 typedef struct _socket_forwarder {
     char   *name;
     char   *location;
