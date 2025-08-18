@@ -1355,7 +1355,7 @@ checks:
     rules:
       - "c:rpm -q autofs -> r:^package autofs is not installed"
       - "c:systemctl is-enabled autofs -> r:masked|No such file or directory"
-      - "c:systemctl is-active autofs.service -> r:^inactive"
+	  - "c:systemctl is-active autofs.service -> r:^inactive"
 
   # 2.1.1 Ensure time synchronization is in use. (Automated)
   - id: 31554
