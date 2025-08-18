@@ -103,9 +103,6 @@ jobs:
         chmod +x src/build/engine/wazuh-engine
         python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
-    - name: Set capabilities to change user and group
-      run: sudo setcap cap_setgid,cap_setuid+ep /tmp/actions/wazuh-engine
-
     - name: Initial state
       run: engine-helper-test -e /tmp/actions init --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/config.env
 
@@ -168,9 +165,6 @@ jobs:
       run: |
         chmod +x src/build/engine/wazuh-engine
         python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
-
-    - name: Set capabilities to change user and group
-      run: sudo setcap cap_setgid,cap_setuid+ep /tmp/actions/wazuh-engine
 
     - name: Initial state
       run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/  init

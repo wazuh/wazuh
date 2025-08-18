@@ -13,8 +13,8 @@ Group:       System Environment/Daemons
 Source0:     %{name}-%{version}.tar.gz
 URL:         https://www.wazuh.com/
 BuildRoot:   %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Vendor:      Wazuh, Inc <info@wazuh.com>
-Packager:    Wazuh, Inc <info@wazuh.com>
+Vendor:      Wazuh <info@wazuh.com>
+Packager:    Wazuh <info@wazuh.com>
 Requires(pre):    /usr/sbin/groupadd /usr/sbin/useradd
 Requires(postun): /usr/sbin/groupdel /usr/sbin/userdel
 Conflicts:   ossec-hids ossec-hids-agent wazuh-agent wazuh-local
@@ -346,11 +346,8 @@ if [ $1 = 1 ]; then
   %{_localstatedir}/packages_files/manager_installation_scripts/gen_ossec.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
 
   touch %{_localstatedir}/logs/active-responses.log
-  touch %{_localstatedir}/logs/integrations.log
   chown wazuh:wazuh %{_localstatedir}/logs/active-responses.log
-  chown wazuh:wazuh %{_localstatedir}/logs/integrations.log
   chmod 0660 %{_localstatedir}/logs/active-responses.log
-  chmod 0640 %{_localstatedir}/logs/integrations.log
 
   # Add default local_files to ossec.conf
   %{_localstatedir}/packages_files/manager_installation_scripts/add_localfiles.sh %{_localstatedir} >> %{_localstatedir}/etc/ossec.conf
@@ -656,6 +653,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_upgrade
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-engine
+%attr(750, root, root) %{_localstatedir}/bin/wazuh-forwarder
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-execd
@@ -663,6 +661,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-monitord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-remoted
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-syscheckd
+%attr(750, root, wazuh) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-apid
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-clusterd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-db
@@ -672,6 +671,7 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc
 %attr(660, root, wazuh) %config(noreplace) %{_localstatedir}/etc/ossec.conf
 %attr(640, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/client.keys
+%attr(640, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/alert_forwarder.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/localtime
@@ -705,8 +705,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/hap_helper/*.py
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/dapi
 %attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/dapi/*.py
-%dir %attr(750, root, wazuh) %{_localstatedir}/integrations
-%attr(750, root, wazuh) %{_localstatedir}/integrations/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/lib
 %attr(750, root, wazuh) %{_localstatedir}/lib/libwazuhext.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libwazuhshared.so
@@ -729,7 +727,6 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/logs
 %attr(660, wazuh, wazuh)  %ghost %{_localstatedir}/logs/active-responses.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/api.log
-%attr(640, wazuh, wazuh) %ghost %{_localstatedir}/logs/integrations.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
 %dir %attr(440, root, wazuh) %{_localstatedir}/templates
@@ -933,11 +930,11 @@ rm -fr %{buildroot}
 %changelog
 * Thu Dec 18 2025 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
+* Wed Oct 01 2025 support <info@wazuh.com> - 4.14.1
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html
 * Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
-* Wed Jul 30 2025 support <info@wazuh.com> - 4.13.1
-- More info: https://documentation.wazuh.com/current/release-notes/release-4-13-1.html
-* Wed Jul 16 2025 support <info@wazuh.com> - 4.13.0
+* Tue Aug 05 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html

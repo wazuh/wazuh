@@ -93,14 +93,6 @@ default_api_configuration = {
         },
         "indexer": {
             "allow": True
-        },
-        "integrations": {
-            "virustotal": {
-                "public_key": {
-                    "allow": True,
-                    "minimum_quota": 240
-                }
-            }
         }
     }
 }

@@ -166,7 +166,6 @@ variables:
         <alerts_log>yes</alerts_log>
         <logall>no</logall>
         <logall_json>no</logall_json>
-        <email_notification>no</email_notification>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
         <update_check>no</update_check>
@@ -205,7 +204,6 @@ variables:
         <alerts_log>yes</alerts_log>
         <logall>no</logall>
         <logall_json>no</logall_json>
-        <email_notification>no</email_notification>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
         <update_check>yes</update_check>
@@ -268,7 +266,6 @@ variables:
         <alerts_log>yes</alerts_log>
         <logall>no</logall>
         <logall_json>no</logall_json>
-        <email_notification>no</email_notification>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
         <update_checkkk>no</update_checkkk>
@@ -301,7 +298,6 @@ variables:
         <alerts_log>yes</alerts_log>
         <logall>no</logall>
         <logall_json>no</logall_json>
-        <email_notification>no</email_notification>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
         <update_check>yes</update_check>

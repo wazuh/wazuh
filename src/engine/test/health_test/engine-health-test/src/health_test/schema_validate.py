@@ -5,11 +5,20 @@ import shared.resource_handler as rs
 from health_test.error_managment import ErrorReporter
 import ipaddress
 from datetime import datetime
+import re
 
 
 def is_valid_date(value):
     try:
-        datetime.fromisoformat(value)
+        # Normalizes microseconds to 6 digits
+        match = re.match(r"(.*\.\d+)(\+.*|Z)?", value)
+        if match:
+            dt_part, tz_part = match.groups()
+            if '.' in dt_part:
+                base, frac = dt_part.split('.')
+                frac = (frac + "000000")[:6]  # padded or truncated to 6 digits
+                value = base + '.' + frac + (tz_part or '')
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
         return True
     except ValueError:
         return False
@@ -48,6 +57,45 @@ def get_validation_function(field_type):
 
     if field_type == 'date':
         return is_valid_date
+
+    if field_type == 'geo_point':
+
+        def _is_geo_point(v):
+            # 1. String "lat,lon"
+            if isinstance(v, str):
+                # geohash (alphanumeric without comma, from 1 to 12 chars)
+                if re.fullmatch(r"[0-9a-z]+", v, re.IGNORECASE):
+                    return True
+                # WKT POINT (lon lat)
+                if re.fullmatch(r"POINT\s*\(\s*-?\d+(\.\d+)?\s+-?\d+(\.\d+)?\s*\)", v.strip(), re.IGNORECASE):
+                    return True
+                # "lat,lon"
+                if re.fullmatch(r"-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?", v.strip()):
+                    return True
+                return False
+
+            # 2. Object with lat/lon
+            if isinstance(v, dict):
+                if "lat" in v and "lon" in v and \
+                isinstance(v["lat"], (int, float)) and \
+                isinstance(v["lon"], (int, float)):
+                    return True
+                # 3. GeoJSON
+                if v.get("type") == "Point" and \
+                isinstance(v.get("coordinates"), (list, tuple)) and \
+                len(v["coordinates"]) == 2 and \
+                all(isinstance(x, (int, float)) for x in v["coordinates"]):
+                    return True
+                return False
+
+            # 4. List/tuple [lon, lat]
+            if isinstance(v, (list, tuple)) and len(v) == 2 and \
+            all(isinstance(x, (int, float)) for x in v):
+                return True
+
+            return False
+
+        return _is_geo_point
 
     else:
         return lambda value: False
@@ -112,6 +160,20 @@ def get_value_from_hierarchy(data, field):
     return value
 
 
+def ancestors(field: str):
+    """
+    Returns hierarchical prefixes of a field.
+    Ej: 'a.b.c.d' -> ['a', 'a.b', 'a.b.c']
+    """
+    parts = field.split('.')
+    acc = []
+    out = []
+    for p in parts[:-1]:
+        acc.append(p)
+        out.append('.'.join(acc))
+    return out
+
+
 def verify_schema_types(schema, expected_json_files, custom_fields_map, integration_name, reporter):
     """
     Compare the fields in the '_expected.json' files with the schema and custom fields.
@@ -119,7 +181,9 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
     try:
         with open(schema, 'r') as schema_file:
             schema_data = json.load(schema_file)
-            schema_fields = set(schema_data.get("fields", {}).keys())
+            schema_fields_info = schema_data.get("fields", {})
+            schema_field_names = set(schema_fields_info.keys())
+            schema_field_types = {k: v.get("type") for k, v in schema_fields_info.items()}
     except Exception as e:
         reporter.add_error(integration_name, str(schema), f"Error reading the JSON schema file: {e}")
         return
@@ -138,10 +202,16 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
                     extracted_fields = transform_dict_to_list(expected)
                     invalid_fields = [
                         field for field in extracted_fields
-                        if field not in schema_fields
+                        if field not in schema_field_names
                     ]
 
                     filtered_invalid_fields = set(invalid_fields)
+
+                    for invalid_field in list(filtered_invalid_fields):
+                        for anc in ancestors(invalid_field):
+                            if schema_field_types.get(anc) == 'geo_point':
+                                filtered_invalid_fields.discard(invalid_field)
+                                break
 
                     for field, (type, validate_function) in custom_fields_map.items():
                         expected_value = get_value_from_hierarchy(expected, field)

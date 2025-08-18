@@ -2,6 +2,7 @@
 #define _CONFIG_CONFIG_HPP
 
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -10,8 +11,9 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <base/utils/stringUtils.hpp>
 
-#include <conf/apiLoader.hpp>
+#include <conf/fileLoader.hpp>
 #include <conf/unitconf.hpp>
 
 namespace conf
@@ -57,9 +59,9 @@ std::string toStr(const U& value)
 class Conf final
 {
 private:
-    json::Json m_apiConfig; ///< The configuration from the framework API.
+    OptionMap m_fileConfig; ///< The configuration from the file.
     std::unordered_map<std::string, std::shared_ptr<internal::BaseUnitConf>> m_units; ///< The configuration units.
-    std::shared_ptr<IApiLoader> m_apiLoader;                                          ///< The API loader.
+    std::shared_ptr<IFileLoader> m_fileLoader;                                        ///< The API loader.
 
     /**
      * @brief Validate the configuration
@@ -67,7 +69,7 @@ private:
      * Comparting the configuration types with the default value types.
      * @throw std::runtime_error If the configuration is invalid.
      */
-    void validate(const json::Json& config) const;
+    void validate(const OptionMap& config) const;
 
 public:
     Conf() = delete;
@@ -77,13 +79,13 @@ public:
      *
      * This object is used to load and validate the configuration.
      */
-    explicit Conf(std::shared_ptr<IApiLoader> apiLoader);
+    explicit Conf(std::shared_ptr<IFileLoader> fileLoader);
 
     /**
-     * @brief Load the configuration from API and environment variables.
+     * @brief Load the configuration from File and environment variables.
      *
      * @throw std::runtime_error If the configuration is invalid.
-     * @throw std::runtime_error If cannot retrieve the configuration from the framework API.
+     * @throw std::runtime_error If cannot retrieve the configuration from the File.
      */
     void load();
 
@@ -99,7 +101,7 @@ public:
     template<typename T>
     void addUnit(std::string_view key, std::string_view env, const T& defaultValue)
     {
-        if (!m_apiConfig.isNull())
+        if (!m_fileConfig.empty())
         {
             throw std::logic_error("The configuration is already loaded.");
         }
@@ -129,7 +131,7 @@ public:
      *
      * Priority order:
      * 1. Environment variable
-     * 2. Configuration API
+     * 2. Configuration File
      * 3. Default value
      *
      * @tparam T type of the value.
@@ -145,59 +147,157 @@ public:
             throw std::runtime_error(
                 fmt::format("The key '{}' is not found in the configuration options.", key.data()));
         }
-        const auto unit = m_units.at(key.data());
 
-        // Search for the environment variable, throw an error if the value is invalid
-        if (const auto envValue = unit->template getEnvValue<T>())
-        {
-            LOG_DEBUG("Using configuration key '{}' fom environment variable '{}': '{}'.",
-                      key,
-                      unit->getEnv(),
-                      toStr<T>(envValue.value()));
-            return envValue.value();
-        }
+        const auto& unit = m_units.at(key.data());
 
-        // Search for the configuration API,if not found, return the default value
-        if constexpr (std::is_same_v<T, std::string>)
+        // 1. Environment variable
+        try
         {
-            const auto value = m_apiConfig.getString(key.data()).value_or(unit->template getDefaultValue<T>());
-            const auto org = m_apiConfig.getString(key.data()).has_value() ? "API" : "default";
-            LOG_DEBUG("Using configuration key '{}' from {}: '{}'", key, org, value);
-            return value;
-        }
-        else if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>)
-        {
-            const auto value = m_apiConfig.getIntAsInt64(key.data()).value_or(unit->template getDefaultValue<T>());
-            const auto org = m_apiConfig.getIntAsInt64(key.data()).has_value() ? "API" : "default";
-            LOG_DEBUG("Using configuration key '{}' from {}: '{}'", key, org, value);
-            return value;
-        }
-        else if constexpr (std::is_same_v<T, std::vector<std::string>>)
-        {
-            auto jArr = m_apiConfig.getArray(key.data());
-            if (!jArr)
+            if (const auto envValue = unit->template getEnvValue<T>())
             {
-                auto value = unit->template getDefaultValue<T>();
-                LOG_DEBUG("Using configuration key '{}' from default: '{}'", key, toStr<T>(value));
-                return value;
+                LOG_DEBUG("Using configuration key '{}' from environment variable '{}': '{}'",
+                          key,
+                          unit->getEnv(),
+                          toStr<T>(envValue.value()));
+                return envValue.value();
             }
-            std::vector<std::string> result;
-            for (const auto& item : jArr.value())
-            {
-                result.push_back(item.getString().value_or("ERROR VALUE"));
-            }
-            LOG_DEBUG("Using configuration key '{}' from API: '{}'", key, toStr<T>(result));
-            return result;
         }
-        else if constexpr (std::is_same_v<T, bool>)
+        catch (const std::exception& e)
         {
-            auto value = m_apiConfig.getBool(key.data()).value_or(unit->template getDefaultValue<T>());
-            const auto org = m_apiConfig.getBool(key.data()).has_value() ? "API" : "default";
-            LOG_DEBUG("Using configuration key '{}' from {}: '{}'", key, org, value);
-            return value;
+            LOG_WARNING("Failed to retrieve or convert environment variable for key '{}': {}", key, e.what());
         }
 
-        throw std::runtime_error("The type is not supported.");
+        // 2. Configuration file
+        auto it = m_fileConfig.find(key.data());
+        if (it != m_fileConfig.end())
+        {
+            const auto& rawValue = it->second;
+            try
+            {
+                if constexpr (std::is_same_v<T, std::string>)
+                {
+                    LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, rawValue);
+                    return rawValue;
+                }
+                else if constexpr (std::is_same_v<T, bool>)
+                {
+                    std::string lowerValue = rawValue;
+                    std::transform(lowerValue.begin(),
+                                   lowerValue.end(),
+                                   lowerValue.begin(),
+                                   [](unsigned char c) { return std::tolower(c); });
+
+                    if (lowerValue != "true" && lowerValue != "false")
+                    {
+                        throw std::runtime_error("Expected 'true' or 'false' (case insensitive)");
+                    }
+
+                    bool value = (lowerValue == "true");
+                    LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, value);
+                    return value;
+                }
+                else if constexpr (std::is_same_v<T, int>)
+                {
+                    if (!base::utils::string::isNumber(rawValue))
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Invalid configuration type for key '{}'. Expected integer, got '{}'.", key, rawValue));
+                    }
+
+                    std::size_t pos = 0;
+                    try
+                    {
+                        int value = std::stoi(rawValue, &pos);
+                        if (pos != rawValue.size())
+                        {
+                            throw std::runtime_error(
+                                fmt::format("Extra characters after int: '{}'", rawValue.substr(pos)));
+                        }
+                        LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, value);
+                        return value;
+                    }
+                    catch (const std::invalid_argument& e)
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Invalid configuration type for key '{}'. Could not parse '{}'.", key, rawValue));
+                    }
+                    catch (const std::out_of_range& e)
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Invalid configuration type for key '{}'. Value out of range for int: '{}'.",
+                                        key,
+                                        rawValue));
+                    }
+                }
+                else if constexpr (std::is_same_v<T, int64_t>)
+                {
+                    std::size_t pos = 0;
+                    try
+                    {
+                        int64_t value = std::stoll(rawValue, &pos);
+                        if (pos != rawValue.size())
+                        {
+                            throw std::runtime_error(
+                                fmt::format("Extra characters after int64: '{}'", rawValue.substr(pos)));
+                        }
+                        LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, value);
+                        return value;
+                    }
+                    catch (const std::invalid_argument& e)
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Invalid configuration type for key '{}'. Could not parse '{}'.", key, rawValue));
+                    }
+                    catch (const std::out_of_range& e)
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Invalid configuration type for key '{}'. Value out of range for int64: '{}'.",
+                                        key,
+                                        rawValue));
+                    }
+                }
+                else if constexpr (std::is_same_v<T, std::vector<std::string>>)
+                {
+                    // Disallow bracket notation at the beginning and end (JSON style)
+                    if (rawValue.front() == '[' && rawValue.back() == ']')
+                    {
+                        throw std::runtime_error(fmt::format("Invalid value for key '{}': bracket notation "
+                                                             "'[...]' is not allowed (value: '{}').",
+                                                             key,
+                                                             rawValue));
+                    }
+
+                    std::vector<std::string> result;
+                    auto items = base::utils::string::splitEscaped(rawValue, ',', '\\');
+
+                    for (auto& rawItem : items)
+                    {
+                        auto item = base::utils::string::trim(rawItem, " \t\r\n");
+                        // Unescape characters
+                        item = base::utils::string::unescapeString(item, '\\', ",\\", true);
+
+                        result.emplace_back(std::move(item));
+                    }
+
+                    if (result.empty())
+                    {
+                        throw std::runtime_error(fmt::format("Invalid value for key '{}': empty list.", key));
+                    }
+
+                    return result;
+                }
+                throw std::runtime_error("The type is not supported.");
+            }
+            catch (const std::exception& e)
+            {
+                LOG_WARNING("Failed to convert value '{}' for key '{}': {}", rawValue, key, e.what());
+            }
+        }
+
+        // 3. Default value
+        auto value = unit->template getDefaultValue<T>();
+        LOG_DEBUG("Using configuration key '{}' from default: '{}'", key, toStr<T>(value));
+        return value;
     }
 };
 

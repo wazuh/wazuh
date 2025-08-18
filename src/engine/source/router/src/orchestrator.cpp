@@ -1,6 +1,7 @@
 #include <list>
 #include <memory>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 #include <base/json.hpp>
@@ -209,9 +210,9 @@ base::OptError Orchestrator::initWorker(const std::shared_ptr<IWorker>& worker,
 // Public
 void Orchestrator::Options::validate() const
 {
-    if (m_numThreads < 1 || m_numThreads > 128)
+    if (m_numThreads < 0 || m_numThreads > 128)
     {
-        throw std::runtime_error {"Configuration error: numThreads must be between 1 and 128"};
+        throw std::runtime_error {"Configuration error: numThreads must be between 0 and 128"};
     }
     validatePointer(m_wStore, "store");
     validatePointer(m_builder, "builder");
@@ -274,8 +275,19 @@ Orchestrator::Orchestrator(const Options& opt)
     auto routerEntries = getEntriesFromStore(store, m_storeRouterName);
     auto testerEntries = getEntriesFromStore(store, m_storeTesterName);
 
+    std::size_t numThreads = opt.m_numThreads;
+    if (numThreads == 0)
+    {
+        numThreads = std::thread::hardware_concurrency();
+        if (numThreads == 0)
+        {
+            numThreads = 1; // Fallback if hardware_concurrency cannot be determined
+        }
+        LOG_INFO("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
+    }
+
     // Create the workers
-    for (std::size_t i = 0; i < opt.m_numThreads; ++i)
+    for (std::size_t i = 0; i < numThreads; ++i)
     {
         auto worker = std::make_shared<Worker>(m_envBuilder, m_eventQueue, m_testQueue);
         auto error = initWorker(worker, routerEntries, testerEntries);

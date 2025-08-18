@@ -1045,60 +1045,6 @@ def check_indexer(new_conf: str, original_conf: str):
             raise WazuhError(1127, extra_message='indexer')
 
 
-def check_virustotal_integration(new_conf: str):
-    """Check if the configuration VirusTotal API Key corresponds to Public or Premium API.
-
-    Parameters
-    ----------
-    new_conf : str
-        New configuration file.
-
-    Raises
-    -------
-    WazuhError(1127)
-        Raised if the integrations section is modified in the configuration to upload.
-    """
-
-    def obtain_vt_api_keys(conf: str) -> list[str]:
-        """Obtain Virus Total API keys from the configuration.
-
-        Parameters
-        ----------
-        conf : str
-            XML configuration file.
-
-        Returns
-        -------
-        keys: list[str]
-            Virus Total API keys.
-        """
-        keys = []
-        for str_conf in re.findall(r'<integration>.*?</integration>', conf, re.MULTILINE | re.DOTALL | re.IGNORECASE):
-            integrations_section = fromstring(str_conf)
-            for name_section in integrations_section.iter('name'):
-                if name_section.text.strip() == 'virustotal':
-                    for api_key_section in integrations_section.iter('api_key'):
-                        keys.append(api_key_section.text.strip())
-        return keys
-
-    blocked_configurations = configuration.api_conf['upload_configuration']['integrations']['virustotal']
-
-    if not blocked_configurations['public_key']['allow']:
-        minimum_quota = blocked_configurations['public_key']['minimum_quota']
-        api_keys = obtain_vt_api_keys(new_conf)
-        for api_key in api_keys:
-            headers = {'x-apikey': f'{api_key}'}
-            url = f"https://www.virustotal.com/api/v3/users/{api_key}/overall_quotas"
-            try:
-                virustotal_response = get(url=url, headers=headers, timeout=10).json()
-                response_minimum_quota = virustotal_response["data"]["api_requests_hourly"]["user"]["allowed"]
-            except (exceptions.RequestException, KeyError) as e:
-                extra_msg = "Unexpected VirusTotal response" if type(e) == KeyError else str(e)
-                raise WazuhError(1131, extra_message=f'{extra_msg}')
-            if response_minimum_quota == minimum_quota:
-                raise WazuhError(1130, extra_message='integrations > virustotal')
-
-
 def load_wazuh_xml(xml_path, data=None):
     if not data:
         with open(xml_path) as f:
@@ -2084,7 +2030,6 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         if config_file:
             check_remote_commands(final_xml)
             check_agents_allow_higher_versions(final_xml)
-            check_virustotal_integration(final_xml)
             with open(common.OSSEC_CONF, 'r') as f:
                 current_xml = f.read()
             check_indexer(final_xml, current_xml)

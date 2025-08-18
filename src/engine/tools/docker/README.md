@@ -44,13 +44,13 @@ engine-container   latest       f6a7b8c9d1e2   1 minute ago         16.5GB
 In order to create the container, you can use the following command:
 
 ``` bash
-docker create -p 4022:22 --name engine-container engine-container:latest
+docker create -p 4022:22 -v /var/run/docker.sock:/var/run/docker.sock --name engine-container engine-container:latest
 ```
 
 Alternatively, you can use a specific version of the image
 ``` bash
-export VERSION=20250414-0
-docker create -p 4022:22 --name engine-container engine-container:$VERSION
+export VERSION=20250701-0
+docker create -p 4022:22 -v /var/run/docker.sock:/var/run/docker.sock --name engine-container engine-container:$VERSION
 ```
 This command will create a container named `engine-container` and will map the port `4022` of the host to the port `22` of the container. A container is created in a stopped state.
 

@@ -35,6 +35,12 @@ typedef struct _recv_msgs_t {
     ctrl_msgs_t ctrl_breakdown;
 } recv_msgs_t;
 
+typedef struct _ctrl_queue_breakdown_t {
+    uint32_t inserted_count;     // New messages inserted into queue
+    uint32_t replaced_count;     // Messages replaced/updated in queue  
+    uint32_t processed_count;    // Messages processed from queue
+} ctrl_queue_breakdown_t;
+
 typedef struct _sent_msgs_t {
     uint64_t ack_count;
     uint64_t shared_count;
@@ -50,9 +56,9 @@ typedef struct _remoted_state_t {
     uint64_t sent_bytes;
     uint32_t tcp_sessions;
     uint32_t keys_reload_count;
-    uint32_t ctrl_msg_queue_usage;
     recv_msgs_t recv_breakdown;
     sent_msgs_t sent_breakdown;
+    ctrl_queue_breakdown_t ctrl_queue_breakdown;
 } remoted_state_t;
 
 typedef struct _remoted_agent_state_t {
@@ -85,15 +91,6 @@ void rem_inc_tcp();
  */
 void rem_dec_tcp();
 
-/**
- * @brief Increment control message queue usage
- */
-void rem_inc_ctrl_msg_queue_usage();
-
-/**
- * @brief Decrement control message queue usage
- */
-void rem_dec_ctrl_msg_queue_usage();
 
 /**
  * @brief Increment bytes received
@@ -203,6 +200,21 @@ void rem_inc_send_discarded(const char *agent_id);
  * @brief Increment keys reload counter
  */
 void rem_inc_keys_reload();
+
+/**
+ * @brief Increment control message queue inserted counter
+ */
+void rem_inc_ctrl_queue_inserted();
+
+/**
+ * @brief Increment control message queue replaced counter
+ */
+void rem_inc_ctrl_queue_replaced();
+
+/**
+ * @brief Increment control message queue processed counter
+ */
+void rem_inc_ctrl_queue_processed();
 
 /**
  * @brief Create a JSON object with all the remoted state information
