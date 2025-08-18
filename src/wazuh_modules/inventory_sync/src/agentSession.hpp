@@ -81,6 +81,8 @@ class AgentSessionImpl final
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
+                              std::string_view agentId,
+                              std::string_view moduleName,
                               Wazuh::SyncSchema::Start const* data,
                               TStore& store,
                               TIndexerQueue& indexerQueue,

@@ -134,13 +134,15 @@ class InventorySyncFacadeImpl final
                 {
                     std::unique_lock lock(m_agentSessionsMutex);
                     // Check if session already exists.
-                    if (m_agentSessions.find(sessionId) != m_agentSessions.end())
+                    if (m_agentSessions.contains(sessionId))
                     {
                         throw InventorySyncException("Session already exists");
                     }
 
                     m_agentSessions.try_emplace(sessionId,
                                                 sessionId,
+                                                agentId,
+                                                moduleName,
                                                 syncMessage->content_as<Wazuh::SyncSchema::Start>(),
                                                 *m_dataStore,
                                                 *m_indexerQueue,

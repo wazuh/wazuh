@@ -30,13 +30,11 @@ table Start {
     mode: Mode;
     size: ulong;
     module: string;
-    agent_id: ulong;
 }
 
 table StartAck {
     status: Status;
     session: ulong;
-    module: string;
 }
 
 table End {
@@ -46,7 +44,6 @@ table End {
 table EndAck {
     status: Status;
     session: ulong;
-    module: string;
 }
 
 table Pair {
@@ -57,7 +54,6 @@ table Pair {
 table ReqRet {
     seq: [Pair];
     session: ulong;
-    module: string;
 }
 
 union MessageType {
