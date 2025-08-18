@@ -22,8 +22,7 @@ LaunchdProvider::LaunchdProvider()
 
 nlohmann::json LaunchdProvider::collect()
 {
-    nlohmann::json result;
-    result["services"] = nlohmann::json::array();
+    nlohmann::json result = nlohmann::json::array();
 
     std::vector<std::string> launchers;
     getLauncherPaths(launchers);
@@ -36,6 +35,7 @@ nlohmann::json LaunchdProvider::collect()
         }
 
         LaunchdService service;
+
         if (parsePlistFile(path, service))
         {
             nlohmann::json serviceJson;
@@ -61,7 +61,7 @@ nlohmann::json LaunchdProvider::collect()
             serviceJson["watch_paths"] = service.watchPaths;
             serviceJson["queue_directories"] = service.queueDirectories;
 
-            result["services"].push_back(serviceJson);
+            result.push_back(serviceJson);
         }
     }
 
@@ -97,14 +97,17 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
     // Get all home directories
     setpwent();
     struct passwd* pw;
+
     while ((pw = getpwent()) != nullptr)
     {
         if (pw->pw_dir != nullptr)
         {
             fs::path homeDir(pw->pw_dir);
+
             for (const auto& path : m_userLaunchdSearchPaths)
             {
                 fs::path userPath = homeDir / path;
+
                 if (fs::exists(userPath) && fs::is_directory(userPath))
                 {
                     try
@@ -126,6 +129,7 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
             }
         }
     }
+
     endpwent();
 }
 
@@ -136,11 +140,11 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
 
     // Read the plist file
     CFURLRef fileURL = CFURLCreateFromFileSystemRepresentation(
-        kCFAllocatorDefault,
-        reinterpret_cast<const UInt8*>(path.c_str()),
-        path.length(),
-        false
-    );
+                           kCFAllocatorDefault,
+                           reinterpret_cast<const UInt8*>(path.c_str()),
+                           path.length(),
+                           false
+                       );
 
     if (!fileURL)
     {
@@ -162,13 +166,13 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
     }
 
     CFPropertyListRef plist = CFPropertyListCreateWithStream(
-        kCFAllocatorDefault,
-        stream,
-        0,
-        kCFPropertyListImmutable,
-        nullptr,
-        nullptr
-    );
+                                  kCFAllocatorDefault,
+                                  stream,
+                                  0,
+                                  kCFPropertyListImmutable,
+                                  nullptr,
+                                  nullptr
+                              );
 
     CFReadStreamClose(stream);
     CFRelease(stream);
@@ -190,9 +194,11 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
     for (const auto& keyPair : m_launchdTopLevelStringKeys)
     {
         CFStringRef key = CFStringCreateWithCString(kCFAllocatorDefault, keyPair.first.c_str(), kCFStringEncodingUTF8);
+
         if (key)
         {
             CFTypeRef value = CFDictionaryGetValue(dict, key);
+
             if (value)
             {
                 if (CFGetTypeID(value) == CFStringGetTypeID())
@@ -205,6 +211,7 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                     if (CFStringGetCString(stringValue, buffer.data(), maxSize, kCFStringEncodingUTF8))
                     {
                         std::string stringVal(buffer.data());
+
                         if (keyPair.second == "label") service.label = stringVal;
                         else if (keyPair.second == "run_at_load") service.runAtLoad = stringVal;
                         else if (keyPair.second == "keep_alive") service.keepAlive = stringVal;
@@ -238,13 +245,16 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                 {
                     CFNumberRef numberValue = static_cast<CFNumberRef>(value);
                     long long intValue;
+
                     if (CFNumberGetValue(numberValue, kCFNumberLongLongType, &intValue))
                     {
                         std::string stringVal = std::to_string(intValue);
+
                         if (keyPair.second == "start_interval") service.startInterval = stringVal;
                     }
                 }
             }
+
             CFRelease(key);
         }
     }
@@ -253,9 +263,11 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
     for (const auto& keyPair : m_launchdTopLevelArrayKeys)
     {
         CFStringRef key = CFStringCreateWithCString(kCFAllocatorDefault, keyPair.first.c_str(), kCFStringEncodingUTF8);
+
         if (key)
         {
             CFTypeRef value = CFDictionaryGetValue(dict, key);
+
             if (value && CFGetTypeID(value) == CFArrayGetTypeID())
             {
                 CFArrayRef arrayValue = static_cast<CFArrayRef>(value);
@@ -265,6 +277,7 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                 for (CFIndex i = 0; i < count; ++i)
                 {
                     CFTypeRef element = CFArrayGetValueAtIndex(arrayValue, i);
+
                     if (element && CFGetTypeID(element) == CFStringGetTypeID())
                     {
                         CFStringRef stringElement = static_cast<CFStringRef>(element);
@@ -280,10 +293,12 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                 }
 
                 std::string joinedValue = joinArrayElements(elements);
+
                 if (keyPair.second == "program_arguments") service.programArguments = joinedValue;
                 else if (keyPair.second == "watch_paths") service.watchPaths = joinedValue;
                 else if (keyPair.second == "queue_directories") service.queueDirectories = joinedValue;
             }
+
             CFRelease(key);
         }
     }
@@ -300,13 +315,16 @@ std::string LaunchdProvider::joinArrayElements(const std::vector<std::string>& a
     }
 
     std::ostringstream oss;
+
     for (size_t i = 0; i < arrayElements.size(); ++i)
     {
         if (i > 0)
         {
             oss << " ";
         }
+
         oss << arrayElements[i];
     }
+
     return oss.str();
 }
