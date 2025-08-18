@@ -1875,12 +1875,6 @@ crypto_aes_o := $(crypto_aes_c:.c=.o)
 os_crypto/aes/%.o: os_crypto/aes/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-crypto_md5_sha1_c := os_crypto/md5_sha1/md5_sha1_op.c
-crypto_md5_sha1_o := $(crypto_md5_sha1_c:.c=.o)
-
-os_crypto/md5_sha1/%.o: os_crypto/md5_sha1/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
 crypto_md5_sha1_sha256_c := os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.c
 crypto_md5_sha1_sha256_o := $(crypto_md5_sha1_sha256_c:.c=.o)
 
