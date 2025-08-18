@@ -169,7 +169,7 @@ public:
         {
             if (m_gapSet->empty())
             {
-                m_indexerQueue.push(Response {ResponseStatus::Ok, m_context});
+                m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
             }
         }
     }
@@ -188,8 +188,8 @@ public:
         m_endReceived = true;
         if (m_gapSet->empty())
         {
-            logDebug2(LOGGER_DEFAULT_TAG, "End received and gap set is empty");
-            m_indexerQueue.push(Response {ResponseStatus::Ok, m_context});
+            std::cout << "End received and gap set is empty\n";
+            m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
         }
         else
         {
