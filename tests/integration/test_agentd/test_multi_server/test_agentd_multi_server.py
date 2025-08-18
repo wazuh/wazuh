@@ -86,7 +86,6 @@ daemons_handler_configuration = {'all_daemons': True}
 # Tests
 """
 How does this test work:
-    - PROTOCOL: tcp/udp
     - DELETE_KEYS_FILE: whatever start with an empty client.keys file or not
     - SIMULATOR MODES: for each simulator will define a mode
     - AUTHD_PREV_MODE: represents the previous state of the authd daemon,

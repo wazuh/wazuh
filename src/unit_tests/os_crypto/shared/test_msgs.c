@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include "../headers/shared.h"
+#include "../../os_crypto/blowfish/bf_op.h"
 
 /* Forward declarations */
 int doEncryptByMethod(const char *input, char *output, const char *charkey,
@@ -263,6 +264,22 @@ void test_StoreCounter_fail_first_open(void **state)
     os_free(keys.keyentries);
 }
 
+void test_encrypt_by_method_blowfish(void **state){
+    const char *key = "test_key";
+    const char *string = "test string";
+    const int buffersize = 1024;
+    char buffer1[buffersize];
+    char buffer2[buffersize];
+
+    memset(buffer1, 0, sizeof(buffer1));
+    memset(buffer2, 0, sizeof(buffer2));
+
+    assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_BLOWFISH), 1);
+    assert_int_equal(doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_BLOWFISH), 1);
+
+    assert_string_equal(buffer2, string);
+}
+
 void test_encrypt_by_method_aes(void **state){
     const char *key = "test_key";
     const char *string = "test string";
@@ -302,9 +319,9 @@ void test_set_agent_crypto_method(void **state){
     keys->keyentries[0]->id = "001";
     keys->keyentries[0]->name = "agent1";
 
-    os_set_agent_crypto_method(keys, W_METH_AES);
+    os_set_agent_crypto_method(keys, W_METH_BLOWFISH);
 
-    assert_int_equal(keys->keyentries[0]->crypto_method, W_METH_AES);
+    assert_int_equal(keys->keyentries[0]->crypto_method, W_METH_BLOWFISH);
 
     free(keys->keyentries[0]);
     free(keys->keyentries);
@@ -319,6 +336,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_StoreCounter_pushing_rids, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_StoreCounter_pushing_rids_fp_null, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_StoreCounter_fail_first_open, setup_config, teardown_config),
+        cmocka_unit_test(test_encrypt_by_method_blowfish),
         cmocka_unit_test(test_encrypt_by_method_aes),
         cmocka_unit_test(test_encrypt_by_method_default),
         cmocka_unit_test(test_set_agent_crypto_method),

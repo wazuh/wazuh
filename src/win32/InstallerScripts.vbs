@@ -39,23 +39,22 @@ public function config()
     strArgs = Session.Property("CustomActionData")
     args = Split(strArgs, "/+/")
 
-    home_dir= Replace(args(0), Chr(34), "")
+    home_dir = Replace(args(0), Chr(34), "")
     OS_VERSION = Replace(args(1), Chr(34), "")
     WAZUH_MANAGER = Replace(args(2), Chr(34), "")
     WAZUH_MANAGER_PORT = Replace(args(3), Chr(34), "")
-    WAZUH_PROTOCOL = Replace(args(4), Chr(34), "")
-    NOTIFY_TIME = Replace(args(5), Chr(34), "")
-    WAZUH_REGISTRATION_SERVER = Replace(args(6), Chr(34), "")
-    WAZUH_REGISTRATION_PORT = Replace(args(7), Chr(34), "")
-    WAZUH_REGISTRATION_PASSWORD = Replace(args(8), Chr(34), "")
-    WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(9), Chr(34), "")
-    WAZUH_TIME_RECONNECT = Replace(args(10), Chr(34), "")
-    WAZUH_REGISTRATION_CA = Replace(args(11), Chr(34), "")
-    WAZUH_REGISTRATION_CERTIFICATE = Replace(args(12), Chr(34), "")
-    WAZUH_REGISTRATION_KEY = Replace(args(13), Chr(34), "")
-    WAZUH_AGENT_NAME = Replace(args(14), Chr(34), "")
-    WAZUH_AGENT_GROUP = Replace(args(15), Chr(34), "")
-    ENROLLMENT_DELAY = Replace(args(16), Chr(34), "")
+    NOTIFY_TIME = Replace(args(4), Chr(34), "")
+    WAZUH_REGISTRATION_SERVER = Replace(args(5), Chr(34), "")
+    WAZUH_REGISTRATION_PORT = Replace(args(6), Chr(34), "")
+    WAZUH_REGISTRATION_PASSWORD = Replace(args(7), Chr(34), "")
+    WAZUH_KEEP_ALIVE_INTERVAL = Replace(args(8), Chr(34), "")
+    WAZUH_TIME_RECONNECT = Replace(args(9), Chr(34), "")
+    WAZUH_REGISTRATION_CA = Replace(args(10), Chr(34), "")
+    WAZUH_REGISTRATION_CERTIFICATE = Replace(args(11), Chr(34), "")
+    WAZUH_REGISTRATION_KEY = Replace(args(12), Chr(34), "")
+    WAZUH_AGENT_NAME = Replace(args(13), Chr(34), "")
+    WAZUH_AGENT_GROUP = Replace(args(14), Chr(34), "")
+    ENROLLMENT_DELAY = Replace(args(15), Chr(34), "")
 
     ' Only try to set the configuration if variables are setted
 
@@ -73,12 +72,7 @@ public function config()
         strText = objFile.ReadAll
         objFile.Close
 
-        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_PROTOCOL <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
-            If WAZUH_PROTOCOL <> "" and InStr(WAZUH_PROTOCOL,",") Then
-                protocol_list=Split(LCase(WAZUH_PROTOCOL),",")
-            Else
-                protocol_list=Array(LCase(WAZUH_PROTOCOL))
-            End If
+        If WAZUH_MANAGER <> "" or WAZUH_MANAGER_PORT <> "" or WAZUH_KEEP_ALIVE_INTERVAL <> "" or WAZUH_TIME_RECONNECT <> "" Then
             If WAZUH_MANAGER <> "" Then
                 Set re = new regexp
                 re.Pattern = "\s+<server>(.|\n)+?</server>"
@@ -88,12 +82,6 @@ public function config()
                     ip_list=Array(WAZUH_MANAGER)
                 End If
 
-                unique_protocol_list=get_unique_array_values(protocol_list)
-
-                if ( UBound(protocol_list) >= UBound(ip_list) And UBound(unique_protocol_list) = 0 ) Or (WAZUH_PROTOCOL = "") Or ( UBound(unique_protocol_list) = 0 And LCase(unique_protocol_list(0)) = "tcp" ) Then
-                    ip_list=get_unique_array_values(ip_list)
-                End If
-
                 not_replaced = True
                 formatted_list = vbCrLf
                 for i=0 to UBound(ip_list)
@@ -101,15 +89,6 @@ public function config()
                         formatted_list = formatted_list & "    <server>" & vbCrLf
                         formatted_list = formatted_list & "      <address>" & ip_list(i) & "</address>" & vbCrLf
                         formatted_list = formatted_list & "      <port>1514</port>" & vbCrLf
-                        if UBound(protocol_list) >= i Then
-                            if protocol_list(i) <> "" Then
-                                formatted_list = formatted_list & "      <protocol>" & LCase(protocol_list(i)) & "</protocol>" & vbCrLf
-                            Else
-                                formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
-                            End If
-                        Else
-                            formatted_list = formatted_list & "      <protocol>tcp</protocol>" & vbCrLf
-                        End If
                         if i = UBound(ip_list) then
                             formatted_list = formatted_list & "    </server>"
                         Else
@@ -118,12 +97,6 @@ public function config()
                     End If
                 next
                 strText = re.Replace(strText, formatted_list)
-            Else
-                If WAZUH_PROTOCOL <> "" Then
-                    Set re = new regexp
-                    re.Pattern = "<protocol>.*</protocol>"
-                    strText = re.Replace(strText, "      <protocol>" & LCase(protocol_list(0)) & "</protocol>")
-                End If
             End If
 
             If WAZUH_MANAGER_PORT <> "" Then ' manager server_port
