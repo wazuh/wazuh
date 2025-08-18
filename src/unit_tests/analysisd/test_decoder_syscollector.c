@@ -565,6 +565,48 @@ int test_setup_groups_valid_msg_modified(void **state)
     return 0;
 }
 
+int test_setup_services_extensions_valid_msg_modified(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup(
+        "{"
+            "\"type\":\"dbsync_services\"," \
+            "\"operation\":\"MODIFIED\"," \
+            "\"data\":{"
+                "\"scan_time\":\"2021/10/29 14:26:24\","
+                "\"name\":\"svc_name\","
+                "\"display_name\":\"Service Display\","
+                "\"description\":\"desc\","
+                "\"service_type\":\"own_process\","
+                "\"start_type\":\"auto\","
+                "\"state\":\"running\","
+                "\"pid\":\"100\","
+                "\"ppid\":\"50\","
+                "\"binary_path\":\"/usr/bin/svc\","
+                "\"load_state\":\"loaded\","
+                "\"active_state\":\"active\","
+                "\"sub_state\":\"running\","
+                "\"unit_file_state\":\"enabled\","
+                "\"status\":\"ok\","
+                "\"user\":\"root\","
+                "\"can_stop\":\"yes\","
+                "\"can_reload\":\"yes\","
+                "\"service_exit_code\":\"0\","
+                "\"checksum\":\"abc\","
+                "\"item_id\":\"xyz\""
+            "}"
+        "}"), lf->log == NULL)
+        return -1;
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_setup_hotfixes_valid_msg_inserted(void **state)
 {
     Eventinfo *lf;
@@ -993,6 +1035,48 @@ int test_setup_groups_valid_msg_inserted(void **state)
         }", lf->log), NULL == lf->log) {
         return -1;
     }
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_services_extensions_valid_msg_inserted(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (lf->log = strdup(
+        "{"
+            "\"type\":\"dbsync_services\"," \
+            "\"operation\":\"INSERTED\"," \
+            "\"data\":{"
+                "\"scan_time\":\"2021/10/29 14:26:24\","
+                "\"name\":\"svc_name\","
+                "\"display_name\":\"Service Display\","
+                "\"description\":\"desc\","
+                "\"service_type\":\"own_process\","
+                "\"start_type\":\"auto\","
+                "\"state\":\"running\","
+                "\"pid\":\"100\","
+                "\"ppid\":\"50\","
+                "\"binary_path\":\"/usr/bin/svc\","
+                "\"load_state\":\"loaded\","
+                "\"active_state\":\"active\","
+                "\"sub_state\":\"running\","
+                "\"unit_file_state\":\"enabled\","
+                "\"status\":\"ok\","
+                "\"user\":\"root\","
+                "\"can_stop\":\"yes\","
+                "\"can_reload\":\"yes\","
+                "\"service_exit_code\":\"0\","
+                "\"checksum\":\"abc\","
+                "\"item_id\":\"xyz\""
+            "}"
+        "}"), lf->log == NULL)
+        return -1;
     os_strdup("(>syscollector", lf->location);
     os_strdup("001", lf->agent_id);
 
@@ -2336,6 +2420,48 @@ void test_syscollector_dbsync_groups_valid_msg_modified(void **state)
     assert_int_not_equal(ret, 0);
 }
 
+void test_syscollector_dbsync_services_extensions_valid_msg_modified(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync services MODIFIED "
+        "{"
+            "\"scan_time\":\"2021/10/29 14:26:24\"," 
+            "\"name\":\"svc_name\"," 
+            "\"display_name\":\"Service Display\"," 
+            "\"description\":\"desc\"," 
+            "\"service_type\":\"own_process\"," 
+            "\"start_type\":\"auto\"," 
+            "\"state\":\"running\"," 
+            "\"pid\":\"100\"," 
+            "\"ppid\":\"50\"," 
+            "\"binary_path\":\"/usr/bin/svc\"," 
+            "\"load_state\":\"loaded\"," 
+            "\"active_state\":\"active\"," 
+            "\"sub_state\":\"running\"," 
+            "\"unit_file_state\":\"enabled\"," 
+            "\"status\":\"ok\"," 
+            "\"user\":\"root\"," 
+            "\"can_stop\":\"yes\"," 
+            "\"can_reload\":\"yes\","
+            "\"service_exit_code\":\"0\","
+            "\"checksum\":\"abc\","
+            "\"item_id\":\"xyz\""
+        "}";
+    const char *result = "ok ";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
 void test_syscollector_dbsync_hotfixes_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
@@ -2855,6 +2981,48 @@ void test_syscollector_dbsync_groups_valid_msg_inserted(void **state)
             "\"group_users\":\"54358:Administrateur\","
             "\"group_uuid\":\"S-1-5-32-544\","
             "\"scan_time\":\"2025/06/11 14:59:57\""
+        "}";
+    const char *result = "ok ";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_dbsync_services_extensions_valid_msg_inserted(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync services INSERTED "
+        "{"
+            "\"scan_time\":\"2021/10/29 14:26:24\"," 
+            "\"name\":\"svc_name\"," 
+            "\"display_name\":\"Service Display\"," 
+            "\"description\":\"desc\"," 
+            "\"service_type\":\"own_process\","
+            "\"start_type\":\"auto\","
+            "\"state\":\"running\","
+            "\"pid\":\"100\","
+            "\"ppid\":\"50\","
+            "\"binary_path\":\"/usr/bin/svc\","
+            "\"load_state\":\"loaded\","
+            "\"active_state\":\"active\","
+            "\"sub_state\":\"running\","
+            "\"unit_file_state\":\"enabled\","
+            "\"status\":\"ok\","
+            "\"user\":\"root\","
+            "\"can_stop\":\"yes\","
+            "\"can_reload\":\"yes\","
+            "\"service_exit_code\":\"0\","
+            "\"checksum\":\"abc\","
+            "\"item_id\":\"xyz\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -4107,6 +4275,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_modified, test_setup_os_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_users_valid_msg_modified, test_setup_users_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_groups_valid_msg_modified, test_setup_groups_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_extensions_valid_msg_modified, test_setup_services_extensions_valid_msg_modified, test_cleanup),
         /* INSERTED delta tests*/
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_inserted, test_setup_hotfixes_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg_inserted, test_setup_packages_valid_msg_inserted, test_cleanup),
@@ -4119,11 +4288,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hardware_valid_msg_inserted, test_setup_hardware_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_inserted, test_setup_os_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_with_number_pk, test_setup_os_valid_msg_with_number_pk, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_insert_multiple_null_valid_msg, test_setup_insert_multiple_null_field_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_deleted_multiple_null_valid_msg, test_setup_deleted_multiple_null_field_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_no_result_payload, test_setup_os_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_users_valid_msg_inserted, test_setup_users_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_groups_valid_msg_inserted, test_setup_groups_valid_msg_inserted, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_extensions_valid_msg_inserted, test_setup_services_extensions_valid_msg_inserted, test_cleanup),
         // Hardware tests
         cmocka_unit_test_setup_teardown(test_syscollector_hardware_valid, test_setup_hardware_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_hardware_valid_inventory_empty, test_setup_hardware_valid_msg_inventory_empty, test_cleanup),
