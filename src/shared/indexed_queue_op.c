@@ -29,10 +29,8 @@ static void indexed_queue_entry_free(void *entry_ptr) {
 }
 
 w_indexed_queue_t *indexed_queue_init(size_t max_size) {
-    w_indexed_queue_t *queue = calloc(1, sizeof(w_indexed_queue_t));
-    if (!queue) {
-        return NULL;
-    }
+    w_indexed_queue_t *queue;
+    os_calloc(1, sizeof(w_indexed_queue_t), queue);
 
     queue->queue = linked_queue_init();
     if (!queue->queue) {
@@ -140,10 +138,8 @@ int indexed_queue_push(w_indexed_queue_t *queue, const char *key, void *data) {
     }
 
     // Create entry
-    w_indexed_queue_entry_t *entry = malloc(sizeof(w_indexed_queue_entry_t));
-    if (!entry) {
-        return -1;
-    }
+    w_indexed_queue_entry_t *entry;
+    os_malloc(sizeof(w_indexed_queue_entry_t), entry);
 
     entry->key = strdup(key);
     if (!entry->key) {
