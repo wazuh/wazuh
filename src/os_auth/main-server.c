@@ -104,7 +104,9 @@ static void help_authd(char * home_path)
 static void set_non_blocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) flags = 0;
-    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        merror("Failed to set socket to non-blocking mode: %s", strerror(errno));
+    }
 }
 
 int main(int argc, char **argv)
