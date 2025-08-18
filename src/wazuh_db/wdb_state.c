@@ -331,6 +331,12 @@ void w_inc_agent_syscollector_groups() {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
+void w_inc_agent_syscollector_services() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_services_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
 void w_inc_agent_syscollector_times(struct timeval time, int type) {
 
     w_mutex_lock(&db_state_t_mutex);
@@ -365,6 +371,9 @@ void w_inc_agent_syscollector_times(struct timeval time, int type) {
         break;
     case WDB_SYSCOLLECTOR_GROUPS:
         timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_groups_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_groups_time);
+        break;
+    case WDB_SYSCOLLECTOR_SERVICES:
+        timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_services_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_services_time);
         break;
     case WDB_SYSCOLLECTOR_USERS:
         timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_users_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_users_time);
