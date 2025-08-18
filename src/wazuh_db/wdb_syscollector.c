@@ -1396,6 +1396,107 @@ int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t 
     return 0;
 }
 
+// Function to save Services information into the DB. Return 0 on success or -1 on error.
+int wdb_services_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
+    const char * description, const char * service_type, const char * start_type, const char * state,
+    int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
+    const char * sub_state, const char * unit_file_state, const char * status, const char * user,
+    const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
+    const char * item_id, const bool replace) {
+
+if (!wdb->transaction && wdb_begin2(wdb) < 0){
+mdebug1("at wdb_services_save(): cannot begin transaction");
+return OS_INVALID;
+}
+
+if (wdb_services_insert(wdb, scan_id, scan_time, name, display_name, description, service_type, start_type, state,
+         pid, ppid, binary_path, load_state, active_state, sub_state, unit_file_state, status,
+         user, can_stop, can_reload, service_exit_code, checksum, item_id, replace) < 0) {
+return OS_INVALID;
+}
+
+return OS_SUCCESS;
+}
+
+// Insert service info tuple. Return 0 on success or -1 on error.
+int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
+      const char * description, const char * service_type, const char * start_type, const char * state,
+      int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
+      const char * sub_state, const char * unit_file_state, const char * status, const char * user,
+      const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
+      const char * item_id, const bool replace) {
+sqlite3_stmt *stmt = NULL;
+
+if (NULL == name) {
+if(checksum && 0 != strcmp(SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, checksum)) {
+wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_SERVICES, item_id);
+}
+return OS_SUCCESS;
+}
+
+if (wdb_stmt_cache(wdb, replace ? WDB_STMT_SERVICES_INSERT2 : WDB_STMT_SERVICES_INSERT) < 0) {
+mdebug1("at wdb_services_insert(): cannot cache statement");
+return OS_INVALID;
+}
+
+stmt = wdb->stmt[replace ? WDB_STMT_SERVICES_INSERT2 : WDB_STMT_SERVICES_INSERT];
+
+sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
+sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
+sqlite3_bind_text(stmt, 3, name, -1, NULL);
+sqlite3_bind_text(stmt, 4, display_name, -1, NULL);
+sqlite3_bind_text(stmt, 5, description, -1, NULL);
+sqlite3_bind_text(stmt, 6, service_type, -1, NULL);
+sqlite3_bind_text(stmt, 7, start_type, -1, NULL);
+sqlite3_bind_text(stmt, 8, state, -1, NULL);
+
+if (pid >= 0) {
+sqlite3_bind_int(stmt, 9, pid);
+} else {
+sqlite3_bind_null(stmt, 9);
+}
+if (ppid >= 0) {
+sqlite3_bind_int(stmt, 10, ppid);
+} else {
+sqlite3_bind_null(stmt, 10);
+}
+
+sqlite3_bind_text(stmt, 11, binary_path, -1, NULL);
+sqlite3_bind_text(stmt, 12, load_state, -1, NULL);
+sqlite3_bind_text(stmt, 13, active_state, -1, NULL);
+sqlite3_bind_text(stmt, 14, sub_state, -1, NULL);
+sqlite3_bind_text(stmt, 15, unit_file_state, -1, NULL);
+sqlite3_bind_text(stmt, 16, status, -1, NULL);
+sqlite3_bind_text(stmt, 17, user, -1, NULL);
+sqlite3_bind_text(stmt, 18, can_stop, -1, NULL);
+sqlite3_bind_text(stmt, 19, can_reload, -1, NULL);
+
+if (service_exit_code >= 0) {
+sqlite3_bind_int(stmt, 20, service_exit_code);
+} else {
+sqlite3_bind_null(stmt, 20);
+}
+
+sqlite3_bind_text(stmt, 21, checksum, -1, NULL);
+sqlite3_bind_text(stmt, 22, item_id, -1, NULL);
+
+switch (wdb_step(stmt)) {
+case SQLITE_DONE:
+return OS_SUCCESS;
+case SQLITE_CONSTRAINT:
+if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
+mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+return OS_SUCCESS;
+} else {
+merror("SQLite: %s", sqlite3_errmsg(wdb->db));
+return OS_INVALID;
+}
+default:
+merror("SQLite: %s", sqlite3_errmsg(wdb->db));
+return OS_INVALID;
+}
+}
+
 int wdb_syscollector_processes_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
@@ -1689,6 +1790,36 @@ int wdb_syscollector_browser_extensions_save2(wdb_t * wdb, const cJSON * attribu
     return wdb_browser_extensions_save(wdb, &wb_extension_record, TRUE);
 }
 
+int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
+{
+    const char * scan_id = "0";
+    const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
+    const char * name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "name"));
+    const char * display_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "display_name"));
+    const char * description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "description"));
+    const char * service_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_type"));
+    const char * start_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "start_type"));
+    const char * state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "state"));
+    const int pid = cJSON_GetObjectItem(attributes, "pid") ? cJSON_GetObjectItem(attributes, "pid")->valueint : -1;
+    const int ppid = cJSON_GetObjectItem(attributes, "ppid") ? cJSON_GetObjectItem(attributes, "ppid")->valueint : -1;
+    const char * binary_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "binary_path"));
+    const char * load_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "load_state"));
+    const char * active_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "active_state"));
+    const char * sub_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "sub_state"));
+    const char * unit_file_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "unit_file_state"));
+    const char * status = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "status"));
+    const char * user = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user"));
+    const char * can_stop = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "can_stop"));
+    const char * can_reload = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "can_reload"));
+    const int service_exit_code = cJSON_GetObjectItem(attributes, "service_exit_code") ? cJSON_GetObjectItem(attributes, "service_exit_code")->valueint : -1;
+    const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
+    const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
+
+    return wdb_services_save(wdb, scan_id, scan_time, name, display_name, description, service_type, start_type, state,
+                            pid, ppid, binary_path, load_state, active_state, sub_state, unit_file_state, status,
+                            user, can_stop, can_reload, service_exit_code, checksum, item_id, TRUE);
+}
+
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload)
 {
     int result = -1;
@@ -1752,6 +1883,10 @@ int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * 
     else if(component == WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS)
     {
         result = wdb_syscollector_browser_extensions_save2(wdb, attributes);
+    }
+    else if(component == WDB_SYSCOLLECTOR_SERVICES)
+    {
+        result = wdb_syscollector_services_save2(wdb, attributes);
     }
     else
     {
