@@ -250,23 +250,30 @@ jobs:
           apt-get update && apt-get install -y curl jq
 
           CURRENT_TAG="${{ env.TAG }}"
-          PREVIOUS_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^4\.[0-9]+\.[0-9]+$' | \
+          PREVIOUS_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^5\.[0-9]+\.[0-9]+$' | \
           grep -v "^${CURRENT_TAG}$" | sort -V | awk -v current="$CURRENT_TAG" '$0 < current' | tail -n1)
-          
-          echo "Latest release detected: $PREVIOUS_TAG"
-          echo "PUBLIC_RELEASE_VERSION=$PREVIOUS_TAG" >> $GITHUB_ENV
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Latest release detected: $PREVIOUS_TAG"
+            echo "PUBLIC_RELEASE_VERSION=$PREVIOUS_TAG" >> $GITHUB_ENV
+            echo "HAS_PREVIOUS_RELEASE=true" >> $GITHUB_ENV
+          else
+            echo "No previous stable release found for upgrade testing"
+            echo "HAS_PREVIOUS_RELEASE=false" >> $GITHUB_ENV
+          fi
 
       - name: Download latest public wazuh-manager package
+        if: env.HAS_PREVIOUS_RELEASE == 'true'
         run: |
           ARCH=${{ env.ARCH }}
           VERSION=${{ env.PUBLIC_RELEASE_VERSION }}
 
           if [ "${{ inputs.system }}" = "deb" ]; then
             FILE_NAME_PUBLIC="wazuh-manager_${VERSION}-1_${ARCH}.deb"
-            BASE_URL="https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-manager"
+            BASE_URL="https://packages.wazuh.com/5.x/apt/pool/main/w/wazuh-manager"
           elif [ "${{ inputs.system }}" = "rpm" ]; then
             FILE_NAME_PUBLIC="wazuh-manager-${VERSION}-1.${ARCH}.rpm"
-            BASE_URL="https://packages.wazuh.com/4.x/yum"
+            BASE_URL="https://packages.wazuh.com/5.x/yum"
           else
             echo "Unsupported system type: ${{ inputs.system }}"
             exit 1
@@ -278,6 +285,7 @@ jobs:
           echo "PUBLIC_PACKAGE_NAME=$FILE_NAME_PUBLIC" >> $GITHUB_ENV
 
       - name: Run container and install public wazuh-manager
+        if: env.HAS_PREVIOUS_RELEASE == 'true'
         run: |
           FILE_NAME=${{ env.PUBLIC_PACKAGE_NAME }}
           SYSTEM=${{ inputs.system }}
@@ -304,6 +312,7 @@ jobs:
           docker exec wazuh_previous bash -c "/var/ossec/bin/wazuh-control info || echo 'Manager not started yet'"
 
       - name: Upgrade to current Wazuh version
+        if: env.HAS_PREVIOUS_RELEASE == 'true'
         run: |
           SYSTEM=${{ inputs.system }}
           FILE_NAME=${{ env.PACKAGE_NAME }}
@@ -347,28 +356,28 @@ jobs:
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
         working-directory: packages
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}"
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}"
           echo "S3 URI: ${s3uri}"
 
       - name: Upload checksum to S3
         if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
           echo "S3 sha512 URI: ${s3uri}"
 
       - name: Upload debug symbols to S3
         if: ${{ env.SHOULD_UPLOAD == 'true' }}
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}"
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}"
           echo "S3 symbols URI: ${symbols}"
 
       - name: Upload debug symbols checksum to S3
         if: ${{ env.SHOULD_UPLOAD_CHECKSUM == 'true' }}
         run: |
-          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512"
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/
+          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512"
           echo "S3 symbols sha512 URI: ${symbols}"
