@@ -1,0 +1,1180 @@
+---
+# Security Configuration Assessment
+# CIS Benchmark for Arch Linux
+# Developed by Kevin David Muñoz
+# Based on CIS Controls and adapted for Arch Linux Rolling Release
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+
+policy:
+  id: "cis_arch_linux"
+  file: "cis_arch_linux.yml"
+  name: "CIS Benchmark for Arch Linux"
+  description: >
+    Security Configuration Assessment based on CIS Controls adapted for Arch
+    Linux Rolling Release distribution.
+  references:
+    - https://www.cisecurity.org/cis-benchmarks/
+    - https://wiki.archlinux.org/title/Security
+    - https://www.archlinux.org/
+
+requirements:
+  title: "Check Arch Linux system requirements"
+  description: >
+    Requirements for running the SCA scan against Arch Linux systems.
+  condition: all
+  rules:
+    - 'f:/etc/arch-release'
+    - 'f:/etc/os-release -> r:ID=arch'
+    - 'f:/usr/bin/pacman'
+
+variables:
+  $sshd_config: /etc/ssh/sshd_config
+  $sysctl_files: /etc/sysctl.conf,/etc/sysctl.d/*.conf
+  $pam_files: /etc/pam.d/system-auth,/etc/pam.d/system-login,/etc/pam.d/passwd
+  $audit_conf: /etc/audit/auditd.conf
+  $journald_conf: /etc/systemd/journald.conf
+  $grub_cfg: /boot/grub/grub.cfg
+  $pacman_conf: /etc/pacman.conf
+  $passwd_file: /etc/passwd
+  $shadow_file: /etc/shadow
+  $group_file: /etc/group
+  $gshadow_file: /etc/gshadow
+
+checks:
+  # 1. KERNEL HARDENING
+  - id: 1001
+    title: "CIS 3.1.1 - Disable unused network protocols"
+    description: "Ensure unused network protocols are disabled."
+    rationale: >
+      If the protocol is not being used, it is recommended that kernel module
+      not be loaded, disabling the service to reduce the potential attack
+      surface.
+    remediation: >
+      Add 'install <protocol> /bin/true' to a file in /etc/modprobe.d/
+    compliance:
+      - cis: ["3.1.1"]
+      - pci_dss: ["2.2.3"]
+    condition: all
+    rules:
+      - 'c:lsmod -> !r:dccp'
+      - 'c:lsmod -> !r:sctp'
+      - 'c:lsmod -> !r:rds'
+      - 'c:lsmod -> !r:tipc'
+
+  - id: 1002
+    title: "CIS 3.2.1 - Ensure IP forwarding is disabled"
+    description: >
+      The net.ipv4.ip_forward flag is used to tell the system whether it can
+      forward packets or not.
+    rationale: >
+      Setting the flag to 0 ensures that a system with multiple interfaces (for
+      example, a hard proxy), will never be able to forward packets, and
+      therefore, never serve as a router.
+    remediation: >
+      Set net.ipv4.ip_forward = 0 and net.ipv6.conf.all.forwarding = 0 in
+      /etc/sysctl.conf
+    compliance:
+      - cis: ["3.2.1"]
+      - nist_800_53: ["CM.1"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.all.forwarding ->
+          r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
+
+  - id: 1003
+    title: "CIS 3.2.2 - Ensure packet redirect sending is disabled"
+    description: >
+      ICMP Redirects are used to send routing information to other hosts.
+    rationale: >
+      An attacker could use a compromised host to send invalid ICMP redirects to
+      other router devices in an attempt to corrupt routing and have users
+      access a system set up by the attacker as opposed to a valid system.
+    remediation: >
+      Set net.ipv4.conf.all.send_redirects = 0 and
+      net.ipv4.conf.default.send_redirects = 0 in sysctl
+    compliance:
+      - cis: ["3.2.2"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.send_redirects ->
+          r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.send_redirects ->
+          r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
+
+  # 2. NETWORK CONFIGURATION
+  - id: 2001
+    title: "CIS 3.2.3 - Ensure source routed packets are not accepted"
+    description: >
+      In networking, source routing allows a sender to partially or fully
+      specify the route packets take through a network.
+    rationale: >
+      Setting net.ipv4.conf.all.accept_source_route and
+      net.ipv6.conf.all.accept_source_route to 0 disables the system from
+      accepting source routed packets.
+    remediation: >
+      Set net.ipv4.conf.all.accept_source_route = 0 and
+      net.ipv6.conf.all.accept_source_route = 0
+    compliance:
+      - cis: ["3.2.3"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route ->
+          r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.all.accept_source_route ->
+          r:^net.ipv6.conf.all.accept_source_route\s*=\s*0$'
+
+  - id: 2002
+    title: "CIS 3.2.4 - Ensure ICMP redirects are not accepted"
+    description: >
+      ICMP redirect messages are packets that convey routing information and
+      tell your host to send packets via an alternate path.
+    rationale: >
+      Attackers could use bogus ICMP redirect messages to maliciously alter the
+      system routing tables and get them to send packets to incorrect networks
+      and allow your system packets to be captured.
+    remediation: >
+      Set net.ipv4.conf.all.accept_redirects = 0 and
+      net.ipv6.conf.all.accept_redirects = 0
+    compliance:
+      - cis: ["3.2.4"]
+    condition: all
+    rules:
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects ->
+          r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.all.accept_redirects ->
+          r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
+
+  # 3. LOGGING AND AUDITING
+  - id: 3001
+    title: "CIS 4.1.1 - Ensure auditing is enabled"
+    description: "Turn on the auditd daemon to record system events."
+    rationale: >
+      The capturing of system events provides system administrators with
+      information to allow them to determine if unauthorized access to their
+      system is occurring.
+    remediation: "Install audit package and enable auditd service"
+    compliance:
+      - cis: ["4.1.1"]
+      - pci_dss: ["10.1", "10.7"]
+    condition: all
+    rules:
+      - 'c:pacman -Q audit'
+      - 'c:systemctl is-enabled auditd -> r:^enabled'
+      - 'c:systemctl is-active auditd -> r:^active'
+
+  - id: 3002
+    title: "CIS 4.2.1 - Ensure journald is configured to send logs to rsyslog"
+    description: >
+      Data from journald may be stored in volatile memory or persisted locally
+      on the server.
+    rationale: >
+      Storing log data on a remote host protects log integrity from local
+      attacks.
+    remediation: "Set ForwardToSyslog=yes in /etc/systemd/journald.conf"
+    compliance:
+      - cis: ["4.2.1"]
+    condition: any
+    rules:
+      - 'f:$journald_conf -> !r:^# && r:^ForwardToSyslog=yes'
+      - 'f:$journald_conf -> !r:^# && r:^Storage=persistent'
+
+  - id: 3003
+    title: "CIS 4.2.2 - Ensure journald is configured to compress large log files"
+    description: >
+      The journald system includes the capability of compressing overly large
+      files to avoid filling up the system with logs or making the logs
+      unmanageable.
+    rationale: >
+      Uncompressed large files may unexpectedly fill a filesystem leading to
+      availability issues.
+    remediation: "Set Compress=yes in /etc/systemd/journald.conf"
+    compliance:
+      - cis: ["4.2.2"]
+    condition: all
+    rules:
+      - 'f:$journald_conf -> !r:^# && r:^Compress=yes'
+
+  # 4. ACCESS CONTROL
+  - id: 4001
+    title: "CIS 5.1.1 - Ensure cron daemon is enabled"
+    description: "The cron daemon is used to execute batch jobs on the system."
+    rationale: >
+      While there may not be user jobs that need to be run on the system, the
+      system does have maintenance jobs that may include security monitoring
+      that have to run, and cron is used to execute them.
+    remediation: "Enable cronie service"
+    compliance:
+      - cis: ["5.1.1"]
+    condition: all
+    rules:
+      - 'c:pacman -Q cronie'
+      - 'c:systemctl is-enabled cronie -> r:^enabled'
+
+  - id: 4002
+    title: "CIS 5.2.1 - Ensure permissions on /etc/ssh/sshd_config are configured"
+    description: >
+      The /etc/ssh/sshd_config file contains configuration parameters for sshd.
+    rationale: >
+      If this file is writable by a group or other users, then an unprivileged
+      user could make configuration changes.
+    remediation: >
+      chown root:root /etc/ssh/sshd_config and chmod 600 /etc/ssh/sshd_config
+    compliance:
+      - cis: ["5.2.1"]
+    condition: all
+    rules:
+      - 'c:stat -c %a /etc/ssh/sshd_config -> r:^600$'
+      - 'c:stat -c %U:%G /etc/ssh/sshd_config -> r:^root:root$'
+
+  - id: 4003
+    title: "CIS 5.2.4 - Ensure SSH X11 forwarding is disabled"
+    description: >
+      The X11Forwarding parameter provides the ability to tunnel X11 traffic
+      through the connection to enable remote graphic connections.
+    rationale: >
+      Disable X11 forwarding unless there is an operational requirement to use
+      X11 applications directly.
+    remediation: "Set X11Forwarding no in /etc/ssh/sshd_config"
+    compliance:
+      - cis: ["5.2.4"]
+    condition: all
+    rules:
+      - 'f:$sshd_config -> !r:^# && r:^X11Forwarding\s+no'
+
+  - id: 4004
+    title: "CIS 5.2.5 - Ensure SSH MaxAuthTries is set to 4 or less"
+    description: >
+      The MaxAuthTries parameter specifies the maximum number of authentication
+      attempts permitted per connection.
+    rationale: >
+      Setting the MaxAuthTries parameter to a low number will minimize the risk
+      of successful brute force attacks to the SSH server.
+    remediation: "Set MaxAuthTries 4 in /etc/ssh/sshd_config"
+    compliance:
+      - cis: ["5.2.5"]
+    condition: all
+    rules:
+      - 'f:$sshd_config -> n:^MaxAuthTries\s+(\d+) compare <= 4'
+
+  - id: 4005
+    title: "CIS 5.2.6 - Ensure SSH IgnoreRhosts is enabled"
+    description: >
+      The IgnoreRhosts parameter specifies that .rhosts and .shosts files will
+      not be used in RhostsRSAAuthentication or HostbasedAuthentication.
+    rationale: >
+      Setting this parameter forces users to enter a password when
+      authenticating with ssh.
+    remediation: "Set IgnoreRhosts yes in /etc/ssh/sshd_config"
+    compliance:
+      - cis: ["5.2.6"]
+    condition: all
+    rules:
+      - 'f:$sshd_config -> !r:^# && r:^IgnoreRhosts\s+yes'
+
+  - id: 4006
+    title: "CIS 5.2.7 - Ensure SSH HostbasedAuthentication is disabled"
+    description: >
+      The HostbasedAuthentication parameter specifies if authentication is
+      allowed through trusted hosts via the user of .rhosts, or
+      /etc/hosts.equiv.
+    rationale: >
+      Even though the .rhosts files are ineffective if support is disabled in
+      /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides
+      an additional layer of protection.
+    remediation: "Set HostbasedAuthentication no in /etc/ssh/sshd_config"
+    compliance:
+      - cis: ["5.2.7"]
+    condition: all
+    rules:
+      - 'f:$sshd_config -> !r:^# && r:^HostbasedAuthentication\s+no'
+
+  - id: 4007
+    title: "CIS 5.2.8 - Ensure SSH root login is disabled"
+    description: >
+      The PermitRootLogin parameter specifies if the root user can log in using
+      ssh.
+    rationale: >
+      Disallowing root logins over SSH requires system admins to authenticate
+      using their own individual account, then escalating to root via sudo or
+      su.
+    remediation: "Set PermitRootLogin no in /etc/ssh/sshd_config"
+    compliance:
+      - cis: ["5.2.8"]
+    condition: all
+    rules:
+      - 'f:$sshd_config -> !r:^# && r:^PermitRootLogin\s+no'
+
+  - id: 4008
+    title: "CIS 5.2.10 - Ensure SSH PermitUserEnvironment is disabled"
+    description: >
+      The PermitUserEnvironment option allows users to present environment
+      options to the ssh daemon.
+    rationale: >
+      Permitting users the ability to set environment variables through the SSH
+      daemon could potentially allow users to bypass security controls.
+    remediation: "Set PermitUserEnvironment no in /etc/ssh/sshd_config"
+    compliance:
+      - cis: ["5.2.10"]
+    condition: all
+    rules:
+      - 'f:$sshd_config -> !r:^# && r:^PermitUserEnvironment\s+no'
+
+  # 5. USER ACCOUNT AND ENVIRONMENT
+  - id: 5001
+    title: "CIS 5.3.1 - Ensure password creation requirements are configured"
+    description: "The pam_pwquality.so module checks the strength of passwords."
+    rationale: >
+      Strong passwords protect systems from being hacked through brute force
+      methods.
+    remediation: "Install libpwquality and configure in PAM"
+    compliance:
+      - cis: ["5.3.1"]
+      - pci_dss: ["8.2.3"]
+    condition: all
+    rules:
+      - 'c:pacman -Q libpwquality'
+      - 'f:/etc/pam.d/passwd -> r:pam_pwquality\.so'
+
+  - id: 5002
+    title: "CIS 5.4.1.1 - Ensure password expiration is 365 days or less"
+    description: >
+      The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to
+      force passwords to expire once they reach a defined age.
+    rationale: >
+      The window of opportunity for an attacker to leverage compromised
+      credentials or successfully compromise credentials via an online brute
+      force attack is limited by the age of the password.
+    remediation: "Set PASS_MAX_DAYS 365 in /etc/login.defs"
+    compliance:
+      - cis: ["5.4.1.1"]
+    condition: all
+    rules:
+      - 'f:/etc/login.defs -> n:^PASS_MAX_DAYS\s+(\d+) compare <= 365'
+
+  - id: 5003
+    title: "CIS 5.4.1.2 - Ensure minimum days between password changes is 7 or more"
+    description: >
+      The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to
+      prevent users from changing their password until a minimum number of days
+      have passed since the last time the user changed their password.
+    rationale: >
+      By restricting the frequency of password changes, an administrator can
+      prevent users from repeatedly changing their password in an attempt to
+      circumvent password reuse controls.
+    remediation: "Set PASS_MIN_DAYS 7 in /etc/login.defs"
+    compliance:
+      - cis: ["5.4.1.2"]
+    condition: all
+    rules:
+      - 'f:/etc/login.defs -> n:^PASS_MIN_DAYS\s+(\d+) compare >= 7'
+
+  # 6. SYSTEM FILE PERMISSIONS
+  - id: 6001
+    title: "CIS 6.1.2 - Ensure permissions on /etc/passwd are configured"
+    description: >
+      The /etc/passwd file contains user account information that is used by
+      many system utilities and therefore must be readable for these utilities
+      to operate.
+    rationale: >
+      If attackers can gain read access to the /etc/passwd file, they can easily
+      run a password cracking program against the hashed passwords to break
+      them.
+    remediation: "chown root:root /etc/passwd and chmod 644 /etc/passwd"
+    compliance:
+      - cis: ["6.1.2"]
+    condition: all
+    rules:
+      - 'c:stat -c %a $passwd_file -> r:^644$'
+      - 'c:stat -c %U:%G $passwd_file -> r:^root:root$'
+
+  - id: 6002
+    title: "CIS 6.1.3 - Ensure permissions on /etc/shadow are configured"
+    description: >
+      The /etc/shadow file is used to store the information about user accounts
+      that is critical to the security of those accounts, such as the hashed
+      password and other security information.
+    rationale: >
+      If attackers can gain read access to the /etc/shadow file, they can easily
+      run a password cracking program against the hashed passwords to break
+      them.
+    remediation: "chown root:shadow /etc/shadow and chmod 640 /etc/shadow"
+    compliance:
+      - cis: ["6.1.3"]
+    condition: all
+    rules:
+      - 'c:stat -c %a $shadow_file -> r:^640$'
+      - 'c:stat -c %U:%G $shadow_file -> r:^root:shadow$'
+
+  - id: 6003
+    title: "CIS 6.1.4 - Ensure permissions on /etc/group are configured"
+    description: >
+      The /etc/group file contains a list of all the valid groups defined in the
+      system.
+    rationale: >
+      The /etc/group file needs to be protected from unauthorized changes by
+      non-privileged users, but needs to be readable as many command utilities
+      use it to map a group ID to a group name.
+    remediation: "chown root:root /etc/group and chmod 644 /etc/group"
+    compliance:
+      - cis: ["6.1.4"]
+    condition: all
+    rules:
+      - 'c:stat -c %a $group_file -> r:^644$'
+      - 'c:stat -c %U:%G $group_file -> r:^root:root$'
+
+  - id: 6004
+    title: "CIS 6.1.5 - Ensure permissions on /etc/gshadow are configured"
+    description: >
+      The /etc/gshadow file is used to store the information about groups that
+      is critical to the security of those accounts, such as the hashed password
+      and other security information.
+    rationale: >
+      If attackers can gain read access to the /etc/gshadow file, they can
+      easily run a password cracking program against the hashed passwords to
+      break them.
+    remediation: "chown root:shadow /etc/gshadow and chmod 640 /etc/gshadow"
+    compliance:
+      - cis: ["6.1.5"]
+    condition: all
+    rules:
+      - 'c:stat -c %a $gshadow_file -> r:^640$'
+      - 'c:stat -c %U:%G $gshadow_file -> r:^root:shadow$'
+
+  # 7. ARCH LINUX SPECIFIC CHECKS
+  - id: 7001
+    title: "Arch Linux - Ensure pacman package signatures are required"
+    description: >
+      Pacman should verify package signatures to ensure package integrity.
+    rationale: >
+      Package signature verification helps ensure that packages have not been
+      tampered with and come from trusted sources.
+    remediation: "Set SigLevel = Required DatabaseOptional in /etc/pacman.conf"
+    compliance:
+      - cis_arch: ["7.1"]
+    condition: all
+    rules:
+      - 'f:$pacman_conf -> !r:^# && r:^SigLevel.*Required'
+
+  - id: 7002
+    title: "Arch Linux - Ensure system is up to date"
+    description: >
+      The system should be regularly updated with the latest security patches.
+    rationale: >
+      Installing security updates is a fundamental security practice to protect
+      against known vulnerabilities.
+    remediation: "Run pacman -Syu regularly to update the system"
+    compliance:
+      - cis_arch: ["7.2"]
+    condition: all
+    rules:
+      - 'c:pacman -Qu -> r:^$'
+
+  - id: 7003
+    title: "Arch Linux - Ensure no orphaned packages exist"
+    description: >
+      Orphaned packages are packages that were installed as dependencies but are
+      no longer required by any installed package.
+    rationale: >
+      Removing orphaned packages reduces the attack surface and frees up disk
+      space.
+    remediation: "Run pacman -Qtdq | pacman -Rns - to remove orphaned packages"
+    compliance:
+      - cis_arch: ["7.3"]
+    condition: all
+    rules:
+      - 'c:pacman -Qtdq -> r:^$'
+
+  - id: 7004
+    title: "Arch Linux - Ensure bootloader is password protected"
+    description: >
+      The bootloader should be configured with a password to prevent
+      unauthorized system modifications.
+    rationale: >
+      An unprotected bootloader allows an attacker to modify boot parameters or
+      boot from removable media.
+    remediation: >
+      Configure GRUB with a password or use systemd-boot with secure boot
+    compliance:
+      - cis_arch: ["7.4"]
+    condition: any
+    rules:
+      - 'f:$grub_cfg -> r:password'
+      - 'c:bootctl status -> r:Secure Boot.*enabled'
+
+  - id: 7005
+    title: "Arch Linux - Ensure tmpfiles.d is properly configured"
+    description: >
+      systemd-tmpfiles should be configured to clean temporary files securely.
+    rationale: >
+      Proper temporary file management prevents information disclosure and
+      ensures system cleanliness.
+    remediation: "Review and configure /etc/tmpfiles.d/ files appropriately"
+    compliance:
+      - cis_arch: ["7.5"]
+    condition: all
+    rules:
+      - 'd:/etc/tmpfiles.d'
+      - 'c:systemctl is-enabled systemd-tmpfiles-clean.timer -> r:^enabled$'
+
+  # 8. SYSTEMD SECURITY
+  - id: 8001
+    title: "SystemD - Ensure core dumps are restricted"
+    description: "A core dump is the memory of an executable program."
+    rationale: >
+      Core dumps may contain sensitive information and should be restricted.
+    remediation: "Configure systemd to limit core dumps"
+    compliance:
+      - cis: ["1.5.1"]
+    condition: all
+    rules:
+      - 'c:systemctl show systemd-coredump | grep -i limitcore -> r:LimitCORE=0'
+      - 'f:/etc/systemd/coredump.conf -> !r:^# && r:^Storage=none'
+
+  - id: 8002
+    title: "SystemD - Ensure address space layout randomization is enabled"
+    description: >
+      Address space layout randomization (ASLR) is an exploit mitigation
+      technique.
+    rationale: >
+      Randomly placing virtual memory regions will make it difficult to write
+      memory page exploits as the memory placement will be consistently
+      shifting.
+    remediation: "Set kernel.randomize_va_space = 2"
+    compliance:
+      - cis: ["1.5.3"]
+    condition: all
+    rules:
+      - 'c:sysctl kernel.randomize_va_space -> r:kernel.randomize_va_space = 2'
+
+  - id: 8003
+    title: "SystemD - Ensure prelink is disabled"
+    description: >
+      Prelink is a program that modifies ELF shared libraries and ELF
+      dynamically linked binaries.
+    rationale: >
+      The prelinking feature can interfere with the operation of AIDE, because
+      it changes binaries.
+    remediation: "Ensure prelink is not installed"
+    compliance:
+      - cis: ["1.5.4"]
+    condition: all
+    rules:
+      - 'not c:pacman -Q prelink'
+
+  # 9. NETWORK SERVICES
+  - id: 9001
+    title: "Network - Ensure xinetd is not installed"
+    description: >
+      The eXtended InterNET Daemon (xinetd) is an open source super daemon.
+    rationale: >
+      If there are no xinetd services required, it is recommended that the
+      daemon be disabled.
+    remediation: "Remove xinetd package"
+    compliance:
+      - cis: ["2.1.1"]
+    condition: all
+    rules:
+      - 'not c:pacman -Q xinetd'
+
+  - id: 9002
+    title: "Network - Ensure openbsd-inetd is not installed"
+    description: >
+      The inetd daemon listens for network requests and spawns the appropriate
+      service for that request.
+    rationale: >
+      If there are no inetd services required, it is recommended that the daemon
+      be removed.
+    remediation: "Remove openbsd-inetd package"
+    compliance:
+      - cis: ["2.1.2"]
+    condition: all
+    rules:
+      - 'not c:pacman -Q openbsd-inetd'
+
+  - id: 9003
+    title: "Network - Ensure unnecessary services are not enabled"
+    description: >
+      Legacy network services that use unencrypted authentication should not be
+      enabled.
+    rationale: >
+      These services provide unencrypted remote access and are therefore subject
+      to interception.
+    remediation: "Disable or remove unnecessary network services"
+    compliance:
+      - cis: ["2.2"]
+    condition: all
+    rules:
+      - 'not c:systemctl is-enabled telnet.socket'
+      - 'not c:systemctl is-enabled rsh.socket'
+      - 'not c:systemctl is-enabled rlogin.socket'
+      - 'not c:systemctl is-enabled vsftpd'
+
+  # 10. FIREWALL CONFIGURATION
+  - id: 10001
+    title: "Firewall - Ensure iptables is installed"
+    description: >
+      iptables allows configuration of the IPv4 tables in the linux kernel
+      firewall.
+    rationale: >
+      Without a firewall, it may be possible for unauthorized users to access
+      system services.
+    remediation: "Install iptables"
+    compliance:
+      - cis: ["3.5.1.1"]
+    condition: any
+    rules:
+      - 'c:pacman -Q iptables'
+      - 'c:pacman -Q nftables'
+
+  - id: 10002
+    title: "Firewall - Ensure default deny firewall policy"
+    description: >
+      A default deny all policy on connections ensures that any unconfigured
+      network usage will be rejected.
+    rationale: >
+      With a default accept policy the firewall will accept any packet that is
+      not configured to be denied.
+    remediation: "Configure iptables default policies to DROP"
+    compliance:
+      - cis: ["3.5.1.3"]
+    condition: any
+    rules:
+      - 'c:iptables -L INPUT -> r:policy DROP'
+      - 'c:nft list table inet filter -> r:policy drop'
+
+  # 11. SPECIAL PURPOSE SERVICES
+  - id: 11001
+    title: "Services - Ensure NFS and RPC are not enabled"
+    description: >
+      The Network File System (NFS) is one of the first and most widely
+      distributed file systems in the UNIX environment.
+    rationale: >
+      If the system does not export NFS shares or act as an NFS client, it is
+      recommended that these services be disabled to reduce remote attack
+      surface.
+    remediation: "Disable nfs-server and rpcbind services"
+    compliance:
+      - cis: ["2.2.5"]
+    condition: all
+    rules:
+      - 'not c:systemctl is-enabled nfs-server'
+      - 'not c:systemctl is-enabled rpcbind'
+
+  - id: 11002
+    title: "Services - Ensure DNS Server is not enabled"
+    description: >
+      The Domain Name System (DNS) is a hierarchical naming system that maps
+      names to IP addresses for computers, services and other resources
+      connected to a network.
+    rationale: >
+      Unless a system is specifically designated to act as a DNS server, it is
+      recommended that the package be deleted to reduce the potential attack
+      surface.
+    remediation: "Disable named service"
+    compliance:
+      - cis: ["2.2.6"]
+    condition: all
+    rules:
+      - 'not c:systemctl is-enabled named'
+      - 'not c:systemctl is-enabled bind9'
+
+  - id: 11003
+    title: "Services - Ensure FTP Server is not enabled"
+    description: >
+      The File Transfer Protocol (FTP) provides networked computers with the
+      ability to transfer files.
+    rationale: >
+      FTP does not protect the confidentiality of data or authentication
+      credentials. It is recommended sftp be used if file transfer is required.
+    remediation: "Disable vsftpd service"
+    compliance:
+      - cis: ["2.2.7"]
+    condition: all
+    rules:
+      - 'not c:systemctl is-enabled vsftpd'
+      - 'not c:systemctl is-enabled proftpd'
+
+  - id: 11004
+    title: "Services - Ensure HTTP server is not enabled"
+    description: >
+      HTTP or web servers provide the ability to host web site content.
+    rationale: >
+      Unless there is a need to run the system as a web server, it is
+      recommended that the package be deleted to reduce the potential attack
+      surface.
+    remediation: "Disable httpd/apache2/nginx services"
+    compliance:
+      - cis: ["2.2.8"]
+    condition: all
+    rules:
+      - 'not c:systemctl is-enabled httpd'
+      - 'not c:systemctl is-enabled apache2'
+      - 'not c:systemctl is-enabled nginx'
+
+  - id: 11005
+    title: "Services - Ensure IMAP and POP3 server is not enabled"
+    description: >
+      dovecot is an open source IMAP and POP3 server for Linux based systems.
+    rationale: >
+      Unless POP3 and/or IMAP servers are to be provided by this system, it is
+      recommended that the package be removed to reduce the potential attack
+      surface.
+    remediation: "Disable dovecot service"
+    compliance:
+      - cis: ["2.2.9"]
+    condition: all
+    rules:
+      - 'not c:systemctl is-enabled dovecot'
+
+  - id: 11006
+    title: "Services - Ensure Samba is not enabled"
+    description: >
+      The Samba daemon allows system administrators to configure their Linux
+      systems to share file systems and directories with Windows desktops.
+    rationale: >
+      If there is no need to mount directories and file systems to Windows
+      systems, then this package can be removed to reduce the potential attack
+      surface.
+    remediation: "Disable smb service"
+    compliance:
+      - cis: ["2.2.10"]
+    condition: all
+    rules:
+      - 'not c:systemctl is-enabled smb'
+      - 'not c:systemctl is-enabled nmb'
+
+  - id: 11007
+    title: "Services - Ensure HTTP Proxy Server is not enabled"
+    description: >
+      Squid is a standard proxy server used in many distributions and
+      environments.
+    rationale: >
+      If there is no need for a proxy server, it is recommended that the squid
+      proxy be deleted to reduce the potential attack surface.
+    remediation: "Disable squid service"
+    compliance:
+      - cis: ["2.2.11"]
+    condition: all
+    rules:
+      - 'not c:systemctl is-enabled squid'
+
+  - id: 11008
+    title: "Services - Ensure SNMP Server is not enabled"
+    description: >
+      The Simple Network Management Protocol (SNMP) server is used to listen for
+      SNMP commands from an SNMP management system, execute the commands or
+      collect the information and then send results back to the requesting
+      system.
+    rationale: >
+      The SNMP server can communicate using SNMP v1, which transmits data in the
+      clear and does not require authentication to execute commands.
+    remediation: "Disable snmpd service"
+    compliance:
+      - cis: ["2.2.12"]
+    condition: all
+    rules:
+      - 'not c:systemctl is-enabled snmpd'
+
+  # 12. MAIL TRANSFER AGENT
+  - id: 12001
+    title: "MTA - Ensure mail transfer agent is configured for local-only mode"
+    description: >
+      Mail Transfer Agents (MTA), such as sendmail and Postfix, are used to
+      listen for incoming mail and transfer the messages to the appropriate user
+      or mail server.
+    rationale: >
+      The software for all Mail Transfer Agents is complex and most have a long
+      history of security issues.
+    remediation: "Configure postfix/sendmail for local delivery only"
+    compliance:
+      - cis: ["2.2.15"]
+    condition: any
+    rules:
+      - 'not c:systemctl is-enabled postfix'
+      - 'f:/etc/postfix/main.cf -> !r:^# && r:^inet_interfaces\s*=\s*localhost'
+      - 'not c:systemctl is-enabled sendmail'
+
+  # 13. FILESYSTEM CONFIGURATION
+  - id: 13001
+    title: "Filesystem - Ensure separate partition exists for /tmp"
+    description: >
+      The /tmp directory is a world-writable directory used for temporary
+      storage by all users and some applications.
+    rationale: >
+      Since the /tmp directory is intended to be world-writable, there is a risk
+      of resource exhaustion if it is not bound to a separate partition.
+    remediation: "Create separate partition for /tmp"
+    compliance:
+      - cis: ["1.1.2"]
+    condition: all
+    rules:
+      - 'c:mount -> r:/tmp'
+
+  - id: 13002
+    title: "Filesystem - Ensure nodev option set on /tmp partition"
+    description: >
+      The nodev mount option specifies that the filesystem cannot contain
+      special devices.
+    rationale: >
+      Since the /tmp filesystem is not intended to support devices, set this
+      option to ensure that users cannot attempt to create block or character
+      special devices in /tmp.
+    remediation: "Add nodev option to /tmp in /etc/fstab"
+    compliance:
+      - cis: ["1.1.3"]
+    condition: all
+    rules:
+      - 'c:mount -> r:/tmp.*nodev'
+
+  - id: 13003
+    title: "Filesystem - Ensure nosuid option set on /tmp partition"
+    description: >
+      The nosuid mount option specifies that the filesystem cannot contain
+      setuid files.
+    rationale: >
+      Since the /tmp filesystem is only intended for temporary file storage, set
+      this option to ensure that users cannot create setuid files in /tmp.
+    remediation: "Add nosuid option to /tmp in /etc/fstab"
+    compliance:
+      - cis: ["1.1.4"]
+    condition: all
+    rules:
+      - 'c:mount -> r:/tmp.*nosuid'
+
+  - id: 13004
+    title: "Filesystem - Ensure noexec option set on /tmp partition"
+    description: >
+      The noexec mount option specifies that the filesystem cannot contain
+      executable binaries.
+    rationale: >
+      Since the /tmp filesystem is only intended for temporary file storage, set
+      this option to ensure that users cannot run executable binaries from /tmp.
+    remediation: "Add noexec option to /tmp in /etc/fstab"
+    compliance:
+      - cis: ["1.1.5"]
+    condition: all
+    rules:
+      - 'c:mount -> r:/tmp.*noexec'
+
+  - id: 13005
+    title: "Filesystem - Ensure separate partition exists for /var"
+    description: >
+      The /var directory is used by daemons and other system services to
+      temporarily store dynamic data.
+    rationale: >
+      Since the /var directory may contain world-writable files and directories,
+      there is a risk of resource exhaustion if it is not bound to a separate
+      partition.
+    remediation: "Create separate partition for /var"
+    compliance:
+      - cis: ["1.1.6"]
+    condition: all
+    rules:
+      - 'c:mount -> r:/var'
+
+  - id: 13006
+    title: "Filesystem - Ensure separate partition exists for /var/log"
+    description: >
+      The /var/log directory is used by system services to store log data.
+    rationale: >
+      There are two important reasons to ensure that system logs are stored on a
+      separate partition: protection against resource exhaustion and protection
+      of audit data.
+    remediation: "Create separate partition for /var/log"
+    compliance:
+      - cis: ["1.1.11"]
+    condition: all
+    rules:
+      - 'c:mount -> r:/var/log'
+
+  # 14. ADDITIONAL SECURITY MEASURES
+  - id: 14001
+    title: "Security - Ensure mounting of cramfs filesystems is disabled"
+    description: >
+      The cramfs filesystem type is a compressed read-only Linux filesystem
+      embedded in small footprint systems.
+    rationale: >
+      Removing support for unneeded filesystem types reduces the local attack
+      surface of the system.
+    remediation: "Add 'install cramfs /bin/true' to /etc/modprobe.d/"
+    compliance:
+      - cis: ["1.1.1.1"]
+    condition: all
+    rules:
+      - 'not c:lsmod -> r:cramfs'
+      - 'c:modprobe -n -v cramfs -> r:install /bin/true'
+
+  - id: 14002
+    title: "Security - Ensure mounting of freevxfs filesystems is disabled"
+    description: >
+      The freevxfs filesystem type is a free version of the Veritas type
+      filesystem.
+    rationale: >
+      Removing support for unneeded filesystem types reduces the local attack
+      surface of the system.
+    remediation: "Add 'install freevxfs /bin/true' to /etc/modprobe.d/"
+    compliance:
+      - cis: ["1.1.1.2"]
+    condition: all
+    rules:
+      - 'not c:lsmod -> r:freevxfs'
+      - 'c:modprobe -n -v freevxfs -> r:install /bin/true'
+
+  - id: 14003
+    title: "Security - Ensure mounting of jffs2 filesystems is disabled"
+    description: >
+      The jffs2 (journaling flash filesystem 2) filesystem type is a log-
+      structured filesystem used in flash memory devices.
+    rationale: >
+      Removing support for unneeded filesystem types reduces the local attack
+      surface of the system.
+    remediation: "Add 'install jffs2 /bin/true' to /etc/modprobe.d/"
+    compliance:
+      - cis: ["1.1.1.3"]
+    condition: all
+    rules:
+      - 'not c:lsmod -> r:jffs2'
+      - 'c:modprobe -n -v jffs2 -> r:install /bin/true'
+
+  - id: 14004
+    title: "Security - Ensure mounting of hfs filesystems is disabled"
+    description: >
+      The hfs filesystem type is a hierarchical filesystem that allows you to
+      mount Mac OS filesystems.
+    rationale: >
+      Removing support for unneeded filesystem types reduces the local attack
+      surface of the system.
+    remediation: "Add 'install hfs /bin/true' to /etc/modprobe.d/"
+    compliance:
+      - cis: ["1.1.1.4"]
+    condition: all
+    rules:
+      - 'not c:lsmod -> r:hfs'
+      - 'c:modprobe -n -v hfs -> r:install /bin/true'
+
+  - id: 14005
+    title: "Security - Ensure mounting of hfsplus filesystems is disabled"
+    description: >
+      The hfsplus filesystem type is a hierarchical filesystem designed to
+      replace hfs that allows you to mount Mac OS filesystems.
+    rationale: >
+      Removing support for unneeded filesystem types reduces the local attack
+      surface of the system.
+    remediation: "Add 'install hfsplus /bin/true' to /etc/modprobe.d/"
+    compliance:
+      - cis: ["1.1.1.5"]
+    condition: all
+    rules:
+      - 'not c:lsmod -> r:hfsplus'
+      - 'c:modprobe -n -v hfsplus -> r:install /bin/true'
+
+  - id: 14006
+    title: "Security - Ensure mounting of udf filesystems is disabled"
+    description: >
+      The udf filesystem type is the universal disk format used to implement
+      ISO/IEC 13346 and ECMA-167 specifications.
+    rationale: >
+      Removing support for unneeded filesystem types reduces the local attack
+      surface of the system.
+    remediation: "Add 'install udf /bin/true' to /etc/modprobe.d/"
+    compliance:
+      - cis: ["1.1.1.6"]
+    condition: all
+    rules:
+      - 'not c:lsmod -> r:udf'
+      - 'c:modprobe -n -v udf -> r:install /bin/true'
+
+  # 15. PROCESS HARDENING
+  - id: 15001
+    title: "Process - Ensure core dumps are restricted"
+    description: "A core dump is the memory of an executable program."
+    rationale: >
+      Setting a hard limit of 0 prevents users from creating core dump files.
+    remediation: "Add '* hard core 0' to /etc/security/limits.conf"
+    compliance:
+      - cis: ["1.5.1"]
+    condition: all
+    rules:
+      - 'f:/etc/security/limits.conf -> r:hard.*core.*0'
+      - 'c:sysctl fs.suid_dumpable -> r:fs.suid_dumpable = 0'
+
+  # 16. MANDATORY ACCESS CONTROLS
+  - id: 16001
+    title: "MAC - Ensure SELinux is not disabled in bootloader configuration"
+    description: >
+      Configure SELINUX to be enabled at boot time and verify that it has not
+      been overwritten by the grub boot parameters.
+    rationale: >
+      SELinux must be enabled at boot time in /etc/default/grub to ensure that
+      the controls it provides are not overridden.
+    remediation: "Remove selinux=0 and enforcing=0 from GRUB_CMDLINE_LINUX"
+    compliance:
+      - cis: ["1.6.1.1"]
+    condition: any
+    rules:
+      - 'not f:/etc/default/grub -> r:selinux=0'
+      - 'not f:/etc/default/grub -> r:enforcing=0'
+      - 'not c:pacman -Q selinux-refpolicy-arch'
+
+  - id: 16002
+    title: "MAC - Ensure AppArmor is enabled in the bootloader configuration"
+    description: >
+      Configure AppArmor to be enabled at boot time and verify that it has not
+      been overwritten by the grub boot parameters.
+    rationale: >
+      AppArmor must be enabled at boot time in /etc/default/grub to ensure that
+      the controls it provides are in place during the integrity of the kernel.
+    remediation: "Add apparmor=1 and security=apparmor to GRUB_CMDLINE_LINUX"
+    compliance:
+      - cis: ["1.6.1.1"]
+    condition: any
+    rules:
+      - 'f:/etc/default/grub -> r:apparmor=1'
+      - 'f:/etc/default/grub -> r:security=apparmor'
+      - 'c:pacman -Q apparmor'
+
+  # 17. WARNING BANNERS
+  - id: 17001
+    title: "Banners - Ensure message of the day is configured properly"
+    description: >
+      The contents of the /etc/motd file are displayed to users after login and
+      function as a message of the day for authenticated users.
+    rationale: >
+      Warning messages inform users who are attempting to login to the system of
+      their legal status regarding the system and must include the name of the
+      organization that owns the system and any monitoring policies that are in
+      place.
+    remediation: "Edit /etc/motd with appropriate contents"
+    compliance:
+      - cis: ["1.7.1"]
+    condition: all
+    rules:
+      - 'f:/etc/motd'
+      - 'not f:/etc/motd -> r:\\v'
+      - 'not f:/etc/motd -> r:\\r'
+      - 'not f:/etc/motd -> r:\\m'
+      - 'not f:/etc/motd -> r:\\s'
+
+  - id: 17002
+    title: "Banners - Ensure local login warning banner is configured properly"
+    description: >
+      The contents of the /etc/issue file are displayed to users prior to login
+      for local terminals.
+    rationale: >
+      Warning messages inform users who are attempting to login to the system of
+      their legal status regarding the system and must include the name of the
+      organization that owns the system and any monitoring policies that are in
+      place.
+    remediation: "Edit /etc/issue with appropriate contents"
+    compliance:
+      - cis: ["1.7.2"]
+    condition: all
+    rules:
+      - 'f:/etc/issue'
+      - 'not f:/etc/issue -> r:\\v'
+      - 'not f:/etc/issue -> r:\\r'
+      - 'not f:/etc/issue -> r:\\m'
+      - 'not f:/etc/issue -> r:\\s'
+
+  - id: 17003
+    title: "Banners - Ensure remote login warning banner is configured properly"
+    description: >
+      The contents of the /etc/issue.net file are displayed to users prior to
+      login for remote connections from configured services.
+    rationale: >
+      Warning messages inform users who are attempting to login to the system of
+      their legal status regarding the system and must include the name of the
+      organization that owns the system and any monitoring policies that are in
+      place.
+    remediation: "Edit /etc/issue.net with appropriate contents"
+    compliance:
+      - cis: ["1.7.3"]
+    condition: all
+    rules:
+      - 'f:/etc/issue.net'
+      - 'not f:/etc/issue.net -> r:\\v'
+      - 'not f:/etc/issue.net -> r:\\r'
+      - 'not f:/etc/issue.net -> r:\\m'
+      - 'not f:/etc/issue.net -> r:\\s'
+
+  # 18. GDMHOUT (GNOME Display Manager)
+  - id: 18001
+    title: "GDM - Ensure GDM login banner is configured"
+    description: >
+      GDM is the GNOME Display Manager which handles graphical login for GNOME
+      based systems.
+    rationale: >
+      Warning messages inform users who are attempting to login to the system of
+      their legal status regarding the system and must include the name of the
+      organization that owns the system and any monitoring policies that are in
+      place.
+    remediation: "Configure GDM banner in /etc/gdm/custom.conf"
+    compliance:
+      - cis: ["1.7.4"]
+    condition: any
+    rules:
+      - 'not c:pacman -Q gdm'
+      - 'f:/etc/gdm/custom.conf -> !r:^# && r:banner-message-enable=true'
+
+  # 19. SYSTEM UPDATES
+  - id: 19001
+    title: "Updates - Ensure gpgcheck is globally activated"
+    description: >
+      The gpgcheck option, found in the main section of the /etc/pacman.conf
+      file determines if an RPM package's signature is checked prior to its
+      installation.
+    rationale: >
+      It is important to ensure that an RPM's package signature is always
+      checked prior to installation to ensure that the software is legitimate.
+    remediation: "Set SigLevel = Required DatabaseOptional in /etc/pacman.conf"
+    compliance:
+      - cis: ["1.2.3"]
+    condition: all
+    rules:
+      - 'f:$pacman_conf -> !r:^# && r:^SigLevel.*Required'
+
+  # 20. SUDO CONFIGURATION
+  - id: 20001
+    title: "Sudo - Ensure sudo is installed"
+    description: >
+      sudo allows a permitted user to execute a command as the superuser or
+      another user, as specified by the security policy.
+    rationale: >
+      sudo supports a plugin architecture for security policies and input/output
+      logging.
+    remediation: "Install sudo package"
+    compliance:
+      - cis: ["5.1.1"]
+    condition: all
+    rules:
+      - 'c:pacman -Q sudo'
+
+  - id: 20002
+    title: "Sudo - Ensure sudo commands use pty"
+    description: "sudo can be configured to run only from a pseudo-terminal."
+    rationale: >
+      Attackers can run a malicious program using sudo which would fork a
+      background process that remains even when the main program has finished
+      executing.
+    remediation: "Add 'Defaults use_pty' to /etc/sudoers"
+    compliance:
+      - cis: ["5.1.2"]
+    condition: all
+    rules:
+      - 'f:/etc/sudoers -> !r:^# && r:Defaults use_pty'
+
+  - id: 20003
+    title: "Sudo - Ensure sudo log file exists"
+    description: "sudo can use a custom log file."
+    rationale: "A sudo log file simplifies auditing of sudo commands."
+    remediation: "Add 'Defaults logfile=\"/var/log/sudo.log\"' to /etc/sudoers"
+    compliance:
+      - cis: ["5.1.3"]
+    condition: all
+    rules:
+      - 'f:/etc/sudoers -> !r:^# && r:Defaults logfile'
