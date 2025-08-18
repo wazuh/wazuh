@@ -10,7 +10,7 @@ from connexion.lifecycle import ConnexionResponse
 from api.controllers.util import json_response
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.syscheck import run, clear, files, last_scan
+from wazuh.syscheck import run
 
 logger = logging.getLogger('wazuh-api')
 
