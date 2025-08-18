@@ -156,6 +156,8 @@ WazuhUpgrade()
 
     # Remove old Wazuh daemons
 
+    ## TODO: check need of this
+
     rm -f $PREINSTALLEDDIR/bin/ossec-agentd
     rm -f $PREINSTALLEDDIR/bin/ossec-agentlessd
     rm -f $PREINSTALLEDDIR/bin/ossec-analysisd
