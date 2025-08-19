@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SRC_FILES
   src/chrome.cpp
+  src/firefox.cpp
 )
 
 include_directories(

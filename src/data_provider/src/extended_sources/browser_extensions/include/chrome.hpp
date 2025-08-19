@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 #include "json.hpp"
-#include "chrome_extensions_wrapper.hpp"
+#include "browser_extensions_wrapper.hpp"
 
 namespace chrome
 {
@@ -151,7 +151,7 @@ namespace chrome
             /// This constructor allows the ChromeExtensionsProvider to use a specific implementation of IChromeExtensionsWrapper
             /// to collect data about Chrome extensions.
             explicit ChromeExtensionsProvider(
-                std::shared_ptr<IChromeExtensionsWrapper> chromeExtensionsWrapper);
+                std::shared_ptr<IBrowserExtensionsWrapper> chromeExtensionsWrapper);
             /// @brief Default constructor for ChromeExtensionsProvider, initializes with a default IChromeExtensionsWrapper.
             /// This constructor creates a ChromeExtensionsProvider instance using a default-constructed shared pointer to an
             /// IChromeExtensionsWrapper, allowing the provider to function without requiring an explicit wrapper instance.
@@ -250,7 +250,7 @@ namespace chrome
             /// @param path
             void getExtensionsFromPath(chrome::ChromeExtensionList& extensions, const std::string& path);
 
-            std::shared_ptr<IChromeExtensionsWrapper> m_chromeExtensionsWrapper;
+            std::shared_ptr<IBrowserExtensionsWrapper> m_chromeExtensionsWrapper;
             std::string m_currentBrowserType;
             std::string m_currentUid;
     };

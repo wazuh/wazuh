@@ -14,7 +14,6 @@
 #include <algorithm>
 #include <openssl/evp.h>
 #include <vector>
-#include <fstream>
 #include <string>
 #include "stringHelper.h"
 #include "filesystemHelper.h"
@@ -23,11 +22,11 @@
 
 namespace chrome
 {
-    ChromeExtensionsProvider::ChromeExtensionsProvider(std::shared_ptr<IChromeExtensionsWrapper> chromeExtensionsWrapper) : m_chromeExtensionsWrapper(std::move(chromeExtensionsWrapper))
+    ChromeExtensionsProvider::ChromeExtensionsProvider(std::shared_ptr<IBrowserExtensionsWrapper> chromeExtensionsWrapper) : m_chromeExtensionsWrapper(std::move(chromeExtensionsWrapper))
     {
     }
 
-    ChromeExtensionsProvider::ChromeExtensionsProvider() : m_chromeExtensionsWrapper(std::make_shared<ChromeExtensionsWrapper>())
+    ChromeExtensionsProvider::ChromeExtensionsProvider() : m_chromeExtensionsWrapper(std::make_shared<BrowserExtensionsWrapper>())
     {
     }
 

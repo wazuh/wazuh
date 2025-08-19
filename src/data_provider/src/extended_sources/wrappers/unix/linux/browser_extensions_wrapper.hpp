@@ -9,15 +9,24 @@
 
 #pragma once
 
-#include "ichrome_extensions_wrapper.hpp"
+#include <string>
 #include <pwd.h>
+#include "ibrowser_extensions_wrapper.hpp"
 
-class ChromeExtensionsWrapper : public IChromeExtensionsWrapper
+#define APP_PATH ""
+#define HOME_PATH "/home"
+
+class BrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
     public:
+        std::string getApplicationsPath() override
+        {
+            return std::string(APP_PATH);
+        }
+
         std::string getHomePath() override
         {
-            return std::string("/Users");
+            return std::string(HOME_PATH);
         }
 
         std::string getUserId(std::string user) override
