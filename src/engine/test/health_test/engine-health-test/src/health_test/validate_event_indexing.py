@@ -205,7 +205,7 @@ class OpensearchManagement:
             print(f"An unexpected error occurred: {e}")
             self.stop()
 
-    def read_index(self, result: TestResult, expecteds: List[UnitOutput], retries=6, delay=5) -> bool:
+    def read_index(self, result: TestResult, expecteds: List[UnitOutput], retries=10, delay=4) -> bool:
         url_search = f'http://localhost:9200/{Constants.INDEX_PATTERN}/_search'
         headers = {"Content-Type": "application/json"}
         not_found = []
@@ -213,8 +213,10 @@ class OpensearchManagement:
         for i, expected in enumerate(expecteds):
             initial_result_size = len(result.results)
             event_hash = expected.output['event_hash']
+            consecutive_not_found = 0
+            found = False
 
-            for attempt in range(retries):
+            while consecutive_not_found < retries and not found:
                 try:
                     query = {
                         "query": {
@@ -230,11 +232,18 @@ class OpensearchManagement:
 
                     if len(hits) > 0:
                         result.add_result(UnitResult(i, hits[0]['_source'], expected.output))
+                        found = True
                         break
+                    else:
+                        consecutive_not_found += 1
+                        print(f"Event hash {event_hash} not found yet ({consecutive_not_found}/{retries})")
+
                 except requests.ConnectionError as e:
                     print(f"Connection error: {e}. Retrying...")
+                    consecutive_not_found += 1
 
-                time.sleep(delay)
+                if not found:
+                    time.sleep(delay)
 
             if len(result.results) == initial_result_size:
                 not_found.append(expected)
@@ -540,7 +549,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
 
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
-                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "debug"})
 
     integrations: List[Path] = []
     CORE_WAZUH_DECODER_PATH = env_path / 'ruleset' / 'decoders' / 'wazuh-core' / 'core-wazuh-message.yml'
@@ -625,7 +634,7 @@ def rule_health_test(env_path: Path, ruleset_name: Optional[str] = None, skip: O
 
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
-                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "warning"})
+                                   CONFIG_ENV_KEYS.LOG_LEVEL.value: "debug"})
 
     results: List[Result] = []
     rules: List[Path] = []

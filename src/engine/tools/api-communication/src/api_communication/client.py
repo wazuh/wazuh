@@ -13,7 +13,7 @@ from api_communication.proto.engine_pb2 import GenericStatus_Response
 from api_communication.proto.engine_pb2 import ReturnStatus
 
 
-DEFAULT_TIMEOUT = 10
+DEFAULT_TIMEOUT = 30
 
 class APIClient:
     """Client to communicate with the Engine API socket
