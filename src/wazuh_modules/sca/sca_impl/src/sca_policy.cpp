@@ -24,7 +24,7 @@ SCAPolicy::SCAPolicy(SCAPolicy&& other) noexcept
 void
 SCAPolicy::Run(std::time_t ,
                bool ,
-               std::function<void(const std::string&, const std::string&, const std::string&)> reportCheckResult,
+               std::function<void(const std::string&, const std::string&, const std::string&, const std::string&)> reportCheckResult,
                std::function<void(std::chrono::milliseconds)> )
 {
     m_scanInProgress = true;
@@ -33,7 +33,7 @@ SCAPolicy::Run(std::time_t ,
 }
 
 void SCAPolicy::Scan(
-    const std::function<void(const std::string&, const std::string&, const std::string&)>& reportCheckResult)
+    const std::function<void(const std::string&, const std::string&, const std::string&, const std::string&)>& reportCheckResult)
 {
     auto requirementsOk = sca::CheckResult::Passed;
 
@@ -49,7 +49,7 @@ void SCAPolicy::Scan(
             {
                 return;
             }
-            resultEvaluator.AddResult(rule->Evaluate());
+            resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate()));
         }
 
         requirementsOk = resultEvaluator.Result();
@@ -71,15 +71,37 @@ void SCAPolicy::Scan(
                 {
                     return;
                 }
-                resultEvaluator.AddResult(rule->Evaluate());
+
+                const auto ruleResult = rule->Evaluate();
+                resultEvaluator.AddResult(RuleEvaluationResult(ruleResult));
+
+                if (ruleResult == RuleResult::Invalid && resultEvaluator.GetInvalidReason().empty())
+                {
+                    const auto ruleReason = rule->GetInvalidReason();
+
+                    if (!ruleReason.empty())
+                    {
+                        resultEvaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, ruleReason));
+                    }
+                }
             }
 
             const auto result = resultEvaluator.Result();
+            const auto reason = (result == sca::CheckResult::NotApplicable) ? resultEvaluator.GetInvalidReason() : "";
 
             // NOLINTBEGIN(bugprone-unchecked-optional-access)
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Policy check \"" + check.id.value() + "\" evaluation completed for policy \"" + m_id + "\", result: " + sca::CheckResultToString(result) + ".");
+            LoggingHelper::getInstance().log(
+                LOG_DEBUG,
+                "Policy check \"" +
+                check.id.value() +
+                "\" evaluation completed for policy \"" +
+                m_id +
+                "\", result: " +
+                sca::CheckResultToString(result) +
+                (reason.empty() ? "" : ", reason: " + reason)
+            );
 
-            reportCheckResult(m_id, check.id.value(), sca::CheckResultToString(result));
+            reportCheckResult(m_id, check.id.value(), sca::CheckResultToString(result), reason);
             // NOLINTEND(bugprone-unchecked-optional-access)
         }
 
@@ -90,7 +112,7 @@ void SCAPolicy::Scan(
         for (const auto& check : m_checks)
         {
             // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-            reportCheckResult(m_id, check.id.value(), sca::CheckResultToString(sca::CheckResult::NotApplicable));
+            reportCheckResult(m_id, check.id.value(), sca::CheckResultToString(sca::CheckResult::NotApplicable), "Policy requirements not met");
         }
     }
 }

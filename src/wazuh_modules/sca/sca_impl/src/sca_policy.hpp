@@ -31,7 +31,7 @@ public:
     void
     Run(std::time_t scanInterval,
         bool scanOnStart,
-        std::function<void(const std::string&, const std::string&, const std::string&)> reportCheckResult,
+        std::function<void(const std::string&, const std::string&, const std::string&, const std::string&)> reportCheckResult,
         std::function<void(std::chrono::milliseconds)> wait) override;
 
     /// @copydoc ISCAPolicy::Stop
@@ -39,8 +39,8 @@ public:
 
 private:
     /// @brief Runs the policy checks
-    /// @param reportCheckResult Function to report check result
-    void Scan(const std::function<void(const std::string&, const std::string&, const std::string&)>& reportCheckResult);
+    /// @param reportCheckResult Function to report check result (policyId, checkId, result, reason)
+    void Scan(const std::function<void(const std::string&, const std::string&, const std::string&, const std::string&)>& reportCheckResult);
 
     std::string m_id;
     Check m_requirements;
