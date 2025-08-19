@@ -401,19 +401,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         async with self.reload_ruleset_flag:
             if self.reload_ruleset_flag.is_set():
                 response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
-                if response.is_ok():
-                    if response.has_warnings():
-                        integrity_logger.warning(
-                            f"Ruleset reloaded with warnings after cluster integrity check: {', '.join(response.warnings)}"
-                        )
-                    else:
-                        integrity_logger.info(
-                            "Ruleset reload triggered by cluster integrity check: reload message sent successfully."
-                        )
-                else:
-                    integrity_logger.error(
-                        f"Ruleset reload failed after cluster integrity check: {', '.join(response.errors)}"
-                    )
+                analysis.log_ruleset_reload_response(self.logger, response)
 
                 # Clear the flag
                 self.reload_ruleset_flag.clear()
@@ -747,19 +735,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             async with self.reload_ruleset_flag:
                 if self.reload_ruleset_flag.is_set():
                     response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
-                    if response.is_ok():
-                        if response.has_warnings():
-                            self.logger.warning(
-                                f"Ruleset reloaded with warnings after cluster integrity check: {', '.join(response.warnings)}"
-                            )
-                        else:
-                            self.logger.info(
-                                "Ruleset reload triggered by cluster integrity check: reload message sent successfully."
-                            )
-                    else:
-                        self.logger.error(
-                            f"Ruleset reload failed after cluster integrity check: {', '.join(response.errors)}"
-                        )
+                    analysis.log_ruleset_reload_response(self.logger, response)
 
                     # Clear the flag
                     self.reload_ruleset_flag.clear()

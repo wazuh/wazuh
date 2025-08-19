@@ -1,6 +1,7 @@
 import os
 from json import dumps, loads
 from typing import List
+from logging import Logger
 
 from wazuh.core import common
 from wazuh.core.wazuh_socket import create_wazuh_socket_message, WazuhSocket
@@ -103,6 +104,37 @@ class RulesetReloadResponse:
             True if successful, False otherwise.
         """
         return self.success
+
+def log_ruleset_reload_response(logger: Logger, response: RulesetReloadResponse):
+    """
+    Log the result of a ruleset reload operation.
+
+    Depending on the outcome of the reload, logs an info, warning, or error message
+    using the provided logger. If the reload was successful but with warnings, logs
+    the warnings. If successful without warnings, logs a success message. If failed,
+    logs the errors.
+
+    Parameters
+    ----------
+    logger : Logger
+        Logger instance to use for logging messages.
+    response : RulesetReloadResponse
+        Response object containing the result of the reload operation.
+    """
+    if response.is_ok():
+        if response.has_warnings():
+            logger.warning(
+                f"Ruleset reloaded with warnings after cluster integrity check: {', '.join(response.warnings)}"
+            )
+        else:
+            logger.info(
+                "Ruleset reload triggered by cluster integrity check: reload message sent successfully."
+            )
+    else:
+        logger.error(
+            f"Ruleset reload failed after cluster integrity check: {', '.join(response.errors)}"
+        )
+
 
 def send_reload_ruleset_msg(origin: dict[str, str]) -> RulesetReloadResponse:
     """Send the reload ruleset command to Analysisd socket.
