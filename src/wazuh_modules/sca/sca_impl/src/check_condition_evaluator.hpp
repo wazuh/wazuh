@@ -20,9 +20,10 @@ public:
 
     explicit CheckConditionEvaluator(ConditionType type);
 
-    void AddResult(RuleResult result);
+    void AddResult(const RuleEvaluationResult& result);
 
     sca::CheckResult Result() const;
+    std::string GetInvalidReason() const;
 
 private:
     ConditionType m_type;
@@ -30,4 +31,5 @@ private:
     int m_passedRules {0};
     std::optional<bool> m_result;
     bool m_hasInvalid = false;
+    std::string m_invalidReason;
 };

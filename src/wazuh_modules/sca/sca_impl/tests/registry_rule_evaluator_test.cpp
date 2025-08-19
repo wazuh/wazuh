@@ -244,3 +244,78 @@ TEST_F(RegistryRuleEvaluatorTest, PatternArrowRegexValueNotFoundReturnsNotFound)
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
 }
+
+TEST_F(RegistryRuleEvaluatorTest, KeyDoesNotExistHasReasonString)
+{
+    m_ctx.rule = "HKLM\\NonExistentKey";
+    m_ctx.pattern = std::string("r:foo");
+
+    m_isValidKeyMock = [](const std::string&) -> bool
+    {
+        return false;
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("HKLM\\NonExistentKey"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("does not exist"));
+}
+
+TEST_F(RegistryRuleEvaluatorTest, KeyAccessExceptionHasReasonString)
+{
+    m_ctx.rule = "HKLM\\SomeKey";
+    m_ctx.pattern = std::string("r:foo");
+
+    m_isValidKeyMock = [](const std::string&) -> bool
+    {
+        throw std::runtime_error("Access denied to registry");
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("HKLM\\SomeKey"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Exception accessing registry"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Access denied to registry"));
+}
+
+TEST_F(RegistryRuleEvaluatorTest, ValueDoesNotExistHasReasonString)
+{
+    m_ctx.rule = "HKLM\\SomeKey";
+    m_ctx.pattern = std::string("NonExistentValue -> SomeContent");
+
+    m_isValidKeyMock = [](const std::string&) -> bool
+    {
+        return true;
+    };
+
+    m_getValueMock = [](const std::string&, const std::string&) -> std::optional<std::string>
+    {
+        return std::nullopt;
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("NonExistentValue"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("HKLM\\SomeKey"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("does not exist"));
+}
+
+TEST_F(RegistryRuleEvaluatorTest, KeyExistenceCheckExceptionHasReasonString)
+{
+    m_ctx.rule = "HKLM\\SomeKey";
+
+    m_isValidKeyMock = [](const std::string&) -> bool
+    {
+        throw std::runtime_error("Registry access error");
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("HKLM\\SomeKey"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Exception checking registry key existence"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Registry access error"));
+}

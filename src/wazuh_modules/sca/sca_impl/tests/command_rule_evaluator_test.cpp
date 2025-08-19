@@ -198,3 +198,52 @@ TEST_F(CommandRuleEvaluatorTest, CommandExecutionReturnsNulloptIsInvalid)
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
 }
+
+TEST_F(CommandRuleEvaluatorTest, CommandsDisabledHasReasonString)
+{
+    m_ctx.rule = "echo test";
+    m_ctx.commandsEnabled = false;
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Remote commands are disabled"));
+}
+
+TEST_F(CommandRuleEvaluatorTest, CommandExecutionFailureHasReasonString)
+{
+    m_ctx.rule = "some command";
+    m_ctx.pattern = std::string("something");
+
+    m_execMock = [](const std::string&) -> std::optional<CommandRuleEvaluator::ExecResult>
+    {
+        return std::nullopt;
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("some command"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Command execution failed"));
+}
+
+TEST_F(CommandRuleEvaluatorTest, InvalidPatternHasReasonString)
+{
+    m_ctx.rule = "echo test";
+    m_ctx.pattern = std::string("r:***invalid***");
+
+    m_execMock = [](const std::string&) -> std::optional<CommandRuleEvaluator::ExecResult>
+    {
+        CommandRuleEvaluator::ExecResult result;
+        result.StdOut = "test output";
+        result.StdErr = "test error";
+        result.ExitCode = 0;
+        return result;
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("***invalid***"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Invalid pattern"));
+}
