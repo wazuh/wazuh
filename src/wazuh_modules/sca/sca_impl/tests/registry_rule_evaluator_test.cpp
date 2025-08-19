@@ -1,3 +1,4 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <sca_policy_check.hpp>
@@ -250,7 +251,7 @@ TEST_F(RegistryRuleEvaluatorTest, KeyDoesNotExistHasReasonString)
     m_ctx.rule = "HKLM\\NonExistentKey";
     m_ctx.pattern = std::string("r:foo");
 
-    m_isValidKeyMock = [](const std::string&) -> bool
+    m_isValidKey = [](const std::string&) -> bool
     {
         return false;
     };
@@ -267,7 +268,7 @@ TEST_F(RegistryRuleEvaluatorTest, KeyAccessExceptionHasReasonString)
     m_ctx.rule = "HKLM\\SomeKey";
     m_ctx.pattern = std::string("r:foo");
 
-    m_isValidKeyMock = [](const std::string&) -> bool
+    m_isValidKey = [](const std::string&) -> bool
     {
         throw std::runtime_error("Access denied to registry");
     };
@@ -285,12 +286,12 @@ TEST_F(RegistryRuleEvaluatorTest, ValueDoesNotExistHasReasonString)
     m_ctx.rule = "HKLM\\SomeKey";
     m_ctx.pattern = std::string("NonExistentValue -> SomeContent");
 
-    m_isValidKeyMock = [](const std::string&) -> bool
+    m_isValidKey = [](const std::string&) -> bool
     {
         return true;
     };
 
-    m_getValueMock = [](const std::string&, const std::string&) -> std::optional<std::string>
+    m_getValue = [](const std::string&, const std::string&) -> std::optional<std::string>
     {
         return std::nullopt;
     };
@@ -307,7 +308,7 @@ TEST_F(RegistryRuleEvaluatorTest, KeyExistenceCheckExceptionHasReasonString)
 {
     m_ctx.rule = "HKLM\\SomeKey";
 
-    m_isValidKeyMock = [](const std::string&) -> bool
+    m_isValidKey = [](const std::string&) -> bool
     {
         throw std::runtime_error("Registry access error");
     };
