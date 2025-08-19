@@ -180,19 +180,9 @@ public:
      */
     bool contains(uint64_t seq) const
     {
-        return seq < m_size && m_observed[seq];
-    }
-
-    /**
-     * @brief Returns the ranges of missing sequence numbers.
-     * Uses cached result unless invalidated by a new observation.
-     * @return A vector of (start, end) pairs of missing ranges.
-     */
-    const std::vector<std::pair<uint64_t, uint64_t>>& ranges()
-    {
-        if (!m_gapCacheDirty)
+        if (seq >= m_size)
         {
-            return m_cachedRanges;
+            return false;
         }
         if (m_allObserved)
         {
@@ -268,15 +258,6 @@ public:
     uint64_t observedCount() const
     {
         return m_observedCount;
-    }
-
-    /**
-     * @brief Returns the last update time.
-     * @return The last update time set
-     */
-    std::chrono::time_point<std::chrono::steady_clock> lastUpdate() const
-    {
-        return m_lastUpdate;
     }
 
 private:

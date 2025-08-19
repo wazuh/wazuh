@@ -16,6 +16,7 @@
 #include "router.h"
 #include "shared_modules/utils/flatbuffers/include/inventorySync_schema.h"
 
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
@@ -941,19 +942,10 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
         return;
     }
 
-    char* msg_start = msg + message_header_size;
-    size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
-    if ((msg_size + message_header_size) < OS_MAXSTR) {
-        agent_ctx agent_ctx = {
-            .agent_id = agent_id,
-            .agent_name = agent_name,
-            .agent_ip = agent_ip,
-            .agent_version = (char *)OSHash_Get_ex(agent_data_hash, agent_id)
-        };
-
-        if (router_provider_send_fb_json(router_handle, msg_start, &agent_ctx, schema_type) != 0) {
-            mdebug2("Unable to forward message '%s' for agent '%s'.", msg_start, agent_id);
-        }
+    // Validate minimum message length: header + "x:y" (4 chars minimum after header)
+    if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
+        mdebug2("Message too short for expected format.");
+        return;
     }
 
     char* msg_start = msg + INVENTORY_SYNC_HEADER_SIZE;
