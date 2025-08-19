@@ -17,6 +17,18 @@ enum class RuleResult
     NotFound
 };
 
+struct RuleEvaluationResult
+{
+    RuleEvaluationResult(RuleResult r, const std::string& reasonValue = "")
+    : result(r)
+    , reason(reasonValue)
+    {
+    }
+
+    RuleResult result;
+    std::string reason;
+};
+
 struct PolicyEvaluationContext
 {
     std::string rule = {};
@@ -36,6 +48,8 @@ public:
     virtual RuleResult Evaluate() = 0;
 
     virtual const PolicyEvaluationContext& GetContext() const = 0;
+
+    virtual std::string GetInvalidReason() const = 0;
 };
 
 class RuleEvaluator : public IRuleEvaluator
@@ -45,9 +59,12 @@ public:
 
     const PolicyEvaluationContext& GetContext() const override;
 
+    std::string GetInvalidReason() const override { return m_lastInvalidReason; }
+
 protected:
     std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper = nullptr;
     PolicyEvaluationContext m_ctx = {};
+    std::string m_lastInvalidReason;
 };
 
 class FileRuleEvaluator : public RuleEvaluator

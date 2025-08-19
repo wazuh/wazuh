@@ -24,37 +24,41 @@ CheckConditionEvaluator::CheckConditionEvaluator(ConditionType type)
 {
 }
 
-void CheckConditionEvaluator::AddResult(RuleResult result)
+void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
 {
     if (m_result.has_value())
     {
         return;
     }
 
-    if (result == RuleResult::Invalid)
+    if (result.result == RuleResult::Invalid)
     {
         m_hasInvalid = true;
+        if (!result.reason.empty() && m_invalidReason.empty())
+        {
+            m_invalidReason = result.reason;
+        }
     }
 
     ++m_totalRules;
-    m_passedRules += (RuleResult::Found == result) ? 1 : 0;
+    m_passedRules += (RuleResult::Found == result.result) ? 1 : 0;
 
     switch (m_type)
     {
         case ConditionType::All:
-            if (RuleResult::NotFound == result)
+            if (RuleResult::NotFound == result.result)
             {
                 m_result = false;
             }
             break;
         case ConditionType::Any:
-            if (RuleResult::Found == result)
+            if (RuleResult::Found == result.result)
             {
                 m_result = true;
             }
             break;
         case ConditionType::None:
-            if (RuleResult::Found == result)
+            if (RuleResult::Found == result.result)
             {
                 m_result = false;
             }
@@ -81,4 +85,9 @@ sca::CheckResult CheckConditionEvaluator::Result() const
         case ConditionType::None: return sca::CheckResult::Passed;
         default: throw std::runtime_error("Invalid condition type");
     }
+}
+
+std::string CheckConditionEvaluator::GetInvalidReason() const
+{
+    return m_invalidReason;
 }
