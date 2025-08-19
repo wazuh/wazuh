@@ -11,7 +11,6 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "global-config.h"
-// #include "mail-config.h"
 #include "config.h"
 #include "string_op.h"
 
@@ -20,6 +19,7 @@ int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config);
 int Read_Global_limits_eps(XML_NODE node, _Config *Config);
 #endif
 
+//TODO: does it make any sense to change signature deleting mailp
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
@@ -122,14 +122,14 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     return (0);
 }
 
-int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
+//TODO: does it make any sense to change signature deleting mailp
+int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
 
     /* Whitelist size */
     unsigned int white_size = 1;
     unsigned int hostname_white_size = 1;
-    unsigned int mailto_size = 1;
 
     /* XML definitions */
     const char *xml_integrity = "integrity_checking";
@@ -149,10 +149,7 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
 
 
     _Config *Config;
-    // MailConfig *Mail;
-
     Config = (_Config *)configp;
-    // Mail = (MailConfig *)mailp;
 
     /* Get right white_size */
     if (Config && Config->white_list) {
@@ -179,16 +176,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
     if (Config) {
         os_strdup(CTI_URL_DEFAULT, Config->cti_url);
     }
-
-    // /* Get mail_to size */
-    // if (Mail && Mail->to) {
-    //     char **ww;
-    //     ww = Mail->to;
-    //     while (*ww != NULL) {
-    //         mailto_size++;
-    //         ww++;
-    //     }
-    // }
 
     /* Default values */
     if (Config) {
@@ -373,91 +360,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                 }
             }
 #endif
-
-        // }
-//         /* For the email now
-//          * email_to, email_from, email_replyto, idsname, smtp_Server and maxperhour.
-//          * We will use a separate structure for that.
-//          */
-//         else if (strcmp(node[i]->element, xml_emailto) == 0) {
-// #ifndef WIN32
-//             if (!OS_PRegex(node[i]->content, "[a-zA-Z0-9\\._-]+@[a-zA-Z0-9\\._-]")) {
-//                 merror("Invalid Email address: %s.", node[i]->content);
-//                 return (OS_INVALID);
-//             }
-// #endif
-//             if (Mail) {
-//                 mailto_size++;
-//                 Mail->to = (char **) realloc(Mail->to, sizeof(char *)*mailto_size);
-//                 if (!Mail->to) {
-//                     merror(MEM_ERROR, errno, strerror(errno));
-//                     return (OS_INVALID);
-//                 }
-
-//                 os_strdup(node[i]->content, Mail->to[mailto_size - 2]);
-//                 Mail->to[mailto_size - 1] = NULL;
-//             }
-//         } else if (strcmp(node[i]->element, xml_emailfrom) == 0) {
-//             if (Mail) {
-//                 if (Mail->from) {
-//                     free(Mail->from);
-//                 }
-//                 os_strdup(node[i]->content, Mail->from);
-//             }
-//         } else if (strcmp(node[i]->element, xml_emailreplyto) == 0) {
-//             if (Mail) {
-//                 if (Mail->reply_to) {
-//                     free(Mail->reply_to);
-//                 }
-//                 os_strdup(node[i]->content, Mail->reply_to);
-//             }
-//         } else if (strcmp(node[i]->element, xml_emailidsname) == 0) {
-//             if (Mail) {
-//                 if (Mail->idsname) {
-//                     free(Mail->idsname);
-//                 }
-//                 os_strdup(node[i]->content, Mail->idsname);
-//             }
-//         } else if (strcmp(node[i]->element, xml_smtpserver) == 0) {
-// #ifndef WIN32
-//             if (Mail) {
-//                 os_strdup(node[i]->content, Mail->smtpserver);
-//             }
-// #endif
-//         } else if (strcmp(node[i]->element, xml_heloserver) == 0) {
-//             if (Mail) {
-//                 os_strdup(node[i]->content, Mail->heloserver);
-//             }
-//         } else if (strcmp(node[i]->element, xml_mailmaxperhour) == 0) {
-//             if (Mail) {
-//                 if (!OS_StrIsNum(node[i]->content)) {
-//                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
-//                     return (OS_INVALID);
-//                 }
-//                 Mail->maxperhour = atoi(node[i]->content);
-
-//                 if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 1000000)) {
-//                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
-//                     return (OS_INVALID);
-//                 }
-//             }
-//         } else if (strcmp(node[i]->element, xml_maillogsource) == 0) {
-//             if (Mail) {
-//                 if (OS_StrIsNum(node[i]->content)) {
-//                     merror(XML_VALUEERR, node[i]->element, node[i]->content);
-//                     return (OS_INVALID);
-//                 }
-
-//                 if(strncmp(node[i]->content,"alerts.log",10) == 0){
-//                     Mail->source = MAIL_SOURCE_LOGS;
-//                 }
-//                 else if(strncmp(node[i]->content,"alerts.json",11) == 0){
-//                     Mail->source = MAIL_SOURCE_JSON;
-//                 }
-//                 else{
-//                     Mail->source = MAIL_SOURCE_JSON;
-//                 }
-//             }
         } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
             if (Config) {
                 char * end;

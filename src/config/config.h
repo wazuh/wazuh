@@ -25,7 +25,7 @@
 #define CSYSLOGD      0000004000 /// Deprecated module
 #define CAGENT_CONFIG 0000010000
 #define CAGENTLESS    0000020000 /// Deprecated module
-#define CREPORTS      0000040000
+#define CREPORTS      0000040000 /// Deprecated module
 #define CINTEGRATORD  0000100000 /// Deprecated module
 #define CWMODULE      0000200000
 #define CLABELS       0000400000
@@ -78,7 +78,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
-int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 
