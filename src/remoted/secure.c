@@ -884,15 +884,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             } else if (validation_result == 0) {
                 // Message was handled directly (HC_REQUEST), don't queue it
                 mdebug2("Control message processed directly, not queued.");
-                if (key) {
-                    OS_FreeKey(key);
-                }
+                OS_FreeKey(key);
             } else {
                 // Error in validation
                 mwarn("Error validating control message from agent ID '%s'.", key->id);
-                if (key) {
-                    OS_FreeKey(key);
-                }
+                OS_FreeKey(key);
             }
 
             // Free cleaned message if allocated
