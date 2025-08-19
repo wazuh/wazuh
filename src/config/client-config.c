@@ -225,7 +225,6 @@ int Read_Client_Shared(XML_NODE node, void *d1)
     int i = 0;
 
     agent * logr = (agent *)d1;
-    logr->force_reconnect_interval = 0;
 
     for (i = 0; node[i]; i++) {
         if (!node[i]->element) {
