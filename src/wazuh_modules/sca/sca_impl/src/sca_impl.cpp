@@ -85,7 +85,7 @@ void SecurityConfigurationAssessment::Run()
                 policy->Run(
                     m_scanInterval,
                     m_scanOnStart,
-                    [this](const std::string& policyId, const std::string& checkId, const std::string& result, const std::string& reason)
+                    [this](const CheckResult& checkResult)
                     {
                         const SCAEventHandler eventHandler(
                             m_agentUUID,
@@ -93,7 +93,7 @@ void SecurityConfigurationAssessment::Run()
                             m_pushStatelessMessage,
                             m_pushStatefulMessage
                         );
-                        eventHandler.ReportCheckResult(policyId, checkId, result, reason);
+                        eventHandler.ReportCheckResult(checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
                     },
                     nullptr
                 );
