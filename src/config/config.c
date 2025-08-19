@@ -51,7 +51,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *wazuh_db = "wdb";                               /* Wazuh-DB Daemon */
 #ifndef WIN32
     const char *osauthd = "auth";                               /* Authd Config */
-    const char *osreports = "reports";                          /* Server Config */
 #ifndef CLIENT
     const char *key_polling = "agent-key-polling";              /* Deprecated Agent Key Polling module */
 #endif
@@ -128,13 +127,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         }
-#ifndef WIN32
-        else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
-            if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        }
-#endif
         else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
