@@ -1804,7 +1804,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             OS_ClearNode(children);
         }
 
-        /* Get if xml_scan_on_start */
         else if (strcmp(node[i]->element, "scan_on_start") == 0) {
             mwarn("Syscheck option 'scan_on_start' is no longer configurable.");
         }
@@ -2111,7 +2110,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
-        } /* Allow prefilter cmd */
+        }
         else if (strcmp(node[i]->element, "allow_remote_prefilter_cmd") == 0) {
             mwarn("Syscheck option 'allow_remote_prefilter_cmd' is no longer configurable.");
         }

@@ -1905,7 +1905,6 @@ crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
 					 ${crypto_sha1_o} \
 					 ${crypto_shared_o} \
-					 ${crypto_md5_sha1_o} \
 					 ${crypto_md5_sha1_sha256_o} \
 					 ${crypto_sha256_o} \
 					 ${crypto_sha512_o} \
