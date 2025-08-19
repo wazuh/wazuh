@@ -18,7 +18,6 @@
 #include "../db/include/db.h"
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha1/sha1_op.h"
-#include "../os_crypto/md5_sha1/md5_sha1_op.h"
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
