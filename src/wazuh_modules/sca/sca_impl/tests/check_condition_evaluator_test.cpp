@@ -14,18 +14,18 @@ TEST(CheckConditionEvaluatorTest, AllConditionBehavior)
     // No rules added yet: should be NotApplicable.
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
 
-    evaluator.AddResult(RuleResult::Found);
-    evaluator.AddResult(RuleResult::Found);
-    evaluator.AddResult(RuleResult::Found);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
 
-    evaluator.AddResult(RuleResult::Invalid);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
 
-    evaluator.AddResult(RuleResult::NotFound);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
 
-    evaluator.AddResult(RuleResult::Invalid);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
 }
 
@@ -36,14 +36,14 @@ TEST(CheckConditionEvaluatorTest, AnyConditionBehavior)
     // No rules added yet: should be NotApplicable.
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
 
-    evaluator.AddResult(RuleResult::NotFound);
-    evaluator.AddResult(RuleResult::NotFound);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
 
-    evaluator.AddResult(RuleResult::Found);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
 
-    evaluator.AddResult(RuleResult::Invalid);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
 }
 
@@ -54,17 +54,17 @@ TEST(CheckConditionEvaluatorTest, NoneConditionBehavior)
     // No rules added yet: should be NotApplicable.
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
 
-    evaluator.AddResult(RuleResult::NotFound);
-    evaluator.AddResult(RuleResult::NotFound);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
 
-    evaluator.AddResult(RuleResult::Invalid);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
 
-    evaluator.AddResult(RuleResult::Found); // At least one passed -> should now be false.
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found)); // At least one passed -> should now be false.
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
 
-    evaluator.AddResult(RuleResult::Invalid);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
 }
 
@@ -72,18 +72,18 @@ TEST(CheckConditionEvaluatorTest, AddResultStopsAfterResultDetermined)
 {
     auto evaluator = CheckConditionEvaluator::FromString("any");
 
-    evaluator.AddResult(RuleResult::Found); // Should determine result = true immediately
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found)); // Should determine result = true immediately
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
 
-    evaluator.AddResult(RuleResult::NotFound); // Should have no effect
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound)); // Should have no effect
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
 
     auto evaluator2 = CheckConditionEvaluator::FromString("all");
 
-    evaluator2.AddResult(RuleResult::NotFound); // Should determine result = false immediately
+    evaluator2.AddResult(RuleEvaluationResult(RuleResult::NotFound)); // Should determine result = false immediately
     EXPECT_EQ(evaluator2.Result(), sca::CheckResult::Failed);
 
-    evaluator2.AddResult(RuleResult::Found); // Should have no effect
+    evaluator2.AddResult(RuleEvaluationResult(RuleResult::Found)); // Should have no effect
     EXPECT_EQ(evaluator2.Result(), sca::CheckResult::Failed);
 }
 
@@ -91,9 +91,9 @@ TEST(CheckConditionEvaluatorTest, AllConditionWithInvalidMakesResultNotApplicabl
 {
     auto evaluator = CheckConditionEvaluator::FromString("all");
 
-    evaluator.AddResult(RuleResult::Found);
-    evaluator.AddResult(RuleResult::Found);
-    evaluator.AddResult(RuleResult::Invalid);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
 
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
 }
@@ -102,8 +102,8 @@ TEST(CheckConditionEvaluatorTest, NoneConditionWithInvalidMakesResultNotApplicab
 {
     auto evaluator = CheckConditionEvaluator::FromString("none");
 
-    evaluator.AddResult(RuleResult::NotFound);
-    evaluator.AddResult(RuleResult::Invalid);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound));
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
 
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
 }
@@ -112,15 +112,15 @@ TEST(CheckConditionEvaluatorTest, AnyConditionWithInvalidCanBeTrueAsLongAsOnePas
 {
     auto evaluator = CheckConditionEvaluator::FromString("any");
 
-    evaluator.AddResult(RuleResult::NotFound);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::NotFound));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Failed);
 
-    evaluator.AddResult(RuleResult::Invalid);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::NotApplicable);
 
-    evaluator.AddResult(RuleResult::Found);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Found));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
 
-    evaluator.AddResult(RuleResult::Invalid);
+    evaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid));
     EXPECT_EQ(evaluator.Result(), sca::CheckResult::Passed);
 }

@@ -45,8 +45,9 @@ public:
     /// @param policyId The ID of the policy associated with the check.
     /// @param checkId The ID of the check.
     /// @param checkResult Indicates the result of the check execution.
+    /// @param reason Optional reason for invalid checks.
     void
-    ReportCheckResult(const std::string& policyId, const std::string& checkId, const std::string& checkResult) const;
+    ReportCheckResult(const std::string& policyId, const std::string& checkId, const std::string& checkResult, const std::string& reason = "") const;
 
 protected:
     /// @brief Processes modified items and returns a list of events.

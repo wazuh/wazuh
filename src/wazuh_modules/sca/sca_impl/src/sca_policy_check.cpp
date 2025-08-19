@@ -119,11 +119,21 @@ RuleResult FileRuleEvaluator::CheckFileForContents()
             .value_or(false))
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + m_ctx.rule + "' does not exist or is not a regular file");
-        return RuleResult::Invalid;
+        m_lastInvalidReason = "File '" + m_ctx.rule + "' does not exist or is not a regular file";
+        return RuleResult::Invalid; // Keep simple return for file not found - this is expected behavior
     }
 
-    return TryFunc([&] { return FindContentInFile(m_fileUtils, m_ctx.rule, pattern, m_ctx.isNegated); })
-        .value_or(RuleResult::Invalid);
+    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, m_ctx.rule, pattern, m_ctx.isNegated); });
+
+    if (result.has_value())
+    {
+        return result.value();
+    }
+    else
+    {
+        m_lastInvalidReason = "Failed to read file contents for '" + m_ctx.rule + "'";
+        return RuleResult::Invalid; // File access error or other exception
+    }
 }
 
 RuleResult FileRuleEvaluator::CheckFileExistence()
@@ -149,7 +159,8 @@ RuleResult FileRuleEvaluator::CheckFileExistence()
     else
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and file rule '" + m_ctx.rule + "' could not be resolved");
-        return RuleResult::Invalid;
+        m_lastInvalidReason = "File system access error for '" + m_ctx.rule + "'";
+        return RuleResult::Invalid; // File system access error
     }
 
     return m_ctx.isNegated ? (result == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : result;
@@ -208,6 +219,7 @@ RuleResult CommandRuleEvaluator::Evaluate()
 
     if(!m_ctx.commandsEnabled)
     {
+        m_lastInvalidReason = "Remote commands are disabled for this policy";
         LoggingHelper::getInstance().log(LOG_DEBUG, "Policy is remote and remote commands are disabled. Skipping command rule.");
         return RuleResult::Invalid;
     }
@@ -237,6 +249,7 @@ RuleResult CommandRuleEvaluator::Evaluate()
                     }
                     else
                     {
+                        m_lastInvalidReason = "Invalid pattern '" + *m_ctx.pattern + "' for command rule";
                         LoggingHelper::getInstance().log(LOG_DEBUG, "Invalid pattern '" + *m_ctx.pattern + "' for command rule evaluation");
                         return RuleResult::Invalid;
                     }
@@ -253,6 +266,7 @@ RuleResult CommandRuleEvaluator::Evaluate()
         }
         else
         {
+            m_lastInvalidReason = "Command execution failed: " + m_ctx.rule;
             LoggingHelper::getInstance().log(LOG_DEBUG, "Command rule '" + m_ctx.rule + "' execution failed");
             return RuleResult::Invalid;
         }
@@ -291,6 +305,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
     if (!TryFunc([&] { return m_fileSystemWrapper->exists(m_ctx.rule); }).value_or(false))
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "Path '" + m_ctx.rule + "' does not exist");
+        m_lastInvalidReason = "Path '" + m_ctx.rule + "' does not exist";
         return RuleResult::Invalid;
     }
 
@@ -298,6 +313,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
     if (!resolved)
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + m_ctx.rule + "' could not be resolved");
+        m_lastInvalidReason = "Directory '" + m_ctx.rule + "' could not be resolved";
         return RuleResult::Invalid;
     }
     const auto rootPath = *resolved;
@@ -305,6 +321,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
     if (!TryFunc([&] { return m_fileSystemWrapper->is_directory(rootPath); }).value_or(false))
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "Path '" + rootPath.string() + "' is not a directory");
+        m_lastInvalidReason = "Path '" + rootPath.string() + "' is not a directory";
         return RuleResult::Invalid;
     }
 
@@ -322,6 +339,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
         if (!filesOpt)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + currentDir.string() + "' could not be listed");
+            m_lastInvalidReason = "Directory '" + currentDir.string() + "' could not be listed";
             return RuleResult::Invalid;
         }
         if (filesOpt->empty())
@@ -350,6 +368,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
             else
             {
                 LoggingHelper::getInstance().log(LOG_DEBUG, "Symlink check failed for file '" + file.string() + "'");
+                m_lastInvalidReason = "Symlink check failed for file '" + file.string() + "'";
                 return RuleResult::Invalid;
             }
 
@@ -364,6 +383,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
             else
             {
                 LoggingHelper::getInstance().log(LOG_DEBUG,  "Directory check failed for file '" + file.string() + "'");
+                m_lastInvalidReason = "Directory check failed for file '" + file.string() + "'";
                 return RuleResult::Invalid;
             }
 
@@ -386,10 +406,17 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (file.filename().string() == fileName)
                 {
-                    return TryFunc(
-                               [&]
-                               { return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx.isNegated); })
-                        .value_or(RuleResult::Invalid);
+                    const auto result = TryFunc([&]{ return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx.isNegated); });
+
+                    if (result.has_value())
+                    {
+                        return result.value();
+                    }
+                    else
+                    {
+                        m_lastInvalidReason = "Failed to read contents of file '" + fileName + "' in directory '" + rootPath.string() + "'";
+                        return RuleResult::Invalid;
+                    }
                 }
             }
             else
@@ -405,6 +432,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
         if (isRegex && !hadValue)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "Invalid pattern '" + pattern + "' for directory '" + rootPath.string() + "'");
+            m_lastInvalidReason = "Invalid pattern '" + pattern + "' for directory '" + rootPath.string() + "'";
             return RuleResult::Invalid;
         }
     }
@@ -435,6 +463,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryExistence()
     else
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "An error occured and file rule " + m_ctx.rule + " could not be resolved");
+        m_lastInvalidReason = "Directory access error for '" + m_ctx.rule + "'";
         return RuleResult::Invalid;
     }
 
@@ -485,6 +514,7 @@ RuleResult ProcessRuleEvaluator::Evaluate()
     else
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "Process rule '" + m_ctx.rule + "' execution failed");
+        m_lastInvalidReason = "Failed to get process list for rule '" + m_ctx.rule + "'";
         return RuleResult::Invalid;
     }
 

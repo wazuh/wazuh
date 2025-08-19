@@ -383,3 +383,83 @@ TEST_F(DirRuleEvaluatorTest, FileContentThrowsReturnsInvalid)
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
 }
+
+TEST_F(DirRuleEvaluatorTest, PathDoesNotExistHasReasonString)
+{
+    m_ctx.pattern = std::string("r:foo");
+    m_ctx.rule = "nonexistent/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("nonexistent/"))).WillOnce(::testing::Return(false));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("nonexistent/"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("does not exist"));
+}
+
+TEST_F(DirRuleEvaluatorTest, CannotResolvePathHasReasonString)
+{
+    m_ctx.pattern = std::string("r:foo");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, canonical(std::filesystem::path("dir/")))
+        .WillOnce(::testing::Throw(std::runtime_error("Cannot resolve")));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("dir/"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("could not be resolved"));
+}
+
+TEST_F(DirRuleEvaluatorTest, PathNotDirectoryHasReasonString)
+{
+    m_ctx.pattern = std::string("r:foo");
+    m_ctx.rule = "notadir";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("notadir"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("notadir"))).WillOnce(::testing::Return(false));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("notadir"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("not a directory"));
+}
+
+TEST_F(DirRuleEvaluatorTest, CannotListDirectoryHasReasonString)
+{
+    m_ctx.pattern = std::string("r:foo");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+        .WillOnce(::testing::Throw(std::runtime_error("Access denied")));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("dir/"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("could not be listed"));
+}
+
+TEST_F(DirRuleEvaluatorTest, InvalidRegexPatternHasReasonString)
+{
+    m_ctx.pattern = std::string("r:***invalid***");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+        .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"file.txt"}));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file.txt"))).WillOnce(::testing::Return(false));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("dir/"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Invalid pattern"));
+}
