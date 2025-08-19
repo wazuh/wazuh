@@ -25,10 +25,8 @@ from wazuh_testing.modules.fim.utils import create_registry, delete_registry
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.utils import file
+from wazuh_testing.utils import file, services
 from wazuh_testing.utils.callbacks import generate_callback
-from wazuh_testing.utils.services import get_service
-
 
 @pytest.fixture()
 def file_to_monitor(test_metadata: dict) -> Any:
@@ -228,6 +226,11 @@ def clean_fim_sync_db():
     before each test.
     Works on both Linux and Windows agents.
     """
+
+    # Stop wazuh-service and ensure all daemons are stopped
+    services.control_service('stop')
+    services.wait_expected_daemon_status(running_condition=False, timeout=180)
+
     for filename in FIM_SYNC_DB_FILES:
         file_path = os.path.join(FIM_SYNC_DB_DIR, filename)
         try:
