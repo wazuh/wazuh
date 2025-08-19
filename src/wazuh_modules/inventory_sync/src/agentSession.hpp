@@ -188,7 +188,7 @@ public:
         m_endReceived = true;
         if (m_gapSet->empty())
         {
-            std::cout << "End received and gap set is empty\n";
+            logDebug2(LOGGER_DEFAULT_TAG, "All sequences received for session %d", m_context->sessionId);
             m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
         }
         else

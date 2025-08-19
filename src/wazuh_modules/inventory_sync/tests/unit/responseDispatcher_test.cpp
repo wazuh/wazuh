@@ -20,7 +20,7 @@ using namespace ::testing;
 class MockResponseQueue
 {
 public:
-    MOCK_METHOD(void, push, (std::shared_ptr<flatbuffers::FlatBufferBuilder> data));
+    MOCK_METHOD(void, push, (ResponseMessage data));
 };
 
 class ResponseDispatcherTest : public ::testing::Test
@@ -38,16 +38,15 @@ TEST_F(ResponseDispatcherTest, SendStartAck)
 
     EXPECT_CALL(*mockQueue, push(_))
         .WillOnce(Invoke(
-            [&](std::shared_ptr<flatbuffers::FlatBufferBuilder> fb)
+            [&](ResponseMessage fb)
             {
-                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(fb->GetBufferPointer());
+                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(fb.builder.GetBufferPointer());
                 ASSERT_EQ(msg->content_type(), Wazuh::SyncSchema::MessageType_StartAck);
 
                 auto startAck = msg->content_as_StartAck();
                 ASSERT_NE(startAck, nullptr);
                 EXPECT_EQ(startAck->status(), Wazuh::SyncSchema::Status_Ok);
                 EXPECT_EQ(startAck->session(), 12345);
-                EXPECT_STREQ(startAck->module_()->c_str(), "syscollector");
             }));
 
     dispatcher.sendStartAck(Wazuh::SyncSchema::Status_Ok, context);
@@ -62,16 +61,15 @@ TEST_F(ResponseDispatcherTest, SendEndAck)
 
     EXPECT_CALL(*mockQueue, push(_))
         .WillOnce(Invoke(
-            [&](std::shared_ptr<flatbuffers::FlatBufferBuilder> fb)
+            [&](ResponseMessage fb)
             {
-                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(fb->GetBufferPointer());
+                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(fb.builder.GetBufferPointer());
                 ASSERT_EQ(msg->content_type(), Wazuh::SyncSchema::MessageType_EndAck);
 
                 auto endAck = msg->content_as_EndAck();
                 ASSERT_NE(endAck, nullptr);
                 EXPECT_EQ(endAck->status(), Wazuh::SyncSchema::Status_Error);
                 EXPECT_EQ(endAck->session(), 54321);
-                EXPECT_STREQ(endAck->module_()->c_str(), "another_module");
             }));
 
     dispatcher.sendEndAck(Wazuh::SyncSchema::Status_Error, context);
@@ -87,9 +85,9 @@ TEST_F(ResponseDispatcherTest, SendEndMissingSeq)
 
     EXPECT_CALL(*mockQueue, push(_))
         .WillOnce(Invoke(
-            [&](std::shared_ptr<flatbuffers::FlatBufferBuilder> fb)
+            [&](ResponseMessage fb)
             {
-                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(fb->GetBufferPointer());
+                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(fb.builder.GetBufferPointer());
                 ASSERT_EQ(msg->content_type(), Wazuh::SyncSchema::MessageType_ReqRet);
 
                 auto reqRet = msg->content_as_ReqRet();
