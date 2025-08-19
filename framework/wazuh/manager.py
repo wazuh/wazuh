@@ -250,10 +250,12 @@ async def reload_ruleset() -> AffectedItemsWazuhResult:
             lc = local_client.LocalClient()
             result = await set_reload_ruleset_flag(lc)
 
-            if isinstance(result, dict) and 'msg' in result:
-                result = result['msg']
-            if result == 'Reload ruleset flag set successfully':
-                result = 'Ruleset reload request sent successfully'
+            if isinstance(result, dict) and 'success' in result:
+                result = result['success']
+                if result:
+                    result = 'Ruleset reload request sent successfully'
+                else:
+                    result = 'Failed to send the ruleset reload request.'
 
             results.affected_items.append({'name': node_id, 'msg': result})
     except WazuhError as e:
