@@ -17,7 +17,7 @@ if sys.platform == 'win32':
 from typing import Any
 from pathlib import Path
 
-from wazuh_testing.constants.paths.databases import FIM_DB_PATH
+from wazuh_testing.constants.paths.databases import FIM_DB_PATH, FIM_SYNC_DB_DIR, FIM_SYNC_DB_FILES
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
 from wazuh_testing.modules.fim.patterns import MONITORING_PATH, FIM_SCAN_END
@@ -220,3 +220,18 @@ def clean_fim_db():
             os.remove(FIM_DB_PATH)
     except Exception as e:
         pytest.fail(f"Failed to delete FIM DB file at {FIM_DB_PATH}: {e}")
+
+@pytest.fixture()
+def clean_fim_sync_db():
+    """
+    Fixture to delete the FIM synchronization DB files (fim_sync)
+    before each test.
+    Works on both Linux and Windows agents.
+    """
+    for filename in FIM_SYNC_DB_FILES:
+        file_path = os.path.join(FIM_SYNC_DB_DIR, filename)
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            pytest.fail(f"Failed to delete FIM SYNC DB file at {file_path}: {e}")
