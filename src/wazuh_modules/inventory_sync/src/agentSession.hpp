@@ -116,7 +116,7 @@ public:
                                                        .agentId = data->agent_id(),
                                                        .moduleName = data->module_()->str()});
 
-        logDebug2(LOGGER_INV_SYNC_TAG,
+        logDebug2(LOGGER_DEFAULT_TAG,
                   "New session for module '%s' by agent %d. (Session %d)",
                   m_context->moduleName.c_str(),
                   m_context->agentId,
@@ -146,15 +146,21 @@ public:
      */
     void handleData(Wazuh::SyncSchema::Data const* data, const std::vector<char>& dataRaw)
     {
+        if (data == nullptr)
+        {
+            throw AgentSessionException("Invalid data on handleData");
+        }
+
+        std::lock_guard lock(m_mutex);
+
         const auto seq = data->seq();
         const auto session = data->session();
 
-        logDebug2(LOGGER_INV_SYNC_TAG, "Handling sequence number '%d' for session '%d'", seq, session);
+        logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%d' for session '%d'", seq, session);
 
         m_store.put(std::to_string(session) + "_" + std::to_string(seq),
                     rocksdb::Slice(dataRaw.data(), dataRaw.size()));
 
-        std::lock_guard lock(m_mutex);
         m_gapSet->observe(data->seq());
 
         if (m_endReceived)
@@ -180,7 +186,7 @@ public:
         m_endReceived = true;
         if (m_gapSet->empty())
         {
-            logDebug2(LOGGER_INV_SYNC_TAG, "End received and gap set is empty");
+            logDebug2(LOGGER_DEFAULT_TAG, "End received and gap set is empty");
             m_indexerQueue.push(Response {ResponseStatus::Ok, m_context});
         }
         else

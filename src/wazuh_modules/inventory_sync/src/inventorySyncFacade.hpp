@@ -141,7 +141,7 @@ class InventorySyncFacadeImpl final
             }
 
             // Handle end.
-            logDebug2(LOGGER_INV_SYNC_TAG, "Handling end for session '%d'", end->session());
+            logDebug2(LOGGER_DEFAULT_TAG, "Handling end for session '%d'", end->session());
             it->second.handleEnd(*m_responseDispatcher);
         }
     }
@@ -166,7 +166,7 @@ public:
         std::filesystem::remove_all(INVENTORY_SYNC_PATH, errorCodeFS);
         if (errorCodeFS)
         {
-            logWarn(LOGGER_INV_SYNC_TAG, "Error removing inventory_sync directory: %s", errorCodeFS.message().c_str());
+            logWarn(LOGGER_DEFAULT_TAG, "Error removing inventory_sync directory: %s", errorCodeFS.message().c_str());
         }
         m_dataStore = std::make_unique<TRocksDBWrapper>(INVENTORY_SYNC_PATH);
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
@@ -179,7 +179,7 @@ public:
             {
                 try
                 {
-                    logDebug2(LOGGER_INV_SYNC_TAG, "Processing message %s", dataRaw.data());
+                    logDebug2(LOGGER_DEFAULT_TAG, "Processing message %s", dataRaw.data());
                     flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
                     if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
                     {
@@ -192,7 +192,7 @@ public:
                 }
                 catch (const std::exception& e)
                 {
-                    logError(LOGGER_INV_SYNC_TAG, "Failed to process message %s. Reason: %s", dataRaw.data(), e.what());
+                    logError(LOGGER_DEFAULT_TAG, "Failed to process message %s. Reason: %s", dataRaw.data(), e.what());
                 }
             },
             std::thread::hardware_concurrency(),
@@ -211,7 +211,7 @@ public:
 
         const auto postIndexerAction = []()
         {
-            logDebug2(LOGGER_INV_SYNC_TAG, "Post indexer action called");
+            logDebug2(LOGGER_DEFAULT_TAG, "Post indexer action called");
         };
 
         m_indexerQueue = std::make_unique<IndexerQueue>(
@@ -219,7 +219,7 @@ public:
             {
                 if (auto sessionIt = m_agentSessions.find(res.context->sessionId); sessionIt == m_agentSessions.end())
                 {
-                    logWarn(LOGGER_INV_SYNC_TAG,
+                    logWarn(LOGGER_DEFAULT_TAG,
                             "Unable to handle indexer message. Session number: '%d' not found",
                             res.context->sessionId);
                     return;
@@ -233,7 +233,7 @@ public:
                     // Send delete by query to indexer if mode is full.
                     if (res.context->mode == Wazuh::SyncSchema::Mode_Full)
                     {
-                        logDebug2(LOGGER_INV_SYNC_TAG,
+                        logDebug2(LOGGER_DEFAULT_TAG,
                                   "Processing full sync for module '%s' on agent '%d' (Session '%d')",
                                   res.context->moduleName.c_str(),
                                   res.context->agentId,
@@ -257,10 +257,10 @@ public:
                             auto data = message->content_as_Data();
                             if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                             {
-                                logDebug2(LOGGER_INV_SYNC_TAG,
+                                logDebug2(LOGGER_DEFAULT_TAG,
                                           "Processing upsert sync for module '%s' on agent '%d' (Session '%d')",
                                           data->index()->string_view(),
-                                          data->id()->string_view(),
+                                          res.context->agentId,
                                           res.context->sessionId);
                                 m_indexerConnector->bulkIndex(
                                     data->id()->string_view(),
@@ -269,10 +269,10 @@ public:
                             }
                             else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
                             {
-                                logDebug2(LOGGER_INV_SYNC_TAG,
+                                logDebug2(LOGGER_DEFAULT_TAG,
                                           "Processing delete sync for module '%s' on agent '%d' (Session '%d')",
                                           data->index()->string_view(),
-                                          data->id()->string_view(),
+                                          res.context->agentId,
                                           res.context->sessionId);
                                 m_indexerConnector->bulkDelete(data->index()->string_view(), data->id()->string_view());
                             }
@@ -294,13 +294,13 @@ public:
                             // Send ACK to agent.
                             m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok, ctx);
                             logDebug2(
-                                LOGGER_INV_SYNC_TAG, "Successfully processed end for session '%d'", ctx->sessionId);
+                                LOGGER_DEFAULT_TAG, "Successfully processed end for session '%d'", ctx->sessionId);
                             // Delete data from database.
                             m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
                             // Delete Session.
                             if (m_agentSessions.erase(ctx->sessionId) == 0)
                             {
-                                logWarn(LOGGER_INV_SYNC_TAG,
+                                logWarn(LOGGER_DEFAULT_TAG,
                                         "Unable to delete session in notify call. Session '%d' not found",
                                         ctx->sessionId);
                             }
@@ -308,7 +308,7 @@ public:
                 }
                 catch (const InventorySyncException& e)
                 {
-                    logError(LOGGER_INV_SYNC_TAG,
+                    logError(LOGGER_DEFAULT_TAG,
                              "Unable to handle indexer instance due inventory error. Reason: %s",
                              e.what());
                     // Send ACK to agent.
@@ -318,14 +318,14 @@ public:
                     // Delete Session.
                     if (m_agentSessions.erase(res.context->sessionId) == 0)
                     {
-                        logWarn(LOGGER_INV_SYNC_TAG,
+                        logWarn(LOGGER_DEFAULT_TAG,
                                 "Unable to delete session in inventory exception. Session '%d' not found",
                                 res.context->sessionId);
                     }
                 }
                 catch (const std::exception& e)
                 {
-                    logError(LOGGER_INV_SYNC_TAG, "Unable to handle indexer message: %s", e.what());
+                    logError(LOGGER_DEFAULT_TAG, "Unable to handle indexer message: %s", e.what());
                     // Send ACK to agent.
                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error, res.context);
                     // Delete data from database.
@@ -333,7 +333,7 @@ public:
                     // Delete Session.
                     if (m_agentSessions.erase(res.context->sessionId) == 0)
                     {
-                        logWarn(LOGGER_INV_SYNC_TAG,
+                        logWarn(LOGGER_DEFAULT_TAG,
                                 "Unable to delete session in generic exception. Session '%d' not found",
                                 res.context->sessionId);
                     }
@@ -360,7 +360,7 @@ public:
                     {
                         if (!it->second.isAlive(std::chrono::seconds(DEFAULT_TIME * 2)))
                         {
-                            logDebug2(LOGGER_INV_SYNC_TAG, "Session %d has timed out", it->first);
+                            logDebug2(LOGGER_DEFAULT_TAG, "Session %d has timed out", it->first);
                             it = m_agentSessions.erase(it); // erase returns next iterator
                         }
                         else
@@ -371,7 +371,7 @@ public:
                 }
             });
 
-        logInfo(LOGGER_INV_SYNC_TAG, "InventorySyncFacade started.");
+        logInfo(LOGGER_DEFAULT_TAG, "InventorySyncFacade started.");
     }
 
     /**
@@ -380,7 +380,7 @@ public:
      */
     void stop()
     {
-        logInfo(LOGGER_INV_SYNC_TAG, "Stopping InventorySync module");
+        logInfo(LOGGER_DEFAULT_TAG, "Stopping InventorySync module");
         {
             std::lock_guard lock(m_sessionTimeoutMutex);
             m_stopping = true;

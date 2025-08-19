@@ -878,7 +878,7 @@ endif
 
 # Adding libraries only for server
 ifeq (${TARGET},server)
-	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB) $(SIMDJSON_LIB)
+	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(SIMDJSON_LIB)
 	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
 endif
 
