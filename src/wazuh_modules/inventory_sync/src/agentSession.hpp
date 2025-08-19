@@ -1,25 +1,13 @@
-
-/*
- * Wazuh inventory sync
- * Copyright (C) 2015, Wazuh Inc.
- * August 6, 2025.
- *
- * This program is free software; you can redistribute it
- * and/or modify it under the terms of the GNU General Public
- * License (version 2) as published by the FSF - Free Software
- * Foundation.
- */
-
 #ifndef _AGENT_SESSION_HPP
 #define _AGENT_SESSION_HPP
 
-#include "asyncValueDispatcher.hpp"
 #include "context.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "gapSet.hpp"
-#include "loggerHelper.h"
 #include "responseDispatcher.hpp"
 #include "rocksDBWrapper.hpp"
+#include "threadDispatcher.h"
+#include <charconv>
 #include <functional>
 #include <memory>
 #include <string>
@@ -37,8 +25,8 @@ struct Response
     std::shared_ptr<Context> context;
 };
 
-using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
-using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
+using WorkersQueue = Utils::AsyncDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
+using IndexerQueue = Utils::AsyncDispatcher<Response, std::function<void(const Response&)>>;
 
 class AgentSessionException : public std::exception
 {
@@ -95,28 +83,39 @@ public:
         {
             throw AgentSessionException("Invalid data");
         }
-
-        if (data->module_() == nullptr)
-        {
-            throw AgentSessionException("Invalid module");
-        }
-
-        if (data->agent_id() == 0)
-        {
-            throw AgentSessionException("Invalid id");
-        }
-
         // Create new session.
         if (data->size() == 0)
         {
             throw AgentSessionException("Invalid size");
         }
+
+        // Check if module or agentID is empty
+        if (moduleName.empty() || agentId.empty())
+        {
+            throw AgentSessionException("Module name or Agent ID is empty");
+        }
+
+        uint64_t agentIdConverted {};
+
+        auto [ptr, ec] = std::from_chars(agentId.data(), agentId.data() + agentId.size(), agentIdConverted);
+
+        if (ec == std::errc::result_out_of_range)
+        {
+            throw AgentSessionException("Agent ID out of range");
+        }
+
+        if (ec == std::errc::invalid_argument)
+        {
+            throw AgentSessionException("Agent ID invalid argument");
+        }
+
         m_gapSet = std::make_unique<GapSet>(data->size());
 
-        m_context = std::make_shared<Context>(Context {.mode = data->mode(),
-                                                       .sessionId = sessionId,
-                                                       .agentId = data->agent_id(),
-                                                       .moduleName = data->module_()->str()});
+        m_context =
+            std::make_shared<Context>(Context {.mode = data->mode(),
+                                               .sessionId = sessionId,
+                                               .agentId = agentIdConverted,
+                                               .moduleName = std::string(moduleName.data(), moduleName.size())});
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "New session for module '%s' by agent %d. (Session %d)",
@@ -174,17 +173,9 @@ public:
         }
     }
 
-    /**
-     * @brief Handles the end-of-transmission signal from the agent.
-     *
-     * If all chunks were received, pushes the final acknowledgment. Otherwise, triggers missing range dispatch.
-     *
-     * @param responseDispatcher Dispatcher used to report missing sequences (if any).
-     */
-
     void handleEnd(const TResponseDispatcher& responseDispatcher)
     {
-        std::lock_guard lock(m_mutex);
+        std::lock_guard<std::mutex> lock(m_mutex);
         m_endReceived = true;
         if (m_gapSet->empty())
         {
@@ -195,16 +186,6 @@ public:
         {
             responseDispatcher.sendEndMissingSeq(m_context->sessionId, m_gapSet->ranges());
         }
-    }
-
-    /**
-     * @brief Checks whether the session has timed out based on last activity.
-     * @param timeout The allowed inactivity duration.
-     * @return true if the session has been idle for longer than the timeout.
-     */
-    bool isAlive(const std::chrono::seconds timeout) const
-    {
-        return m_gapSet->lastUpdate() + timeout >= std::chrono::steady_clock::now();
     }
 };
 
