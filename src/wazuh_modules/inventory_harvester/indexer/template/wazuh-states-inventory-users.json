@@ -31,7 +31,7 @@
           "process.pid",
           "host.ip"
         ],
-        "refresh_interval": "5s"
+        "refresh_interval": "2s"
       }
     },
     "mappings": {
