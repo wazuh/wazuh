@@ -14,12 +14,15 @@ link_directories(${SRC_FOLDER}/data_provider/build/lib)
 link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/external/procps/)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 add_definitions(-DWAZUH_UNIT_TESTING)
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -std=c++14 -pthread")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -pthread")
 
 if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")

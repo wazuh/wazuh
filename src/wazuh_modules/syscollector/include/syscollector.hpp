@@ -15,6 +15,8 @@
 #include <condition_variable>
 #include <mutex>
 #include <memory>
+#include <optional>
+
 #include "sysInfoInterface.h"
 #include "commonDefs.h"
 #include "dbsync.hpp"
@@ -78,11 +80,30 @@ class EXPORTED Syscollector final
         nlohmann::json getGroupsData();
         nlohmann::json getUsersData();
 
+        nlohmann::json ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
+        nlohmann::json ecsSystemData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsHardwareData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsHotfixesData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsPackageData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsProcessesData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsPortData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsNetworkInterfaceData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsNetworkProtocolData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsNetworkAddressData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsUsersData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsGroupsData(const nlohmann::json& originalData, bool createFields = true);
+
+        nlohmann::json addPreviousFields(nlohmann::json& current, const nlohmann::json& previous);
+
         void updateChanges(const std::string& table,
                            const nlohmann::json& values);
         void notifyChange(ReturnTypeCallback result,
                           const nlohmann::json& data,
                           const std::string& table);
+        void processEvent(ReturnTypeCallback result,
+                          const nlohmann::json& data,
+                          const std::string& table);
+
         void scanHardware();
         void scanOs();
         void scanNetwork();
@@ -94,6 +115,19 @@ class EXPORTED Syscollector final
         void scanUsers();
         void scan();
         void syncLoop(std::unique_lock<std::mutex>& lock);
+
+        void setJsonField(nlohmann::json& target,
+                          const nlohmann::json& source,
+                          const std::string& keyPath,
+                          const std::string& jsonKey,
+                          const std::optional<std::string>& defaultValue,
+                          bool createFields);
+        void setJsonFieldArray(nlohmann::json& target,
+                               const nlohmann::json& source,
+                               const std::string& destPath,
+                               const std::string& sourceKey,
+                               bool createFields);
+
         std::shared_ptr<ISysInfo>                                               m_spInfo;
         std::function<void(const std::string&)>                                 m_reportDiffFunction;
         std::function<void(const modules_log_level_t, const std::string&)>      m_logFunction;

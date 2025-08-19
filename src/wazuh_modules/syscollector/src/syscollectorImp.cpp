@@ -15,6 +15,7 @@
 #include "hashHelper.h"
 #include "timeHelper.h"
 #include <iostream>
+#include <stack>
 
 #include "syscollectorTablesDef.hpp"
 
@@ -37,6 +38,8 @@ do                                                                      \
     }                                                                   \
 }while(0)
 
+constexpr auto EMPTY_VALUE {""};
+
 constexpr auto QUEUE_SIZE
 {
     4096
@@ -45,41 +48,14 @@ constexpr auto QUEUE_SIZE
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
     // LCOV_EXCL_START
-    {MODIFIED, "MODIFIED"},
-    {DELETED, "DELETED"},
-    {INSERTED, "INSERTED"},
-    {MAX_ROWS, "MAX_ROWS"},
-    {DB_ERROR, "DB_ERROR"},
-    {SELECTED, "SELECTED"},
+    {MODIFIED, "modified"},
+    {DELETED, "deleted"},
+    {INSERTED, "created"},
+    {MAX_ROWS, "max_rows"},
+    {DB_ERROR, "db_error"},
+    {SELECTED, "selected"},
     // LCOV_EXCL_STOP
 };
-
-static std::string getItemChecksum(const nlohmann::json& item)
-{
-    const auto content{item.dump()};
-    Utils::HashData hash;
-    hash.update(content.c_str(), content.size());
-    return Utils::asciiToHex(hash.hash());
-}
-
-static void removeKeysWithEmptyValue(nlohmann::json& input)
-{
-    for (auto& data : input)
-    {
-        for (auto it = data.begin(); it != data.end(); )
-        {
-            if (it.value().type() == nlohmann::detail::value_t::string &&
-                    it.value().get_ref<const std::string&>().empty())
-            {
-                it = data.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-    }
-}
 
 static void sanitizeJsonValue(nlohmann::json& input)
 {
@@ -110,6 +86,50 @@ static void sanitizeJsonValue(nlohmann::json& input)
     }
 }
 
+static std::string getItemChecksum(const nlohmann::json& item)
+{
+    const auto content{item.dump()};
+    Utils::HashData hash;
+    hash.update(content.c_str(), content.size());
+    return Utils::asciiToHex(hash.hash());
+}
+
+static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
+{
+    Utils::HashData hash;
+
+    for (const auto& field : idFields)
+    {
+        const auto& value{item.at(field)};
+
+        if (value.is_string())
+        {
+            const auto& valueString{value.get<std::string>()};
+            hash.update(valueString.c_str(), valueString.size());
+        }
+        else
+        {
+            const auto& valueNumber{value.get<unsigned long>()};
+            const auto valueString{std::to_string(valueNumber)};
+            hash.update(valueString.c_str(), valueString.size());
+        }
+    }
+
+    return Utils::asciiToHex(hash.hash());
+}
+
+static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std::string, std::string>& keyValue)
+{
+    const auto it
+    {
+        std::find_if (input.begin(), input.end(), [&keyValue](const auto & elem)
+        {
+            return elem.at(keyValue.first) == keyValue.second;
+        })
+    };
+    return it != input.end();
+}
+
 void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
 {
     if (DB_ERROR == result)
@@ -122,30 +142,38 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
         {
             for (const auto& item : data)
             {
-                nlohmann::json msg;
-                msg["type"] = table;
-                msg["operation"] = OPERATION_MAP.at(result);
-                msg["data"] = item;
-                removeKeysWithEmptyValue(msg["data"]);
-                const auto msgToSend{msg.dump()};
-                m_reportDiffFunction(msgToSend);
-                m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
+                processEvent(result, item, table);
             }
         }
         else
         {
-            // LCOV_EXCL_START
-            nlohmann::json msg;
-            msg["type"] = table;
-            msg["operation"] = OPERATION_MAP.at(result);
-            msg["data"] = data;
-            removeKeysWithEmptyValue(msg["data"]);
-            const auto msgToSend{msg.dump()};
-            m_reportDiffFunction(msgToSend);
-            m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
-            // LCOV_EXCL_STOP
+            processEvent(result, data, table);
         }
     }
+}
+
+void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
+{
+    nlohmann::json stateless;
+    nlohmann::json newData;
+    nlohmann::json oldData;
+
+    newData = ecsData(result == MODIFIED ? data["new"] : data, table);
+    oldData = (result == MODIFIED) ? ecsData(data["old"], table, false) : nlohmann::json {};
+
+    stateless["collector"] = table;
+    stateless["module"] = "inventory";
+
+    auto changedFields = addPreviousFields(newData, oldData);
+
+    stateless["data"] = newData;
+    stateless["data"]["event"]["changed_fields"] = changedFields;
+    stateless["data"]["event"]["created"] = Utils::getCurrentISO8601();
+    stateless["data"]["event"]["type"] = OPERATION_MAP.at(result);
+
+    const auto statelessToSend{stateless.dump()};
+    m_reportDiffFunction(statelessToSend);
+    m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + statelessToSend);
 }
 
 void Syscollector::updateChanges(const std::string& table,
@@ -169,6 +197,8 @@ void Syscollector::updateChanges(const std::string& table,
     nlohmann::json input;
     input["table"] = table;
     input["data"] = values;
+    input["options"]["return_old_data"] = true;
+
     txn.syncTxnRow(input);
     txn.getDeletedRows(callback);
 }
@@ -264,6 +294,265 @@ void Syscollector::destroy()
     m_stopping = true;
     m_cv.notify_all();
     lock.unlock();
+}
+
+nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
+{
+    nlohmann::json ret;
+
+    if (table == OS_TABLE)
+    {
+        ret = ecsSystemData(data, createFields);
+    }
+    else if (table == HW_TABLE)
+    {
+        ret = ecsHardwareData(data, createFields);
+    }
+    else if (table == HOTFIXES_TABLE)
+    {
+        ret = ecsHotfixesData(data, createFields);
+    }
+    else if (table == PACKAGES_TABLE)
+    {
+        ret = ecsPackageData(data, createFields);
+    }
+    else if (table == PROCESSES_TABLE)
+    {
+        ret = ecsProcessesData(data, createFields);
+    }
+    else if (table == PORTS_TABLE)
+    {
+        ret = ecsPortData(data, createFields);
+    }
+    else if (table == NET_IFACE_TABLE)
+    {
+        ret = ecsNetworkInterfaceData(data, createFields);
+    }
+    else if (table == NET_PROTOCOL_TABLE)
+    {
+        ret = ecsNetworkProtocolData(data, createFields);
+    }
+    else if (table == NET_ADDRESS_TABLE)
+    {
+        ret = ecsNetworkAddressData(data, createFields);
+    }
+    else if (table == USERS_TABLE)
+    {
+        ret = ecsUsersData(data, createFields);
+    }
+    else if (table == GROUPS_TABLE)
+    {
+        ret = ecsGroupsData(data, createFields);
+    }
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/host/architecture", "architecture", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/hostname", "hostname", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/build", "os_build", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/codename", "os_codename", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/distribution/release", "os_distribution_release", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/full", "os_full", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/kernel/name", "os_kernel_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/kernel/release", "os_kernel_release", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/kernel/version", "os_kernel_version", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/major", "os_major", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/minor", "os_minor", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/name", "os_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/patch", "os_patch", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/platform", "os_platform", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/version", "os_version", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/host/cpu/cores", "cpu_cores", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/cpu/name", "cpu_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/cpu/speed", "cpu_speed", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/memory/free", "memory_free", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/memory/total", "memory_total", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/memory/used", "memory_used", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/serial_number", "serial_number", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsHotfixesData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/package/hotfix/name", "hotfix_name", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsPackageData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/package/architecture", "architecture", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/category", "category", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/description", "description", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/installed", "installed", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/multiarch", "multiarch", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/name", "name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/path", "path", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/priority", "priority", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/size", "size", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/source", "source", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/type", "type", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/vendor", "vendor", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/version", "version", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsProcessesData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonFieldArray(ret, originalData, "/process/args", "args", createFields);
+    setJsonField(ret, originalData, "/process/args_count", "args_count", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/command_line", "command_line", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/name", "name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/parent/pid", "parent_pid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/pid", "pid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/start", "start", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/state", "state", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/stime", "stime", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/utime", "utime", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/destination/ip", "destination_ip", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/destination/port", "destination_port", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/file/inode", "file_inode", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/queue", "host_network_egress_queue", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/queue", "host_network_ingress_queue", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/state", "interface_state", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/transport", "network_transport", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/name", "process_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/pid", "process_pid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/source/ip", "source_ip", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/source/port", "source_port", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsNetworkInterfaceData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonFieldArray(ret, originalData, "/host/mac", "host_mac", createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/bytes", "host_network_ingress_bytes", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/drops", "host_network_ingress_drops", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/errors", "host_network_ingress_errors", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/packets", "host_network_ingress_packages", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/bytes", "host_network_egress_bytes", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/drops", "host_network_egress_drops", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/errors", "host_network_egress_errors", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/packets", "host_network_egress_packages", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/alias", "interface_alias", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/mtu", "interface_mtu", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/name", "interface_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/state", "interface_state", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/type", "interface_type", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsNetworkProtocolData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/interface/name", "interface_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/dhcp", "network_dhcp", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/gateway", "network_gateway", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/metric", "network_metric", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/type", "network_type", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsNetworkAddressData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/interface/name", "interface_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/broadcast", "network_broadcast", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/ip", "network_ip", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/netmask", "network_netmask", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/protocol", "network_protocol", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsUsersData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonFieldArray(ret, originalData, "/host/ip", "host_ip", createFields);
+    setJsonField(ret, originalData, "/login/status", "login_status", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/login/tty", "login_tty", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/login/type", "login_type", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/pid", "process_pid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/auth_failures/count", "user_auth_failed_count", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/auth_failures/timestamp", "user_auth_failed_timestamp", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/created", "user_created", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/full_name", "user_full_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/group/id", "user_group_id", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/group/id_signed", "user_group_id_signed", std::nullopt, createFields);
+    setJsonFieldArray(ret, originalData, "/user/groups", "user_groups", createFields);
+    setJsonField(ret, originalData, "/user/home", "user_home", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/id", "user_id", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/is_hidden", "user_is_hidden", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/is_remote", "user_is_remote", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/last_login", "user_last_login", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/name", "user_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/expiration_date", "user_password_expiration_date", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/hash_algorithm", "user_password_hash_algorithm", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/inactive_days", "user_password_inactive_days", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/last_change", "user_password_last_change", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/max_days_between_changes", "user_password_max_days_between_changes", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/min_days_between_changes", "user_password_min_days_between_changes", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/status", "user_password_status", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/warning_days_before_expiration", "user_password_warning_days_before_expiration", std::nullopt, createFields);
+    setJsonFieldArray(ret, originalData, "/user/roles", "user_roles", createFields);
+    setJsonField(ret, originalData, "/user/shell", "user_shell", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/type", "user_type", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/uid_signed", "user_uid_signed", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/uuid", "user_uuid", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsGroupsData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/group/description", "group_description", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/id", "group_id", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/id_signed", "group_id_signed", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/is_hidden", "group_is_hidden", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/name", "group_name", std::nullopt, createFields);
+    setJsonFieldArray(ret, originalData, "/group/users", "group_users", createFields);
+    setJsonField(ret, originalData, "/group/uuid", "group_uuid", std::nullopt, createFields);
+
+    return ret;
 }
 
 nlohmann::json Syscollector::getHardwareData()
@@ -481,6 +770,8 @@ void Syscollector::scanPackages()
             if (!rawData.empty())
             {
                 input["data"] = nlohmann::json::array( { rawData } );
+                input["options"]["return_old_data"] = true;
+
                 txn.syncTxnRow(input);
             }
         });
@@ -521,6 +812,8 @@ nlohmann::json Syscollector::getPortsData()
     constexpr auto UDP_PROTOCOL { "udp" };
     auto data(m_spInfo->ports());
 
+    const std::vector<std::string> PORTS_ITEM_ID_FIELDS {"file_inode", "network_transport", "source_ip", "source_port"};
+
     if (!data.is_null())
     {
         sanitizeJsonValue(data);
@@ -534,8 +827,14 @@ nlohmann::json Syscollector::getPortsData()
                 // All ports.
                 if (m_portsAll)
                 {
-                    item["checksum"] = getItemChecksum(item);
-                    ret.push_back(item);
+                    const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                    if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                    {
+                        item["checksum"] = getItemChecksum(item);
+                        item["item_id"] = itemId;
+                        ret.push_back(item);
+                    }
                 }
                 else
                 {
@@ -544,15 +843,27 @@ nlohmann::json Syscollector::getPortsData()
 
                     if (isListeningState)
                     {
-                        item["checksum"] = getItemChecksum(item);
-                        ret.push_back(item);
+                        const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                        if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                        {
+                            item["checksum"] = getItemChecksum(item);
+                            item["item_id"] = itemId;
+                            ret.push_back(item);
+                        }
                     }
                 }
             }
             else if (Utils::startsWith(protocol, UDP_PROTOCOL))
             {
-                item["checksum"] = getItemChecksum(item);
-                ret.push_back(item);
+                const auto& itemId { getItemId(item, PORTS_ITEM_ID_FIELDS) };
+
+                if (!isElementDuplicated(ret, std::make_pair("item_id", itemId)))
+                {
+                    item["checksum"] = getItemChecksum(item);
+                    item["item_id"] = itemId;
+                    ret.push_back(item);
+                }
             }
         }
     }
@@ -629,6 +940,7 @@ void Syscollector::scanProcesses()
 
             input["table"] = PROCESSES_TABLE;
             input["data"] = nlohmann::json::array( { rawData } );
+            input["options"]["return_old_data"] = true;
 
             txn.syncTxnRow(input);
         });
@@ -693,4 +1005,115 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         scan();
     }
     m_spDBSync.reset(nullptr);
+}
+
+nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nlohmann::json& previous)
+{
+    using JsonPair = std::pair<nlohmann::json*, const nlohmann::json*>;
+    using PathPair = std::pair<std::string, JsonPair>;
+
+    std::stack<PathPair> stack;
+    nlohmann::json modifiedKeys = nlohmann::json::array();
+
+    stack.emplace("", JsonPair(&current, &previous));
+
+    while (!stack.empty())
+    {
+        auto [path, pair] = stack.top();
+        auto [curr, prev] = pair;
+        stack.pop();
+
+        for (auto& [key, value] : prev->items())
+        {
+            std::string currentPath = path;
+
+            if (!path.empty())
+            {
+                currentPath.append(".").append(key);
+            }
+            else
+            {
+                currentPath = key;
+            }
+
+            if (curr->contains(key))
+            {
+                if ((*curr)[key].is_object() && value.is_object())
+                {
+                    stack.emplace(currentPath, JsonPair(&((*curr)[key]), &value));
+                }
+                else if ((*curr)[key] != value)
+                {
+                    modifiedKeys.push_back(currentPath);
+
+                    size_t dotPos = currentPath.find('.');
+                    std::string topLevelKey = (dotPos != std::string::npos) ? currentPath.substr(0, dotPos) : currentPath;
+
+                    if (!current[topLevelKey].contains("previous"))
+                    {
+                        current[topLevelKey]["previous"] = nlohmann::json::object();
+                    }
+
+                    if (dotPos != std::string::npos)
+                    {
+                        std::string relativePath = currentPath.substr(dotPos + 1);
+                        nlohmann::json::json_pointer pointer("/" + std::regex_replace(relativePath, std::regex("\\."), "/"));
+                        current[topLevelKey]["previous"][pointer] = value;
+                    }
+                    else
+                    {
+                        current[topLevelKey]["previous"][key] = value;
+                    }
+                }
+            }
+        }
+    }
+
+    return modifiedKeys;
+}
+
+void Syscollector::setJsonField(nlohmann::json& target,
+                                const nlohmann::json& source,
+                                const std::string& keyPath,
+                                const std::string& jsonKey,
+                                const std::optional<std::string>& defaultValue,
+                                bool createFields)
+{
+    if (createFields || source.contains(jsonKey))
+    {
+        const nlohmann::json::json_pointer pointer(keyPath);
+
+        if (source.contains(jsonKey) && source[jsonKey] != EMPTY_VALUE)
+        {
+            target[pointer] = source[jsonKey];
+        }
+        else if (defaultValue.has_value())
+        {
+            target[pointer] = *defaultValue;
+        }
+        else
+        {
+            target[pointer] = nullptr;
+        }
+    }
+}
+
+void Syscollector::setJsonFieldArray(nlohmann::json& target,
+                                     const nlohmann::json& source,
+                                     const std::string& destPath,
+                                     const std::string& sourceKey,
+                                     bool createFields)
+{
+    if (createFields || source.contains(sourceKey))
+    {
+        const nlohmann::json::json_pointer destPointer(destPath);
+        target[destPointer] = nullptr;
+
+        if (source.contains(sourceKey) && !source[sourceKey].is_null() && source[sourceKey] != EMPTY_VALUE)
+        {
+            const auto& value = source[sourceKey];
+            target[destPointer] = nlohmann::json::array();
+            target[destPointer].push_back(value);
+        }
+    }
 }
