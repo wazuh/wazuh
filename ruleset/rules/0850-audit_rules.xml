@@ -38,7 +38,7 @@
 
   <rule id="92603" level="6">
     <if_group>audit</if_group>
-    <field name="audit.command" type="pcre2">scp</field>
+    <field name="audit.command" type="pcre2">^scp$</field>
     <field name="audit.file.name" type="pcre2">.+</field>
     <description>A file was copied to this system over SSH using SCP.</description>
     <mitre>
@@ -63,6 +63,16 @@
     <description>Executed recursive query of all files using ls command.</description>
     <mitre>
       <id>T1083</id>
+    </mitre>
+  </rule>
+
+  <rule id="92606" level="6">
+    <if_group>audit</if_group>
+    <field name="audit.command" type="pcre2">lscpu</field>
+    <field name="audit.file.name" type="pcre2">.+</field>
+    <description>A file was copied to this system over SSH using LSCPU.</description>
+    <mitre>
+      <id>T1021.004</id>
     </mitre>
   </rule>
 
