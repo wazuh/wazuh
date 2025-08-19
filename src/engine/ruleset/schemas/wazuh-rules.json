@@ -1,0 +1,267 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "wazuh-rule.json",
+  "name": "schema/wazuh-rule/0",
+  "title": "Schema for Wazuh rules",
+  "type": "object",
+  "description": "Rule asset schema",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "metadata"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Component name with 3 parts: rule/<name>/<version>",
+      "pattern": "^rule\\/[^\\/]+\\/[^\\/]+$"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Rule metadata",
+      "additionalProperties": false,
+      "required": [
+        "module",
+        "title",
+        "description",
+        "compatibility",
+        "versions",
+        "author",
+        "references"
+      ],
+      "properties": {
+        "module": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "compatibility": {
+          "type": "string"
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "author": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "date"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            }
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "definitions": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Build-time typed macros expanded by interpolation. Conflicts, precedence, chaining, and scope are enforced at build time.",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "array"
+          },
+          {
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "check": {
+      "$ref": "#/definitions/_check"
+    },
+    "parents": {
+      "type": "array",
+      "description": "Parent rules evaluated before this one",
+      "items": {
+        "type": "string"
+      }
+    },
+    "normalize": {
+      "type": "array",
+      "description": "Sequential sub-stages (check/map).",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/_normalizeBlock"
+      }
+    }
+  },
+  "definitions": {
+    "_check": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/_checkExpression"
+        },
+        {
+          "$ref": "#/definitions/_checkList"
+        }
+      ],
+      "errorMessage": "check must be either a conditional expression (string) with $fields/operators, or a checklist (array) of single-pair objects { field: condition }."
+    },
+    "_checkExpression": {
+      "type": "string",
+      "description": "Conditional expression with $fields/helpers and optionally NOT/AND/OR or comparison operators.",
+      "allOf": [
+        {
+          "description": "Must contain at least one $field or a helper call",
+          "pattern": "[\\s\\S]*(\\$[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*|[A-Za-z_][A-Za-z0-9_]*\\()[\\s\\S]*"
+        }
+      ],
+      "anyOf": [
+        {
+          "description": "Contains comparison or logical operators",
+          "pattern": "[\\s\\S]*(==|!=|<=|>=|<|>|\\bAND\\b|\\bOR\\b|\\bNOT\\b)[\\s\\S]*"
+        },
+        {
+          "description": "Is just a helper call (e.g., exists($x), is_null($y), helper($f, ...))",
+          "pattern": "^\\s*[A-Za-z_][A-Za-z0-9_]*\\([^)]*\\)\\s*$"
+        }
+      ]
+    },
+    "_checkList": {
+      "type": "array",
+      "description": "Checklist: each item is { field: condition }. All must pass in order.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "minProperties": 1,
+        "maxProperties": 1,
+        "description": "Each item must be an object with a single { field: condition } pair.",
+        "allOf": [
+          {
+            "$ref": "./fields_rule.json#"
+          },
+          {
+            "additionalProperties": {
+              "description": "Condition: JSON literal, field reference ($field.path), or helper (exists(), helper(args...))",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "array"
+                },
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\$[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\([^)]*\\)$"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "errorMessage": "Invalid checklist: each item must be an object with exactly one { field: condition } pair, and the field must be defined in fields_rule.json."
+    },
+    "_normalizeBlock": {
+      "description": "Normalization block. Valid formats: (1) map, (2) check+map",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "map"
+          ],
+          "properties": {
+            "map": {
+              "description": "List of assignments - field: value",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 1,
+                "allOf": [
+                  {
+                    "$ref": "./fields_rule.json#"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "check",
+            "map"
+          ],
+          "properties": {
+            "check": {
+              "$ref": "#/definitions/_check"
+            },
+            "map": {
+              "description": "List of assignments - field: value",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 1,
+                "allOf": [
+                  {
+                    "$ref": "./fields_rule.json#"
+                  }
+                ]
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
