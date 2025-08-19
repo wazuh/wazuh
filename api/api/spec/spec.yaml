@@ -133,7 +133,7 @@ x-rbac-catalog:
         resources: ['agent:id:004', 'agent:group:us-east']
         effect: "allow"
     'analysisd:reload':
-      description: "Reloads Wazuh's ruleset"
+      description: "Reload the ruleset"
       resources:
         - $ref: '#/x-rbac-catalog/resources/node:id'
       example:
