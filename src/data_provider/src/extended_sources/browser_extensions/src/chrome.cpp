@@ -14,7 +14,6 @@
 #include <algorithm>
 #include <openssl/evp.h>
 #include <vector>
-#include <fstream>
 #include <string>
 #include "stringHelper.h"
 #include "filesystemHelper.h"

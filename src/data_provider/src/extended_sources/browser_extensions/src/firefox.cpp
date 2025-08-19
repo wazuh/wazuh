@@ -1,6 +1,4 @@
 #include "firefox.hpp"
-#include <iostream>
-#include <filesystem>
 #include <fstream>
 
 FirefoxAddonsProvider::FirefoxAddonsProvider(std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper) : m_firefoxAddonsWrapper(std::move(firefoxAddonsWrapper)) {}
@@ -35,49 +33,88 @@ nlohmann::json FirefoxAddonsProvider::toJson(const FirefoxAddons& addons)
     return results;
 }
 
+bool FirefoxAddonsProvider::isValidFirefoxProfile(const std::string& profilePath)
+{
+    return Utils::existsRegular(Utils::joinPaths(profilePath, FIREFOX_ADDONS_FILE));
+}
+
 FirefoxAddons FirefoxAddonsProvider::getAddons()
 {
     FirefoxAddons firefoxAddons;
+    const std::string homePath = m_firefoxAddonsWrapper->getHomePath();
 
-    for (const auto& userHome : std::filesystem::directory_iterator(m_firefoxAddonsWrapper->getHomePath()))
+    for (auto userHome : Utils::enumerateDir(homePath))
     {
-        if (!std::filesystem::is_directory(userHome))
+        userHome = Utils::joinPaths(homePath, userHome);
+
+        if (!Utils::existsDir(userHome))
         {
             continue;
         }
 
-        std::string username = userHome.path().filename().string();
+        std::string username = Utils::getFilename(userHome);
 
-        for (const auto& path : kFirefoxPaths)
+        for (const auto& path : FIREFOX_PATHS)
         {
-            std::filesystem::path firefoxInstallationPath = userHome.path() / path;
+            const std::string firefoxInstallationPath = Utils::joinPaths(userHome, path);
 
-            if (!std::filesystem::exists(firefoxInstallationPath))
+            if (!Utils::existsDir(firefoxInstallationPath))
             {
                 continue;
             }
 
-            for (const auto& entity : std::filesystem::directory_iterator(firefoxInstallationPath))
+            for (auto entity : Utils::enumerateDir(firefoxInstallationPath))
             {
-                if (!std::filesystem::is_directory(entity))
+                entity = Utils::joinPaths(firefoxInstallationPath, entity);
+
+                if (!Utils::existsDir(entity))
                 {
                     continue;
                 }
 
-                if (entity.path().filename() == "Crash Reports" || entity.path().filename() == "Pending Pings")
+                if (Utils::getFilename(entity) == "Crash Reports" || Utils::getFilename(entity) == "Pending Pings")
                 {
                     continue;
                 }
 
-                std::filesystem::path extensionsFilePath = entity.path() / kFirefoxExtensionsFile;
-
-                if (!std::filesystem::exists(extensionsFilePath))
+                if (!isValidFirefoxProfile(entity))
                 {
+                    // not a valid profile directory, skip.
                     continue;
                 }
 
+                std::string extensionsFilePath = Utils::joinPaths(entity, FIREFOX_ADDONS_FILE);
                 std::ifstream extensionsFile(extensionsFilePath);
-                nlohmann::json extensionsJson = nlohmann::json::parse(extensionsFile);
+
+                if (!extensionsFile.is_open())
+                {
+                    // Skip this profile if file cannot be opened
+                    continue;
+                }
+
+                nlohmann::json extensionsJson;
+
+                try
+                {
+                    extensionsJson = nlohmann::json::parse(extensionsFile);
+                }
+                catch (const nlohmann::json::parse_error& e)
+                {
+                    // Skip this profile if JSON is malformed
+                    continue;
+                }
+                catch (const std::exception& e)
+                {
+                    // Skip this profile for any other parsing error
+                    continue;
+                }
+
+                if (!extensionsJson.contains("addons") || !extensionsJson["addons"].is_array())
+                {
+                    // Skip this profile if addons key doesn't exist or isn't an array
+                    continue;
+                }
+
                 const nlohmann::json& addons = extensionsJson["addons"];
 
                 for (const auto& addon : addons.items())
@@ -173,7 +210,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
                     if (!addon.value().contains("visible") || addon.value()["visible"].is_null())
                     {
-                        firefoxAddon.visible = false; // TODO: Make sure false is the correct default value here
+                        firefoxAddon.visible = false;
                     }
                     else
                     {
@@ -182,7 +219,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
                     if (!addon.value().contains("active") || addon.value()["active"].is_null())
                     {
-                        firefoxAddon.active = false; // TODO: Make sure false is the correct default value here
+                        firefoxAddon.active = false;
                     }
                     else
                     {
@@ -191,11 +228,11 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
                     if (!addon.value().contains("applyBackgroundUpdates") || addon.value()["applyBackgroundUpdates"].is_null())
                     {
-                        firefoxAddon.autoupdate = false; // TODO: Make sure false is the correct default value here
+                        firefoxAddon.autoupdate = false;
                     }
                     else
                     {
-                        firefoxAddon.autoupdate = addon.value()["applyBackgroundUpdates"].get<int8_t>();
+                        firefoxAddon.autoupdate = static_cast<bool>(addon.value()["applyBackgroundUpdates"].get<int8_t>());
                     }
 
                     if (!addon.value().contains("location") || addon.value()["location"].is_null())
