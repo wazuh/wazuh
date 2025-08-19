@@ -1971,15 +1971,22 @@ checks:
 
   # 3.1.1 Ensure IPv6 status is identified. (Manual) - Not Implemented
   # 3.1.2 Ensure wireless interfaces are disabled. (Automated) - Not Implemented
+  # 3.1.3 Ensure bluetooth services are not in use (Automated) - Not Implemented
 
-  # 3.1.3 Ensure TIPC is disabled. (Automated)
+  ###############################################
+  # 3.2 Configure Network Kernel Modules
+  ###############################################
+
+  # 3.2.1 Ensure dccp kernel module is not available (Automated) - Not Implemented
+
+  # 3.2.2 Ensure tipc kernel module is not available (Automated)
   - id: 31578
-    title: "Ensure TIPC is disabled."
+    title: "Ensure tipc kernel module is not available."
     description: "The Transparent Inter-Process Communication (TIPC) protocol is designed to provide communication between cluster nodes."
     rationale: "If the protocol is not being used, it is recommended that kernel module not be loaded, disabling the service to reduce the potential attack surface."
     remediation: "Run the following script to disable tipc: #!/usr/bin/env bash { l_mname=\"tipc\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
     compliance:
-      - cis: ["3.1.3"]
+      - cis: ["3.2.2"]
       - cis_csc_v7: ["9.2", "9.1"]
       - iso_27001-2013: ["A.13.1.2", "A.13.1.3"]
       - mitre_mitigations: ["M1042"]
@@ -1991,26 +1998,24 @@ checks:
       - "not c:lsmod -> r:tipc"
       - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+tipc'
 
-  ###############################################
-  # 3.2 Network Parameters (Host Only)
-  ###############################################
-
-  # 3.2.1 Ensure IP forwarding is disabled. (Automated) - Not Implemented
-  # 3.2.2 Ensure packet redirect sending is disabled. (Automated) - Not Implemented
+  # 3.2.3 Ensure rds kernel module is not available (Automated) - Not Implemented
+  # 3.2.4 Ensure sctp kernel module is not available (Automated) - Not Implemented
 
   ###############################################
-  # 3.3 Network Parameters (Host and Router)
+  # 3.3 Configure Network Kernel Parameters (both host only and router systems)
   ###############################################
 
-  # 3.3.1 Ensure source routed packets are not accepted. (Automated) - Not Implemented
-  # 3.3.2 Ensure ICMP redirects are not accepted. (Automated) - Not Implemented
-  # 3.3.3 Ensure secure ICMP redirects are not accepted. (Automated) - Not Implemented
-  # 3.3.4 Ensure suspicious packets are logged. (Automated) - Not Implemented
-  # 3.3.5 Ensure broadcast ICMP requests are ignored. (Automated) Not Implemented
-  # 3.3.6 Ensure bogus ICMP responses are ignored. (Automated) - Not Implemented
-  # 3.3.7 Ensure Reverse Path Filtering is enabled. (Automated) - Not Implemented
-  # 3.3.8 Ensure TCP SYN Cookies is enabled. (Automated) - Not Implemented
-  # 3.3.9 Ensure IPv6 router advertisements are not accepted. (Automated) - Not Implemented
+  # 3.3.1 Ensure ip forwarding is disabled (Automated) - Not Implemented
+  # 3.3.2 Ensure packet redirect sending is disabled (Automated) - Not Implemented
+  # 3.3.3 Ensure bogus icmp responses are ignored (Automated) - Not Implemented
+  # 3.3.4 Ensure broadcast icmp requests are ignored (Automated) - Not Implemented
+  # 3.3.5 Ensure icmp redirects are not accepted (Automated) - Not Implemented
+  # 3.3.6 Ensure secure icmp redirects are not accepted (Automated) - Not Implemented
+  # 3.3.7 Ensure reverse path filtering is enabled (Automated) - Not Implemented
+  # 3.3.8 Ensure source routed packets are not accepted (Automated) - Not Implemented
+  # 3.3.9 Ensure suspicious packets are logged (Automated) - Not Implemented
+  # 3.3.10 Ensure tcp syn cookies is enabled (Automated) - Not Implemented
+  # 3.3.11 Ensure ipv6 router advertisements are not accepted (Automated) - Not Implemented
 
   ###############################################
   # 3.4 Firewall Configuration
