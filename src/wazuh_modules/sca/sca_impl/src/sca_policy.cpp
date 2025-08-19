@@ -24,7 +24,7 @@ SCAPolicy::SCAPolicy(SCAPolicy&& other) noexcept
 void
 SCAPolicy::Run(std::time_t ,
                bool ,
-               std::function<void(const std::string&, const std::string&, const std::string&, const std::string&)> reportCheckResult,
+               std::function<void(const CheckResult&)> reportCheckResult,
                std::function<void(std::chrono::milliseconds)> )
 {
     m_scanInProgress = true;
@@ -33,7 +33,7 @@ SCAPolicy::Run(std::time_t ,
 }
 
 void SCAPolicy::Scan(
-    const std::function<void(const std::string&, const std::string&, const std::string&, const std::string&)>& reportCheckResult)
+    const std::function<void(const CheckResult&)>& reportCheckResult)
 {
     auto requirementsOk = sca::CheckResult::Passed;
 
@@ -101,7 +101,7 @@ void SCAPolicy::Scan(
                 (reason.empty() ? "" : ", reason: " + reason)
             );
 
-            reportCheckResult(m_id, check.id.value(), sca::CheckResultToString(result), reason);
+            reportCheckResult({m_id, check.id.value(), sca::CheckResultToString(result), reason});
             // NOLINTEND(bugprone-unchecked-optional-access)
         }
 
@@ -112,7 +112,7 @@ void SCAPolicy::Scan(
         for (const auto& check : m_checks)
         {
             // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-            reportCheckResult(m_id, check.id.value(), sca::CheckResultToString(sca::CheckResult::NotApplicable), "Policy requirements not met");
+            reportCheckResult({m_id, check.id.value(), sca::CheckResultToString(sca::CheckResult::NotApplicable), "Policy requirements not met"});
         }
     }
 }
