@@ -156,21 +156,13 @@ WazuhUpgrade()
 
     # Remove old Wazuh daemons
 
-    ## TODO: check need of this
-
     rm -f $PREINSTALLEDDIR/bin/ossec-agentd
-    rm -f $PREINSTALLEDDIR/bin/ossec-agentlessd
-    rm -f $PREINSTALLEDDIR/bin/ossec-analysisd
     rm -f $PREINSTALLEDDIR/bin/ossec-authd
-    rm -f $PREINSTALLEDDIR/bin/ossec-csyslogd
     rm -f $PREINSTALLEDDIR/bin/ossec-dbd
     rm -f $PREINSTALLEDDIR/bin/ossec-execd
-    rm -f $PREINSTALLEDDIR/bin/ossec-integratord
     rm -f $PREINSTALLEDDIR/bin/ossec-logcollector
-    rm -f $PREINSTALLEDDIR/bin/ossec-maild
     rm -f $PREINSTALLEDDIR/bin/ossec-monitord
     rm -f $PREINSTALLEDDIR/bin/ossec-remoted
-    rm -f $PREINSTALLEDDIR/bin/ossec-reportd
     rm -f $PREINSTALLEDDIR/bin/ossec-syscheckd
 
     # Remove existing ruleset version file

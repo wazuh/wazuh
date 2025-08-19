@@ -122,7 +122,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     return (0);
 }
 
-//TODO: does it make any sense to change signature deleting mailp
+
 int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
