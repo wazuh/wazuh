@@ -27,7 +27,6 @@ requirements:
 
 checks:
 
-
   # 1.1.1 (L1) Ensure 'Enforce password history' is set to '24 or more password(s)'. (Automated)
    - id: 15500
      title: "Ensure 'Enforce password history' is set to '24 or more password(s)'."
