@@ -211,7 +211,7 @@ public:
 
         const auto postIndexerAction = []()
         {
-            std::cout << "post-indexer action...\n";
+            logDebug2(LOGGER_INV_SYNC_TAG, "Post indexer action called");
         };
 
         m_indexerQueue = std::make_unique<IndexerQueue>(
