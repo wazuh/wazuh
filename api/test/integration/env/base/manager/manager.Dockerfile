@@ -1,4 +1,4 @@
-FROM public.ecr.aws/o5x5t0j3/amd64/api_development:integration_test_wazuh-generic
+FROM public.ecr.aws/o5x5t0j3/amd64/api_development:integration_test_wazuh-generic_new
 
 # ENV_MODE needs to be assigned to an environment variable as it is going to be used at run time (CMD)
 ARG ENV_MODE
