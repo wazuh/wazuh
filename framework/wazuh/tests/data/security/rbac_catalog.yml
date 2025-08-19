@@ -214,7 +214,7 @@ get_rbac_actions:
           - PUT /agents/upgrade_custom
           - GET /agents/upgrade_result
       analysisd:reload:
-        description: Reloads Wazuh's ruleset
+        description: Reload the ruleset
         resources:
           - node:id
         example:
