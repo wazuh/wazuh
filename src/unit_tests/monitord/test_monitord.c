@@ -435,9 +435,6 @@ void test_MonitordConfig_success(void **state) {
     assert_int_equal(mond.global.agents_disconnection_alert_time, 0);
 
     assert_null(mond.agents);
-    assert_null(mond.smtpserver);
-    assert_null(mond.emailfrom);
-    assert_null(mond.emailidsname);
 
     assert_int_equal(mond.day_wait, 1);
     assert_int_equal(mond.compress, 1);
