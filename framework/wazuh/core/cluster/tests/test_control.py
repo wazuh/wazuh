@@ -187,13 +187,24 @@ async def test_set_reload_ruleset_flag():
             await control.set_reload_ruleset_flag(lc=local_client)
         execute_mock.assert_called_once_with(command=b'sendrreload', data=b'')
 
-        with patch('json.loads', return_value=KeyError(1)):
-            with pytest.raises(KeyError):
+@pytest.mark.parametrize('side_effect, json_loads_return_value, expected_err',
+    [
+        (async_local_client, KeyError(1), KeyError),
+        (WazuhClusterError(3020), None, WazuhClusterError),
+        ('error', None, json.JSONDecodeError)
+
+    ]
+)
+async def test_set_reload_ruleset_flag_nok(side_effect, json_loads_return_value, expected_err):
+    """Verify that set_reload_ruleset_flag function handles error scenarios as expected."""
+    local_client = LocalClient()
+    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=side_effect):
+        if json_loads_return_value is None:
+            with pytest.raises(expected_err):
                 await control.set_reload_ruleset_flag(lc=local_client)
+        else:
+            with patch('json.loads', return_value=json_loads_return_value):
+                with pytest.raises(expected_err):
+                    await control.set_reload_ruleset_flag(lc=local_client)
 
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
-        with pytest.raises(WazuhClusterError):
-            await control.set_reload_ruleset_flag(lc=local_client)
 
-        with pytest.raises(json.JSONDecodeError):
-            await control.set_reload_ruleset_flag(lc=local_client)

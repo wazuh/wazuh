@@ -250,7 +250,6 @@ async def reload_ruleset() -> AffectedItemsWazuhResult:
             lc = local_client.LocalClient()
             result = await set_reload_ruleset_flag(lc)
 
-            # Replace technical details
             if isinstance(result, dict) and 'msg' in result:
                 result = result['msg']
             if result == 'Reload ruleset flag set successfully':
