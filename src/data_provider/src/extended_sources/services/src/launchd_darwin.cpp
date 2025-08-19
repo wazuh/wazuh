@@ -98,49 +98,58 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
     // Search user-specific paths
     // Get all home directories
     setpwent();
-    struct passwd* pw;
 
-    while ((pw = getpwent()) != nullptr)
+    try
     {
-        if (pw->pw_dir != nullptr)
+        struct passwd* pw;
+
+        while ((pw = getpwent()) != nullptr)
         {
-            std::string homeDir(pw->pw_dir);
-
-            for (const auto& path : m_userLaunchdSearchPaths)
+            if (pw->pw_dir != nullptr)
             {
-                std::string userPath = homeDir;
+                std::string homeDir(pw->pw_dir);
 
-                if (!userPath.empty() && userPath.back() != '/')
+                for (const auto& path : m_userLaunchdSearchPaths)
                 {
-                    userPath += '/';
-                }
+                    std::string userPath = homeDir;
 
-                userPath += path;
-
-                if (Utils::existsDir(userPath))
-                {
-                    try
+                    if (!userPath.empty() && userPath.back() != '/')
                     {
-                        std::vector<std::string> entries = Utils::enumerateDir(userPath);
+                        userPath += '/';
+                    }
 
-                        for (const auto& entry : entries)
+                    userPath += path;
+
+                    if (Utils::existsDir(userPath))
+                    {
+                        try
                         {
-                            std::string fullPath = userPath + "/" + entry;
+                            std::vector<std::string> entries = Utils::enumerateDir(userPath);
 
-                            if (Utils::existsRegular(fullPath) && fullPath.substr(fullPath.length() - 6) == ".plist")
+                            for (const auto& entry : entries)
                             {
-                                launchers.push_back(fullPath);
+                                std::string fullPath = userPath + "/" + entry;
+
+                                if (Utils::existsRegular(fullPath) && fullPath.substr(fullPath.length() - 6) == ".plist")
+                                {
+                                    launchers.push_back(fullPath);
+                                }
                             }
                         }
-                    }
-                    catch (...)
-                    {
-                        // Skip directories we can't read
-                        continue;
+                        catch (...)
+                        {
+                            // Skip directories we can't read
+                            continue;
+                        }
                     }
                 }
             }
         }
+    }
+    catch (...)
+    {
+        endpwent();
+        throw;
     }
 
     endpwent();
@@ -219,6 +228,14 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                     CFStringRef stringValue = static_cast<CFStringRef>(value);
                     CFIndex length = CFStringGetLength(stringValue);
                     CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+
+                    // Validate maxSize to prevent buffer allocation issues
+                    if (maxSize <= 0 || maxSize == kCFNotFound + 1)
+                    {
+                        CFRelease(key);
+                        continue;
+                    }
+
                     std::vector<char> buffer(maxSize);
 
                     if (CFStringGetCString(stringValue, buffer.data(), maxSize, kCFStringEncodingUTF8))
@@ -296,6 +313,13 @@ bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& se
                         CFStringRef stringElement = static_cast<CFStringRef>(element);
                         CFIndex length = CFStringGetLength(stringElement);
                         CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+
+                        // Validate maxSize to prevent buffer allocation issues
+                        if (maxSize <= 0 || maxSize == kCFNotFound + 1)
+                        {
+                            continue;
+                        }
+
                         std::vector<char> buffer(maxSize);
 
                         if (CFStringGetCString(stringElement, buffer.data(), maxSize, kCFStringEncodingUTF8))
