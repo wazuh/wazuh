@@ -68,7 +68,7 @@ class LaunchdProvider
         /// @brief User-specific launchd search paths.
         const std::vector<std::string> m_userLaunchdSearchPaths =
         {
-            "/Library/LaunchAgents",
+            "Library/LaunchAgents",
         };
 
         /// @brief Mapping of plist keys to service structure fields for string values.
