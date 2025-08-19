@@ -3982,13 +3982,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
     };
-    const struct CMUnitTest fim_regex_tests[] = { 
+    const struct CMUnitTest fim_regex_tests[] = {
         /* fim_check_ignore */
         cmocka_unit_test(test_fim_check_ignore_strncasecmp),
         cmocka_unit_test(test_fim_check_ignore_regex_file),
         cmocka_unit_test(test_fim_check_ignore_regex_directory),
         cmocka_unit_test(test_fim_check_ignore_failure),
-    }; 
+    };
     const struct CMUnitTest root_monitor_tests[] = {
         cmocka_unit_test(test_fim_checker_root_ignore_file_under_recursion_level),
         cmocka_unit_test(test_fim_checker_root_file_within_recursion_level),

@@ -15,7 +15,6 @@
 #include "../db/include/db.h"
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha1/sha1_op.h"
-#include "../os_crypto/md5_sha1/md5_sha1_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32

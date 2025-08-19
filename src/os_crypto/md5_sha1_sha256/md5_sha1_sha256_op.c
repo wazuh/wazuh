@@ -48,7 +48,6 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
         return (-1);
     }
 
-
     /* Initialize all hashes */
     sha1_ctx = EVP_MD_CTX_new();
     md5_ctx = EVP_MD_CTX_new();
@@ -65,7 +64,6 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
             if (read >= max_size) {     // Maximum filesize error
                 mwarn("'%s' filesize is larger than the maximum allowed (%d MB). File skipped.", fname, (int)max_size/1048576); // max_size is in bytes
                 fclose(fp);
-
                 EVP_MD_CTX_free(sha1_ctx);
                 EVP_MD_CTX_free(md5_ctx);
                 EVP_MD_CTX_free(sha256_ctx);
@@ -106,7 +104,6 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
         sha256output += 2;
     }
 
-    /* Close it */
     fclose(fp);
 
     return (0);
