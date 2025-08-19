@@ -1,4 +1,9 @@
-FROM public.ecr.aws/o5x5t0j3/amd64/api_development:integration_test_wazuh-generic_new
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install supervisor wget python3 git gnupg2 gcc g++ make vim libc6-dev curl \
+    policycoreutils automake autoconf libtool apt-transport-https lsb-release python3-cryptography sqlite3 cmake -y
 
 # ENV_MODE needs to be assigned to an environment variable as it is going to be used at run time (CMD)
 ARG ENV_MODE
