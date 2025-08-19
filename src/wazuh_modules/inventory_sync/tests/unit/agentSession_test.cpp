@@ -40,10 +40,9 @@ protected:
     flatbuffers::Offset<Wazuh::SyncSchema::Start>
     createStartMessage(uint64_t size, const std::string& moduleName, uint64_t agentId)
     {
-        auto module = builder.CreateString(moduleName);
+
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_size(size);
-        startBuilder.add_module_(module);
         startBuilder.add_agent_id(agentId);
         startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
         return startBuilder.Finish();
@@ -57,70 +56,104 @@ protected:
 
 TEST_F(AgentSessionTest, Constructor_Success)
 {
-    auto startMsg = createStartMessage(10, "syscollector", 1);
+    const std::string moduleTestName = "syscollector";
+    const std::string agentIdTest = "1";
+
+    auto startMsg = createStartMessage(10, moduleTestName, agentId);
     builder.Finish(startMsg);
 
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
 
-    ASSERT_NO_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); });
+    ASSERT_NO_THROW({
+        AgentSessionForTest session(
+            sessionId, agentIdTest, moduleTestName, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    });
 }
 
 TEST_F(AgentSessionTest, Constructor_NullData)
 {
+    const std::string moduleTestName = "syscollector";
+    const std::string agentIdTest = "1";
+
     EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, nullptr, mockStore, mockIndexerQueue, mockResponseDispatcher); },
+        {
+            AgentSessionForTest session(
+                sessionId, agentIdTest, moduleTestName, nullptr, mockStore, mockIndexerQueue, mockResponseDispatcher);
+        },
         AgentSessionException);
 }
 
 TEST_F(AgentSessionTest, Constructor_InvalidSize)
 {
-    auto startMsg = createStartMessage(0, "syscollector", 1);
+    const std::string moduleTestName = "syscollector";
+    const std::string agentIdTest = "1";
+
+    auto startMsg = createStartMessage(0, moduleTestName, agentId);
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); },
+        {
+            AgentSessionForTest session(
+                sessionId, agentIdTest, moduleTestName, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+        },
         AgentSessionException);
 }
 
 TEST_F(AgentSessionTest, Constructor_NullModule)
 {
+    const std::string moduleTestName = ""; // Empty module name to test null/empty case
+    const std::string agentIdTest = "1";
+
     Wazuh::SyncSchema::StartBuilder startBuilder(builder);
     startBuilder.add_size(10);
-    startBuilder.add_agent_id(1);
+    startBuilder.add_agent_id(agentId);
     startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
+    // Note: Not adding module name to test null module
     auto startMsg = startBuilder.Finish();
 
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); },
+        {
+            AgentSessionForTest session(
+                sessionId, agentIdTest, moduleTestName, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+        },
         AgentSessionException);
 }
 
 TEST_F(AgentSessionTest, Constructor_InvalidAgentId)
 {
-    auto startMsg = createStartMessage(10, "syscollector", 0);
+    const std::string moduleTestName = "syscollector";
+    const std::string agentIdTest = ""; // Invalid agent ID (empty string)
+
+    auto startMsg = createStartMessage(10, moduleTestName, 0);
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); },
+        {
+            AgentSessionForTest session(
+                sessionId, agentIdTest, moduleTestName, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+        },
         AgentSessionException);
 }
 
 TEST_F(AgentSessionTest, HandleData_Success)
 {
-    auto startMsg = createStartMessage(1, "syscollector", 1);
+    const std::string moduleTestName = "syscollector";
+    const std::string agentIdTest = "1";
+
+    auto startMsg = createStartMessage(1, moduleTestName, agentId);
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(
+        sessionId, agentIdTest, moduleTestName, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
     flatbuffers::FlatBufferBuilder dataBuilder;
     Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
@@ -140,12 +173,16 @@ TEST_F(AgentSessionTest, HandleData_Success)
 
 TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndNotReceived)
 {
-    auto startMsg = createStartMessage(1, "syscollector", 1);
+    const std::string moduleTestName = "syscollector";
+    const std::string agentIdTest = "1";
+
+    auto startMsg = createStartMessage(1, moduleTestName, agentId);
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(
+        sessionId, agentIdTest, moduleTestName, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
     flatbuffers::FlatBufferBuilder dataBuilder;
     Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
@@ -165,12 +202,16 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndNotReceived)
 
 TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndReceived)
 {
-    auto startMsg = createStartMessage(1, "syscollector", 1);
+    const std::string moduleTestName = "syscollector";
+    const std::string agentIdTest = "1";
+
+    auto startMsg = createStartMessage(1, moduleTestName, agentId);
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(
+        sessionId, agentIdTest, moduleTestName, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
     EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(sessionId, _)).Times(1);
     session.handleEnd(mockResponseDispatcher); // Simulate end received first
@@ -193,12 +234,16 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndReceived)
 
 TEST_F(AgentSessionTest, HandleEnd_GapSetNotEmpty)
 {
-    auto startMsg = createStartMessage(2, "syscollector", 1);
+    const std::string moduleTestName = "syscollector";
+    const std::string agentIdTest = "1";
+
+    auto startMsg = createStartMessage(2, moduleTestName, agentId);
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(
+        sessionId, agentIdTest, moduleTestName, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
     EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(sessionId, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(0);
@@ -208,12 +253,16 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetNotEmpty)
 
 TEST_F(AgentSessionTest, HandleEnd_GapSetEmpty)
 {
-    auto startMsg = createStartMessage(1, "syscollector", 1);
+    const std::string moduleTestName = "syscollector";
+    const std::string agentIdTest = "1";
+
+    auto startMsg = createStartMessage(1, moduleTestName, agentId);
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(
+        sessionId, agentIdTest, moduleTestName, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
     flatbuffers::FlatBufferBuilder dataBuilder;
     Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);

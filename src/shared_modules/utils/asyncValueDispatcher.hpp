@@ -63,6 +63,14 @@ namespace Utils
             }
         }
 
+        void push(const Type& value)
+        {
+            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue.size() < m_maxQueueSize))
+            {
+                m_queue.push(value); // Let the queue handle the copy
+            }
+        }
+
         void cancel()
         {
             m_running = false;

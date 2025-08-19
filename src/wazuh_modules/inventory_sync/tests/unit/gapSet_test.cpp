@@ -53,9 +53,9 @@ TEST_F(GapSetTest, Observe)
     ASSERT_EQ(gs.ranges().size(), 2);
 
     // Observe an out-of-bounds value. It should not change anything.
-    gs.observe(10);
+    EXPECT_NO_THROW(gs.observe(4));
     ASSERT_FALSE(gs.contains(10));
-    gs.observe(999);
+    EXPECT_THROW(gs.observe(999), std::out_of_range);
     ASSERT_FALSE(gs.contains(999));
 }
 
