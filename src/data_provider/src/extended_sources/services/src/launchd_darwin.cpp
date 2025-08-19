@@ -11,10 +11,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <fstream>
 #include <sstream>
-#include <filesystem>
 #include <pwd.h>
-
-namespace fs = std::filesystem;
+#include "filesystemHelper.h"
 
 LaunchdProvider::LaunchdProvider()
 {
@@ -29,7 +27,7 @@ nlohmann::json LaunchdProvider::collect()
 
     for (const auto& path : launchers)
     {
-        if (!fs::exists(path))
+        if (!Utils::existsRegular(path))
         {
             continue;
         }
@@ -73,19 +71,23 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
     // Search standard launchd paths
     for (const auto& searchPath : m_launchdSearchPaths)
     {
-        if (fs::exists(searchPath) && fs::is_directory(searchPath))
+        if (Utils::existsDir(searchPath))
         {
             try
             {
-                for (const auto& entry : fs::directory_iterator(searchPath))
+                std::vector<std::string> entries = Utils::enumerateDir(searchPath);
+
+                for (const auto& entry : entries)
                 {
-                    if (entry.is_regular_file() && entry.path().extension() == ".plist")
+                    std::string fullPath = searchPath + "/" + entry;
+
+                    if (Utils::existsRegular(fullPath) && fullPath.substr(fullPath.length() - 6) == ".plist")
                     {
-                        launchers.push_back(entry.path().string());
+                        launchers.push_back(fullPath);
                     }
                 }
             }
-            catch (const fs::filesystem_error&)
+            catch (...)
             {
                 // Skip directories we can't read
                 continue;
@@ -102,25 +104,36 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
     {
         if (pw->pw_dir != nullptr)
         {
-            fs::path homeDir(pw->pw_dir);
+            std::string homeDir(pw->pw_dir);
 
             for (const auto& path : m_userLaunchdSearchPaths)
             {
-                fs::path userPath = homeDir / path;
+                std::string userPath = homeDir;
 
-                if (fs::exists(userPath) && fs::is_directory(userPath))
+                if (!userPath.empty() && userPath.back() != '/')
+                {
+                    userPath += '/';
+                }
+
+                userPath += path;
+
+                if (Utils::existsDir(userPath))
                 {
                     try
                     {
-                        for (const auto& entry : fs::directory_iterator(userPath))
+                        std::vector<std::string> entries = Utils::enumerateDir(userPath);
+
+                        for (const auto& entry : entries)
                         {
-                            if (entry.is_regular_file() && entry.path().extension() == ".plist")
+                            std::string fullPath = userPath + "/" + entry;
+
+                            if (Utils::existsRegular(fullPath) && fullPath.substr(fullPath.length() - 6) == ".plist")
                             {
-                                launchers.push_back(entry.path().string());
+                                launchers.push_back(fullPath);
                             }
                         }
                     }
-                    catch (const fs::filesystem_error&)
+                    catch (...)
                     {
                         // Skip directories we can't read
                         continue;
@@ -136,7 +149,7 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
 bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& service)
 {
     service.path = path;
-    service.name = fs::path(path).filename().string();
+    service.name = Utils::getFilename(path);
 
     // Read the plist file
     CFURLRef fileURL = CFURLCreateFromFileSystemRepresentation(
