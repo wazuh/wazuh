@@ -489,7 +489,7 @@ async def test_put_reload_analysisd(mock_exc, mock_dapi, mock_remove, mock_dfunc
     mock_dapi.assert_called_once_with(f=manager.reload_ruleset,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
