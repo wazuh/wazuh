@@ -959,13 +959,19 @@ TEST_F(SystemInventoryUpsertElement, emptyAgentID_BrowserExtensions)
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
 
-TEST_F(SystemInventoryUpsertElement, emptyPackageName_BrowserExtensions)
+TEST_F(SystemInventoryUpsertElement, emptyItemId_BrowserExtensions)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, browserName()).WillOnce(testing::Return("browserName"));
+    EXPECT_CALL(*context, browserExtensionUserID()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserProfileName()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, browserExtensionPackageName()).WillOnce(testing::Return(""));
+    // This is a unusual case. It's unlikely that having the previous information the item_id field will be empty. While
+    // unlikely, encountering an empty value here is unexpected.
+    EXPECT_CALL(*context, browserExtensionItemId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
@@ -1001,12 +1007,14 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_BrowserExtensions)
     EXPECT_CALL(*context, browserProfileReferenced()).WillOnce(testing::Return(false));
     EXPECT_CALL(*context, browserExtensionPackageInstalled()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, browserExtensionFileHashSha256()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionItemId())
+        .WillOnce(testing::Return("fbdec581b7a6abd68fa838df2ec69f0e8f780eef"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_UBlock Origin","operation":"INSERTED","data":{"browser":{"profile":{"referenced":false}},"package":{"autoupdate":false,"enabled":false,"from_webstore":false,"name":"UBlock Origin","persistent":false},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_fbdec581b7a6abd68fa838df2ec69f0e8f780eef","operation":"INSERTED","data":{"browser":{"profile":{"referenced":false}},"package":{"autoupdate":false,"enabled":false,"from_webstore":false,"name":"UBlock Origin","persistent":false},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validStrings_BrowserExtensions)
@@ -1047,10 +1055,12 @@ TEST_F(SystemInventoryUpsertElement, validStrings_BrowserExtensions)
     EXPECT_CALL(*context, browserExtensionPackageInstalled()).WillOnce(testing::Return("1710489821000"));
     EXPECT_CALL(*context, browserExtensionFileHashSha256())
         .WillOnce(testing::Return("a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"));
+    EXPECT_CALL(*context, browserExtensionItemId())
+        .WillOnce(testing::Return("571fdefef67b73320f74a5f2f5fb69bde4ad9680"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_UBlock Origin","operation":"INSERTED","data":{"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":"1.52.2","description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":true,"from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":"1710489821000","name":"UBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","persistent":true,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2"},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_571fdefef67b73320f74a5f2f5fb69bde4ad9680","operation":"INSERTED","data":{"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":"1.52.2","description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":true,"from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":"1710489821000","name":"UBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","persistent":true,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2"},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }

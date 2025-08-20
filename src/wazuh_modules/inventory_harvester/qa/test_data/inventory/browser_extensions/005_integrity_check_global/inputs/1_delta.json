@@ -29,7 +29,8 @@
         "browser_profile_referenced": 1,
         "package_installed": "1710489821",
         "file_hash_sha256": "3b323c1c20517e922be878b76365922a70f7cf7c30b3423844f7acd17c191eb5",
-        "checksum": "33c81cae96b5818a4b4cce5a431e0ef8b5f0b650"
+        "checksum": "33c81cae96b5818a4b4cce5a431e0ef8b5f0b650",
+        "item_id": "763ad4927102459ea41d5549267d68a6a3f7aa2e"
     },
     "operation": "INSERTED"
 }

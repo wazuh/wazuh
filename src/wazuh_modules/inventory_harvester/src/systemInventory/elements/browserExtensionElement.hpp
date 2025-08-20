@@ -37,10 +37,19 @@ public:
             throw std::runtime_error("BrowserExtensionElement::build: Agent ID is empty.");
         }
 
+        auto browserName = data->browserName();
+        auto userId = data->browserExtensionUserID();
+        auto browserProfileName = data->browserProfileName();
         auto packageName = data->browserExtensionPackageName();
-        if (packageName.empty())
+        if (browserName.empty() && userId.empty() && browserProfileName.empty() && packageName.empty())
         {
-            throw std::runtime_error("BrowserExtensionElement::build: Package name is empty.");
+            throw std::runtime_error("BrowserExtensionElement::build: PK fields are empty.");
+        }
+
+        auto itemId = data->browserExtensionItemId();
+        if (itemId.empty())
+        {
+            throw std::runtime_error("BrowserExtensionElement::build: Item ID is empty.");
         }
 
         DataHarvester<InventoryBrowserExtensionHarvester> element;
@@ -48,7 +57,7 @@ public:
         // Key
         element.id = agentId;
         element.id += "_";
-        element.id += packageName;
+        element.id += itemId;
 
         // Operation
         element.operation = "INSERTED";
@@ -63,8 +72,8 @@ public:
         }
 
         // Browser
-        element.data.browser.name = data->browserName();
-        element.data.browser.profile.name = data->browserProfileName();
+        element.data.browser.name = browserName;
+        element.data.browser.profile.name = browserProfileName;
         element.data.browser.profile.path = data->browserProfilePath();
         element.data.browser.profile.referenced = data->browserProfileReferenced();
 
@@ -89,7 +98,7 @@ public:
         element.data.package.version = data->browserExtensionPackageVersion();
 
         // User
-        element.data.user.id = data->browserExtensionUserID();
+        element.data.user.id = userId;
 
         // Wazuh cluster information
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
@@ -110,17 +119,17 @@ public:
             throw std::runtime_error("BrowserExtensionElement::deleteElement: Agent ID is empty.");
         }
 
-        auto packageName = data->browserExtensionPackageName();
-        if (packageName.empty())
+        auto itemId = data->browserExtensionItemId();
+        if (itemId.empty())
         {
-            throw std::runtime_error("BrowserExtensionElement::deleteElement: Package name is empty.");
+            throw std::runtime_error("BrowserExtensionElement::deleteElement: Item ID is empty.");
         }
 
         NoDataHarvester element;
         // Key
         element.id = agentId;
         element.id += "_";
-        element.id += packageName;
+        element.id += itemId;
 
         // Operation
         element.operation = "DELETED";

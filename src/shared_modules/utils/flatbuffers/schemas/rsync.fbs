@@ -228,6 +228,7 @@ table syscollector_browser_extensions {
     package_installed:string;
     file_hash_sha256:string;
     checksum:string;
+    item_id:string;
 }
 
 table fim_file {

@@ -952,6 +952,7 @@ typedef struct {
     const char * package_installed;
     const char * file_hash_sha256;
     const char *checksum;
+    const char *item_id;
 } browser_extension_record_t;
 
 // Save user info into DB.

@@ -3497,10 +3497,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/package_name"_json_pointer))
-            {
-                return m_jsonData->at("/data/package_name"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -4049,6 +4046,37 @@ public:
         else
         {
             return "";
+        }
+        return "";
+    }
+
+    std::string_view browserExtensionItemId() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_browser_extensions() && m_delta->data_as_dbsync_browser_extensions()->item_id())
+            {
+                return m_delta->data_as_dbsync_browser_extensions()->item_id()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->item_id())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->item_id()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            if (m_jsonData->contains("/data/item_id"_json_pointer))
+            {
+                return m_jsonData->at("/data/item_id"_json_pointer).get<std::string_view>();
+            }
         }
         return "";
     }
