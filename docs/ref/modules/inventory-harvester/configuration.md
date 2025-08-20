@@ -69,6 +69,7 @@ Turn off specific providers individually
 <users>yes</users>
 <groups>yes</groups>
 <browser_extensions>yes</browser_extensions>
+<services>yes</services>
 
 <!-- Database synchronization settings -->
 <synchronization>

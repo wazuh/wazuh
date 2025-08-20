@@ -18,6 +18,7 @@ For a quick reference, the table below lists the component and its specific quer
 | Inventory Users              | GET /wazuh-states-inventory-users-*/_search              |
 | Inventory Groups             | GET /wazuh-states-inventory-groups-*/_search             |
 | Inventory Browser Extensions | GET /wazuh-states-inventory-browser-extensions-*/_search |
+| Inventory Services           | GET /wazuh-states-inventory-services-*/_search           |
 | FIM Files                    | GET /wazuh-states-fim-files-*/_search                    |
 | FIM Registries               | GET /wazuh-states-fim-registries-*/_search               |
 
