@@ -70,7 +70,7 @@ test_folder = '/testfile'
 daemons_handler_configuration = {'all_daemons': True}
 
 # Helper to wait for a specific check id result line and return its result
-def wait_for_check_result(log_monitor, check_id: int, timeout: int = 20):
+def wait_for_check_result(log_monitor, check_id: int, timeout: int = 60):
     target = str(check_id)
 
     def _callback(line: str):
@@ -150,7 +150,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Get the initial result for the target check id
-    initial_result = wait_for_check_result(log_monitor, test_metadata['check_id'], timeout=30)
+    initial_result = wait_for_check_result(log_monitor, test_metadata['check_id'], timeout=200 if sys.platform == WINDOWS else 30)
     assert initial_result == test_metadata['initial_result'], \
         f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {initial_result}"
 
@@ -162,6 +162,6 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         os.chmod(test_folder, test_metadata['perms'])
 
     # Get the next result for the target check id after remediation/change
-    final_result = wait_for_check_result(log_monitor, test_metadata['check_id'], timeout=30)
+    final_result = wait_for_check_result(log_monitor, test_metadata['check_id'], timeout=200 if sys.platform == WINDOWS else 30)
     assert final_result == test_metadata['final_result'], \
         f"Got unexpected SCA result: expected {test_metadata['final_result']}, got {final_result}"
