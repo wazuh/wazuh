@@ -492,13 +492,13 @@ TEST_F(SystemInventoryDeleteElement, emptyAgentID_BrowserExtensions)
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
 
-TEST_F(SystemInventoryDeleteElement, emptyPackageName_BrowserExtensions)
+TEST_F(SystemInventoryDeleteElement, emptyItemId_BrowserExtensions)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, browserExtensionPackageName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionItemId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
 
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
@@ -510,10 +510,12 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_BrowserExtensions)
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, browserExtensionPackageName()).WillOnce(testing::Return("extension"));
+    EXPECT_CALL(*context, browserExtensionItemId())
+        .WillOnce(testing::Return("e789d3093a35a0d12106069eda581248a2999f74"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
 
     EXPECT_NO_THROW(deleteElement->handleRequest(context));
 
-    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_extension","operation":"DELETED"})");
+    EXPECT_EQ(context->m_serializedElement,
+              R"({"id":"001_e789d3093a35a0d12106069eda581248a2999f74","operation":"DELETED"})");
 }

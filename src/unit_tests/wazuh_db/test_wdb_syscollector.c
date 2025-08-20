@@ -3923,6 +3923,7 @@ void test_wdb_browser_extensions_insert_sql_fail(void **state) {
     const char * package_installed = "package_installed";
     const char * file_hash_sha256 = "file_hash_sha256";
     const char * checksum = "checksum";
+    const char * item_id = "e789d3093a35a0d12106069eda581248a2999f74";
 
     will_return(__wrap_wdb_stmt_cache, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 1);
@@ -3997,6 +3998,9 @@ void test_wdb_browser_extensions_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 24);
     expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
     will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 25);
+    expect_string(__wrap_sqlite3_bind_text, buffer, item_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_wdb_step, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
@@ -4009,7 +4013,7 @@ void test_wdb_browser_extensions_insert_sql_fail(void **state) {
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
         .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
-        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
 
     output = wdb_browser_extensions_insert(data, &browser_extension_record, true);
@@ -4045,6 +4049,7 @@ void test_wdb_browser_extensions_save_transaction_fail(void **state) {
     const char * package_installed = "package_installed";
     const char * file_hash_sha256 = "file_hash_sha256";
     const char * checksum = "checksum";
+    const char * item_id = "e789d3093a35a0d12106069eda581248a2999f74";
 
     data->transaction = 0;
     will_return(__wrap_wdb_begin2, -1);
@@ -4057,7 +4062,7 @@ void test_wdb_browser_extensions_save_transaction_fail(void **state) {
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
         .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
-        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
 
     output = wdb_browser_extensions_save(data, &browser_extension_record, true);
@@ -4092,6 +4097,7 @@ void test_wdb_browser_extensions_save_insert_fail(void **state) {
     const char * package_installed = "package_installed";
     const char * file_hash_sha256 = "file_hash_sha256";
     const char * checksum = "checksum";
+    const char * item_id = "e789d3093a35a0d12106069eda581248a2999f74";
 
     data->transaction = 1;
 
@@ -4105,7 +4111,7 @@ void test_wdb_browser_extensions_save_insert_fail(void **state) {
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
         .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
-        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
 
     output = wdb_browser_extensions_save(data, &browser_extension_record, true);
@@ -4140,6 +4146,7 @@ void test_wdb_browser_extensions_save_success(void **state) {
     const char * package_installed = "package_installed";
     const char * file_hash_sha256 = "file_hash_sha256";
     const char * checksum = "checksum";
+    const char * item_id = "e789d3093a35a0d12106069eda581248a2999f74";
 
     data->transaction = 0;
     will_return(__wrap_wdb_begin2, 0);
@@ -4217,6 +4224,10 @@ void test_wdb_browser_extensions_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 24);
     expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
     will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 25);
+    expect_string(__wrap_sqlite3_bind_text, buffer, item_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
     browser_extension_record_t browser_extension_record = {
@@ -4226,7 +4237,7 @@ void test_wdb_browser_extensions_save_success(void **state) {
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
         .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
-        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
 
     output = wdb_browser_extensions_save(data, &browser_extension_record, true);

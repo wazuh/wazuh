@@ -29,7 +29,8 @@
     "browser_profile_referenced": 0,
     "package_installed": null,
     "file_hash_sha256": null,
-    "checksum": null
+    "checksum": null,
+    "item_id": "fbdec581b7a6abd68fa838df2ec69f0e8f780eef"
   },
   "operation": "INSERTED"
 }
