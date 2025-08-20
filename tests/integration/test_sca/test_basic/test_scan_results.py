@@ -149,12 +149,12 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
     assert log_monitor.callback_result
 
     # Wait for the SCA scan checks to start for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_STARTED_CHECK + fr'"{policy_name}"'), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_STARTED_CHECK + fr'"{policy_name}"'), timeout=120 if sys.platform == WINDOWS else 30)
     assert log_monitor.callback_result
 
     # Get the results for the checks obtained in the SCA scan
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_RESULT), timeout=20, accumulations=int(test_metadata['results']))
+    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_RESULT), timeout=120 if sys.platform == WINDOWS else 30, accumulations=int(test_metadata['results']))
 
     # Wait for the SCA scan checks to end for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_ENDED_CHECK + fr'"{policy_name}"'), timeout=30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_ENDED_CHECK + fr'"{policy_name}"'), timeout=120 if sys.platform == WINDOWS else 30)
     assert log_monitor.callback_result

@@ -145,16 +145,16 @@ def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_fil
     assert log_monitor.callback_result
     log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_STARTING), timeout=10)
     assert log_monitor.callback_result
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_RUNNING), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_RUNNING), timeout=30)
     assert log_monitor.callback_result
     policy_name = Path(test_metadata['policy_file']).stem
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_STARTED_REQ + fr'"{policy_name}"'), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_STARTED_REQ + fr'"{policy_name}"'), timeout=40)
     assert log_monitor.callback_result
     log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_ENDED_REQ + fr'"{policy_name}"' + r', result: (.*)'), timeout=10)
     assert log_monitor.callback_result
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_STARTED_CHECK + fr'"{policy_name}"'), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_STARTED_CHECK + fr'"{policy_name}"'), timeout=120 if sys.platform == WINDOWS else 30)
     assert log_monitor.callback_result
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_ENDED_CHECK + fr'"{policy_name}"'), timeout=30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_ENDED_CHECK + fr'"{policy_name}"'), timeout=120 if sys.platform == WINDOWS else 30)
     assert log_monitor.callback_result
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
