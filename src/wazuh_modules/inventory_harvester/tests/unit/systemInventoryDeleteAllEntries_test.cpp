@@ -115,6 +115,7 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponents,
                                            MockSystemContext::AffectedComponentType::User,
                                            MockSystemContext::AffectedComponentType::Group,
                                            MockSystemContext::AffectedComponentType::BrowserExtension,
+                                           MockSystemContext::AffectedComponentType::Service,
                                            MockSystemContext::AffectedComponentType::Invalid));
 
 INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
@@ -131,4 +132,5 @@ INSTANTIATE_TEST_SUITE_P(ClearElementsDifferentComponentsNoAgent,
                                            MockSystemContext::AffectedComponentType::User,
                                            MockSystemContext::AffectedComponentType::Group,
                                            MockSystemContext::AffectedComponentType::BrowserExtension,
+                                           MockSystemContext::AffectedComponentType::Service,
                                            MockSystemContext::AffectedComponentType::Invalid));

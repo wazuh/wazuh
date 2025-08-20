@@ -500,7 +500,6 @@ TEST_F(SystemInventoryDeleteElement, emptyItemId_BrowserExtensions)
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
     EXPECT_CALL(*context, browserExtensionItemId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
-
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
 
@@ -518,4 +517,47 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_BrowserExtensions)
 
     EXPECT_EQ(context->m_serializedElement,
               R"({"id":"001_e789d3093a35a0d12106069eda581248a2999f74","operation":"DELETED"})");
+}
+
+/*
+ * Test cases for SystemInventoryUpsertElement services scenario
+ * These tests check the behavior of the SystemInventoryDeleteElement class when handling requests.
+ */
+TEST_F(SystemInventoryDeleteElement, emptyAgentID_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, emptyServiceName_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_ANY_THROW(deleteElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryDeleteElement, validAgentID_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("apache2"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_NO_THROW(deleteElement->handleRequest(context));
+
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_apache2","operation":"DELETED"})");
 }
