@@ -94,6 +94,7 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | dbsync_processes          | Running processes. |
 |                              | dbsync_users              | Operating system users. |
 |                              | dbsync_groups             | Operating system groups. |
+|                              | dbsync_services           | Operating system services and daemons. |
 |                              | dbsync_browser_extensions | Installed web browser extensions. |
 
 ### Inventory providers
@@ -266,6 +267,25 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | browser_profile_referenced | bool | Whether the profile is referenced. |
 |                              | package_installed   | string    | Installation status. |
 |                              | file_hash_sha256    | string    | SHA-256 hash of the extension file. |
+| **dbsync_services**          | name               | string    | Service name or unit name. |
+|                              | display_name       | string    | Display name of the service. |
+|                              | description        | string    | Description of the service/unit. |
+|                              | service_type       | string    | Type of service (e.g., OWN_PROCESS). |
+|                              | start_type         | string    | Start type (e.g., AUTO_START, DEMAND_START). |
+|                              | state              | string    | Current state (e.g., RUNNING, STOPPED, active). |
+|                              | pid                | long      | Process ID of the running service. |
+|                              | ppid               | long      | Parent process ID. |
+|                              | binary_path        | string    | Path to the service executable or unit file. |
+|                              | load_state         | string    | Load state of the unit. |
+|                              | active_state       | string    | Active state of the unit. |
+|                              | sub_state          | string    | Low-level systemd substate. |
+|                              | unit_file_state    | string    | Whether the unit is enabled/disabled. |
+|                              | status             | string    | Service status information. |
+|                              | user               | string    | User account running the service. |
+|                              | can_stop           | string    | Whether the service can be stopped. |
+|                              | can_reload         | string    | Whether the service can be reloaded. |
+|                              | service_exit_code  | long      | Service-specific exit code on failure. |
+
 
 ### SyncMsg table
 - Main table in flatbuffer schema for synchronization events.
@@ -316,6 +336,7 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | syscollector_users              | Equivalent to dbsync_users. |
 |                              | syscollector_groups             | Equivalent to dbsync_groups. |
 |                              | syscollector_browser_extensions | Equivalent to dbsync_browser_extensions. |
+|                              | syscollector_services           | Equivalent to dbsync_services . |
 |                              | fim_file                        | File monitoring. |
 |                              | fim_registry_key                | Registry monitoring key. |
 |                              | fim_registry_value              | Registry monitoring value. |
