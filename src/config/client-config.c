@@ -134,7 +134,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
-            mwarn("Client option 'force_reconnect_interval' is no longer configurable.");
+            mwarn("Deprecated option 'force_reconnect_interval' is not longer available.");
         } else if (strcmp(node[i]->element, xml_main_ip_update_interval) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
@@ -234,7 +234,7 @@ int Read_Client_Shared(XML_NODE node, void *d1)
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
         } else if (strcmp(node[i]->element, "force_reconnect_interval") == 0) {
-            mwarn("Client shared option 'force_reconnect_interval' is no longer configurable.");
+            mwarn("Deprecated option 'force_reconnect_interval' is not longer available.");
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
