@@ -1,0 +1,32 @@
+{
+  "agent_info": {
+    "agent_id": "007",
+    "agent_ip": "any",
+    "agent_name": "centos9",
+    "agent_version": "v4.14.0"
+  },
+  "data_type": "dbsync_services",
+  "data": {
+    "scan_time": " ",
+    "name": "postgresql",
+    "display_name": " ",
+    "description": " ",
+    "service_type": " ",
+    "start_type": " ",
+    "state": " ",
+    "pid": null,
+    "ppid": null,
+    "binary_path": " ",
+    "load_state": " ",
+    "active_state": " ",
+    "sub_state": " ",
+    "unit_file_state": " ",
+    "status": " ",
+    "user": " ",
+    "can_stop": " ",
+    "can_reload": " ",
+    "service_exit_code": null,
+    "checksum": " "
+  },
+  "operation": "INSERTED"
+}

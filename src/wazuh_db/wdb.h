@@ -943,6 +943,22 @@ int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
                       const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
                       const char * group_users, const char * checksum, const bool replace);
 
+// Save service info into DB.
+int wdb_services_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
+                        const char * description, const char * service_type, const char * start_type, const char * state,
+                        int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
+                        const char * sub_state, const char * unit_file_state, const char * status, const char * user,
+                        const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
+                        const char * item_id, const bool replace);
+
+// Insert service info tuple. Return 0 on success or -1 on error.
+int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
+                        const char * description, const char * service_type, const char * start_type, const char * state,
+                        int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
+                        const char * sub_state, const char * unit_file_state, const char * status, const char * user,
+                        const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
+                        const char * item_id, const bool replace);
+
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
 
 // Save CIS-CAT scan results.
