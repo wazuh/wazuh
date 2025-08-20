@@ -1809,7 +1809,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         }
 
         else if (strcmp(node[i]->element, "scan_on_start") == 0) {
-            mwarn("Syscheck option 'scan_on_start' is no longer configurable.");
+            mwarn("Deprecated option 'scan_on_start' is not longer available.");
         }
 
         /* Get if disabled */
@@ -1971,7 +1971,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             /* alert_new_files option is not read here */
         } else if (strcmp(node[i]->element, "prefilter_cmd") == 0) {
-            mwarn("Syscheck option 'prefilter_cmd' is no longer configurable.");
+            mwarn("Deprecated option 'prefilter_cmd' is not longer available.");
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
             // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
@@ -2116,7 +2116,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             }
         }
         else if (strcmp(node[i]->element, "allow_remote_prefilter_cmd") == 0) {
-            mwarn("Syscheck option 'allow_remote_prefilter_cmd' is no longer configurable.");
+            mwarn("Deprecated option 'allow_remote_prefilter_cmd' is not longer available.");
         }
         else if (strcmp(node[i]->element, xml_max_files_per_second) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
