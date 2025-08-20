@@ -1,0 +1,32 @@
+{
+  "agent_info": {
+    "agent_id": "001",
+    "agent_ip": "any",
+    "agent_name": "centos9",
+    "agent_version": "v4.14.0"
+  },
+  "data_type": "dbsync_services",
+  "data": {
+    "scan_time": "2025/08/20 16:30:01",
+    "name": "sshd",
+    "display_name": "OpenSSH Daemon",
+    "description": "OpenSSH server daemon",
+    "service_type": "simple",
+    "start_type": "enabled",
+    "state": "running",
+    "pid": 1234,
+    "ppid": 1,
+    "binary_path": "/usr/sbin/sshd",
+    "load_state": "loaded",
+    "active_state": "active",
+    "sub_state": "running",
+    "unit_file_state": "enabled",
+    "status": "ok",
+    "user": "root",
+    "can_stop": "yes",
+    "can_reload": "yes",
+    "service_exit_code": 0,
+    "checksum": "abc123def456789012345678901234567890abcd"
+  },
+  "operation": "INSERTED"
+}

@@ -1,0 +1,32 @@
+{
+  "agent_info": {
+    "agent_id": "003",
+    "agent_ip": "any",
+    "agent_name": "centos9",
+    "agent_version": "v4.14.0"
+  },
+  "data_type": "dbsync_services",
+  "data": {
+    "scan_time": null,
+    "name": null,
+    "display_name": null,
+    "description": null,
+    "service_type": null,
+    "start_type": null,
+    "state": null,
+    "pid": null,
+    "ppid": null,
+    "binary_path": null,
+    "load_state": null,
+    "active_state": null,
+    "sub_state": null,
+    "unit_file_state": null,
+    "status": null,
+    "user": null,
+    "can_stop": null,
+    "can_reload": null,
+    "service_exit_code": null,
+    "checksum": null
+  },
+  "operation": "INSERTED"
+}
