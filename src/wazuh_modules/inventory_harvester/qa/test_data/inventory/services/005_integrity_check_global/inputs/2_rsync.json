@@ -1,0 +1,16 @@
+{
+  "agent_info": {
+    "agent_id": "001",
+    "agent_ip": "any",
+    "agent_name": "centos9",
+    "agent_version": "v4.14.0"
+  },
+  "data_type": "integrity_check_global",
+  "data": {
+    "attributes_type": "syscollector_services",
+    "begin": "1",
+    "checksum": "c8f789a123b456789012345678901234567890ab",
+    "end": "92",
+    "id": 1740672009
+  }
+}
