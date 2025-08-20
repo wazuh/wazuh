@@ -19,6 +19,7 @@ if(COVERITY)
 endif(COVERITY)
 
 include(CheckCXXSourceCompiles)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -37,7 +38,6 @@ else()
   add_definitions(-DHAS_STDFILESYSTEM=false)
 endif()
 
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -fPIC")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
