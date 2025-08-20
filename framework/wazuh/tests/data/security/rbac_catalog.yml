@@ -224,7 +224,7 @@ get_rbac_actions:
             - "*:*:*"
           effect: allow
         related_endpoints:
-          - PUT /analysisd/reload
+          - PUT /cluster/analysisd/reload
       group:delete:
         description: Delete agent groups
         resources:
@@ -291,7 +291,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/node/{node_id}/restart
-          - PUT /analysisd/reload
           - GET /cluster/local/info
           - GET /cluster/local/config
           - GET /cluster/nodes
@@ -309,6 +308,7 @@ get_rbac_actions:
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
+          - PUT /cluster/analysisd/reload
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
       ciscat:read:
