@@ -135,10 +135,10 @@ x-rbac-catalog:
     'analysisd:reload':
       description: "Reload the ruleset"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: [ 'analysisd:reload' ]
-        resources: [ 'node:id:worker1' ]
+        resources: [ '*:*:*' ]
         effect: "allow"
     'group:modify_assignments':
       description: "Change the agents assigned to the group"

@@ -216,12 +216,12 @@ get_rbac_actions:
       analysisd:reload:
         description: Reload the ruleset
         resources:
-          - node:id
+            - "*:*"
         example:
           actions:
             - analysisd:reload
           resources:
-            - node:id:worker1
+            - "*:*:*"
           effect: allow
         related_endpoints:
           - PUT /cluster/analysisd/reload

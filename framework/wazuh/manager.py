@@ -210,7 +210,7 @@ def restart() -> AffectedItemsWazuhResult:
 
     return result
 
-_restart_ruleset_default_result_kwargs = {
+_reload_ruleset_default_result_kwargs = {
     'all_msg': f"Reload request sent to {'all specified nodes' if node_id != 'manager' else ''}",
     'some_msg': "Could not send reload request to some specified nodes",
     'none_msg': "Could not send reload request to any node",
@@ -220,8 +220,8 @@ _restart_ruleset_default_result_kwargs = {
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=["analysisd:reload"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
-                  post_proc_kwargs={'default_result_kwargs': _restart_ruleset_default_result_kwargs})
+                  resources=['*:*:*'],
+                  post_proc_kwargs={'default_result_kwargs': _reload_ruleset_default_result_kwargs})
 async def reload_ruleset() -> AffectedItemsWazuhResult:
     """Reload the ruleset on the current node.
 
@@ -230,7 +230,7 @@ async def reload_ruleset() -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Result of the reload operation, including affected and failed items.
     """
-    results = AffectedItemsWazuhResult(**_restart_ruleset_default_result_kwargs)
+    results = AffectedItemsWazuhResult(**_reload_ruleset_default_result_kwargs)
 
     try:
         if node_type == 'master':
@@ -240,7 +240,7 @@ async def reload_ruleset() -> AffectedItemsWazuhResult:
                 if socket_response.has_warnings():
                     affected_item['msg'] = ', '.join(socket_response.warnings)
                 else:
-                    affected_item['msg'] = 'Ruleset reload request sent successfully'
+                    affected_item['msg'] = 'Ruleset reload request sent successfully.'
 
                 results.affected_items.append(affected_item)
             else:
@@ -253,7 +253,7 @@ async def reload_ruleset() -> AffectedItemsWazuhResult:
             if isinstance(result, dict) and 'success' in result:
                 result = result['success']
                 if result:
-                    result = 'Ruleset reload request sent successfully'
+                    result = 'Ruleset reload request sent successfully.'
                 else:
                     result = 'Failed to send the ruleset reload request.'
 
