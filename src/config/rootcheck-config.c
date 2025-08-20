@@ -107,13 +107,13 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, "rootkit_files") == 0) {
-            mwarn("Rootcheck option 'rootkit_files' is no longer supported. Use the FIM module instead.");
+            mwarn("Deprecated option 'rootkit_files' is no longer available. Use the FIM module instead.");
         } else if (strcmp(node[i]->element, "rootkit_trojans") == 0) {
-            mwarn("Rootcheck option 'rootkit_trojans' is no longer supported. Use the FIM module instead.");
+            mwarn("Deprecated option 'rootkit_trojans' is no longer available. Use the FIM module instead.");
         } else if (strcmp(node[i]->element, "windows_audit") == 0) {
-            mwarn("Rootcheck option 'windows_audit' is no longer supported. Use the SCA module instead.");
+            mwarn("Deprectaed option 'windows_audit' is no longer available. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, "system_audit") == 0) {
-            mwarn("Rootcheck option 'system_audit' is no longer supported. Use the SCA module instead.");
+            mwarn("Deprectaed option 'system_audit' is no longer available. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, xml_ignore) == 0) {
             unsigned int j = 0;
             while (rootcheck->ignore && rootcheck->ignore[j]) {
