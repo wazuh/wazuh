@@ -42,6 +42,7 @@ public:
         Users,
         Groups,
         BrowserExtensions,
+        Services,
         Invalid
     };
 
@@ -59,6 +60,7 @@ public:
         User,
         Group,
         BrowserExtension,
+        Service,
         Invalid
     };
 
@@ -213,6 +215,18 @@ public:
     MOCK_METHOD(std::string_view, browserExtensionPackageInstalled, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionFileHashSha256, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionItemId, (), (const));
+    // Services
+    MOCK_METHOD(std::string_view, serviceName, (), (const));
+    MOCK_METHOD(std::string_view, serviceDisplayName, (), (const));
+    MOCK_METHOD(std::string_view, serviceDescription, (), (const));
+    MOCK_METHOD(std::string_view, serviceState, (), (const));
+    MOCK_METHOD(std::string_view, serviceType, (), (const));
+    MOCK_METHOD(std::string_view, serviceStartType, (), (const));
+    MOCK_METHOD(std::string_view, serviceUser, (), (const));
+    MOCK_METHOD(std::string_view, serviceCommand, (), (const));
+    MOCK_METHOD(std::string_view, serviceExecutablePath, (), (const));
+    MOCK_METHOD(int64_t, servicePid, (), (const));
+    MOCK_METHOD(std::string_view, serviceGroup, (), (const));
 
     std::string m_serializedElement;
 };
