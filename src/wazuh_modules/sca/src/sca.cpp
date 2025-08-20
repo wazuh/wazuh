@@ -2,6 +2,8 @@
 #include <sca_impl.hpp>
 
 #include <iostream>
+#include <cJSON.h>
+#include <json.hpp>
 
 #ifdef __cplusplus
 extern "C"
@@ -28,6 +30,7 @@ extern "C"
 
 static push_stateless_func g_push_stateless_func = NULL;
 static push_stateful_func g_push_stateful_func = NULL;
+static yaml_to_cjson_func g_yaml_to_cjson_func = NULL;
 
 void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_func stateful_func)
 {
@@ -87,6 +90,59 @@ int sca_sync_message(const char* data)
 void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback)
 {
     SecurityConfigurationAssessment::SetGlobalWmExecFunction(wm_exec_callback);
+}
+
+void sca_set_yaml_to_cjson_func(yaml_to_cjson_func yaml_func)
+{
+    g_yaml_to_cjson_func = yaml_func;
+}
+
+nlohmann::json cjson_to_nlohmann(cJSON* cjson_obj)
+{
+    if (!cjson_obj)
+    {
+        return nlohmann::json{};
+    }
+
+    char* json_string = cJSON_Print(cjson_obj);
+
+    if (!json_string)
+    {
+        return nlohmann::json{};
+    }
+
+    try
+    {
+        nlohmann::json result = nlohmann::json::parse(json_string);
+        free(json_string);
+        return result;
+    }
+    catch (const std::exception&)
+    {
+        free(json_string);
+        return nlohmann::json{};
+    }
+}
+
+nlohmann::json yaml_file_to_json_cpp(const std::string& yaml_path)
+{
+    if (!g_yaml_to_cjson_func)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "YAML to cJSON function not set");
+        return nlohmann::json{};
+    }
+
+    cJSON* cjson_obj = g_yaml_to_cjson_func(yaml_path.c_str());
+
+    if (!cjson_obj)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, "Failed to convert YAML file to cJSON: " + yaml_path);
+        return nlohmann::json{};
+    }
+
+    nlohmann::json result = cjson_to_nlohmann(cjson_obj);
+    cJSON_Delete(cjson_obj);
+    return result;
 }
 
 SCA::SCA()
@@ -161,7 +217,7 @@ void SCA::setup(const struct wm_sca_t* sca_config)
         }
 
         // Call Setup only once during initialization
-        m_sca->Setup(enabled, scan_on_start, scanInterval, commandsTimeout, remoteEnabled, policies);
+        m_sca->Setup(enabled, scan_on_start, scanInterval, commandsTimeout, remoteEnabled, policies, yaml_file_to_json_cpp);
     }
 }
 

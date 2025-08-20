@@ -42,7 +42,7 @@ SCAPolicyLoader::SCAPolicyLoader(const std::vector<sca::PolicyData>& policies,
 }
 
 std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const int commandsTimeout,
-                                                                       const bool remoteEnabled, const CreateEventsFunc& createEvents) const
+                                                                       const bool remoteEnabled, const CreateEventsFunc& createEvents, const YamlToJsonFunc& yamlToJsonFunc) const
 {
     std::vector<std::unique_ptr<ISCAPolicy>> policies;
     nlohmann::json policiesAndChecks;
@@ -57,7 +57,7 @@ std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const int
             {
                 LoggingHelper::getInstance().log(LOG_DEBUG, "Loading policy from " + pol.path);
 
-                PolicyParser parser(pol.path, commandsTimeout, remoteEnabled || !pol.isRemote);
+                PolicyParser parser(pol.path, commandsTimeout, remoteEnabled || !pol.isRemote, yamlToJsonFunc);
 
                 if (auto policy = parser.ParsePolicy(policiesAndChecks); policy)
                 {
@@ -165,15 +165,28 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
 
             if (result == MODIFIED && rowData.contains("new") && rowData["new"].is_object())
             {
-                if (rowData["new"].contains("id") && rowData["new"]["id"].is_string())
+                if (rowData["new"].contains("id"))
                 {
-                    id = rowData["new"]["id"];
+                    if (rowData["new"]["id"].is_string())
+                    {
+                        id = rowData["new"]["id"];
+                    }
+                    else if (rowData["new"]["id"].is_number())
+                    {
+                        id = std::to_string(rowData["new"]["id"].get<int>());
+                    }
                 }
             }
-            else if ((result == INSERTED || result == DELETED) && rowData.contains("id") &&
-                     rowData["id"].is_string())
+            else if ((result == INSERTED || result == DELETED) && rowData.contains("id"))
             {
-                id = rowData["id"];
+                if (rowData["id"].is_string())
+                {
+                    id = rowData["id"];
+                }
+                else if (rowData["id"].is_number())
+                {
+                    id = std::to_string(rowData["id"].get<int>());
+                }
             }
 
             if (!id.empty())

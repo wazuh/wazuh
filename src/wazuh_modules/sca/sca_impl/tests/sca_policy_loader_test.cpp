@@ -5,7 +5,6 @@
 #include <sca_policy_loader.hpp>
 #include <sca_policy_loader_mock.hpp>
 #include <sca_policy_parser.hpp>
-#include <yaml_document.hpp>
 
 #include "logging_helper.hpp"
 
@@ -67,7 +66,8 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesSkipsDisabledPolicies)
 
     SCAPolicyLoader loader(policies, mockFileSystem, mockDBSync);
 
-    auto loadedPolicies = loader.LoadPolicies(30, true, [](auto, auto) {});
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json { return nlohmann::json{}; };
+    auto loadedPolicies = loader.LoadPolicies(30, true, [](auto, auto) {}, mockYamlToJson);
     EXPECT_LE(loadedPolicies.size(), 1);  // Should only load enabled policy
 }
 
@@ -77,10 +77,11 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesNoPolicies)
     auto dbSync = std::make_shared<MockDBSync>();
 
     const SCAPolicyLoader loader({}, fsMock, dbSync);
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json { return nlohmann::json{}; };
     ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto)
     {
         return;
-    }).size(), 0);
+    }, mockYamlToJson).size(), 0);
 }
 
 TEST_F(ScaPolicyLoaderTest, LoadPoliciesSomePolicies)
@@ -103,10 +104,11 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesSomePolicies)
         {"dummy/path/4", false, false}};
 
     const SCAPolicyLoader loader(policies, fsMock, dbSync);
+    auto mockYamlToJson = [](const std::string&) -> nlohmann::json { return nlohmann::json{}; };
     ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto)
     {
         return;
-    }).size(), 0);
+    }, mockYamlToJson).size(), 0);
 }
 
 TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
@@ -138,10 +140,48 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
             - 'f: $var11/shared exists'
       )";
 
-    // create a yaml doc just to pass to the parser
-    auto yamlDocument = std::make_unique<YamlDocument>(yml);
+    // create a yaml to json function for the parser
+    auto yamlToJsonFunc = [yml](const std::string&) -> nlohmann::json
+    {
+        // For test purposes, manually convert the YAML structure to JSON
+        // This is a simplified conversion for the specific test content
+        nlohmann::json result;
+
+        if (yml.find("novariables:") != std::string::npos)
+        {
+            // Handle malformed YAML case
+            result["novariables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
+            result["nopolicy"] = {{"id", "policy1"}};
+            result["nochecks"] = nlohmann::json::array(
+            {
+                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
+                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
+                }
+            });
+        }
+        else if (yml.find("variables:") != std::string::npos)
+        {
+            // Handle well-formed YAML case
+            result["variables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
+            result["policy"] = {{"id", "policy1"}};
+            result["checks"] = nlohmann::json::array(
+            {
+                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
+                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
+                }
+            });
+
+            if (yml.find("check2") != std::string::npos)
+            {
+                result["checks"].push_back({{"id", "check2"}, {"title", "title2"}, {"condition", "any"},
+                    {"rules", {"f: $var1/passwd2 exists", "f: $var11/shared2 exists"}}});
+            }
+        }
+
+        return result;
+    };
     const std::filesystem::path path("dummy.yaml");
-    PolicyParser parser(path, 30, false, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, yamlToJsonFunc);
 
     // parse this policy and get a real policy object
     nlohmann::json jasonData;
@@ -193,10 +233,48 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaNoDBSyncObject)
             - 'f: $var11/shared2 exists'
       )";
 
-    // create a yaml doc just to pass to the parser
-    auto yamlDocument = std::make_unique<YamlDocument>(yml);
+    // create a yaml to json function for the parser
+    auto yamlToJsonFunc = [yml](const std::string&) -> nlohmann::json
+    {
+        // For test purposes, manually convert the YAML structure to JSON
+        // This is a simplified conversion for the specific test content
+        nlohmann::json result;
+
+        if (yml.find("novariables:") != std::string::npos)
+        {
+            // Handle malformed YAML case
+            result["novariables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
+            result["nopolicy"] = {{"id", "policy1"}};
+            result["nochecks"] = nlohmann::json::array(
+            {
+                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
+                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
+                }
+            });
+        }
+        else if (yml.find("variables:") != std::string::npos)
+        {
+            // Handle well-formed YAML case
+            result["variables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
+            result["policy"] = {{"id", "policy1"}};
+            result["checks"] = nlohmann::json::array(
+            {
+                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
+                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
+                }
+            });
+
+            if (yml.find("check2") != std::string::npos)
+            {
+                result["checks"].push_back({{"id", "check2"}, {"title", "title2"}, {"condition", "any"},
+                    {"rules", {"f: $var1/passwd2 exists", "f: $var11/shared2 exists"}}});
+            }
+        }
+
+        return result;
+    };
     const std::filesystem::path path("dummy.yaml");
-    PolicyParser parser(path, 30, false, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, yamlToJsonFunc);
 
     // parse this policy and get a real policy object
     nlohmann::json jasonData;
@@ -251,10 +329,48 @@ TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDelta)
             - 'f: $var11/shared exists'
       )";
 
-    // create a yaml doc just to pass to the parser
-    auto yamlDocument = std::make_unique<YamlDocument>(yml);
+    // create a yaml to json function for the parser
+    auto yamlToJsonFunc = [yml](const std::string&) -> nlohmann::json
+    {
+        // For test purposes, manually convert the YAML structure to JSON
+        // This is a simplified conversion for the specific test content
+        nlohmann::json result;
+
+        if (yml.find("novariables:") != std::string::npos)
+        {
+            // Handle malformed YAML case
+            result["novariables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
+            result["nopolicy"] = {{"id", "policy1"}};
+            result["nochecks"] = nlohmann::json::array(
+            {
+                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
+                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
+                }
+            });
+        }
+        else if (yml.find("variables:") != std::string::npos)
+        {
+            // Handle well-formed YAML case
+            result["variables"] = {{"$var1", "/etc"}, {"$var11", "/usr"}};
+            result["policy"] = {{"id", "policy1"}};
+            result["checks"] = nlohmann::json::array(
+            {
+                {   {"id", "check1"}, {"title", "title"}, {"condition", "all"},
+                    {"rules", {"f: $var1/passwd exists", "f: $var11/shared exists"}}
+                }
+            });
+
+            if (yml.find("check2") != std::string::npos)
+            {
+                result["checks"].push_back({{"id", "check2"}, {"title", "title2"}, {"condition", "any"},
+                    {"rules", {"f: $var1/passwd2 exists", "f: $var11/shared2 exists"}}});
+            }
+        }
+
+        return result;
+    };
     const std::filesystem::path path("dummy.yaml");
-    PolicyParser parser(path, 30, false, std::move(yamlDocument));
+    PolicyParser parser(path, 30, false, yamlToJsonFunc);
 
     // parse this policy and get a real policy object
     nlohmann::json jasonData;

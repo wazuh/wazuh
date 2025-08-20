@@ -14,6 +14,9 @@
 #include <string>
 #include <vector>
 
+/// @brief Type alias for YAML to JSON conversion function
+using YamlToJsonFunc = std::function<nlohmann::json(const std::string&)>;
+
 class SecurityConfigurationAssessment
 {
     public:
@@ -43,7 +46,8 @@ class SecurityConfigurationAssessment
                    std::time_t scanInterval,
                    const int commandsTimeout,
                    const bool remoteEnabled,
-                   const std::vector<sca::PolicyData>& policies);
+                   const std::vector<sca::PolicyData>& policies,
+                   const YamlToJsonFunc& yamlToJsonFunc = nullptr);
 
         /// @copydoc IModule::Stop
         void Stop() ;
