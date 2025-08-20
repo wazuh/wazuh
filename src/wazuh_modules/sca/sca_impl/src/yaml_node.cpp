@@ -1,6 +1,8 @@
 #include "yaml_node.hpp"
 #include "yaml_document.hpp"
 
+#include "logging_helper.hpp"
+
 #include <iostream>
 
 YamlNode::YamlNode(yaml_document_t* doc, yaml_node_t* nodePtr)
@@ -286,7 +288,19 @@ YamlNode YamlNode::CreateEmptySequence(const std::string& key)
     const int seq_id = yaml_document_add_sequence(m_document, tag, YAML_BLOCK_SEQUENCE_STYLE);
 
     free(tag);
-    const int mapping_id = GetId();
+
+    int mapping_id;
+
+    try
+    {
+        mapping_id = GetId();
+    }
+    catch (const std::exception& e)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR,
+            "Failed to get YAML node ID in CreateEmptySequence for key '" + key + "': " + e.what());
+        throw std::runtime_error("CreateEmptySequence failed: Unable to find current node in document while creating sequence for key '" + key + "'");
+    }
 
     yaml_document_append_mapping_pair(m_document, mapping_id, key_id, seq_id);
 
@@ -315,7 +329,20 @@ void YamlNode::AppendToSequence(const std::string& value)
     free(val_str);
     free(tag);
 
-    yaml_document_append_sequence_item(m_document, GetId(), scalar_id);
+    int sequence_id;
+
+    try
+    {
+        sequence_id = GetId();
+    }
+    catch (const std::exception& e)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR,
+            "Failed to get YAML node ID in AppendToSequence for value '" + value + "': " + e.what());
+        throw std::runtime_error("AppendToSequence failed: Unable to find current sequence node in document while appending value '" + value + "'");
+    }
+
+    yaml_document_append_sequence_item(m_document, sequence_id, scalar_id);
     sequence_cache.clear();
 }
 
@@ -346,8 +373,22 @@ YamlNode YamlNode::CloneInto(yaml_document_t* dest_doc) const
 
             for (const auto& item : AsSequence())
             {
-                const YamlNode cloned = item.CloneInto(dest_doc);
-                yaml_document_append_sequence_item(dest_doc, seq_id, cloned.GetId());
+                const auto cloned = item.CloneInto(dest_doc);
+
+                int cloned_id;
+
+                try
+                {
+                    cloned_id = cloned.GetId();
+                }
+                catch (const std::exception& e)
+                {
+                    LoggingHelper::getInstance().log(LOG_ERROR,
+                        "Failed to get YAML node ID for cloned sequence item in CloneInto: " + std::string(e.what()));
+                    throw std::runtime_error("CloneInto failed: Unable to find cloned sequence item node in destination document");
+                }
+
+                yaml_document_append_sequence_item(dest_doc, seq_id, cloned_id);
             }
             return YamlNode(dest_doc, yaml_document_get_node(dest_doc, seq_id));
         }
@@ -369,8 +410,21 @@ YamlNode YamlNode::CloneInto(yaml_document_t* dest_doc) const
                                                             YAML_PLAIN_SCALAR_STYLE);
                 free(key_str);
                 free(key_tag);
-                const YamlNode cloned_val = val.CloneInto(dest_doc);
-                yaml_document_append_mapping_pair(dest_doc, map_id, key_id, cloned_val.GetId());
+                const auto cloned_val = val.CloneInto(dest_doc);
+
+                int cloned_val_id;
+
+                try
+                {
+                    cloned_val_id = cloned_val.GetId();
+                }
+                catch (const std::exception& e)
+                {
+                    LoggingHelper::getInstance().log(LOG_ERROR,
+                        "Failed to get YAML node ID for cloned mapping value with key '" + key + "' in CloneInto: " + std::string(e.what()));
+                    throw std::runtime_error("CloneInto failed: Unable to find cloned mapping value node in destination document for key '" + key + "'");
+                }
+                yaml_document_append_mapping_pair(dest_doc, map_id, key_id, cloned_val_id);
             }
             return YamlNode(dest_doc, yaml_document_get_node(dest_doc, map_id));
         }
