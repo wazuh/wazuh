@@ -287,14 +287,14 @@ checks:
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:^/var/tmp\s'
 
-  # 1.1.4.2 Ensure noexec option set on /var/tmp partition. (Automated)
+  # 1.1.2.5.4 Ensure noexec option set on /var/tmp partition. (Automated)
   - id: 31510
     title: "Ensure noexec option set on /var/tmp partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /var/tmp."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/tmp partition. Example: <device> /var/tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/tmp with the configured options: # mount -o remount /var/tmp."
     compliance:
-      - cis: ["1.1.4.2"]
+      - cis: ["1.1.2.5.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -363,7 +363,7 @@ checks:
   # 1.1.5 Configure /var/log
   ###############################################
 
-  # 1.1.5.1 Ensure separate partition exists for /var/log. (Automated)
+  # 1.1.2.6.1 Ensure separate partition exists for /var/log. (Automated)
   - id: 31513
     title: "Ensure separate partition exists for /var/log."
     description: "The /var/log directory is used by system services to store log data."
@@ -373,7 +373,7 @@ checks:
     references:
       - "http://tldp.org/HOWTO/LVM-HOWTO/"
     compliance:
-      - cis: ["1.1.5.1"]
+      - cis: ["1.1.2.6.1"]
       - cis_csc_v8: ["8.3"]
       - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
@@ -385,14 +385,14 @@ checks:
     rules:
       - 'c:findmnt --kernel /var/log -> r:^/var/log\s'
 
-  # 1.1.5.2 Ensure nodev option set on /var/log partition. (Automated)
+  # 1.1.2.6.2 Ensure nodev option set on /var/log partition. (Automated)
   - id: 31514
     title: "Ensure nodev option set on /var/log partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/log filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
     compliance:
-      - cis: ["1.1.5.2"]
+      - cis: ["1.1.2.6.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -409,14 +409,14 @@ checks:
     rules:
       - "c:findmnt --kernel /var/log -> r:nodev"
 
-  # 1.1.5.3 Ensure noexec option set on /var/log partition. (Automated)
+  # 1.1.2.6.4 Ensure noexec option set on /var/log partition. (Automated)
   - id: 31515
     title: "Ensure noexec option set on /var/log partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot run executable binaries from /var/log."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
     compliance:
-      - cis: ["1.1.5.3"]
+      - cis: ["1.1.2.6.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -433,14 +433,14 @@ checks:
     rules:
       - "c:findmnt --kernel /var/log -> r:noexec"
 
-  # 1.1.5.4 Ensure nosuid option set on /var/log partition. (Automated)
+  # 1.1.2.6.3 Ensure nosuid option set on /var/log partition. (Automated)
   - id: 31516
     title: "Ensure nosuid option set on /var/log partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log filesystem is only intended for log files, set this option to ensure that users cannot create setuid files in /var/log."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log partition. Example: <device> /var/log <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log with the configured options: # mount -o remount /var/log."
     compliance:
-      - cis: ["1.1.5.4"]
+      - cis: ["1.1.2.6.3"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -461,7 +461,7 @@ checks:
   # 1.1.6 Configure /var/log/audit
   ###############################################
 
-  # 1.1.6.1 Ensure separate partition exists for /var/log/audit. (Automated)
+  # 1.1.2.7.1 Ensure separate partition exists for /var/log/audit. (Automated)
   - id: 31517
     title: "Ensure separate partition exists for /var/log/audit."
     description: "The auditing daemon, auditd, stores log data in the /var/log/audit directory."
@@ -471,7 +471,7 @@ checks:
     references:
       - "http://tldp.org/HOWTO/LVM-HOWTO/"
     compliance:
-      - cis: ["1.1.6.1"]
+      - cis: ["1.1.2.7.1"]
       - cis_csc_v8: ["8.3"]
       - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
@@ -484,14 +484,14 @@ checks:
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:^/var/log/audit\s'
 
-  # 1.1.6.2 Ensure noexec option set on /var/log/audit partition. (Automated)
+  # 1.1.2.7.4 Ensure noexec option set on /var/log/audit partition. (Automated)
   - id: 31518
     title: "Ensure noexec option set on /var/log/audit partition."
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /var/log/audit filesystem is only intended for audit logs, set this option to ensure that users cannot run executable binaries from /var/log/audit."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /var partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit."
     compliance:
-      - cis: ["1.1.6.2"]
+      - cis: ["1.1.2.7.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -508,14 +508,14 @@ checks:
     rules:
       - "c:findmnt --kernel /var/log/audit -> r:noexec"
 
-  # 1.1.6.3 Ensure nodev option set on /var/log/audit partition. (Automated)
+  # 1.1.2.7.2 Ensure nodev option set on /var/log/audit partition. (Automated)
   - id: 31519
     title: "Ensure nodev option set on /var/log/audit partition."
     description: "The nodev mount option specifies that the filesystem cannot contain special devices."
     rationale: "Since the /var/log/audit filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /var/log/audit."
     remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /var/log/audit partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit."
     compliance:
-      - cis: ["1.1.6.3"]
+      - cis: ["1.1.2.7.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -532,14 +532,14 @@ checks:
     rules:
       - "c:findmnt --kernel /var/log/audit -> r:nodev"
 
-  # 1.1.6.4 Ensure nosuid option set on /var/log/audit partition. (Automated)
+  # 1.1.2.7.3 Ensure nosuid option set on /var/log/audit partition. (Automated)
   - id: 31520
     title: "Ensure nosuid option set on /var/log/audit partition."
     description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
     rationale: "Since the /var/log/audit filesystem is only intended for variable files such as logs, set this option to ensure that users cannot create setuid files in /var/log/audit."
     remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /var/log/audit partition. Example: <device> /var/log/audit <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /var/log/audit with the configured options: # mount -o remount /var/log/audit."
     compliance:
-      - cis: ["1.1.6.4"]
+      - cis: ["1.1.2.7.3"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -768,16 +768,16 @@ checks:
   # 1.2 Configure Software Updates
   ###############################################
 
-  # 1.2.1 Ensure GPG keys are configured. (Manual) - Not Implemented
+  # 1.2.1.1 Ensure GPG keys are configured. (Manual) - Not Implemented
 
-  # 1.2.2 Ensure gpgcheck is globally activated. (Automated)
+  # 1.2.1.2 Ensure gpgcheck is globally activated. (Automated)
   - id: 31529
     title: "Ensure gpgcheck is globally activated."
     description: "The gpgcheck option, found in the main section of the /etc/dnf/dnf.conf and individual /etc/yum.repos.d/* files, determines if an RPM package's signature is checked prior to its installation."
     rationale: "It is important to ensure that an RPM's package signature is always checked prior to installation to ensure that the software is obtained from a trusted source."
     remediation: "Edit /etc/dnf/dnf.conf and set gpgcheck=1 in the [main] section. Example: # sed -i 's/^gpgcheck\\s*=\\s*.*/gpgcheck=1/' /etc/dnf/dnf.conf Edit any failing files in /etc/yum.repos.d/* and set all instances starting with gpgcheck to 1. Example: # find /etc/yum.repos.d/ -name \"*.repo\" -exec echo \"Checking:\" {} \\; -exec sed -i 's/^gpgcheck\\s*=\\s*.*/gpgcheck=1/' {} \\;."
     compliance:
-      - cis: ["1.2.2"]
+      - cis: ["1.2.1.2"]
       - cis_csc_v8: ["7.3"]
       - cis_csc_v7: ["3.4"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
@@ -791,8 +791,8 @@ checks:
       - 'f:/etc/dnf/dnf.conf -> r:^\s*gpgcheck\s*=\s*1'
       - 'not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck\s*=\s*0'
 
-  # 1.2.3 Ensure package manager repositories are configured. (Manual) - Not Implemented
-  # 1.2.4 Ensure repo_gpgcheck is globally activated. (Manual) - Not Implemented
+  # 1.2.1.4 Ensure package manager repositories are configured. (Manual) - Not Implemented
+  # 1.2.1.3 Ensure repo_gpgcheck is globally activated. (Manual) - Not Implemented
 
   ###############################################
   # 1.3 Filesystem Integrity Checking
@@ -924,14 +924,14 @@ checks:
   # 1.6.1 Configure SELinux
   ###############################################
 
-  # 1.6.1.1 Ensure SELinux is installed. (Automated)
+  # 1.3.1.1 Ensure SELinux is installed. (Automated)
   - id: 31535
     title: "Ensure SELinux is installed."
     description: "SELinux provides Mandatory Access Control."
     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
     remediation: "Run the following command to install SELinux: # dnf install libselinux."
     compliance:
-      - cis: ["1.6.1.1"]
+      - cis: ["1.3.1.1"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -948,7 +948,7 @@ checks:
     rules:
       - "c:rpm -q libselinux -> r:^libselinux-"
 
-  # 1.6.1.2 Ensure SELinux is not disabled in bootloader configuration. (Automated)
+  # 1.3.1.2 Ensure SELinux is not disabled in bootloader configuration. (Automated)
   - id: 31536
     title: "Ensure SELinux is not disabled in bootloader configuration."
     description: "Configure SELINUX to be enabled at boot time and verify that it has not been overwritten by the grub boot parameters."
@@ -956,7 +956,7 @@ checks:
     impact: "Files created while SELinux is disabled are not labeled at all. This behavior causes problems when changing to enforcing mode because files are labeled incorrectly or are not labeled at all. To prevent incorrectly labeled and unlabeled files from causing problems, file systems are automatically relabeled when changing from the disabled state to permissive or enforcing mode. This can be a long running process that should be accounted for as it may extend downtime during initial re-boot."
     remediation: "Run the following command to remove the selinux=0 and enforcing=0 parameters: grubby --update-kernel ALL --remove-args \"selinux=0 enforcing=0\" Run the following command to remove the selinux=0 and enforcing=0 parameters if they were created by the deprecated grub2-mkconfig command: # grep -Prsq -- '\\h*([^#\\n\\r]+\\h+)?kernelopts=([^#\\n\\r]+\\h+)?(selinux|enforcing)=0\\b' /boot/grub2 /boot/efi && grub2-mkconfig -o \"$(grep -Prl -- '\\h*([^#\\n\\r]+\\h+)?kernelopts=([^#\\n\\r]+\\h+)?(selinux|enforcing)=0\\b' /boot/grub2 /boot/efi)\"."
     compliance:
-      - cis: ["1.6.1.2"]
+      - cis: ["1.3.1.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -974,14 +974,14 @@ checks:
       - 'f:/boot/grub2/grubenv -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
       - 'f:/boot/grub2/grub.cfg -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
 
-  # 1.6.1.3 Ensure SELinux policy is configured. (Automated)
+  # 1.3.1.3 Ensure SELinux policy is configured. (Automated)
   - id: 31537
     title: "Ensure SELinux policy is configured."
     description: "Configure SELinux to meet or exceed the default targeted policy, which constrains daemons and system software only."
     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that at least the default recommendations are met."
     remediation: "Edit the /etc/selinux/config file to set the SELINUXTYPE parameter: SELINUXTYPE=targeted."
     compliance:
-      - cis: ["1.6.1.3"]
+      - cis: ["1.3.1.3"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -998,7 +998,7 @@ checks:
       - 'c:sestatus -> r:^Loaded policy name:\s+targeted$|^Loaded policy name:\s+mls$'
       - 'f:/etc/selinux/config -> r:^\s*SELINUXTYPE\s*=\s*targeted|^\s*SELINUXTYPE\s*=\s*mls'
 
-  # 1.6.1.4 Ensure the SELinux mode is not disabled. (Automated)
+  # 1.3.1.4 Ensure the SELinux mode is not disabled. (Automated)
   - id: 31538
     title: "Ensure the SELinux mode is not disabled."
     description: "SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t."
@@ -1007,7 +1007,7 @@ checks:
     references:
       - "https://access.redhat.com/documentation/en-"
     compliance:
-      - cis: ["1.6.1.4"]
+      - cis: ["1.3.1.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -1025,7 +1025,7 @@ checks:
       - "c:getenforce -> r:^Enforcing$|^Permissive$"
       - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing|\s*SELINUX\s*=\s*permissive'
 
-  # 1.6.1.5 Ensure the SELinux mode is enforcing. (Automated)
+  # 1.3.1.5 Ensure the SELinux mode is enforcing. (Automated)
   - id: 31539
     title: "Ensure the SELinux mode is enforcing."
     description: "SELinux can run in one of three modes: disabled, permissive, or enforcing: - Enforcing - Is the default, and recommended, mode of operation; in enforcing mode SELinux operates normally, enforcing the loaded security policy on the entire system. - Permissive - The system acts as if SELinux is enforcing the loaded security policy, including labeling objects and emitting access denial entries in the logs, but it does not actually deny any operations. While not recommended for production systems, permissive mode can be helpful for SELinux policy development. - Disabled - Is strongly discouraged; not only does the system avoid enforcing the SELinux policy, it also avoids labeling any persistent objects such as files, making it difficult to enable SELinux in the future Note: you can set individual domains to permissive mode while the system runs in enforcing mode. For example, to make the httpd_t domain permissive: # semanage permissive -a httpd_t."
@@ -1034,7 +1034,7 @@ checks:
     references:
       - "https://access.redhat.com/documentation/en-"
     compliance:
-      - cis: ["1.6.1.5"]
+      - cis: ["1.3.1.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -1051,14 +1051,14 @@ checks:
       - "c:getenforce -> r:^Enforcing$"
       - 'f:/etc/selinux/config -> r:^\s*SELINUX\s*=\s*enforcing'
 
-  # 1.6.1.6 Ensure no unconfined services exist. (Automated)
+  # 1.3.1.6 Ensure no unconfined services exist. (Automated)
   - id: 31540
     title: "Ensure no unconfined services exist."
     description: "Unconfined processes run in unconfined domains."
     rationale: "For unconfined processes, SELinux policy rules are applied, but policy rules exist that allow processes running in unconfined domains almost all access. Processes running in unconfined domains fall back to using DAC rules exclusively. If an unconfined process is compromised, SELinux does not prevent an attacker from gaining access to system resources and data, but of course, DAC rules are still used. SELinux is a security enhancement on top of DAC rules - it does not replace them."
     remediation: "Investigate any unconfined processes found during the audit action. They may need to have an existing security context assigned to them or a policy built for them."
     compliance:
-      - cis: ["1.6.1.6"]
+      - cis: ["1.3.1.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -1075,14 +1075,14 @@ checks:
     rules:
       - "c:ps -eZ -> r:unconfined_service_t"
 
-  # 1.6.1.7 Ensure SETroubleshoot is not installed. (Automated)
+  # 1.3.1.8 Ensure SETroubleshoot is not installed. (Automated)
   - id: 31541
     title: "Ensure SETroubleshoot is not installed."
     description: "The SETroubleshoot service notifies desktop users of SELinux denials through a user-friendly interface. The service provides important information around configuration errors, unauthorized intrusions, and other potential errors."
     rationale: "The SETroubleshoot service is an unnecessary daemon to have running on a server, especially if X Windows is disabled."
     remediation: "Run the following command to uninstall setroubleshoot: # dnf remove setroubleshoot."
     compliance:
-      - cis: ["1.6.1.7"]
+      - cis: ["1.3.1.8"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1097,14 +1097,14 @@ checks:
     rules:
       - "c:rpm -qa setroubleshoot -> r:setroubleshoot"
 
-  # 1.6.1.8 Ensure the MCS Translation Service (mcstrans) is not installed. (Automated)
+  # 1.3.1.7 Ensure the MCS Translation Service (mcstrans) is not installed. (Automated)
   - id: 31542
     title: "Ensure the MCS Translation Service (mcstrans) is not installed."
     description: "The mcstransd daemon provides category label information to client processes requesting information. The label translations are defined in /etc/selinux/targeted/setrans.conf."
     rationale: "Since this service is not used very often, remove it to reduce the amount of potentially vulnerable code running on the system."
     remediation: "Run the following command to uninstall mcstrans: # dnf remove mcstrans."
     compliance:
-      - cis: ["1.6.1.8"]
+      - cis: ["1.3.1.7"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -1310,7 +1310,8 @@ checks:
     rules:
       - "not f:/etc/gdm3"
       - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
-  # 1.9 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
+
+  # 1.2.2.1 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
 
   # 1.6.1 Ensure system wide crypto policy is not set to legacy (Automated)
   - id: 31553
