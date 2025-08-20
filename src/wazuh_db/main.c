@@ -15,8 +15,6 @@
 #include "config/config.h"
 #include "config/wazuh_db-config.h"
 
-#define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
-
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
 static void cleanup();

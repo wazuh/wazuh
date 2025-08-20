@@ -45,15 +45,27 @@ private:
     std::string m_message;
 };
 
+/**
+ * @class AgentSessionImpl
+ * @brief Manages the lifecycle of a data ingestion session from a specific agent.
+ *
+ * Handles sequential chunk reception, stores data into RocksDB, tracks missing pieces using GapSet,
+ * and sends appropriate acknowledgments or error notifications via dispatcher queues.
+ *
+ * @tparam TStore Store interface (e.g., RocksDB wrapper).
+ * @tparam TIndexerQueue Queue used to notify indexing system upon session completion.
+ * @tparam TResponseDispatcher Dispatcher used to send ACK/NACK messages during session flow.
+ */
+
 template<typename TStore, typename TIndexerQueue, typename TResponseDispatcher>
 class AgentSessionImpl final
 {
-    std::unique_ptr<GapSet> m_gapSet;
-    std::shared_ptr<Context> m_context;
-    TStore& m_store;
-    TIndexerQueue& m_indexerQueue;
-    bool m_endReceived = false;
-    std::mutex m_mutex;
+    std::unique_ptr<GapSet> m_gapSet;   ///< Tracker for received/missing data chunks
+    std::shared_ptr<Context> m_context; ///< Shared metadata for the current session
+    TStore& m_store;                    ///< Reference to RocksDB store
+    TIndexerQueue& m_indexerQueue;      ///< Response queue for indexing subsystem
+    bool m_endReceived = false;         ///< Whether the END message has been received
+    std::mutex m_mutex;                 ///< Mutex to guard shared state
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
@@ -77,6 +89,15 @@ public:
             throw AgentSessionException("Invalid size");
         }
 
+<<<<<<< HEAD
+=======
+        // Check if module or agentID is empty
+        if (moduleName.empty() || agentId.empty())
+        {
+            throw AgentSessionException("Module name or Agent ID is empty");
+        }
+
+>>>>>>> 5215c8261f13441323aab64b360d25eb6dbb04a5
         uint64_t agentIdConverted {};
 
         auto [ptr, ec] = std::from_chars(agentId.data(), agentId.data() + agentId.size(), agentIdConverted);
@@ -99,24 +120,52 @@ public:
                                                .agentId = agentIdConverted,
                                                .moduleName = std::string(moduleName.data(), moduleName.size())});
 
-        std::cout << "AgentSessionImpl: " << m_context->sessionId << " " << m_context->agentId << " "
-                  << m_context->moduleName << std::endl;
+        logDebug2(LOGGER_DEFAULT_TAG,
+                  "New session for module '%s' by agent %d. (Session %d)",
+                  m_context->moduleName.c_str(),
+                  m_context->agentId,
+                  m_context->sessionId);
 
         responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Ok, m_context);
     }
 
+    /// Deleted copy constructor and assignment operator (C.12 compliant).
+    AgentSessionImpl(const AgentSessionImpl&) = delete;
+    AgentSessionImpl& operator=(const AgentSessionImpl&) = delete;
+
+    /// Deleted move constructor and assignment operator.
+    AgentSessionImpl(AgentSessionImpl&&) = delete;
+    AgentSessionImpl& operator=(AgentSessionImpl&&) = delete;
+
+    ~AgentSessionImpl() = default;
+
+    /**
+     * @brief Handles an incoming data chunk.
+     *
+     * Stores the raw payload and marks the chunk as observed in the GapSet.
+     * Triggers indexing if `handleEnd()` was already called and the session is now complete.
+     *
+     * @param data Parsed flatbuffer metadata (e.g., sequence number).
+     * @param dataRaw Raw binary payload of the chunk.
+     */
     void handleData(Wazuh::SyncSchema::Data const* data, const std::vector<char>& dataRaw)
     {
+        if (data == nullptr)
+        {
+            throw AgentSessionException("Invalid data on handleData");
+        }
+
+        std::lock_guard lock(m_mutex);
+
         const auto seq = data->seq();
         const auto session = data->session();
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%d' for session '%d'", seq, session);
 
         m_store.put(std::to_string(session) + "_" + std::to_string(seq),
                     rocksdb::Slice(dataRaw.data(), dataRaw.size()));
 
-        std::lock_guard<std::mutex> lock(m_mutex);
         m_gapSet->observe(data->seq());
-
-        // std::cout << "Data received: " << std::to_string(session) + "_" + std::to_string(seq) << "\n";
 
         if (m_endReceived)
         {
@@ -133,7 +182,11 @@ public:
         m_endReceived = true;
         if (m_gapSet->empty())
         {
+<<<<<<< HEAD
             std::cout << "End received and gap set is empty\n";
+=======
+            logDebug2(LOGGER_DEFAULT_TAG, "All sequences received for session %d", m_context->sessionId);
+>>>>>>> 5215c8261f13441323aab64b360d25eb6dbb04a5
             m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
         }
         else

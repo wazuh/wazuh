@@ -23,8 +23,6 @@
 #include "router.h"
 #include "../config/global-config.h"
 
-#define WDB_DATABASE_LOGTAG ARGV0 ":wdb_agent"
-
 #define WDB_MAX_COMMAND_SIZE    512
 #define WDB_MAX_RESPONSE_SIZE   OS_MAXSTR-WDB_MAX_COMMAND_SIZE
 
@@ -235,48 +233,6 @@ typedef struct agent_info_data {
     char *group_config_status;
     agent_status_code_t status_code;
 } agent_info_data;
-
-typedef enum {
-    FIELD_INTEGER = 0,
-    FIELD_TEXT,
-    FIELD_REAL,
-    FIELD_INTEGER_LONG
-} field_type_t;
-
-struct field {
-    field_type_t type;
-    int index;
-    bool is_aux_field;
-    bool is_pk;
-    const char * source_name;
-    const char * target_name;
-    union {
-        const char * text;
-        int integer;
-        double real;
-        long long integer_long;
-    } default_value;
-    bool convert_empty_string_as_null;
-};
-
-struct column_list {
-    struct field value;
-    const struct column_list *next;
-};
-
-struct kv {
-    char key[OS_SIZE_256];
-    char value[OS_SIZE_256];
-    bool single_row_table;
-    struct column_list const *column_list;
-    size_t field_count;
-};
-
-struct kv_list {
-    struct kv current;
-    const struct kv_list *next;
-};
-
 
 /**
  * @brief pointer to function for any transaction

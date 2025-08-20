@@ -19,6 +19,8 @@
 #include "loggerHelper.h"
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
+#include <asyncValueDispatcher.hpp>
+#include <filesystem>
 #include <functional>
 #include <indexerConnector.hpp>
 #include <json.hpp>
@@ -27,10 +29,13 @@
 #include <rocksdb/slice.h>
 #include <shared_mutex>
 #include <string>
-#include <threadDispatcher.h>
 #include <utility>
 
 constexpr int SINGLE_THREAD_COUNT = 1;
+constexpr int DEFAULT_TIME {5};
+constexpr auto INVENTORY_SYNC_PATH {"inventory_sync"};
+constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
+constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
 
 using WorkersQueue = Utils::AsyncDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
 using IndexerQueue = Utils::AsyncDispatcher<Response, std::function<void(const Response&)>>;
@@ -192,10 +197,13 @@ public:
                                         va_list)>& logFunction,
                const nlohmann::json& /*configuration*/)
     {
-        std::cout << "Starting InventorySyncFacade..." << std::endl;
-
-        // TODO This database should be ephemeral and not persistent.
-        m_dataStore = std::make_unique<TRocksDBWrapper>("inventory_sync");
+        std::error_code errorCodeFS;
+        std::filesystem::remove_all(INVENTORY_SYNC_PATH, errorCodeFS);
+        if (errorCodeFS)
+        {
+            logWarn(LOGGER_DEFAULT_TAG, "Error removing inventory_sync directory: %s", errorCodeFS.message().c_str());
+        }
+        m_dataStore = std::make_unique<TRocksDBWrapper>(INVENTORY_SYNC_PATH);
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
         m_indexerConnector = std::make_unique<TIndexerConnector>(
             nlohmann::json::parse(R"({"hosts": ["localhost:9200"], "ssl": {"certificate_authorities": []}})"),
@@ -355,7 +363,7 @@ public:
      */
     void stop()
     {
-        std::cout << "Stopping InventorySyncFacade..." << std::endl;
+        logInfo(LOGGER_DEFAULT_TAG, "Stopping InventorySync module");
         m_inventorySubscription.reset();
         m_workersQueue.reset();
         m_indexerQueue.reset();
