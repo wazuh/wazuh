@@ -1180,6 +1180,7 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users.json ${INSTALLDIR}/templates/wazuh-states-inventory-users.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-browser-extensions.json ${INSTALLDIR}/templates/wazuh-states-inventory-browser-extensions.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-services.json ${INSTALLDIR}/templates/wazuh-states-inventory-services.json
 
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json ${INSTALLDIR}/templates/vd_states_update_mappings.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-files-update.json ${INSTALLDIR}/templates/wazuh-states-fim-files-update.json
@@ -1196,6 +1197,7 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-users-update.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups-update.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-browser-extensions-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-browser-extensions-update.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-services-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-services-update.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks

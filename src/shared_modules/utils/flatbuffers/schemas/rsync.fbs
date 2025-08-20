@@ -231,6 +231,29 @@ table syscollector_browser_extensions {
     item_id:string;
 }
 
+table syscollector_services {
+    scan_time:string;
+    name:string;
+    display_name:string;
+    description:string;
+    service_type:string;
+    start_type:string;
+    state:string;
+    pid:long = null;
+    ppid:long = null;
+    binary_path:string;
+    load_state:string;
+    active_state:string;
+    sub_state:string;
+    unit_file_state:string;
+    status:string;
+    user:string;
+    can_stop:string;
+    can_reload:string;
+    service_exit_code:long = null;
+    checksum:string;
+}
+
 table fim_file {
     checksum:string;
     gid:string;
@@ -279,6 +302,7 @@ union AttributesUnion {
     syscollector_users,
     syscollector_groups,
     syscollector_browser_extensions,
+    syscollector_services,
     fim_file,
     fim_registry_key,
     fim_registry_value
