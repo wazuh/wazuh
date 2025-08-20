@@ -212,6 +212,7 @@ public:
     MOCK_METHOD(bool, browserProfileReferenced, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionPackageInstalled, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionFileHashSha256, (), (const));
+    MOCK_METHOD(std::string_view, browserExtensionItemId, (), (const));
 
     std::string m_serializedElement;
 };

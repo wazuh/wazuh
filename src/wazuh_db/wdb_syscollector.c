@@ -1342,7 +1342,13 @@ int wdb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * 
 int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t * wb_extension_record, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    if (NULL == wb_extension_record->package_name ||
+    if (NULL == wb_extension_record->browser_name ||
+        strlen(wb_extension_record->browser_name) == 0 ||
+        NULL == wb_extension_record->user_id ||
+        strlen(wb_extension_record->user_id) == 0 ||
+        NULL == wb_extension_record->browser_profile_name ||
+        strlen(wb_extension_record->browser_profile_name) == 0 ||
+        NULL == wb_extension_record->package_name ||
         strlen(wb_extension_record->package_name) == 0){
         return OS_INVALID;
     }
@@ -1378,6 +1384,7 @@ int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t 
     sqlite3_bind_text(stmt, 22, wb_extension_record-> package_installed, -1, NULL);
     sqlite3_bind_text(stmt, 23, wb_extension_record-> file_hash_sha256, -1, NULL);
     sqlite3_bind_text(stmt, 24, wb_extension_record->checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 25, wb_extension_record->item_id, -1, NULL);
 
     if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
@@ -1667,6 +1674,7 @@ int wdb_syscollector_browser_extensions_save2(wdb_t * wdb, const cJSON * attribu
     const char * package_installed = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_installed"));
     const char * file_hash_sha256 = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_hash_sha256"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
+    const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
 
     browser_extension_record_t wb_extension_record = {
         .scan_id = scan_id, .scan_time = scan_time, .browser_name = browser_name, .user_id = user_id, .package_name = package_name,
@@ -1675,7 +1683,7 @@ int wdb_syscollector_browser_extensions_save2(wdb_t * wdb, const cJSON * attribu
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
         .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
-        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum
+        .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
 
     return wdb_browser_extensions_save(wdb, &wb_extension_record, TRUE);

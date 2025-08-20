@@ -235,20 +235,20 @@ static struct column_list const TABLE_GROUPS[GROUPS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
 };
 
-#define BROWSER_EXTENSIONS_FIELD_COUNT 23
+#define BROWSER_EXTENSIONS_FIELD_COUNT 24
 static struct column_list const TABLE_BROWSER_EXTENSIONS[BROWSER_EXTENSIONS_FIELD_COUNT + 1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS [1]},
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [2]},
     { .value = { FIELD_TEXT, 3, false, true, NULL, "browser_name", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [3]},
-    { .value = { FIELD_TEXT, 4, false, false, NULL, "user_id", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [4]},
-    { .value = { FIELD_TEXT, 5, false, false, NULL, "package_name", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [5]},
+    { .value = { FIELD_TEXT, 4, false, true, NULL, "user_id", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [4]},
+    { .value = { FIELD_TEXT, 5, false, true, NULL, "package_name", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [5]},
     { .value = { FIELD_TEXT, 6, false, false, NULL, "package_id", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [6]},
     { .value = { FIELD_TEXT, 7, false, false, NULL, "package_version", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [7]},
     { .value = { FIELD_TEXT, 8, false, false, NULL, "package_description", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [8]},
     { .value = { FIELD_TEXT, 9, false, false, NULL, "package_vendor", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [9]},
     { .value = { FIELD_TEXT, 10, false, false, NULL, "package_build_version", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[10]},
     { .value = { FIELD_TEXT, 11, false, false, NULL, "package_path", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[11]},
-    { .value = { FIELD_TEXT, 12, false, false, NULL, "browser_profile_name", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[12]},
+    { .value = { FIELD_TEXT, 12, false, true, NULL, "browser_profile_name", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[12]},
     { .value = { FIELD_TEXT, 13, false, false, NULL, "browser_profile_path", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[13]},
     { .value = { FIELD_TEXT, 14, false, false, NULL, "package_reference", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[14]},
     { .value = { FIELD_TEXT, 15, false, false, NULL, "package_permissions", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[15]},
@@ -260,7 +260,8 @@ static struct column_list const TABLE_BROWSER_EXTENSIONS[BROWSER_EXTENSIONS_FIEL
     { .value = { FIELD_INTEGER, 21, false, false, NULL, "browser_profile_referenced", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[21]},
     { .value = { FIELD_TEXT, 22, false, false, NULL, "package_installed", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[22]},
     { .value = { FIELD_TEXT, 23, false, false, NULL, "file_hash_sha256", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[23]},
-    { .value = { FIELD_TEXT, 24, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL},
+    { .value = { FIELD_TEXT, 24, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[24]},
+    { .value = { FIELD_TEXT, 25, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
 };
 
 static struct kv_list const TABLE_MAP[] = {

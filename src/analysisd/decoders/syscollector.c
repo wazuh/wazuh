@@ -296,7 +296,8 @@ static struct deltas_fields_match_list const BROWSER_EXTENSION_FIELDS[] = {
   { .current = { "browser_profile_referenced", "browser_extension.browser_profile_referenced" }, .next = &BROWSER_EXTENSION_FIELDS[20]},
   { .current = { "package_installed", "browser_extension.package_installed" }, .next = &BROWSER_EXTENSION_FIELDS[21]},
   { .current = { "file_hash_sha256", "browser_extension.file_hash_sha256" }, .next = &BROWSER_EXTENSION_FIELDS[22]},
-  { .current = { "checksum", NULL}, .next = NULL}
+  { .current = { "checksum", NULL}, .next = &BROWSER_EXTENSION_FIELDS[23]},
+  { .current = { "item_id", NULL }, .next = NULL}
 };
 
 void SyscollectorInit(){

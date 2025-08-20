@@ -2,8 +2,8 @@
     {
         "index_name": "wazuh-states-inventory-browser-extensions-cluster01",
         "ids": {
-            "001": "001_UBlock Origin",
-            "002": "002_UBlock Origin"
+            "001": "001_571fdefef67b73320f74a5f2f5fb69bde4ad9680",
+            "002": "002_571fdefef67b73320f74a5f2f5fb69bde4ad9680"
         },
         "data": [
             {
