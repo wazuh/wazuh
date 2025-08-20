@@ -943,3 +943,88 @@ TEST_F(SystemInventoryUpsertElement, negativeGroupID_Groups)
         context->m_serializedElement,
         R"({"id":"001_sudo","operation":"INSERTED","data":{"group":{"name":"sudo","id_signed":-80,"is_hidden":true,"users":["user1","user2","user3"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
+
+/*
+ * Test cases for SystemInventoryUpsertElement services scenario
+ * These tests check the behavior of the SystemInventoryUpsertElement class when handling requests.
+ */
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyServiceName_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("apache2"));
+    EXPECT_CALL(*context, serviceDisplayName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceUser()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceCommand()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceExecutablePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, servicePid()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceGroup()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_apache2","operation":"INSERTED","data":{"service":{"name":"apache2"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validCompleteData_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("apache2"));
+    EXPECT_CALL(*context, serviceDisplayName()).WillOnce(testing::Return("Apache HTTP Server"));
+    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return("Apache web server"));
+    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return("running"));
+    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return("service"));
+    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return("auto"));
+    EXPECT_CALL(*context, serviceUser()).WillOnce(testing::Return("www-data"));
+    EXPECT_CALL(*context, serviceCommand()).WillOnce(testing::Return("/usr/sbin/apache2"));
+    EXPECT_CALL(*context, serviceExecutablePath()).WillOnce(testing::Return("/usr/sbin/apache2"));
+    EXPECT_CALL(*context, servicePid()).WillOnce(testing::Return(1234));
+    EXPECT_CALL(*context, serviceGroup()).WillOnce(testing::Return("www-data"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_apache2","operation":"INSERTED","data":{"service":{"name":"apache2","display_name":"Apache HTTP Server","description":"Apache web server","state":"running","type":"service","start_type":"auto","user":{"name":"www-data"},"command_line":"/usr/sbin/apache2","executable_path":"/usr/sbin/apache2","process":{"pid":1234},"group":{"name":"www-data"}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
