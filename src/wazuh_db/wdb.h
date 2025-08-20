@@ -152,8 +152,9 @@ typedef enum wdb_stmt {
     WDB_STMT_USER_INSERT2,
     WDB_STMT_GROUP_INSERT,
     WDB_STMT_GROUP_INSERT2,
-    WDB_STMT_SERVICES_INSERT,
-    WDB_STMT_SERVICES_INSERT2,
+    WDB_STMT_SERVICE_INSERT,
+    WDB_STMT_SERVICE_INSERT2,
+    WDB_STMT_SERVICE_DEL,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
     WDB_STMT_SCAN_INFO_UPDATEFS,
@@ -359,7 +360,6 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_SERVICES_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_SERVICES_DELETE_BY_PK,
     WDB_STMT_SYSCOLLECTOR_SERVICES_CLEAR,
-    WDB_STMT_SERVICES_DEL,
     WDB_STMT_SYS_HOTFIXES_GET,
     WDB_STMT_SYS_PROGRAMS_GET,
     WDB_STMT_SIZE // This must be the last constant
@@ -942,22 +942,6 @@ int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, l
 int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
                       const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
                       const char * group_users, const char * checksum, const bool replace);
-
-// Save services information into DB.
-int wdb_services_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
-                      const char * description, const char * service_type, const char * start_type, const char * state,
-                      int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
-                      const char * sub_state, const char * unit_file_state, const char * status, const char * user,
-                      const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum, 
-                      const char * item_id, const bool replace);
-
-// Insert service info tuple. Return 0 on success or -1 on error.
-int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
-                        const char * description, const char * service_type, const char * start_type, const char * state,
-                        int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
-                        const char * sub_state, const char * unit_file_state, const char * status, const char * user,
-                        const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum, 
-                        const char * item_id, const bool replace);
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
 

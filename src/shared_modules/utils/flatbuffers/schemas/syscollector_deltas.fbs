@@ -199,6 +199,29 @@ table dbsync_groups {
     checksum:string;
 }
 
+table dbsync_services {
+    scan_time:string;
+    name:string;
+    display_name:string;
+    description:string;
+    service_type:string;
+    start_type:string;
+    state:string;
+    pid:long = null;
+    ppid:long = null;
+    binary_path:string;
+    load_state:string;
+    active_state:string;
+    sub_state:string;
+    unit_file_state:string;
+    status:string;
+    user:string;
+    can_stop:string;
+    can_reload:string;
+    service_exit_code:long = null;
+    checksum:string;
+}
+
 union Provider {
     dbsync_network_iface,
     dbsync_network_protocol,
@@ -210,7 +233,8 @@ union Provider {
     dbsync_hotfixes,
     dbsync_processes,
     dbsync_users,
-    dbsync_groups
+    dbsync_groups,
+    dbsync_services
 }
 
 table AgentInfo {
