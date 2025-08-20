@@ -104,19 +104,19 @@
         "typeindex": "cpp"
     },
     "yaml.schemas": {
-        "${env:ENGINE_SRC}/ruleset/schemas/wazuh-asset.json": [
+        "${env:ENGINE_SRC}/ruleset/schemas/wazuh-decoders.json": [
             "*/decoders/*.yml",
             "*/decoders/*/*.yml",
             "*/decoders/*/*/*.yml",
-            "*/decoders/*/*/*/*.yml",
+            "*/decoders/*/*/*/*.yml"
+        ],
+        "${env:ENGINE_SRC}/ruleset/schemas/wazuh-rules.json": [
             "*/rules/*.yml",
             "*/rules/*/*.yml",
             "*/rules/*/*/*.yml",
             "*/rules/*/*/*/*.yml",
-            "*/outputs/*.yml",
-            "*/outputs/*/*.yml",
-            "*/outputs/*/*/*.yml",
-            "*/outputs/*/*/*/*.yml",
+        ],
+        "${env:ENGINE_SRC}/ruleset/schemas/wazuh-filters.json": [
             "*/filters/*.yml",
             "*/filters/*/*.yml",
             "*/filters/*/*/*.yml",
