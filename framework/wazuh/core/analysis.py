@@ -4,6 +4,8 @@ from typing import List
 from logging import Logger
 
 from wazuh.core import common
+from wazuh.core.exception import WazuhError
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.wazuh_socket import create_wazuh_socket_message, WazuhSocket
 
 RELOAD_RULESET_COMMAND = "reload-ruleset"
@@ -158,3 +160,38 @@ def send_reload_ruleset_msg(origin: dict[str, str]) -> RulesetReloadResponse:
     socket.close()
 
     return RulesetReloadResponse(data)
+
+def send_reload_ruleset_and_get_results(node_id: str, results: AffectedItemsWazuhResult) -> AffectedItemsWazuhResult:
+    """
+    Send a reload ruleset command and update the results object with the outcome.
+
+    Sends the reload ruleset command to analysisd and updates the provided results object
+    with either a successful affected item (including warnings if present) or a failed item
+    with the corresponding error.
+
+    Parameters
+    ----------
+    node_id : str
+        The node identifier to associate with the result.
+    results : AffectedItemsWazuhResult
+        The results object to update with affected or failed items.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        The updated results object.
+    """
+    socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
+    if socket_response.is_ok():
+        affected_item = {'name': node_id, 'msg': ''}
+        if socket_response.has_warnings():
+            affected_item['msg'] = ', '.join(socket_response.warnings)
+        else:
+            affected_item['msg'] = 'Ruleset reload request sent successfully.'
+
+        results.affected_items.append(affected_item)
+    else:
+        results.add_failed_item(id_=node_id,
+                                error=WazuhError(code=1914, extra_message=', '.join(socket_response.errors)))
+
+    return results

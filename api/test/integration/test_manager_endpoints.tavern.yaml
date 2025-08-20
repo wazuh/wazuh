@@ -1758,3 +1758,26 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: PUT /manager/analysisd/reload
+
+stages:
+
+  - name: Reload analysisd on master
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/analysisd/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0

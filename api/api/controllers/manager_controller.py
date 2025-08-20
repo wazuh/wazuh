@@ -488,6 +488,35 @@ async def put_restart(pretty: bool = False, wait_for_complete: bool = False) -> 
 
     return json_response(data, pretty=pretty)
 
+async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Reloads the analysisd process on the master or local node.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=manager.reload_ruleset,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
 
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Check if Wazuh configuration is correct in manager or local_node.

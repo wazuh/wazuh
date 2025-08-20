@@ -817,7 +817,7 @@ async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = F
     f_kwargs = {'node_list': nodes_list}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=manager.reload_ruleset,
+    dapi = DistributedAPI(f=cluster.reload_ruleset,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=True,

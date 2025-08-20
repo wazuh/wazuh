@@ -7,10 +7,8 @@ from os.path import exists
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
-from wazuh.core.analysis import send_reload_ruleset_msg
-from wazuh.core.cluster import local_client
+from wazuh.core.analysis import send_reload_ruleset_and_get_results
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.control import set_reload_ruleset_flag
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
@@ -22,7 +20,6 @@ from wazuh.rbac.decorators import expose_resources
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
-node_type = get_node().get('type') if cluster_enabled else 'master'
 
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
@@ -217,13 +214,14 @@ _reload_ruleset_default_result_kwargs = {
     'sort_casting': ['str']
 }
 
+
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 @expose_resources(actions=["analysisd:reload"],
                   resources=['*:*:*'],
                   post_proc_kwargs={'default_result_kwargs': _reload_ruleset_default_result_kwargs})
 async def reload_ruleset() -> AffectedItemsWazuhResult:
-    """Reload the ruleset on the current node.
+    """Reload the ruleset on the manager.
 
     Returns
     -------
@@ -231,33 +229,9 @@ async def reload_ruleset() -> AffectedItemsWazuhResult:
         Result of the reload operation, including affected and failed items.
     """
     results = AffectedItemsWazuhResult(**_reload_ruleset_default_result_kwargs)
-
     try:
-        if node_type == 'master':
-            socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
-            if socket_response.is_ok():
-                affected_item = {'name': node_id, 'msg': ''}
-                if socket_response.has_warnings():
-                    affected_item['msg'] = ', '.join(socket_response.warnings)
-                else:
-                    affected_item['msg'] = 'Ruleset reload request sent successfully.'
+        results = send_reload_ruleset_and_get_results(node_id=node_id, results=results)
 
-                results.affected_items.append(affected_item)
-            else:
-                results.add_failed_item(id_=node_id, error=WazuhError(code=1914, extra_message=', '.join(socket_response.errors)))
-
-        else:
-            lc = local_client.LocalClient()
-            result = await set_reload_ruleset_flag(lc)
-
-            if isinstance(result, dict) and 'success' in result:
-                result = result['success']
-                if result:
-                    result = 'Ruleset reload request sent successfully.'
-                else:
-                    result = 'Failed to send the ruleset reload request.'
-
-            results.affected_items.append({'name': node_id, 'msg': result})
     except WazuhError as e:
         results.add_failed_item(id_=node_id, error=e)
 

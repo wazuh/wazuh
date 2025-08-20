@@ -11557,7 +11557,7 @@ paths:
                     total_affected_items: 3
                     total_failed_items: 0
                     failed_items: [ ]
-                  message: "Restart request sent to all specified nodes"
+                  message: "Reload request sent to all specified nodes"
                   error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13108,6 +13108,51 @@ paths:
                   failed_items: []
                 message: "API configuration was successfully read"
                 error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /manager/analysisd/reload:
+    put:
+      tags:
+        - Manager
+      summary: "Reloads the analysis process for the master or local node"
+      description: "Reloads the analysisd process on the master or local node"
+      operationId: api.controllers.manager_controller.put_reload_analysisd
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/analysisd:reload'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "List of affected nodes"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNodeIDs'
+                example:
+                  data:
+                    affected_items:
+                      - 'master-node'
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: [ ]
+                  message: "Reload request sent to all specified nodes"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

@@ -225,6 +225,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/analysisd/reload
+          - PUT /manager/analysisd/reload
       group:delete:
         description: Delete agent groups
         resources:
@@ -450,6 +451,7 @@ get_rbac_actions:
           - GET /manager/stats/remoted
           - GET /manager/logs
           - GET /manager/logs/summary
+          - PUT /manager/analysisd/reload
           - PUT /manager/restart
           - GET /manager/configuration/validation
           - GET /manager/configuration/{component}/{configuration}

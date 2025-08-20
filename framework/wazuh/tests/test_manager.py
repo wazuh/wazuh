@@ -370,62 +370,33 @@ def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, full_copy_moc
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1125
     move_mock.assert_called_once()
 
-
-import asyncio
-
-
 @pytest.mark.asyncio
-@patch('wazuh.manager.node_type', 'master')
-@patch('wazuh.manager.send_reload_ruleset_msg')
-async def test_reload_ruleset_master_ok(mock_send_reload_ruleset_msg):
-    """Test reload_ruleset() works as expected for master node with successful reload."""
+@patch('wazuh.manager.send_reload_ruleset_and_get_results')
+async def test_reload_ruleset(mock_send_reload_ruleset_and_get_results):
+    """Test reload_ruleset() works as expected with a successful reload."""
     mock_response = MagicMock()
-    mock_response.is_ok.return_value = True
-    mock_response.has_warnings.return_value = False
-    mock_send_reload_ruleset_msg.return_value = mock_response
+    mock_response.affected_items = ['manager']
+    mock_response.failed_items = {}
+    mock_response.total_affected_items = 1
+    mock_response.total_failed_items = 0
+    mock_send_reload_ruleset_and_get_results.return_value = mock_response
 
     result = await reload_ruleset()
-    assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 1
     assert result.failed_items == {}
 
 
 @pytest.mark.asyncio
-@patch('wazuh.manager.node_type', 'master')
-@patch('wazuh.manager.send_reload_ruleset_msg')
-async def test_reload_ruleset_master_nok(mock_send_reload_ruleset_msg):
-    """Test reload_ruleset() for master node with error in reload."""
+@patch('wazuh.manager.send_reload_ruleset_and_get_results')
+async def test_reload_ruleset_ko(mock_send_reload_ruleset_and_get_results):
+    """Test reload_ruleset() with an error in the reload."""
     mock_response = MagicMock()
-    mock_response.is_ok.return_value = False
-    mock_response.errors = ['error1']
-    mock_send_reload_ruleset_msg.return_value = mock_response
+    mock_response.affected_items = []
+    mock_response.failed_items = {'manager': WazuhError(1234)}
+    mock_response.total_affected_items = 0
+    mock_response.total_failed_items = 1
+    mock_send_reload_ruleset_and_get_results.return_value = mock_response
 
     result = await reload_ruleset()
-    assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_failed_items == 1
-
-
-@pytest.mark.asyncio
-@patch('wazuh.manager.node_type', 'worker')
-@patch('wazuh.manager.local_client.LocalClient')
-@patch('wazuh.manager.set_reload_ruleset_flag')
-async def test_reload_ruleset_worker_ok(mock_set_reload_flag, mock_local_client):
-    """Test reload_ruleset() works as expected for worker node with successful reload."""
-    mock_set_reload_flag.return_value = 'Reload ruleset flag set successfully'
-    result = await reload_ruleset()
-    assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == 1
-    assert result.failed_items == {}
-
-
-@pytest.mark.asyncio
-@patch('wazuh.manager.node_type', 'worker')
-@patch('wazuh.manager.local_client.LocalClient')
-@patch('wazuh.manager.set_reload_ruleset_flag')
-async def test_reload_ruleset_worker_nok(mock_set_reload_flag, mock_local_client):
-    """Test reload_ruleset() for worker node with error in reload."""
-    mock_set_reload_flag.side_effect = WazuhError(1914)
-    result = await reload_ruleset()
-    assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_failed_items == 1
-
+    assert result.affected_items == []

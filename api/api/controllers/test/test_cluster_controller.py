@@ -605,7 +605,7 @@ async def test_put_reload_analysisd(mock_exc, mock_dapi, mock_remove, mock_dfunc
         from api.controllers.cluster_controller import put_reload_analysisd
         result = await put_reload_analysisd()
         f_kwargs = {'node_list': '*'}
-        mock_dapi.assert_called_once_with(f=manager.reload_ruleset,
+        mock_dapi.assert_called_once_with(f=cluster.reload_ruleset,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='distributed_master',
                                           is_async=True,
