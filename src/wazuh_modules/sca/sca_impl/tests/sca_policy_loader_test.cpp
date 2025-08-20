@@ -68,7 +68,7 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesSkipsDisabledPolicies)
     SCAPolicyLoader loader(policies, mockFileSystem, mockDBSync);
 
     auto loadedPolicies = loader.LoadPolicies(30, true, [](auto, auto) {});
-    EXPECT_LE(loadedPolicies.size(), 1);  // Should only load enabled policy
+    EXPECT_LE(loadedPolicies.size(), 1u);  // Should only load enabled policy
 }
 
 TEST_F(ScaPolicyLoaderTest, LoadPoliciesNoPolicies)
@@ -80,7 +80,7 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesNoPolicies)
     ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto)
     {
         return;
-    }).size(), 0);
+    }).size(), 0u);
 }
 
 TEST_F(ScaPolicyLoaderTest, LoadPoliciesSomePolicies)
@@ -90,7 +90,7 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesSomePolicies)
 
     EXPECT_CALL(*m_rawFsMock, exists(::testing::_))
     .Times(::testing::AnyNumber())
-    .WillRepeatedly([](const std::filesystem::path & p)
+    .WillRepeatedly([](const std::filesystem::path&)
     {
         return true;
     });
@@ -106,7 +106,7 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesSomePolicies)
     ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto)
     {
         return;
-    }).size(), 0);
+    }).size(), 0u);
 }
 
 TEST_F(ScaPolicyLoaderTest, SyncPoliciesAndReportDeltaBadData)
@@ -427,7 +427,7 @@ TEST_F(ScaPolicyLoaderTest, UpdateCheckResult_ValidCheck)
     };
 
     EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
-    .WillOnce([](const nlohmann::json & query,
+    .WillOnce([](const nlohmann::json& /*query*/,
                  const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
     {
         callback(INSERTED, nlohmann::json::object());

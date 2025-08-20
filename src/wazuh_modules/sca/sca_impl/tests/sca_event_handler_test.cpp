@@ -54,7 +54,7 @@ TEST_F(SCAEventHandlerTest, ProcessEvents_ModifiedPolicyOnly)
 
     const auto events = handler->ProcessEvents(modifiedPolicies, modifiedChecks);
 
-    ASSERT_EQ(events.size(), 2);
+    ASSERT_EQ(events.size(), 2u);
 
     for (const auto& event : events)
     {
@@ -155,7 +155,7 @@ TEST_F(SCAEventHandlerTest, ProcessEvents_ModifiedCheckAndPolicy)
 
     const auto events = handler->ProcessEvents(modifiedPolicies, modifiedChecks);
 
-    ASSERT_EQ(events.size(), 2);
+    ASSERT_EQ(events.size(), 2u);
 
     int policyCount = 0, checkCount = 0;
 
@@ -268,7 +268,7 @@ TEST_F(SCAEventHandlerTest, GetChecksForPolicy)
 
     const auto result = handler->GetChecksForPolicy(policyId);
 
-    ASSERT_EQ(result.size(), 2);
+    ASSERT_EQ(result.size(), 2u);
     EXPECT_EQ(result[0], check1);
     EXPECT_EQ(result[1], check2);
 }
@@ -476,7 +476,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput1)
     ASSERT_TRUE(data["policy"].contains("name"));
     ASSERT_TRUE(data["policy"].contains("file"));
     ASSERT_TRUE(data["event"].contains("changed_fields"));
-    ASSERT_EQ(data["event"]["changed_fields"].size(), 2);
+    ASSERT_EQ(data["event"]["changed_fields"].size(), 2u);
     ASSERT_TRUE(data["event"].contains("created"));
     ASSERT_TRUE(data["event"].contains("type"));
 }
@@ -537,7 +537,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_ValidInput2)
     ASSERT_TRUE(data["policy"].contains("file"));
     ASSERT_TRUE(data["policy"].contains("references"));
     ASSERT_TRUE(data["event"].contains("changed_fields"));
-    ASSERT_GE(data["event"]["changed_fields"].size(), 0);
+    ASSERT_GE(data["event"]["changed_fields"].size(), 0u);
 }
 
 TEST_F(SCAEventHandlerTest, ProcessStateless_InvalidInput)
@@ -677,8 +677,8 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_EmptyInput)
     });
 
     // No messages should be pushed for empty input
-    EXPECT_EQ(statefulMessages.size(), 0);
-    EXPECT_EQ(statelessMessages.size(), 0);
+    EXPECT_EQ(statefulMessages.size(), 0u);
+    EXPECT_EQ(statelessMessages.size(), 0u);
 }
 
 TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_ValidInput)
@@ -761,8 +761,8 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_ValidInput)
         newHandler->ReportPoliciesDelta(modifiedPolicies, modifiedChecks);
     });
 
-    EXPECT_GT(statefulMessages.size(), 0);
-    EXPECT_GT(statelessMessages.size(), 0);
+    EXPECT_GT(statefulMessages.size(), 0u);
+    EXPECT_GT(statelessMessages.size(), 0u);
 
     for (const auto& message : statefulMessages)
     {
@@ -790,7 +790,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_ValidInput)
     const std::string checkResult = "passed";
 
     EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
-    .WillOnce([checkResult](const nlohmann::json & query, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    .WillOnce([checkResult](const nlohmann::json& /*query*/, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
     {
         nlohmann::json returnData =
         {
@@ -858,8 +858,8 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_ValidInput)
         newHandler->ReportCheckResult(policyId, checkId, checkResult);
     });
 
-    EXPECT_EQ(statefulMessages.size(), 1);
-    EXPECT_EQ(statelessMessages.size(), 1);
+    EXPECT_EQ(statefulMessages.size(), 1u);
+    EXPECT_EQ(statelessMessages.size(), 1u);
 
     if (statefulMessages.size() > 0)
     {

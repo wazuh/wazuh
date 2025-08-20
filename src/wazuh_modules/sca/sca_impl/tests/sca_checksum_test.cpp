@@ -59,7 +59,7 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromJSON_ValidData_ReturnsNonEmptyStrin
     std::string checksum = sca::calculateChecksum(sampleCheckData);
 
     EXPECT_FALSE(checksum.empty());
-    EXPECT_EQ(checksum.length(), 40); // SHA1 produces 40 character hex string
+    EXPECT_EQ(checksum.length(), 40u); // SHA1 produces 40 character hex string
 }
 
 TEST_F(SCAChecksumTest, CalculateChecksumFromJSON_MinimalData_ReturnsNonEmptyString)
@@ -67,7 +67,7 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromJSON_MinimalData_ReturnsNonEmptyStr
     std::string checksum = sca::calculateChecksum(minimalCheckData);
 
     EXPECT_FALSE(checksum.empty());
-    EXPECT_EQ(checksum.length(), 40);
+    EXPECT_EQ(checksum.length(), 40u);
 }
 
 TEST_F(SCAChecksumTest, CalculateChecksumFromJSON_EmptyData_ReturnsNonEmptyString)
@@ -75,7 +75,7 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromJSON_EmptyData_ReturnsNonEmptyStrin
     std::string checksum = sca::calculateChecksum(emptyCheckData);
 
     EXPECT_FALSE(checksum.empty());
-    EXPECT_EQ(checksum.length(), 40);
+    EXPECT_EQ(checksum.length(), 40u);
 }
 
 TEST_F(SCAChecksumTest, CalculateChecksumFromFields_ValidData_ReturnsNonEmptyString)
@@ -92,7 +92,7 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromFields_ValidData_ReturnsNonEmptyStr
                                                   "file:$SSH_CONFIG -> exists");
 
     EXPECT_FALSE(checksum.empty());
-    EXPECT_EQ(checksum.length(), 40);
+    EXPECT_EQ(checksum.length(), 40u);
 }
 
 TEST_F(SCAChecksumTest, CalculateChecksumFromFields_EmptyStrings_ReturnsNonEmptyString)
@@ -100,7 +100,7 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromFields_EmptyStrings_ReturnsNonEmpty
     std::string checksum = sca::calculateChecksum("", "", "", "", "", "", "", "", "", "");
 
     EXPECT_FALSE(checksum.empty());
-    EXPECT_EQ(checksum.length(), 40);
+    EXPECT_EQ(checksum.length(), 40u);
 }
 
 TEST_F(SCAChecksumTest, ConsistentResults_SameDataProducesSameChecksum)
@@ -160,7 +160,7 @@ TEST_F(SCAChecksumTest, MissingFields_HandledGracefully)
     std::string checksum = sca::calculateChecksum(partialData);
 
     EXPECT_FALSE(checksum.empty());
-    EXPECT_EQ(checksum.length(), 40);
+    EXPECT_EQ(checksum.length(), 40u);
 }
 
 TEST_F(SCAChecksumTest, ValidSHA1Format_ChecksumContainsOnlyHexCharacters)
@@ -192,7 +192,7 @@ TEST_F(SCAChecksumTest, SpecialCharacters_HandledCorrectly)
     std::string checksum = sca::calculateChecksum(specialData);
 
     EXPECT_FALSE(checksum.empty());
-    EXPECT_EQ(checksum.length(), 40);
+    EXPECT_EQ(checksum.length(), 40u);
 }
 
 TEST_F(SCAChecksumIntegrationTest, ChecksumCalculation_ProducesValidResult)
@@ -200,7 +200,7 @@ TEST_F(SCAChecksumIntegrationTest, ChecksumCalculation_ProducesValidResult)
     std::string checksum = sca::calculateChecksum(sampleCheck);
 
     EXPECT_FALSE(checksum.empty());
-    EXPECT_EQ(checksum.length(), 40); // SHA1 hex string length
+    EXPECT_EQ(checksum.length(), 40u); // SHA1 hex string length
 
     // Verify it's a valid hex string
     for (char c : checksum)
@@ -238,7 +238,7 @@ TEST_F(SCAChecksumIntegrationTest, ChecksumWithMissingFields_HandledGracefully)
     std::string checksum = sca::calculateChecksum(minimalCheck);
 
     EXPECT_FALSE(checksum.empty());
-    EXPECT_EQ(checksum.length(), 40);
+    EXPECT_EQ(checksum.length(), 40u);
 }
 
 // Test that demonstrates the checksum matches between JSON and field-based calculation
