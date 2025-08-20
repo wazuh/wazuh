@@ -114,13 +114,14 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
                                             std::time_t scanInterval,
                                             const int commandsTimeout,
                                             const bool remoteEnabled,
-                                            const std::vector<sca::PolicyData>& policies)
+                                            const std::vector<sca::PolicyData>& policies,
+                                            const YamlToJsonFunc& yamlToJsonFunc)
 {
     m_enabled = enabled;
     m_scanOnStart = scanOnStart;
     m_scanInterval = scanInterval;
 
-    m_policies = [this, &policies, commandsTimeout, remoteEnabled]()
+    m_policies = [this, &policies, commandsTimeout, remoteEnabled, &yamlToJsonFunc]()
     {
         const SCAPolicyLoader policyLoader(policies, m_fileSystemWrapper, m_dBSync);
         return policyLoader.LoadPolicies(commandsTimeout, remoteEnabled,
@@ -128,7 +129,7 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
         {
             const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
             eventHandler.ReportPoliciesDelta(policyData, checksData);
-        });
+        }, yamlToJsonFunc);
     }
     ();
 }
