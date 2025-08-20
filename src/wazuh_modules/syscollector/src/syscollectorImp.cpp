@@ -39,6 +39,7 @@ do                                                                      \
 }while(0)
 
 constexpr auto EMPTY_VALUE {""};
+constexpr auto UNKNOWN_VALUE {" "};
 
 constexpr auto QUEUE_SIZE
 {
@@ -1083,7 +1084,7 @@ void Syscollector::setJsonField(nlohmann::json& target,
     {
         const nlohmann::json::json_pointer pointer(keyPath);
 
-        if (source.contains(jsonKey) && source[jsonKey] != EMPTY_VALUE)
+        if (source.contains(jsonKey) && source[jsonKey] != EMPTY_VALUE && source[jsonKey] != UNKNOWN_VALUE)
         {
             target[pointer] = source[jsonKey];
         }
@@ -1109,7 +1110,7 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
         const nlohmann::json::json_pointer destPointer(destPath);
         target[destPointer] = nullptr;
 
-        if (source.contains(sourceKey) && !source[sourceKey].is_null() && source[sourceKey] != EMPTY_VALUE)
+        if (source.contains(sourceKey) && !source[sourceKey].is_null() && source[sourceKey] != EMPTY_VALUE && source[sourceKey] != UNKNOWN_VALUE)
         {
             const auto& value = source[sourceKey];
             target[destPointer] = nlohmann::json::array();

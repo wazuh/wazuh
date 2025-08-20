@@ -121,11 +121,11 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -145,7 +145,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
@@ -153,7 +153,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult21
     {
@@ -337,11 +337,11 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -361,7 +361,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
@@ -369,7 +369,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
@@ -466,11 +466,11 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -490,7 +490,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
@@ -498,7 +498,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
@@ -606,7 +606,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
@@ -704,11 +704,11 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -732,7 +732,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
@@ -832,11 +832,11 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -852,7 +852,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
@@ -860,7 +860,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
@@ -961,11 +961,11 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -985,7 +985,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
@@ -997,7 +997,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult21
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
@@ -1097,11 +1097,11 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -1117,7 +1117,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
@@ -1125,7 +1125,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
@@ -1226,11 +1226,11 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -1250,11 +1250,11 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult20
     {
@@ -1356,11 +1356,11 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -1380,11 +1380,11 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult20
     {
@@ -1485,11 +1485,11 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -1509,7 +1509,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
@@ -1517,7 +1517,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult25
     {
@@ -1854,7 +1854,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
 
     const auto expectedResult1
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -1936,11 +1936,11 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult3
     {
-        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":" ","mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_iface","data":{"event":{"changed_fields":[],"type":"created"},"host":{"mac":["d4:5d:64:51:07:5d"],"network":{"egress":{"bytes":0,"drops":0,"errors":0,"packets":0},"ingress":{"bytes":0,"drops":0,"errors":0,"packets":0}}},"interface":{"alias":null,"mtu":1500,"name":"enp4s0","state":"up","type":"ethernet"}},"module":"inventory"})"
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
@@ -1960,7 +1960,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult9
     {
-        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":" ","priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
+        R"({"collector":"dbsync_packages","data":{"event":{"changed_fields":[],"type":"created"},"package":{"architecture":"amd64","category":"x11","description":null,"installed":null,"multiarch":null,"name":"xserver-xorg","path":null,"priority":"optional","size":4111222333,"source":"xorg","type":"deb","vendor":null,"version":"1:7.7+19ubuntu14"}},"module":"inventory"})"
     };
     const auto expectedResult18
     {
@@ -1968,7 +1968,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":" ","type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult21
     {
