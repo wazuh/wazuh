@@ -80,6 +80,7 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     auto mockIndexerUsers = std::make_unique<StrictMock<MockIndexerConnector>>();
     auto mockIndexerGroups = std::make_unique<StrictMock<MockIndexerConnector>>();
     auto mockIndexerBrowserExtension = std::make_unique<StrictMock<MockIndexerConnector>>();
+    auto mockIndexerServices = std::make_unique<StrictMock<MockIndexerConnector>>();
 
     indexerConnectors.emplace(MockAffectedComponentType::Package, std::move(mockIndexerPackages));
     indexerConnectors.emplace(MockAffectedComponentType::Process, std::move(mockIndexerProcesses));
@@ -92,6 +93,7 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
     indexerConnectors.emplace(MockAffectedComponentType::User, std::move(mockIndexerUsers));
     indexerConnectors.emplace(MockAffectedComponentType::Group, std::move(mockIndexerGroups));
     indexerConnectors.emplace(MockAffectedComponentType::BrowserExtension, std::move(mockIndexerBrowserExtension));
+    indexerConnectors.emplace(MockAffectedComponentType::Service, std::move(mockIndexerServices));
 
     auto context = std::make_shared<MockSystemContext>();
 
@@ -129,6 +131,9 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
                 publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
         .Times(1);
     EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::BrowserExtension],
+                publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
+        .Times(1);
+    EXPECT_CALL(*indexerConnectors[MockAffectedComponentType::Service],
                 publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
         .Times(1);
 
