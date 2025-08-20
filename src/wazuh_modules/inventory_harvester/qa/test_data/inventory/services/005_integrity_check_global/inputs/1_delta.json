@@ -1,0 +1,32 @@
+{
+    "agent_info": {
+        "agent_id": "001",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.14.0"
+    },
+    "data_type": "dbsync_services",
+    "data": {
+        "scan_time": "2025/08/20 16:30:01",
+        "name": "nginx",
+        "display_name": "NGINX HTTP Server",
+        "description": "The nginx package contains a high performance web server and reverse proxy.",
+        "service_type": "forking",
+        "start_type": "enabled",
+        "state": "running",
+        "pid": 9876,
+        "ppid": 1,
+        "binary_path": "/usr/sbin/nginx",
+        "load_state": "loaded",
+        "active_state": "active",
+        "sub_state": "running",
+        "unit_file_state": "enabled",
+        "status": "ok",
+        "user": "nginx",
+        "can_stop": "yes",
+        "can_reload": "yes",
+        "service_exit_code": 0,
+        "checksum": "456def789abc012345678901234567890abcdef"
+    },
+    "operation": "INSERTED"
+}
