@@ -3113,7 +3113,7 @@ void test_wdb_parse_delete_db_file (void **state) {
 }
 
 /* wdb_parse_dbsync services */
-void test_wdb_parse_dbsync_services_extensions_no_operation(void ** state) {
+void test_wdb_parse_dbsync_services_no_operation(void ** state) {
 
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
@@ -3130,7 +3130,7 @@ void test_wdb_parse_dbsync_services_extensions_no_operation(void ** state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_services_extensions_no_delta_data(void ** state) {
+void test_wdb_parse_dbsync_services_no_delta_data(void ** state) {
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
 
@@ -3145,7 +3145,7 @@ void test_wdb_parse_dbsync_services_extensions_no_delta_data(void ** state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_services_extensions_delta_data_not_json(void ** state) {
+void test_wdb_parse_dbsync_services_delta_data_not_json(void ** state) {
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
 
@@ -3162,7 +3162,7 @@ void test_wdb_parse_dbsync_services_extensions_delta_data_not_json(void ** state
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_services_extensions_invalid_operation(void ** state) {
+void test_wdb_parse_dbsync_services_invalid_operation(void ** state) {
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
 
@@ -3178,7 +3178,7 @@ void test_wdb_parse_dbsync_services_extensions_invalid_operation(void ** state) 
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_services_extensions_insert_ok(void ** state) {
+void test_wdb_parse_dbsync_services_insert_ok(void ** state) {
 
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
@@ -3196,7 +3196,7 @@ void test_wdb_parse_dbsync_services_extensions_insert_ok(void ** state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_services_extensions_insert_err(void ** state) {
+void test_wdb_parse_dbsync_services_insert_err(void ** state) {
 
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
@@ -3214,7 +3214,7 @@ void test_wdb_parse_dbsync_services_extensions_insert_err(void ** state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_services_extensions_modified_ok(void ** state) {
+void test_wdb_parse_dbsync_services_modified_ok(void ** state) {
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
 
@@ -3231,7 +3231,7 @@ void test_wdb_parse_dbsync_services_extensions_modified_ok(void ** state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_services_extensions_modified_err(void ** state) {
+void test_wdb_parse_dbsync_services_modified_err(void ** state) {
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
 
@@ -3248,7 +3248,7 @@ void test_wdb_parse_dbsync_services_extensions_modified_err(void ** state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_services_extensions_deleted_ok(void ** state) {
+void test_wdb_parse_dbsync_services_deleted_ok(void ** state) {
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
 
@@ -3265,7 +3265,7 @@ void test_wdb_parse_dbsync_services_extensions_deleted_ok(void ** state) {
     os_free(query);
 }
 
-void test_wdb_parse_dbsync_services_extensions_deleted_err(void ** state) {
+void test_wdb_parse_dbsync_services_deleted_err(void ** state) {
     test_struct_t * data = (test_struct_t *) *state;
     char * query = NULL;
 
@@ -3439,16 +3439,16 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_browser_extensions_deleted_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_browser_extensions_deleted_err, test_setup, test_teardown),
         /* dbsync tests services */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_no_operation, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_no_delta_data, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_delta_data_not_json, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_invalid_operation, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_insert_ok, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_insert_err, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_modified_ok, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_modified_err, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_deleted_ok, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_extensions_deleted_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_no_operation, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_no_delta_data, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_delta_data_not_json, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_invalid_operation, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_insert_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_insert_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_modified_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_modified_err, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_deleted_ok, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_services_deleted_err, test_setup, test_teardown),
         /* wdb_parse_global_backup */
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup_global, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup_global, test_teardown),
