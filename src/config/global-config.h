@@ -46,17 +46,8 @@ typedef struct __Config {
     long agents_disconnection_time;
     long agents_disconnection_alert_time;
 
-    /* JSONOUT Export */
-    u_int8_t jsonout_output;
-
-    /* Standard alerts output */
-    u_int8_t alerts_log;
-
     /* Not currently used */
     u_int8_t keeplogdate;
-
-    /* Mail alerting */
-    short int mailnotify;
 
     /* For the active response */
     int ar;
