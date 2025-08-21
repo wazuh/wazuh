@@ -20,15 +20,27 @@
           "service.state",
           "service.sub_state",
           "service.description",
-          "service.state",
           "service.exit_code",
           "service.win32_exit_code",
+          "service.frequency",
+          "service.restart",
+          "service.inetd_compatibility",
+          "service.starts.on_mount",
+          "service.starts.on_path_modified",
+          "service.starts.on_not_empty_directory",
           "process.pid",
           "process.executable",
+          "process.args",
+          "process.user.name",
+          "process.group.name",
+          "process.working_dir",
+          "process.root_dir",
           "service.address",
           "user.name",
           "service.enabled",
           "file.path",
+          "log.file.path",
+          "error.log.file.path",
           "wazuh.cluster.name",
           "wazuh.cluster.node",
           "wazuh.schema.version"
@@ -77,6 +89,10 @@
         },
         "process": {
           "properties": {
+            "args": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
             "executable": {
               "fields": {
                 "text": {
@@ -86,8 +102,32 @@
               "ignore_above": 1024,
               "type": "keyword"
             },
+            "group": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
             "pid": {
               "type": "long"
+            },
+            "root_dir": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "user": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "working_dir": {
+              "ignore_above": 1024,
+              "type": "keyword"
             }
           }
         },
@@ -112,9 +152,15 @@
               "ignore_above": 1024,
               "type": "keyword"
             },
+            "frequency": {
+              "type": "long"
+            },
             "id": {
               "ignore_above": 1024,
               "type": "keyword"
+            },
+            "inetd_compatibility": {
+              "type": "boolean"
             },
             "name": {
               "ignore_above": 1024,
@@ -124,9 +170,28 @@
               "ignore_above": 1024,
               "type": "keyword"
             },
+            "restart": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
             "start_type": {
               "ignore_above": 1024,
               "type": "keyword"
+            },
+            "starts": {
+              "properties": {
+                "on_mount": {
+                  "type": "boolean"
+                },
+                "on_not_empty_directory": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "on_path_modified": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
             },
             "state": {
               "ignore_above": 1024,
@@ -158,6 +223,34 @@
             },
             "win32_exit_code": {
               "type": "integer"
+            }
+          }
+        },
+        "log": {
+          "properties": {
+            "file": {
+              "properties": {
+                "path": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "error": {
+          "properties": {
+            "log": {
+              "properties": {
+                "file": {
+                  "properties": {
+                    "path": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
             }
           }
         },

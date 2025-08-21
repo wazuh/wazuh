@@ -1402,7 +1402,11 @@ int wdb_services_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
                       int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
                       const char * sub_state, const char * unit_file_state, const char * status, const char * user,
                       const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
-                      const char * item_id, const bool replace) {
+                      const char * item_id, const char * enabled, const char * service_name, const char * process_executable,
+                      const char * process_args, const char * process_cwd, const char * user_name, const char * user_id,
+                      const char * group_name, const char * group_id, const char * file_path, const char * file_name,
+                      const char * file_inode, const char * file_mode, const char * file_size, const char * file_uid,
+                      const char * file_gid, const char * file_owner, const char * file_group, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_services_save(): cannot begin transaction");
@@ -1411,7 +1415,10 @@ int wdb_services_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
 
     if (wdb_services_insert(wdb, scan_id, scan_time, name, display_name, description, service_type, start_type, state,
                             pid, ppid, binary_path, load_state, active_state, sub_state, unit_file_state, status,
-                            user, can_stop, can_reload, service_exit_code, checksum, item_id, replace) < 0) {
+                            user, can_stop, can_reload, service_exit_code, checksum, item_id, enabled, service_name,
+                            process_executable, process_args, process_cwd, user_name, user_id, group_name, group_id,
+                            file_path, file_name, file_inode, file_mode, file_size, file_uid, file_gid, file_owner,
+                            file_group, replace) < 0) {
         return OS_INVALID;
     }
 
@@ -1424,7 +1431,11 @@ int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
                         int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
                         const char * sub_state, const char * unit_file_state, const char * status, const char * user,
                         const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
-                        const char * item_id, const bool replace) {
+                        const char * item_id, const char * enabled, const char * service_name, const char * process_executable,
+                        const char * process_args, const char * process_cwd, const char * user_name, const char * user_id,
+                        const char * group_name, const char * group_id, const char * file_path, const char * file_name,
+                        const char * file_inode, const char * file_mode, const char * file_size, const char * file_uid,
+                        const char * file_gid, const char * file_owner, const char * file_group, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == name) {
@@ -1479,6 +1490,24 @@ int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 
     sqlite3_bind_text(stmt, 21, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 22, item_id, -1, NULL);
+    sqlite3_bind_text(stmt, 23, enabled, -1, NULL);
+    sqlite3_bind_text(stmt, 24, service_name, -1, NULL);
+    sqlite3_bind_text(stmt, 25, process_executable, -1, NULL);
+    sqlite3_bind_text(stmt, 26, process_args, -1, NULL);
+    sqlite3_bind_text(stmt, 27, process_cwd, -1, NULL);
+    sqlite3_bind_text(stmt, 28, user_name, -1, NULL);
+    sqlite3_bind_text(stmt, 29, user_id, -1, NULL);
+    sqlite3_bind_text(stmt, 30, group_name, -1, NULL);
+    sqlite3_bind_text(stmt, 31, group_id, -1, NULL);
+    sqlite3_bind_text(stmt, 32, file_path, -1, NULL);
+    sqlite3_bind_text(stmt, 33, file_name, -1, NULL);
+    sqlite3_bind_text(stmt, 34, file_inode, -1, NULL);
+    sqlite3_bind_text(stmt, 35, file_mode, -1, NULL);
+    sqlite3_bind_text(stmt, 36, file_size, -1, NULL);
+    sqlite3_bind_text(stmt, 37, file_uid, -1, NULL);
+    sqlite3_bind_text(stmt, 38, file_gid, -1, NULL);
+    sqlite3_bind_text(stmt, 39, file_owner, -1, NULL);
+    sqlite3_bind_text(stmt, 40, file_group, -1, NULL);
 
     switch (wdb_step(stmt)) {
     case SQLITE_DONE:
@@ -1813,10 +1842,33 @@ int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
     const int service_exit_code = cJSON_GetObjectItem(attributes, "service_exit_code") ? cJSON_GetObjectItem(attributes, "service_exit_code")->valueint : -1;
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
+    
+    // New macOS fields
+    const char * enabled = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "enabled"));
+    const char * service_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_name"));
+    const char * process_executable = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_executable"));
+    const char * process_args = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_args"));
+    const char * process_cwd = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_cwd"));
+    const char * user_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name"));
+    const char * user_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_id"));
+    const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_name"));
+    const char * group_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_id"));
+    const char * file_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_path"));
+    const char * file_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_name"));
+    const char * file_inode = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_inode"));
+    const char * file_mode = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_mode"));
+    const char * file_size = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_size"));
+    const char * file_uid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_uid"));
+    const char * file_gid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_gid"));
+    const char * file_owner = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_owner"));
+    const char * file_group = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_group"));
 
     return wdb_services_save(wdb, scan_id, scan_time, name, display_name, description, service_type, start_type, state,
                             pid, ppid, binary_path, load_state, active_state, sub_state, unit_file_state, status,
-                            user, can_stop, can_reload, service_exit_code, checksum, item_id, TRUE);
+                            user, can_stop, can_reload, service_exit_code, checksum, item_id, enabled, service_name,
+                            process_executable, process_args, process_cwd, user_name, user_id, group_name, group_id,
+                            file_path, file_name, file_inode, file_mode, file_size, file_uid, file_gid, file_owner,
+                            file_group, TRUE);
 }
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload)
