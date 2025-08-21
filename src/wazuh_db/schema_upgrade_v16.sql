@@ -84,6 +84,24 @@ CREATE TABLE IF NOT EXISTS sys_services (
     can_stop TEXT,
     can_reload TEXT,
     service_exit_code INTEGER,
+    -- ECS field mappings (service.id is mapped to name field)
+    service_name TEXT,                      -- ECS: service.name (File name of plist for macOS)
+    process_executable TEXT,                -- ECS: process.executable (Path to the service executable)
+    process_args TEXT,                      -- ECS: process.args (Command line arguments for the service)
+    file_path TEXT,                         -- ECS: file.path (Path to the .plist definition file for macOS)
+    process_user_name TEXT,                 -- ECS: process.user.name (User account running the job)
+    process_group_name TEXT,                -- ECS: process.group.name (Group account running the job)
+    service_enabled TEXT,                   -- ECS: service.enabled (unified as text: enabled/disabled for Linux, true/false for macOS)
+    service_restart TEXT,                   -- Custom: service.restart (Restart policy: always/on-failure/never)
+    service_frequency INTEGER,              -- Custom: service.frequency (Run frequency in seconds)
+    log_file_path TEXT,                     -- Custom: log.file.path (Redirect stdout to a file/pipe)
+    error_log_file_path TEXT,               -- Custom: error.log.file.path (Redirect stderr to a file/pipe)
+    process_working_dir TEXT,               -- ECS: process.working_dir (Working directory of the job)
+    process_root_dir TEXT,                  -- Custom: process.root_dir (Chroot directory before execution)
+    service_starts_on_mount INTEGER,        -- Custom: service.starts.on_mount (Launches every time a filesystem is mounted)
+    service_starts_on_path_modified TEXT,   -- Custom: service.starts.on_path_modified (Launches on path modification)
+    service_starts_on_not_empty_directory TEXT, -- Custom: service.starts.on_not_empty_directory (Launches when directories become non-empty)
+    service_inetd_compatibility INTEGER,    -- Custom: service.inetd_compatibility (Run job as if launched from inetd)
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     item_id TEXT,
     PRIMARY KEY (scan_id, name)

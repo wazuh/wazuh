@@ -26,7 +26,26 @@
         "can_stop": "yes",
         "can_reload": "yes",
         "service_exit_code": 0,
-        "checksum": "def456abc789012345678901234567890abcdef1"
+        "checksum": "def456abc789012345678901234567890abcdef1",
+        "item_id": "httpd_003_delete",
+        "enabled": "true",
+        "service_name": "apache-httpd",
+        "process_executable": "/usr/sbin/httpd",
+        "process_args": "-DFOREGROUND",
+        "process_cwd": "/etc/httpd",
+        "user_name": "apache",
+        "user_id": "48",
+        "group_name": "apache",
+        "group_id": "48",
+        "file_path": "/usr/lib/systemd/system/httpd.service",
+        "file_name": "httpd.service",
+        "file_inode": "234567",
+        "file_mode": "0644",
+        "file_size": "2048",
+        "file_uid": "0",
+        "file_gid": "0",
+        "file_owner": "root",
+        "file_group": "root"
     },
     "operation": "DELETED"
 }
