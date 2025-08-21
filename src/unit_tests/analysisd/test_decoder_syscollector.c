@@ -565,6 +565,52 @@ int test_setup_groups_valid_msg_modified(void **state)
     return 0;
 }
 
+int test_setup_browser_extensions_valid_msg_modified(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (os_strdup("\
+        { \
+            \"data\":{ \
+                \"scan_time\":\"2025/06/11 14:59:57\", \
+                \"browser_name\":\"chrome\", \
+                \"user_id\":\"S-1-5-21-1234567890-987654321-1122334455-1001\", \
+                \"package_name\":\"uBlock Origin\", \
+                \"package_id\":\"cjpalhdlnbpafiamejdnhcphjbkeiagm\", \
+                \"package_version\":\"1.52.2\", \
+                \"package_description\":\"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.\", \
+                \"package_vendor\":\"Raymond Hill\", \
+                \"package_build_version\":null, \
+                \"package_path\":\"C:\\\\Users\\\\john.doe\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\User Data\\\\Default\\\\Extensions\\\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\\\1.52.2_0\", \
+                \"browser_profile_name\":\"Default\", \
+                \"browser_profile_path\":\"C:\\\\Users\\\\john.doe\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\User Data\\\\Default\", \
+                \"package_reference\":\"https://clients2.google.com/service/update2/crx\", \
+                \"package_permissions\":\"activeTab,storage,tabs,webNavigation\", \
+                \"package_type\":\"extension\", \
+                \"package_enabled\":1, \
+                \"package_autoupdate\":1, \
+                \"package_persistent\":0, \
+                \"package_from_webstore\":0, \
+                \"browser_profile_referenced\":1, \
+                \"package_installed\":\"1710489821000\", \
+                \"file_hash_sha256\":\"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234\", \
+                \"checksum\":\"606abaac7962daf9842c84f4a15f609575d86bff\" \
+            }, \
+            \"operation\":\"MODIFIED\", \
+            \"type\":\"dbsync_browser_extensions\" \
+        } \
+        }", lf->log), NULL == lf->log) {
+        return -1;
+    }
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
 int test_setup_hotfixes_valid_msg_inserted(void **state)
 {
     Eventinfo *lf;
@@ -627,7 +673,6 @@ int test_setup_packages_valid_msg_inserted(void **state)
     *state = lf;
     return 0;
 }
-
 
 int test_setup_processes_valid_msg_inserted(void **state)
 {
@@ -989,6 +1034,52 @@ int test_setup_groups_valid_msg_inserted(void **state)
             }, \
             \"operation\":\"INSERTED\", \
             \"type\":\"dbsync_groups\" \
+        } \
+        }", lf->log), NULL == lf->log) {
+        return -1;
+    }
+    os_strdup("(>syscollector", lf->location);
+    os_strdup("001", lf->agent_id);
+
+    *state = lf;
+    return 0;
+}
+
+int test_setup_browser_extensions_valid_msg_inserted(void **state)
+{
+    Eventinfo *lf;
+    os_calloc(1, sizeof(Eventinfo), lf);
+    os_calloc(Config.decoder_order_size, sizeof(DynamicField), lf->fields);
+    Zero_Eventinfo(lf);
+    if (os_strdup("\
+        { \
+            \"data\":{ \
+                \"scan_time\":\"2025/06/11 14:59:57\", \
+                \"browser_name\":\"chrome\", \
+                \"user_id\":\"S-1-5-21-1234567890-987654321-1122334455-1001\", \
+                \"package_name\":\"uBlock Origin\", \
+                \"package_id\":\"cjpalhdlnbpafiamejdnhcphjbkeiagm\", \
+                \"package_version\":\"1.52.2\", \
+                \"package_description\":\"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.\", \
+                \"package_vendor\":\"Raymond Hill\", \
+                \"package_build_version\":null, \
+                \"package_path\":\"C:\\\\Users\\\\john.doe\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\User Data\\\\Default\\\\Extensions\\\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\\\1.52.2_0\", \
+                \"browser_profile_name\":\"Default\", \
+                \"browser_profile_path\":\"C:\\\\Users\\\\john.doe\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\User Data\\\\Default\", \
+                \"package_reference\":\"https://clients2.google.com/service/update2/crx\", \
+                \"package_permissions\":\"activeTab,storage,tabs,webNavigation\", \
+                \"package_type\":\"extension\", \
+                \"package_enabled\":1, \
+                \"package_autoupdate\":1, \
+                \"package_persistent\":0, \
+                \"package_from_webstore\":0, \
+                \"browser_profile_referenced\":1, \
+                \"package_installed\":\"1710489821000\", \
+                \"file_hash_sha256\":\"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234\", \
+                \"checksum\":\"606abaac7962daf9842c84f4a15f609575d86bff\" \
+            }, \
+            \"operation\":\"INSERTED\", \
+            \"type\":\"dbsync_browser_extensions\" \
         } \
         }", lf->log), NULL == lf->log) {
         return -1;
@@ -2336,6 +2427,50 @@ void test_syscollector_dbsync_groups_valid_msg_modified(void **state)
     assert_int_not_equal(ret, 0);
 }
 
+void test_syscollector_dbsync_browser_extensions_valid_msg_modified(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync browser_extensions MODIFIED "
+        "{"
+            "\"scan_time\":\"2025/06/11 14:59:57\","
+            "\"browser_name\":\"chrome\","
+            "\"user_id\":\"S-1-5-21-1234567890-987654321-1122334455-1001\","
+            "\"package_name\":\"uBlock Origin\","
+            "\"package_id\":\"cjpalhdlnbpafiamejdnhcphjbkeiagm\","
+            "\"package_version\":\"1.52.2\","
+            "\"package_description\":\"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.\","
+            "\"package_vendor\":\"Raymond Hill\","
+            "\"package_build_version\":null,"
+            "\"package_path\":\"C:\\\\Users\\\\john.doe\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\User Data\\\\Default\\\\Extensions\\\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\\\1.52.2_0\","
+            "\"browser_profile_name\":\"Default\","
+            "\"browser_profile_path\":\"C:\\\\Users\\\\john.doe\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\User Data\\\\Default\","
+            "\"package_reference\":\"https://clients2.google.com/service/update2/crx\","
+            "\"package_permissions\":\"activeTab,storage,tabs,webNavigation\","
+            "\"package_type\":\"extension\","
+            "\"package_enabled\":1,"
+            "\"package_autoupdate\":1,"
+            "\"package_persistent\":0,"
+            "\"package_from_webstore\":0,"
+            "\"browser_profile_referenced\":1,"
+            "\"package_installed\":\"1710489821000\","
+            "\"file_hash_sha256\":\"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234\","
+            "\"checksum\":\"606abaac7962daf9842c84f4a15f609575d86bff\""
+        "}";
+    const char *result = "ok ";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
 void test_syscollector_dbsync_hotfixes_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
@@ -2855,6 +2990,50 @@ void test_syscollector_dbsync_groups_valid_msg_inserted(void **state)
             "\"group_users\":\"54358:Administrateur\","
             "\"group_uuid\":\"S-1-5-32-544\","
             "\"scan_time\":\"2025/06/11 14:59:57\""
+        "}";
+    const char *result = "ok ";
+    int sock = 1;
+
+    expect_any(__wrap_wdbc_query_ex, *sock);
+    expect_string(__wrap_wdbc_query_ex, query, query);
+    expect_any(__wrap_wdbc_query_ex, len);
+    will_return(__wrap_wdbc_query_ex, result);
+    will_return(__wrap_wdbc_query_ex, 0);
+
+    int ret = DecodeSyscollector(lf, &sock);
+
+    assert_int_not_equal(ret, 0);
+}
+
+void test_syscollector_dbsync_browser_extensions_valid_msg_inserted(void **state)
+{
+    Eventinfo *lf = *state;
+
+    const char *query = "agent 001 dbsync browser_extensions INSERTED "
+        "{"
+            "\"scan_time\":\"2025/06/11 14:59:57\","
+            "\"browser_name\":\"chrome\","
+            "\"user_id\":\"S-1-5-21-1234567890-987654321-1122334455-1001\","
+            "\"package_name\":\"uBlock Origin\","
+            "\"package_id\":\"cjpalhdlnbpafiamejdnhcphjbkeiagm\","
+            "\"package_version\":\"1.52.2\","
+            "\"package_description\":\"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.\","
+            "\"package_vendor\":\"Raymond Hill\","
+            "\"package_build_version\":null,"
+            "\"package_path\":\"C:\\\\Users\\\\john.doe\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\User Data\\\\Default\\\\Extensions\\\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\\\1.52.2_0\","
+            "\"browser_profile_name\":\"Default\","
+            "\"browser_profile_path\":\"C:\\\\Users\\\\john.doe\\\\AppData\\\\Local\\\\Google\\\\Chrome\\\\User Data\\\\Default\","
+            "\"package_reference\":\"https://clients2.google.com/service/update2/crx\","
+            "\"package_permissions\":\"activeTab,storage,tabs,webNavigation\","
+            "\"package_type\":\"extension\","
+            "\"package_enabled\":1,"
+            "\"package_autoupdate\":1,"
+            "\"package_persistent\":0,"
+            "\"package_from_webstore\":0,"
+            "\"browser_profile_referenced\":1,"
+            "\"package_installed\":\"1710489821000\","
+            "\"file_hash_sha256\":\"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234\","
+            "\"checksum\":\"606abaac7962daf9842c84f4a15f609575d86bff\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -4107,6 +4286,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_modified, test_setup_os_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_users_valid_msg_modified, test_setup_users_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_groups_valid_msg_modified, test_setup_groups_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_browser_extensions_valid_msg_modified, test_setup_browser_extensions_valid_msg_modified, test_cleanup),
         /* INSERTED delta tests*/
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_inserted, test_setup_hotfixes_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg_inserted, test_setup_packages_valid_msg_inserted, test_cleanup),
@@ -4124,6 +4304,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_no_result_payload, test_setup_os_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_users_valid_msg_inserted, test_setup_users_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_groups_valid_msg_inserted, test_setup_groups_valid_msg_inserted, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_browser_extensions_valid_msg_inserted, test_setup_browser_extensions_valid_msg_inserted, test_cleanup),
         // Hardware tests
         cmocka_unit_test_setup_teardown(test_syscollector_hardware_valid, test_setup_hardware_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_hardware_valid_inventory_empty, test_setup_hardware_valid_msg_inventory_empty, test_cleanup),
