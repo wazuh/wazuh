@@ -26,7 +26,26 @@
     "can_stop": " ",
     "can_reload": " ",
     "service_exit_code": null,
-    "checksum": " "
+    "checksum": " ",
+    "item_id": "postgresql_007",
+    "enabled": "false",
+    "service_name": "postgresql-database",
+    "process_executable": " ",
+    "process_args": " ",
+    "process_cwd": " ",
+    "user_name": " ",
+    "user_id": " ",
+    "group_name": " ",
+    "group_id": " ",
+    "file_path": "/usr/lib/systemd/system/postgresql.service",
+    "file_name": "postgresql.service",
+    "file_inode": " ",
+    "file_mode": " ",
+    "file_size": " ",
+    "file_uid": " ",
+    "file_gid": " ",
+    "file_owner": " ",
+    "file_group": " "
   },
   "operation": "INSERTED"
 }

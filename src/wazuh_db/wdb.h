@@ -989,11 +989,15 @@ int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t 
 
 // Save services information into DB.
 int wdb_services_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
-                      const char * description, const char * service_type, const char * start_type, const char * state,
-                      int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
-                      const char * sub_state, const char * unit_file_state, const char * status, const char * user,
-                      const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
-                      const char * item_id, const bool replace);
+                        const char * description, const char * service_type, const char * start_type, const char * state,
+                        int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
+                        const char * sub_state, const char * unit_file_state, const char * status, const char * user,
+                        const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
+                        const char * item_id, const char * enabled, const char * service_name, const char * process_executable,
+                        const char * process_args, const char * process_cwd, const char * user_name, const char * user_id,
+                        const char * group_name, const char * group_id, const char * file_path, const char * file_name,
+                        const char * file_inode, const char * file_mode, const char * file_size, const char * file_uid,
+                        const char * file_gid, const char * file_owner, const char * file_group, const bool replace);
 
 // Insert service info tuple. Return 0 on success or -1 on error.
 int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
@@ -1001,7 +1005,11 @@ int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
                         int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
                         const char * sub_state, const char * unit_file_state, const char * status, const char * user,
                         const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
-                        const char * item_id, const bool replace);
+                        const char * item_id, const char * enabled, const char * service_name, const char * process_executable,
+                        const char * process_args, const char * process_cwd, const char * user_name, const char * user_id,
+                        const char * group_name, const char * group_id, const char * file_path, const char * file_name,
+                        const char * file_inode, const char * file_mode, const char * file_size, const char * file_uid,
+                        const char * file_gid, const char * file_owner, const char * file_group, const bool replace);
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
 

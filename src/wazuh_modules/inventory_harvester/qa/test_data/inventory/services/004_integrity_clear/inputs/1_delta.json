@@ -26,7 +26,26 @@
         "can_stop": "yes",
         "can_reload": "yes",
         "service_exit_code": 0,
-        "checksum": "abc123def456789012345678901234567890abcd"
+        "checksum": "abc123def456789012345678901234567890abcd",
+        "item_id": "sshd_004",
+        "enabled": "true",
+        "service_name": "ssh",
+        "process_executable": "/usr/sbin/sshd",
+        "process_args": "-D",
+        "process_cwd": "/var/empty/sshd",
+        "user_name": "root",
+        "user_id": "0",
+        "group_name": "root",
+        "group_id": "0",
+        "file_path": "/usr/lib/systemd/system/sshd.service",
+        "file_name": "sshd.service",
+        "file_inode": "123456",
+        "file_mode": "0644",
+        "file_size": "1024",
+        "file_uid": "0",
+        "file_gid": "0",
+        "file_owner": "root",
+        "file_group": "root"
     },
     "operation": "INSERTED"
 }

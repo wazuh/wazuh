@@ -246,6 +246,24 @@ table dbsync_services {
     can_stop:string;
     can_reload:string;
     service_exit_code:long = null;
+    // ECS field mappings (service.id is mapped to name field)
+    service_name:string;                      // ECS: service.name (File name of plist for macOS)
+    process_executable:string;                // ECS: process.executable (Path to the service executable)
+    process_args:string;                      // ECS: process.args (Command line arguments for the service)
+    file_path:string;                         // ECS: file.path (Path to the .plist definition file for macOS)
+    process_user_name:string;                 // ECS: process.user.name (User account running the job)
+    process_group_name:string;                // ECS: process.group.name (Group account running the job)
+    service_enabled:string;                   // ECS: service.enabled (unified as text: enabled/disabled for Linux, true/false for macOS)
+    service_restart:string;                   // Custom: service.restart (Restart policy: always/on-failure/never)
+    service_frequency:long = null;            // Custom: service.frequency (Run frequency in seconds)
+    log_file_path:string;                     // Custom: log.file.path (Redirect stdout to a file/pipe)
+    error_log_file_path:string;               // Custom: error.log.file.path (Redirect stderr to a file/pipe)
+    process_working_dir:string;               // ECS: process.working_dir (Working directory of the job)
+    process_root_dir:string;                  // Custom: process.root_dir (Chroot directory before execution)
+    service_starts_on_mount:bool = null;      // Custom: service.starts.on_mount (Launches every time a filesystem is mounted)
+    service_starts_on_path_modified:string;   // Custom: service.starts.on_path_modified (Launches on path modification)
+    service_starts_on_not_empty_directory:string; // Custom: service.starts.on_not_empty_directory (Launches when directories become non-empty)
+    service_inetd_compatibility:bool = null;  // Custom: service.inetd_compatibility (Run job as if launched from inetd)
     checksum:string;
 }
 

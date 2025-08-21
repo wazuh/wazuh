@@ -264,7 +264,7 @@ static struct column_list const TABLE_BROWSER_EXTENSIONS[BROWSER_EXTENSIONS_FIEL
     { .value = { FIELD_TEXT, 25, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
 };
 
-#define SERVICES_FIELD_COUNT 22
+#define SERVICES_FIELD_COUNT 39
 static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_SERVICES[1]},
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_SERVICES[2]},
@@ -286,8 +286,26 @@ static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 18, false, false, NULL, "can_stop", {.text = ""}, true}, .next = &TABLE_SERVICES[18]},
     { .value = { FIELD_TEXT, 19, false, false, NULL, "can_reload", {.text = ""}, true}, .next = &TABLE_SERVICES[19]},
     { .value = { FIELD_INTEGER, 20, false, false, NULL, "service_exit_code", {.integer = 0}, true}, .next = &TABLE_SERVICES[20]},
-    { .value = { FIELD_TEXT, 21, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_SERVICES[21]},
-    { .value = { FIELD_TEXT, 22, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL}
+    // New macOS launchd fields
+    { .value = { FIELD_TEXT, 21, false, false, NULL, "service_name", {.text = ""}, true}, .next = &TABLE_SERVICES[21]},
+    { .value = { FIELD_TEXT, 22, false, false, NULL, "process_executable", {.text = ""}, true}, .next = &TABLE_SERVICES[22]},
+    { .value = { FIELD_TEXT, 23, false, false, NULL, "process_args", {.text = ""}, true}, .next = &TABLE_SERVICES[23]},
+    { .value = { FIELD_TEXT, 24, false, false, NULL, "file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[24]},
+    { .value = { FIELD_TEXT, 25, false, false, NULL, "process_user_name", {.text = ""}, true}, .next = &TABLE_SERVICES[25]},
+    { .value = { FIELD_TEXT, 26, false, false, NULL, "process_group_name", {.text = ""}, true}, .next = &TABLE_SERVICES[26]},
+    { .value = { FIELD_TEXT, 27, false, false, NULL, "service_enabled", {.text = ""}, true}, .next = &TABLE_SERVICES[27]},
+    { .value = { FIELD_TEXT, 28, false, false, NULL, "service_restart", {.text = ""}, true}, .next = &TABLE_SERVICES[28]},
+    { .value = { FIELD_INTEGER, 29, false, false, NULL, "service_frequency", {.integer = 0}, true}, .next = &TABLE_SERVICES[29]},
+    { .value = { FIELD_TEXT, 30, false, false, NULL, "log_file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[30]},
+    { .value = { FIELD_TEXT, 31, false, false, NULL, "error_log_file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[31]},
+    { .value = { FIELD_TEXT, 32, false, false, NULL, "process_working_dir", {.text = ""}, true}, .next = &TABLE_SERVICES[32]},
+    { .value = { FIELD_TEXT, 33, false, false, NULL, "process_root_dir", {.text = ""}, true}, .next = &TABLE_SERVICES[33]},
+    { .value = { FIELD_INTEGER, 34, false, false, NULL, "service_starts_on_mount", {.integer = 0}, true}, .next = &TABLE_SERVICES[34]},
+    { .value = { FIELD_TEXT, 35, false, false, NULL, "service_starts_on_path_modified", {.text = ""}, true}, .next = &TABLE_SERVICES[35]},
+    { .value = { FIELD_TEXT, 36, false, false, NULL, "service_starts_on_not_empty_directory", {.text = ""}, true}, .next = &TABLE_SERVICES[36]},
+    { .value = { FIELD_INTEGER, 37, false, false, NULL, "service_inetd_compatibility", {.integer = 0}, true}, .next = &TABLE_SERVICES[37]},
+    { .value = { FIELD_TEXT, 38, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_SERVICES[38]},
+    { .value = { FIELD_TEXT, 39, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL}
 };
 
 static struct kv_list const TABLE_MAP[] = {

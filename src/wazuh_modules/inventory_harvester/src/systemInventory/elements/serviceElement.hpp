@@ -75,10 +75,17 @@ public:
 
         // Process information
         element.data.process.pid = data->servicePid();
-        element.data.process.executable = data->serviceBinaryPath();
+        element.data.process.executable = data->processExecutable();
+        element.data.process.args = data->processArgs();
+        element.data.process.working_directory = data->processWorkingDir();
 
         // User information
-        element.data.user.name = data->serviceUser();
+        element.data.user.name = data->processUserName();
+
+        // File information
+        element.data.file.path = data->filePath();
+        element.data.file.log_path = data->logFilePath();
+        element.data.file.error_log_path = data->errorLogFilePath();
 
         // Wazuh cluster information
         auto& instancePolicyManager = PolicyHarvesterManager::instance();

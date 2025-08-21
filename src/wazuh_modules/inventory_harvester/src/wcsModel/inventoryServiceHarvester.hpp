@@ -23,11 +23,13 @@ struct InventoryServiceHarvester final
     Service::ServiceInfo service;
     Service::Process process;
     Service::User user;
+    Service::File file;
     Wazuh wazuh;
 
     REFLECTABLE(MAKE_FIELD("service", &InventoryServiceHarvester::service),
                 MAKE_FIELD("process", &InventoryServiceHarvester::process),
                 MAKE_FIELD("user", &InventoryServiceHarvester::user),
+                MAKE_FIELD("file", &InventoryServiceHarvester::file),
                 MAKE_FIELD("agent", &InventoryServiceHarvester::agent),
                 MAKE_FIELD("wazuh", &InventoryServiceHarvester::wazuh));
 };

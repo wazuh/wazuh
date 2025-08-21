@@ -26,7 +26,26 @@
     "can_stop": null,
     "can_reload": null,
     "service_exit_code": null,
-    "checksum": null
+    "checksum": null,
+    "item_id": "empty_003",
+    "enabled": null,
+    "service_name": null,
+    "process_executable": null,
+    "process_args": null,
+    "process_cwd": null,
+    "user_name": null,
+    "user_id": null,
+    "group_name": null,
+    "group_id": null,
+    "file_path": null,
+    "file_name": null,
+    "file_inode": null,
+    "file_mode": null,
+    "file_size": null,
+    "file_uid": null,
+    "file_gid": null,
+    "file_owner": null,
+    "file_group": null
   },
   "operation": "INSERTED"
 }

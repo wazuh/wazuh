@@ -44,9 +44,13 @@ struct Service final
     {
         long pid;                               // process.pid (ECS)
         std::string_view executable;           // process.executable (ECS)
+        std::string_view args;                  // process.args (ECS)
+        std::string_view working_directory;     // process.working_directory (ECS)
         
         REFLECTABLE(MAKE_FIELD("pid", &Process::pid),
-                    MAKE_FIELD("executable", &Process::executable));
+                    MAKE_FIELD("executable", &Process::executable),
+                    MAKE_FIELD("args", &Process::args),
+                    MAKE_FIELD("working_directory", &Process::working_directory));
     };
 
     struct User final
@@ -54,6 +58,17 @@ struct Service final
         std::string_view name;                  // user.name (ECS)
         
         REFLECTABLE(MAKE_FIELD("name", &User::name));
+    };
+
+    struct File final
+    {
+        std::string_view path;                  // file.path (ECS)
+        std::string_view log_path;              // file.log.path (Custom)
+        std::string_view error_log_path;        // file.error_log.path (Custom)
+        
+        REFLECTABLE(MAKE_FIELD("path", &File::path),
+                    MAKE_FIELD("log_path", &File::log_path),
+                    MAKE_FIELD("error_log_path", &File::error_log_path));
     };
 };
 
