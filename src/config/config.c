@@ -25,8 +25,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osglobal = "global";                            /* Server Config */
     const char *ossyscheck = "syscheck";                        /* Agent Config  */
     const char *osrootcheck = "rootcheck";                      /* Agent Config  */
-    const char *osalerts = "alerts";                            /* Server Config */
-    const char *osdbd = "database_output";                      /* Server Config */
     const char *oslocalfile = "localfile";                      /* Agent Config  */
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
@@ -45,7 +43,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osindexer = "indexer";                          /* Indexer Config */
     const char *osgcp_pub = "gcp-pubsub";                       /* Google Cloud PubSub - Wazuh Module */
     const char *osgcp_bucket = "gcp-bucket";                    /* Google Cloud Bucket - Wazuh Module */
-    const char *wlogtest = "rule_test";                         /* Wazuh Logtest */
     const char *agent_upgrade = "agent-upgrade";                /* Agent Upgrade Module */
     const char *task_manager = "task-manager";                  /* Task Manager Module */
     const char *wazuh_db = "wdb";                               /* Wazuh-DB Daemon */

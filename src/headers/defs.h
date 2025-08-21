@@ -132,7 +132,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_LOCAL_SOCK  "queue/sockets/wmodules"
 #define REMOTE_LOCAL_SOCK  "queue/sockets/remote"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
-#define MAIL_LOCAL_SOCK "queue/sockets/mail"
 #define MON_LOCAL_SOCK  "queue/sockets/monitor"
 #define CLUSTER_SOCK "queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "queue/sockets/control"
@@ -357,10 +356,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* XML global elements */
 #ifndef xml_global
 #define xml_global "global"
-#endif
-
-#ifndef xml_alerts
-#define xml_alerts "alerts"
 #endif
 
 #ifndef xml_rules
