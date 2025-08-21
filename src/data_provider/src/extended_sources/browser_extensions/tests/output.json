@@ -1,0 +1,56 @@
+[
+    {
+        "name": "IEToEdge BHO",
+        "path": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\139.0.3405.102\\BHO\\ie_to_edge_bho_64.dll",
+        "registry_path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects\\{1FD49718-1D00-4B19-AF5F-070AF6D5D54C}",
+        "version": "139.0.3405.102"
+    },
+    {
+        "name": "",
+        "path": "",
+        "registry_path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects\\{1FD49718-1D00-4B19-AF5F-070AF6D5D54C}",
+        "version": ""
+    },
+    {
+        "name": "",
+        "path": "",
+        "registry_path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects\\{1FD49718-1D00-4B19-AF5F-070AF6D5D54C}",
+        "version": ""
+    },
+    {
+        "name": "",
+        "path": "",
+        "registry_path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects\\{1FD49718-1D00-4B19-AF5F-070AF6D5D54C}",
+        "version": ""
+    },
+    {
+        "name": "IEToEdge BHO",
+        "path": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\139.0.3405.102\\BHO\\ie_to_edge_bho_64.dll",
+        "registry_path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects\\{1FD49718-1D00-4B19-AF5F-070AF6D5D54C}",
+        "version": "139.0.3405.102"
+    },
+    {
+        "name": "",
+        "path": "",
+        "registry_path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects\\{1FD49718-1D00-4B19-AF5F-070AF6D5D54C}",
+        "version": ""
+    },
+    {
+        "name": "",
+        "path": "",
+        "registry_path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects\\{1FD49718-1D00-4B19-AF5F-070AF6D5D54C}",
+        "version": ""
+    },
+    {
+        "name": "",
+        "path": "",
+        "registry_path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Browser Helper Objects\\{1FD49718-1D00-4B19-AF5F-070AF6D5D54C}",
+        "version": ""
+    },
+    {
+        "name": "Microsoft Url Search Hook",
+        "path": "C:\\Windows\\System32\\ieframe.dll",
+        "registry_path": "HKEY_USERS\\S-1-5-21-873499442-690455868-1617690636-1001\\SOFTWARE\\Microsoft\\Internet Explorer\\URLSearchHooks\\{CFBFAE00-17A6-11D0-99CB-00C04FD64497}",
+        "version": "11.0.26100.1742"
+    }
+]
