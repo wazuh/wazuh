@@ -19,5 +19,3 @@
                         value: MAXIMUM
                     - timeframe:
                         value: TIMEFRAME
-        - logall:
-            value: 'yes'
