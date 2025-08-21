@@ -225,6 +225,23 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | can_stop           | string    | Whether the service can be stopped. |
 |                              | can_reload         | string    | Whether the service can be reloaded. |
 |                              | service_exit_code  | long      | Service-specific exit code on failure. |
+|                              | service_name       | string    | ECS: service.name (File name of plist for macOS). |
+|                              | process_executable | string    | ECS: process.executable (Path to the service executable). |
+|                              | process_args       | string    | ECS: process.args (Command line arguments for the service). |
+|                              | file_path          | string    | ECS: file.path (Path to the .plist definition file for macOS). |
+|                              | process_user_name  | string    | ECS: process.user.name (User account running the job). |
+|                              | process_group_name | string    | ECS: process.group.name (Group account running the job). |
+|                              | service_enabled    | string    | ECS: service.enabled (unified as text: enabled/disabled for Linux, true/false for macOS). |
+|                              | service_restart    | string    | Custom: service.restart (Restart policy: always/on-failure/never). |
+|                              | service_frequency  | long      | Custom: service.frequency (Run frequency in seconds). |
+|                              | log_file_path      | string    | Custom: log.file.path (Redirect stdout to a file/pipe). |
+|                              | error_log_file_path| string    | Custom: error.log.file.path (Redirect stderr to a file/pipe). |
+|                              | process_working_dir| string    | ECS: process.working_dir (Working directory of the job). |
+|                              | process_root_dir   | string    | Custom: process.root_dir (Chroot directory before execution). |
+|                              | service_starts_on_mount | bool | Custom: service.starts_on_mount (Launch when a filesystem is mounted). |
+|                              | service_starts_on_path_modified | string | Custom: service.starts_on_path_modified (Launch when a path is modified). |
+|                              | service_starts_on_not_empty_directory | string | Custom: service.starts_on_not_empty_directory (Launch when a directory is not empty). |
+|                              | service_inetd_compatibility | bool | Custom: service.inetd_compatibility (Indicates if the daemon expects to be run as if it were launched from inetd). |
 
 
 ### SyncMsg table

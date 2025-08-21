@@ -224,6 +224,23 @@ table syscollector_services {
     can_stop:string;
     can_reload:string;
     service_exit_code:long = null;
+    service_name:string;
+    process_executable:string;
+    process_args:string;
+    file_path:string;
+    process_user_name:string;
+    process_group_name:string;
+    service_enabled:string;
+    service_restart:string;
+    service_frequency:long = null;
+    log_file_path:string;
+    error_log_file_path:string;
+    process_working_dir:string;
+    process_root_dir:string;
+    service_starts_on_mount:bool = null;
+    service_starts_on_path_modified:string;
+    service_starts_on_not_empty_directory:string;
+    service_inetd_compatibility:bool = null;
     checksum:string;
 }
 
