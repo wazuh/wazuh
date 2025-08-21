@@ -13,15 +13,16 @@
 
 class ScaPolicyLoaderTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        // Set up the logging callback to avoid "Log callback not set" errors
-        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
-            // Mock logging callback that does nothing
-        });
+    protected:
+        void SetUp() override
+        {
+            // Set up the logging callback to avoid "Log callback not set" errors
+            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+            {
+                // Mock logging callback that does nothing
+            });
 
-    }
+        }
 };
 
 TEST_F(ScaPolicyLoaderTest, Contruction)
@@ -37,5 +38,8 @@ TEST_F(ScaPolicyLoaderTest, NoPolicies)
     auto dbSync = std::make_shared<MockDBSync>();
 
     const SCAPolicyLoader loader({}, fsMock, dbSync);
-    ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto) { return; }).size(), 0);
+    ASSERT_EQ(loader.LoadPolicies(30, true, [](auto, auto)
+    {
+        return;
+    }).size(), 0);
 }

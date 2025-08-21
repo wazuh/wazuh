@@ -57,15 +57,16 @@ namespace
         else
         {
             fileUtils->readLineByLine(filePath,
-                                      [&pattern, &matchFound](const std::string& line)
-                                      {
-                                          if (line == pattern)
-                                          {
-                                              matchFound = true;
-                                              return false;
-                                          }
-                                          return true;
-                                      });
+                                      [&pattern, &matchFound](const std::string & line)
+            {
+                if (line == pattern)
+                {
+                    matchFound = true;
+                    return false;
+                }
+
+                return true;
+            });
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' " + (matchFound ? "was" : "was not") + " found in file '" + filePath + "'");
@@ -76,7 +77,7 @@ namespace
 RuleEvaluator::RuleEvaluator(PolicyEvaluationContext ctx,
                              std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
-                                            : std::make_unique<file_system::FileSystemWrapper>())
+                          : std::make_unique<file_system::FileSystemWrapper>())
     , m_ctx(std::move(ctx))
 {
     if (m_ctx.rule.empty())
@@ -104,6 +105,7 @@ RuleResult FileRuleEvaluator::Evaluate()
     {
         return CheckFileForContents();
     }
+
     return CheckFileExistence();
 }
 
@@ -114,9 +116,9 @@ RuleResult FileRuleEvaluator::CheckFileForContents()
     LoggingHelper::getInstance().log(LOG_DEBUG, "Processing file rule. Checking contents of file: '" + m_ctx.rule + "' against pattern:  " + pattern);
 
     if (TryFunc(
-            [&]
-            { return !m_fileSystemWrapper->exists(m_ctx.rule) || !m_fileSystemWrapper->is_regular_file(m_ctx.rule); })
-            .value_or(false))
+                [&]
+{ return !m_fileSystemWrapper->exists(m_ctx.rule) || !m_fileSystemWrapper->is_regular_file(m_ctx.rule); })
+    .value_or(false))
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "File '" + m_ctx.rule + "' does not exist or is not a regular file");
         m_lastInvalidReason = "File '" + m_ctx.rule + "' does not exist or is not a regular file";
@@ -143,8 +145,8 @@ RuleResult FileRuleEvaluator::CheckFileExistence()
     LoggingHelper::getInstance().log(LOG_DEBUG, "Processing file rule. Checking existence of file: '" + m_ctx.rule + "'");
 
     if (const auto fileOk = TryFunc(
-            [&]
-            { return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_regular_file(m_ctx.rule); }))
+                                [&]
+{ return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_regular_file(m_ctx.rule); }))
     {
         if (fileOk.value())
         {
@@ -177,7 +179,7 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
     }
     else
     {
-        m_commandExecFunc = [timeout = ctx.commandsTimeout](const std::string& command) -> std::optional<ExecResult>
+        m_commandExecFunc = [timeout = ctx.commandsTimeout](const std::string & command) -> std::optional<ExecResult>
         {
             auto wmExecCallback = SecurityConfigurationAssessment::GetGlobalWmExecFunction();
 
@@ -186,7 +188,7 @@ CommandRuleEvaluator::CommandRuleEvaluator(PolicyEvaluationContext ctx,
                 return std::nullopt;
             }
 
-            char *cmdOutput = nullptr;
+            char* cmdOutput = nullptr;
             int resultCode = 0;
 
             const auto wmExecResult = wmExecCallback(const_cast<char*>(command.c_str()), &cmdOutput, &resultCode, timeout, nullptr);
@@ -217,7 +219,7 @@ RuleResult CommandRuleEvaluator::Evaluate()
 {
     LoggingHelper::getInstance().log(LOG_DEBUG, "Processing command rule: '" + m_ctx.rule + "'");
 
-    if(!m_ctx.commandsEnabled)
+    if (!m_ctx.commandsEnabled)
     {
         m_lastInvalidReason = "Remote commands are disabled for this policy";
         LoggingHelper::getInstance().log(LOG_DEBUG, "Policy is remote and remote commands are disabled. Skipping command rule.");
@@ -244,8 +246,8 @@ RuleResult CommandRuleEvaluator::Evaluate()
                     if (outputPatternMatch || errorPatternMatch)
                     {
                         result = outputPatternMatch.value_or(false) || errorPatternMatch.value_or(false)
-                                     ? RuleResult::Found
-                                     : RuleResult::NotFound;
+                                 ? RuleResult::Found
+                                 : RuleResult::NotFound;
                     }
                     else
                     {
@@ -276,7 +278,8 @@ RuleResult CommandRuleEvaluator::Evaluate()
         LoggingHelper::getInstance().log(LOG_DEBUG, "Command rule is empty");
     }
 
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Command rule evaluation result: " + m_ctx.rule + "' pattern '" + m_ctx.pattern.value_or("") + "' was " + (result == RuleResult::Found ? "found" : "not found"));
+    LoggingHelper::getInstance().log(LOG_DEBUG, "Command rule evaluation result: " + m_ctx.rule + "' pattern '" + m_ctx.pattern.value_or("") + "' was " +
+                                     (result == RuleResult::Found ? "found" : "not found"));
 
     return m_ctx.isNegated ? (result == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : result;
 }
@@ -295,6 +298,7 @@ RuleResult DirRuleEvaluator::Evaluate()
     {
         return CheckDirectoryForContents();
     }
+
     return CheckDirectoryExistence();
 }
 
@@ -310,12 +314,14 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
     }
 
     auto resolved = TryFunc([&] { return m_fileSystemWrapper->canonical(m_ctx.rule); });
+
     if (!resolved)
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + m_ctx.rule + "' could not be resolved");
         m_lastInvalidReason = "Directory '" + m_ctx.rule + "' could not be resolved";
         return RuleResult::Invalid;
     }
+
     const auto rootPath = *resolved;
 
     if (!TryFunc([&] { return m_fileSystemWrapper->is_directory(rootPath); }).value_or(false))
@@ -336,12 +342,14 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
         dirs.pop();
 
         const auto filesOpt = TryFunc([&] { return m_fileSystemWrapper->list_directory(currentDir); });
+
         if (!filesOpt)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "Directory '" + currentDir.string() + "' could not be listed");
             m_lastInvalidReason = "Directory '" + currentDir.string() + "' could not be listed";
             return RuleResult::Invalid;
         }
+
         if (filesOpt->empty())
         {
             continue;
@@ -390,9 +398,11 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
             if (isRegex)
             {
                 const auto patternMatch = sca::PatternMatches(file.filename().string(), pattern);
+
                 if (patternMatch.has_value())
                 {
                     hadValue = true;
+
                     if (patternMatch.value())
                     {
                         LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' was found in directory '" + rootPath.string() + "'");
@@ -406,7 +416,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (file.filename().string() == fileName)
                 {
-                    const auto result = TryFunc([&]{ return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx.isNegated); });
+                    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx.isNegated); });
 
                     if (result.has_value())
                     {
@@ -448,7 +458,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryExistence()
     LoggingHelper::getInstance().log(LOG_DEBUG, "Processing directory rule. Checking existence of directory: '" + m_ctx.rule + "'");
 
     if (const auto dirOk = TryFunc(
-            [&] { return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_directory(m_ctx.rule); }))
+                               [&] { return m_fileSystemWrapper->exists(m_ctx.rule) && m_fileSystemWrapper->is_directory(m_ctx.rule); }))
     {
         if (dirOk.value())
         {
@@ -477,20 +487,20 @@ ProcessRuleEvaluator::ProcessRuleEvaluator(PolicyEvaluationContext ctx,
     : RuleEvaluator(std::move(ctx), std::move(fileSystemWrapper))
     , m_sysInfo(std::move(sysInfo))
     , m_getProcesses(getProcesses ? std::move(getProcesses) : [this]()
-                     {
-                         std::vector<std::string> processNames;
+{
+    std::vector<std::string> processNames;
 
-                         m_sysInfo->processes(
-                             [&processNames](nlohmann::json& procJson)
-                             {
-                                 if (procJson.contains("name") && procJson["name"].is_string())
-                                 {
-                                     processNames.emplace_back(procJson["name"]);
-                                 }
-                             });
+    m_sysInfo->processes(
+        [&processNames](nlohmann::json & procJson)
+    {
+        if (procJson.contains("name") && procJson["name"].is_string())
+        {
+            processNames.emplace_back(procJson["name"]);
+        }
+    });
 
-                         return processNames;
-                     })
+    return processNames;
+})
 {
 }
 
@@ -534,10 +544,12 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
     {
         fileSystemWrapper = std::make_unique<file_system::FileSystemWrapper>();
     }
+
     if (!fileUtils)
     {
         fileUtils = std::make_unique<file_io::FileIOUtils>();
     }
+
     if (!sysInfo)
     {
         sysInfo = std::make_unique<SysInfo>();
@@ -545,6 +557,7 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
 
     auto ruleInput = Utils::trim(input, " \t");
     auto isNegated = false;
+
     if (ruleInput.size() >= 4 && ruleInput.compare(0, 4, "not ") == 0)
     {
         isNegated = true;
@@ -552,12 +565,14 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
     }
 
     const auto pattern = sca::GetPattern(ruleInput);
+
     if (pattern.has_value())
     {
         ruleInput = Utils::trim(ruleInput.substr(0, ruleInput.find("->")), " \t");
     }
 
     const auto ruleTypeAndValue = sca::ParseRuleType(ruleInput);
+
     if (!ruleTypeAndValue.has_value())
     {
         return nullptr;
@@ -572,13 +587,21 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
         case sca::WM_SCA_TYPE_FILE:
             return std::make_unique<FileRuleEvaluator>(ctx, std::move(fileSystemWrapper), std::move(fileUtils));
 #ifdef _WIN32
-        case sca::WM_SCA_TYPE_REGISTRY: return std::make_unique<RegistryRuleEvaluator>(ctx);
+
+        case sca::WM_SCA_TYPE_REGISTRY:
+            return std::make_unique<RegistryRuleEvaluator>(ctx);
 #endif
+
         case sca::WM_SCA_TYPE_PROCESS:
             return std::make_unique<ProcessRuleEvaluator>(ctx, std::move(fileSystemWrapper), std::move(sysInfo));
+
         case sca::WM_SCA_TYPE_DIR:
             return std::make_unique<DirRuleEvaluator>(ctx, std::move(fileSystemWrapper), std::move(fileUtils));
-        case sca::WM_SCA_TYPE_COMMAND: return std::make_unique<CommandRuleEvaluator>(ctx, std::move(fileSystemWrapper));
-        default: return nullptr;
+
+        case sca::WM_SCA_TYPE_COMMAND:
+            return std::make_unique<CommandRuleEvaluator>(ctx, std::move(fileSystemWrapper));
+
+        default:
+            return nullptr;
     }
 }

@@ -19,14 +19,17 @@ namespace
     std::string Join(const std::vector<std::string>& elements, const std::string& separator)
     {
         std::ostringstream oss;
+
         for (size_t i = 0; i < elements.size(); ++i)
         {
             if (i > 0)
             {
                 oss << separator;
             }
+
             oss << elements[i];
         }
+
         return oss.str();
     }
 
@@ -41,6 +44,7 @@ namespace
         {
             std::vector<std::string> values;
             const auto items = yamlNode.AsSequence();
+
             for (const auto& item : items)
             {
                 if (item.IsScalar())
@@ -54,6 +58,7 @@ namespace
                         if (subitem.IsSequence())
                         {
                             const auto subitems = subitem.AsSequence();
+
                             for (const auto& val : subitems)
                             {
                                 values.emplace_back(key + ":" + val.AsString());
@@ -62,15 +67,18 @@ namespace
                     }
                 }
             }
+
             return Join(values, ", ");
         }
         else if (yamlNode.IsMap())
         {
             nlohmann::json j;
+
             for (const auto& [key, node] : yamlNode.AsMap())
             {
                 j[key] = YamlNodeToJson(node);
             }
+
             return j;
         }
 
@@ -88,8 +96,8 @@ namespace
 
 // NOLINTNEXTLINE(performance-unnecessary-value-param)
 PolicyParser::PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, std::unique_ptr<IYamlDocument> yamlDocument)
-: m_commandsTimeout(commandsTimeout)
-, m_commandsEnabled(commandsEnabled)
+    : m_commandsTimeout(commandsTimeout)
+    , m_commandsEnabled(commandsEnabled)
 {
     if (yamlDocument)
     {
@@ -170,6 +178,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
             for (const auto& rule : rules)
             {
                 std::unique_ptr<IRuleEvaluator> RuleEvaluator = RuleEvaluatorFactory::CreateEvaluator(rule.AsString(), m_commandsTimeout, m_commandsEnabled);
+
                 if (RuleEvaluator != nullptr)
                 {
                     requirements.rules.push_back(std::move(RuleEvaluator));
@@ -179,6 +188,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                     LoggingHelper::getInstance().log(LOG_ERROR, "Failed to parse rule: " + rule.AsString());
                 }
             }
+
             LoggingHelper::getInstance().log(LOG_DEBUG, "Requirements parsed.");
         }
         catch (const std::exception& e)
@@ -192,6 +202,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
     if (root.HasKey("checks"))
     {
         const auto checksNode = root["checks"].AsSequence();
+
         for (const auto& checkNode : checksNode)
         {
             try
@@ -259,15 +270,18 @@ void PolicyParser::ReplaceVariablesInNode(YamlNode& currentNode)
     if (currentNode.IsScalar())
     {
         auto value = currentNode.AsString();
+
         for (const auto& pair : m_variablesMap)
         {
             size_t pos = 0;
+
             while ((pos = value.find(pair.first, pos)) != std::string::npos)
             {
                 value.replace(pos, pair.first.length(), pair.second);
                 pos += pair.second.length();
             }
         }
+
         currentNode.SetScalarValue(value);
     }
     else if (currentNode.IsMap())
@@ -280,6 +294,7 @@ void PolicyParser::ReplaceVariablesInNode(YamlNode& currentNode)
     else if (currentNode.IsSequence())
     {
         auto items = currentNode.AsSequence();
+
         for (auto& item : items)
         {
             ReplaceVariablesInNode(item);
