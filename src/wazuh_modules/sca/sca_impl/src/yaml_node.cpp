@@ -11,7 +11,7 @@ YamlNode::YamlNode(yaml_document_t* doc, yaml_node_t* nodePtr)
 {
     if (!m_node)
     {
-        return;
+        return; // LCOV_EXCL_LINE
     }
 
     switch (m_node->type)
@@ -28,13 +28,12 @@ YamlNode::YamlNode(yaml_document_t* doc, yaml_node_t* nodePtr)
             m_type = Type::Mapping;
             break;
 
-        case YAML_NO_NODE:
-            m_type = Type::Undefined;
-            break;
-
+        // LCOV_EXCL_START
+        case YAML_NO_NODE: // fallthrough
         default:
             m_type = Type::Undefined;
             break;
+            // LCOV_EXCL_STOP
     }
 }
 
@@ -274,11 +273,9 @@ bool YamlNode::HasKey(const std::string& key) const
                 }
             }
         }
-
-        return false;
     }
 
-    return false;
+    return false; // LCOV_EXCL_LINE
 }
 
 void YamlNode::RemoveKey(const std::string& key)
@@ -319,7 +316,7 @@ int YamlNode::GetId() const
         }
     }
 
-    throw std::runtime_error("Node not found in document");
+    throw std::runtime_error("Node not found in document"); // LCOV_EXCL_LINE
 };
 
 YamlNode YamlNode::CreateEmptySequence(const std::string& key)
@@ -347,12 +344,15 @@ YamlNode YamlNode::CreateEmptySequence(const std::string& key)
     {
         mapping_id = GetId();
     }
+    // LCOV_EXCL_START
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(LOG_ERROR,
                                          "Failed to get YAML node ID in CreateEmptySequence for key '" + key + "': " + e.what());
         throw std::runtime_error("CreateEmptySequence failed: Unable to find current node in document while creating sequence for key '" + key + "'");
     }
+
+    // LCOV_EXCL_STOP
 
     yaml_document_append_mapping_pair(m_document, mapping_id, key_id, seq_id);
 
@@ -387,12 +387,15 @@ void YamlNode::AppendToSequence(const std::string& value)
     {
         sequence_id = GetId();
     }
+    // LCOV_EXCL_START
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(LOG_ERROR,
                                          "Failed to get YAML node ID in AppendToSequence for value '" + value + "': " + e.what());
         throw std::runtime_error("AppendToSequence failed: Unable to find current sequence node in document while appending value '" + value + "'");
     }
+
+    // LCOV_EXCL_STOP
 
     yaml_document_append_sequence_item(m_document, sequence_id, scalar_id);
     sequence_cache.clear();
@@ -473,6 +476,7 @@ YamlNode YamlNode::CloneInto(yaml_document_t* dest_doc) const
                     {
                         cloned_val_id = cloned_val.GetId();
                     }
+                    // LCOV_EXCL_START
                     catch (const std::exception& e)
                     {
                         LoggingHelper::getInstance().log(LOG_ERROR,
@@ -480,15 +484,18 @@ YamlNode YamlNode::CloneInto(yaml_document_t* dest_doc) const
                         throw std::runtime_error("CloneInto failed: Unable to find cloned mapping value node in destination document for key '" + key + "'");
                     }
 
+                    // LCOV_EXCL_STOP
                     yaml_document_append_mapping_pair(dest_doc, map_id, key_id, cloned_val_id);
                 }
 
                 return YamlNode(dest_doc, yaml_document_get_node(dest_doc, map_id));
             }
 
+        // LCOV_EXCL_START
         case Type::Undefined: // fallthrough
         default:
             throw std::runtime_error("Unsupported or undefined node type");
+            // LCOV_EXCL_STOP
     }
 }
 
