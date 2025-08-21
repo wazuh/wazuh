@@ -69,6 +69,10 @@ class SecurityConfigurationAssessment
         /// @return Function pointer to wm_exec or nullptr if not set
         static int (*GetGlobalWmExecFunction())(char*, char**, int*, int, const char*);
 
+    protected:
+        /// @brief List of policies
+        std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -99,9 +103,6 @@ class SecurityConfigurationAssessment
 
         /// @brief Scan interval in seconds
         std::time_t m_scanInterval = 3600;
-
-        /// @brief List of policies
-        std::vector<std::unique_ptr<ISCAPolicy>> m_policies;
 
         /// @brief Flag to keep the module running
         std::atomic<bool> m_keepRunning {true};
