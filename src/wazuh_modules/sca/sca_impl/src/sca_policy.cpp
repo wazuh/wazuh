@@ -49,7 +49,7 @@ void SCAPolicy::Scan(
             {
                 return;
             }
-            resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate()));
+            resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate(), rule->GetInvalidReason()));
         }
 
         requirementsOk = resultEvaluator.Result();
@@ -72,18 +72,7 @@ void SCAPolicy::Scan(
                     return;
                 }
 
-                const auto ruleResult = rule->Evaluate();
-                resultEvaluator.AddResult(RuleEvaluationResult(ruleResult));
-
-                if (ruleResult == RuleResult::Invalid && resultEvaluator.GetInvalidReason().empty())
-                {
-                    const auto ruleReason = rule->GetInvalidReason();
-
-                    if (!ruleReason.empty())
-                    {
-                        resultEvaluator.AddResult(RuleEvaluationResult(RuleResult::Invalid, ruleReason));
-                    }
-                }
+                resultEvaluator.AddResult(RuleEvaluationResult(rule->Evaluate(), rule->GetInvalidReason()));
             }
 
             const auto result = resultEvaluator.Result();
