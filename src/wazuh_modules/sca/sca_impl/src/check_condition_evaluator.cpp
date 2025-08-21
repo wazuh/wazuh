@@ -103,8 +103,10 @@ sca::CheckResult CheckConditionEvaluator::Result() const
         case ConditionType::None:
             return sca::CheckResult::Passed;
 
+        // LCOV_EXCL_START - UNREACHABLE
         default:
             throw std::runtime_error("Invalid condition type");
+            // LCOV_EXCL_STOP
     }
 }
 
