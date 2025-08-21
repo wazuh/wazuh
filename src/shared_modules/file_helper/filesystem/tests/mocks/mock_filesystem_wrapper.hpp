@@ -1,3 +1,5 @@
+#pragma once
+
 #include <gmock/gmock.h>
 
 #include <ifilesystem_wrapper.hpp>
