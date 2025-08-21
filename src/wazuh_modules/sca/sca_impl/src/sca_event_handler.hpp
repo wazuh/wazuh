@@ -132,16 +132,16 @@ class SCAEventHandler
         /// @param policy The policy JSON object to normalize.
         void NormalizePolicy(nlohmann::json& policy) const;
 
+        /// @brief Callback function used to push stateless messages to the message queue.
+        std::function<int(const std::string&)> m_pushStatelessMessage;
+
+        /// @brief Callback function used to push stateful messages to the message queue.
+        std::function<int(const std::string&)> m_pushStatefulMessage;
+
     private:
         /// @brief The agent's UUID.
         std::string m_agentUUID;
 
         /// @brief Pointer to the IDBSync object for database synchronization.
         std::shared_ptr<IDBSync> m_dBSync;
-
-        /// @brief Callback function used to push stateless messages to the message queue.
-        std::function<int(const std::string&)> m_pushStatelessMessage;
-
-        /// @brief Callback function used to push stateful messages to the message queue.
-        std::function<int(const std::string&)> m_pushStatefulMessage;
 };

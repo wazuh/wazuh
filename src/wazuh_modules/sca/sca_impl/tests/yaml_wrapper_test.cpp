@@ -26,9 +26,11 @@ class YamlWrapperTest : public ::testing::Test
         }
 };
 
-TEST_F(YamlWrapperTest, YamlDocDefaultConstructor)
+TEST_F(YamlWrapperTest, YamlDocConstructors)
 {
     auto doc = std::make_unique<YamlDocument>();
+
+    EXPECT_ANY_THROW(auto doc2 = std::make_unique<YamlDocument>(std::filesystem::path("dummy.yaml")));
 
     ASSERT_FALSE(doc->IsValidDocument());
 }
@@ -94,6 +96,16 @@ TEST_F(YamlWrapperTest, YamlDocGetRoot)
     EXPECT_NO_THROW({ auto node = doc->GetRoot(); });
 }
 
+TEST_F(YamlWrapperTest, YamlNodeDefaultConstructor)
+{
+    YamlNode node;
+    EXPECT_EQ(node.GetNodeType(), YamlNode::Type::Undefined);
+    EXPECT_EQ(node.GetNodeTypeAsString(), "Undefined");
+    EXPECT_FALSE(node.IsScalar());
+    EXPECT_FALSE(node.IsMap());
+    EXPECT_FALSE(node.IsSequence());
+}
+
 TEST_F(YamlWrapperTest, YamlNodeSubscriptOperatorAndGetNodeType)
 {
     const std::string yml = R"(
@@ -119,10 +131,24 @@ TEST_F(YamlWrapperTest, YamlNodeSubscriptOperatorAndGetNodeType)
     ASSERT_TRUE(root.GetNodeType() == YamlNode::Type::Mapping);
     EXPECT_EQ(root.GetNodeTypeAsString(), "Mapping");
 
+    EXPECT_ANY_THROW(root.SetScalarValue("not_a_scalar-should_throw"));
+    EXPECT_ANY_THROW(auto someError = root["not_a_key-should_throw"]);
+    EXPECT_ANY_THROW(root.AppendToSequence("not_a_sequence-should_throw"));
+
+    // a quick test of DumpYamlStructure for coverage
+    testing::internal::CaptureStdout();
+    root.DumpYamlStructure();
+    std::string output = testing::internal::GetCapturedStdout();
+    EXPECT_THAT(output, testing::HasSubstr("the_title"));
+
     // root node is a mapping, should take a key as subscript
     auto checks = root["checks"];
     ASSERT_TRUE(checks.GetNodeType() == YamlNode::Type::Sequence);
     EXPECT_EQ(checks.GetNodeTypeAsString(), "Sequence");
+    EXPECT_ANY_THROW(auto someError = checks[6989]);
+    EXPECT_ANY_THROW(auto someError = checks.CreateEmptySequence("not_a_map-should_throw"));
+    EXPECT_ANY_THROW(checks.RemoveKey("not_a_map-should_throw"));
+
 
     // checks node is a sequence, should take an index as subscript
     // Element 0 is a mapping, should take a key as subscript
@@ -138,6 +164,62 @@ TEST_F(YamlWrapperTest, YamlNodeSubscriptOperatorAndGetNodeType)
 
     // root node is a mapping, should not take an index as subscript, should throw
     EXPECT_THROW({ auto fail2 = root[0]; }, std::runtime_error);
+}
+
+TEST_F(YamlWrapperTest, ConstOperatorIndex)
+{
+    // 1. Create a YAML document with a sequence
+    const std::string yml = R"(
+list_of_items:
+  - item1
+  - item2
+  - item3
+)";
+
+    auto doc = std::make_unique<YamlDocument>(std::string(yml));
+    const YamlNode root = doc->GetRoot();
+
+    EXPECT_ANY_THROW(auto someError = root["not_a_key-should_throw"]);
+
+    // 2. Get the node that is the sequence
+    const YamlNode sequenceNode = root.AsMap().at("list_of_items");
+
+    EXPECT_ANY_THROW(auto str = root.AsString());
+    EXPECT_ANY_THROW(auto str = root.AsSequence());
+
+    // 3. Now, you can use the operator[] to access elements
+    // This line will call your YamlNode::operator[](size_t index) const
+    const YamlNode firstItem = sequenceNode[0];
+    EXPECT_ANY_THROW(auto someError = sequenceNode[1432]);
+    EXPECT_ANY_THROW(auto str = firstItem.AsMap());
+    EXPECT_ANY_THROW(auto someError = firstItem[0]);
+    EXPECT_ANY_THROW(auto someError = firstItem["not_a_map-should_throw"]);
+
+    // Verify the result
+    EXPECT_EQ(firstItem.AsString(), "item1");
+}
+
+TEST_F(YamlWrapperTest, HasKeyForNestedMap)
+{
+    // 1. Create a YAML document with a sequence
+    const std::string yml = R"(
+list_of_items:
+  - item1
+  - item2
+  - item3
+  -
+    mapItem1 : value1
+    mapItem2 : value2
+    mapItem3 : value3
+)";
+
+    auto doc = std::make_unique<YamlDocument>(std::string(yml));
+    const YamlNode root = doc->GetRoot();
+
+    // 2. Get the node that is the sequence
+    const YamlNode sequenceNode = root.AsMap().at("list_of_items");
+
+    ASSERT_TRUE(sequenceNode.HasKey("mapItem1"));
 }
 
 TEST_F(YamlWrapperTest, YamlNodeIs_Scalar_Sequence_Map)
