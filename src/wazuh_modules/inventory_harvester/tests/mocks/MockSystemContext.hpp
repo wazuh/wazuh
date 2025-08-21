@@ -194,14 +194,15 @@ public:
     MOCK_METHOD(std::string_view, serviceName, (), (const));
     MOCK_METHOD(std::string_view, serviceDisplayName, (), (const));
     MOCK_METHOD(std::string_view, serviceDescription, (), (const));
-    MOCK_METHOD(std::string_view, serviceState, (), (const));
     MOCK_METHOD(std::string_view, serviceType, (), (const));
     MOCK_METHOD(std::string_view, serviceStartType, (), (const));
-    MOCK_METHOD(std::string_view, serviceUser, (), (const));
-    MOCK_METHOD(std::string_view, serviceCommand, (), (const));
-    MOCK_METHOD(std::string_view, serviceExecutablePath, (), (const));
+    MOCK_METHOD(std::string_view, serviceState, (), (const));
+    MOCK_METHOD(std::string_view, serviceSubState, (), (const));
     MOCK_METHOD(int64_t, servicePid, (), (const));
-    MOCK_METHOD(std::string_view, serviceGroup, (), (const));
+    MOCK_METHOD(std::string_view, serviceBinaryPath, (), (const));
+    MOCK_METHOD(std::string_view, serviceEnabled, (), (const));
+    MOCK_METHOD(long, serviceExitCode, (), (const));
+    MOCK_METHOD(std::string_view, serviceUser, (), (const));
 
     std::string m_serializedElement;
 };
