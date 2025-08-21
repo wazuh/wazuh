@@ -213,19 +213,6 @@ get_rbac_actions:
           - PUT /agents/upgrade
           - PUT /agents/upgrade_custom
           - GET /agents/upgrade_result
-      analysisd:reload:
-        description: Reload the ruleset
-        resources:
-            - "*:*"
-        example:
-          actions:
-            - analysisd:reload
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /cluster/analysisd/reload
-          - PUT /manager/analysisd/reload
       group:delete:
         description: Delete agent groups
         resources:
@@ -312,6 +299,19 @@ get_rbac_actions:
           - PUT /cluster/analysisd/reload
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
+      cluster:ruleset_reload:
+        description: Reload the Wazuh's cluster nodes ruleset
+        resources:
+          - node:id
+        example:
+          actions:
+            - cluster:ruleset_reload
+          resources:
+            - node:id:worker1
+            - node:id:worker3
+          effect: deny
+        related_endpoints:
+          - PUT /cluster/analysisd/reload
       ciscat:read:
         description: Access CIS-CAT results for agents
         resources:
@@ -455,6 +455,18 @@ get_rbac_actions:
           - PUT /manager/restart
           - GET /manager/configuration/validation
           - GET /manager/configuration/{component}/{configuration}
+      manager:ruleset_reload:
+        description: Reload the Wazuh manager ruleset
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - manager:ruleset_reload
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - PUT /manager/analysisd/reload
       manager:update_config:
         description: Update current Wazuh manager configuration
         resources:

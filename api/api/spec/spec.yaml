@@ -132,14 +132,6 @@ x-rbac-catalog:
         actions: ['agent:modify_group']
         resources: ['agent:id:004', 'agent:group:us-east']
         effect: "allow"
-    'analysisd:reload':
-      description: "Reload the ruleset"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'analysisd:reload' ]
-        resources: [ '*:*:*' ]
-        effect: "allow"
     'group:modify_assignments':
       description: "Change the agents assigned to the group"
       resources:
@@ -232,6 +224,14 @@ x-rbac-catalog:
         actions: ['cluster:read']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
+    'cluster:ruleset_reload':
+      description: "Reload the Wazuh's cluster nodes ruleset"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+      example:
+        actions: [ 'cluster:ruleset_reload' ]
+        resources: ['node:id:worker1', 'node:id:worker3']
+        effect: "deny"
     'cluster:update_config':
       description: "Change the Wazuh's cluster node configuration"
       resources:
@@ -271,6 +271,14 @@ x-rbac-catalog:
       example:
         actions: ['manager:read']
         resources: ['*:*:*']
+        effect: "allow"
+    'manager:ruleset_reload':
+      description: "Reload the Wazuh manager ruleset"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'manager:ruleset_reload' ]
+        resources: [ '*:*:*' ]
         effect: "allow"
     'manager:update_config':
       description: "Update current Wazuh manager configuration"
@@ -11531,7 +11539,7 @@ paths:
       operationId: api.controllers.cluster_controller.put_reload_analysisd
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/analysisd:reload'
+        - $ref: '#/x-rbac-catalog/actions/cluster:ruleset_reload'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -13128,7 +13136,7 @@ paths:
       operationId: api.controllers.manager_controller.put_reload_analysisd
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:read'
-        - $ref: '#/x-rbac-catalog/actions/analysisd:reload'
+        - $ref: '#/x-rbac-catalog/actions/manager:ruleset_reload'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
