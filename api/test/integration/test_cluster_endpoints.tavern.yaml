@@ -659,7 +659,6 @@ stages:
         data:
           affected_items:
             - alerts:
-                email_alert_level: !anystr
                 log_alert_level: !anystr
           failed_items: []
           total_affected_items: 1
@@ -740,7 +739,6 @@ stages:
         data:
           affected_items:
             - alerts:
-                email_alert_level: !anystr
                 log_alert_level: !anystr
           failed_items: []
           total_affected_items: 1
@@ -961,12 +959,8 @@ stages:
         data:
           affected_items:
             - global:
-                alerts_log: !anystr
                 host_information: !anyint
                 integrity_checking: !anyint
-                jsonout_output: !anystr
-                logall: !anystr
-                logall_json: !anystr
                 max_output_size: !anyint
                 memory_size: !anyint
                 prelude_output: !anystr

@@ -379,7 +379,6 @@ stages:
         data:
           affected_items:
             - alerts:
-                email_alert_level: !anystr
                 log_alert_level: !anystr
           failed_items: []
           total_affected_items: 1
