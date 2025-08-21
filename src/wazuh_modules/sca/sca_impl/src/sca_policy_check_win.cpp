@@ -25,6 +25,7 @@ namespace
         {
             return {std::string(fullKey), ""};
         }
+
         return {std::string(fullKey.substr(0, separator)), std::string(fullKey.substr(separator + 1))};
     }
 
@@ -42,6 +43,7 @@ namespace
             {
                 throw std::runtime_error("Access denied to registry key");
             }
+
             return false;
         }
         catch (const std::exception& e)
@@ -100,10 +102,11 @@ namespace
         return a.size() == b.size() && std::equal(a.begin(),
                                                   a.end(),
                                                   b.begin(),
-                                                  [](char a, char b) {
-                                                      return std::tolower(static_cast<unsigned char>(a)) ==
-                                                             std::tolower(static_cast<unsigned char>(b));
-                                                  });
+                                                  [](char a, char b)
+        {
+            return std::tolower(static_cast<unsigned char>(a)) ==
+                   std::tolower(static_cast<unsigned char>(b));
+        });
     }
 
     RuleResult CheckMatch(const std::string& candidate, const std::string& pattern, bool isRegex)
@@ -111,6 +114,7 @@ namespace
         if (isRegex)
         {
             const auto patternMatch = sca::PatternMatches(candidate, pattern);
+
             if (patternMatch.has_value() && patternMatch.value())
             {
                 return RuleResult::Found;
@@ -144,6 +148,7 @@ RuleResult RegistryRuleEvaluator::Evaluate()
     {
         return CheckKeyForContents();
     }
+
     return CheckKeyExistence();
 }
 

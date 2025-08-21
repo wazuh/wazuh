@@ -12,15 +12,16 @@ using namespace testing;
 
 class PolicyParserTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        // Set up the logging callback to avoid "Log callback not set" errors
-        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
-            // Mock logging callback that does nothing
-        });
+    protected:
+        void SetUp() override
+        {
+            // Set up the logging callback to avoid "Log callback not set" errors
+            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+            {
+                // Mock logging callback that does nothing
+            });
 
-    }
+        }
 };
 
 // NOLINTBEGIN(bugprone-exception-escape)

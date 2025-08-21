@@ -32,35 +32,35 @@ using PolicyVariables = std::map<std::string, std::string, StringLengthGreater>;
 /// data into JSON for further use.
 class PolicyParser
 {
-public:
-    /// @brief Constructs a PolicyParser and loads the YAML file.
-    /// @param filename Path to the YAML policy file.
-    /// @param yamlDocument Optional pointer to an already loaded YAML document.
-    explicit PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, std::unique_ptr<IYamlDocument> yamlDocument = nullptr);
+    public:
+        /// @brief Constructs a PolicyParser and loads the YAML file.
+        /// @param filename Path to the YAML policy file.
+        /// @param yamlDocument Optional pointer to an already loaded YAML document.
+        explicit PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, std::unique_ptr<IYamlDocument> yamlDocument = nullptr);
 
-    /// @brief Parses the loaded policy file and extracts a SCAPolicy object.
-    ///
-    /// The method also populates the given JSON object with detailed
-    /// information on policies and checks for reporting usage.
-    ///
-    /// @param policiesAndChecks JSON object to be filled with extracted data.
-    /// @return A populated SCAPolicy object.
-    std::unique_ptr<ISCAPolicy> ParsePolicy(nlohmann::json& policiesAndChecks);
+        /// @brief Parses the loaded policy file and extracts a SCAPolicy object.
+        ///
+        /// The method also populates the given JSON object with detailed
+        /// information on policies and checks for reporting usage.
+        ///
+        /// @param policiesAndChecks JSON object to be filled with extracted data.
+        /// @return A populated SCAPolicy object.
+        std::unique_ptr<ISCAPolicy> ParsePolicy(nlohmann::json& policiesAndChecks);
 
-private:
-    /// @brief Recursively replaces variables in the YAML node with their values.
-    /// @param currentNode The YamlDocument to process.
-    void ReplaceVariablesInNode(YamlNode& currentNode);
+    private:
+        /// @brief Recursively replaces variables in the YAML node with their values.
+        /// @param currentNode The YamlDocument to process.
+        void ReplaceVariablesInNode(YamlNode& currentNode);
 
-    /// @brief Document loaded from the YAML file.
-    std::unique_ptr<IYamlDocument> m_yamlDocument;
+        /// @brief Document loaded from the YAML file.
+        std::unique_ptr<IYamlDocument> m_yamlDocument;
 
-    /// @brief Timeout for commands execution
-    int m_commandsTimeout;
+        /// @brief Timeout for commands execution
+        int m_commandsTimeout;
 
-    /// @brief Flag indicating whether remote is enabled
-    bool m_commandsEnabled;
+        /// @brief Flag indicating whether remote is enabled
+        bool m_commandsEnabled;
 
-    /// @brief Map of variables found in the YAML file, used for substitution.
-    PolicyVariables m_variablesMap;
+        /// @brief Map of variables found in the YAML file, used for substitution.
+        PolicyVariables m_variablesMap;
 };

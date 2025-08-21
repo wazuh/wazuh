@@ -15,6 +15,7 @@ YamlDocument::YamlDocument()
 YamlDocument::YamlDocument(const std::filesystem::path& filename)
 {
     std::ifstream file(filename.c_str());
+
     if (!file)
     {
         throw std::runtime_error("Cannot open file");
@@ -57,7 +58,7 @@ bool YamlDocument::Load(std::istream& input)
     yaml_parser_set_input_string(&m_parser, reinterpret_cast<const unsigned char*>(content.c_str()), content.size());
     m_loaded = yaml_parser_load(&m_parser, &m_document);
 
-    if(!m_loaded)
+    if (!m_loaded)
     {
         yaml_parser_delete(&m_parser);
     }
@@ -68,9 +69,11 @@ bool YamlDocument::Load(std::istream& input)
 YamlNode YamlDocument::GetRoot()
 {
     auto root = yaml_document_get_root_node(&m_document);
+
     if (!root)
     {
         throw std::runtime_error("Empty YAML document");
     }
+
     return YamlNode(&m_document, root);
 }
