@@ -896,6 +896,7 @@ nlohmann::json Syscollector::getBrowserExtensionsData()
         {
             sanitizeJsonValue(extension);
             extension["checksum"] = getItemChecksum(extension);
+            extension["item_id"] = getItemId(extension, BROWSER_EXTENSIONS_ITEM_ID_FIELDS);
             ret.push_back(std::move(extension));
         }
     }
