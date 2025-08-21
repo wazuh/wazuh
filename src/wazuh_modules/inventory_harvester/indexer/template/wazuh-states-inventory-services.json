@@ -263,42 +263,6 @@
             }
           }
         },
-        "log": {
-          "properties": {
-            "file": {
-              "properties": {
-                "path": {
-                  "ignore_above": 1024,
-                  "type": "keyword"
-                }
-              }
-            }
-          }
-        },
-        "error": {
-          "properties": {
-            "log": {
-              "properties": {
-                "file": {
-                  "properties": {
-                    "path": {
-                      "ignore_above": 1024,
-                      "type": "keyword"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "user": {
-          "properties": {
-            "name": {
-              "ignore_above": 1024,
-              "type": "keyword"
-            }
-          }
-        },
         "wazuh": {
           "properties": {
             "cluster": {
