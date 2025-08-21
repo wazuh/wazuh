@@ -207,37 +207,6 @@ def restart() -> AffectedItemsWazuhResult:
 
     return result
 
-_reload_ruleset_default_result_kwargs = {
-    'all_msg': f"Reload request sent to {'all specified nodes' if node_id != 'manager' else ''}",
-    'some_msg': "Could not send reload request to some specified nodes",
-    'none_msg': "Could not send reload request to any node",
-    'sort_casting': ['str']
-}
-
-
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-@expose_resources(actions=["analysisd:reload"],
-                  resources=['*:*:*'],
-                  post_proc_kwargs={'default_result_kwargs': _reload_ruleset_default_result_kwargs})
-async def reload_ruleset() -> AffectedItemsWazuhResult:
-    """Reload the ruleset on the manager.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Result of the reload operation, including affected and failed items.
-    """
-    results = AffectedItemsWazuhResult(**_reload_ruleset_default_result_kwargs)
-    try:
-        results = send_reload_ruleset_and_get_results(node_id=node_id, results=results)
-
-    except WazuhError as e:
-        results.add_failed_item(id_=node_id, error=e)
-
-    results.total_affected_items = len(results.affected_items)
-    return results
-
 
 _validation_default_result_kwargs = {
     'all_msg': f"Validation was successfully checked{' in all nodes' if node_id != 'manager' else ''}",

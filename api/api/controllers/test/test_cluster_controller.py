@@ -21,7 +21,7 @@ with patch('wazuh.common.wazuh_uid'):
             get_node_config, get_stats_analysisd_node, get_stats_hourly_node, get_daemon_stats_node,
             get_stats_node, get_stats_remoted_node, get_stats_weekly_node,
             get_status, get_status_node, put_restart, update_configuration, get_nodes_ruleset_sync_status)
-        from wazuh import cluster, common, manager, stats
+        from wazuh import cluster, common, manager, stats, analysis
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -605,7 +605,7 @@ async def test_put_reload_analysisd(mock_exc, mock_dapi, mock_remove, mock_dfunc
         from api.controllers.cluster_controller import put_reload_analysisd
         result = await put_reload_analysisd()
         f_kwargs = {'node_list': '*'}
-        mock_dapi.assert_called_once_with(f=cluster.reload_ruleset,
+        mock_dapi.assert_called_once_with(f=analysis.reload_ruleset,
                                           f_kwargs=mock_remove.return_value,
                                           request_type='distributed_master',
                                           is_async=True,

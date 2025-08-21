@@ -369,34 +369,3 @@ def test_update_ossec_conf_ko(move_mock, remove_mock, exists_mock, full_copy_moc
     assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1125
     move_mock.assert_called_once()
-
-@pytest.mark.asyncio
-@patch('wazuh.manager.send_reload_ruleset_and_get_results')
-async def test_reload_ruleset(mock_send_reload_ruleset_and_get_results):
-    """Test reload_ruleset() works as expected with a successful reload."""
-    mock_response = MagicMock()
-    mock_response.affected_items = ['manager']
-    mock_response.failed_items = {}
-    mock_response.total_affected_items = 1
-    mock_response.total_failed_items = 0
-    mock_send_reload_ruleset_and_get_results.return_value = mock_response
-
-    result = await reload_ruleset()
-    assert result.total_affected_items == 1
-    assert result.failed_items == {}
-
-
-@pytest.mark.asyncio
-@patch('wazuh.manager.send_reload_ruleset_and_get_results')
-async def test_reload_ruleset_ko(mock_send_reload_ruleset_and_get_results):
-    """Test reload_ruleset() with an error in the reload."""
-    mock_response = MagicMock()
-    mock_response.affected_items = []
-    mock_response.failed_items = {'manager': WazuhError(1234)}
-    mock_response.total_affected_items = 0
-    mock_response.total_failed_items = 1
-    mock_send_reload_ruleset_and_get_results.return_value = mock_response
-
-    result = await reload_ruleset()
-    assert result.total_failed_items == 1
-    assert result.affected_items == []

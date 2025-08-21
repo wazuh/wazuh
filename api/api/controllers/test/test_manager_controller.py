@@ -21,7 +21,7 @@ with patch('wazuh.common.wazuh_uid'):
             get_log, get_log_summary, get_manager_config_ondemand, get_stats,
             get_stats_analysisd, get_stats_hourly, get_stats_remoted, get_daemon_stats,
             get_stats_weekly, get_status, put_restart, update_configuration)
-        from wazuh import manager
+        from wazuh import manager, analysis
         from wazuh.core import common
         from wazuh.core.manager import query_update_check_service
         from wazuh.tests.util import RBAC_bypasser
@@ -486,7 +486,7 @@ async def test_put_reload_analysisd(mock_exc, mock_dapi, mock_remove, mock_dfunc
     """Verify 'put_reload_analysisd' endpoint is working as expected."""
     from api.controllers.manager_controller import put_reload_analysisd
     result = await put_reload_analysisd()
-    mock_dapi.assert_called_once_with(f=manager.reload_ruleset,
+    mock_dapi.assert_called_once_with(f=analysis.reload_ruleset,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_any',
                                       is_async=True,

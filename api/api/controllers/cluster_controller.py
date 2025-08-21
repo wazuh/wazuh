@@ -10,6 +10,7 @@ from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
 import wazuh.core.common as common
+import wazuh.analysis as analysis
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.controllers.util import json_response, XML_CONTENT_TYPE
@@ -798,7 +799,7 @@ async def put_restart(pretty: bool = False, wait_for_complete: bool = False,
 
 async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = False,
                                nodes_list: str = '*') -> ConnexionResponse:
-    """Reloads the analysisd process on all nodes in the cluster, or a list of them.
+    """Reload the analysisd process on all nodes in the cluster, or a list of them.
 
     Parameters
     ----------
@@ -817,7 +818,7 @@ async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = F
     f_kwargs = {'node_list': nodes_list}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=cluster.reload_ruleset,
+    dapi = DistributedAPI(f=analysis.reload_ruleset,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
                           is_async=True,
