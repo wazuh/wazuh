@@ -158,6 +158,9 @@ SYSINFO_TEST=-DUNIT_TEST=ON #--coverage
 SYNC_PROTOCOL_TEST=-DUNIT_TEST=ON #--coverage
 WAZUH_TEST=-DUNIT_TEST=ON #--coverage
 endif
+ifneq (,$(filter ${FSANITIZE},YES yes y Y 1))
+CMAKE_OPTS+=-DFSANITIZE=ON
+endif
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
 SHARED_MODULES_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
 GTEST_RELEASE_TYPE=-DCMAKE_BUILD_TYPE=Debug
@@ -2316,10 +2319,14 @@ install_api: install_python
 #### test ##########
 ####################
 CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
-# Use sanitizers only on linux
+# Use sanitizers only on linux and when VALGRIND is not set
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
+ifndef VALGRIND
+ifdef FSANITIZE
 CFLAGS_TEST+= -fsanitize=address -fsanitize=undefined
+endif
+endif
 endif
 endif
 
