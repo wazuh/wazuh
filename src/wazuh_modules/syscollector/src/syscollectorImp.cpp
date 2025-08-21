@@ -87,14 +87,34 @@ static std::string getItemChecksum(const nlohmann::json& item)
 
 static void removeKeysWithEmptyValue(nlohmann::json& input)
 {
-    for (auto& data : input)
+    if (input.is_array())
     {
-        for (auto it = data.begin(); it != data.end(); )
+        // Handle array of objects
+        for (auto& data : input)
+        {
+            for (auto it = data.begin(); it != data.end(); )
+            {
+                if (it.value().type() == nlohmann::detail::value_t::string &&
+                        it.value().get_ref<const std::string&>().empty())
+                {
+                    it = data.erase(it);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+        }
+    }
+    else if (input.is_object())
+    {
+        // Handle single object
+        for (auto it = input.begin(); it != input.end(); )
         {
             if (it.value().type() == nlohmann::detail::value_t::string &&
                     it.value().get_ref<const std::string&>().empty())
             {
-                it = data.erase(it);
+                it = input.erase(it);
             }
             else
             {
