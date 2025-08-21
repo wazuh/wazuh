@@ -41,6 +41,9 @@ typedef struct wm_sys_state_t {
 } wm_sys_state_t;
 
 typedef struct wm_sys_db_sync_flags_t {
+    unsigned int enable_synchronization:1;  // Enable database synchronization
+    uint32_t sync_interval;                 // Synchronization interval
+    uint32_t sync_response_timeout;         // Minimum interval for the synchronization process
     long sync_max_eps;                      // Maximum events per second for synchronization messages.
 } wm_sys_db_sync_flags_t;
 
@@ -49,6 +52,7 @@ typedef struct wm_sys_t {
     wm_sys_flags_t flags;                   // Flag bitfield
     wm_sys_state_t state;                   // Running state
     wm_sys_db_sync_flags_t sync;            // Database synchronization value
+    int max_eps;                            // Maximum events per second.
 } wm_sys_t;
 
 // Parse XML configuration

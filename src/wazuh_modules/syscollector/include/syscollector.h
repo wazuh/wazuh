@@ -39,6 +39,7 @@ typedef void((*send_data_callback_t)(const void* buffer));
 
 EXPORTED void syscollector_start(const unsigned int inverval,
                                  send_data_callback_t callbackDiff,
+                                 send_data_callback_t callbackPersistDiff,
                                  log_callback_t callbackLog,
                                  const char* dbPath,
                                  const char* normalizerConfigPath,
@@ -63,6 +64,7 @@ EXPORTED void syscollector_stop();
 
 typedef void(*syscollector_start_func)(const unsigned int inverval,
                                        send_data_callback_t callbackDiff,
+                                       send_data_callback_t callbackPersistDiff,
                                        log_callback_t callbackLog,
                                        const char* dbPath,
                                        const char* normalizerConfigPath,

@@ -47,6 +47,7 @@ class EXPORTED Syscollector final
 
         void init(const std::shared_ptr<ISysInfo>& spInfo,
                   const std::function<void(const std::string&)> reportDiffFunction,
+                  const std::function<void(const std::string&)> persistDiffFunction,
                   const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                   const std::string& dbPath,
                   const std::string& normalizerConfigPath,
@@ -93,6 +94,8 @@ class EXPORTED Syscollector final
         nlohmann::json ecsUsersData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsGroupsData(const nlohmann::json& originalData, bool createFields = true);
 
+        std::string getPrimaryKeys(const nlohmann::json& data, const std::string& table);
+        std::string calculateHashId(const nlohmann::json& data, const std::string& table);
         nlohmann::json addPreviousFields(nlohmann::json& current, const nlohmann::json& previous);
 
         void updateChanges(const std::string& table,
@@ -130,6 +133,7 @@ class EXPORTED Syscollector final
 
         std::shared_ptr<ISysInfo>                                               m_spInfo;
         std::function<void(const std::string&)>                                 m_reportDiffFunction;
+        std::function<void(const std::string&)>                                 m_persistDiffFunction;
         std::function<void(const modules_log_level_t, const std::string&)>      m_logFunction;
         unsigned int                                                            m_intervalValue;
         bool                                                                    m_scanOnStart;

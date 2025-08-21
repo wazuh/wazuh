@@ -107,7 +107,7 @@ size_t syscom_dispatch(char * command, char ** output){
             os_set_restart_syscheck();
             return 0;
         }
-    } else if (strncmp(command, HC_FIM_SYNC, strlen(HC_FIM_SYNC)) == 0) {
+    } else if (strncmp(command, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
         if (syscheck.enable_synchronization) {
             // fim_sync_push_msg(command);
             return 0;

@@ -48,6 +48,15 @@ int main(int argc, const char* argv[])
         }
     };
 
+    const auto persistDiffFunction
+    {
+        [](const std::string & payload)
+        {
+            std::cout << "persist output payload:" << std::endl;
+            std::cout << payload << std::endl;
+        }
+    };
+
     const auto logFunction
     {
         [](const modules_log_level_t level, const std::string & log)
@@ -95,6 +104,7 @@ int main(int argc, const char* argv[])
 
         Syscollector::instance().init(spInfo,
                                       reportDiffFunction,
+                                      persistDiffFunction,
                                       logFunction,
                                       SYSCOLLECTOR_DB_DISK_PATH,
                                       SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,

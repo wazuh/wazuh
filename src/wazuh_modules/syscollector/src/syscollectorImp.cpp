@@ -137,7 +137,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
     {
         m_logFunction(LOG_ERROR, data.dump());
     }
-    else if (m_notify && !m_stopping)
+    else if (!m_stopping)
     {
         if (data.is_array())
         {
@@ -155,26 +155,40 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
 
 void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
 {
-    nlohmann::json stateless;
     nlohmann::json newData;
-    nlohmann::json oldData;
 
     newData = ecsData(result == MODIFIED ? data["new"] : data, table);
-    oldData = (result == MODIFIED) ? ecsData(data["old"], table, false) : nlohmann::json {};
 
-    stateless["collector"] = table;
-    stateless["module"] = "inventory";
+    const auto statefulToSend{newData.dump()};
+    m_persistDiffFunction(statefulToSend);
 
-    auto changedFields = addPreviousFields(newData, oldData);
+    // Remove checksum from newData to avoid sending it in the diff
+    if (newData.contains("checksum"))
+    {
+        newData.erase("checksum");
+    }
 
-    stateless["data"] = newData;
-    stateless["data"]["event"]["changed_fields"] = changedFields;
-    stateless["data"]["event"]["created"] = Utils::getCurrentISO8601();
-    stateless["data"]["event"]["type"] = OPERATION_MAP.at(result);
+    if (m_notify)
+    {
+        nlohmann::json stateless;
+        nlohmann::json oldData;
 
-    const auto statelessToSend{stateless.dump()};
-    m_reportDiffFunction(statelessToSend);
-    m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + statelessToSend);
+        stateless["collector"] = table;
+        stateless["module"] = "inventory";
+
+        oldData = (result == MODIFIED) ? ecsData(data["old"], table, false) : nlohmann::json {};
+
+        auto changedFields = addPreviousFields(newData, oldData);
+
+        stateless["data"] = newData;
+        stateless["data"]["event"]["changed_fields"] = changedFields;
+        stateless["data"]["event"]["created"] = Utils::getCurrentISO8601();
+        stateless["data"]["event"]["type"] = OPERATION_MAP.at(result);
+
+        const auto statelessToSend{stateless.dump()};
+        m_reportDiffFunction(statelessToSend);
+        m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + statelessToSend);
+    }
 }
 
 void Syscollector::updateChanges(const std::string& table,
@@ -242,6 +256,7 @@ std::string Syscollector::getCreateStatement() const
 
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
+                        const std::function<void(const std::string&)> persistDiffFunction,
                         const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
@@ -262,6 +277,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = std::move(reportDiffFunction);
+    m_persistDiffFunction = std::move(persistDiffFunction);
     m_logFunction = std::move(logFunction);
     m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
@@ -344,6 +360,11 @@ nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::stri
     else if (table == GROUPS_TABLE)
     {
         ret = ecsGroupsData(data, createFields);
+    }
+
+    if (createFields)
+    {
+        setJsonField(ret, data, "/checksum/hash/sha1", "checksum", std::nullopt, true);
     }
 
     return ret;
@@ -581,7 +602,7 @@ nlohmann::json Syscollector::getOSData()
     nlohmann::json ret;
     ret[0] = m_spInfo->os();
     sanitizeJsonValue(ret[0]);
-    ret[0]["checksum"] = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    ret[0]["checksum"] = getItemChecksum(ret[0]);
     return ret;
 }
 
@@ -1006,6 +1027,73 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         scan();
     }
     m_spDBSync.reset(nullptr);
+}
+
+std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& data, const std::string& table)
+{
+    std::string ret;
+
+    if (table == OS_TABLE)
+    {
+        ret = data["os_name"];
+    }
+    else if (table == HW_TABLE)
+    {
+        ret = data["serial_number"];
+    }
+    else if (table == HOTFIXES_TABLE)
+    {
+        ret = data["hotfix_name"];
+    }
+    else if (table == PACKAGES_TABLE)
+    {
+        ret = data["name"].get<std::string>() + ":" + data["version"].get<std::string>() + ":" +
+              data["architecture"].get<std::string>() + ":" + data["type"].get<std::string>() + ":" +
+              data["path"].get<std::string>();
+    }
+    else if (table == PROCESSES_TABLE)
+    {
+        ret = data["pid"];
+    }
+    else if (table == PORTS_TABLE)
+    {
+        ret = std::to_string(data["file_inode"].get<int>()) + ":" + data["network_transport"].get<std::string>() + ":" +
+              data["source_ip"].get<std::string>() + ":" + std::to_string(data["source_port"].get<int>());
+    }
+    else if (table == NET_IFACE_TABLE)
+    {
+        ret = data["interface_name"].get<std::string>() + ":" + data["interface_alias"].get<std::string>() + ":" +
+              data["interface_type"].get<std::string>();
+    }
+    else if (table == NET_PROTOCOL_TABLE)
+    {
+        ret = data["interface_name"].get<std::string>() + ":" + data["network_type"].get<std::string>();
+    }
+    else if (table == NET_ADDRESS_TABLE)
+    {
+        ret = data["interface_name"].get<std::string>() + ":" + std::to_string(data["network_protocol"].get<int>()) + ":" +
+              data["network_ip"].get<std::string>();
+    }
+    else if (table == USERS_TABLE)
+    {
+        ret = data["user_name"];
+    }
+    else if (table == GROUPS_TABLE)
+    {
+        ret = data["group_name"];
+    }
+
+    return ret;
+}
+
+std::string Syscollector::calculateHashId(const nlohmann::json& data, const std::string& table)
+{
+    const std::string primaryKey = getPrimaryKeys(data, table);
+
+    Utils::HashData hash(Utils::HashType::Sha1);
+    hash.update(primaryKey.c_str(), primaryKey.size());
+
+    return Utils::asciiToHex(hash.hash());
 }
 
 nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nlohmann::json& previous)
