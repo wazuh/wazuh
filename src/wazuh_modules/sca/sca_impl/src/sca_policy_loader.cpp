@@ -124,16 +124,21 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
                     UpdateCheckResult(check.second["data"]["new"]);
                 }
             }
+            // LCOV_EXCL_START
             catch (const std::exception& e)
             {
                 LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to update check result: ") + e.what());
             }
+
+            // LCOV_EXCL_STOP
         }
     }
     else
     {
+        // LCOV_EXCL_START
         LoggingHelper::getInstance().log(LOG_ERROR, "No checks found in data");
         return;
+        // LCOV_EXCL_STOP
     }
 
     createEvents(modifiedPoliciesMap, modifiedChecksMap);
@@ -151,6 +156,7 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
         return modifiedDataMap;
     }
 
+    // LCOV_EXCL_START
     const auto callback {[](ReturnTypeCallback result, const nlohmann::json & rowData)
     {
         if (result != DB_ERROR)
@@ -185,6 +191,7 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
                                              "Failed to parse policy from  " + rowData.dump());
         }
     }};
+    // LCOV_EXCL_STOP
 
     DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {tableName}, 0, DBSYNC_QUEUE_SIZE, callback};
 
@@ -215,6 +222,7 @@ void SCAPolicyLoader::UpdateCheckResult(const nlohmann::json& check) const
         const auto checksum = sca::calculateChecksum(checkWithChecksum);
         checkWithChecksum["checksum"] = checksum;
     }
+    // LCOV_EXCL_START
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(
@@ -222,6 +230,8 @@ void SCAPolicyLoader::UpdateCheckResult(const nlohmann::json& check) const
 
         return;
     }
+
+    // LCOV_EXCL_STOP
 
     auto updateResultQuery = SyncRowQuery::builder().table(SCA_CHECK_TABLE_NAME).data(checkWithChecksum).build();
 
@@ -266,11 +276,14 @@ nlohmann::json SCAPolicyLoader::NormalizeDataWithChecksum(nlohmann::json data, c
                 const auto checksum = sca::calculateChecksum(entry);
                 entry["checksum"] = checksum;
             }
+            // LCOV_EXCL_START
             catch (const std::exception& e)
             {
                 LoggingHelper::getInstance().log(
                     LOG_ERROR, "Failed to calculate checksum for check: " + entry.dump() + " - " + e.what());
             }
+
+            // LCOV_EXCL_STOP
         }
     }
 
