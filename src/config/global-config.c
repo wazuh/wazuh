@@ -135,8 +135,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((
     const char *xml_integrity = "integrity_checking";
     const char *xml_rootcheckd = "rootkit_detection";
     const char *xml_hostinfo = "host_information";
-    const char *xml_jsonout_output = "jsonout_output";
-    const char *xml_alerts_log = "alerts_log";
     const char *xml_white_list = "white_list";
     const char *xml_compress_alerts = "compress_alerts";
     const char *xml_agents_disconnection_time = "agents_disconnection_time";
@@ -210,36 +208,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((
                         Config->forwarders_list[tgt_idx] = tmp;
                     }
                 }
-            }
-        }
-        /* jsonout output */
-        else if (strcmp(node[i]->element, xml_jsonout_output) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->jsonout_output = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->jsonout_output = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        }
-        /* Standard alerts output */
-        else if (strcmp(node[i]->element, xml_alerts_log) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->alerts_log = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->alerts_log = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
             }
         }
         /* update check system */

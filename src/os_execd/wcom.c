@@ -383,7 +383,7 @@ size_t wcom_check_manager_config(char **output) {
     static const char *daemons[] = {"bin/wazuh-authd", "bin/wazuh-remoted",
                                     "bin/wazuh-execd", "bin/wazuh-engine", "bin/wazuh-logcollector",
                                     "bin/wazuh-syscheckd", "bin/wazuh-modulesd", "bin/wazuh-clusterd",
-                                    "bin/wazuh-dbd", NULL
+                                    NULL
                                     };
 
     int response_retval = 0;

@@ -51,12 +51,6 @@
                             (modules & CLGCSOCKET    ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) |\
                             (modules & CANDSOCKET    ) )
 
-typedef enum needed_tags {
-    JSONOUT_OUTPUT = 0,
-    ALERTS_LOG,
-    LOGALL,
-    LOGALL_JSON
-} NeededTags;
 
 
 #include "../os_xml/os_xml.h"
