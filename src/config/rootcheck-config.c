@@ -111,9 +111,9 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
         } else if (strcmp(node[i]->element, "rootkit_trojans") == 0) {
             mwarn("Deprecated option 'rootkit_trojans' is no longer available. Use the FIM module instead.");
         } else if (strcmp(node[i]->element, "windows_audit") == 0) {
-            mwarn("Deprectaed option 'windows_audit' is no longer available. Use the SCA module instead.");
+            mwarn("Deprecated option 'windows_audit' is no longer available. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, "system_audit") == 0) {
-            mwarn("Deprectaed option 'system_audit' is no longer available. Use the SCA module instead.");
+            mwarn("Deprecated option 'system_audit' is no longer available. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, xml_ignore) == 0) {
             unsigned int j = 0;
             while (rootcheck->ignore && rootcheck->ignore[j]) {
