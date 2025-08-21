@@ -20,6 +20,19 @@
           "service.state",
           "service.sub_state",
           "service.description",
+          "service.restart",
+          "service.frecuency",
+          "service.inetd_compatibility",
+          "service.starts.on_mount",
+          "service.starts.on_path_modified",
+          "service.starts.on_not_empty_directory",
+          "log.file.path",
+          "error.log.file.path",
+          "process.args",
+          "process.working_directory",
+          "process.root_directory",
+          "process.user.name",
+          "process.group.name",
           "service.state",
           "service.exit_code",
           "service.win32_exit_code",
@@ -67,6 +80,22 @@
             }
           }
         },
+        "error": {
+          "properties": {
+            "log": {
+              "properties": {
+                "file": {
+                  "properties": {
+                    "path": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "file": {
           "properties": {
             "path": {
@@ -75,19 +104,54 @@
             }
           }
         },
+        "log": {
+          "properties": {
+            "file": {
+              "properties": {
+                "path": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
         "process": {
           "properties": {
-            "executable": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
+            "args": {
               "ignore_above": 1024,
               "type": "keyword"
             },
+            "executable": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "group": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
             "pid": {
               "type": "long"
+            },
+            "root_directory": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "user": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "working_directory": {
+              "ignore_above": 1024,
+              "type": "keyword"
             }
           }
         },
@@ -112,9 +176,15 @@
               "ignore_above": 1024,
               "type": "keyword"
             },
+            "frecuency": {
+              "type": "long"
+            },
             "id": {
               "ignore_above": 1024,
               "type": "keyword"
+            },
+            "inetd_compatibility": {
+              "type": "boolean"
             },
             "name": {
               "ignore_above": 1024,
@@ -124,9 +194,28 @@
               "ignore_above": 1024,
               "type": "keyword"
             },
+            "restart": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
             "start_type": {
               "ignore_above": 1024,
               "type": "keyword"
+            },
+            "starts": {
+              "properties": {
+                "on_mount": {
+                  "type": "boolean"
+                },
+                "on_not_empty_directory": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "on_path_modified": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
             },
             "state": {
               "ignore_above": 1024,
@@ -164,11 +253,6 @@
         "user": {
           "properties": {
             "name": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
               "ignore_above": 1024,
               "type": "keyword"
             }
