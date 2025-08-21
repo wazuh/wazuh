@@ -965,12 +965,6 @@ TEST_F(SystemInventoryUpsertElement, emptyItemId_BrowserExtensions)
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, browserName()).WillOnce(testing::Return("browserName"));
-    EXPECT_CALL(*context, browserExtensionUserID()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, browserProfileName()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, browserExtensionPackageName()).WillOnce(testing::Return(""));
-    // This is a unusual case. It's unlikely that having the previous information the item_id field will be empty. While
-    // unlikely, encountering an empty value here is unexpected.
     EXPECT_CALL(*context, browserExtensionItemId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
 

@@ -94,7 +94,7 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | dbsync_processes          | Running processes. |
 |                              | dbsync_users              | Operating system users. |
 |                              | dbsync_groups             | Operating system groups. |
-|                              | dbsync_browser_extensions | Installed extensions for Firefox, Chrome, IE and Safari based web browsers. |
+|                              | dbsync_browser_extensions | Installed web browser extensions. |
 
 ### Inventory providers
 - Provider tables for inventory delta events.

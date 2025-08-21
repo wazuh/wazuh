@@ -37,6 +37,12 @@ public:
             throw std::runtime_error("BrowserExtensionElement::build: Agent ID is empty.");
         }
 
+        auto itemId = data->browserExtensionItemId();
+        if (itemId.empty())
+        {
+            throw std::runtime_error("BrowserExtensionElement::build: Item ID is empty.");
+        }
+
         auto browserName = data->browserName();
         auto userId = data->browserExtensionUserID();
         auto browserProfileName = data->browserProfileName();
@@ -44,12 +50,6 @@ public:
         if (browserName.empty() && userId.empty() && browserProfileName.empty() && packageName.empty())
         {
             throw std::runtime_error("BrowserExtensionElement::build: PK fields are empty.");
-        }
-
-        auto itemId = data->browserExtensionItemId();
-        if (itemId.empty())
-        {
-            throw std::runtime_error("BrowserExtensionElement::build: Item ID is empty.");
         }
 
         DataHarvester<InventoryBrowserExtensionHarvester> element;
