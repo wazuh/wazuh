@@ -324,7 +324,25 @@ static struct deltas_fields_match_list const SERVICES_FIELDS[] = {
     { .current = { "can_stop", "service.can_stop" }, .next = &SERVICES_FIELDS[17]},
     { .current = { "can_reload", "service.can_reload" }, .next = &SERVICES_FIELDS[18]},
     { .current = { "service_exit_code", "service.exit_code" }, .next = &SERVICES_FIELDS[19]},
-    { .current = { "checksum", NULL }, .next = &SERVICES_FIELDS[20]},
+    // New macOS launchd fields
+    { .current = { "service_name", "service.name" }, .next = &SERVICES_FIELDS[20]},
+    { .current = { "process_executable", "process.executable" }, .next = &SERVICES_FIELDS[21]},
+    { .current = { "process_args", "process.args" }, .next = &SERVICES_FIELDS[22]},
+    { .current = { "file_path", "file.path" }, .next = &SERVICES_FIELDS[23]},
+    { .current = { "process_user_name", "process.user.name" }, .next = &SERVICES_FIELDS[24]},
+    { .current = { "process_group_name", "process.group.name" }, .next = &SERVICES_FIELDS[25]},
+    { .current = { "service_enabled", "service.enabled" }, .next = &SERVICES_FIELDS[26]},
+    { .current = { "service_restart", "service.restart" }, .next = &SERVICES_FIELDS[27]},
+    { .current = { "service_frequency", "service.frequency" }, .next = &SERVICES_FIELDS[28]},
+    { .current = { "log_file_path", "log.file.path" }, .next = &SERVICES_FIELDS[29]},
+    { .current = { "error_log_file_path", "error.log.file.path" }, .next = &SERVICES_FIELDS[30]},
+    { .current = { "process_working_dir", "process.working_dir" }, .next = &SERVICES_FIELDS[31]},
+    { .current = { "process_root_dir", "process.root_dir" }, .next = &SERVICES_FIELDS[32]},
+    { .current = { "service_starts_on_mount", "service.starts.on_mount" }, .next = &SERVICES_FIELDS[33]},
+    { .current = { "service_starts_on_path_modified", "service.starts.on_path_modified" }, .next = &SERVICES_FIELDS[34]},
+    { .current = { "service_starts_on_not_empty_directory", "service.starts.on_not_empty_directory" }, .next = &SERVICES_FIELDS[35]},
+    { .current = { "service_inetd_compatibility", "service.inetd_compatibility" }, .next = &SERVICES_FIELDS[36]},
+    { .current = { "checksum", NULL }, .next = &SERVICES_FIELDS[37]},
     { .current = { "item_id", NULL }, .next = NULL}
 };
 
