@@ -9,7 +9,3 @@
             value: PORT
         - protocol:
             value: PROTOCOL
-    - section: global
-      elements:
-        - logall:
-            value: "yes"

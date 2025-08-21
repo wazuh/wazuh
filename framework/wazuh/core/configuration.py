@@ -41,8 +41,7 @@ CONF_SECTIONS = MappingProxyType({
     'alerts': {'type': 'merge', 'list_options': []},
     'client': {'type': 'merge', 'list_options': []},
     'reports': {
-        'type': 'merge',
-        'list_options': ['email_to']
+        'type': 'merge'
     },
     'global': {
         'type': 'merge',
