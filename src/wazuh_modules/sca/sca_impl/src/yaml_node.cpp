@@ -28,13 +28,12 @@ YamlNode::YamlNode(yaml_document_t* doc, yaml_node_t* nodePtr)
             m_type = Type::Mapping;
             break;
 
-        case YAML_NO_NODE:
-            m_type = Type::Undefined;
-            break;
-
+        // LCOV_EXCL_START
+        case YAML_NO_NODE: // fallthrough
         default:
             m_type = Type::Undefined;
             break;
+            // LCOV_EXCL_STOP
     }
 }
 
@@ -319,6 +318,7 @@ int YamlNode::GetId() const
         }
     }
 
+    // LCOV_EXCL_LINE
     throw std::runtime_error("Node not found in document");
 };
 
@@ -486,9 +486,11 @@ YamlNode YamlNode::CloneInto(yaml_document_t* dest_doc) const
                 return YamlNode(dest_doc, yaml_document_get_node(dest_doc, map_id));
             }
 
+        // LCOV_EXCL_START
         case Type::Undefined: // fallthrough
         default:
             throw std::runtime_error("Unsupported or undefined node type");
+            // LCOV_EXCL_STOP
     }
 }
 

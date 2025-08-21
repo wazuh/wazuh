@@ -90,10 +90,12 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     }
     catch (const std::exception& e)
     {
+        // LCOV_EXCL_START
         LoggingHelper::getInstance().log(LOG_ERROR,
                                          "Failed to calculate checksum for check result: " + std::string(e.what()));
 
         return;
+        // LCOV_EXCL_STOP
     }
 
     auto updateResultQuery = SyncRowQuery::builder().table("sca_check").data(checkData).returnOldData().build();
@@ -115,6 +117,7 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
         }
         else
         {
+            // LCOV_EXCL_LINE
             LoggingHelper::getInstance().log(LOG_DEBUG, "Failed to update check result: " + rowData.dump());
         }
     };

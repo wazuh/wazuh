@@ -53,6 +53,7 @@ namespace sca
 
         if (size < 0)
         {
+            // LCOV_EXCL_LINE
             throw std::runtime_error{"Error calculating checksum size."};
         }
 
@@ -81,10 +82,13 @@ namespace sca
             const auto hashResult = hash.hash();
             return Utils::asciiToHex(hashResult);
         }
+        // LCOV_EXCL_START
         catch (const std::exception& e)
         {
             throw std::runtime_error{"Error calculating checksum: " + std::string(e.what())};
         }
+
+        // LCOV_EXCL_STOP
     }
 
 } // namespace sca
