@@ -23,20 +23,21 @@ namespace
         const auto patternPtr = reinterpret_cast<PCRE2_SPTR8>(pattern.c_str());
 
         auto* re = pcre2_compile(
-            patternPtr, PCRE2_ZERO_TERMINATED, PCRE2_MULTILINE | PCRE2_CASELESS, &errorCode, &error_offset, nullptr);
+                       patternPtr, PCRE2_ZERO_TERMINATED, PCRE2_MULTILINE | PCRE2_CASELESS, &errorCode, &error_offset, nullptr);
 
         if (!re)
         {
             throw std::runtime_error(
                 [&errorCode, &error_offset]()
-                {
-                    std::vector<PCRE2_UCHAR> buffer(256); // NOLINT(cppcoreguidelines-avoid-magic-numbers)
-                    pcre2_get_error_message(errorCode, buffer.data(), buffer.size());
+            {
+                std::vector<PCRE2_UCHAR> buffer(256); // NOLINT(cppcoreguidelines-avoid-magic-numbers)
+                pcre2_get_error_message(errorCode, buffer.data(), buffer.size());
 
-                    return "PCRE2 compilation failed at offset " + std::to_string(error_offset) + ": " +
-                           // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-                           reinterpret_cast<char*>(buffer.data());
-                }());
+                return "PCRE2 compilation failed at offset " + std::to_string(error_offset) + ": " +
+                       // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+                       reinterpret_cast<char*>(buffer.data());
+            }
+            ());
         }
 
         auto* matchData = pcre2_match_data_create_from_pattern(re, nullptr);
@@ -80,7 +81,7 @@ namespace
 
         // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         const auto match = rc >= 2 ? content.substr(ovector[2], ovector[3] - ovector[2])
-                                   : content.substr(ovector[0], ovector[1] - ovector[0]);
+                           : content.substr(ovector[0], ovector[1] - ovector[0]);
         // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 
         pcre2CleanUp();
@@ -97,6 +98,7 @@ namespace
 
         const std::string compareWord = "compare";
         const auto comparePos = expr.find(compareWord);
+
         if (comparePos == std::string::npos)
         {
             throw std::runtime_error("Invalid expression format, 'compare' keyword missing");
@@ -131,22 +133,27 @@ namespace
         {
             return actualValue < expectedValue;
         }
+
         if (opStr == "<=")
         {
             return actualValue <= expectedValue;
         }
+
         if (opStr == "==")
         {
             return actualValue == expectedValue;
         }
+
         if (opStr == "!=")
         {
             return actualValue != expectedValue;
         }
+
         if (opStr == ">=")
         {
             return actualValue >= expectedValue;
         }
+
         if (opStr == ">")
         {
             return actualValue > expectedValue;
@@ -160,9 +167,10 @@ namespace
         if (minterm.size() >= 2 && minterm.compare(0, 2, "r:") == 0)
         {
             const auto pattern = minterm.substr(2);
+
             if (engine == sca::RegexEngineType::PCRE2)
             {
-            return Pcre2Match(content, pattern).first;
+                return Pcre2Match(content, pattern).first;
             }
         }
         else if (minterm.size() >= 2 && minterm.compare(0, 2, "n:") == 0)
@@ -186,11 +194,20 @@ namespace sca
     {
         switch (result)
         {
-            case CheckResult::Passed: return "Passed";
-            case CheckResult::Failed: return "Failed";
-            case CheckResult::NotApplicable: return "Not applicable";
-            case CheckResult::NotRun: return "Not run";
-            default: return "Unknown";
+            case CheckResult::Passed:
+                return "Passed";
+
+            case CheckResult::Failed:
+                return "Failed";
+
+            case CheckResult::NotApplicable:
+                return "Not applicable";
+
+            case CheckResult::NotRun:
+                return "Not run";
+
+            default:
+                return "Unknown";
         }
     }
 
@@ -212,10 +229,11 @@ namespace sca
         }
 
         static const std::map<std::string, int> typeMap = {{"f", WM_SCA_TYPE_FILE},
-                                                           {"r", WM_SCA_TYPE_REGISTRY},
-                                                           {"p", WM_SCA_TYPE_PROCESS},
-                                                           {"d", WM_SCA_TYPE_DIR},
-                                                           {"c", WM_SCA_TYPE_COMMAND}};
+            {"r", WM_SCA_TYPE_REGISTRY},
+            {"p", WM_SCA_TYPE_PROCESS},
+            {"d", WM_SCA_TYPE_DIR},
+            {"c", WM_SCA_TYPE_COMMAND}
+        };
 
         const auto it = typeMap.find(key);
 
@@ -267,6 +285,7 @@ namespace sca
 
                 // Check if the minterm is negated
                 bool negated = false;
+
                 if (!minterm.empty() && minterm[0] == '!')
                 {
                     negated = true;
@@ -282,6 +301,7 @@ namespace sca
                 const auto& minterm = minterms[0].second;
                 std::istringstream stream(content);
                 std::string line;
+
                 while (std::getline(stream, line))
                 {
                     if (EvaluateMinterm(minterm, line, engine))
@@ -289,6 +309,7 @@ namespace sca
                         return false; // A line matched the negated pattern → fail
                     }
                 }
+
                 return true; // No line matched the negated pattern → pass
             }
 
@@ -303,6 +324,7 @@ namespace sca
                 for (const auto& [negated, minterm] : minterms)
                 {
                     const bool match = EvaluateMinterm(minterm, line, engine);
+
                     if ((negated && match) || (!negated && !match))
                     {
                         allMintermsPassed = false;
