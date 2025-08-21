@@ -31,16 +31,18 @@ def checkCoverage(output):
     Raises:
         - ValueError: Raises an exception when fails for some reason.
     """
-    reLines = re.search("lines.*(% ).*(lines)", str(output))
-    reFunctions = re.search("functions.*%", str(output))
+    reLines = re.search(r"lines.*: *([\d.]+)%", str(output))
+    reFunctions = re.search(r"functions.*: *([\d.]+)%", str(output))
+
     if reLines:
-        end = reLines.group().index('%')
-        start = reLines.group()[0:end].rindex(' ') + 1
-        linesCoverage = reLines.group()[start:end]
+        linesCoverage = reLines.group(1)
+    else:
+        linesCoverage = "0.0"
+
     if reFunctions:
-        end = reFunctions.group().index('%')
-        start = reFunctions.group().rindex(' ') + 1
-        functionsCoverage = reFunctions.group()[start:end]
+        functionsCoverage = reFunctions.group(1)
+    else:
+        functionsCoverage = "0.0"
     if float(linesCoverage) >= 90.0:
         utils.printGreen(msg="[Lines Coverage {}%: PASSED]"
                          .format(linesCoverage))
@@ -288,10 +290,7 @@ def runCppCheck(moduleName):
                       headerKey="cppcheck")
 
     currentDir = utils.moduleDirPath(moduleName)
-    cppcheckCommand = "cppcheck --force --std=c++14 --quiet {}".format(currentDir)
-
-    if moduleName == "wazuh_modules/sca":
-        cppcheckCommand = "cppcheck --force --std=c++17 --quiet {}".format(currentDir)
+    cppcheckCommand = "cppcheck --force --std=c++17 --quiet {}".format(currentDir)
 
     out = subprocess.run(cppcheckCommand,
                          stdout=subprocess.PIPE,
@@ -371,8 +370,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     # The ASAN check is in the end. It builds again the module but with the ASAN flag
     # and runs the test tool.
     # Running this type of check in Windows will be analyzed in #17019
-    if (moduleName != "shared_modules/utils" and target != "winagent") or \
-        not (moduleName == "wazuh_modules/sca" and target == "winagent"):
+    if moduleName != "shared_modules/utils" and target != "winagent" and moduleName != "wazuh_modules/sca":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)
     if clean:
@@ -680,7 +678,7 @@ def runValgrind(moduleName):
     tests = []
     reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test\
                      |.*interface_test|.*integration_test.exe\
-                     |.*interface_test.exe|.*_test$")
+                     |.*interface_test.exe")
     currentDir = ""
     if moduleName == "shared_modules/utils":
         currentDir = os.path.join(utils.moduleDirPath(moduleName=moduleName),
