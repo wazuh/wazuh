@@ -26,7 +26,26 @@
     "can_stop": "no",
     "can_reload": "no",
     "service_exit_code": null,
-    "checksum": "789abc012345678901234567890abcdef123456"
+    "checksum": "789abc012345678901234567890abcdef123456",
+    "item_id": "mysqld_006",
+    "enabled": "true",
+    "service_name": "mysql-database",
+    "process_executable": "/usr/sbin/mysqld",
+    "process_args": "--defaults-file=/etc/my.cnf",
+    "process_cwd": "/var/lib/mysql",
+    "user_name": "mysql",
+    "user_id": "27",
+    "group_name": "mysql",
+    "group_id": "27",
+    "file_path": "/usr/lib/systemd/system/mysqld.service",
+    "file_name": "mysqld.service",
+    "file_inode": "345678",
+    "file_mode": "0644",
+    "file_size": "3072",
+    "file_uid": "0",
+    "file_gid": "0",
+    "file_owner": "root",
+    "file_group": "root"
   },
   "operation": "INSERTED"
 }
