@@ -75,10 +75,10 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
 
     //osQuery monitor module
     if (!strcmp(node->values[0], "osquery")) {
-        mwarn("Deprectaed module 'osquery' is no longer available.");
+        mwarn("Deprecated module 'osquery' is no longer available.");
     }
     else if (!strcmp(node->values[0], "open-scap")) {
-        mwarn("Deprectaed module 'open-scap' is no longer available.");
+        mwarn("Deprecated module 'open-scap' is no longer available.");
     }
 #ifdef ENABLE_SYSC
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
@@ -95,7 +95,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
         }
     }
     else if (!strcmp(node->values[0], "cis-cat")) {
-        mwarn("Deprectaed module 'cis-cat' is no longer available.");
+        mwarn("Deprecated module 'cis-cat' is no longer available.");
     }
     else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) {
 #ifndef WIN32
