@@ -43,7 +43,6 @@ protected:
 
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_size(size);
-        startBuilder.add_agent_id(agentId);
         startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
         return startBuilder.Finish();
     }
@@ -109,7 +108,6 @@ TEST_F(AgentSessionTest, Constructor_NullModule)
 
     Wazuh::SyncSchema::StartBuilder startBuilder(builder);
     startBuilder.add_size(10);
-    startBuilder.add_agent_id(agentId);
     startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
     // Note: Not adding module name to test null module
     auto startMsg = startBuilder.Finish();
