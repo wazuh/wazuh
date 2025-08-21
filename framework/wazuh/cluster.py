@@ -6,9 +6,8 @@ from typing import Union
 
 from wazuh.core import common
 from wazuh.core.cluster import local_client
-from wazuh.core.analysis import send_reload_ruleset_and_get_results
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.control import get_health, get_nodes, get_node_ruleset_integrity, set_reload_ruleset_flag
+from wazuh.core.cluster.control import get_health, get_nodes, get_node_ruleset_integrity
 from wazuh.core.cluster.utils import get_cluster_status, read_cluster_config, read_config
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult

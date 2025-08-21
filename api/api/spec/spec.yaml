@@ -11534,7 +11534,7 @@ paths:
     put:
       tags:
         - Cluster
-      summary: "Reloads the analysis process for the nodes"
+      summary: "Reloads the analysisd process for the nodes"
       description: "Reloads the analysisd process on all nodes in the cluster, or on a specified list of nodes"
       operationId: api.controllers.cluster_controller.put_reload_analysisd
       x-rbac-actions:
@@ -13131,7 +13131,7 @@ paths:
     put:
       tags:
         - Manager
-      summary: "Reloads the analysis process for the master or local node"
+      summary: "Reloads the analysisd process for the master or local node"
       description: "Reloads the analysisd process on the master or local node"
       operationId: api.controllers.manager_controller.put_reload_analysisd
       x-rbac-actions:

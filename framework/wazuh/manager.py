@@ -7,7 +7,6 @@ from os.path import exists
 
 from wazuh import Wazuh
 from wazuh.core import common, configuration
-from wazuh.core.analysis import send_reload_ruleset_and_get_results
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, read_cluster_config
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
