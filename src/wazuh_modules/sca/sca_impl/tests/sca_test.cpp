@@ -11,19 +11,19 @@
 
 class ScaTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        m_mockDBSync = std::make_shared<MockDBSync>();
-        m_sca = std::make_shared<SecurityConfigurationAssessment>(
-            "test_path",
-            "agent-uuid",
-            m_mockDBSync
-        );
-    }
+    protected:
+        void SetUp() override
+        {
+            m_mockDBSync = std::make_shared<MockDBSync>();
+            m_sca = std::make_shared<SecurityConfigurationAssessment>(
+                        "test_path",
+                        "agent-uuid",
+                        m_mockDBSync
+                    );
+        }
 
-    std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
-    std::shared_ptr<SecurityConfigurationAssessment> m_sca = nullptr;
+        std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
+        std::shared_ptr<SecurityConfigurationAssessment> m_sca = nullptr;
 };
 
 TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
