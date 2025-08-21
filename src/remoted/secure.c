@@ -58,6 +58,8 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 
 #define SYSCOLLECTOR_SYNC_HEADER "syscollector:"
 #define SYSCOLLECTOR_SYNC_HEADER_SIZE 13
+
+#define TEST_ROUTER_THREADS 8
 #define SYSCHECK_FILE_HEADER "fim_file:"
 #define SYSCHECK_FILE_HEADER_SIZE 9
 #define SYSCHECK_REGISTRY_KEY_HEADER "fim_registry_key:"
@@ -136,6 +138,9 @@ typedef struct {
  * @return void* Null
  */
 void * save_control_thread(void * queue);
+
+// Test thread for router_message_forward
+void * test_router_thread(void * args);
 
 
 /* Handle secure connections */
@@ -230,6 +235,11 @@ void HandleSecure()
 
     // Create upsert control message thread
     w_create_thread(save_control_thread, (void *) control_msg_queue);
+
+    // Create test router message forward threads
+    for (int i = 0; i < TEST_ROUTER_THREADS; i++) {
+        w_create_thread(test_router_thread, NULL);
+    }
 
     // Create message handler thread pool
     {
@@ -1083,6 +1093,30 @@ void * save_control_thread(void * control_msg_queue)
             os_free(ctrl_msg_data->message);
             os_free(ctrl_msg_data);
         }
+    }
+
+    return NULL;
+}
+
+// Test thread for router_message_forward
+void * test_router_thread(void * args) {
+    (void)args; // Suppress unused parameter warning
+
+    const char *test_msg = "8:syscheck:{\"data\":{\"attributes\":{\"checksum\":\"0c96f0046b08e3053259fc67d13af4a9c79a62be\",\"gid\":\"0\",\"group_name\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":4807,\"mtime\":1755604675,\"perm\":\"rw-r--r--\",\"size\":0,\"type\":\"file\",\"uid\":\"0\",\"user_name\":\"root\"},\"mode\":\"realtime\",\"path\":\"/etc/hello\",\"timestamp\":1755604675,\"type\":\"added\",\"version\":\"2.0\"},\"type\":\"event\"}";
+    const char *agent_id = "007";
+    const char *agent_ip = "any";
+    const char *agent_name = "agent-007";
+
+    mdebug1("Test router message forward thread started.");
+
+    while (1) {
+        // Make a copy of the message since router_message_forward might modify it
+        char *msg_copy = NULL;
+        os_strdup(test_msg, msg_copy);
+
+        router_message_forward(msg_copy, agent_id, agent_ip, agent_name);
+
+        os_free(msg_copy);
     }
 
     return NULL;

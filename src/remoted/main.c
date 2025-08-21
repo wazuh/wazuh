@@ -216,7 +216,7 @@ int main(int argc, char **argv)
     i = 0;
     while (logr.conn[i] != 0) {
         /* Fork for each connection handler */
-        if (fork() == 0) {
+        if (0 == 0) {
             /* On the child */
             mdebug1("Forking remoted: '%d'.", i);
             logr.position = i;
