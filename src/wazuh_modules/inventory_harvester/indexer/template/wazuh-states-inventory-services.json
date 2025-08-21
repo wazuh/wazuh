@@ -20,6 +20,20 @@
           "service.state",
           "service.sub_state",
           "service.description",
+          "service.restart",
+          "service.frecuency",
+          "service.inetd_compatibility",
+          "service.starts.on_mount",
+          "service.starts.on_path_modified",
+          "service.starts.on_not_empty_directory",
+          "log.file.path",
+          "error.log.file.path",
+          "process.args",
+          "process.working_directory",
+          "process.root_directory",
+          "process.user.name",
+          "process.group.name",
+          "service.state",
           "service.exit_code",
           "service.win32_exit_code",
           "service.frequency",
@@ -79,11 +93,39 @@
             }
           }
         },
+        "error": {
+          "properties": {
+            "log": {
+              "properties": {
+                "file": {
+                  "properties": {
+                    "path": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "file": {
           "properties": {
             "path": {
               "ignore_above": 1024,
               "type": "keyword"
+            }
+          }
+        },
+        "log": {
+          "properties": {
+            "file": {
+              "properties": {
+                "path": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
             }
           }
         },
@@ -94,11 +136,6 @@
               "type": "keyword"
             },
             "executable": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
               "ignore_above": 1024,
               "type": "keyword"
             },
@@ -113,7 +150,7 @@
             "pid": {
               "type": "long"
             },
-            "root_dir": {
+            "root_directory": {
               "ignore_above": 1024,
               "type": "keyword"
             },
@@ -125,7 +162,7 @@
                 }
               }
             },
-            "working_dir": {
+            "working_directory": {
               "ignore_above": 1024,
               "type": "keyword"
             }
@@ -152,7 +189,7 @@
               "ignore_above": 1024,
               "type": "keyword"
             },
-            "frequency": {
+            "frecuency": {
               "type": "long"
             },
             "id": {
@@ -257,11 +294,6 @@
         "user": {
           "properties": {
             "name": {
-              "fields": {
-                "text": {
-                  "type": "text"
-                }
-              },
               "ignore_above": 1024,
               "type": "keyword"
             }
