@@ -22,7 +22,7 @@ namespace sca
         const std::string rules = checkData.value("rules", "");
 
         return calculateChecksum(
-            id, policyId, name, description, rationale, remediation, refs, condition, compliance, rules);
+                   id, policyId, name, description, rationale, remediation, refs, condition, compliance, rules);
     }
 
     std::string calculateChecksum(const std::string& id,
