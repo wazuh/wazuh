@@ -91,3 +91,19 @@ TEST_F(ProcessRuleEvaluatorTest, ProcessListRetrievalFailsReturnsInvalid)
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
 }
+
+TEST_F(ProcessRuleEvaluatorTest, GetProcessesFailureHasReasonString)
+{
+    m_ctx.rule = "test_process";
+
+    m_processesMock = []() -> std::vector<std::string>
+    {
+        throw std::runtime_error("Failed to read /proc");
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
+    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("test_process"));
+    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Failed to get process list"));
+}

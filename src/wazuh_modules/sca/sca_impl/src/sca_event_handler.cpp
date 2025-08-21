@@ -59,7 +59,8 @@ void SCAEventHandler::ReportPoliciesDelta(
 
 void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                                         const std::string& checkId,
-                                        const std::string& checkResult) const
+                                        const std::string& checkResult,
+                                        const std::string& reason) const
 {
     if (!m_dBSync)
     {
@@ -70,6 +71,12 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
     auto policyData = GetPolicyById(policyId);
     auto checkData = GetPolicyCheckById(checkId);
     checkData["result"] = checkResult;
+    
+    // Set reason field if provided and check result indicates an invalid check
+    if (!reason.empty() && checkResult == "Not applicable")
+    {
+        checkData["reason"] = reason;
+    }
 
     try
     {

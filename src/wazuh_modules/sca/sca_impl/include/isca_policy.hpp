@@ -5,6 +5,14 @@
 #include <functional>
 #include <string>
 
+struct CheckResult
+{
+    std::string policyId;
+    std::string checkId;
+    std::string result;
+    std::string reason;
+};
+
 class ISCAPolicy
 {
 public:
@@ -19,7 +27,7 @@ public:
     virtual void
     Run(std::time_t scanInterval,
         bool scanOnStart,
-        std::function<void(const std::string&, const std::string&, const std::string&)> reportCheckResult,
+        std::function<void(const CheckResult&)> reportCheckResult,
         std::function<void(std::chrono::milliseconds)> wait) = 0;
 
     /// @brief Stops the policy check
