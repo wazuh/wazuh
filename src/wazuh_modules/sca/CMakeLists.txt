@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(sca)
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
-
 enable_testing()
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -37,7 +35,7 @@ else()
   set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
 endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
-if(FSANITIZE AND NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
@@ -75,7 +73,7 @@ file(GLOB SCA_SRC "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_library(sca SHARED ${SCA_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
 
-target_link_libraries(sca SCAImpl sysinfo)
+target_link_libraries(sca SCAImpl)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
@@ -96,19 +94,12 @@ if(UNIT_TEST)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(sca -fprofile-arcs)
   else()
-    add_definitions(-fprofile-arcs -ftest-coverage)
-    # Link ASAN first to avoid library ordering issues
-    # target_link_libraries(sca -fsanitize=address,leak,undefined gcov -fprofile-arcs)
-    # target_link_libraries(sca asan ubsan cmocka gcov -fprofile-arcs)  
-    if(NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-      target_link_libraries(sca asan ubsan cmocka gcov -fprofile-arcs)
-    else()
-      target_link_libraries(sca cmocka gcov -fprofile-arcs)
-    endif()
+    target_link_libraries(sca gcov)
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
+  # add_subdirectory(tests)
 else()
-  if(FSANITIZE AND NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    #target_link_libraries(sca -fsanitize=address,leak,undefined gcov)
-    target_link_libraries(sca gcov asan ubsan)
+  if(FSANITIZE)
+    target_link_libraries(sca gcov)
   endif(FSANITIZE)
 endif(UNIT_TEST)

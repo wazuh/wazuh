@@ -6,14 +6,15 @@ project(SCAImpl)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_VERBOSE_MAKEFILE ON)
+
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+endif(FSANITIZE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DWIN32=1)
 endif()
 
-# find_package(pcre2 CONFIG REQUIRED)
-# find_package(yaml CONFIG REQUIRED)
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 message(STATUS "SRC_FOLDER: ${SRC_FOLDER}")
 link_directories(${SRC_FOLDER})
@@ -42,10 +43,6 @@ include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 
-if(FSANITIZE AND NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
-endif()
-
 # Dependencies should be built externally and made available
 # Use find_library to locate dependencies, but fall back to target names if not found
 
@@ -65,6 +62,9 @@ find_library(PCRE2_LIB pcre2-8
     HINTS ${SRC_FOLDER}/external/libpcre2/.libs
     NO_DEFAULT_PATH)
 find_library(OPENSSL_LIB ssl
+    HINTS ${SRC_FOLDER}/external/openssl
+    NO_DEFAULT_PATH)
+find_library(OPENSSL_CRYPTO_LIB crypto
     HINTS ${SRC_FOLDER}/external/openssl
     NO_DEFAULT_PATH)
 
@@ -115,36 +115,30 @@ target_compile_definitions(SCAImpl PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 
 target_link_libraries(
     SCAImpl
-    PRIVATE ${FILESYSTEM_WRAPPER_LIB}
+    PRIVATE
+            sysinfo
+            ${FILESYSTEM_WRAPPER_LIB}
             ${FILE_IO_LIB}
             ${DBSYNC_LIB}
-            sysinfo
             wazuhext # contains hash_helper, string_helper, time_helper utilities
             cjson
             ${YAML_LIB}
             ${PCRE2_LIB}
             ${OPENSSL_LIB}
+            ${OPENSSL_CRYPTO_LIB}
 )
 
 if(UNIT_TEST)
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_link_libraries(SCAImpl PRIVATE -fprofile-arcs)
-  else()
-    add_definitions(-fprofile-arcs -ftest-coverage)
-    # Link ASAN first to avoid library ordering issues
-    # target_link_libraries(SCAImpl PRIVATE -fsanitize=address,leak,undefined gcov)
-    if(NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-      target_link_libraries(SCAImpl PRIVATE -fsanitize=address,leak,undefined gcov)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_link_libraries(SCAImpl PRIVATE -fprofile-arcs)
     else()
-      target_link_libraries(SCAImpl PRIVATE gcov)
-    endif()
-  endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_link_libraries(SCAImpl PRIVATE gcov)
+    endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
-  enable_testing()
-  add_subdirectory(tests)
-
-  else()
-  if(FSANITIZE AND NOT CMAKE_CROSSCOMPILING AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    target_link_libraries(SCAImpl PRIVATE -fsanitize=address,leak,undefined gcov)
-  endif()
+    enable_testing()
+    add_subdirectory(tests)
+else()
+  if(FSANITIZE)
+    target_link_libraries(SCAImpl PRIVATE gcov)
+  endif(FSANITIZE)
 endif(UNIT_TEST)
