@@ -153,6 +153,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,,
+/var/ossec/lib/libinventory_sync.so,root,wazuh,750,file,-rwxr-x---,,
 /var/ossec/logs/active-responses.log,wazuh,wazuh,660,file,-rw-rw----,,
 /var/ossec/queue/agents-timestamp,root,wazuh,600,file,-rw-------,,
 /var/ossec/queue/syscollector/norm_config.json,root,wazuh,640,file,-rw-r-----,,

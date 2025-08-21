@@ -349,6 +349,11 @@ extern "C"
                 throw std::runtime_error("Error sending message to provider. Message is empty");
             }
 
+            if (!agent_ctx)
+            {
+                throw std::runtime_error("Error sending message to provider. Agent context is empty");
+            }
+
             logMessage(modules_log_level_t::LOG_DEBUG,
                        "Sending message to provider: " + std::string(message, message_size));
             // Build agent info message
