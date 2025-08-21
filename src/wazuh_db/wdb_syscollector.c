@@ -1397,28 +1397,14 @@ int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t 
 }
 
 // Function to save Services information into the DB. Return 0 on success or -1 on error.
-int wdb_services_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
-                      const char * description, const char * service_type, const char * start_type, const char * state,
-                      int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
-                      const char * sub_state, const char * unit_file_state, const char * status, const char * user,
-                      const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
-                      const char * item_id, const char * enabled, const char * service_name, const char * process_executable,
-                      const char * process_args, const char * process_cwd, const char * user_name, const char * user_id,
-                      const char * group_name, const char * group_id, const char * file_path, const char * file_name,
-                      const char * file_inode, const char * file_mode, const char * file_size, const char * file_uid,
-                      const char * file_gid, const char * file_owner, const char * file_group, const bool replace) {
+int wdb_services_save(wdb_t * wdb, const service_record_t * service_record, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_services_save(): cannot begin transaction");
         return OS_INVALID;
     }
 
-    if (wdb_services_insert(wdb, scan_id, scan_time, name, display_name, description, service_type, start_type, state,
-                            pid, ppid, binary_path, load_state, active_state, sub_state, unit_file_state, status,
-                            user, can_stop, can_reload, service_exit_code, checksum, item_id, enabled, service_name,
-                            process_executable, process_args, process_cwd, user_name, user_id, group_name, group_id,
-                            file_path, file_name, file_inode, file_mode, file_size, file_uid, file_gid, file_owner,
-                            file_group, replace) < 0) {
+    if (wdb_services_insert(wdb, service_record, replace) < 0) {
         return OS_INVALID;
     }
 
@@ -1426,23 +1412,12 @@ int wdb_services_save(wdb_t * wdb, const char * scan_id, const char * scan_time,
 }
 
 // Insert service info tuple. Return 0 on success or -1 on error.
-int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * display_name,
-                        const char * description, const char * service_type, const char * start_type, const char * state,
-                        int pid, int ppid, const char * binary_path, const char * load_state, const char * active_state,
-                        const char * sub_state, const char * unit_file_state, const char * status, const char * user,
-                        const char * can_stop, const char * can_reload, int service_exit_code, const char * checksum,
-                        const char * item_id, const char * enabled, const char * service_name, const char * process_executable,
-                        const char * process_args, const char * process_cwd, const char * user_name, const char * user_id,
-                        const char * group_name, const char * group_id, const char * file_path, const char * file_name,
-                        const char * file_inode, const char * file_mode, const char * file_size, const char * file_uid,
-                        const char * file_gid, const char * file_owner, const char * file_group, const bool replace) {
+int wdb_services_insert(wdb_t * wdb, const service_record_t * service_record, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    if (NULL == name) {
-        if(checksum && 0 != strcmp(SYSCOLLECTOR_LEGACY_CHECKSUM_VALUE, checksum)) {
-            wdbi_remove_by_pk(wdb, WDB_SYSCOLLECTOR_SERVICES, item_id);
-        }
-        return OS_SUCCESS;
+    if (NULL == service_record->service_id &&
+        strlen(service_record->service_id) == 0) {
+        return OS_INVALID;
     }
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_SERVICE_INSERT2 : WDB_STMT_SERVICE_INSERT) < 0) {
@@ -1452,75 +1427,57 @@ int wdb_services_insert(wdb_t * wdb, const char * scan_id, const char * scan_tim
 
     stmt = wdb->stmt[replace ? WDB_STMT_SERVICE_INSERT2 : WDB_STMT_SERVICE_INSERT];
 
-    sqlite3_bind_text(stmt, 1, scan_id, -1, NULL);
-    sqlite3_bind_text(stmt, 2, scan_time, -1, NULL);
-    sqlite3_bind_text(stmt, 3, name, -1, NULL);
-    sqlite3_bind_text(stmt, 4, display_name, -1, NULL);
-    sqlite3_bind_text(stmt, 5, description, -1, NULL);
-    sqlite3_bind_text(stmt, 6, service_type, -1, NULL);
-    sqlite3_bind_text(stmt, 7, start_type, -1, NULL);
-    sqlite3_bind_text(stmt, 8, state, -1, NULL);
-
-    if (pid >= 0) {
-        sqlite3_bind_int(stmt, 9, pid);
+    sqlite3_bind_text(stmt, 1, service_record->scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, service_record->scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, service_record->service_name, -1, NULL);
+    sqlite3_bind_text(stmt, 4, service_record->service_id, -1, NULL);
+    sqlite3_bind_text(stmt, 5, service_record->service_description, -1, NULL);
+    sqlite3_bind_text(stmt, 6, service_record->service_type, -1, NULL);
+    sqlite3_bind_text(stmt, 7, service_record->service_state, -1, NULL);
+    sqlite3_bind_text(stmt, 8, service_record->service_sub_state, -1, NULL);
+    sqlite3_bind_text(stmt, 9, service_record->service_enabled, -1, NULL);
+    sqlite3_bind_text(stmt, 10, service_record->service_start_type, -1, NULL);
+    sqlite3_bind_text(stmt, 11, service_record->service_restart, -1, NULL);
+    if (service_record->service_frequency >= 0) {
+        sqlite3_bind_int64(stmt, 12, service_record->service_frequency);
     } else {
-        sqlite3_bind_null(stmt, 9);
+        sqlite3_bind_null(stmt, 12);
     }
-    if (ppid >= 0) {
-        sqlite3_bind_int(stmt, 10, ppid);
+    sqlite3_bind_int(stmt, 13, service_record->service_starts_on_mount);
+    sqlite3_bind_text(stmt, 14, service_record->service_starts_on_path_modified, -1, NULL);
+    sqlite3_bind_text(stmt, 15, service_record->service_starts_on_not_empty_directory, -1, NULL);
+    sqlite3_bind_int(stmt, 16, service_record->service_inetd_compatibility);
+    if (service_record->process_pid >= 0) {
+        sqlite3_bind_int64(stmt, 17, service_record->process_pid);
     } else {
-        sqlite3_bind_null(stmt, 10);
+        sqlite3_bind_null(stmt, 17);
     }
-
-    sqlite3_bind_text(stmt, 11, binary_path, -1, NULL);
-    sqlite3_bind_text(stmt, 12, load_state, -1, NULL);
-    sqlite3_bind_text(stmt, 13, active_state, -1, NULL);
-    sqlite3_bind_text(stmt, 14, sub_state, -1, NULL);
-    sqlite3_bind_text(stmt, 15, unit_file_state, -1, NULL);
-    sqlite3_bind_text(stmt, 16, status, -1, NULL);
-    sqlite3_bind_text(stmt, 17, user, -1, NULL);
-    sqlite3_bind_text(stmt, 18, can_stop, -1, NULL);
-    sqlite3_bind_text(stmt, 19, can_reload, -1, NULL);
-
-    if (service_exit_code >= 0) {
-        sqlite3_bind_int(stmt, 20, service_exit_code);
+    sqlite3_bind_text(stmt, 18, service_record->process_executable, -1, NULL);
+    sqlite3_bind_text(stmt, 19, service_record->process_args, -1, NULL);
+    sqlite3_bind_text(stmt, 20, service_record->process_user_name, -1, NULL);
+    sqlite3_bind_text(stmt, 21, service_record->process_group_name, -1, NULL);
+    sqlite3_bind_text(stmt, 22, service_record->process_working_dir, -1, NULL);
+    sqlite3_bind_text(stmt, 23, service_record->process_root_dir, -1, NULL);
+    sqlite3_bind_text(stmt, 24, service_record->file_path, -1, NULL);
+    sqlite3_bind_text(stmt, 25, service_record->service_address, -1, NULL);
+    sqlite3_bind_text(stmt, 26, service_record->log_file_path, -1, NULL);
+    sqlite3_bind_text(stmt, 27, service_record->error_log_file_path, -1, NULL);
+    sqlite3_bind_int(stmt, 28, service_record->service_exit_code);
+    sqlite3_bind_int(stmt, 29, service_record->service_win32_exit_code);
+    sqlite3_bind_text(stmt, 30, service_record->service_following, -1, NULL);
+    sqlite3_bind_text(stmt, 31, service_record->service_object_path, -1, NULL);
+    if (service_record->service_target_ephemeral_id) {
+        sqlite3_bind_int64(stmt, 32, service_record->service_target_ephemeral_id);
     } else {
-        sqlite3_bind_null(stmt, 20);
+        sqlite3_bind_null(stmt, 32);
     }
+    sqlite3_bind_text(stmt, 33, service_record->service_target_type, -1, NULL);
+    sqlite3_bind_text(stmt, 34, service_record->service_target_address, -1, NULL);
+    sqlite3_bind_text(stmt, 35, service_record->checksum, -1, NULL);
 
-    sqlite3_bind_text(stmt, 21, checksum, -1, NULL);
-    sqlite3_bind_text(stmt, 22, item_id, -1, NULL);
-    sqlite3_bind_text(stmt, 23, enabled, -1, NULL);
-    sqlite3_bind_text(stmt, 24, service_name, -1, NULL);
-    sqlite3_bind_text(stmt, 25, process_executable, -1, NULL);
-    sqlite3_bind_text(stmt, 26, process_args, -1, NULL);
-    sqlite3_bind_text(stmt, 27, process_cwd, -1, NULL);
-    sqlite3_bind_text(stmt, 28, user_name, -1, NULL);
-    sqlite3_bind_text(stmt, 29, user_id, -1, NULL);
-    sqlite3_bind_text(stmt, 30, group_name, -1, NULL);
-    sqlite3_bind_text(stmt, 31, group_id, -1, NULL);
-    sqlite3_bind_text(stmt, 32, file_path, -1, NULL);
-    sqlite3_bind_text(stmt, 33, file_name, -1, NULL);
-    sqlite3_bind_text(stmt, 34, file_inode, -1, NULL);
-    sqlite3_bind_text(stmt, 35, file_mode, -1, NULL);
-    sqlite3_bind_text(stmt, 36, file_size, -1, NULL);
-    sqlite3_bind_text(stmt, 37, file_uid, -1, NULL);
-    sqlite3_bind_text(stmt, 38, file_gid, -1, NULL);
-    sqlite3_bind_text(stmt, 39, file_owner, -1, NULL);
-    sqlite3_bind_text(stmt, 40, file_group, -1, NULL);
-
-    switch (wdb_step(stmt)) {
-    case SQLITE_DONE:
-        return OS_SUCCESS;
-    case SQLITE_CONSTRAINT:
-    if (!strncmp(sqlite3_errmsg(wdb->db), "UNIQUE", 6)) {
-        mdebug1("SQLite: %s", sqlite3_errmsg(wdb->db));
+    if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
     } else {
-        merror("SQLite: %s", sqlite3_errmsg(wdb->db));
-        return OS_INVALID;
-    }
-    default:
         merror("SQLite: %s", sqlite3_errmsg(wdb->db));
         return OS_INVALID;
     }
@@ -1822,53 +1779,66 @@ int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const char * name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "name"));
-    const char * display_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "display_name"));
-    const char * description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "description"));
-    const char * service_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_type"));
-    const char * start_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "start_type"));
-    const char * state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "state"));
-    const int pid = cJSON_GetObjectItem(attributes, "pid") ? cJSON_GetObjectItem(attributes, "pid")->valueint : -1;
-    const int ppid = cJSON_GetObjectItem(attributes, "ppid") ? cJSON_GetObjectItem(attributes, "ppid")->valueint : -1;
-    const char * binary_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "binary_path"));
-    const char * load_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "load_state"));
-    const char * active_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "active_state"));
-    const char * sub_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "sub_state"));
-    const char * unit_file_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "unit_file_state"));
-    const char * status = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "status"));
-    const char * user = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user"));
-    const char * can_stop = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "can_stop"));
-    const char * can_reload = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "can_reload"));
-    const int service_exit_code = cJSON_GetObjectItem(attributes, "service_exit_code") ? cJSON_GetObjectItem(attributes, "service_exit_code")->valueint : -1;
-    const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
-    const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
-    
-    // New macOS fields
-    const char * enabled = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "enabled"));
     const char * service_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_name"));
+    const char * service_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_id"));
+    const char * service_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_description"));
+    const char * service_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_type"));
+    const char * service_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_state"));
+    const char * service_sub_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_sub_state"));
+    const char * service_enabled = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_enabled"));
+    const char * service_start_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_start_type"));
+    const char * service_restart = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_restart"));
+    const long long service_frequency = cJSON_GetObjectItem(attributes, "service_frequency") ? cJSON_GetObjectItem(attributes, "service_frequency")->valuedouble : -1;
+    const bool service_starts_on_mount = cJSON_GetObjectItem(attributes, "service_starts_on_mount") ? cJSON_GetObjectItem(attributes, "service_starts_on_mount")->valueint : false;
+    const char * service_starts_on_path_modified = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_starts_on_path_modified"));
+    const char * service_starts_on_not_empty_directory = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_starts_on_not_empty_directory"));
+    const bool service_inetd_compatibility = cJSON_GetObjectItem(attributes, "service_inetd_compatibility") ? cJSON_GetObjectItem(attributes, "service_inetd_compatibility")->valueint : false;
+    const long long process_pid = cJSON_GetObjectItem(attributes, "process_pid") ? cJSON_GetObjectItem(attributes, "process_pid")->valuedouble : -1;
     const char * process_executable = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_executable"));
     const char * process_args = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_args"));
-    const char * process_cwd = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_cwd"));
-    const char * user_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_name"));
-    const char * user_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_id"));
-    const char * group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_name"));
-    const char * group_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_id"));
+    const char * process_user_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_user_name"));
+    const char * process_group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_group_name"));
+    const char * process_working_dir = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_working_dir"));
+    const char * process_root_dir = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_root_dir"));
     const char * file_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_path"));
-    const char * file_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_name"));
-    const char * file_inode = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_inode"));
-    const char * file_mode = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_mode"));
-    const char * file_size = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_size"));
-    const char * file_uid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_uid"));
-    const char * file_gid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_gid"));
-    const char * file_owner = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_owner"));
-    const char * file_group = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_group"));
+    const char * service_address = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_address"));
+    const char * log_file_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "log_file_path"));
+    const char * error_log_file_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "error_log_file_path"));
+    const int service_exit_code = cJSON_GetObjectItem(attributes, "service_exit_code") ? cJSON_GetObjectItem(attributes, "service_exit_code")->valueint : 0;
+    const int service_win32_exit_code = cJSON_GetObjectItem(attributes, "service_win32_exit_code") ? cJSON_GetObjectItem(attributes, "service_win32_exit_code")->valueint : 0;
+    const char * service_following = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_following"));
+    const char * service_object_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_object_path"));
+    const long long service_target_ephemeral_id = cJSON_GetObjectItem(attributes, "service_target_ephemeral_id") ? cJSON_GetObjectItem(attributes, "service_target_ephemeral_id")->valuedouble : -1;
+    const char * service_target_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_target_type"));
+    const char * service_target_address = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_target_address"));
+    const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
 
-    return wdb_services_save(wdb, scan_id, scan_time, name, display_name, description, service_type, start_type, state,
-                            pid, ppid, binary_path, load_state, active_state, sub_state, unit_file_state, status,
-                            user, can_stop, can_reload, service_exit_code, checksum, item_id, enabled, service_name,
-                            process_executable, process_args, process_cwd, user_name, user_id, group_name, group_id,
-                            file_path, file_name, file_inode, file_mode, file_size, file_uid, file_gid, file_owner,
-                            file_group, TRUE);
+    service_record_t service_record = {
+        .scan_time = scan_time, .scan_id = scan_id, .service_name = service_name, .service_id = service_id,
+        .service_starts_on_not_empty_directory = service_starts_on_not_empty_directory,
+        .service_inetd_compatibility = service_inetd_compatibility,
+        .process_pid = process_pid,
+        .process_executable = process_executable,
+        .process_args = process_args,
+        .process_user_name = process_user_name,
+        .process_group_name = process_group_name,
+        .process_working_dir = process_working_dir,
+        .process_root_dir = process_root_dir,
+        .file_path = file_path,
+        .service_address = service_address,
+        .log_file_path = log_file_path,
+        .error_log_file_path = error_log_file_path,
+        .service_exit_code = service_exit_code,
+        .service_win32_exit_code = service_win32_exit_code,
+        .service_following = service_following,
+        .service_object_path = service_object_path,
+        .service_target_ephemeral_id = service_target_ephemeral_id,
+        .service_target_type = service_target_type,
+        .service_target_address = service_target_address,
+        .checksum = checksum
+    };
+
+    return wdb_services_save(wdb, &service_record, TRUE);
 }
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload)

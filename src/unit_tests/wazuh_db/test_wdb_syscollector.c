@@ -74,6 +74,24 @@ int teardown_wdb(void **state) {
     return 0;
 }
 
+void bind_text(int pos, const char * string, int ret) {
+    expect_value(__wrap_sqlite3_bind_text, pos, pos);
+    expect_string(__wrap_sqlite3_bind_text, buffer, string);
+    will_return(__wrap_sqlite3_bind_text, ret);
+}
+
+void bind_int(int pos, int value, int ret) {
+    expect_value(__wrap_sqlite3_bind_int, index, pos);
+    expect_value(__wrap_sqlite3_bind_int, value, value);
+    will_return(__wrap_sqlite3_bind_int, ret);
+}
+
+void bind_int64(int pos, int value, int ret) {
+    expect_value(__wrap_sqlite3_bind_int64, index, pos);
+    expect_value(__wrap_sqlite3_bind_int64, value, value);
+    will_return(__wrap_sqlite3_bind_int64, ret);
+}
+
 static void wdb_syscollector_processes_save2_fail(void) {
     int i = 0;
 
@@ -4256,65 +4274,426 @@ static void test_wdb_services_extensions_insert_sql_fail(void **state) {
     assert_int_equal(ret, OS_INVALID);
 }
 
-/* Test wdb_services_extensions_save */
-static void test_wdb_services_extensions_save_transaction_fail(void **state) {
+/* Test wdb_services_save */
+static void test_wdb_services_save_transaction_fail(void **state) {
     int ret = OS_INVALID;
     wdb_t *data = (wdb_t *)*state;
 
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * service_name = "service_name";
+    const char * service_id = "service_id";
+    const char * service_description = "service_description";
+    const char * service_type = "service_type";
+    const char * service_state = "service_state";
+    const char * service_sub_state = "service_sub_state";
+    const char * service_enabled = "service_enabled";
+    const char * service_start_type = "service_start_type";
+    const char * service_restart = "service_restart";
+    const long long service_frequency = 0;
+    const bool service_starts_on_mount = false;
+    const char * service_starts_on_path_modified = "service_starts_on_path_modified";
+    const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
+    const bool service_inetd_compatibility = false;
+    const long long process_pid = 0;
+    const char * process_executable = "process_executable";
+    const char * process_args = "process_args";
+    const char * process_user_name = "process_user_name";
+    const char * process_group_name = "process_group_name";
+    const char * process_working_dir = "process_working_dir";
+    const char * process_root_dir = "process_root_dir";
+    const char * file_path = "file_path";
+    const char * service_address = "service_address";
+    const char * log_file_path = "log_file_path";
+    const char * error_log_file_path = "error_log_file_path";
+    const int service_exit_code = 0;
+    const int service_win32_exit_code = 0;
+    const char * service_following = "service_following";
+    const char * service_object_path = "service_object_path";
+    const long long service_target_ephemeral_id = 0;
+    const char * service_target_type = "service_target_type";
+    const char * service_target_address = "service_target_address";
+    const char * checksum = "checksum";
+
+    service_record_t service_record = {
+        .scan_id = scan_id,
+        .scan_time = scan_time,
+        .service_name = service_name,
+        .service_id = service_id,
+        .service_description = service_description,
+        .service_type = service_type,
+        .service_state = service_state,
+        .service_sub_state = service_sub_state,
+        .service_enabled = service_enabled,
+        .service_start_type = service_start_type,
+        .service_restart = service_restart,
+        .service_frequency = service_frequency,
+        .service_starts_on_mount = service_starts_on_mount,
+        .service_starts_on_path_modified = service_starts_on_path_modified,
+        .service_starts_on_not_empty_directory = service_starts_on_not_empty_directory,
+        .service_inetd_compatibility = service_inetd_compatibility,
+        .process_pid = process_pid,
+        .process_executable = process_executable,
+        .process_args = process_args,
+        .process_user_name = process_user_name,
+        .process_group_name = process_group_name,
+        .process_working_dir = process_working_dir,
+        .process_root_dir = process_root_dir,
+        .file_path = file_path,
+        .service_address = service_address,
+        .log_file_path = log_file_path,
+        .error_log_file_path = error_log_file_path,
+        .service_exit_code = service_exit_code,
+        .service_win32_exit_code = service_win32_exit_code,
+        .service_following = service_following,
+        .service_object_path = service_object_path,
+        .service_target_ephemeral_id = service_target_ephemeral_id,
+        .service_target_type = service_target_type,
+        .service_target_address = service_target_address,
+        .checksum = checksum
+    };
+
     data->transaction = 0;
     will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_extensions_save(): cannot begin transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_save(): cannot begin transaction");
 
-    ret = wdb_services_extensions_save(data, "scan_id", "scan_time", "service_name", "extension_name", "version", "checksum", false);
+    ret = wdb_services_save(data, &service_record, false);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wdb_services_extensions_save_insert_fail(void **state) {
+static void test_wdb_services_save_insert_fail(void **state) {
     int ret = OS_INVALID;
     wdb_t *data = (wdb_t *)*state;
+
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * service_name = "service_name";
+    const char * service_id = "service_id";
+    const char * service_description = "service_description";
+    const char * service_type = "service_type";
+    const char * service_state = "service_state";
+    const char * service_sub_state = "service_sub_state";
+    const char * service_enabled = "service_enabled";
+    const char * service_start_type = "service_start_type";
+    const char * service_restart = "service_restart";
+    const long long service_frequency = 0;
+    const bool service_starts_on_mount = false;
+    const char * service_starts_on_path_modified = "service_starts_on_path_modified";
+    const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
+    const bool service_inetd_compatibility = false;
+    const long long process_pid = 0;
+    const char * process_executable = "process_executable";
+    const char * process_args = "process_args";
+    const char * process_user_name = "process_user_name";
+    const char * process_group_name = "process_group_name";
+    const char * process_working_dir = "process_working_dir";
+    const char * process_root_dir = "process_root_dir";
+    const char * file_path = "file_path";
+    const char * service_address = "service_address";
+    const char * log_file_path = "log_file_path";
+    const char * error_log_file_path = "error_log_file_path";
+    const int service_exit_code = 0;
+    const int service_win32_exit_code = 0;
+    const char * service_following = "service_following";
+    const char * service_object_path = "service_object_path";
+    const long long service_target_ephemeral_id = 0;
+    const char * service_target_type = "service_target_type";
+    const char * service_target_address = "service_target_address";
+    const char * checksum = "checksum";
 
     data->transaction = 1;
 
     will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_extensions_insert(): cannot cache statement");
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_insert(): cannot cache statement");
 
-    ret = wdb_services_extensions_save(data, "scan_id", "scan_time", "service_name", "extension_name", "version", "checksum", false);
+    service_record_t service_record = {
+        .scan_id = scan_id,
+        .scan_time = scan_time,
+        .service_name = service_name,
+        .service_id = service_id,
+        .service_description = service_description,
+        .service_type = service_type,
+        .service_state = service_state,
+        .service_sub_state = service_sub_state,
+        .service_enabled = service_enabled,
+        .service_start_type = service_start_type,
+        .service_restart = service_restart,
+        .service_frequency = service_frequency,
+        .service_starts_on_mount = service_starts_on_mount,
+        .service_starts_on_path_modified = service_starts_on_path_modified,
+        .service_starts_on_not_empty_directory = service_starts_on_not_empty_directory,
+        .service_inetd_compatibility = service_inetd_compatibility,
+        .process_pid = process_pid,
+        .process_executable = process_executable,
+        .process_args = process_args,
+        .process_user_name = process_user_name,
+        .process_group_name = process_group_name,
+        .process_working_dir = process_working_dir,
+        .process_root_dir = process_root_dir,
+        .file_path = file_path,
+        .service_address = service_address,
+        .log_file_path = log_file_path,
+        .error_log_file_path = error_log_file_path,
+        .service_exit_code = service_exit_code,
+        .service_win32_exit_code = service_win32_exit_code,
+        .service_following = service_following,
+        .service_object_path = service_object_path,
+        .service_target_ephemeral_id = service_target_ephemeral_id,
+        .service_target_type = service_target_type,
+        .service_target_address = service_target_address,
+        .checksum = checksum
+    };
+
+    ret = wdb_services_save(data, &service_record, false);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wdb_services_extensions_save_success(void **state) {
+static void test_wdb_services_save_success(void **state) {
     int ret = OS_INVALID;
     wdb_t *data = (wdb_t *)*state;
 
     data->transaction = 1;
 
-    will_return(__wrap_wdb_stmt_cache, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 1);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_id");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 2);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "scan_time");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 3);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "service_name");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 4);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "extension_name");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 5);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "version");
-    will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 6);
-    expect_string(__wrap_sqlite3_bind_text, buffer, "checksum");
-    will_return(__wrap_sqlite3_bind_text, 0);
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * service_name = "service_name";
+    const char * service_id = "service_id";
+    const char * service_description = "service_description";
+    const char * service_type = "service_type";
+    const char * service_state = "service_state";
+    const char * service_sub_state = "service_sub_state";
+    const char * service_enabled = "service_enabled";
+    const char * service_start_type = "service_start_type";
+    const char * service_restart = "service_restart";
+    const long long service_frequency = 0;
+    const bool service_starts_on_mount = false;
+    const char * service_starts_on_path_modified = "service_starts_on_path_modified";
+    const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
+    const bool service_inetd_compatibility = false;
+    const long long process_pid = 0;
+    const char * process_executable = "process_executable";
+    const char * process_args = "process_args";
+    const char * process_user_name = "process_user_name";
+    const char * process_group_name = "process_group_name";
+    const char * process_working_dir = "process_working_dir";
+    const char * process_root_dir = "process_root_dir";
+    const char * file_path = "file_path";
+    const char * service_address = "service_address";
+    const char * log_file_path = "log_file_path";
+    const char * error_log_file_path = "error_log_file_path";
+    const int service_exit_code = 0;
+    const int service_win32_exit_code = 0;
+    const char * service_following = "service_following";
+    const char * service_object_path = "service_object_path";
+    const long long service_target_ephemeral_id = 0;
+    const char * service_target_type = "service_target_type";
+    const char * service_target_address = "service_target_address";
+    const char * checksum = "checksum";
+
+    bind_text(1, scan_id, 0);
+    bind_text(2, scan_time, 0);
+    bind_text(3, service_name, 0);
+    bind_text(4, service_id, 0);
+    bind_text(5, service_description, 0);
+    bind_text(6, service_type, 0);
+    bind_text(7, service_state, 0);
+    bind_text(8, service_sub_state, 0);
+    bind_text(9, service_enabled, 0);
+    bind_text(10, service_start_type, 0);
+    bind_text(11, service_restart, 0);
+    bind_int64(12, service_frequency, 0);
+    bind_int(13, service_starts_on_mount, 0);
+    bind_text(14, service_starts_on_path_modified, 0);
+    bind_text(15, service_starts_on_not_empty_directory, 0);
+    bind_int(16, service_inetd_compatibility, 0);
+    bind_int64(17, process_pid, 0);
+    bind_text(18, process_executable, 0);
+    bind_text(19, process_args, 0);
+    bind_text(20, process_user_name, 0);
+    bind_text(21, process_group_name, 0);
+    bind_text(22, process_working_dir, 0);
+    bind_text(23, process_root_dir, 0);
+    bind_text(24, file_path, 0);
+    bind_text(25, service_address, 0);
+    bind_text(26, log_file_path, 0);
+    bind_text(27, error_log_file_path, 0);
+    bind_int(28, service_exit_code, 0);
+    bind_int(29, service_win32_exit_code, 0);
+    bind_text(30, service_following, 0);
+    bind_text(31, service_object_path, 0);
+    bind_int64(32, service_target_ephemeral_id, 0);
+    bind_text(33, service_target_type, 0);
+    bind_text(34, service_target_address, 0);
+    bind_text(35, checksum, 0);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    ret = wdb_services_extensions_save(data, "scan_id", "scan_time", "service_name", "extension_name", "version", "checksum", false);
+    service_record_t service_record = {
+        .scan_id = scan_id,
+        .scan_time = scan_time,
+        .service_name = service_name,
+        .service_id = service_id,
+        .service_description = service_description,
+        .service_type = service_type,
+        .service_state = service_state,
+        .service_sub_state = service_sub_state,
+        .service_enabled = service_enabled,
+        .service_start_type = service_start_type,
+        .service_restart = service_restart,
+        .service_frequency = service_frequency,
+        .service_starts_on_mount = service_starts_on_mount,
+        .service_starts_on_path_modified = service_starts_on_path_modified,
+        .service_starts_on_not_empty_directory = service_starts_on_not_empty_directory,
+        .service_inetd_compatibility = service_inetd_compatibility,
+        .process_pid = process_pid,
+        .process_executable = process_executable,
+        .process_args = process_args,
+        .process_user_name = process_user_name,
+        .process_group_name = process_group_name,
+        .process_working_dir = process_working_dir,
+        .process_root_dir = process_root_dir,
+        .file_path = file_path,
+        .service_address = service_address,
+        .log_file_path = log_file_path,
+        .error_log_file_path = error_log_file_path,
+        .service_exit_code = service_exit_code,
+        .service_win32_exit_code = service_win32_exit_code,
+        .service_following = service_following,
+        .service_object_path = service_object_path,
+        .service_target_ephemeral_id = service_target_ephemeral_id,
+        .service_target_type = service_target_type,
+        .service_target_address = service_target_address,
+        .checksum = checksum
+    };
+
+    ret = wdb_services_save(data, &service_record, false);
 
     assert_int_equal(ret, OS_SUCCESS);
+}
+
+/* wdb_services_insert */
+static void test_wdb_services_insert_sql_fail(void **state) {
+    int ret = OS_INVALID;
+    test_struct_t *data = (test_struct_t *)*state;
+
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * service_name = "service_name";
+    const char * service_id = "service_id";
+    const char * service_description = "service_description";
+    const char * service_type = "service_type";
+    const char * service_state = "service_state";
+    const char * service_sub_state = "service_sub_state";
+    const char * service_enabled = "service_enabled";
+    const char * service_start_type = "service_start_type";
+    const char * service_restart = "service_restart";
+    const long long service_frequency = 0;
+    const bool service_starts_on_mount = false;
+    const char * service_starts_on_path_modified = "service_starts_on_path_modified";
+    const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
+    const bool service_inetd_compatibility = false;
+    const long long process_pid = 0;
+    const char * process_executable = "process_executable";
+    const char * process_args = "process_args";
+    const char * process_user_name = "process_user_name";
+    const char * process_group_name = "process_group_name";
+    const char * process_working_dir = "process_working_dir";
+    const char * process_root_dir = "process_root_dir";
+    const char * file_path = "file_path";
+    const char * service_address = "service_address";
+    const char * log_file_path = "log_file_path";
+    const char * error_log_file_path = "error_log_file_path";
+    const int service_exit_code = 0;
+    const int service_win32_exit_code = 0;
+    const char * service_following = "service_following";
+    const char * service_object_path = "service_object_path";
+    const long long service_target_ephemeral_id = 0;
+    const char * service_target_type = "service_target_type";
+    const char * service_target_address = "service_target_address";
+    const char * checksum = "checksum";
+
+    bind_text(1, scan_id, 0);
+    bind_text(2, scan_time, 0);
+    bind_text(3, service_name, 0);
+    bind_text(4, service_id, 0);
+    bind_text(5, service_description, 0);
+    bind_text(6, service_type, 0);
+    bind_text(7, service_state, 0);
+    bind_text(8, service_sub_state, 0);
+    bind_text(9, service_enabled, 0);
+    bind_text(10, service_start_type, 0);
+    bind_text(11, service_restart, 0);
+    bind_int64(12, service_frequency, 0);
+    bind_int(13, service_starts_on_mount, 0);
+    bind_text(14, service_starts_on_path_modified, 0);
+    bind_text(15, service_starts_on_not_empty_directory, 0);
+    bind_int(16, service_inetd_compatibility, 0);
+    bind_int64(17, process_pid, 0);
+    bind_text(18, process_executable, 0);
+    bind_text(19, process_args, 0);
+    bind_text(20, process_user_name, 0);
+    bind_text(21, process_group_name, 0);
+    bind_text(22, process_working_dir, 0);
+    bind_text(23, process_root_dir, 0);
+    bind_text(24, file_path, 0);
+    bind_text(25, service_address, 0);
+    bind_text(26, log_file_path, 0);
+    bind_text(27, error_log_file_path, 0);
+    bind_int(28, service_exit_code, 0);
+    bind_int(29, service_win32_exit_code, 0);
+    bind_text(30, service_following, 0);
+    bind_text(31, service_object_path, 0);
+    bind_int64(32, service_target_ephemeral_id, 0);
+    bind_text(33, service_target_type, 0);
+    bind_text(34, service_target_address, 0);
+    bind_text(35, checksum, 0);
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_insert(): cannot cache statement");
+
+    service_record_t service_record = {
+        .scan_id = scan_id,
+        .scan_time = scan_time,
+        .service_name = service_name,
+        .service_id = service_id,
+        .service_description = service_description,
+        .service_type = service_type,
+        .service_state = service_state,
+        .service_sub_state = service_sub_state,
+        .service_enabled = service_enabled,
+        .service_start_type = service_start_type,
+        .service_restart = service_restart,
+        .service_frequency = service_frequency,
+        .service_starts_on_mount = service_starts_on_mount,
+        .service_starts_on_path_modified = service_starts_on_path_modified,
+        .service_starts_on_not_empty_directory = service_starts_on_not_empty_directory,
+        .service_inetd_compatibility = service_inetd_compatibility,
+        .process_pid = process_pid,
+        .process_executable = process_executable,
+        .process_args = process_args,
+        .process_user_name = process_user_name,
+        .process_group_name = process_group_name,
+        .process_working_dir = process_working_dir,
+        .process_root_dir = process_root_dir,
+        .file_path = file_path,
+        .service_address = service_address,
+        .log_file_path = log_file_path,
+        .error_log_file_path = error_log_file_path,
+        .service_exit_code = service_exit_code,
+        .service_win32_exit_code = service_win32_exit_code,
+        .service_following = service_following,
+        .service_object_path = service_object_path,
+        .service_target_ephemeral_id = service_target_ephemeral_id,
+        .service_target_type = service_target_type,
+        .service_target_address = service_target_address,
+        .checksum = checksum
+    };
+
+    ret = wdb_services_insert(data->wdb, &service_record, false);
+
+    assert_int_equal(ret, OS_INVALID);
 }
 
 /* Test wdb_syscollector_save2 */
@@ -6182,11 +6561,11 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_browser_extensions_save_insert_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_browser_extensions_save_success, test_setup, test_teardown),
         /* Test wdb_services_extensions_insert */
-        cmocka_unit_test_setup_teardown(test_wdb_services_extensions_insert_sql_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_insert_sql_fail, test_setup, test_teardown),
         /* Test wdb_services_extensions_save */
-        cmocka_unit_test_setup_teardown(test_wdb_services_extensions_save_transaction_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_services_extensions_save_insert_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_services_extensions_save_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_save_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_save_insert_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_save_success, test_setup, test_teardown),
         /* Test wdb_syscollector_save2 */
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_parser_json_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_syscollector_save2_get_attributes_fail, test_setup, test_teardown),
