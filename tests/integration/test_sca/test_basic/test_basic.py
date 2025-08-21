@@ -65,7 +65,7 @@ configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
 
 # ---------------------------------------------------- TEST_ENABLED ---------------------------------------------------
 # Test configurations
-t1_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_sca_enabled.yaml')
+t1_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_sca_enabled_win.yaml' if sys.platform == WINDOWS else 'cases_sca_enabled.yaml')
 t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = configuration.get_test_cases_data(t1_cases_path)
 t1_configurations = configuration.load_configuration_template(configurations_path, t1_configuration_parameters,
                                                 t1_configuration_metadata)
