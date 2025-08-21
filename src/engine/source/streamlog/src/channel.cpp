@@ -373,6 +373,30 @@ void ChannelHandler::validateAndNormalizeConfig(RotationConfig& config)
     {
         throw std::runtime_error("Base path must exist and be a directory: " + config.basePath.string());
     }
+    // Check if the base path is writable, avoiding check mode_t
+    {
+        // File test
+        auto testPath = config.basePath / ".wazuh_test_write_permission";
+        std::ofstream testFile(testPath);
+        if (!testFile)
+        {
+            throw std::runtime_error("Cannot write to base path: " + config.basePath.string() + ": "
+                                     + std::strerror(errno));
+        }
+        testFile.close();
+        std::filesystem::remove(testPath);
+
+        // Dir test
+        auto testDirPath = config.basePath / ".wazuh_test_dir_permission";
+        std::error_code ec;
+        std::filesystem::create_directory(testDirPath, ec);
+        if (ec)
+        {
+            throw std::runtime_error("Cannot create directory in base path: " + config.basePath.string() + ": "
+                                     + ec.message());
+        }
+        std::filesystem::remove(testDirPath, ec);
+    }
 
     // Validate the pattern
     if (config.pattern.empty())
@@ -383,15 +407,10 @@ void ChannelHandler::validateAndNormalizeConfig(RotationConfig& config)
     {
         throw std::runtime_error("Log pattern cannot exceed 255 characters");
     }
-    else if (config.pattern.find_first_of("<>:\"\\|?*") != std::string::npos)
-    {
-        throw std::runtime_error("Log pattern cannot contain invalid characters for a path: " + config.pattern);
-    }
     else if (config.pattern.find("../") != std::string::npos)
     {
         throw std::runtime_error("Log pattern cannot contain parent directory references (../): " + config.pattern);
     }
-    
 
     // Add counter placeholder if maxSize is set and not already present
     if (config.maxSize > 0 && config.pattern.find("${counter}") == std::string::npos)

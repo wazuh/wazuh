@@ -64,13 +64,15 @@ public:
     // Destructor that notifies when the writer is destroyed
     ~ChannelWriter();
 
-    void operator()(std::string&& message) override
+    bool operator()(std::string&& message) override
     {
         if (m_channelState->load(std::memory_order_relaxed) == ChannelState::Running)
         {
-            m_queue->push(std::move(
-                message)); // TODO Handle error and print message for changing the buffer size, maybe trypush con &&
+            // TODO Handle error and print message for changing the buffer size, maybe trypush con &&
+            m_queue->push(std::move(message));
+            return true; // Indicate that the message was accepted for processing
         }
+        return false; // Indicate that the message was not accepted (channel not running)
     }
 };
 
@@ -92,15 +94,14 @@ public:
     };
 
 private:
-    const RotationConfig m_config;           ///< The rotation configuration for the log channel.
-    const std::string m_channelName;         ///< The name of the log channel.
+    const RotationConfig m_config;   ///< The rotation configuration for the log channel.
+    const std::string m_channelName; ///< The name of the log channel.
 
     struct ActiveWriters
     {
-        mutable std::mutex mutex;       ///< Mutex to protect the writers reference count
-        size_t count {0};              ///< Count of active ChannelWriter instances (protected by m_writersMutex)
-    } m_activeWriters; ///< Active writers count, protected by m_writersMutex
-    
+        mutable std::mutex mutex; ///< Mutex to protect the writers reference count
+        size_t count {0};         ///< Count of active ChannelWriter instances (protected by m_writersMutex)
+    } m_activeWriters;            ///< Active writers count, protected by m_writersMutex
 
     struct AsyncChannelData
     {
@@ -205,11 +206,11 @@ public:
      * @brief Gets the number of active writers for this channel
      * @return The number of active ChannelWriter instances
      */
-    size_t getActiveWritersCount() const { 
-        std::lock_guard<std::mutex> lock(m_activeWriters.mutex); 
-        return m_activeWriters.count; 
+    size_t getActiveWritersCount() const
+    {
+        std::lock_guard<std::mutex> lock(m_activeWriters.mutex);
+        return m_activeWriters.count;
     }
-
 
     /**
      * @brief Gets the current rotation configuration
