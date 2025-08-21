@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <shared_mutex>
 
 /**
  * @brief Asynchronous, rotating log management module. Handles named, rotating log channels with asynchronous writes.
@@ -16,8 +17,7 @@
  *   - Registration of named log channels with rotation configuration.
  *   - Retrieval of lightweight writer functors for application code.
  *   - Asynchronous, thread-safe writes into date- and size-rotated files via a dedicated I/O thread.
- *   - The non-starvation of writings, allowing for efficient log management.
- *   - Runtime reconfiguration and on-demand rotation.
+ *   - Runtime configuration and on-demand rotation.
  *   - Hard-link “latest” pointer to the current log file for each channel.
  *
  * ## Concepts
@@ -122,7 +122,10 @@ class WriterEvent
 {
 public:
     virtual ~WriterEvent() = default;
-    virtual void operator()(std::string&& message) = 0;
+    /**
+     * @brief Handles a log message, return true if the message was successfully handled, false otherwise.
+     */
+    virtual bool operator()(std::string&& message) = 0;
 };
 
 class ChannelHandler; // Forward declaration of ChannelHandler
@@ -154,10 +157,14 @@ class LogManager
 {
 
 private:
-
-    std::unordered_map<std::string, std::shared_ptr<ChannelHandler>> channels;
+    std::unordered_map<std::string, std::shared_ptr<ChannelHandler>> m_channels; ///< Channel names to ChannelHandler
+    mutable std::shared_mutex m_channelsMutex; ///< Mutex to protect access to m_channels
 
 public:
+
+    LogManager() : m_channels(), m_channelsMutex()
+    {};
+
     /**
      * @brief Registers a new log channel with the specified name and rotation configuration.
      *
@@ -166,7 +173,19 @@ public:
      * @throws std::runtime_error if the log channel cannot be registered due to an existing channel with the same name,
      *         invalid configuration, or if the base path does not exist or is not writable.
      */
-    void registerLog(std::string_view name, const RotationConfig& cfg);
+    void registerLog(const std::string& name, const RotationConfig& cfg);
+
+    /**
+     * @brief Checks if a log channel with the specified name exists.
+     *
+     * @param name The name of the log channel to check.
+     * @return true if the channel exists, false otherwise.
+     */
+    bool hasChannel(const std::string& name) const
+    {
+        std::shared_lock lock(m_channelsMutex);
+        return m_channels.find(name) != m_channels.end();
+    }
 
     /**
      * @brief Updates the configuration of an existing log channel.
@@ -174,8 +193,10 @@ public:
      * @param name The name of the log channel to update.
      * @param cfg The new rotation configuration for the log channel.
      * @throws std::runtime_error if the log channel does not exist or if the new configuration is invalid.
+     * @warning if the channel is currently in use by a writer, the update not take effect until all writers are
+     * destroyed.
      */
-    void updateConfig(std::string_view name, const RotationConfig& cfg);
+    void updateConfig(const std::string& name, const RotationConfig& cfg);
 
     /**
      * @brief Retrieves a writer functor for the specified log channel.
@@ -185,7 +206,7 @@ public:
      * the log channel asynchronously.
      * @throws std::runtime_error if the log channel does not exist.
      */
-    std::shared_ptr<WriterEvent> getWriter(const std::string& name);
+    [[nodiscard]] std::shared_ptr<WriterEvent> getWriter(const std::string& name);
 
     /**
      * @brief Gets the current configuration of a log channel.
@@ -194,13 +215,16 @@ public:
      * @return The current rotation configuration of the log channel.
      * @throws std::runtime_error if the log channel does not exist.
      */
-    RotationConfig getConfig(const std::string& name) const;
+    const RotationConfig& getConfig(const std::string& name) const;
 
     /**
-     * @brief Check is someone has a writer for the channel.
-     * 
+     * @brief Get the Active Writers Count for a specific channel.
+     *
+     * @param name The name of the log channel.
+     * @return The number of active writers for the specified channel.
+     * @throws std::runtime_error if the log channel does not exist.
      */
-    bool hasWriter(const std::string& name) const;
+    std::size_t getActiveWritersCount(const std::string& name) const;
 
     /**
      * @brief Destroys the specified log channel, releasing its resources.
@@ -208,8 +232,7 @@ public:
      * @param name The name of the log channel to destroy.
      * @throws std::runtime_error if the log channel does not exist or if in use. (Somebody has a writer for it)
      */
-    void destroyChannel(std::string_view name);
-
+    void destroyChannel(const std::string& name);
 
     ~LogManager();
 };
