@@ -62,51 +62,44 @@ CREATE TABLE IF NOT EXISTS sys_groups (
     PRIMARY KEY (group_name)
 );
 
-
 CREATE TABLE IF NOT EXISTS sys_services (
     scan_id INTEGER,
     scan_time TEXT,
-    name TEXT,
-    display_name TEXT,
-    description TEXT,
+    service_id TEXT,
+    service_name TEXT,
+    service_description TEXT,
     service_type TEXT,
-    start_type TEXT,
-    state TEXT,
-    pid INTEGER,
-    ppid INTEGER,
-    binary_path TEXT,
-    load_state TEXT,
-    active_state TEXT,
-    sub_state TEXT,
-    unit_file_state TEXT,
-    status TEXT,
-    user TEXT,
-    can_stop TEXT,
-    can_reload TEXT,
+    service_state TEXT,
+    service_sub_state TEXT,
+    service_enabled TEXT,
+    service_start_type TEXT,
+    service_restart TEXT,
+    service_frequency INTEGER,
+    service_starts_on_mount INTEGER,
+    service_starts_on_path_modified TEXT,
+    service_starts_on_not_empty_directory TEXT,
+    service_inetd_compatibility INTEGER,
+    process_pid INTEGER,
+    process_executable TEXT,
+    process_args TEXT,
+    process_user_name TEXT,
+    process_group_name TEXT,
+    process_working_dir TEXT,
+    process_root_dir TEXT,
+    file_path TEXT,
+    service_address TEXT,
+    log_file_path TEXT,
+    error_log_file_path TEXT,
     service_exit_code INTEGER,
-    -- ECS field mappings (service.id is mapped to name field)
-    service_name TEXT,                      -- ECS: service.name (File name of plist for macOS)
-    process_executable TEXT,                -- ECS: process.executable (Path to the service executable)
-    process_args TEXT,                      -- ECS: process.args (Command line arguments for the service)
-    file_path TEXT,                         -- ECS: file.path (Path to the .plist definition file for macOS)
-    process_user_name TEXT,                 -- ECS: process.user.name (User account running the job)
-    process_group_name TEXT,                -- ECS: process.group.name (Group account running the job)
-    service_enabled TEXT,                   -- ECS: service.enabled (unified as text: enabled/disabled for Linux, true/false for macOS)
-    service_restart TEXT,                   -- Custom: service.restart (Restart policy: always/on-failure/never)
-    service_frequency INTEGER,              -- Custom: service.frequency (Run frequency in seconds)
-    log_file_path TEXT,                     -- Custom: log.file.path (Redirect stdout to a file/pipe)
-    error_log_file_path TEXT,               -- Custom: error.log.file.path (Redirect stderr to a file/pipe)
-    process_working_dir TEXT,               -- ECS: process.working_dir (Working directory of the job)
-    process_root_dir TEXT,                  -- Custom: process.root_dir (Chroot directory before execution)
-    service_starts_on_mount INTEGER,        -- Custom: service.starts.on_mount (Launches every time a filesystem is mounted)
-    service_starts_on_path_modified TEXT,   -- Custom: service.starts.on_path_modified (Launches on path modification)
-    service_starts_on_not_empty_directory TEXT, -- Custom: service.starts.on_not_empty_directory (Launches when directories become non-empty)
-    service_inetd_compatibility INTEGER,    -- Custom: service.inetd_compatibility (Run job as if launched from inetd)
-    checksum TEXT NOT NULL CHECK (checksum <> ''),
-    item_id TEXT,
-    PRIMARY KEY (scan_id, name)
+    service_win32_exit_code INTEGER,
+    service_following TEXT,
+    service_object_path TEXT,
+    service_target_ephemeral_id INTEGER,
+    service_target_type TEXT,
+    service_target_address TEXT,
+    checksum TEXT,
+    PRIMARY KEY (service_id)
 );
-
 
 INSERT INTO sync_info (component) VALUES ('syscollector-users');
 INSERT INTO sync_info (component) VALUES ('syscollector-groups');
