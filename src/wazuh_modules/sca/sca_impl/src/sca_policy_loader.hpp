@@ -59,18 +59,7 @@ class SCAPolicyLoader
         ///   - modifiedChecksMap: maps check ID to the JSON data of the created, modified or deleted check
         void SyncPoliciesAndReportDelta(const nlohmann::json& data, const CreateEventsFunc& createEvents) const;
 
-    private:
-        /// @brief Synchronizes with the DBSync and returns a map of modified policies and checks
-        /// @param data SCA policies and checks
-        /// @param tableName DBSync table name
-        /// @returns a map of modified policies and checks
-        std::unordered_map<std::string, nlohmann::json> SyncWithDBSync(const nlohmann::json& data,
-                                                                       const std::string& tableName) const;
-
-        /// @brief Synchronizes with the DBSync and updates the result of a check
-        /// @param check The check to update
-        void UpdateCheckResult(const nlohmann::json& check) const;
-
+    protected:
         /// @brief Normalizes the structure of a JSON object.
         ///
         /// Ensures "references" field is replaced with "refs" and "title" field is replaced with "name" before the DB
@@ -88,6 +77,18 @@ class SCAPolicyLoader
         /// @param tableName The table name to determine if checksum calculation is needed.
         /// @returns The normalized JSON object with checksums added if applicable.
         nlohmann::json NormalizeDataWithChecksum(nlohmann::json data, const std::string& tableName) const;
+
+        /// @brief Synchronizes with the DBSync and updates the result of a check
+        /// @param check The check to update
+        void UpdateCheckResult(const nlohmann::json& check) const;
+
+    private:
+        /// @brief Synchronizes with the DBSync and returns a map of modified policies and checks
+        /// @param data SCA policies and checks
+        /// @param tableName DBSync table name
+        /// @returns a map of modified policies and checks
+        std::unordered_map<std::string, nlohmann::json> SyncWithDBSync(const nlohmann::json& data,
+                                                                       const std::string& tableName) const;
 
         std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 

@@ -178,12 +178,8 @@ namespace
             const auto expression = minterm.substr(2);
             return EvaluateNumericRegexComparison(content, expression, engine);
         }
-        else
-        {
-            return content == minterm;
-        }
 
-        return false;
+        return content == minterm;
     }
 
 } // namespace
