@@ -72,7 +72,7 @@ YamlNode YamlDocument::GetRoot()
 
     if (!root)
     {
-        throw std::runtime_error("Empty YAML document");
+        throw std::runtime_error("Empty YAML document"); // LCOV_EXCL_LINE
     }
 
     return YamlNode(&m_document, root);
