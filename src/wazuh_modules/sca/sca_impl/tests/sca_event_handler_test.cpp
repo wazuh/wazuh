@@ -648,6 +648,287 @@ TEST_F(SCAEventHandlerTest, NormalizePolicy)
     EXPECT_EQ(policy["references"], nlohmann::json::array({"https://cis.org", "https://example.com"}));
 }
 
+
+TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_EmptyInput)
+{
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string & message) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    SCAEventHandler realHandler("test-uuid", mockDBSync, mockPushStateless, mockPushStateful);
+
+    std::unordered_map<std::string, nlohmann::json> emptyPolicies;
+    std::unordered_map<std::string, nlohmann::json> emptyChecks;
+
+    EXPECT_NO_THROW(
+    {
+        realHandler.ReportPoliciesDelta(emptyPolicies, emptyChecks);
+    });
+
+    // No messages should be pushed for empty input
+    EXPECT_EQ(statefulMessages.size(), 0);
+    EXPECT_EQ(statelessMessages.size(), 0);
+}
+
+TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_ValidInput)
+{
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string & message) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    EXPECT_CALL(*newHandler, GetChecksForPolicy("policy1"))
+    .WillOnce(testing::Return(nlohmann::json::array(
+    {
+        {{"id", "check1"}, {"name", "Check 1"}, {"policy_id", "policy1"}},
+        {{"id", "check2"}, {"name", "Check 2"}, {"policy_id", "policy1"}}
+    })));
+
+    EXPECT_CALL(*newHandler, GetPolicyById("policy2"))
+    .WillOnce(testing::Return(nlohmann::json(
+    {
+        {"id", "policy2"},
+        {"name", "Policy 2"},
+        {"description", "Test Policy 2"},
+        {"file", "policy2.yml"},
+        {"refs", "https://example.com"}
+    })));
+
+    std::unordered_map<std::string, nlohmann::json> modifiedPolicies =
+    {
+        {
+            "policy1", {
+                {
+                    "data", {
+                        {"id", "policy1"},
+                        {"name", "Test Policy 1"},
+                        {"description", "Description 1"},
+                        {"file", "policy1.yml"},
+                        {"refs", "https://test.com"}
+                    }
+                },
+                {"result", MODIFIED}
+            }
+        }
+    };
+
+    std::unordered_map<std::string, nlohmann::json> modifiedChecks =
+    {
+        {
+            "check3", {
+                {
+                    "data", {
+                        {
+                            "new", {
+                                {"id", "check3"},
+                                {"policy_id", "policy2"},
+                                {"name", "Check 3"},
+                                {"result", "passed"}
+                            }
+                        }
+                    }
+                },
+                {"result", MODIFIED}
+            }
+        }
+    };
+
+    EXPECT_NO_THROW(
+    {
+        newHandler->ReportPoliciesDelta(modifiedPolicies, modifiedChecks);
+    });
+
+    EXPECT_GT(statefulMessages.size(), 0);
+    EXPECT_GT(statelessMessages.size(), 0);
+
+    for (const auto& message : statefulMessages)
+    {
+        nlohmann::json parsedMessage = nlohmann::json::parse(message);
+        EXPECT_TRUE(parsedMessage.contains("check"));
+        EXPECT_TRUE(parsedMessage.contains("policy"));
+        EXPECT_TRUE(parsedMessage.contains("checksum"));
+    }
+
+    for (const auto& message : statelessMessages)
+    {
+        nlohmann::json parsedMessage = nlohmann::json::parse(message);
+        EXPECT_TRUE(parsedMessage.contains("data"));
+        EXPECT_EQ(parsedMessage["module"], "sca");
+        EXPECT_TRUE(parsedMessage["data"].contains("check"));
+        EXPECT_TRUE(parsedMessage["data"].contains("policy"));
+        EXPECT_TRUE(parsedMessage["data"].contains("event"));
+    }
+}
+
+TEST_F(SCAEventHandlerTest, ReportCheckResult_ValidInput)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "passed";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([checkResult](const nlohmann::json & query, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        nlohmann::json returnData =
+        {
+            {
+                "old", {
+                    {"id", "test_check"},
+                    {"result", "failed"},
+                    {"name", "Test Check"}
+                }
+            },
+            {
+                "new", {
+                    {"id", "test_check"},
+                    {"result", checkResult},
+                    {"name", "Test Check"}
+                }
+            }
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    std::vector<std::string> statefulMessages;
+    std::vector<std::string> statelessMessages;
+
+    auto mockPushStateful = [&statefulMessages](const std::string & message) -> int
+    {
+        statefulMessages.push_back(message);
+        return 0;
+    };
+
+    auto mockPushStateless = [&statelessMessages](const std::string & message) -> int
+    {
+        statelessMessages.push_back(message);
+        return 0;
+    };
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(mockDBSync, mockPushStateless, mockPushStateful);
+
+    const nlohmann::json mockPolicy =
+    {
+        {"id", policyId},
+        {"name", "Test Policy"},
+        {"description", "Test Description"},
+        {"file", "test.yml"},
+        {"refs", "https://example.com"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(mockPolicy));
+
+    const nlohmann::json mockCheck =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "Test Check"},
+        {"description", "Test Check Description"},
+        {"result", "failed"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(mockCheck));
+
+    EXPECT_NO_THROW(
+    {
+        newHandler->ReportCheckResult(policyId, checkId, checkResult);
+    });
+
+    EXPECT_EQ(statefulMessages.size(), 1);
+    EXPECT_EQ(statelessMessages.size(), 1);
+
+    if (statefulMessages.size() > 0)
+    {
+        nlohmann::json statefulMessage = nlohmann::json::parse(statefulMessages[0]);
+        EXPECT_TRUE(statefulMessage.contains("check"));
+        EXPECT_TRUE(statefulMessage.contains("policy"));
+        EXPECT_TRUE(statefulMessage.contains("checksum"));
+        EXPECT_EQ(statefulMessage["check"]["result"], checkResult);
+        EXPECT_EQ(statefulMessage["policy"]["id"], policyId);
+    }
+
+    if (statelessMessages.size() > 0)
+    {
+        nlohmann::json statelessMessage = nlohmann::json::parse(statelessMessages[0]);
+        EXPECT_EQ(statelessMessage["module"], "sca");
+        EXPECT_TRUE(statelessMessage["data"].contains("check"));
+        EXPECT_TRUE(statelessMessage["data"].contains("policy"));
+        EXPECT_TRUE(statelessMessage["data"].contains("event"));
+        EXPECT_EQ(statelessMessage["data"]["check"]["result"], checkResult);
+    }
+}
+
+TEST_F(SCAEventHandlerTest, GetPolicyCheckById_ValidId)
+{
+    const std::string checkId = "check123";
+    auto mockResult = std::make_shared<nlohmann::json>(nlohmann::json::object(
+    {
+        {"id", checkId},
+        {"name", "Test Check"},
+        {"result", "passed"}
+    }));
+
+    EXPECT_CALL(*mockDBSync, selectRows(testing::_, testing::_))
+    .WillOnce([mockResult](const nlohmann::json&,
+                           const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& cb)
+    {
+        cb(SELECTED, *mockResult);
+    });
+
+    const auto result = handler->GetPolicyCheckByIdTester(checkId);
+    EXPECT_FALSE(result.empty());
+    EXPECT_EQ(result["id"], checkId);
+}
+
+TEST_F(SCAEventHandlerTest, GetPolicyCheckById_NonexistentId)
+{
+    const std::string checkId = "nonexistent";
+
+    EXPECT_CALL(*mockDBSync, selectRows(testing::_, testing::_))
+    .WillOnce([](const nlohmann::json&,
+                 const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& cb)
+    {
+        // Return empty result
+        cb(SELECTED, nlohmann::json::object());
+    });
+
+    const auto result = handler->GetPolicyCheckByIdTester(checkId);
+    EXPECT_TRUE(result.empty());
+}
+
+
+TEST_F(SCAEventHandlerTest, GetPolicyCheckById_NullDBSync)
+{
+    SCAEventHandlerMock nullHandler(nullptr);
+
+    const auto result = nullHandler.GetPolicyCheckByIdTester("any-id");
+    EXPECT_TRUE(result.empty());
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
