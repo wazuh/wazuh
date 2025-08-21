@@ -12,8 +12,10 @@ namespace sca_event_handler
     class SCAEventHandlerMock : public SCAEventHandler
     {
         public:
-            SCAEventHandlerMock(const std::shared_ptr<MockDBSync>& mockDB)
-                : SCAEventHandler("agent-uuid", mockDB)
+            SCAEventHandlerMock(const std::shared_ptr<MockDBSync>& mockDB,
+                                std::function<int(const std::string&)> pushStatelessMessage = nullptr,
+                                std::function<int(const std::string&)> pushStatefulMessage = nullptr)
+                : SCAEventHandler("agent-uuid", mockDB, pushStatelessMessage, pushStatefulMessage)
                 , mockDBSync(mockDB)
             {
             }
@@ -64,10 +66,16 @@ namespace sca_event_handler
                 return SCAEventHandler::NormalizePolicy(policy);
             }
 
+            virtual nlohmann::json GetPolicyCheckByIdTester(const std::string& policyCheckId)
+            {
+                return SCAEventHandler::GetPolicyCheckById(policyCheckId);
+            }
+
             std::shared_ptr<MockDBSync> mockDBSync;
 
             MOCK_METHOD(std::vector<nlohmann::json>, GetChecksForPolicy, (const std::string& policyId), (const, override));
             MOCK_METHOD(nlohmann::json, GetPolicyById, (const std::string& policyId), (const, override));
+            MOCK_METHOD(nlohmann::json, GetPolicyCheckById, (const std::string& policyId), (const, override));
     };
 
 } // namespace sca_event_handler
