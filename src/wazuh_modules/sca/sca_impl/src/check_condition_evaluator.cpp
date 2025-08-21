@@ -34,9 +34,13 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
     if (result.result == RuleResult::Invalid)
     {
         m_hasInvalid = true;
-        if (!result.reason.empty() && m_invalidReason.empty())
+        if (!result.reason.empty())
         {
-            m_invalidReason = result.reason;
+            if (!m_invalidReason.empty())
+            {
+                m_invalidReason += "\n";
+            }
+            m_invalidReason += result.reason;
         }
     }
 
