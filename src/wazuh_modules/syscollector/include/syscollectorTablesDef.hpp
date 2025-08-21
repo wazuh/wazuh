@@ -1145,28 +1145,28 @@ constexpr auto BROWSER_EXTENSIONS_START_CONFIG_STATEMENT
     R"({"table":"dbsync_browser_extensions",
         "first_query":
             {
-                "column_list":["package_name"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"package_name DESC",
+                "order_by_opt":"item_id DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["package_name"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"package_name ASC",
+                "order_by_opt":"item_id ASC",
                 "count_opt":1
             },
         "component":"syscollector_browser_extensions",
-        "index":"package_name",
+        "index":"item_id",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE package_name BETWEEN '?' and '?' ORDER BY package_name",
-                "column_list":["package_name, checksum"],
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["item_id, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":100
@@ -1181,29 +1181,29 @@ constexpr auto BROWSER_EXTENSIONS_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"dbsync_browser_extensions",
         "component":"syscollector_browser_extensions",
-        "index":"package_name",
+        "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE package_name BETWEEN '?' and '?' ORDER BY package_name",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE package_name BETWEEN '?' and '?' ORDER BY package_name",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE package_name ='?'",
+                "row_filter":"WHERE item_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE package_name BETWEEN '?' and '?' ORDER BY package_name",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -1237,9 +1237,10 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         package_installed TEXT,
         file_hash_sha256 TEXT,
         checksum TEXT,
-        PRIMARY KEY (package_name)) WITHOUT ROWID;)"
+        item_id TEXT,
+        PRIMARY KEY (browser_name,user_id,browser_profile_name,package_name)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> BROWSER_EXTENSIONS_ITEM_ID_FIELDS{"package_name"};
+static const std::vector<std::string> BROWSER_EXTENSIONS_ITEM_ID_FIELDS{"browser_name", "user_id", "browser_profile_name", "package_name"};
 
 
 constexpr auto NET_IFACE_TABLE              { "dbsync_network_iface"        };
