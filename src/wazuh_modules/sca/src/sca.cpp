@@ -37,14 +37,16 @@ void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_fu
 
 void sca_start(log_callback_t callbackLog, const struct wm_sca_t* sca_config)
 {
-    std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper {
-        [callbackLog](const modules_log_level_t level, const std::string& data)
+    std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper
+    {
+        [callbackLog](const modules_log_level_t level, const std::string & data)
         {
             callbackLog(level, data.c_str(), WM_SCA_LOGTAG);
         }};
 
-    std::function<void(const std::string&)> callbackErrorLogWrapper {
-        [callbackLog](const std::string& data)
+    std::function<void(const std::string&)> callbackErrorLogWrapper
+    {
+        [callbackLog](const std::string & data)
         {
             callbackLog(LOG_ERROR, data.c_str(), WM_SCA_LOGTAG);
         }};
@@ -99,20 +101,24 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
     {
         m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH, "agent-uuid-placeholder");
 
-        auto persistStatefulMessage = [](const std::string& message) -> int
+        auto persistStatefulMessage = [](const std::string & message) -> int
         {
-            if (g_push_stateful_func) {
+            if (g_push_stateful_func)
+            {
                 return g_push_stateful_func(message.c_str());
             }
+
             LoggingHelper::getInstance().log(LOG_WARNING, "No stateful message handler set");
             return -1;
         };
 
-        auto sendStatelessMessage = [](const std::string& message) -> int
+        auto sendStatelessMessage = [](const std::string & message) -> int
         {
-            if (g_push_stateless_func) {
+            if (g_push_stateless_func)
+            {
                 return g_push_stateless_func(message.c_str());
             }
+
             LoggingHelper::getInstance().log(LOG_WARNING, "No stateless message handler set");
             return -1;
         };
@@ -126,7 +132,8 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
 
 void SCA::setup(const struct wm_sca_t* sca_config)
 {
-    if (m_sca && sca_config) {
+    if (m_sca && sca_config)
+    {
         // Extract configuration values from wm_sca_t
         const bool enabled = sca_config->enabled != 0;
         const bool scan_on_start = sca_config->scan_on_start != 0;
@@ -135,15 +142,19 @@ void SCA::setup(const struct wm_sca_t* sca_config)
 
         // Extract scan interval from scan_config (default to 3600 seconds if not set)
         const auto scanInterval = sca_config->scan_config.interval > 0 ?
-            static_cast<std::time_t>(sca_config->scan_config.interval) : 3600;
+                                  static_cast<std::time_t>(sca_config->scan_config.interval) : 3600;
 
         // Extract policy paths if available
         std::vector<sca::PolicyData> policies;
 
-        if (sca_config->policies) {
-            for (int i = 0; sca_config->policies[i] != nullptr; i++) {
+        if (sca_config->policies)
+        {
+            for (int i = 0; sca_config->policies[i] != nullptr; i++)
+            {
                 wm_sca_policy_t* policy = sca_config->policies[i];
-                if (policy->policy_path) {
+
+                if (policy->policy_path)
+                {
                     policies.emplace_back(sca::PolicyData{std::string(policy->policy_path), policy->enabled == 1, policy->remote == 1});
                 }
             }
@@ -156,16 +167,19 @@ void SCA::setup(const struct wm_sca_t* sca_config)
 
 void SCA::run()
 {
-    if (m_sca) {
+    if (m_sca)
+    {
         m_sca->Run();
     }
 }
 
 void SCA::destroy()
 {
-    if (!m_sca) {
+    if (!m_sca)
+    {
         return;
     }
+
     m_sca->Stop();
     m_sca.reset();
 }
