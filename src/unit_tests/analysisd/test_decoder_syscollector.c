@@ -565,7 +565,7 @@ int test_setup_groups_valid_msg_modified(void **state)
     return 0;
 }
 
-int test_setup_services_extensions_valid_msg_modified(void **state)
+int test_setup_services_valid_msg_modified(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -573,48 +573,44 @@ int test_setup_services_extensions_valid_msg_modified(void **state)
     Zero_Eventinfo(lf);
     if (lf->log = strdup(
         "{"
-            "\"type\":\"dbsync_services\"," \
-            "\"operation\":\"MODIFIED\"," \
             "\"data\":{"
                 "\"scan_time\":\"2021/10/29 14:26:24\","
-                "\"name\":\"svc_name\","
-                "\"display_name\":\"Service Display\","
-                "\"description\":\"desc\","
-                "\"service_type\":\"own_process\","
-                "\"start_type\":\"auto\","
-                "\"state\":\"running\","
-                "\"pid\":\"100\","
-                "\"ppid\":\"50\","
-                "\"binary_path\":\"/usr/bin/svc\","
-                "\"load_state\":\"loaded\","
-                "\"active_state\":\"active\","
-                "\"sub_state\":\"running\","
-                "\"unit_file_state\":\"enabled\","
-                "\"status\":\"ok\","
-                "\"user\":\"root\","
-                "\"can_stop\":\"yes\","
-                "\"can_reload\":\"yes\","
-                "\"service_exit_code\":\"0\","
+                "\"service_id\":\"example_service\","
                 "\"service_name\":\"example.plist\","
-                "\"process_executable\":\"/usr/bin/example\","
-                "\"process_args\":\"--config /etc/example.conf\","
-                "\"file_path\":\"/Library/LaunchDaemons/example.plist\","
-                "\"process_user_name\":\"daemon\","
-                "\"process_group_name\":\"daemon\","
+                "\"service_description\":\"desc\","
+                "\"service_type\":\"own_process\","
+                "\"service_state\":\"running\","
+                "\"service_sub_state\":\"running\","
                 "\"service_enabled\":\"true\","
+                "\"service_start_type\":\"auto\","
                 "\"service_restart\":\"always\","
                 "\"service_frequency\":\"300\","
-                "\"log_file_path\":\"/var/log/example.log\","
-                "\"error_log_file_path\":\"/var/log/example_error.log\","
-                "\"process_working_dir\":\"/usr/bin\","
-                "\"process_root_dir\":\"/\","
                 "\"service_starts_on_mount\":\"1\","
                 "\"service_starts_on_path_modified\":\"/etc/example\","
                 "\"service_starts_on_not_empty_directory\":\"/tmp/example\","
                 "\"service_inetd_compatibility\":\"0\","
-                "\"checksum\":\"abc\","
-                "\"item_id\":\"xyz\""
-            "}"
+                "\"process_pid\":\"100\","
+                "\"process_executable\":\"/usr/bin/example\","
+                "\"process_args\":\"--config /etc/example.conf\","
+                "\"process_user_name\":\"daemon\","
+                "\"process_group_name\":\"daemon\","
+                "\"process_working_dir\":\"/usr/bin\","
+                "\"process_root_dir\":\"/\","
+                "\"file_path\":\"/Library/LaunchDaemons/example.plist\","
+                "\"service_address\":\"127.0.0.1:8080\","
+                "\"log_file_path\":\"/var/log/example.log\","
+                "\"error_log_file_path\":\"/var/log/example_error.log\","
+                "\"service_exit_code\":\"0\","
+                "\"service_win32_exit_code\":\"0\","
+                "\"service_following\":\"main\","
+                "\"service_object_path\":\"/org/example/service\","
+                "\"service_target_ephemeral_id\":\"12345\","
+                "\"service_target_type\":\"socket\","
+                "\"service_target_address\":\"127.0.0.1:9090\","
+                "\"checksum\":\"abc\""
+            "}," \
+            "\"operation\":\"MODIFIED\"," \
+            "\"type\":\"dbsync_services\"" \
         "}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -1059,7 +1055,7 @@ int test_setup_groups_valid_msg_inserted(void **state)
     return 0;
 }
 
-int test_setup_services_extensions_valid_msg_inserted(void **state)
+int test_setup_services_valid_msg_inserted(void **state)
 {
     Eventinfo *lf;
     os_calloc(1, sizeof(Eventinfo), lf);
@@ -1067,48 +1063,44 @@ int test_setup_services_extensions_valid_msg_inserted(void **state)
     Zero_Eventinfo(lf);
     if (lf->log = strdup(
         "{"
-            "\"type\":\"dbsync_services\"," \
-            "\"operation\":\"INSERTED\"," \
             "\"data\":{"
                 "\"scan_time\":\"2021/10/29 14:26:24\","
-                "\"name\":\"svc_name\","
-                "\"display_name\":\"Service Display\","
-                "\"description\":\"desc\","
-                "\"service_type\":\"own_process\","
-                "\"start_type\":\"auto\","
-                "\"state\":\"running\","
-                "\"pid\":\"100\","
-                "\"ppid\":\"50\","
-                "\"binary_path\":\"/usr/bin/svc\","
-                "\"load_state\":\"loaded\","
-                "\"active_state\":\"active\","
-                "\"sub_state\":\"running\","
-                "\"unit_file_state\":\"enabled\","
-                "\"status\":\"ok\","
-                "\"user\":\"root\","
-                "\"can_stop\":\"yes\","
-                "\"can_reload\":\"yes\","
-                "\"service_exit_code\":\"0\","
+                "\"service_id\":\"example_service\","
                 "\"service_name\":\"example.plist\","
-                "\"process_executable\":\"/usr/bin/example\","
-                "\"process_args\":\"--config /etc/example.conf\","
-                "\"file_path\":\"/Library/LaunchDaemons/example.plist\","
-                "\"process_user_name\":\"daemon\","
-                "\"process_group_name\":\"daemon\","
+                "\"service_description\":\"desc\","
+                "\"service_type\":\"own_process\","
+                "\"service_state\":\"running\","
+                "\"service_sub_state\":\"running\","
                 "\"service_enabled\":\"true\","
+                "\"service_start_type\":\"auto\","
                 "\"service_restart\":\"always\","
                 "\"service_frequency\":\"300\","
-                "\"log_file_path\":\"/var/log/example.log\","
-                "\"error_log_file_path\":\"/var/log/example_error.log\","
-                "\"process_working_dir\":\"/usr/bin\","
-                "\"process_root_dir\":\"/\","
                 "\"service_starts_on_mount\":\"1\","
                 "\"service_starts_on_path_modified\":\"/etc/example\","
                 "\"service_starts_on_not_empty_directory\":\"/tmp/example\","
                 "\"service_inetd_compatibility\":\"0\","
-                "\"checksum\":\"abc\","
-                "\"item_id\":\"xyz\""
-            "}"
+                "\"process_pid\":\"100\","
+                "\"process_executable\":\"/usr/bin/example\","
+                "\"process_args\":\"--config /etc/example.conf\","
+                "\"process_user_name\":\"daemon\","
+                "\"process_group_name\":\"daemon\","
+                "\"process_working_dir\":\"/usr/bin\","
+                "\"process_root_dir\":\"/\","
+                "\"file_path\":\"/Library/LaunchDaemons/example.plist\","
+                "\"service_address\":\"127.0.0.1:8080\","
+                "\"log_file_path\":\"/var/log/example.log\","
+                "\"error_log_file_path\":\"/var/log/example_error.log\","
+                "\"service_exit_code\":\"0\","
+                "\"service_win32_exit_code\":\"0\","
+                "\"service_following\":\"main\","
+                "\"service_object_path\":\"/org/example/service\","
+                "\"service_target_ephemeral_id\":\"12345\","
+                "\"service_target_type\":\"socket\","
+                "\"service_target_address\":\"127.0.0.1:9090\","
+                "\"checksum\":\"abc\""
+            "}," \
+            "\"operation\":\"INSERTED\","
+            "\"type\":\"dbsync_services\"" \
         "}"), lf->log == NULL)
         return -1;
     os_strdup("(>syscollector", lf->location);
@@ -2454,50 +2446,46 @@ void test_syscollector_dbsync_groups_valid_msg_modified(void **state)
     assert_int_not_equal(ret, 0);
 }
 
-void test_syscollector_dbsync_services_extensions_valid_msg_modified(void **state)
+void test_syscollector_dbsync_services_valid_msg_modified(void **state)
 {
     Eventinfo *lf = *state;
 
     const char *query = "agent 001 dbsync services MODIFIED "
         "{"
-            "\"scan_time\":\"2021/10/29 14:26:24\"," 
-            "\"name\":\"svc_name\"," 
-            "\"display_name\":\"Service Display\"," 
-            "\"description\":\"desc\"," 
-            "\"service_type\":\"own_process\"," 
-            "\"start_type\":\"auto\"," 
-            "\"state\":\"running\"," 
-            "\"pid\":\"100\"," 
-            "\"ppid\":\"50\"," 
-            "\"binary_path\":\"/usr/bin/svc\"," 
-            "\"load_state\":\"loaded\"," 
-            "\"active_state\":\"active\"," 
-            "\"sub_state\":\"running\"," 
-            "\"unit_file_state\":\"enabled\"," 
-            "\"status\":\"ok\"," 
-            "\"user\":\"root\"," 
-            "\"can_stop\":\"yes\"," 
-            "\"can_reload\":\"yes\","
-            "\"service_exit_code\":\"0\","
+            "\"scan_time\":\"2021/10/29 14:26:24\","
+            "\"service_id\":\"example_service\","
             "\"service_name\":\"example.plist\","
-            "\"process_executable\":\"/usr/bin/example\","
-            "\"process_args\":\"--config /etc/example.conf\","
-            "\"file_path\":\"/Library/LaunchDaemons/example.plist\","
-            "\"process_user_name\":\"daemon\","
-            "\"process_group_name\":\"daemon\","
+            "\"service_description\":\"desc\","
+            "\"service_type\":\"own_process\","
+            "\"service_state\":\"running\","
+            "\"service_sub_state\":\"running\","
             "\"service_enabled\":\"true\","
+            "\"service_start_type\":\"auto\","
             "\"service_restart\":\"always\","
             "\"service_frequency\":\"300\","
-            "\"log_file_path\":\"/var/log/example.log\","
-            "\"error_log_file_path\":\"/var/log/example_error.log\","
-            "\"process_working_dir\":\"/usr/bin\","
-            "\"process_root_dir\":\"/\","
             "\"service_starts_on_mount\":\"1\","
             "\"service_starts_on_path_modified\":\"/etc/example\","
             "\"service_starts_on_not_empty_directory\":\"/tmp/example\","
             "\"service_inetd_compatibility\":\"0\","
-            "\"checksum\":\"abc\","
-            "\"item_id\":\"xyz\""
+            "\"process_pid\":\"100\","
+            "\"process_executable\":\"/usr/bin/example\","
+            "\"process_args\":\"--config /etc/example.conf\","
+            "\"process_user_name\":\"daemon\","
+            "\"process_group_name\":\"daemon\","
+            "\"process_working_dir\":\"/usr/bin\","
+            "\"process_root_dir\":\"/\","
+            "\"file_path\":\"/Library/LaunchDaemons/example.plist\","
+            "\"service_address\":\"127.0.0.1:8080\","
+            "\"log_file_path\":\"/var/log/example.log\","
+            "\"error_log_file_path\":\"/var/log/example_error.log\","
+            "\"service_exit_code\":\"0\","
+            "\"service_win32_exit_code\":\"0\","
+            "\"service_following\":\"main\","
+            "\"service_object_path\":\"/org/example/service\","
+            "\"service_target_ephemeral_id\":\"12345\","
+            "\"service_target_type\":\"socket\","
+            "\"service_target_address\":\"127.0.0.1:9090\","
+            "\"checksum\":\"abc\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -3047,50 +3035,46 @@ void test_syscollector_dbsync_groups_valid_msg_inserted(void **state)
     assert_int_not_equal(ret, 0);
 }
 
-void test_syscollector_dbsync_services_extensions_valid_msg_inserted(void **state)
+void test_syscollector_dbsync_services_valid_msg_inserted(void **state)
 {
     Eventinfo *lf = *state;
 
     const char *query = "agent 001 dbsync services INSERTED "
         "{"
-            "\"scan_time\":\"2021/10/29 14:26:24\"," 
-            "\"name\":\"svc_name\"," 
-            "\"display_name\":\"Service Display\"," 
-            "\"description\":\"desc\"," 
-            "\"service_type\":\"own_process\","
-            "\"start_type\":\"auto\","
-            "\"state\":\"running\","
-            "\"pid\":\"100\","
-            "\"ppid\":\"50\","
-            "\"binary_path\":\"/usr/bin/svc\","
-            "\"load_state\":\"loaded\","
-            "\"active_state\":\"active\","
-            "\"sub_state\":\"running\","
-            "\"unit_file_state\":\"enabled\","
-            "\"status\":\"ok\","
-            "\"user\":\"root\","
-            "\"can_stop\":\"yes\","
-            "\"can_reload\":\"yes\","
-            "\"service_exit_code\":\"0\","
+            "\"scan_time\":\"2021/10/29 14:26:24\","
+            "\"service_id\":\"example_service\","
             "\"service_name\":\"example.plist\","
-            "\"process_executable\":\"/usr/bin/example\","
-            "\"process_args\":\"--config /etc/example.conf\","
-            "\"file_path\":\"/Library/LaunchDaemons/example.plist\","
-            "\"process_user_name\":\"daemon\","
-            "\"process_group_name\":\"daemon\","
+            "\"service_description\":\"desc\","
+            "\"service_type\":\"own_process\","
+            "\"service_state\":\"running\","
+            "\"service_sub_state\":\"running\","
             "\"service_enabled\":\"true\","
+            "\"service_start_type\":\"auto\","
             "\"service_restart\":\"always\","
             "\"service_frequency\":\"300\","
-            "\"log_file_path\":\"/var/log/example.log\","
-            "\"error_log_file_path\":\"/var/log/example_error.log\","
-            "\"process_working_dir\":\"/usr/bin\","
-            "\"process_root_dir\":\"/\","
             "\"service_starts_on_mount\":\"1\","
             "\"service_starts_on_path_modified\":\"/etc/example\","
             "\"service_starts_on_not_empty_directory\":\"/tmp/example\","
             "\"service_inetd_compatibility\":\"0\","
-            "\"checksum\":\"abc\","
-            "\"item_id\":\"xyz\""
+            "\"process_pid\":\"100\","
+            "\"process_executable\":\"/usr/bin/example\","
+            "\"process_args\":\"--config /etc/example.conf\","
+            "\"process_user_name\":\"daemon\","
+            "\"process_group_name\":\"daemon\","
+            "\"process_working_dir\":\"/usr/bin\","
+            "\"process_root_dir\":\"/\","
+            "\"file_path\":\"/Library/LaunchDaemons/example.plist\","
+            "\"service_address\":\"127.0.0.1:8080\","
+            "\"log_file_path\":\"/var/log/example.log\","
+            "\"error_log_file_path\":\"/var/log/example_error.log\","
+            "\"service_exit_code\":\"0\","
+            "\"service_win32_exit_code\":\"0\","
+            "\"service_following\":\"main\","
+            "\"service_object_path\":\"/org/example/service\","
+            "\"service_target_ephemeral_id\":\"12345\","
+            "\"service_target_type\":\"socket\","
+            "\"service_target_address\":\"127.0.0.1:9090\","
+            "\"checksum\":\"abc\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -4343,7 +4327,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_modified, test_setup_os_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_users_valid_msg_modified, test_setup_users_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_groups_valid_msg_modified, test_setup_groups_valid_msg_modified, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_extensions_valid_msg_modified, test_setup_services_extensions_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_valid_msg_modified, test_setup_services_valid_msg_modified, test_cleanup),
         /* INSERTED delta tests*/
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_inserted, test_setup_hotfixes_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg_inserted, test_setup_packages_valid_msg_inserted, test_cleanup),
@@ -4361,7 +4345,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_os_valid_msg_no_result_payload, test_setup_os_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_users_valid_msg_inserted, test_setup_users_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_groups_valid_msg_inserted, test_setup_groups_valid_msg_inserted, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_extensions_valid_msg_inserted, test_setup_services_extensions_valid_msg_inserted, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_valid_msg_inserted, test_setup_services_valid_msg_inserted, test_cleanup),
         // Hardware tests
         cmocka_unit_test_setup_teardown(test_syscollector_hardware_valid, test_setup_hardware_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_hardware_valid_inventory_empty, test_setup_hardware_valid_msg_inventory_empty, test_cleanup),

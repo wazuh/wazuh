@@ -71,6 +71,18 @@ const char * USERINFO_FIELDS[] = {
     [PROCESS_PID] = "process_pid"
 };
 
+typedef enum service_fields {
+    SERVICE_FREQUENCY,
+    SERVICE_PROCESS_PID,
+    SERVICE_TARGET_EPHEMERAL_ID
+} service_fields;
+
+const char * SERVICEINFO_FIELDS[] = {
+    [SERVICE_FREQUENCY] = "service_frequency",
+    [SERVICE_PROCESS_PID] = "service_process_pid",
+    [SERVICE_TARGET_EPHEMERAL_ID] = "service_target_ephemeral_id"
+};
+
 #define IS_VALID_GROUPS_VALUE(field_name, field_value) ( \
     !strcmp(field_name, GROUPINFO_FIELDS[GROUP_ID]) ? \
         GE(field_value, 0) : true \
@@ -118,10 +130,20 @@ const char * USERINFO_FIELDS[] = {
         GE(field_value, 0) : true \
 )
 
+#define IS_VALID_SERVICE_VALUE(field_name, field_value) ( \
+    !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_FREQUENCY]) ? \
+        GE(field_value, 0) : \
+    !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_PROCESS_PID]) ? \
+        GE(field_value, 0) : \
+    !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_TARGET_EPHEMERAL_ID]) ? \
+        GE(field_value, 0) : true \
+)
+
 #define IS_VALID_VALUE(table_name, field_name, field_value) (\
-    !strncmp(table_name, "sys_hwinfo", 10) ? IS_VALID_HWINFO_VALUE(field_name, field_value) : \
-    !strncmp(table_name, "sys_users", 9) ? IS_VALID_USERS_VALUE(field_name, field_value) : \
-    !strncmp(table_name, "sys_groups", 10) ? IS_VALID_GROUPS_VALUE(field_name, field_value) : true \
+    !strcmp(table_name, "sys_hwinfo") ? IS_VALID_HWINFO_VALUE(field_name, field_value) : \
+    !strcmp(table_name, "sys_users") ? IS_VALID_USERS_VALUE(field_name, field_value) : \
+    !strcmp(table_name, "sys_groups") ? IS_VALID_GROUPS_VALUE(field_name, field_value) : \
+    !strcmp(table_name, "sys_services") ? IS_VALID_SERVICE_VALUE(field_name, field_value) : true \
 )
 
 STATIC bool wdb_dbsync_stmt_bind_from_json(sqlite3_stmt * stmt, int index, field_type_t type, const cJSON * value, const char * field_name,

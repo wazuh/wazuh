@@ -218,7 +218,7 @@ static struct column_list const TABLE_USERS[USERS_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 31, false, false, NULL, "login_status", {.integer = 0}, true}, .next = &TABLE_USERS[31]},
     { .value = { FIELD_TEXT, 32, false, false, NULL, "login_tty", {.text = ""}, true}, .next = &TABLE_USERS[32]},
     { .value = { FIELD_TEXT, 33, false, false, NULL, "login_type", {.text = ""}, true}, .next = &TABLE_USERS[33]},
-    { .value = { FIELD_TEXT, 34, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
+    { .value = { FIELD_TEXT, 34, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL}
 };
 
 #define GROUPS_FIELD_COUNT 9
@@ -232,51 +232,46 @@ static struct column_list const TABLE_GROUPS[GROUPS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 7, false, false, NULL, "group_uuid", {.text = ""}, true}, .next = &TABLE_GROUPS[7]},
     { .value = { FIELD_INTEGER, 8, false, false, NULL, "group_is_hidden", {.integer = 0}, true}, .next = &TABLE_GROUPS[8]},
     { .value = { FIELD_TEXT, 9, false, false, NULL, "group_users", {.text = ""}, true}, .next = &TABLE_GROUPS[9]},
-    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL}
 };
 
-#define SERVICES_FIELD_COUNT 39
+#define SERVICES_FIELD_COUNT 34
 static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_SERVICES[1]},
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_SERVICES[2]},
-    { .value = { FIELD_TEXT, 3, false, true, NULL, "name", {.text = ""}, true}, .next = &TABLE_SERVICES[3]},
-    { .value = { FIELD_TEXT, 4, false, false, NULL, "display_name", {.text = ""}, true}, .next = &TABLE_SERVICES[4]},
-    { .value = { FIELD_TEXT, 5, false, false, NULL, "description", {.text = ""}, true}, .next = &TABLE_SERVICES[5]},
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "service_id", {.text = ""}, true}, .next = &TABLE_SERVICES[3]},
+    { .value = { FIELD_TEXT, 4, false, false, NULL, "service_name", {.text = ""}, true}, .next = &TABLE_SERVICES[4]},
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "service_description", {.text = ""}, true}, .next = &TABLE_SERVICES[5]},
     { .value = { FIELD_TEXT, 6, false, false, NULL, "service_type", {.text = ""}, true}, .next = &TABLE_SERVICES[6]},
-    { .value = { FIELD_TEXT, 7, false, false, NULL, "start_type", {.text = ""}, true}, .next = &TABLE_SERVICES[7]},
-    { .value = { FIELD_TEXT, 8, false, false, NULL, "state", {.text = ""}, true}, .next = &TABLE_SERVICES[8]},
-    { .value = { FIELD_INTEGER, 9, false, false, NULL, "pid", {.integer = 0}, true}, .next = &TABLE_SERVICES[9]},
-    { .value = { FIELD_INTEGER, 10, false, false, NULL, "ppid", {.integer = 0}, true}, .next = &TABLE_SERVICES[10]},
-    { .value = { FIELD_TEXT, 11, false, false, NULL, "binary_path", {.text = ""}, true}, .next = &TABLE_SERVICES[11]},
-    { .value = { FIELD_TEXT, 12, false, false, NULL, "load_state", {.text = ""}, true}, .next = &TABLE_SERVICES[12]},
-    { .value = { FIELD_TEXT, 13, false, false, NULL, "active_state", {.text = ""}, true}, .next = &TABLE_SERVICES[13]},
-    { .value = { FIELD_TEXT, 14, false, false, NULL, "sub_state", {.text = ""}, true}, .next = &TABLE_SERVICES[14]},
-    { .value = { FIELD_TEXT, 15, false, false, NULL, "unit_file_state", {.text = ""}, true}, .next = &TABLE_SERVICES[15]},
-    { .value = { FIELD_TEXT, 16, false, false, NULL, "status", {.text = ""}, true}, .next = &TABLE_SERVICES[16]},
-    { .value = { FIELD_TEXT, 17, false, false, NULL, "user", {.text = ""}, true}, .next = &TABLE_SERVICES[17]},
-    { .value = { FIELD_TEXT, 18, false, false, NULL, "can_stop", {.text = ""}, true}, .next = &TABLE_SERVICES[18]},
-    { .value = { FIELD_TEXT, 19, false, false, NULL, "can_reload", {.text = ""}, true}, .next = &TABLE_SERVICES[19]},
-    { .value = { FIELD_INTEGER, 20, false, false, NULL, "service_exit_code", {.integer = 0}, true}, .next = &TABLE_SERVICES[20]},
-    // New macOS launchd fields
-    { .value = { FIELD_TEXT, 21, false, false, NULL, "service_name", {.text = ""}, true}, .next = &TABLE_SERVICES[21]},
-    { .value = { FIELD_TEXT, 22, false, false, NULL, "process_executable", {.text = ""}, true}, .next = &TABLE_SERVICES[22]},
-    { .value = { FIELD_TEXT, 23, false, false, NULL, "process_args", {.text = ""}, true}, .next = &TABLE_SERVICES[23]},
+    { .value = { FIELD_TEXT, 7, false, false, NULL, "service_state", {.text = ""}, true}, .next = &TABLE_SERVICES[7]},
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "service_sub_state", {.text = ""}, true}, .next = &TABLE_SERVICES[8]},
+    { .value = { FIELD_TEXT, 9, false, false, NULL, "service_enabled", {.text = ""}, true}, .next = &TABLE_SERVICES[9]},
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "service_start_type", {.text = ""}, true}, .next = &TABLE_SERVICES[10]},
+    { .value = { FIELD_TEXT, 11, false, false, NULL, "service_restart", {.text = ""}, true}, .next = &TABLE_SERVICES[11]},
+    { .value = { FIELD_INTEGER_LONG, 12, false, false, NULL, "service_frequency", {.integer_long = 0LL}, true}, .next = &TABLE_SERVICES[12]},
+    { .value = { FIELD_INTEGER, 13, false, false, NULL, "service_starts_on_mount", {.integer = 0}, true}, .next = &TABLE_SERVICES[13]},
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "service_starts_on_path_modified", {.text = ""}, true}, .next = &TABLE_SERVICES[14]},
+    { .value = { FIELD_TEXT, 15, false, false, NULL, "service_starts_on_not_empty_directory", {.text = ""}, true}, .next = &TABLE_SERVICES[15]},
+    { .value = { FIELD_INTEGER, 16, false, false, NULL, "service_inetd_compatibility", {.integer = 0}, true}, .next = &TABLE_SERVICES[16]},
+    { .value = { FIELD_INTEGER_LONG, 17, false, false, NULL, "process_pid", {.integer_long = 0LL}, true}, .next = &TABLE_SERVICES[17]},
+    { .value = { FIELD_TEXT, 18, false, false, NULL, "process_executable", {.text = ""}, true}, .next = &TABLE_SERVICES[18]},
+    { .value = { FIELD_TEXT, 19, false, false, NULL, "process_args", {.text = ""}, true}, .next = &TABLE_SERVICES[19]},
+    { .value = { FIELD_TEXT, 20, false, false, NULL, "process_user_name", {.text = ""}, true}, .next = &TABLE_SERVICES[20]},
+    { .value = { FIELD_TEXT, 21, false, false, NULL, "process_group_name", {.text = ""}, true}, .next = &TABLE_SERVICES[21]},
+    { .value = { FIELD_TEXT, 22, false, false, NULL, "process_working_dir", {.text = ""}, true}, .next = &TABLE_SERVICES[22]},
+    { .value = { FIELD_TEXT, 23, false, false, NULL, "process_root_dir", {.text = ""}, true}, .next = &TABLE_SERVICES[23]},
     { .value = { FIELD_TEXT, 24, false, false, NULL, "file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[24]},
-    { .value = { FIELD_TEXT, 25, false, false, NULL, "process_user_name", {.text = ""}, true}, .next = &TABLE_SERVICES[25]},
-    { .value = { FIELD_TEXT, 26, false, false, NULL, "process_group_name", {.text = ""}, true}, .next = &TABLE_SERVICES[26]},
-    { .value = { FIELD_TEXT, 27, false, false, NULL, "service_enabled", {.text = ""}, true}, .next = &TABLE_SERVICES[27]},
-    { .value = { FIELD_TEXT, 28, false, false, NULL, "service_restart", {.text = ""}, true}, .next = &TABLE_SERVICES[28]},
-    { .value = { FIELD_INTEGER, 29, false, false, NULL, "service_frequency", {.integer = 0}, true}, .next = &TABLE_SERVICES[29]},
-    { .value = { FIELD_TEXT, 30, false, false, NULL, "log_file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[30]},
-    { .value = { FIELD_TEXT, 31, false, false, NULL, "error_log_file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[31]},
-    { .value = { FIELD_TEXT, 32, false, false, NULL, "process_working_dir", {.text = ""}, true}, .next = &TABLE_SERVICES[32]},
-    { .value = { FIELD_TEXT, 33, false, false, NULL, "process_root_dir", {.text = ""}, true}, .next = &TABLE_SERVICES[33]},
-    { .value = { FIELD_INTEGER, 34, false, false, NULL, "service_starts_on_mount", {.integer = 0}, true}, .next = &TABLE_SERVICES[34]},
-    { .value = { FIELD_TEXT, 35, false, false, NULL, "service_starts_on_path_modified", {.text = ""}, true}, .next = &TABLE_SERVICES[35]},
-    { .value = { FIELD_TEXT, 36, false, false, NULL, "service_starts_on_not_empty_directory", {.text = ""}, true}, .next = &TABLE_SERVICES[36]},
-    { .value = { FIELD_INTEGER, 37, false, false, NULL, "service_inetd_compatibility", {.integer = 0}, true}, .next = &TABLE_SERVICES[37]},
-    { .value = { FIELD_TEXT, 38, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_SERVICES[38]},
-    { .value = { FIELD_TEXT, 39, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL}
+    { .value = { FIELD_TEXT, 25, false, false, NULL, "service_address", {.text = ""}, true}, .next = &TABLE_SERVICES[25]},
+    { .value = { FIELD_TEXT, 26, false, false, NULL, "log_file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[26]},
+    { .value = { FIELD_TEXT, 27, false, false, NULL, "error_log_file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[27]},
+    { .value = { FIELD_INTEGER, 28, false, false, NULL, "service_exit_code", {.integer = 0}, true}, .next = &TABLE_SERVICES[28]},
+    { .value = { FIELD_INTEGER, 29, false, false, NULL, "service_win32_exit_code", {.integer = 0}, true}, .next = &TABLE_SERVICES[29]},
+    { .value = { FIELD_TEXT, 30, false, false, NULL, "service_following", {.text = ""}, true}, .next = &TABLE_SERVICES[30]},
+    { .value = { FIELD_TEXT, 31, false, false, NULL, "service_object_path", {.text = ""}, true}, .next = &TABLE_SERVICES[31]},
+    { .value = { FIELD_INTEGER_LONG, 32, false, false, NULL, "service_target_ephemeral_id", {.integer_long = 0LL}, true}, .next = &TABLE_SERVICES[32]},
+    { .value = { FIELD_TEXT, 33, false, false, NULL, "service_target_type", {.text = ""}, true}, .next = &TABLE_SERVICES[33]},
+    { .value = { FIELD_TEXT, 34, false, false, NULL, "service_target_address", {.text = ""}, true}, .next = &TABLE_SERVICES[34]},
+    { .value = { FIELD_TEXT, 35, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL},
 };
 
 static struct kv_list const TABLE_MAP[] = {
