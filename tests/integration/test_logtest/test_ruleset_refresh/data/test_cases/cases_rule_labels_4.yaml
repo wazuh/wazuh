@@ -1,9 +1,0 @@
-- name: 'check_rule_exclude_label'
-  description:
-  configuration_parameters:
-  metadata:
-    input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "{\"it_logtest\" : \"rules\", \"test\": \"rule_exclude\"}","log_format": "syslog","location": "master->/var/log/syslog"}}'
-    rule_dir: 'etc/rules/'
-    rule_file: "custom_rule_3.xml"
-    rule_id: '880003'
-    test_exclude: 'yes'

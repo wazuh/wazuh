@@ -1,8 +1,0 @@
-- name: 'check_decoder_dir_label'
-  description:
-  configuration_parameters:
-  metadata:
-    input: '{"version":1,"origin":{"name":"Integration Test","module":"api"},"command":"log_processing","parameters":{"event": "Oct 15 21:07:00 linux-agent decoder_IT_test_decoder_1[29205]: Test IT decoder","log_format": "syslog","location": "master->/var/log/syslog"}}'
-    decoder_dir: 'etc/decoders_1/'
-    decoder_file: "custom_decoder_1.xml"
-    decoder_name: 'decoder_IT_test_decoder_1'
