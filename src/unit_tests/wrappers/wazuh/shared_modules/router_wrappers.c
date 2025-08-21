@@ -37,3 +37,13 @@ ROUTER_PROVIDER_HANDLE __wrap_router_provider_create(const char* name) {
     check_expected(name);
     return mock_ptr_type(ROUTER_PROVIDER_HANDLE);
 }
+
+int __wrap_router_provider_send_fb_agent_ctx(__attribute__((unused)) ROUTER_PROVIDER_HANDLE handle,
+                                             const char* message,
+                                             const size_t message_size,
+                                             const struct agent_ctx* agent_ctx) {
+    check_expected(message);
+    check_expected(message_size);
+    check_expected_ptr(agent_ctx);
+    return mock();
+}
