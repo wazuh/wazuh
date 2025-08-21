@@ -2280,6 +2280,202 @@ void test_handle_outgoing_data_to_tcp_socket_success(void** state)
     handle_outgoing_data_to_tcp_socket(sock_client);
 }
 
+/* Tests router_message_forward */
+
+extern ROUTER_PROVIDER_HANDLE router_sync_handle;
+
+void test_router_message_forward_null_router_handle(void** state)
+{
+    router_sync_handle = NULL;
+    
+    char msg[] = "s:syscollector:test_message";
+    size_t msg_length = strlen(msg);
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.100";
+    const char* agent_name = "test_agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router: s:syscollector:test_message");
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
+
+    router_message_forward(msg, msg_length, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_invalid_header(void** state)
+{
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+    
+    char msg[] = "invalid:syscollector:test_message";
+    size_t msg_length = strlen(msg);
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.100";
+    const char* agent_name = "test_agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router: invalid:syscollector:test_message");
+    expect_string(__wrap__mdebug2, formatted_msg, "Message does not have inventory sync header.");
+
+    router_message_forward(msg, msg_length, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_message_too_short(void** state)
+{
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+    
+    char msg[] = "s:ab";  // Only 4 characters total, need more than header + 4
+    size_t msg_length = strlen(msg);
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.100";
+    const char* agent_name = "test_agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router: s:ab");
+    expect_string(__wrap__mdebug2, formatted_msg, "Message too short for expected format.");
+
+    router_message_forward(msg, msg_length, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_no_colon_separator(void** state)
+{
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+    
+    char msg[] = "s:syscollector_no_separator";
+    size_t msg_length = strlen(msg);
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.100";
+    const char* agent_name = "test_agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router: s:syscollector_no_separator");
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid message format: missing or empty module.");
+
+    router_message_forward(msg, msg_length, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_empty_module(void** state)
+{
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+    
+    char msg[] = "s::test_message";  // Empty module name
+    size_t msg_length = strlen(msg);
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.100";
+    const char* agent_name = "test_agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router: s::test_message");
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid message format: missing or empty module.");
+
+    router_message_forward(msg, msg_length, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_module_too_long(void** state)
+{
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+    
+    // Create a message with module name longer than OS_SIZE_64 (64 chars)
+    char long_module[70];
+    memset(long_module, 'a', 69);
+    long_module[69] = '\0';
+    
+    char msg[100];
+    snprintf(msg, sizeof(msg), "s:%s:test", long_module);
+    size_t msg_length = strlen(msg);
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.100";
+    const char* agent_name = "test_agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg, msg);
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid module length.");
+
+    router_message_forward(msg, msg_length, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_no_payload(void** state)
+{
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+    
+    char msg[] = "s:syscollector:";  // No payload after colon
+    size_t msg_length = strlen(msg);
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.100";
+    const char* agent_name = "test_agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router: s:syscollector:");
+    expect_string(__wrap__mdebug2, formatted_msg, "Invalid message format: no payload data.");
+
+    router_message_forward(msg, msg_length, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_success(void** state)
+{
+    test_agent_info* agent_data = (test_agent_info*)*state;
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+    
+    char msg[] = "s:syscollector:test_message_payload";
+    size_t msg_length = strlen(msg);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router: s:syscollector:test_message_payload");
+
+    // Mock OSHash_Get_ex for agent version
+    expect_value(__wrap_OSHash_Get_ex, self, agent_data_hash);
+    expect_string(__wrap_OSHash_Get_ex, key, agent_data->agent_id);
+    will_return(__wrap_OSHash_Get_ex, "v4.7.0");
+
+    // Expect router_provider_send_fb_agent_ctx call
+    expect_string(__wrap_router_provider_send_fb_agent_ctx, message, "test_message_payload");
+    expect_value(__wrap_router_provider_send_fb_agent_ctx, message_size, 20); // Length of "test_message_payload"
+    expect_any(__wrap_router_provider_send_fb_agent_ctx, agent_ctx);
+    will_return(__wrap_router_provider_send_fb_agent_ctx, 0);
+
+    router_message_forward(msg, msg_length, agent_data->agent_id, agent_data->agent_ip, agent_data->agent_name);
+}
+
+void test_router_message_forward_send_failure(void** state)
+{
+    test_agent_info* agent_data = (test_agent_info*)*state;
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+    
+    char msg[] = "s:syscollector:test_message_payload";
+    size_t msg_length = strlen(msg);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router: s:syscollector:test_message_payload");
+
+    // Mock OSHash_Get_ex for agent version
+    expect_value(__wrap_OSHash_Get_ex, self, agent_data_hash);
+    expect_string(__wrap_OSHash_Get_ex, key, agent_data->agent_id);
+    will_return(__wrap_OSHash_Get_ex, "v4.7.0");
+
+    // Expect router_provider_send_fb_agent_ctx call that fails
+    expect_string(__wrap_router_provider_send_fb_agent_ctx, message, "test_message_payload");
+    expect_value(__wrap_router_provider_send_fb_agent_ctx, message_size, 20); // Length of "test_message_payload"
+    expect_any(__wrap_router_provider_send_fb_agent_ctx, agent_ctx);
+    will_return(__wrap_router_provider_send_fb_agent_ctx, -1);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Unable to forward message for agent '001'.");
+
+    router_message_forward(msg, msg_length, agent_data->agent_id, agent_data->agent_ip, agent_data->agent_name);
+}
+
+void test_router_message_forward_null_agent_version(void** state)
+{
+    test_agent_info* agent_data = (test_agent_info*)*state;
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+    
+    char msg[] = "s:inventory:test_data";
+    size_t msg_length = strlen(msg);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router: s:inventory:test_data");
+
+    // Mock OSHash_Get_ex for agent version returns NULL
+    expect_value(__wrap_OSHash_Get_ex, self, agent_data_hash);
+    expect_string(__wrap_OSHash_Get_ex, key, agent_data->agent_id);
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    // Expect router_provider_send_fb_agent_ctx call with NULL version
+    expect_string(__wrap_router_provider_send_fb_agent_ctx, message, "test_data");
+    expect_value(__wrap_router_provider_send_fb_agent_ctx, message_size, 9); // Length of "test_data"
+    expect_any(__wrap_router_provider_send_fb_agent_ctx, agent_ctx);
+    will_return(__wrap_router_provider_send_fb_agent_ctx, 0);
+
+    router_message_forward(msg, msg_length, agent_data->agent_id, agent_data->agent_ip, agent_data->agent_name);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2330,6 +2526,17 @@ int main(void)
         // Tests handle_outgoing_data_to_tcp_socket
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EAGAIN),
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE),
-        cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success)};
+        cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success),
+        // Tests router_message_forward
+        cmocka_unit_test(test_router_message_forward_null_router_handle),
+        cmocka_unit_test(test_router_message_forward_invalid_header),
+        cmocka_unit_test(test_router_message_forward_message_too_short),
+        cmocka_unit_test(test_router_message_forward_no_colon_separator),
+        cmocka_unit_test(test_router_message_forward_empty_module),
+        cmocka_unit_test(test_router_message_forward_module_too_long),
+        cmocka_unit_test(test_router_message_forward_no_payload),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_success, setup_remoted_configuration, teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_send_failure, setup_remoted_configuration, teardown_remoted_configuration),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_null_agent_version, setup_remoted_configuration, teardown_remoted_configuration)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

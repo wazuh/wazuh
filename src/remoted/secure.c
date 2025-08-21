@@ -49,6 +49,7 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 // Headers for inventory sync messages
 #define INVENTORY_SYNC_HEADER "s:"
 #define INVENTORY_SYNC_HEADER_SIZE 2
+#define INVENTORY_SYNC_MESSAGE_AFTER_HEADER 4
 
 // Router message forwarder
 void router_message_forward(char* msg, size_t msg_length, const char* agent_id, const char* agent_ip, const char* agent_name);
@@ -942,8 +943,14 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
         return;
     }
 
+    // Check if data provided is valid
+    if (!msg || !agent_id || !agent_ip || !agent_name) {
+        mdebug2("Invalid data provided for message forwarding.");
+        return;
+    }
+
     // Validate minimum message length: header + "x:y" (4 chars minimum after header)
-    if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
+    if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + INVENTORY_SYNC_MESSAGE_AFTER_HEADER) {
         mdebug2("Message too short for expected format.");
         return;
     }

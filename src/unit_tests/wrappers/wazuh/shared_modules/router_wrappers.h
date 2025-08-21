@@ -20,6 +20,11 @@ int __wrap_router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* messa
 
 int __wrap_router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema);
 
+int __wrap_router_provider_send_fb_agent_ctx(ROUTER_PROVIDER_HANDLE handle,
+                                             const char* message,
+                                             const size_t message_size,
+                                             const struct agent_ctx* agent_ctx);
+
 ROUTER_PROVIDER_HANDLE __wrap_router_provider_create(const char* name);
 
 #endif // ROUTER_WRAPPERS_H
