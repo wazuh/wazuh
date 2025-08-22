@@ -2,6 +2,7 @@
 
 #include <isca_policy.hpp>
 #include <sca_policy_check.hpp>
+#include <sca_utils.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -16,6 +17,7 @@ struct Check
     std::optional<std::string> id;
     std::string condition;
     std::vector<std::unique_ptr<IRuleEvaluator>> rules;
+    sca::RegexEngineType regexEngine = sca::RegexEngineType::PCRE2;
 };
 
 class SCAPolicy : public ISCAPolicy
