@@ -36,8 +36,7 @@ namespace
     RuleResult FindContentInFile(const std::unique_ptr<IFileIOUtils>& fileUtils,
                                  const std::string& filePath,
                                  const std::string& pattern,
-                                 const bool isNegated,
-                                 sca::RegexEngineType regexEngine = sca::RegexEngineType::PCRE2)
+                                 const PolicyEvaluationContext& ctx)
     {
         bool matchFound = false;
 
@@ -45,7 +44,7 @@ namespace
         {
             const auto content = fileUtils->getFileContent(filePath);
 
-            if (const auto patternMatch = sca::PatternMatches(content, pattern, regexEngine))
+            if (const auto patternMatch = sca::PatternMatches(content, pattern, ctx.regexEngine))
             {
                 matchFound = patternMatch.value();
             }
@@ -71,7 +70,14 @@ namespace
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' " + (matchFound ? "was" : "was not") + " found in file '" + filePath + "'");
-        return (matchFound != isNegated) ? RuleResult::Found : RuleResult::NotFound;
+        return (matchFound != ctx.isNegated) ? RuleResult::Found : RuleResult::NotFound;
+    }
+
+    RuleResult FindContentInFile(const std::unique_ptr<IFileIOUtils>& fileUtils,
+                                 const std::string& pattern,
+                                 const PolicyEvaluationContext& ctx)
+    {
+        return FindContentInFile(fileUtils, ctx.rule, pattern, ctx);
     }
 } // namespace
 
@@ -126,7 +132,7 @@ RuleResult FileRuleEvaluator::CheckFileForContents()
         return RuleResult::Invalid; // Keep simple return for file not found - this is expected behavior
     }
 
-    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, m_ctx.rule, pattern, m_ctx.isNegated, m_ctx.regexEngine); });
+    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, pattern, m_ctx); });
 
     if (result.has_value())
     {
@@ -417,7 +423,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (file.filename().string() == fileName)
                 {
-                    const auto result = TryFunc([&]{ return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx.isNegated, m_ctx.regexEngine); });
+                    const auto result = TryFunc([&]{ return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx); });
 
                     if (result.has_value())
                     {

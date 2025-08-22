@@ -10,94 +10,94 @@ bool IsInstanceOf(const std::unique_ptr<IRuleEvaluator>& evaluator)
 
 TEST(RuleEvaluatorFactoryTest, FileRuleWithoutPattern)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("f:/etc/motd", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("f:/etc/motd", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     EXPECT_TRUE(IsInstanceOf<FileRuleEvaluator>(evaluator));
 }
 
 TEST(RuleEvaluatorFactoryTest, FileRuleWithPattern)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("f:/etc/passwd -> root", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("f:/etc/passwd -> root", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     EXPECT_TRUE(IsInstanceOf<FileRuleEvaluator>(evaluator));
 }
 
 TEST(RuleEvaluatorFactoryTest, NegatedFileRule)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("not f:/etc/shadow", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("not f:/etc/shadow", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     EXPECT_TRUE(IsInstanceOf<FileRuleEvaluator>(evaluator));
 }
 
 TEST(RuleEvaluatorFactoryTest, DirRule)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("d:/etc/audit", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("d:/etc/audit", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     EXPECT_TRUE(IsInstanceOf<DirRuleEvaluator>(evaluator));
 }
 
 TEST(RuleEvaluatorFactoryTest, DirRuleWithPattern)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("d:/etc/audit -> something", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("d:/etc/audit -> something", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     EXPECT_TRUE(IsInstanceOf<DirRuleEvaluator>(evaluator));
 }
 
 TEST(RuleEvaluatorFactoryTest, ProcessRule)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("p:sshd", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("p:sshd", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     EXPECT_TRUE(IsInstanceOf<ProcessRuleEvaluator>(evaluator));
 }
 
 TEST(RuleEvaluatorFactoryTest, NegatedProcessRule)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("not p:cron", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("not p:cron", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     EXPECT_TRUE(IsInstanceOf<ProcessRuleEvaluator>(evaluator));
 }
 
 TEST(RuleEvaluatorFactoryTest, CommandRule)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("c:whoami", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("c:whoami", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     EXPECT_TRUE(IsInstanceOf<CommandRuleEvaluator>(evaluator));
 }
 
 TEST(RuleEvaluatorFactoryTest, CommandRuleWithPattern)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("c:ls -> root", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("c:ls -> root", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     EXPECT_TRUE(IsInstanceOf<CommandRuleEvaluator>(evaluator));
 }
 
 TEST(RuleEvaluatorFactoryTest, InvalidType)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("x:/invalid", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("x:/invalid", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     EXPECT_EQ(evaluator, nullptr);
 }
 
 TEST(RuleEvaluatorFactoryTest, MissingColon)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("not invalid", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("not invalid", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     EXPECT_EQ(evaluator, nullptr);
 }
 
 TEST(RuleEvaluatorFactoryTest, IncompleteRule)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator(":", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator(":", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     EXPECT_EQ(evaluator, nullptr);
 }
 
 TEST(RuleEvaluatorFactoryTest, EmptyInput)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     EXPECT_EQ(evaluator, nullptr);
 }
 
 TEST(RuleEvaluatorFactoryTest, FileRuleWithoutPattern_ParsesCorrectContext)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("f:/etc/motd", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("f:/etc/motd", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     ASSERT_TRUE(IsInstanceOf<FileRuleEvaluator>(evaluator));
 
@@ -112,7 +112,7 @@ TEST(RuleEvaluatorFactoryTest, FileRuleWithoutPattern_ParsesCorrectContext)
 
 TEST(RuleEvaluatorFactoryTest, FileRuleWithPattern_ParsesCorrectContext)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("f:/etc/passwd -> root", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("f:/etc/passwd -> root", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     ASSERT_TRUE(IsInstanceOf<FileRuleEvaluator>(evaluator));
 
@@ -128,7 +128,7 @@ TEST(RuleEvaluatorFactoryTest, FileRuleWithPattern_ParsesCorrectContext)
 
 TEST(RuleEvaluatorFactoryTest, NegatedFileRule_ParsesCorrectContext)
 {
-    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("not f:/etc/shadow", 30, false, nullptr, nullptr, nullptr);
+    auto evaluator = RuleEvaluatorFactory::CreateEvaluator("not f:/etc/shadow", 30, false, sca::RegexEngineType::PCRE2, nullptr, nullptr);
     ASSERT_NE(evaluator, nullptr);
     ASSERT_TRUE(IsInstanceOf<FileRuleEvaluator>(evaluator));
 
