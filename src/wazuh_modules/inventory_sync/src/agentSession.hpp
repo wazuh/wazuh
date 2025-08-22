@@ -143,8 +143,8 @@ public:
 
         m_gapSet->observe(data->seq());
 
-        std::cout << "Data received: " << std::format("{}_{}", session, seq) << " "
-                  << m_context->sessionId << " " << m_context->agentId << " " << m_context->moduleName << "  \n";
+        std::cout << "Data received: " << std::format("{}_{}", session, seq) << " " << m_context->sessionId << " "
+                  << m_context->agentId << " " << m_context->moduleName << "  \n";
 
         if (m_endReceived)
         {
