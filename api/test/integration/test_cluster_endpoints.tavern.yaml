@@ -2190,6 +2190,60 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: PUT /cluster/analysisd/reload
+
+marks:
+  - cluster
+
+stages:
+
+  - name: Reload analysisd on worker1 and worker2
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/analysisd/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker1,worker2'
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: !anystr
+              msg: !anystr
+            - name: !anystr
+              msg: !anystr
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: 0
+
+  - name: Reload analysisd on all nodes
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/analysisd/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: 'master-node'
+              msg: !anystr
+            - name: 'worker1'
+              msg: !anystr
+            - name: 'worker2'
+              msg: !anystr
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+---
 test_name: PUT /cluster/restart
 
 marks:
@@ -2386,53 +2440,4 @@ stages:
                 log_alert_level: '300'
           failed_items: []
           total_affected_items: 1
-          total_failed_items: 0
-
----
-test_name: PUT /cluster/analysisd/reload
-
-marks:
-  - cluster
-
-stages:
-
-  - name: Reload analysisd on worker1 and worker2
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/analysisd/reload"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        nodes_list: 'worker1,worker2'
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - 'worker1'
-            - 'worker2'
-          failed_items: []
-          total_affected_items: 2
-          total_failed_items: 0
-
-  - name: Reload analysisd on all nodes
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/analysisd/reload"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - 'master-node'
-            - 'worker1'
-            - 'worker2'
-          failed_items: []
-          total_affected_items: 3
           total_failed_items: 0

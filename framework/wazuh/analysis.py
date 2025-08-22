@@ -9,7 +9,7 @@ from wazuh.core.cluster.control import set_reload_ruleset_flag
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.rbac.decorators import expose_resources
+from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
@@ -23,10 +23,12 @@ _reload_ruleset_default_result_kwargs = {
 }
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+                  post_proc_func=async_list_handler)
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:ruleset_reload"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
-                  post_proc_kwargs={'default_result_kwargs': _reload_ruleset_default_result_kwargs})
+                  post_proc_kwargs={'default_result_kwargs': _reload_ruleset_default_result_kwargs},
+                  post_proc_func=async_list_handler)
 async def reload_ruleset() -> AffectedItemsWazuhResult:
     """Reload the ruleset on the current node.
 
