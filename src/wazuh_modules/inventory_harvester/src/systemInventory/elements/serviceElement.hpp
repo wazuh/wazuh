@@ -83,7 +83,7 @@ public:
         {
             element.data.process.pid = serviceProcessPid;
         }
-        element.data.process.root_dir = data->serviceProcessRootDir();
+        element.data.process.root_directory = data->serviceProcessRootDir();
         element.data.process.user.name = data->serviceProcessUserName();
         element.data.process.working_directory = data->serviceProcessWorkingDir();
 
