@@ -78,14 +78,35 @@ public:
         element.data.process.executable = data->processExecutable();
         element.data.process.args = data->processArgs();
         element.data.process.working_directory = data->processWorkingDir();
+        element.data.process.root_directory = data->processRootDir();
 
-        // User information
-        element.data.user.name = data->processUserName();
+        // Process User and Group information
+        element.data.process.user.name = data->processUserName();
+        element.data.process.group.name = data->processGroupName();
+
+        // Service additional fields
+        element.data.service.restart = data->serviceRestart();
+        element.data.service.frequency = data->serviceFrequency();
+        element.data.service.starts_on_mount = data->serviceStartsOnMount();
+        element.data.service.starts_on_path_modified = data->serviceStartsOnPathModified();
+        element.data.service.starts_on_not_empty_directory = data->serviceStartsOnNotEmptyDirectory();
+        element.data.service.inetd_compatibility = data->serviceInetdCompatibility();
+        element.data.service.address = data->serviceAddress();
+        element.data.service.win32_exit_code = data->serviceWin32ExitCode();
+        element.data.service.following = data->serviceFollowing();
+        element.data.service.object_path = data->serviceObjectPath();
 
         // File information
         element.data.file.path = data->filePath();
-        element.data.file.log_path = data->logFilePath();
-        element.data.file.error_log_path = data->errorLogFilePath();
+
+        // Log information
+        element.data.log.file.path = data->logFilePath();
+        element.data.error.log.file.path = data->errorLogFilePath();
+
+        // Target information
+        element.data.target.ephemeral_id = data->serviceTargetEphemeralId();
+        element.data.target.type = data->serviceTargetType();
+        element.data.target.address = data->serviceTargetAddress();
 
         // Wazuh cluster information
         auto& instancePolicyManager = PolicyHarvesterManager::instance();

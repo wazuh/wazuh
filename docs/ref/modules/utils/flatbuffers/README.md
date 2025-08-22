@@ -296,8 +296,8 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | service_frequency  | long      | Custom: service.frequency (Run frequency in seconds). |
 |                              | log_file_path      | string    | Custom: log.file.path (Redirect stdout to a file/pipe). |
 |                              | error_log_file_path| string    | Custom: error.log.file.path (Redirect stderr to a file/pipe). |
-|                              | process_working_dir| string    | ECS: process.working_dir (Working directory of the job). |
-|                              | process_root_dir   | string    | Custom: process.root_dir (Chroot directory before execution). |
+|                              | process_working_directory| string    | ECS: process.working_directory (Working directory of the job). |
+|                              | process_root_directory   | string    | Custom: process.root_directoryectory (Chroot directory before execution). |
 |                              | service_starts_on_mount | bool | Custom: service.starts_on_mount (Launch when a filesystem is mounted). |
 |                              | service_starts_on_path_modified | string | Custom: service.starts_on_path_modified (Launch when a path is modified). |
 |                              | service_starts_on_not_empty_directory | string | Custom: service.starts_on_not_empty_directory (Launch when a directory is not empty). |

@@ -264,7 +264,7 @@ static struct column_list const TABLE_BROWSER_EXTENSIONS[BROWSER_EXTENSIONS_FIEL
     { .value = { FIELD_TEXT, 25, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
 };
 
-#define SERVICES_FIELD_COUNT 34
+#define SERVICES_FIELD_COUNT 35
 static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_SERVICES[1]},
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_SERVICES[2]},
@@ -287,8 +287,8 @@ static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 19, false, false, NULL, "process_args", {.text = ""}, true}, .next = &TABLE_SERVICES[19]},
     { .value = { FIELD_TEXT, 20, false, false, NULL, "process_user_name", {.text = ""}, true}, .next = &TABLE_SERVICES[20]},
     { .value = { FIELD_TEXT, 21, false, false, NULL, "process_group_name", {.text = ""}, true}, .next = &TABLE_SERVICES[21]},
-    { .value = { FIELD_TEXT, 22, false, false, NULL, "process_working_dir", {.text = ""}, true}, .next = &TABLE_SERVICES[22]},
-    { .value = { FIELD_TEXT, 23, false, false, NULL, "process_root_dir", {.text = ""}, true}, .next = &TABLE_SERVICES[23]},
+    { .value = { FIELD_TEXT, 22, false, false, NULL, "process_working_directory", {.text = ""}, true}, .next = &TABLE_SERVICES[22]},
+    { .value = { FIELD_TEXT, 23, false, false, NULL, "process_root_directory", {.text = ""}, true}, .next = &TABLE_SERVICES[23]},
     { .value = { FIELD_TEXT, 24, false, false, NULL, "file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[24]},
     { .value = { FIELD_TEXT, 25, false, false, NULL, "service_address", {.text = ""}, true}, .next = &TABLE_SERVICES[25]},
     { .value = { FIELD_TEXT, 26, false, false, NULL, "log_file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[26]},
