@@ -39,7 +39,6 @@
           "process.pid",
           "process.executable",
           "service.address",
-          "user.name",
           "service.enabled",
           "file.path",
           "wazuh.cluster.name",
