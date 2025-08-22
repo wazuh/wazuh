@@ -1145,6 +1145,8 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_packages", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_queries);
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_ports", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_queries);
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_processes", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_services", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_services_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_users", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_users_queries);
 
     cJSON *_agent_tables_syscollector_deprecated = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_tables_syscollector, "deprecated", _agent_tables_syscollector_deprecated);
@@ -1336,6 +1338,8 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_packages", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_time));
     cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_ports", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_time));
     cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_processes", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_services", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_services_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_users", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_users_time));
 
     cJSON *_agent_tables_syscollector_deprecated_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_tables_syscollector_t, "deprecated", _agent_tables_syscollector_deprecated_t);

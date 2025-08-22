@@ -1384,8 +1384,8 @@ int wdb_services_insert(wdb_t * wdb, const service_record_t * service_record, co
     sqlite3_bind_text(stmt, 19, service_record->process_args, -1, NULL);
     sqlite3_bind_text(stmt, 20, service_record->process_user_name, -1, NULL);
     sqlite3_bind_text(stmt, 21, service_record->process_group_name, -1, NULL);
-    sqlite3_bind_text(stmt, 22, service_record->process_working_dir, -1, NULL);
-    sqlite3_bind_text(stmt, 23, service_record->process_root_dir, -1, NULL);
+    sqlite3_bind_text(stmt, 22, service_record->process_working_directory, -1, NULL);
+    sqlite3_bind_text(stmt, 23, service_record->process_root_directory, -1, NULL);
     sqlite3_bind_text(stmt, 24, service_record->file_path, -1, NULL);
     sqlite3_bind_text(stmt, 25, service_record->service_address, -1, NULL);
     sqlite3_bind_text(stmt, 26, service_record->log_file_path, -1, NULL);
@@ -1685,8 +1685,8 @@ int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
     const char * process_args = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_args"));
     const char * process_user_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_user_name"));
     const char * process_group_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_group_name"));
-    const char * process_working_dir = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_working_dir"));
-    const char * process_root_dir = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_root_dir"));
+    const char * process_working_directory = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_working_directory"));
+    const char * process_root_directory = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_root_directory"));
     const char * file_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_path"));
     const char * service_address = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_address"));
     const char * log_file_path = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "log_file_path"));
@@ -1709,8 +1709,8 @@ int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
         .process_args = process_args,
         .process_user_name = process_user_name,
         .process_group_name = process_group_name,
-        .process_working_dir = process_working_dir,
-        .process_root_dir = process_root_dir,
+        .process_working_directory = process_working_directory,
+        .process_root_directory = process_root_directory,
         .file_path = file_path,
         .service_address = service_address,
         .log_file_path = log_file_path,
