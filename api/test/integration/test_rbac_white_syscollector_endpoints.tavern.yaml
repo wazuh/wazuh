@@ -469,3 +469,63 @@ stages:
       method: GET
     response:
       <<: *permission_denied
+
+---
+test_name: Get browser extensions syscollector RBAC
+
+stages:
+
+  - name: Get browser extensions from an agent (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/005/browser_extensions"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          total_affected_items: !anyint
+
+  - name: Get browser extensions from an agent (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/004/browser_extensions"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      <<: *permission_denied
+
+---
+test_name: Get services syscollector RBAC
+
+stages:
+
+  - name: Get services from an agent (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/005/services"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          total_affected_items: !anyint
+
+  - name: Get services from an agent (Deny)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/004/services"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      <<: *permission_denied
