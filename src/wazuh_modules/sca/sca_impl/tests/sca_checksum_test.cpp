@@ -89,7 +89,8 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromFields_ValidData_ReturnsNonEmptyStr
                                                   "https://example.com/ref1,https://example.com/ref2",
                                                   "all",
                                                   "PCI_DSS_3.2.1",
-                                                  "file:$SSH_CONFIG -> exists");
+                                                  "file:$SSH_CONFIG -> exists",
+                                                  "");
 
     EXPECT_FALSE(checksum.empty());
     EXPECT_EQ(checksum.length(), 40);
@@ -97,7 +98,7 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromFields_ValidData_ReturnsNonEmptyStr
 
 TEST_F(SCAChecksumTest, CalculateChecksumFromFields_EmptyStrings_ReturnsNonEmptyString)
 {
-    std::string checksum = sca::calculateChecksum("", "", "", "", "", "", "", "", "", "");
+    std::string checksum = sca::calculateChecksum("", "", "", "", "", "", "", "", "", "", "");
 
     EXPECT_FALSE(checksum.empty());
     EXPECT_EQ(checksum.length(), 40);
@@ -124,7 +125,8 @@ TEST_F(SCAChecksumTest, ConsistentResults_JSONAndFieldsProduceSameChecksum)
                                                             sampleCheckData["refs"],
                                                             sampleCheckData["condition"],
                                                             sampleCheckData["compliance"],
-                                                            sampleCheckData["rules"]);
+                                                            sampleCheckData["rules"],
+                                                            sampleCheckData.value("regex_type", ""));
 
     EXPECT_EQ(checksumFromJSON, checksumFromFields);
 }
@@ -143,8 +145,8 @@ TEST_F(SCAChecksumTest, DifferentData_ProducesDifferentChecksums)
 TEST_F(SCAChecksumTest, SensitiveToFieldOrder_DifferentFieldOrderProducesDifferentChecksums)
 {
     // Test that changing field values affects the checksum
-    std::string checksum1 = sca::calculateChecksum("a", "b", "c", "d", "e", "f", "g", "h", "i", "j");
-    std::string checksum2 = sca::calculateChecksum("b", "a", "c", "d", "e", "f", "g", "h", "i", "j");
+    std::string checksum1 = sca::calculateChecksum("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "");
+    std::string checksum2 = sca::calculateChecksum("b", "a", "c", "d", "e", "f", "g", "h", "i", "j", "");
 
     EXPECT_NE(checksum1, checksum2);
 }
@@ -255,7 +257,8 @@ TEST_F(SCAChecksumIntegrationTest, ChecksumEquivalence_JSONAndFieldsMatch)
                                                        sampleCheck.value("refs", ""),
                                                        sampleCheck.value("condition", ""),
                                                        sampleCheck.value("compliance", ""),
-                                                       sampleCheck.value("rules", ""));
+                                                       sampleCheck.value("rules", ""),
+                                                       sampleCheck.value("regex_type", ""));
 
     EXPECT_EQ(jsonChecksum, fieldChecksum);
 }
