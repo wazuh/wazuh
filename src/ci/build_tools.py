@@ -256,6 +256,7 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
     if withAsan:
         configureCMakeCommand += " -DFSANITIZE=1"
 
+    print("*** Running CMake command:", configureCMakeCommand)
     out = subprocess.run(configureCMakeCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,
@@ -388,6 +389,7 @@ def makeTarget(targetName, tests, debug):
     if debug:
         makeTargetCommand += " DEBUG=1"
     makeTargetCommand += " -j{}".format(utils.getCpuCores())
+    print("Running CMake command:", makeTargetCommand)
     out = subprocess.run(makeTargetCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,

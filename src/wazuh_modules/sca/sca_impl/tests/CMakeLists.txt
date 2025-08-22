@@ -1,15 +1,7 @@
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 
-# set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
-# set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address")
-# set(CMAKE_EXE_LINKER_FLAGS_DEBUG "-fsanitize=address")
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
-set(CMAKE_EXE_LINKER_FLAGS_DEBUG "")
-
-if(FSANITIZE AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  string(APPEND CMAKE_CXX_FLAGS_DEBUG " -fsanitize=address")
-  string(APPEND CMAKE_EXE_LINKER_FLAGS_DEBUG " -fsanitize=address")
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set(CMAKE_CXX_FLAGS_DEBUG " -g --coverage -fsanitize=address,leak,undefined")
 endif()
 
 include_directories(

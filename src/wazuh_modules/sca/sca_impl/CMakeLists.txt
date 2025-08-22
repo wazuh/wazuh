@@ -112,12 +112,15 @@ target_include_directories(SCAImpl PUBLIC include PRIVATE src)
 
 target_compile_definitions(SCAImpl PRIVATE PCRE2_CODE_UNIT_WIDTH=8)
 
+# target_link_libraries(SCAImpl PRIVATE asan ubsan)
+
 target_link_libraries(
     SCAImpl
-    PRIVATE ${FILESYSTEM_WRAPPER_LIB}
+    PRIVATE
+            sysinfo
+            ${FILESYSTEM_WRAPPER_LIB}
             ${FILE_IO_LIB}
             ${DBSYNC_LIB}
-            sysinfo
             wazuhext # contains hash_helper, string_helper, time_helper utilities
             cjson
             ${YAML_LIB}
