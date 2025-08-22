@@ -1031,28 +1031,28 @@ constexpr auto SERVICES_START_CONFIG_STATEMENT
     R"({"table":"dbsync_services",
         "first_query":
             {
-                "column_list":["service_id"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"service_id DESC",
+                "order_by_opt":"item_id DESC",
                 "count_opt":1
             },
         "last_query":
             {
-                "column_list":["service_id"],
+                "column_list":["item_id"],
                 "row_filter":" ",
                 "distinct_opt":false,
-                "order_by_opt":"service_id ASC",
+                "order_by_opt":"item_id ASC",
                 "count_opt":1
             },
         "component":"syscollector_services",
-        "index":"service_id",
+        "index":"item_id",
         "last_event":"last_event",
         "checksum_field":"checksum",
         "range_checksum_query_json":
             {
-                "row_filter":"WHERE service_id BETWEEN '?' and '?' ORDER BY service_id",
-                "column_list":["service_id, checksum"],
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["item_id, checksum"],
                 "distinct_opt":false,
                 "order_by_opt":"",
                 "count_opt":100
@@ -1067,29 +1067,29 @@ constexpr auto SERVICES_SYNC_CONFIG_STATEMENT
         "decoder_type":"JSON_RANGE",
         "table":"dbsync_services",
         "component":"syscollector_services",
-        "index":"service_id",
+        "index":"item_id",
         "checksum_field":"checksum",
         "no_data_query_json": {
-                "row_filter":"WHERE service_id BETWEEN '?' and '?' ORDER BY service_id",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "count_range_query_json": {
-                "row_filter":"WHERE service_id BETWEEN '?' and '?' ORDER BY service_id",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "count_field_name":"count",
                 "column_list":["count(*) AS count "],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "row_data_query_json": {
-                "row_filter":"WHERE service_id ='?'",
+                "row_filter":"WHERE item_id ='?'",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
         },
         "range_checksum_query_json": {
-                "row_filter":"WHERE service_id BETWEEN '?' and '?' ORDER BY service_id",
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
                 "column_list":["*"],
                 "distinct_opt":false,
                 "order_by_opt":""
@@ -1134,9 +1134,10 @@ constexpr auto SERVICES_SQL_STATEMENT
         service_target_type TEXT,
         service_target_address TEXT,
         checksum TEXT,
-        PRIMARY KEY (service_id)) WITHOUT ROWID;)"
+        item_id TEXT,
+        PRIMARY KEY (service_id, file_path)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> SERVICES_ITEM_ID_FIELDS{"service_id"};
+static const std::vector<std::string> SERVICES_ITEM_ID_FIELDS{"service_id", "file_path"};
 
 
 constexpr auto NET_IFACE_TABLE    { "dbsync_network_iface"    };

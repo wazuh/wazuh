@@ -855,6 +855,7 @@ nlohmann::json Syscollector::getServicesData()
         {
             sanitizeJsonValue(service);
             service["checksum"] = getItemChecksum(service);
+            service["item_id"] = getItemId(service, SERVICES_ITEM_ID_FIELDS);
             ret.push_back(std::move(service));
         }
     }
