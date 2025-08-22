@@ -248,3 +248,18 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_allowed
+
+---
+test_name: PUT /manager/analysisd/reload
+
+stages:
+
+  - name: Reload manager analysisd (Allowed) (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/analysisd/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_allowed
