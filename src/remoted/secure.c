@@ -933,7 +933,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
     ROUTER_PROVIDER_HANDLE router_handle = NULL;
     size_t message_header_size = 0;
 
-    mdebug2("Forwarding message to router: %s", msg);
+    mdebug2("Forwarding message to router");
 
     if(strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
         if (!router_sync_handle) {
