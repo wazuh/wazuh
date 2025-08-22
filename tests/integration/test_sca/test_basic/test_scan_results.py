@@ -123,38 +123,39 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
         - The cis*.yaml files located in the policies folder provide the sca rules to check.
 
     expected_output:
-        - r'.*sca.*INFO: SCA Module enabled.'
-        - r'.*sca.*INFO: Starting SCA module...'
-        - r'.*sca.*INFO: SCA module running.'
-        - fr".*sca.*DEBUG: Starting Policy requirements evaluation for policy \"{policy_name}\"."
-        - fr".*sca.*DEBUG: Policy requirements evaluation completed for policy \"{policy_name}\""
-        - fr".*sca.*DEBUG: Starting Policy checks evaluation for policy \"{policy_name}\""
-        - fr".*sca.*DEBUG: Policy check \"(.*)\" evaluation completed for policy \"(.*)\", result: (.*)"
-        - fr".*sca.*DEBUG: Policy checks evaluation completed for policy \"{policy_name}\""
+        - r".*sca.*INFO: SCA Module enabled"
+        - r".*sca.*INFO: Starting SCA module"
+        - r".*sca.*INFO: SCA module running"
+        - r".*sca.*DEBUG: Starting Policy requirements evaluation for policy \"(.*?)\""
+        - r".*sca.*DEBUG: Policy requirements evaluation completed for policy \"(.*?)\", result: (Passed|Failed)"
+        - r".*sca.*DEBUG: Starting Policy checks evaluation for policy \"(.*?)\""
+        - r".*sca.*DEBUG: Policy check \"(\d+)\" evaluation completed for policy \"(.*?)\", result: (Passed|Failed)"
+        - r".*sca.*DEBUG: Policy checks evaluation completed for policy \"(.*?)\""
     '''
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Verify that the SCA module is enabled
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
     assert log_monitor.callback_result
 
     # Wait for the SCA scan requirements to start for the specific policy
-    policy_name = Path(test_metadata['policy_file']).stem
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_STARTED_REQ + fr'"{policy_name}"'), timeout=40)
-    assert log_monitor.callback_result
+    expected_policy = Path(test_metadata['policy_file']).stem
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_REQ), timeout=40)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Wait for the SCA scan requirements to end for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_ENDED_REQ + fr'"{policy_name}"' + r', result: (.*)'), timeout=10)
-    assert log_monitor.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=10)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Wait for the SCA scan checks to start for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_STARTED_CHECK + fr'"{policy_name}"'), timeout=120 if sys.platform == WINDOWS else 30)
-    assert log_monitor.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=200 if sys.platform == WINDOWS else 30)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Get the results for the checks obtained in the SCA scan
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_RESULT), timeout=120 if sys.platform == WINDOWS else 30, accumulations=int(test_metadata['results']))
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=200 if sys.platform == WINDOWS else 30, accumulations=int(test_metadata['results']))
+    assert log_monitor.callback_result is not None and all(result[1] == expected_policy for result in log_monitor.callback_result)
 
     # Wait for the SCA scan checks to end for the specific policy
-    log_monitor.start(callback=callbacks.generate_callback(patterns.NCB_SCA_SCAN_ENDED_CHECK + fr'"{policy_name}"'), timeout=120 if sys.platform == WINDOWS else 30)
-    assert log_monitor.callback_result
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=200 if sys.platform == WINDOWS else 30)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy

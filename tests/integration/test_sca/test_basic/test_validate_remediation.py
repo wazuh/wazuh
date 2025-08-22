@@ -69,18 +69,6 @@ test_folder = '/testfile'
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-# Helper to wait for a specific check id result line and return its result
-def wait_for_check_result(log_monitor, check_id: int, timeout: int = 60):
-    target = str(check_id)
-
-    def _callback(line: str):
-        match = re.match(patterns.NCB_SCA_SCAN_RESULT, line)
-        if match and match.group(1) == target:
-            return match.group(3)
-
-    log_monitor.start(callback=_callback, timeout=timeout, only_new_events=True)
-    return log_monitor.callback_result
-
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
 def test_validate_remediation_results(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
@@ -144,15 +132,14 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         - The cis*.yaml files located in the policies folder provide the sca rules to check.
 
     expected_output:
-        - fr".*sca.*DEBUG: Policy check \"(.*)\" evaluation completed for policy \"(.*)\", result: (.*)."
+        - r".*sca.*DEBUG: Policy check \"(\d+)\" evaluation completed for policy \"(.*?)\", result: (Passed|Failed)"
     '''
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-    # Get the initial result for the target check id
-    initial_result = wait_for_check_result(log_monitor, test_metadata['check_id'], timeout=200 if sys.platform == WINDOWS else 30)
-    assert initial_result == test_metadata['initial_result'], \
-        f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {initial_result}"
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=200 if sys.platform == WINDOWS else 30, only_new_events=True, accumulations=2)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[test_metadata['check_id']-1][2] == test_metadata['initial_result'], \
+        f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {log_monitor.callback_result[test_metadata['check_id']-1][2]}"
 
     if sys.platform == WINDOWS:
         # Modify lockout duration
@@ -161,7 +148,7 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         # Modify the folder's permissions
         os.chmod(test_folder, test_metadata['perms'])
 
-    # Get the next result for the target check id after remediation/change
-    final_result = wait_for_check_result(log_monitor, test_metadata['check_id'], timeout=200 if sys.platform == WINDOWS else 30)
-    assert final_result == test_metadata['final_result'], \
-        f"Got unexpected SCA result: expected {test_metadata['final_result']}, got {final_result}"
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=200 if sys.platform == WINDOWS else 30, only_new_events=True, accumulations=2)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[test_metadata['check_id']-1][2] == test_metadata['final_result'], \
+        f"Got unexpected SCA result: expected {test_metadata['final_result']}, got {log_monitor.callback_result[test_metadata['check_id']-1][2]}"
+
