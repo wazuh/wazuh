@@ -153,7 +153,7 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
     # Get the results for the checks obtained in the SCA scan
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=200 if sys.platform == WINDOWS else 20, only_new_events=True, accumulations=int(test_metadata['results']))
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=200 if sys.platform == WINDOWS else 20, accumulations=int(test_metadata['results']))
     assert log_monitor.callback_result is not None and all(result[1] == expected_policy for result in log_monitor.callback_result)
 
     # Wait for the SCA scan checks to end for the specific policy
