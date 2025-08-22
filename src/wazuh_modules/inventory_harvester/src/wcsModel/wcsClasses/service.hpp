@@ -44,7 +44,7 @@ struct Service final
         std::string_view executable;          // process.executable (ECS)
         Group group;                          // process.group (ECS)
         std::int64_t pid = DEFAULT_INT_VALUE; // process.pid (ECS)
-        std::string_view root_dir;            // process.root_dir (ECS)
+        std::string_view root_directory;      // process.root_directory (ECS)
         User user;                            // process.user (ECS)
         std::string_view working_directory;   // process.working_directory (ECS)
 
@@ -52,7 +52,7 @@ struct Service final
                     MAKE_FIELD("executable", &Process::executable),
                     MAKE_FIELD("group", &Process::group),
                     MAKE_FIELD("pid", &Process::pid),
-                    MAKE_FIELD("root_dir", &Process::root_dir),
+                    MAKE_FIELD("root_directory", &Process::root_directory),
                     MAKE_FIELD("user", &Process::user),
                     MAKE_FIELD("working_directory", &Process::working_directory));
     };

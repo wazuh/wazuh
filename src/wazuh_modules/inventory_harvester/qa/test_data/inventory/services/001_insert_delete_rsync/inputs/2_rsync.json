@@ -1,51 +1,12 @@
 {
     "agent_info": {
-        "agent_id": "005",
+        "agent_id": "001",
         "agent_ip": "any",
         "agent_name": "centos9",
-        "agent_version": "v4.14.0"
+        "agent_version": "v4.10.1"
     },
-    "data_type": "dbsync_services",
+    "action": "deleteService",
     "data": {
-        "scan_time": "2025/08/20 16:30:01",
-        "name": "httpd",
-        "display_name": "Apache HTTP Server",
-        "description": "The Apache HTTP Server is a powerful, efficient, and extensible web server",
-        "service_type": "forking",
-        "start_type": "enabled",
-        "state": "running",
-        "pid": 5678,
-        "ppid": 1,
-        "binary_path": "/usr/sbin/httpd",
-        "load_state": "loaded",
-        "active_state": "active",
-        "sub_state": "running",
-        "unit_file_state": "enabled",
-        "status": "ok",
-        "user": "apache",
-        "can_stop": "yes",
-        "can_reload": "yes",
-        "service_exit_code": 0,
-        "checksum": "def456abc789012345678901234567890abcdef1",
-        "item_id": "httpd_005_v2",
-        "enabled": "true",
-        "service_name": "apache-httpd",
-        "process_executable": "/usr/sbin/httpd",
-        "process_args": "-DFOREGROUND",
-        "process_cwd": "/etc/httpd",
-        "user_name": "apache",
-        "user_id": "48",
-        "group_name": "apache",
-        "group_id": "48",
-        "file_path": "/usr/lib/systemd/system/httpd.service",
-        "file_name": "httpd.service",
-        "file_inode": "234567",
-        "file_mode": "0644",
-        "file_size": "2048",
-        "file_uid": "0",
-        "file_gid": "0",
-        "file_owner": "root",
-        "file_group": "root"
-    },
-    "operation": "DELETED"
+        "user_name": "root"
+    }
 }
