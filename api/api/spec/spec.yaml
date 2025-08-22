@@ -5564,7 +5564,7 @@ components:
               description: "Whether the extension is enabled"
             from_webstore:
               type: boolean
-              description: "Wheter the extension is installed from webstore"
+              description: "Whether the extension is installed from webstore"
             installed:
               type: string
               description: "Original install time"
@@ -5635,7 +5635,7 @@ components:
               properties:
                 on_mount:
                   type: boolean
-                  description: "Whether it launches every time a filesystem is mounted."
+                  description: "Whether it launches every time a filesystem is mounted"
                 on_path_modified:
                   type: string
                   description: "Start on path modification"
