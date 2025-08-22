@@ -36,7 +36,8 @@ namespace
     RuleResult FindContentInFile(const std::unique_ptr<IFileIOUtils>& fileUtils,
                                  const std::string& filePath,
                                  const std::string& pattern,
-                                 const bool isNegated)
+                                 const bool isNegated,
+                                 sca::RegexEngineType regexEngine = sca::RegexEngineType::PCRE2)
     {
         bool matchFound = false;
 
@@ -44,7 +45,7 @@ namespace
         {
             const auto content = fileUtils->getFileContent(filePath);
 
-            if (const auto patternMatch = sca::PatternMatches(content, pattern))
+            if (const auto patternMatch = sca::PatternMatches(content, pattern, regexEngine))
             {
                 matchFound = patternMatch.value();
             }
@@ -125,7 +126,7 @@ RuleResult FileRuleEvaluator::CheckFileForContents()
         return RuleResult::Invalid; // Keep simple return for file not found - this is expected behavior
     }
 
-    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, m_ctx.rule, pattern, m_ctx.isNegated); });
+    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, m_ctx.rule, pattern, m_ctx.isNegated, m_ctx.regexEngine); });
 
     if (result.has_value())
     {
@@ -240,8 +241,8 @@ RuleResult CommandRuleEvaluator::Evaluate()
 
                 if (sca::IsRegexOrNumericPattern(*m_ctx.pattern))
                 {
-                    const auto outputPatternMatch = sca::PatternMatches(execResult->StdOut, *m_ctx.pattern);
-                    const auto errorPatternMatch = sca::PatternMatches(execResult->StdErr, *m_ctx.pattern);
+                    const auto outputPatternMatch = sca::PatternMatches(execResult->StdOut, *m_ctx.pattern, m_ctx.regexEngine);
+                    const auto errorPatternMatch = sca::PatternMatches(execResult->StdErr, *m_ctx.pattern, m_ctx.regexEngine);
 
                     if (outputPatternMatch || errorPatternMatch)
                     {
@@ -397,7 +398,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
             if (isRegex)
             {
-                const auto patternMatch = sca::PatternMatches(file.filename().string(), pattern);
+                const auto patternMatch = sca::PatternMatches(file.filename().string(), pattern, m_ctx.regexEngine);
 
                 if (patternMatch.has_value())
                 {
@@ -416,7 +417,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (file.filename().string() == fileName)
                 {
-                    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx.isNegated); });
+                    const auto result = TryFunc([&]{ return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx.isNegated, m_ctx.regexEngine); });
 
                     if (result.has_value())
                     {
@@ -536,6 +537,7 @@ std::unique_ptr<IRuleEvaluator>
 RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
                                       const int commandsTimeout,
                                       const bool commandsEnabled,
+                                      sca::RegexEngineType regexEngine,
                                       std::unique_ptr<IFileSystemWrapper> fileSystemWrapper,
                                       std::unique_ptr<IFileIOUtils> fileUtils,
                                       std::unique_ptr<ISysInfo> sysInfo)
@@ -580,7 +582,7 @@ RuleEvaluatorFactory::CreateEvaluator(const std::string& input,
 
     const auto [ruleType, cleanedRule] = ruleTypeAndValue.value();
 
-    const PolicyEvaluationContext ctx {cleanedRule, pattern, isNegated, commandsTimeout, commandsEnabled};
+    const PolicyEvaluationContext ctx {cleanedRule, pattern, isNegated, commandsTimeout, commandsEnabled, regexEngine};
 
     switch (ruleType)
     {
