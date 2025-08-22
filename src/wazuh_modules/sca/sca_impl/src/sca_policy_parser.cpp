@@ -173,6 +173,13 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
             requirements.condition = requirementsNode["condition"].AsString();
             ValidateConditionString(requirements.condition);
 
+            if (requirementsNode.HasKey("regex_type"))
+            {
+                const auto regexTypeStr = requirementsNode["regex_type"].AsString();
+                requirements.regexEngine = sca::StringToRegexEngineType(regexTypeStr);
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Requirements regex_type set to: " + regexTypeStr);
+            }
+
             const auto rules = requirementsNode["rules"].AsSequence();
 
             for (const auto& rule : rules)
@@ -211,6 +218,13 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 check.id = checkNode["id"].AsString();
                 check.condition = checkNode["condition"].AsString();
                 ValidateConditionString(check.condition);
+
+                if (checkNode.HasKey("regex_type"))
+                {
+                    const auto regexTypeStr = checkNode["regex_type"].AsString();
+                    check.regexEngine = sca::StringToRegexEngineType(regexTypeStr);
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "Check " + check.id.value_or("Unknown") + " regex_type set to: " + regexTypeStr);
+                }
 
                 // create new document with valid rules
                 auto newDoc = checkNode.Clone();
