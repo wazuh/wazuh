@@ -201,42 +201,38 @@ table dbsync_groups {
 
 table dbsync_services {
     scan_time:string;
-    name:string;
-    display_name:string;
-    description:string;
+    service_id:string;
+    service_name:string;
+    service_description:string;
     service_type:string;
-    start_type:string;
-    state:string;
-    pid:long = null;
-    ppid:long = null;
-    binary_path:string;
-    load_state:string;
-    active_state:string;
-    sub_state:string;
-    unit_file_state:string;
-    status:string;
-    user:string;
-    can_stop:string;
-    can_reload:string;
-    service_exit_code:long = null;
-    // ECS field mappings (service.id is mapped to name field)
-    service_name:string;                      // ECS: service.name (File name of plist for macOS)
-    process_executable:string;                // ECS: process.executable (Path to the service executable)
-    process_args:string;                      // ECS: process.args (Command line arguments for the service)
-    file_path:string;                         // ECS: file.path (Path to the .plist definition file for macOS)
-    process_user_name:string;                 // ECS: process.user.name (User account running the job)
-    process_group_name:string;                // ECS: process.group.name (Group account running the job)
-    service_enabled:string;                   // ECS: service.enabled (unified as text: enabled/disabled for Linux, true/false for macOS)
-    service_restart:string;                   // Custom: service.restart (Restart policy: always/on-failure/never)
-    service_frequency:long = null;            // Custom: service.frequency (Run frequency in seconds)
-    log_file_path:string;                     // Custom: log.file.path (Redirect stdout to a file/pipe)
-    error_log_file_path:string;               // Custom: error.log.file.path (Redirect stderr to a file/pipe)
-    process_working_dir:string;               // ECS: process.working_dir (Working directory of the job)
-    process_root_dir:string;                  // Custom: process.root_dir (Chroot directory before execution)
-    service_starts_on_mount:bool = null;      // Custom: service.starts.on_mount (Launches every time a filesystem is mounted)
-    service_starts_on_path_modified:string;   // Custom: service.starts.on_path_modified (Launches on path modification)
-    service_starts_on_not_empty_directory:string; // Custom: service.starts.on_not_empty_directory (Launches when directories become non-empty)
-    service_inetd_compatibility:bool = null;  // Custom: service.inetd_compatibility (Run job as if launched from inetd)
+    service_state:string;
+    service_sub_state:string;
+    service_enabled:string;
+    service_start_type:string;
+    service_restart:string;
+    service_frequency:long = null;
+    service_starts_on_mount:bool = null;
+    service_starts_on_path_modified:string;
+    service_starts_on_not_empty_directory:string;
+    service_inetd_compatibility:bool = null;
+    process_pid:long = null;
+    process_executable:string;
+    process_args:string;
+    process_user_name:string;
+    process_group_name:string;
+    process_working_dir:string;
+    process_root_dir:string;
+    file_path:string;
+    service_address:string;
+    log_file_path:string;
+    error_log_file_path:string;
+    service_exit_code:int = null;
+    service_win32_exit_code:int = null;
+    service_following:string;
+    service_object_path:string;
+    service_target_ephemeral_id:long = null;
+    service_target_type:string;
+    service_target_address:string;
     checksum:string;
 }
 

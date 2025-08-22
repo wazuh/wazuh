@@ -1390,8 +1390,16 @@ int wdb_services_insert(wdb_t * wdb, const service_record_t * service_record, co
     sqlite3_bind_text(stmt, 25, service_record->service_address, -1, NULL);
     sqlite3_bind_text(stmt, 26, service_record->log_file_path, -1, NULL);
     sqlite3_bind_text(stmt, 27, service_record->error_log_file_path, -1, NULL);
-    sqlite3_bind_int(stmt, 28, service_record->service_exit_code);
-    sqlite3_bind_int(stmt, 29, service_record->service_win32_exit_code);
+    if (service_record->service_exit_code >= 0) {
+        sqlite3_bind_int(stmt, 28, service_record->service_exit_code);
+    } else {
+        sqlite3_bind_null(stmt, 28);
+    }
+    if (service_record->service_win32_exit_code >= 0) {
+        sqlite3_bind_int(stmt, 29, service_record->service_win32_exit_code);
+    } else {
+        sqlite3_bind_null(stmt, 29);
+    }
     sqlite3_bind_text(stmt, 30, service_record->service_following, -1, NULL);
     sqlite3_bind_text(stmt, 31, service_record->service_object_path, -1, NULL);
     if (service_record->service_target_ephemeral_id >= 0) {

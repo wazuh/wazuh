@@ -485,7 +485,9 @@ void test_wdb_dbsync_stmt_bind_services_multiple_fields_numeric_values(void **st
     const char * fields [] = {
         "service_frequency",
         "service_process_pid",
-        "service_target_ephemeral_id"
+        "service_target_ephemeral_id",
+        "service_exit_code",
+        "service_win32_exit_code"
     };
 
     for (int i = 0; i < sizeof(values)/sizeof(values[0]); ++i) {

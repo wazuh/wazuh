@@ -74,13 +74,17 @@ const char * USERINFO_FIELDS[] = {
 typedef enum service_fields {
     SERVICE_FREQUENCY,
     SERVICE_PROCESS_PID,
-    SERVICE_TARGET_EPHEMERAL_ID
+    SERVICE_TARGET_EPHEMERAL_ID,
+    SERVICE_EXIT_CODE,
+    SERVICE_WIN32_EXIT_CODE
 } service_fields;
 
 const char * SERVICEINFO_FIELDS[] = {
     [SERVICE_FREQUENCY] = "service_frequency",
     [SERVICE_PROCESS_PID] = "service_process_pid",
-    [SERVICE_TARGET_EPHEMERAL_ID] = "service_target_ephemeral_id"
+    [SERVICE_TARGET_EPHEMERAL_ID] = "service_target_ephemeral_id",
+    [SERVICE_EXIT_CODE] = "service_exit_code",
+    [SERVICE_WIN32_EXIT_CODE] = "service_win32_exit_code"
 };
 
 #define IS_VALID_GROUPS_VALUE(field_name, field_value) ( \

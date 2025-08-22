@@ -20,16 +20,18 @@
 struct InventoryServiceHarvester final
 {
     Agent agent;
-    Service::ServiceInfo service;
-    Service::Process process;
-    Service::User user;
     Service::File file;
+    Service::Process process;
+    Service::ServiceInfo service;
+    Service::Log log;
+    Service::Error error;
     Wazuh wazuh;
 
-    REFLECTABLE(MAKE_FIELD("service", &InventoryServiceHarvester::service),
+    REFLECTABLE(MAKE_FIELD("file", &InventoryServiceHarvester::file),
                 MAKE_FIELD("process", &InventoryServiceHarvester::process),
-                MAKE_FIELD("user", &InventoryServiceHarvester::user),
-                MAKE_FIELD("file", &InventoryServiceHarvester::file),
+                MAKE_FIELD("service", &InventoryServiceHarvester::service),
+                MAKE_FIELD("log", &InventoryServiceHarvester::log),
+                MAKE_FIELD("error", &InventoryServiceHarvester::error),
                 MAKE_FIELD("agent", &InventoryServiceHarvester::agent),
                 MAKE_FIELD("wazuh", &InventoryServiceHarvester::wazuh));
 };
