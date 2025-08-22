@@ -3060,6 +3060,34 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: GET /syscollector/{agent_id}/browser_extensions
+
+stages:
+  - name: Try to get agent browser extensions (syscollector)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/browser_extensions"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: GET /syscollector/{agent_id}/services
+
+stages:
+  - name: Try to get agent services (syscollector)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/services"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /tasks/status
 
 stages:
