@@ -7,6 +7,10 @@
             value: /testdir1
             attributes:
               - whodata: WHODATA
+        - whodata:
+            elements:
+              - provider:
+                  value: 'audit'
 
     - section: sca
       elements:

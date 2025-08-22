@@ -10,6 +10,10 @@
         attributes:
         - FIM_MODE
         - follow_symbolic_link: 'yes'
+    - whodata:
+        elements:
+          -provider:
+              value: 'audit'
   - section: sca
     elements:
     - enabled:
