@@ -203,7 +203,6 @@ int syscheck_teardown(void ** state) {
     syscheck.key_ignore_regex = NULL;
     syscheck.registry = NULL;
     syscheck.realtime = NULL;
-    syscheck.prefilter_cmd = NULL;
     syscheck.audit_key = NULL;
 
     return 0;

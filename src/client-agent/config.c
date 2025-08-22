@@ -45,7 +45,6 @@ int ClientConf(const char *cfgfile)
     agt->crypto_method = W_METH_AES;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;
-    agt->force_reconnect_interval = 0;
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
@@ -104,7 +103,6 @@ cJSON *getClientConfig(void) {
     if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
     cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
     cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
-    cJSON_AddNumberToObject(client,"force_reconnect_interval",agt->force_reconnect_interval);
     cJSON_AddNumberToObject(client,"ip_update_interval",agt->main_ip_update_interval);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
     if (agt->flags.remote_conf) cJSON_AddStringToObject(client,"remote_conf","yes"); else cJSON_AddStringToObject(client,"remote_conf","no");
