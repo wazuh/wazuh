@@ -928,7 +928,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
 void router_message_forward(char* msg, size_t msg_length, const char* agent_id, const char* agent_ip, const char* agent_name) {
 
-    mdebug2("Forwarding message to router: %s", msg);
+    mdebug2("Forwarding message to router");
 
     // Check if we have the router handle available
     if (!router_sync_handle) {
