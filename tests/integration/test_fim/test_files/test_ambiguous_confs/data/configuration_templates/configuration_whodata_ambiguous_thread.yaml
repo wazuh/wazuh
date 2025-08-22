@@ -11,6 +11,10 @@
             value: TEST_DIR2
             attributes:
               - whodata: WHODATA2
+        - whodata:
+            elements:
+              - provider:
+                  value: 'audit'
 
     - section: sca
       elements:
