@@ -398,6 +398,7 @@ typedef struct _config {
     uint32_t sync_response_timeout;                    /* Minimum interval for the synchronization process */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
     int max_eps;                                       /* Maximum events per second. */
+    unsigned int notify_first_scan;                    /* Notify the first scan */
 
     /* Windows only registry checking */
 #ifdef WIN32

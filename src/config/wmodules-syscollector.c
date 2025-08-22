@@ -16,6 +16,7 @@ static const char *XML_INTERVAL = "interval";
 static const char *XML_SCAN_ON_START = "scan_on_start";
 static const char *XML_DISABLED = "disabled";
 static const char *XML_MAX_EPS = "max_eps";
+static const char *XML_NOTIFY_FIRST_SCAN = "notify_first_scan";
 static const char *XML_NETWORK = "network";
 static const char *XML_OS_SCAN = "os";
 static const char *XML_HARDWARE = "hardware";
@@ -104,6 +105,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
         syscollector->sync.sync_max_eps = 10;
 
         syscollector->max_eps = 50;
+        syscollector->flags.notify_first_scan = 0; // Default value, no notification on first scan
 
         module->context = &WM_SYS_CONTEXT;
         module->tag = strdup(module->context->name);
@@ -174,6 +176,15 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscollector->max_eps = value;
+            }
+        } else if(!strcmp(node[i]->element, XML_NOTIFY_FIRST_SCAN)) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                syscollector->flags.notify_first_scan = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                syscollector->flags.notify_first_scan = 0;
+            } else {
+                merror("Invalid content for tag '%s' at module '%s'.", XML_NOTIFY_FIRST_SCAN, WM_SYS_CONTEXT.name);
+                return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_NETWORK)) {
             if (!strcmp(node[i]->content, "yes"))

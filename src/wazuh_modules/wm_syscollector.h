@@ -23,6 +23,7 @@ extern const wm_context WM_SYS_CONTEXT;     // Context
 typedef struct wm_sys_flags_t {
     unsigned int enabled:1;                 // Main switch
     unsigned int scan_on_start:1;           // Scan always on start
+    unsigned int notify_first_scan:1;       // Notify the first scan
     unsigned int hwinfo:1;                  // Hardware inventory
     unsigned int netinfo:1;                 // Network inventory
     unsigned int osinfo:1;                  // OS inventory

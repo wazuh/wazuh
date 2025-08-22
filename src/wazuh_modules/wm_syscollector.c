@@ -264,7 +264,8 @@ void* wm_sys_main(wm_sys_t *sys) {
                                sys->flags.procinfo,
                                sys->flags.hotfixinfo,
                                sys->flags.groups,
-                               sys->flags.users);
+                               sys->flags.users,
+                               sys->flags.notify_first_scan);
     } else {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
         pthread_exit(NULL);
@@ -326,6 +327,7 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     if (sys->flags.scan_on_start) cJSON_AddStringToObject(wm_sys,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_sys,"scan-on-start","no");
     cJSON_AddNumberToObject(wm_sys,"interval",sys->interval);
     cJSON_AddNumberToObject(wm_sys, "max_eps", sys->max_eps);
+    if (sys->flags.notify_first_scan) cJSON_AddStringToObject(wm_sys,"notify_first_scan","yes"); else cJSON_AddStringToObject(wm_sys,"notify_first_scan","no");
     if (sys->flags.netinfo) cJSON_AddStringToObject(wm_sys,"network","yes"); else cJSON_AddStringToObject(wm_sys,"network","no");
     if (sys->flags.osinfo) cJSON_AddStringToObject(wm_sys,"os","yes"); else cJSON_AddStringToObject(wm_sys,"os","no");
     if (sys->flags.hwinfo) cJSON_AddStringToObject(wm_sys,"hardware","yes"); else cJSON_AddStringToObject(wm_sys,"hardware","no");
