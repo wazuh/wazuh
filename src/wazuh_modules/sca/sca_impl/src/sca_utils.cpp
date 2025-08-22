@@ -356,4 +356,25 @@ namespace sca
                (pattern.size() >= 3 && pattern.compare(0, 3, "!n:") == 0);
     }
 
+    RegexEngineType StringToRegexEngineType(const std::string& regexType)
+    {
+        if (regexType == "pcre2")
+        {
+            return RegexEngineType::PCRE2;
+        }
+        return RegexEngineType::Invalid;
+    }
+
+    std::string RegexEngineTypeToString(RegexEngineType engineType)
+    {
+        switch (engineType)
+        {
+            case RegexEngineType::PCRE2:
+                return "pcre2";
+            case RegexEngineType::Invalid:
+            default:
+                return "invalid";
+        }
+    }
+
 } // namespace sca

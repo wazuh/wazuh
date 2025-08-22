@@ -74,4 +74,14 @@ namespace sca
     /// @param pattern The pattern to check.
     /// @return True if the pattern is a regex pattern or a numeric pattern, false otherwise.
     bool IsRegexOrNumericPattern(const std::string& pattern);
+
+    /// @brief Converts a string to RegexEngineType enum.
+    /// @param regexType The string representation of the regex type.
+    /// @return The corresponding RegexEngineType enum value.
+    RegexEngineType StringToRegexEngineType(const std::string& regexType);
+
+    /// @brief Converts a RegexEngineType enum to string.
+    /// @param engineType The RegexEngineType enum value.
+    /// @return The string representation of the regex type.
+    std::string RegexEngineTypeToString(RegexEngineType engineType);
 } // namespace sca
