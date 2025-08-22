@@ -184,7 +184,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
 
             for (const auto& rule : rules)
             {
-                std::unique_ptr<IRuleEvaluator> RuleEvaluator = RuleEvaluatorFactory::CreateEvaluator(rule.AsString(), m_commandsTimeout, m_commandsEnabled);
+                std::unique_ptr<IRuleEvaluator> RuleEvaluator = RuleEvaluatorFactory::CreateEvaluator(rule.AsString(), m_commandsTimeout, m_commandsEnabled, requirements.regexEngine);
 
                 if (RuleEvaluator != nullptr)
                 {
@@ -243,7 +243,7 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                     {
                         const auto ruleStr = rule.AsString();
 
-                        if (auto ruleEvaluator = RuleEvaluatorFactory::CreateEvaluator(ruleStr, m_commandsTimeout, m_commandsEnabled))
+                        if (auto ruleEvaluator = RuleEvaluatorFactory::CreateEvaluator(ruleStr, m_commandsTimeout, m_commandsEnabled, check.regexEngine))
                         {
                             check.rules.push_back(std::move(ruleEvaluator));
                             checkWithValidRules["rules"].AppendToSequence(ruleStr);
