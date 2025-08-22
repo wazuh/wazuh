@@ -1,19 +1,11 @@
-# Insert Delta Services Test
+# Test cases
 
-This test verifies the insertion of service data using DELTA operations.
-
-## Test Data
-
-The test includes various service configurations:
-- Complete service data with all fields
-- Minimal service data with only name
-- Empty/null field handling
-- Different service states (running, stopped)
-- Different service types (simple, forking)
-
-## Expected Behavior
-
-- Services with complete data are indexed with all available fields
-- Services with minimal data are indexed with only the available fields
-- Empty strings and null values are handled appropriately
-- Services without a name are filtered out
+- All strings values (except pk) are empty, all boolean values are true.
+- All strings values (except pk) are null, all boolean values are false.
+- All strings values (including pk) are null, all boolean values are false.
+- All strings values are null. Pk is empty.
+- All string values are not empty.
+- Multiple numeric values are zero.
+- Multiple numeric values are negative.
+- All numeric values are null, all boolean values are null.
+- All string values (except pk) are space string.
