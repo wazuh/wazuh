@@ -40,8 +40,8 @@ constexpr auto CHECK_SQL_STATEMENT
     reason TEXT,
     condition TEXT,
     compliance TEXT,
-    rules TEXT);)"
-};
+    rules TEXT,
+    regex_type TEXT DEFAULT 'pcre2');)"};
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(
     std::string dbPath,

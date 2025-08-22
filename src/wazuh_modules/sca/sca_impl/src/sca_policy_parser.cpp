@@ -257,9 +257,10 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
 
                 LoggingHelper::getInstance().log(LOG_DEBUG, "Check " + check.id.value_or("Invalid id") + " parsed.");
 
-                checks.push_back(std::move(check));
                 nlohmann::json checkJson = YamlNodeToJson(checkWithValidRules);
                 checkJson["policy_id"] = policyId;
+                checkJson["regex_type"] = sca::RegexEngineTypeToString(check.regexEngine);
+                checks.push_back(std::move(check));
                 policiesAndChecks["checks"].push_back(checkJson);
             }
             catch (const std::exception& e)
