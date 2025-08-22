@@ -333,7 +333,8 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
                          srcOnly=False)
     build_tools.makeTarget(targetName=target,
                            tests=True,
-                           debug=True)
+                           debug=True,
+                           fsanitize=(target != "winagent"))
 
     # Running UTs and coverage
     runTests(moduleName=moduleName)
@@ -675,6 +676,14 @@ def runValgrind(moduleName):
     """
     utils.printHeader(moduleName=moduleName,
                       headerKey="valgrind")
+
+    # Rebuild tests without sanitizers for valgrind compatibility
+    build_tools.cleanInternals()
+    build_tools.makeTarget(targetName="agent",
+                           tests=True,
+                           debug=True,
+                           valgrind=True)
+
     tests = []
     reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test\
                      |.*interface_test|.*integration_test.exe\
@@ -703,8 +712,8 @@ def runValgrind(moduleName):
         if out.returncode == 0:
             utils.printGreen(msg="[{} : PASSED]".format(test))
         else:
-            print(out.stdout.decode('utf-8','replace'))
-            print(out.stderr.decode('utf-8','replace'))
+            print(out.stdout.decode('utf-8', 'replace'))
+            print(out.stderr.decode('utf-8', 'replace'))
             utils.printFail(msg="[{} : FAILED]".format(test))
             errorString = "Error Running valgrind: {}".format(out.returncode)
             raise ValueError(errorString)

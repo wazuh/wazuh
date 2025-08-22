@@ -66,6 +66,9 @@ find_library(PCRE2_LIB pcre2-8
 find_library(OPENSSL_LIB ssl
     HINTS ${SRC_FOLDER}/external/openssl
     NO_DEFAULT_PATH)
+find_library(OPENSSL_CRYPTO_LIB crypto
+    HINTS ${SRC_FOLDER}/external/openssl
+    NO_DEFAULT_PATH)
 
 # Set fallback values if libraries aren't found (for fresh builds)
 if(NOT FILESYSTEM_WRAPPER_LIB)
@@ -126,6 +129,7 @@ target_link_libraries(
             ${YAML_LIB}
             ${PCRE2_LIB}
             ${OPENSSL_LIB}
+            ${OPENSSL_CRYPTO_LIB}
 )
 
 if(UNIT_TEST)

@@ -1,6 +1,6 @@
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(FSANITIZE AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(CMAKE_CXX_FLAGS_DEBUG " -g --coverage -fsanitize=address,leak,undefined")
 endif()
 
