@@ -105,3 +105,15 @@ TEST_P(HlpParseTest, NoMappingParse)
     auto parser = builder(params);
     parseTest(success, input, expected, index, parser);
 }
+
+// Build from a short-lived params copy to catch use-after-free
+TEST_P(HlpParseTest, MapperLifetime)
+{
+    auto [success, input, expected, index, builder, params] = GetParam();
+    auto parser = [&]
+    {
+        auto params_tmp = params;
+        return builder(params_tmp);
+    }();
+    parseTest(success, input, expected, index, parser);
+}
