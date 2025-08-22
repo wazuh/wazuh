@@ -704,7 +704,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_executable())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_executable()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_executable()
+                    ->string_view();
             }
         }
         else
@@ -785,7 +788,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_user_name())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_user_name()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_user_name()
+                    ->string_view();
             }
         }
         else
@@ -812,7 +818,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_group_name())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_group_name()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_group_name()
+                    ->string_view();
             }
         }
         else
@@ -839,7 +848,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_enabled())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_enabled()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->service_enabled()
+                    ->string_view();
             }
         }
         else
@@ -866,7 +878,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_restart())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_restart()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->service_restart()
+                    ->string_view();
             }
         }
         else
@@ -885,16 +900,21 @@ public:
         {
             if (m_delta->data_as_dbsync_services())
             {
-                return m_delta->data_as_dbsync_services()->service_frequency() ? 
-                       m_delta->data_as_dbsync_services()->service_frequency().value() : 0;
+                return m_delta->data_as_dbsync_services()->service_frequency()
+                           ? m_delta->data_as_dbsync_services()->service_frequency().value()
+                           : 0;
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_frequency() ? 
-                       m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_frequency().value() : 0;
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_frequency()
+                           ? m_syncMsg->data_as_state()
+                                 ->attributes_as_syscollector_services()
+                                 ->service_frequency()
+                                 .value()
+                           : 0;
             }
         }
         else
@@ -921,7 +941,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->log_file_path())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->log_file_path()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->log_file_path()
+                    ->string_view();
             }
         }
         else
@@ -948,7 +971,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->error_log_file_path())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->error_log_file_path()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->error_log_file_path()
+                    ->string_view();
             }
         }
         else
@@ -975,7 +1001,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_working_dir())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_working_dir()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_working_dir()
+                    ->string_view();
             }
         }
         else
@@ -1002,7 +1031,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_root_dir())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_root_dir()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_root_dir()
+                    ->string_view();
             }
         }
         else
@@ -1021,16 +1053,21 @@ public:
         {
             if (m_delta->data_as_dbsync_services())
             {
-                return m_delta->data_as_dbsync_services()->service_starts_on_mount() ? 
-                       m_delta->data_as_dbsync_services()->service_starts_on_mount().value() : false;
+                return m_delta->data_as_dbsync_services()->service_starts_on_mount()
+                           ? m_delta->data_as_dbsync_services()->service_starts_on_mount().value()
+                           : false;
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_mount() ? 
-                       m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_mount().value() : false;
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_mount()
+                           ? m_syncMsg->data_as_state()
+                                 ->attributes_as_syscollector_services()
+                                 ->service_starts_on_mount()
+                                 .value()
+                           : false;
             }
         }
         else
@@ -1047,7 +1084,8 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->service_starts_on_path_modified())
+            if (m_delta->data_as_dbsync_services() &&
+                m_delta->data_as_dbsync_services()->service_starts_on_path_modified())
             {
                 return m_delta->data_as_dbsync_services()->service_starts_on_path_modified()->string_view();
             }
@@ -1057,7 +1095,10 @@ public:
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_path_modified())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_path_modified()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->service_starts_on_path_modified()
+                    ->string_view();
             }
         }
         else
@@ -1074,7 +1115,8 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->service_starts_on_not_empty_directory())
+            if (m_delta->data_as_dbsync_services() &&
+                m_delta->data_as_dbsync_services()->service_starts_on_not_empty_directory())
             {
                 return m_delta->data_as_dbsync_services()->service_starts_on_not_empty_directory()->string_view();
             }
@@ -1082,16 +1124,22 @@ public:
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_not_empty_directory())
+                m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->service_starts_on_not_empty_directory())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_not_empty_directory()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->service_starts_on_not_empty_directory()
+                    ->string_view();
             }
         }
         else
         {
             if (m_jsonData->contains("/data/service_starts_on_not_empty_directory"_json_pointer))
             {
-                return m_jsonData->at("/data/service_starts_on_not_empty_directory"_json_pointer).get<std::string_view>();
+                return m_jsonData->at("/data/service_starts_on_not_empty_directory"_json_pointer)
+                    .get<std::string_view>();
             }
         }
         return "";
@@ -1103,16 +1151,21 @@ public:
         {
             if (m_delta->data_as_dbsync_services())
             {
-                return m_delta->data_as_dbsync_services()->service_inetd_compatibility() ? 
-                       m_delta->data_as_dbsync_services()->service_inetd_compatibility().value() : false;
+                return m_delta->data_as_dbsync_services()->service_inetd_compatibility()
+                           ? m_delta->data_as_dbsync_services()->service_inetd_compatibility().value()
+                           : false;
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_inetd_compatibility() ? 
-                       m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_inetd_compatibility().value() : false;
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_inetd_compatibility()
+                           ? m_syncMsg->data_as_state()
+                                 ->attributes_as_syscollector_services()
+                                 ->service_inetd_compatibility()
+                                 .value()
+                           : false;
             }
         }
         else
