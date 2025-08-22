@@ -8,13 +8,9 @@ file(GLOB registryvalue_UNIT_TEST_SRC
     "*.cpp")
 
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
-include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 
 file(GLOB REGISTRYVALUE_SRC "${SRC_FOLDER}/syscheckd/src/db/src/dbRegistryValue.cpp")
-
-file(GLOB RSYNC_IMP_SRC
-    "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
 
 file(GLOB DBSYNC_IMP_SRC
     "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
@@ -28,7 +24,6 @@ add_executable(registryvalue_unit_test
     ${registryvalue_UNIT_TEST_SRC}
     ${REGISTRYVALUE_SRC}
     ${WINDOWS_REGISTRYVALUE_SRC}
-    ${RSYNC_IMP_SRC}
     ${DBSYNC_IMP_SRC})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")

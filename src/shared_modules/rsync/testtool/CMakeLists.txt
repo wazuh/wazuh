@@ -8,11 +8,14 @@ include_directories(${CMAKE_SOURCE_DIR}/testtool/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -std=c++14 -pthread")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -pthread")
 
 if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")

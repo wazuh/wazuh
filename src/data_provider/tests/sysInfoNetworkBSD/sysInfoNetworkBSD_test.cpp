@@ -68,11 +68,11 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET)
 
     for (auto& element : ifaddr.at("IPv4"))
     {
-        EXPECT_EQ("192.168.0.1", element.at("address").get_ref<const std::string&>());
-        EXPECT_EQ("255.255.255.0", element.at("netmask").get_ref<const std::string&>());
-        EXPECT_EQ("192.168.0.255", element.at("broadcast").get_ref<const std::string&>());
-        EXPECT_EQ(" ", element.at("dhcp").get_ref<const std::string&>());
-        EXPECT_EQ(" ", element.at("metric").get_ref<const std::string&>());
+        EXPECT_EQ("192.168.0.1", element.at("network_ip").get_ref<const std::string&>());
+        EXPECT_EQ("255.255.255.0", element.at("network_netmask").get_ref<const std::string&>());
+        EXPECT_EQ("192.168.0.255", element.at("network_broadcast").get_ref<const std::string&>());
+        EXPECT_EQ(" ", element.at("network_dhcp").get_ref<const std::string&>());
+        EXPECT_EQ(" ", element.at("network_metric").get_ref<const std::string&>());
     }
 }
 
@@ -99,11 +99,11 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
 
     for (auto& element : ifaddr.at("IPv6"))
     {
-        EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:7348", element.at("address").get_ref<const std::string&>());
-        EXPECT_EQ("2001:db8:abcd:0012:ffff:ffff:ffff:ffff", element.at("netmask").get_ref<const std::string&>());
-        EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:0000", element.at("broadcast").get_ref<const std::string&>());
-        EXPECT_EQ(" ", element.at("dhcp").get_ref<const std::string&>());
-        EXPECT_EQ(" ", element.at("metric").get_ref<const std::string&>());
+        EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:7348", element.at("network_ip").get_ref<const std::string&>());
+        EXPECT_EQ("2001:db8:abcd:0012:ffff:ffff:ffff:ffff", element.at("network_netmask").get_ref<const std::string&>());
+        EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:0000", element.at("network_broadcast").get_ref<const std::string&>());
+        EXPECT_EQ(" ", element.at("network_dhcp").get_ref<const std::string&>());
+        EXPECT_EQ(" ", element.at("network_metric").get_ref<const std::string&>());
     }
 }
 
@@ -123,22 +123,23 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_LINK)
 
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
 
-    EXPECT_EQ("eth01", ifaddr.at("name").get_ref<const std::string&>());
-    EXPECT_EQ("ethernet", ifaddr.at("type").get_ref<const std::string&>());
-    EXPECT_EQ("up", ifaddr.at("state").get_ref<const std::string&>());
-    EXPECT_EQ("00:A0:C9:14:C8:29", ifaddr.at("mac").get_ref<const std::string&>());
+    EXPECT_EQ("eth01", ifaddr.at("interface_name").get_ref<const std::string&>());
+    EXPECT_EQ("ethernet", ifaddr.at("interface_type").get_ref<const std::string&>());
+    EXPECT_EQ("up", ifaddr.at("interface_state").get_ref<const std::string&>());
+    EXPECT_EQ("00:A0:C9:14:C8:29", ifaddr.at("host_mac").get_ref<const std::string&>());
 
-    EXPECT_EQ(1, ifaddr.at("tx_packets").get<int32_t>());
-    EXPECT_EQ(0, ifaddr.at("rx_packets").get<int32_t>());
-    EXPECT_EQ(3, ifaddr.at("tx_bytes").get<int32_t>());
-    EXPECT_EQ(2, ifaddr.at("rx_bytes").get<int32_t>());
-    EXPECT_EQ(5, ifaddr.at("tx_errors").get<int32_t>());
-    EXPECT_EQ(4, ifaddr.at("rx_errors").get<int32_t>());
-    EXPECT_EQ(6, ifaddr.at("rx_dropped").get<int32_t>());
+    EXPECT_EQ(1, ifaddr.at("host_network_egress_packages").get<int32_t>());
+    EXPECT_EQ(0, ifaddr.at("host_network_ingress_packages").get<int32_t>());
+    EXPECT_EQ(3, ifaddr.at("host_network_egress_bytes").get<int32_t>());
+    EXPECT_EQ(2, ifaddr.at("host_network_ingress_bytes").get<int32_t>());
+    EXPECT_EQ(5, ifaddr.at("host_network_egress_errors").get<int32_t>());
+    EXPECT_EQ(4, ifaddr.at("host_network_ingress_errors").get<int32_t>());
+    EXPECT_EQ(7, ifaddr.at("host_network_egress_drops").get<int32_t>());
+    EXPECT_EQ(6, ifaddr.at("host_network_ingress_drops").get<int32_t>());
 
-    EXPECT_EQ(1500, ifaddr.at("mtu").get<int32_t>());
+    EXPECT_EQ(1500, ifaddr.at("interface_mtu").get<int32_t>());
 
-    EXPECT_EQ("8.8.4.4", ifaddr.at("gateway").get_ref<const std::string&>());
+    EXPECT_EQ("8.8.4.4", ifaddr.at("network_gateway").get_ref<const std::string&>());
 }
 
 TEST_F(SysInfoNetworkBSDTest, Test_AF_UNSPEC_THROW_NULLPTR)

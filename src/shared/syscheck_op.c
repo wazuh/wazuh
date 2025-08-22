@@ -1182,7 +1182,7 @@ unsigned int get_registry_mtime(HKEY hndl) {
 void ag_send_syscheck(char * message) {
     char * response = NULL;
     syscom_dispatch(message, &response);
-    free(response);
+    os_free(response);
 }
 
 HKEY w_switch_root_key(char* str_rootkey) {

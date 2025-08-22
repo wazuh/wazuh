@@ -55,15 +55,15 @@ TEST_F(SysInfoPortTest, Test_SPEC_Data)
     EXPECT_CALL(*mock, processName()).Times(1).WillOnce(Return("11"));
 
     EXPECT_NO_THROW(std::make_unique<PortImpl>(mock)->buildPortData(port));
-    EXPECT_EQ("1", port.at("protocol").get_ref<const std::string&>());
-    EXPECT_EQ("2", port.at("local_ip").get_ref<const std::string&>());
-    EXPECT_EQ(3, port.at("local_port").get<int32_t>());
-    EXPECT_EQ("4", port.at("remote_ip").get_ref<const std::string&>());
-    EXPECT_EQ(5, port.at("remote_port").get<int32_t>());
-    EXPECT_EQ(6, port.at("tx_queue").get<int32_t>());
-    EXPECT_EQ(7, port.at("rx_queue").get<int32_t>());
-    EXPECT_EQ(4274126910, port.at("inode").get<int64_t>());
-    EXPECT_EQ("9", port.at("state").get_ref<const std::string&>());
-    EXPECT_EQ(10, port.at("pid").get<int32_t>());
-    EXPECT_EQ("11", port.at("process").get_ref<const std::string&>());
+    EXPECT_EQ("1", port.at("network_transport").get_ref<const std::string&>());
+    EXPECT_EQ("2", port.at("source_ip").get_ref<const std::string&>());
+    EXPECT_EQ(3, port.at("source_port").get<int32_t>());
+    EXPECT_EQ("4", port.at("destination_ip").get_ref<const std::string&>());
+    EXPECT_EQ(5, port.at("destination_port").get<int32_t>());
+    EXPECT_EQ(6, port.at("host_network_egress_queue").get<int32_t>());
+    EXPECT_EQ(7, port.at("host_network_ingress_queue").get<int32_t>());
+    EXPECT_EQ(4274126910, port.at("file_inode").get<int64_t>());
+    EXPECT_EQ("9", port.at("interface_state").get_ref<const std::string&>());
+    EXPECT_EQ(10, port.at("process_pid").get<int32_t>());
+    EXPECT_EQ("11", port.at("process_name").get_ref<const std::string&>());
 }

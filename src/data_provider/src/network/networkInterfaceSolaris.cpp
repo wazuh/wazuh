@@ -52,11 +52,11 @@ void SolarisNetworkImpl<AF_INET>::buildNetworkData(nlohmann::json& network)
     if (!address.empty())
     {
         nlohmann::json ipv4JS { };
-        ipv4JS["address"] = address;
-        ipv4JS["netmask"] = m_interfaceAddress->netmask();
-        ipv4JS["broadcast"] = m_interfaceAddress->broadcast();
-        ipv4JS["metric"] = m_interfaceAddress->metrics();
-        ipv4JS["dhcp"]   = m_interfaceAddress->dhcp();
+        ipv4JS["network_ip"] = address;
+        ipv4JS["network_netmask"] = m_interfaceAddress->netmask();
+        ipv4JS["network_broadcast"] = m_interfaceAddress->broadcast();
+        ipv4JS["network_metric"] = m_interfaceAddress->metrics();
+        ipv4JS["network_dhcp"] = m_interfaceAddress->dhcp();
 
         network["IPv4"].push_back(ipv4JS);
     }
@@ -73,11 +73,11 @@ void SolarisNetworkImpl<AF_INET6>::buildNetworkData(nlohmann::json& network)
     if (!address.empty())
     {
         nlohmann::json ipv6JS {};
-        ipv6JS["address"] = address;
-        ipv6JS["netmask"] = m_interfaceAddress->netmaskV6();
-        ipv6JS["broadcast"] = m_interfaceAddress->broadcastV6();
-        ipv6JS["metric"] = m_interfaceAddress->metricsV6();
-        ipv6JS["dhcp"]   = m_interfaceAddress->dhcp();
+        ipv6JS["network_ip"] = address;
+        ipv6JS["network_netmask"] = m_interfaceAddress->netmaskV6();
+        ipv6JS["network_broadcast"] = m_interfaceAddress->broadcastV6();
+        ipv6JS["network_metric"] = m_interfaceAddress->metricsV6();
+        ipv6JS["network_dhcp"] = m_interfaceAddress->dhcp();
 
         network["IPv6"].push_back(ipv6JS);
     }
@@ -91,22 +91,22 @@ template <>
 void SolarisNetworkImpl<AF_UNSPEC>::buildNetworkData(nlohmann::json& network)
 {
     // Extraction of common adapter data
-    network["name"]       = m_interfaceAddress->name();
-    network["adapter"]    = m_interfaceAddress->adapter();
-    network["state"]      = m_interfaceAddress->state();
-    network["type"]       = m_interfaceAddress->type();
-    network["mac"]        = m_interfaceAddress->MAC();
+    network["interface_name"]  = m_interfaceAddress->name();
+    network["interface_alias"] = m_interfaceAddress->adapter();
+    network["interface_state"] = m_interfaceAddress->state();
+    network["interface_type"]  = m_interfaceAddress->type();
+    network["host_mac"]        = m_interfaceAddress->MAC();
 
     const auto stats { m_interfaceAddress->stats() };
-    network["tx_packets"] = stats.txPackets;
-    network["rx_packets"] = stats.rxPackets;
-    network["tx_bytes"]   = stats.txBytes;
-    network["rx_bytes"]   = stats.rxBytes;
-    network["tx_errors"]  = stats.txErrors;
-    network["rx_errors"]  = stats.rxErrors;
-    network["tx_dropped"] = stats.txDropped;
-    network["rx_dropped"] = stats.rxDropped;
+    network["host_network_egress_packages"]  = stats.txPackets;
+    network["host_network_ingress_packages"] = stats.rxPackets;
+    network["host_network_egress_bytes"]     = stats.txBytes;
+    network["host_network_ingress_bytes"]    = stats.rxBytes;
+    network["host_network_egress_errors"]    = stats.txErrors;
+    network["host_network_ingress_errors"]   = stats.rxErrors;
+    network["host_network_egress_drops"]     = stats.txDropped;
+    network["host_network_ingress_drops"]    = stats.rxDropped;
 
-    network["mtu"]        = m_interfaceAddress->mtu();
-    network["gateway"]    = m_interfaceAddress->gateway();
+    network["interface_mtu"]   = m_interfaceAddress->mtu();
+    network["network_gateway"] = m_interfaceAddress->gateway();
 }
