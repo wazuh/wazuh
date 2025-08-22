@@ -337,8 +337,8 @@ CREATE TABLE IF NOT EXISTS sys_services (
     process_args TEXT,
     process_user_name TEXT,
     process_group_name TEXT,
-    process_working_dir TEXT,
-    process_root_dir TEXT,
+    process_working_directory TEXT,
+    process_root_directory TEXT,
     file_path TEXT,
     service_address TEXT,
     log_file_path TEXT,
@@ -350,9 +350,11 @@ CREATE TABLE IF NOT EXISTS sys_services (
     service_target_ephemeral_id INTEGER,
     service_target_type TEXT,
     service_target_address TEXT,
-    checksum TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
     PRIMARY KEY (service_id)
 );
+
+CREATE INDEX IF NOT EXISTS services_id ON sys_services (scan_id);
 
 CREATE TABLE IF NOT EXISTS ciscat_results (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

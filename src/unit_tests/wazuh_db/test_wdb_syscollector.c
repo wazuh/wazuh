@@ -4300,8 +4300,8 @@ static void test_wdb_services_save_transaction_fail(void **state) {
     const char * process_args = "process_args";
     const char * process_user_name = "process_user_name";
     const char * process_group_name = "process_group_name";
-    const char * process_working_dir = "process_working_dir";
-    const char * process_root_dir = "process_root_dir";
+    const char * process_working_directory = "process_working_directory";
+    const char * process_root_directory = "process_root_directory";
     const char * file_path = "file_path";
     const char * service_address = "service_address";
     const char * log_file_path = "log_file_path";
@@ -4337,8 +4337,8 @@ static void test_wdb_services_save_transaction_fail(void **state) {
         .process_args = process_args,
         .process_user_name = process_user_name,
         .process_group_name = process_group_name,
-        .process_working_dir = process_working_dir,
-        .process_root_dir = process_root_dir,
+        .process_working_directory = process_working_directory,
+        .process_root_directory = process_root_directory,
         .file_path = file_path,
         .service_address = service_address,
         .log_file_path = log_file_path,
@@ -4387,8 +4387,8 @@ static void test_wdb_services_save_insert_fail(void **state) {
     const char * process_args = "process_args";
     const char * process_user_name = "process_user_name";
     const char * process_group_name = "process_group_name";
-    const char * process_working_dir = "process_working_dir";
-    const char * process_root_dir = "process_root_dir";
+    const char * process_working_directory = "process_working_directory";
+    const char * process_root_directory = "process_root_directory";
     const char * file_path = "file_path";
     const char * service_address = "service_address";
     const char * log_file_path = "log_file_path";
@@ -4429,8 +4429,8 @@ static void test_wdb_services_save_insert_fail(void **state) {
         .process_args = process_args,
         .process_user_name = process_user_name,
         .process_group_name = process_group_name,
-        .process_working_dir = process_working_dir,
-        .process_root_dir = process_root_dir,
+        .process_working_directory = process_working_directory,
+        .process_root_directory = process_root_directory,
         .file_path = file_path,
         .service_address = service_address,
         .log_file_path = log_file_path,
@@ -4477,8 +4477,8 @@ static void test_wdb_services_save_success(void **state) {
     const char * process_args = "process_args";
     const char * process_user_name = "process_user_name";
     const char * process_group_name = "process_group_name";
-    const char * process_working_dir = "process_working_dir";
-    const char * process_root_dir = "process_root_dir";
+    const char * process_working_directory = "process_working_directory";
+    const char * process_root_directory = "process_root_directory";
     const char * file_path = "file_path";
     const char * service_address = "service_address";
     const char * log_file_path = "log_file_path";
@@ -4513,8 +4513,8 @@ static void test_wdb_services_save_success(void **state) {
     bind_text(19, process_args, 0);
     bind_text(20, process_user_name, 0);
     bind_text(21, process_group_name, 0);
-    bind_text(22, process_working_dir, 0);
-    bind_text(23, process_root_dir, 0);
+    bind_text(22, process_working_directory, 0);
+    bind_text(23, process_root_directory, 0);
     bind_text(24, file_path, 0);
     bind_text(25, service_address, 0);
     bind_text(26, log_file_path, 0);
@@ -4552,8 +4552,8 @@ static void test_wdb_services_save_success(void **state) {
         .process_args = process_args,
         .process_user_name = process_user_name,
         .process_group_name = process_group_name,
-        .process_working_dir = process_working_dir,
-        .process_root_dir = process_root_dir,
+        .process_working_directory = process_working_directory,
+        .process_root_directory = process_root_directory,
         .file_path = file_path,
         .service_address = service_address,
         .log_file_path = log_file_path,
@@ -4599,8 +4599,8 @@ static void test_wdb_services_insert_sql_fail(void **state) {
     const char * process_args = "process_args";
     const char * process_user_name = "process_user_name";
     const char * process_group_name = "process_group_name";
-    const char * process_working_dir = "process_working_dir";
-    const char * process_root_dir = "process_root_dir";
+    const char * process_working_directory = "process_working_directory";
+    const char * process_root_directory = "process_root_directory";
     const char * file_path = "file_path";
     const char * service_address = "service_address";
     const char * log_file_path = "log_file_path";
@@ -4635,8 +4635,8 @@ static void test_wdb_services_insert_sql_fail(void **state) {
     bind_text(19, process_args, 0);
     bind_text(20, process_user_name, 0);
     bind_text(21, process_group_name, 0);
-    bind_text(22, process_working_dir, 0);
-    bind_text(23, process_root_dir, 0);
+    bind_text(22, process_working_directory, 0);
+    bind_text(23, process_root_directory, 0);
     bind_text(24, file_path, 0);
     bind_text(25, service_address, 0);
     bind_text(26, log_file_path, 0);
@@ -4675,8 +4675,8 @@ static void test_wdb_services_insert_sql_fail(void **state) {
         .process_args = process_args,
         .process_user_name = process_user_name,
         .process_group_name = process_group_name,
-        .process_working_dir = process_working_dir,
-        .process_root_dir = process_root_dir,
+        .process_working_directory = process_working_directory,
+        .process_root_directory = process_root_directory,
         .file_path = file_path,
         .service_address = service_address,
         .log_file_path = log_file_path,
