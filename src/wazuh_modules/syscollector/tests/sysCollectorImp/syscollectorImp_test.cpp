@@ -80,7 +80,7 @@ const auto expected_dbsync_users
 };
 const auto expected_dbsync_services
 {
-    R"({"data":{"checksum":"daa615e783788aec35ae17eeed912ace3910f209","file_path":"sourcePath","process_executable":"/usr/bin/wazuh-agent","process_pid":1234,"service_address":"/lib/systemd/system/wazuh-agent.service","service_description":"Monitors system activity","service_enabled":"enabled","service_exit_code":0,"service_following":"following","service_id":"wazuh-agent","service_name":"Wazuh Agent","service_object_path":"objectPath","service_start_type":"auto","service_state":"running","service_sub_state":"subState","service_target_address":"jobPath","service_target_ephemeral_id":0,"service_target_type":"jobType","service_type":"type","service_win32_exit_code":0,"user_name":"root"},"operation":"INSERTED","type":"dbsync_services"})"
+    R"({"data":{"checksum":"daa615e783788aec35ae17eeed912ace3910f209","file_path":"sourcePath","item_id":"cced25cebdc8af9754617e3f42b16720fd7697f6","process_executable":"/usr/bin/wazuh-agent","process_pid":1234,"service_address":"/lib/systemd/system/wazuh-agent.service","service_description":"Monitors system activity","service_enabled":"enabled","service_exit_code":0,"service_following":"following","service_id":"wazuh-agent","service_name":"Wazuh Agent","service_object_path":"objectPath","service_start_type":"auto","service_state":"running","service_sub_state":"subState","service_target_address":"jobPath","service_target_ephemeral_id":0,"service_target_type":"jobType","service_type":"type","service_win32_exit_code":0,"user_name":"root"},"operation":"INSERTED","type":"dbsync_services"})"
 };
 
 
@@ -130,7 +130,7 @@ const auto expected_syscollector_users
 };
 const auto expected_syscollector_services
 {
-    R"({"component":"syscollector_services","data":{"begin":"wazuh-agent","end":"wazuh-agent"},"type":"integrity_check_global"})"
+    R"({"component":"syscollector_services","data":{"begin":"cced25cebdc8af9754617e3f42b16720fd7697f6","end":"cced25cebdc8af9754617e3f42b16720fd7697f6"},"type":"integrity_check_global"})"
 };
 
 

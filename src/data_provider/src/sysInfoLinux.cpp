@@ -875,8 +875,8 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["process_args"]                          = UNKNOWN_VALUE;
         serviceItem["process_user_name"]                     = svc.value("user",              UNKNOWN_VALUE);
         serviceItem["process_group_name"]                    = UNKNOWN_VALUE;
-        serviceItem["process_working_dir"]                   = UNKNOWN_VALUE;
-        serviceItem["process_root_dir"]                      = UNKNOWN_VALUE;
+        serviceItem["process_working_directory"]             = UNKNOWN_VALUE;
+        serviceItem["process_root_directory"]                = UNKNOWN_VALUE;
         serviceItem["file_path"]                             = svc.value("source_path",       UNKNOWN_VALUE);
         serviceItem["service_address"]                       = UNKNOWN_VALUE;
         serviceItem["log_file_path"]                         = UNKNOWN_VALUE;
