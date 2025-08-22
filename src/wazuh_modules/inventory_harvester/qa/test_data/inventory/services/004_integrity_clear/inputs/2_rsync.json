@@ -3,11 +3,11 @@
       "agent_id": "001",
       "agent_ip": "any",
       "agent_name": "DESKTOP-5RL9J34",
-      "agent_version": "v4.14.0"
+      "agent_version": "v4.10.1"
   },
   "data_type": "integrity_clear",
   "data": {
       "attributes_type": "syscollector_services",
-      "name": "sshd"
+      "id": 1740672008
   }
 }
