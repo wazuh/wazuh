@@ -20,9 +20,11 @@ namespace sca
         const std::string condition = checkData.value("condition", "");
         const std::string compliance = checkData.value("compliance", "");
         const std::string rules = checkData.value("rules", "");
+        const std::string regexType = checkData.value("regex_type", "");
 
         return calculateChecksum(
-                   id, policyId, name, description, rationale, remediation, refs, condition, compliance, rules);
+            id, policyId, name, description, rationale, remediation, refs, condition, compliance, rules, regexType
+        );
     }
 
     std::string calculateChecksum(const std::string& id,
@@ -34,12 +36,13 @@ namespace sca
                                   const std::string& refs,
                                   const std::string& condition,
                                   const std::string& compliance,
-                                  const std::string& rules)
+                                  const std::string& rules,
+                                  const std::string& regexType)
     {
         // Calculate required buffer size
         const auto size = std::snprintf(nullptr,
                                         0,
-                                        "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+                                        "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
                                         id.c_str(),
                                         policyId.c_str(),
                                         name.c_str(),
@@ -49,7 +52,8 @@ namespace sca
                                         refs.c_str(),
                                         condition.c_str(),
                                         compliance.c_str(),
-                                        rules.c_str());
+                                        rules.c_str(),
+                                        regexType.c_str());
 
         if (size < 0)
         {
@@ -60,7 +64,7 @@ namespace sca
         std::unique_ptr<char[]> checksumBuffer(new char[size + 1]);
         std::snprintf(checksumBuffer.get(),
                       size + 1,
-                      "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
+                      "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s",
                       id.c_str(),
                       policyId.c_str(),
                       name.c_str(),
@@ -70,7 +74,8 @@ namespace sca
                       refs.c_str(),
                       condition.c_str(),
                       compliance.c_str(),
-                      rules.c_str());
+                      rules.c_str(),
+                      regexType.c_str());
 
         // Calculate SHA1 hash using Utils::HashData
         try

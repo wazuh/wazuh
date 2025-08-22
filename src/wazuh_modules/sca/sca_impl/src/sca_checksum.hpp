@@ -10,7 +10,7 @@ namespace sca
      *
      * This function calculates a checksum based on the check's core attributes.
      * The checksum is based on: id, policy_id, name, description, rationale,
-     * remediation, refs, condition, compliance, and rules.
+     * remediation, refs, condition, compliance, rules, and regex_type.
      *
      * @param checkData JSON object containing the check data
      * @return SHA1 checksum as a hex string, or empty string on error
@@ -31,6 +31,7 @@ namespace sca
      * @param condition Check condition
      * @param compliance Check compliance information
      * @param rules Check rules
+     * @param regexType Check regex type
      * @return SHA1 checksum as a hex string, or empty string on error
      * @throw std::runtime_error if checksum calculation fails
      */
@@ -43,6 +44,7 @@ namespace sca
                                   const std::string& refs,
                                   const std::string& condition,
                                   const std::string& compliance,
-                                  const std::string& rules);
+                                  const std::string& rules,
+                                  const std::string& regexType);
 
 } // namespace sca
