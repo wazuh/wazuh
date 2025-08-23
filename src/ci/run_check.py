@@ -574,7 +574,7 @@ def runTests(moduleName):
         for test in tests:
             path = os.path.join(currentDir, test)
             if ".exe" in test:
-                if moduleName == "data_provider":
+                if moduleName in ["data_provider", "wazuh_modules/sca"]:
                     rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
                                             "bin")
                     stdcpp = utils.findFile(name="libstdc++-6.dll",
@@ -592,11 +592,15 @@ def runTests(moduleName):
                     if libgcc != binlibgcc:
                         shutil.copyfile(libgcc, binlibgcc)
 
-                command = f'WINEPATH="/usr/i686-w64-mingw32/lib;\
-                            {utils.currentPath()}" \
-                            WINEARCH=win64 /usr/bin/wine {path}'
+                command = (
+                    'wine reg add "HKCU\\Software\\Wine\\WineDbg" '
+                    '/v ShowCrashDialog /t REG_DWORD /d 0 /f && '
+                    f'WINEPATH="/usr/i686-w64-mingw32/lib;{utils.currentPath()}" '
+                    f'WINEARCH=win32 /usr/bin/wine cmd /c {path}'
+                )
             else:
                 command = path
+
             out = subprocess.run(command,
                                  stdout=subprocess.PIPE,
                                  stderr=subprocess.PIPE,
