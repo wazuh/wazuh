@@ -174,6 +174,15 @@ include(GoogleTest)
 endif(ENGINE_BUILD_TEST)
 
 ####################################################################################################
+# Shared modules
+####################################################################################################
+if (NOT SHARED_MODULES)
+    get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/shared_modules/ ABSOLUTE)
+endif()
+include_directories(${SHARED_MODULES}/utils)
+
+
+####################################################################################################
 # Rocksdb dynamic link
 ####################################################################################################
 # Ser var rocksdb build directory
