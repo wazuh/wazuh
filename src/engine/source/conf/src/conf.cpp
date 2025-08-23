@@ -88,6 +88,9 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
         key::SERVER_EVENT_SOCKET, "WAZUH_SERVER_EVENT_SOCKET", (wazuhRoot / "queue/sockets/queue").c_str());
     addUnit<int>(key::SERVER_EVENT_THREADS, "WAZUH_SERVER_EVENT_THREADS", 1);
 
+    // Event server - enriched (http)
+    addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET, "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET", (wazuhRoot / "queue/sockets/queue-http.sock").c_str());
+
     // TZDB module
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", (wazuhRoot / "queue/tzdb").c_str());
     addUnit<bool>(key::TZDB_AUTO_UPDATE, "WAZUH_TZDB_AUTO_UPDATE", false);

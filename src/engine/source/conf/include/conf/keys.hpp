@@ -37,8 +37,10 @@ constexpr std::string_view ORCHESTRATOR_THREADS = "engine.orchestrator_threads";
 constexpr std::string_view SERVER_API_SOCKET = "engine.server_api_socket";
 constexpr std::string_view SERVER_API_TIMEOUT = "engine.server_api_timeout";
 
-constexpr std::string_view SERVER_EVENT_SOCKET = "engine.server_event_socket";
-constexpr std::string_view SERVER_EVENT_THREADS = "engine.server_event_threads";
+constexpr std::string_view SERVER_ENRICHED_EVENTS_SOCKET = "/engine/server/enriched_events_socket";
+
+constexpr std::string_view SERVER_EVENT_SOCKET = "/engine/server/event_socket";
+constexpr std::string_view SERVER_EVENT_THREADS = "/engine/server/event_threads";
 
 constexpr std::string_view TZDB_PATH = "engine.tzdb_path";
 constexpr std::string_view TZDB_AUTO_UPDATE = "engine.tzdb_auto_update";
