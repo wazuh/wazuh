@@ -37,6 +37,7 @@
 #include "launchd_darwin.hpp"
 #include "chrome.hpp"
 #include "safari_darwin.hpp"
+#include "firefox.hpp"
 
 const std::string MAC_APPS_PATH{"/Applications"};
 const std::string MAC_UTILITIES_PATH{"/Applications/Utilities"};
@@ -829,18 +830,51 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_vendor"]            = ext.value("copyright",           UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = ext.value("bundle_version",      UNKNOWN_VALUE);
             extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
-            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;  // Chrome only
-            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;  // Chrome only
-            extensionItem["package_reference"]         = UNKNOWN_VALUE;  // Chrome/Firefox only
-            extensionItem["package_permissions"]       = UNKNOWN_VALUE;  // Chrome only
-            extensionItem["package_type"]              = UNKNOWN_VALUE;  // Firefox only
-            extensionItem["package_enabled"]           = true;           // Default for Safari
-            extensionItem["package_autoupdate"]        = false;          // Firefox only
-            extensionItem["package_persistent"]        = false;          // Chrome only
-            extensionItem["package_from_webstore"]     = false;          // Chrome only
-            extensionItem["browser_profile_referenced"] = false;         // Chrome only
+            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["package_reference"]         = UNKNOWN_VALUE;
+            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
+            extensionItem["package_type"]              = UNKNOWN_VALUE;
+            extensionItem["package_enabled"]           = true;
+            extensionItem["package_autoupdate"]        = false;
+            extensionItem["package_persistent"]        = false;
+            extensionItem["package_from_webstore"]     = false;
+            extensionItem["browser_profile_referenced"] = false;
             extensionItem["package_installed"]         = UNKNOWN_VALUE;
-            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;  // Chrome only
+            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
+
+            result.push_back(std::move(extensionItem));
+        }
+
+        // Collect Firefox extensions
+        FirefoxAddonsProvider firefoxProvider;
+        auto collectedFirefoxExtensions = firefoxProvider.collect();
+
+        for (auto& ext : collectedFirefoxExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            extensionItem["browser_name"]              = "firefox";
+            extensionItem["user_id"]                   = ext.value("uid",                 UNKNOWN_VALUE);
+            extensionItem["package_name"]              = ext.value("name",                UNKNOWN_VALUE);
+            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
+            extensionItem["package_version"]           = ext.value("version",             UNKNOWN_VALUE);
+            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
+            extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
+            extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);
+            extensionItem["package_enabled"]           = ext.contains("disabled") ? !ext["disabled"].get<bool>() : true;
+            extensionItem["package_autoupdate"]        = ext.contains("autoupdate") ? ext["autoupdate"].get<bool>() : false;
+            extensionItem["package_persistent"]        = false;
+            extensionItem["package_from_webstore"]     = false;
+            extensionItem["browser_profile_referenced"] = false;
+            extensionItem["package_installed"]         = UNKNOWN_VALUE;
+            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
 
             result.push_back(std::move(extensionItem));
         }
