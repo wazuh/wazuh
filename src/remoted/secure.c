@@ -929,42 +929,29 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 }
 
 void router_message_forward(char* msg, size_t msg_length, const char* agent_id, const char* agent_ip, const char* agent_name) {
-    // Both syscollector delta and sync messages are sent to the router
-    ROUTER_PROVIDER_HANDLE router_handle = NULL;
-    size_t message_header_size = 0;
 
     mdebug2("Forwarding message to router");
 
-    if(strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
-        if (!router_sync_handle) {
-            mdebug2("Router handle for 'inventory synchronization' not available.");
-            return;
-        }
-        router_handle = router_sync_handle;
-        message_header_size = INVENTORY_SYNC_HEADER_SIZE;
-    } 
-
-    if (!router_handle) {
+    // Check if we have the router handle available
+    if (!router_sync_handle) {
+        mdebug2("Router handle for 'inventory synchronization' not available.");
         return;
     }
 
-    char* msg_start = msg + message_header_size;
-    size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
-    if ((msg_size + message_header_size) < OS_MAXSTR) {
-        agent_ctx agent_ctx = {
-            .agent_id = agent_id,
-            .agent_name = agent_name,
-            .agent_ip = agent_ip,
-            .agent_version = (char *)OSHash_Get_ex(agent_data_hash, agent_id)
-        };
-
-        if (router_provider_send_fb_json(router_handle, msg_start, &agent_ctx, schema_type) != 0) {
-            mdebug2("Unable to forward message '%s' for agent '%s'.", msg_start, agent_id);
-        }
+    // Check if message starts with inventory sync header
+    if (strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) != 0) {
+        mdebug2("Message does not have inventory sync header.");
+        return;
     }
 
-    char* msg_start = msg + message_header_size;
-    size_t remaining_len = msg_length - message_header_size;
+    // Validate minimum message length: header + "x:y" (4 chars minimum after header)
+    if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
+        mdebug2("Message too short for expected format.");
+        return;
+    }
+
+    char* msg_start = msg + INVENTORY_SYNC_HEADER_SIZE;
+    size_t remaining_len = msg_length - INVENTORY_SYNC_HEADER_SIZE;
     
     // Find colon separator between module and message
     // Format after header: {module}:{msg}
@@ -976,7 +963,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
     
     // Calculate module length and validate it's reasonable
     size_t module_len = colon - msg_start;
-    if (module_len == 0 || module_len > 64) { // Reasonable module name limit
+    if (module_len == 0 || module_len > OS_SIZE_64) { // Reasonable module name limit
         mdebug2("Invalid module length.");
         return;
     }
@@ -1005,7 +992,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
         .module = msg_start
     };
 
-    if (router_provider_send_fb_agent_ctx(router_handle, msg_to_send, msg_size, &agent_ctx) != 0) {
+    if (router_provider_send_fb_agent_ctx(router_sync_handle, msg_to_send, msg_size, &agent_ctx) != 0) {
         mdebug2("Unable to forward message for agent '%s'.", agent_id);
     }
     

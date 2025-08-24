@@ -37,8 +37,8 @@ constexpr auto INVENTORY_SYNC_PATH {"inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
 
-using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
-using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
+using WorkersQueue = Utils::AsyncDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
+using IndexerQueue = Utils::AsyncDispatcher<Response, std::function<void(const Response&)>>;
 
 class InventorySyncException : public std::exception
 {

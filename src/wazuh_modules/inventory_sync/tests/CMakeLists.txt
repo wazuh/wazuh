@@ -42,7 +42,18 @@ target_link_libraries(inventory_sync_utest
     crypto
 )
 
-target_include_directories(inventory_sync_utest PRIVATE ${TEST_SRC_DIR} ${TEST_MOCK_DIR} ${OPENSSL_DIR})
+target_include_directories(inventory_sync_utest PRIVATE 
+    ${TEST_SRC_DIR} 
+    ${TEST_MOCK_DIR} 
+    ${OPENSSL_DIR}
+    ${SRC_FOLDER}/shared_modules/utils
+    ${SRC_FOLDER}/shared_modules/utils/flatbuffers/include
+    ${SRC_FOLDER}/shared_modules/common
+    ${SRC_FOLDER}/headers
+    ${SRC_FOLDER}/external/flatbuffers/include
+    ${SRC_FOLDER}/external/cJSON
+    ${SRC_FOLDER}/external/rocksdb/include
+)
 add_test(NAME inventory_sync_utest COMMAND inventory_sync_utest)
 set_tests_properties(inventory_sync_utest PROPERTIES LABELS "inventory_sync_utest")
 
