@@ -1,6 +1,7 @@
 #ifndef _LOGGING_HPP
 #define _LOGGING_HPP
 
+#include <dlfcn.h>
 #include <iostream>
 #include <map>
 
@@ -8,6 +9,9 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+
+#include "commonDefs.h"
+#include "loggerHelper.h"
 
 #define LAMBDA_SEPARATOR "::<lambda>"
 
@@ -219,44 +223,224 @@ inline std::string getLambdaName(const char* parentScope, const std::string& lam
     return std::string(parentScope) + LAMBDA_SEPARATOR + lambdaName;
 }
 
+void initializeFullLogFunction(
+    const std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+        callback);
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+    /**
+     * @brief Method to initialize the shared library with a full log function.
+     *
+     * @param logFunction Log function.
+     */
+    void init(full_log_fnc_t callback);
+#ifdef __cplusplus
+}
+#endif
+
+constexpr inline const char* default_tag()
+{
+    return "wazuh-engine";
+}
+
+/**
+ * @brief Checks whether standalone mode is enabled for the Wazuh engine.
+ *
+ * Reads the environment variable `WAZUH_ENGINE_STANDALONE_MODE_ENABLED` once
+ * and caches the result for subsequent calls. The check is case-insensitive.
+ *
+ * If the variable is set to the string `"true"`, standalone mode is considered
+ * enabled. Any other value (or absence of the variable) disables standalone mode.
+ *
+ * @return true  If standalone mode is enabled.
+ * @return false Otherwise.
+ */
+bool standaloneModeEnabled();
+
+/**
+ * @brief Dispatches a fully composed log message to either spdlog (standalone)
+ *        or the Wazuh logging callback (integrated mode).
+ *
+ * In standalone mode, this forwards the message to the default spdlog logger using
+ * `spdlog::source_loc` and the `"{}"` format pattern so that the provided text is
+ * treated as data (not as a format string). This prevents {fmt} from interpreting
+ * any braces present in @p text (e.g., JSON payloads).
+ *
+ * In Wazuh callback mode, it converts the view to a stable `std::string` buffer and
+ * routes the message to the corresponding `Log::Logger::*` function, using `"%s"`
+ * so the content is printed literally.
+ *
+ * @param lvl      spdlog severity level (trace, debug, info, warn, err, critical).
+ * @param file     Source file path of the logging call (typically `__FILE__`).
+ * @param line     Source line number of the logging call (typically `__LINE__`).
+ * @param funcName Function name from which the log is emitted (e.g., `SPDLOG_FUNCTION`).
+ * @param text     Fully composed message to log; treated as literal data in both modes.
+ *
+ * @note This function assumes the logger has already been initialized in standalone mode
+ *       (see `getDefaultLogger()`), and that the Wazuh logging symbols are available in
+ *       callback mode. It does not perform formatting; callers should preformat when needed.
+ *
+ * @see standaloneModeEnabled(), getDefaultLogger(), log_bridge()
+ */
+inline void
+dispatch_log(spdlog::level::level_enum lvl, const char* file, int line, const char* funcName, std::string_view text)
+{
+    if (standaloneModeEnabled())
+    {
+        getDefaultLogger()->log(spdlog::source_loc {file, line, funcName}, lvl, "{}", text);
+        return;
+    }
+
+    std::string s {text};
+    const char* p = s.c_str();
+    switch (lvl)
+    {
+        case spdlog::level::trace: Log::Logger::debugVerbose(default_tag(), {file, line, funcName}, "%s", p); break;
+        case spdlog::level::debug: Log::Logger::debug(default_tag(), {file, line, funcName}, "%s", p); break;
+        case spdlog::level::info: Log::Logger::info(default_tag(), {file, line, funcName}, "%s", p); break;
+        case spdlog::level::warn: Log::Logger::warning(default_tag(), {file, line, funcName}, "%s", p); break;
+        case spdlog::level::err:
+        case spdlog::level::critical: Log::Logger::error(default_tag(), {file, line, funcName}, "%s", p); break;
+        default: Log::Logger::info(default_tag(), {file, line, funcName}, "%s", p); break;
+    }
+}
+
+/**
+ * @brief Unified logging bridge for formatted and unformatted messages.
+ *
+ * This function template decides at compile time how to dispatch the message:
+ * - **No arguments** (`sizeof...(Args) == 0`): treats `fmtstr` as a literal
+ *   (not as a format string) and forwards it to `dispatch_log`. This prevents
+ *   {fmt} from interpreting braces `{}` coming from dynamic content (e.g., JSON).
+ * - **With arguments**: builds the final message with
+ *   `fmt::format(fmtstr, args...)` and then forwards it to `dispatch_log`.
+ *
+ * This avoids `fmt::format_error("invalid format string")` when the message is
+ * already composed or contains literal braces, while preserving compile-time
+ * format checking when placeholders are used.
+ *
+ * @tparam Args Types of the arguments interpolated into the format string.
+ *
+ * @param lvl      spdlog severity level (trace, debug, info, warn, err, critical).
+ * @param file     Source file path of the logging call (typically `__FILE__`).
+ * @param line     Source line number of the logging call (typically `__LINE__`).
+ * @param funcName Function name from which the log is emitted (e.g., `SPDLOG_FUNCTION`).
+ * @param fmtstr   Format string verified by {fmt} at compile time when arguments are present.
+ *                 If no arguments are provided, it is treated as a literal (no reformatting).
+ * @param args     Arguments to be formatted into the string (when placeholders exist).
+ *
+ * @par Examples
+ * @code
+ * // 1) With placeholders (compile-time checked):
+ * log_bridge(spdlog::level::info, __FILE__, __LINE__, SPDLOG_FUNCTION,
+ *            "User {} logged in", userName);
+ *
+ * // 2) Preformatted or brace-containing message, no args:
+ * std::string payload = R"({"k":1})"; // contains '{' and '}'
+ * log_bridge(spdlog::level::trace, __FILE__, __LINE__, SPDLOG_FUNCTION,
+ *            fmt::format("Received request {}", payload));
+ * // With no trailing args, it is treated as a literal and will not throw.
+ * @endcode
+ */
+template<typename... Args>
+inline void log_bridge(spdlog::level::level_enum lvl,
+                       const char* file,
+                       int line,
+                       const char* funcName,
+                       fmt::format_string<Args...> fmtstr,
+                       Args&&... args)
+{
+    if constexpr (sizeof...(Args) == 0)
+    {
+        fmt::basic_string_view<char> sv = fmtstr;
+        dispatch_log(lvl, file, line, funcName, std::string_view {sv.data(), sv.size()});
+    }
+    else
+    {
+        auto s = fmt::format(fmtstr, std::forward<Args>(args)...);
+        dispatch_log(lvl, file, line, funcName, s);
+    }
+}
+
+/**
+ * @brief Calculates the effective log level to use.
+ *
+ * Determines the logging level based on the number of `-d` options provided
+ * (debugCount) and the configured log level string. If debugCount > 0,
+ * it overrides the configuration: one `-d` sets Debug, two or more set Trace.
+ *
+ * @param debugCount Number of debug flags passed on the CLI (-d occurrences).
+ * @param cfgLevelStr Log level string taken from the configuration (e.g., "info", "debug").
+ * @return logging::Level The effective logging level.
+ */
+logging::Level computeEffectiveLevel(int debugCount, const std::string& cfgLevelStr);
+
+/**
+ * @brief Applies the desired log level in standalone (spdlog) mode.
+ *
+ * Sets the default logger to the given level, if different from the current one,
+ * and emits a debug message notifying the change.
+ *
+ * @param target The target log level to apply.
+ */
+void applyLevelStandalone(logging::Level target);
+
+/**
+ * @brief Applies the desired log level when running in Wazuh callback mode.
+ *
+ * In callback mode, log levels are switched through the symbol `nowDebug`
+ * resolved from libwazuhshared. One call to `nowDebug` enables Debug level;
+ * two consecutive calls enable Trace level.
+ *
+ * @param target The target log level to apply. Only Debug and Trace are supported.
+ * @param libwazuhshared Handle to the opened libwazuhshared shared library.
+ *                       Must be a valid dlopen() handle.
+ *
+ * @throw std::runtime_error If the `nowDebug` symbol cannot be resolved.
+ */
+void applyLevelWazuh(logging::Level target, void* libwazuhshared);
+
 } // namespace logging
 
+// TRACE
 #define LOG_TRACE(msg, ...)                                                                                            \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::trace, msg, ##__VA_ARGS__)
-#define LOG_DEBUG(msg, ...)                                                                                            \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::debug, msg, ##__VA_ARGS__)
-#define LOG_INFO(msg, ...)                                                                                             \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::info, msg, ##__VA_ARGS__)
-#define LOG_WARNING(msg, ...)                                                                                          \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::warn, msg, ##__VA_ARGS__)
-#define LOG_ERROR(msg, ...)                                                                                            \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::err, msg, ##__VA_ARGS__)
-#define LOG_CRITICAL(msg, ...)                                                                                         \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::critical, msg, ##__VA_ARGS__)
-
+    ::logging::log_bridge(spdlog::level::trace, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_TRACE_L(functionName, msg, ...)                                                                            \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::trace, msg, ##__VA_ARGS__)
+    ::logging::log_bridge(spdlog::level::trace, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+
+// DEBUG
+#define LOG_DEBUG(msg, ...)                                                                                            \
+    ::logging::log_bridge(spdlog::level::debug, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_DEBUG_L(functionName, msg, ...)                                                                            \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::debug, msg, ##__VA_ARGS__)
+    ::logging::log_bridge(spdlog::level::debug, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+
+// INFO
+#define LOG_INFO(msg, ...)                                                                                             \
+    ::logging::log_bridge(spdlog::level::info, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_INFO_L(functionName, msg, ...)                                                                             \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::info, msg, ##__VA_ARGS__)
+    ::logging::log_bridge(spdlog::level::info, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+
+// WARNING
+#define LOG_WARNING(msg, ...)                                                                                          \
+    ::logging::log_bridge(spdlog::level::warn, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_WARNING_L(functionName, msg, ...)                                                                          \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::warn, msg, ##__VA_ARGS__)
+    ::logging::log_bridge(spdlog::level::warn, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+
+// ERROR
+#define LOG_ERROR(msg, ...)                                                                                            \
+    ::logging::log_bridge(spdlog::level::err, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_ERROR_L(functionName, msg, ...)                                                                            \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::err, msg, ##__VA_ARGS__)
+    ::logging::log_bridge(spdlog::level::err, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+
+// CRITICAL
+#define LOG_CRITICAL(msg, ...)                                                                                         \
+    ::logging::log_bridge(                                                                                             \
+        spdlog::level::critical, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_CRITICAL_L(functionName, msg, ...)                                                                         \
-    logging::getDefaultLogger()->log(                                                                                  \
-        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::critical, msg, ##__VA_ARGS__)
+    ::logging::log_bridge(spdlog::level::critical, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 #endif // _LOGGING_HPP
