@@ -2078,29 +2078,6 @@ checks:
       - "c:systemctl is-enabled nftables firewalld -> r:^enabled"
       - "c:systemctl is-active nftables firewalld -> r:^active"
 
-  # 3.4.2.1 Ensure firewalld default zone is set. (Automated) - Not Implemented
-
-  # 3.4.2.2 Ensure at least one nftables table exists. (Automated)
-  - id: 31581
-    title: "Ensure at least one nftables table exists."
-    description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
-    rationale: "Without a table, nftables will not filter network traffic."
-    impact: "Adding or modifying firewall rules can cause loss of connectivity to the system."
-    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example if FirewallD is not in use on the system: # nft create table inet filter Note: FirewallD uses the table inet firewalld NFTables table that is created when FirewallD is installed."
-    compliance:
-      - cis: ["3.4.2.2"]
-      - cis_csc_v8: ["4.4"]
-      - cis_csc_v7: ["9.4"]
-      - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.1"]
-      - nist_sp_800-53: ["CA-9"]
-      - pci_dss_3.2.1: ["1.1.4", "1.3.1"]
-      - pci_dss_4.0: ["1.2.1", "1.4.1"]
-      - soc_2: ["CC6.6"]
-    condition: all
-    rules:
-      - "c:nft list tables -> r:^table"
-
   # 4.3.1 Ensure nftables base chains exist. (Automated)
   - id: 31582
     title: "Ensure nftables base chains exist."
@@ -2125,7 +2102,6 @@ checks:
       - "c:nft list ruleset -> r:filter hook forward"
       - "c:nft list ruleset -> r:filter hook output"
 
-  # 3.4.2.4 Ensure host based firewall loopback traffic is configured. (Automated) - Not Implemented
   # 4.2.1 Ensure firewalld drops unnecessary services and ports. (Manual) - Not Implemented
   # 4.3.2 Ensure nftables established connections are configured. (Manual) - Not Implemented
 
@@ -2161,14 +2137,14 @@ checks:
   # 4.1.1 Ensure auditing is enabled.
   ############################################################
 
-  # 4.1.1.1 Ensure auditd is installed. (Automated)
+  # 6.3.1.1 Ensure auditd packages are installed (Automated)
   - id: 31584
-    title: "Ensure auditd is installed."
+    title: "Ensure auditd packages are installed."
     description: "auditd is the userspace component to the Linux Auditing System. It's responsible for writing audit records to the disk."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
-    remediation: "Run the following command to Install auditd # dnf install audit."
+    remediation: "Run the following command to install audit and audit-libs # dnf install audit audit-libs."
     compliance:
-      - cis: ["4.1.1.1"]
+      - cis: ["6.3.1.1"]
       - cis_csc_v8: ["8.2", "8.5"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2183,6 +2159,7 @@ checks:
     condition: all
     rules:
       - "c:rpm -q audit -> r:^audit-"
+      - "c:rpm -q audit-libs -> r:^audit-libs-"
 
   # 6.4.1.2 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 31585
@@ -2228,14 +2205,14 @@ checks:
     rules:
       - 'c:grubby --info=ALL -> n:^args=\.*\saudit_backlog_limit=(\d+) compare >= 8192'
 
-  # 4.1.1.4 Ensure auditd service is enabled. (Automated)
+  # 6.3.1.4 Ensure auditd service is enabled and active (Automated)
   - id: 31587
-    title: "Ensure auditd service is enabled."
+    title: "Ensure auditd service is enabled and active."
     description: "Turn on the auditd daemon to record system events."
     rationale: "The capturing of system events provides system administrators with information to allow them to determine if unauthorized access to their system is occurring."
     remediation: "Run the following command to enable auditd: # systemctl --now enable auditd."
     compliance:
-      - cis: ["4.1.1.4"]
+      - cis: ["6.3.1.4"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2362,10 +2339,10 @@ checks:
   # 6.4.3.12 Ensure login and logout events are collected. (Automated) - Not Implemented
   # 6.4.3.13 Ensure file deletion events by users are collected. (Automated) - Not Implemented
   # 6.4.3.14 Ensure events that modify the system's Mandatory Access Controls are collected. (Automated) - Not Implemented
-  # 4.1.3.15 Ensure successful and unsuccessful attempts to use the chcon command are recorded. (Automated) - Not Implemented
-  # 4.1.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are recorded. (Automated) - Not Implemented
-  # 4.1.3.17 Ensure successful and unsuccessful attempts to use the chacl command are recorded. (Automated) - Not Implemented
-  # 4.1.3.18 Ensure successful and unsuccessful attempts to use the usermod command are recorded. (Automated) - Not Implemented
+  # 6.3.3.15 Ensure successful and unsuccessful attempts to use the chcon command are collected (Automated) - Not Implemented
+  # 6.3.3.16 Ensure successful and unsuccessful attempts to use the setfacl command are collected (Automated) - Not Implemented
+  # 6.3.3.17 Ensure successful and unsuccessful attempts to use the chacl command are collected (Automated) - Not Implemented
+  # 6.3.3.18 Ensure successful and unsuccessful attempts to use the usermod command are collected (Automated) - Not Implemented
   # 6.4.3.19 Ensure kernel module loading unloading and modification is collected. (Automated) - Not Implemented
   # 6.4.3.20 Ensure the audit configuration is immutable. (Automated) - Not Implemented
 
@@ -2389,16 +2366,15 @@ checks:
     rules:
       - "c:augenrules --check -> r:No change$"
 
-  # 4.1.4.1 Ensure audit log files are mode 0640 or less permissive. (Automated) - Not Implemented
-  # 4.1.4.2 Ensure only authorized users own audit log files. (Automated) - Not Implemented
-  # 4.1.4.3 Ensure only authorized groups are assigned ownership of audit log files. (Automated)
+  # 6.3.4.2 Ensure audit log files mode is configured (Automated) - Not Implemented
+  # 6.3.4.3 Ensure only authorized groups are assigned ownership of audit log files. (Automated)
   - id: 31593
     title: "Ensure only authorized groups are assigned ownership of audit log files."
     description: "Audit log files contain information about the system and system activity."
     rationale: "Access to audit records can reveal system and configuration data to attackers, potentially compromising its confidentiality."
     remediation: "Run the following command to configure the audit log files to be owned by adm group: # find $(dirname $(awk -F\"=\" '/^\\s*log_file\\s*=\\s*/ {print $2}' /etc/audit/auditd.conf | xargs)) -type f \\( ! -group adm -a ! -group root \\) -exec chgrp adm {} + Run the following command to configure the audit log files to be owned by the adm group: # chgrp adm /var/log/audit/ Run the following command to set the log_group parameter in the audit configuration file to log_group = adm: # sed -ri 's/^\\s*#?\\s*log_group\\s*=\\s*\\S+(\\s*#.*)?.*$/log_group = adm\\1/' /etc/audit/auditd.conf Run the following command to restart the audit daemon to reload the configuration file: # systemctl restart auditd."
     compliance:
-      - cis: ["4.1.4.3"]
+      - cis: ["6.3.4.3"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -2414,16 +2390,14 @@ checks:
     rules:
       - 'f:/etc/audit/auditd.conf -> r:log_group\s*\t*= && !r:adm|root'
 
-  # 4.1.4.4 Ensure the audit log directory is 0750 or more restrictive. (Automated) - Not Implemented
-
-  # 4.1.4.5 Ensure audit configuration files are 640 or more restrictive. (Automated)
+  # 6.3.4.5 Ensure audit configuration files mode is configured (Automated)
   - id: 31594
-    title: "Ensure audit configuration files are 640 or more restrictive."
+    title: "Ensure audit configuration files mode is configured."
     description: "Audit configuration files control auditd and what events are audited."
     rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
     remediation: "Run the following command to remove more permissive mode than 0640 from the audit configuration files: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec chmod u-x,g-wx,o-rwx {} +."
     compliance:
-      - cis: ["4.1.4.5"]
+      - cis: ["6.3.4.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -2439,14 +2413,14 @@ checks:
     rules:
       - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> r:\\w+ -> !r:000|040|200|400|600|240|440|640"
 
-  # 4.1.4.6 Ensure audit configuration files are owned by root. (Automated)
+  # 6.3.4.6 Ensure audit configuration files owner is configured (Automated)
   - id: 31595
-    title: "Ensure audit configuration files are owned by root."
+    title: "Ensure audit configuration files owner is configured."
     description: "Audit configuration files control auditd and what events are audited."
     rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
     remediation: "Run the following command to change ownership to root user: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -user root -exec chown root {} +."
     compliance:
-      - cis: ["4.1.4.6"]
+      - cis: ["6.3.4.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -2462,14 +2436,14 @@ checks:
     rules:
       - "c:find /etc/audit/ -type f \\( -name '*.rules' -o -name '*.conf' \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
 
-  # 4.1.4.7 Ensure audit configuration files belong to group root. (Automated)
+  # 6.3.4.7 Ensure audit configuration files group owner is configured (Automated)
   - id: 31596
-    title: "Ensure audit configuration files belong to group root."
+    title: "Ensure audit configuration files group owner is configured."
     description: "Audit configuration files control auditd and what events are audited."
     rationale: "Access to the audit configuration files could allow unauthorized personnel to prevent the auditing of critical events. Misconfigured audit configuration files may prevent the auditing of critical events or impact the system's performance by overwhelming the audit log. Misconfiguration of the audit configuration files may also make it more difficult to establish and investigate events relating to an incident."
     remediation: "Run the following command to change group to root: # find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) ! -group root -exec chgrp root {} +."
     compliance:
-      - cis: ["4.1.4.7"]
+      - cis: ["6.3.4.7"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -2485,14 +2459,14 @@ checks:
     rules:
       - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%U\" {} + -> !r:root|\\s*"
 
-  # 4.1.4.8 Ensure audit tools are 755 or more restrictive. (Automated)
+  # 6.3.4.8 Ensure audit tools mode is configured (Automated)
   - id: 31597
     title: "Ensure audit tools are 755 or more restrictive."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
     compliance:
-      - cis: ["4.1.4.8"]
+      - cis: ["6.3.4.8"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -2541,14 +2515,14 @@ checks:
       - 'c:stat -c "%n %U" /sbin/auditd -> r:root$'
       - 'c:stat -c "%n %U" /sbin/augenrules -> r:root$'
 
-  # 4.1.4.10 Ensure audit tools belong to group root. (Automated)
+  # 6.3.4.8 Ensure audit tools mode is configured (Automated)
   - id: 31599
-    title: "Ensure audit tools belong to group root."
+    title: "Ensure audit tools mode is configured."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules Run the following command to change owner and group of the audit tools to root user and group: # chown root:root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
     compliance:
-      - cis: ["4.1.4.10"]
+      - cis: ["6.3.4.8"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -4161,7 +4135,7 @@ checks:
   # 7.2.4 Ensure no duplicate UIDs exist. (Automated) - Not Implemented
   # 7.2.5 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
   # 7.2.6 Ensure no duplicate user names exist. (Automated) - Not Implemented
-  # 6.2.7 Ensure no duplicate group names exist. (Automated) - Not Implemented
+  # 7.2.7 Ensure no duplicate group names exist. (Automated) - Not Implemented
   # 6.2.8 Ensure root PATH Integrity. (Automated) - Not Implemented
 
   # 5.4.2.1 Ensure root is the only UID 0 account. (Automated)
