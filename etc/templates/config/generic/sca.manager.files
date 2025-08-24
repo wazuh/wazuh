@@ -54,6 +54,7 @@ rocky/cis_rocky_linux_8.yml
 sles/11/cis_sles11_linux.yml
 sles/12/cis_sles12_linux.yml
 sles/15/cis_sles15_linux.yml
+sles/16/cis_sles16_linux.yml
 sunos/cis_solaris11.yml
 sunos/cis_solaris11.4.yml
 ubuntu/cis_ubuntu14-04.yml
