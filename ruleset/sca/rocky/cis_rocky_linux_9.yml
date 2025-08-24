@@ -798,7 +798,7 @@ checks:
   # 1.3 Filesystem Integrity Checking
   ###############################################
 
-  # 1.3.1 Ensure AIDE is installed. (Automated)
+  # 6.1.1 Ensure AIDE is installed. (Automated)
   - id: 31530
     title: "Ensure AIDE is installed."
     description: "Advanced Intrusion Detection Environment (AIDE) is a intrusion detection tool that uses predefined rules to check the integrity of files and directories in the Linux operating system. AIDE has its own database to check the integrity of files and directories. AIDE takes a snapshot of files and directories including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
@@ -807,7 +807,7 @@ checks:
     references:
       - "http://aide.sourceforge.net/stable/manual.html"
     compliance:
-      - cis: ["1.3.1"]
+      - cis: ["6.1.1"]
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
       - cmmc_v2.0: ["AC.L2-3.1.7"]
@@ -823,7 +823,7 @@ checks:
     rules:
       - "c:rpm -q aide -> r:aide-"
 
-  # 1.3.2 Ensure filesystem integrity is regularly checked. (Automated)
+  # 6.1.2 Ensure filesystem integrity is regularly checked. (Automated)
   - id: 31531
     title: "Ensure filesystem integrity is regularly checked."
     description: "Periodic checking of the filesystem integrity is needed to detect changes to the filesystem."
@@ -833,7 +833,7 @@ checks:
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service"
       - "https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer"
     compliance:
-      - cis: ["1.3.2"]
+      - cis: ["6.1.2"]
       - cis_csc_v8: ["3.14"]
       - cis_csc_v7: ["14.9"]
       - cmmc_v2.0: ["AC.L2-3.1.7"]
@@ -852,14 +852,14 @@ checks:
       - "c:systemctl is-enabled aidecheck.timer -> r:enabled"
       - "c:systemctl status aidecheck.timer -> r:active"
 
-  # 1.3.3 Ensure cryptographic mechanisms are used to protect the integrity of audit tools. (Automated)
+  # 6.1.3 Ensure cryptographic mechanisms are used to protect the integrity of audit tools. (Automated)
   - id: 31532
     title: "Ensure cryptographic mechanisms are used to protect the integrity of audit tools."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting the integrity of the tools used for auditing purposes is a critical step toward ensuring the integrity of audit information. Audit information includes all information (e.g., audit records, audit settings, and audit reports) needed to successfully audit information system activity. Attackers may replace the audit tools or inject code into the existing tools with the purpose of providing the capability to hide or erase system activity from the audit logs. Audit tools should be cryptographically signed in order to provide the capability to identify when the audit tools have been modified, manipulated, or replaced. An example is a checksum hash of the file or files."
     remediation: "Add or update the following selection lines for to a file ending in .conf in the /etc/aide.conf.d/ directory or to /etc/aide.conf to protect the integrity of the audit tools: # Audit Tools /sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512 /sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512."
     compliance:
-      - cis: ["1.3.3"]
+      - cis: ["6.1.3"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
     condition: all
@@ -2184,14 +2184,14 @@ checks:
     rules:
       - "c:rpm -q audit -> r:^audit-"
 
-  # 4.1.1.2 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
+  # 6.4.1.2 Ensure auditing for processes that start prior to auditd is enabled. (Automated)
   - id: 31585
     title: "Ensure auditing for processes that start prior to auditd is enabled."
     description: "Configure grub2 so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
     rationale: "Audit events need to be captured on processes that start up prior to auditd , so that potential malicious activity cannot go undetected."
     remediation: "Run the following command to update the grub2 configuration with audit=1: # grubby --update-kernel ALL --args 'audit=1'."
     compliance:
-      - cis: ["4.1.1.2"]
+      - cis: ["6.4.1.2"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2206,14 +2206,14 @@ checks:
     rules:
       - "c:grubby --info=ALL -> r:audit=1"
 
-  # 4.1.1.3 Ensure audit_backlog_limit is sufficient. (Automated)
+  # 6.4.1.3 Ensure audit_backlog_limit is sufficient. (Automated)
   - id: 31586
     title: "Ensure audit_backlog_limit is sufficient."
     description: "The backlog limit has a default setting of 64."
     rationale: "During boot if audit=1, then the backlog will hold 64 records. If more that 64 records are created during boot, auditd records will be lost and potential malicious activity could go undetected."
     remediation: "Run the following command to add audit_backlog_limit=<BACKLOG SIZE> to GRUB_CMDLINE_LINUX: # grubby --update-kernel ALL --args 'audit_backlog_limit=<BACKLOG SIZE>' Example: # grubby --update-kernel ALL --args 'audit_backlog_limit=8192'."
     compliance:
-      - cis: ["4.1.1.3"]
+      - cis: ["6.4.1.3"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2254,14 +2254,14 @@ checks:
   # 4.1.2 Configure Data Retention
   ############################################################
 
-  # 4.1.2.1 Ensure audit log storage size is configured. (Automated)
+  # 6.4.2.1 Ensure audit log storage size is configured. (Automated)
   - id: 31588
     title: "Ensure audit log storage size is configured."
     description: "Configure the maximum size of the audit log file. Once the log reaches the maximum size, it will be rotated and a new log file will be started."
     rationale: "It is important that an appropriate size is determined for log files so that they do not impact the system and audit data is not lost."
     remediation: "Set the following parameter in /etc/audit/auditd.conf in accordance with site policy: max_log_file = <MB>."
     compliance:
-      - cis: ["4.1.2.1"]
+      - cis: ["6.4.2.1"]
       - cis_csc_v8: ["8.3"]
       - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
@@ -2275,14 +2275,14 @@ checks:
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file\s*=\s*\d+'
 
-  # 4.1.2.2 Ensure audit logs are not automatically deleted. (Automated)
+  # 6.4.2.2 Ensure audit logs are not automatically deleted. (Automated)
   - id: 31589
     title: "Ensure audit logs are not automatically deleted."
     description: "The max_log_file_action setting determines how to handle the audit log file reaching the max file size. A value of keep_logs will rotate the logs but never delete old logs."
     rationale: "In high security contexts, the benefits of maintaining a long audit history exceed the cost of storing the audit history."
     remediation: "Set the following parameter in /etc/audit/auditd.conf: max_log_file_action = keep_logs."
     compliance:
-      - cis: ["4.1.2.2"]
+      - cis: ["6.4.2.2"]
       - cis_csc_v8: ["8.3"]
       - cis_csc_v7: ["6.4"]
       - iso_27001-2013: ["A.12.4.1"]
@@ -2575,14 +2575,14 @@ checks:
   # 4.2.1 Configure rsyslog
   ###############################################
 
-  # 4.2.1.1 Ensure rsyslog is installed. (Automated)
+  # 6.2.3.1 Ensure rsyslog is installed. (Automated)
   - id: 31600
     title: "Ensure rsyslog is installed."
     description: "The rsyslog software is recommended in environments where journald does not meet operation requirements."
     rationale: "The security enhancements of rsyslog such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server) justify installing and configuring the package."
     remediation: "Run the following command to install rsyslog: # dnf install rsyslog."
     compliance:
-      - cis: ["4.2.1.1"]
+      - cis: ["6.2.3.1"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2619,14 +2619,14 @@ checks:
     rules:
       - "c:systemctl is-enabled rsyslog -> r:^enabled"
 
-  # 4.2.1.3 Ensure journald is configured to send logs to rsyslog. (Manual)
+  # 6.2.3.3 Ensure journald is configured to send logs to rsyslog. (Manual)
   - id: 31602
     title: "Ensure journald is configured to send logs to rsyslog."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the RSyslog service provides a consistent means of log collection and export."
     rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing. Note: This recommendation only applies if rsyslog is the chosen method for client side logging. Do not apply this recommendation if journald is used."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog."
     compliance:
-      - cis: ["4.2.1.3"]
+      - cis: ["6.2.3.3"]
       - cis_csc_v8: ["8.2", "8.9"]
       - cis_csc_v7: ["6.2", "6.3", "6.5"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2670,14 +2670,14 @@ checks:
 
   # 4.2.1.5 Ensure logging is configured. (Manual) - Not Implemented
 
-  # 4.2.1.6 Ensure rsyslog is configured to send logs to a remote log host. (Manual)
+  # 6.2.3.6 Ensure rsyslog is configured to send logs to a remote log host. (Manual)
   - id: 31604
     title: "Ensure rsyslog is configured to send logs to a remote log host."
     description: "RSyslog supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralized log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. *.* action(type="omfwd" target="192.168.2.100" port="514" protocol="tcp" action.resumeRetryCount="100" queue.type="LinkedList" queue.size="1000") Run the following command to reload the rsyslogd configuration: # systemctl restart rsyslog.'
     compliance:
-      - cis: ["4.2.1.6"]
+      - cis: ["6.2.3.6"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2696,14 +2696,14 @@ checks:
       - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* @@\.+'
       - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* action && r:target="'
 
-  # 4.2.1.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated)
+  # 6.2.3.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated)
   - id: 31605
     title: "Ensure rsyslog is not configured to receive logs from a remote client."
     description: "RSyslog supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside its operational boundary."
     remediation: 'Should there be any active log server configuration found in the auditing section, modify those files and remove the specific lines highlighted by the audit. Ensure none of the following entries are present in any of /etc/rsyslog.conf or /etc/rsyslog.d/*.conf. New format module(load="imtcp") input(type="imtcp" port="514") -OR- Old format $ModLoad imtcp $InputTCPServerRun Restart the service: # systemctl restart rsyslog.'
     compliance:
-      - cis: ["4.2.1.7"]
+      - cis: ["6.2.3.7"]
       - cis_csc_v8: ["4.8", "8.2"]
       - cis_csc_v7: ["6.2", "6.3", "9.2"]
       - cmmc_v2.0: ["AU.L2-3.3.1", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -2728,14 +2728,14 @@ checks:
   # 4.2.2.1 Ensure journald is configured to send logs to a remote log host
   ###############################################
 
-  # 4.2.2.1.1 Ensure systemd-journal-remote is installed. (Manual)
+  # 6.2.2.1.1 Ensure systemd-journal-remote is installed. (Manual)
   - id: 31606
     title: "Ensure systemd-journal-remote is installed."
     description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralized log management."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Run the following command to install systemd-journal-remote: # dnf install systemd-journal-remote."
     compliance:
-      - cis: ["4.2.2.1.1"]
+      - cis: ["6.2.2.1.1"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -3098,7 +3098,7 @@ checks:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
-  # 5.2.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
+  # 5.1.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
   # 5.2.4 Ensure SSH access is limited. (Automated)
   - id: 31621
@@ -3469,14 +3469,14 @@ checks:
   # 5.3 Configure privilege escalation
   ############################################################
 
-  # 5.3.1 Ensure sudo is installed. (Automated)
+  # 5.2.1 Ensure sudo is installed. (Automated)
   - id: 31638
     title: "Ensure sudo is installed."
     description: "sudo allows a permitted user to execute a command as the superuser or another user, as specified by the security policy. The invoking user's real (not effective) user ID is used to determine the user name with which to query the security policy."
     rationale: "sudo supports a plug-in architecture for security policies and input/output logging. Third parties can develop and distribute their own policy and I/O logging plug-ins to work seamlessly with the sudo front end. The default security policy is sudoers, which is configured via the file /etc/sudoers and any entries in /etc/sudoers.d. The security policy determines what privileges, if any, a user has to run sudo. The policy may require that users authenticate themselves with a password or another authentication mechanism. If authentication is required, sudo will exit if the user's password is not entered within a configurable time limit. This limit is policy-specific."
     remediation: "Run the following command to install sudo # dnf install sudo."
     compliance:
-      - cis: ["5.3.1"]
+      - cis: ["5.2.1"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
@@ -3488,7 +3488,7 @@ checks:
     rules:
       - "c:rpm -q sudo -> r:sudo-"
 
-  # 5.3.2 Ensure sudo commands use pty. (Automated)
+  # 5.2.2 Ensure sudo commands use pty. (Automated)
   - id: 31639
     title: "Ensure sudo commands use pty."
     description: "sudo can be configured to run only from a pseudo terminal (pseudo-pty)."
@@ -3496,7 +3496,7 @@ checks:
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files."
     remediation: "Edit the file /etc/sudoers with visudo or a file in /etc/sudoers.d/ with visudo -f <PATH_TO_FILE> and add the following line: Defaults use_pty."
     compliance:
-      - cis: ["5.3.2"]
+      - cis: ["5.2.2"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["5.1"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
@@ -3512,7 +3512,7 @@ checks:
       - 'f:/etc/sudoers -> r:^\s*Defaults\s+use_pty'
       - 'd:/etc/sudoers.d -> r:\. -> r:^\s*Defaults\s+use_pty'
 
-  # 5.3.3 Ensure sudo log file exists. (Automated)
+  # 5.2.3 Ensure sudo log file exists. (Automated)
   - id: 31640
     title: "Ensure sudo log file exists."
     description: "sudo can use a custom log file."
@@ -3520,7 +3520,7 @@ checks:
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files. Creation of additional log files can cause disk space exhaustion if not correctly managed. You should configure logrotate to manage the sudo log in accordance with your local policy."
     remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>" Example Defaults logfile="/var/log/sudo.log".'
     compliance:
-      - cis: ["5.3.3"]
+      - cis: ["5.2.3"]
       - cis_csc_v8: ["8.5"]
       - cis_csc_v7: ["6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -3537,7 +3537,7 @@ checks:
       - 'f:/etc/sudoers -> r:^Defaults logfile="'
       - 'd:/etc/sudoers.d -> r:\. -> r:^Defaults\s+logfile="'
 
-  # 5.3.4 Ensure users must provide password for escalation. (Automated)
+  # 5.2.4 Ensure users must provide password for escalation. (Automated)
   - id: 31641
     title: "Ensure users must provide password for escalation."
     description: "The operating system must be configured so that users must provide a password for privilege escalation."
@@ -3545,7 +3545,7 @@ checks:
     impact: "This will prevent automated processes from being able to elevate privileges. To include Ansible and AWS builds."
     remediation: "Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any line with occurrences of NOPASSWD tags in the file."
     compliance:
-      - cis: ["5.3.4"]
+      - cis: ["5.2.4"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
@@ -3558,14 +3558,14 @@ checks:
       - 'f:/etc/sudoers -> !r:^\s*# && r:NOPASSWD'
       - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:NOPASSWD'
 
-  # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
+  # 5.2.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
   - id: 31642
     title: "Ensure re-authentication for privilege escalation is not disabled globally."
     description: "The operating system must be configured so that users must re-authenticate for privilege escalation."
     rationale: "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user re-authenticate."
     remediation: "Configure the operating system to require users to reauthenticate for privilege escalation. Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any occurrences of !authenticate tags in the file(s)."
     compliance:
-      - cis: ["5.3.5"]
+      - cis: ["5.2.5"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
@@ -3578,7 +3578,7 @@ checks:
       - 'f:/etc/sudoers -> !r:^\s*# && r:!authenticate'
       - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:!authenticate'
 
-  # 5.3.6 Ensure sudo authentication timeout is configured correctly. (Automated)
+  # 5.2.6 Ensure sudo authentication timeout is configured correctly. (Automated)
   - id: 31643
     title: "Ensure sudo authentication timeout is configured correctly."
     description: "sudo caches used credentials for a default of 5 minutes. This is for ease of use when there are multiple administrative tasks to perform. The timeout can be modified to suit local security policies."
@@ -3587,7 +3587,7 @@ checks:
     references:
       - "https://www.sudo.ws/man/1.9.0/sudoers.man.html"
     compliance:
-      - cis: ["5.3.6"]
+      - cis: ["5.2.6"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
@@ -3602,14 +3602,14 @@ checks:
       - 'not f:/etc/sudoers -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
       - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
 
-  # 5.3.7 Ensure access to the su command is restricted. (Automated)
+  # 5.2.7 Ensure access to the su command is restricted. (Automated)
   - id: 31644
     title: "Ensure access to the su command is restricted."
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in a specific groups to execute su. This group should be empty to reinforce the use of sudo for privileged access."
     rationale: "Restricting the use of su , and using sudo in its place, provides system administrators better control of the escalation of user privileges to execute privileged commands. The sudo utility also provides a better logging and audit mechanism, as it can log each command executed via sudo , whereas su can only record that a user executed the su program."
     remediation: "Create an empty group that will be specified for use of the su command. The group should be named according to site policy. Example: # groupadd sugroup Add the following line to the /etc/pam.d/su file, specifying the empty group: auth required pam_wheel.so use_uid group=sugroup."
     compliance:
-      - cis: ["5.3.7"]
+      - cis: ["5.2.7"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["5.1"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -3871,7 +3871,7 @@ checks:
       - 'f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
       - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
-  # 5.6.1.5 Ensure all users last password change date is in the past. (Automated) - Not Implemented
+  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated) - Not Implemented
   # 5.6.2 Ensure system accounts are secured. (Automated) - Not Implemented
   # 5.6.3 Ensure default user shell timeout is 900 seconds or less. (Automated) - Not Implemented
 
@@ -4164,14 +4164,14 @@ checks:
   # 6.2.7 Ensure no duplicate group names exist. (Automated) - Not Implemented
   # 6.2.8 Ensure root PATH Integrity. (Automated) - Not Implemented
 
-  # 6.2.9 Ensure root is the only UID 0 account. (Automated)
+  # 5.4.2.1 Ensure root is the only UID 0 account. (Automated)
   - id: 31666
     title: "Ensure root is the only UID 0 account."
     description: "Any account with UID 0 has superuser privileges on the system."
     rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
     remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
     compliance:
-      - cis: ["6.2.9"]
+      - cis: ["5.4.2.1"]
       - mitre_mitigations: ["M1026"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1548"]
