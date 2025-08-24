@@ -1,0 +1,229 @@
+run-name: Inventory Sync Integration Tests - ${{ github.event.pull_request.number || github.sha }}
+name: Inventory Sync Integration Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_manager:
+        description: "Manager IP for testing (default: 127.0.0.1)"
+        type: string
+        default: "127.0.0.1"
+        required: false
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - 'src/wazuh_modules/inventory_sync/**'
+      - 'src/shared_modules/utils/flatbuffers/**'
+      - '.github/workflows/5_testintegration_inventory-sync.yml'
+      - '.github/actions/**'
+
+# Ensures only one instance of this workflow is running per PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inventory-sync-integration-tests:
+    name: inventory-sync-integration-tests
+    runs-on: ubuntu-22.04
+      
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Wait for deb amd64 Package Build to complete
+        if: github.event_name == 'pull_request'
+        uses: lewagon/wait-on-check-action@v1.4.0
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+          check-name: 'Build Wazuh Manager (deb, amd64) / Build deb wazuh-manager on amd64'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+          allowed-conclusions: success
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3 \
+            python3-pip \
+            python3-venv \
+            flatbuffers-compiler \
+            curl \
+            wget
+          
+          # Install GitHub CLI if not present
+          if ! command -v gh &> /dev/null; then
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt-get update
+            sudo apt-get install -y gh
+          fi
+
+      - name: Get Package Build Run ID and Artifact
+        if: github.event_name == 'pull_request'
+        id: get-run-info
+        run: |
+          # Find the successful run of "Package - Build multiple Wazuh Manager Packages" for this specific commit
+          # This ensures we get the package built for the exact commit of this PR
+          RUN_ID=$(gh run list \
+            --commit="${{ github.event.pull_request.head.sha }}" \
+            --json databaseId,headSha,displayTitle,workflowName,conclusion \
+            --jq '.[] | select(.workflowName == "Package - Build multiple Wazuh Manager Packages") | .databaseId' | head -1)
+          
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
+            echo "[-] No package build run found for this branch"
+            echo "[*] Available runs:"
+            gh run list --branch="${{ github.head_ref }}" --limit=5 --json displayTitle,status,workflowName
+            exit 1
+          fi
+          
+          echo "[+] Found package build run: $RUN_ID"
+          
+          # Get the list of artifacts from this run and find the amd64 deb package
+          ARTIFACT_NAME=$(gh api repos/wazuh/wazuh/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name | contains("amd64") and contains("wazuh-manager") and endswith(".deb")) | .name' | head -1)
+          
+          if [ -z "$ARTIFACT_NAME" ]; then
+            echo "[-] No amd64 deb wazuh-manager artifact found in run $RUN_ID"
+            echo "[*] Available artifacts:"
+            gh api repos/wazuh/wazuh/actions/runs/$RUN_ID/artifacts --jq '.artifacts[].name'
+            exit 1
+          fi
+          
+          echo "[+] Found artifact: $ARTIFACT_NAME"
+          echo "run-id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Wazuh manager package (deb amd64)
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.get-run-info.outputs.artifact-name }}
+          path: ./packages/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.get-run-info.outputs.run-id }}
+
+      - name: Install Wazuh manager package
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "[>] Installing Wazuh manager package (deb amd64)..."
+          
+          # Find the amd64 .deb package in the downloaded artifacts
+          echo "[*] Downloaded packages:"
+          find ./packages -type f -name "*.deb" | sort
+          
+          PACKAGE_FILE=$(find ./packages -name "*amd64*.deb" | head -1)
+          
+          if [ -z "$PACKAGE_FILE" ]; then
+            echo "[-] amd64 .deb package not found. Listing package contents:"
+            ls -la ./packages/
+            find ./packages -type f | sort
+            exit 1
+          fi
+          
+          echo "[+] Found package: $PACKAGE_FILE"
+          
+          echo "[*] Package file found, proceeding with installation..."
+          
+          # Install the package
+          sudo dpkg -i "$PACKAGE_FILE" || sudo apt-get -f install -y
+          
+          # Start Wazuh manager
+          sudo systemctl start wazuh-manager
+          sleep 10
+          
+          # Verify installation
+          if systemctl is-active --quiet wazuh-manager; then
+            echo "[+] Wazuh manager installed and running"
+            echo "[*] Service status:"
+            sudo systemctl status wazuh-manager --no-pager --lines=5
+          else
+            echo "[-] Failed to start Wazuh manager"
+            sudo systemctl status wazuh-manager --no-pager
+            exit 1
+          fi
+
+      - name: Setup Python test environment
+        working-directory: src/wazuh_modules/inventory_sync/qa
+        run: |
+          echo "[>] Setting up Python environment..."
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          echo "[+] Python environment ready"
+
+      - name: Generate FlatBuffers classes
+        working-directory: src/wazuh_modules/inventory_sync/qa
+        run: |
+          echo "[>] Generating FlatBuffers classes..."
+          source venv/bin/activate
+          python3 generate_flatbuffers.py
+          
+          if [ -d "generated" ]; then
+            echo "[+] FlatBuffers classes generated successfully"
+            echo "[*] Generated files:"
+            find generated -name "*.py" | sort
+          else
+            echo "[-] Failed to generate FlatBuffers classes"
+            exit 1
+          fi
+
+
+
+      - name: Run inventory sync integration tests
+        working-directory: src/wazuh_modules/inventory_sync/qa
+        run: |
+          echo "[>] Running inventory sync integration tests..."
+          source venv/bin/activate
+          
+          # List available tests
+          echo "[*] Available tests:"
+          python3 run_tests.py --list-tests
+          
+          # Run all tests
+          echo "[>] Running all integration tests..."
+          TEST_MANAGER="${{ github.event.inputs.test_manager || '127.0.0.1' }}"
+          
+          python3 run_tests.py --manager "$TEST_MANAGER" --verbose
+
+      - name: Cleanup and collect logs
+        if: always()
+        run: |
+          echo "[>] Collecting test results and logs..."
+          
+          # Stop Wazuh manager if installed from package
+          if systemctl is-active --quiet wazuh-manager 2>/dev/null; then
+            sudo systemctl stop wazuh-manager
+            echo "[+] Stopped wazuh-manager"
+          fi
+          
+          # Collect Wazuh logs if they exist
+          if [ -f /var/ossec/logs/ossec.log ]; then
+            echo "[*] Wazuh logs (last 50 lines):"
+            sudo tail -50 /var/ossec/logs/ossec.log
+          fi
+          
+          echo "[+] Cleanup completed"
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-sync-test-results
+          path: |
+            src/wazuh_modules/inventory_sync/qa/generated/
+            src/wazuh_modules/inventory_sync/qa/wazuh_agents.json
+          retention-days: 7
+          if-no-files-found: warn
