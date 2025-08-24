@@ -2461,7 +2461,7 @@ checks:
 
   # 6.3.4.8 Ensure audit tools mode is configured (Automated)
   - id: 31597
-    title: "Ensure audit tools mode is configured."
+    title: "Ensure audit tools are 755 or more restrictive."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to remove more permissive mode from the audit tools: # chmod go-w /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
