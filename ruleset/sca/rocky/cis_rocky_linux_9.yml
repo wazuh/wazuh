@@ -882,7 +882,7 @@ checks:
   # 1.5 Additional Process Hardening
   ###############################################
 
-  # 1.5.1 Ensure core dump storage is disabled. (Automated)
+  # 1.5.4 Ensure core dump storage is disabled. (Automated)
   - id: 31533
     title: "Ensure core dump storage is disabled."
     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file."
@@ -891,7 +891,7 @@ checks:
     references:
       - "https://www.freedesktop.org/software/systemd/man/coredump.conf.html"
     compliance:
-      - cis: ["1.5.1"]
+      - cis: ["1.5.4"]
       - mitre_tactics: ["TA0007"]
       - mitre_techniques: ["T1005"]
     condition: all
@@ -1358,14 +1358,14 @@ checks:
       - "c:systemctl is-enabled autofs -> r:masked|No such file or directory"
       - "c:systemctl is-active autofs.service -> r:^inactive"
 
-  # 2.1.1 Ensure time synchronization is in use. (Automated)
+  # 2.3.1 Ensure time synchronization is in use. (Automated)
   - id: 31554
     title: "Ensure time synchronization is in use."
     description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Note: If another method for time synchronization is being used, this section may be skipped."
     rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
     remediation: "Run the following command to install chrony: # dnf install chrony."
     compliance:
-      - cis: ["2.1.1"]
+      - cis: ["2.3.1"]
       - cis_csc_v8: ["8.4"]
       - cis_csc_v7: ["6.1"]
       - cmmc_v2.0: ["AU.L2-3.3.7"]
@@ -1380,14 +1380,14 @@ checks:
     rules:
       - "c:rpm -q chrony -> r:^chrony-"
 
-  # 2.1.2 Ensure chrony is configured. (Automated)
+  # 2.3.2 Ensure chrony is configured. (Automated)
   - id: 31555
     title: "Ensure chrony is configured."
     description: "chrony is a daemon which implements the Network Time Protocol (NTP) and is designed to synchronize system clocks across a variety of systems and use a source that is highly accurate. More information on chrony can be found at http://chrony.tuxfamily.org/. chrony can be configured to be a client and/or a server."
     rationale: "If chrony is in use on the system proper configuration is vital to ensuring time synchronization is working properly."
     remediation: 'Add or edit server or pool lines to /etc/chrony.conf as appropriate: server <remote-server> Add or edit the OPTIONS in /etc/sysconfig/chronyd to include ''-u chrony'': OPTIONS="-u chrony".'
     compliance:
-      - cis: ["2.1.2"]
+      - cis: ["2.3.2"]
       - cis_csc_v8: ["8.4"]
       - cis_csc_v7: ["6.1"]
       - cmmc_v2.0: ["AU.L2-3.3.7"]
@@ -1841,7 +1841,7 @@ checks:
       - "c:rpm -q rsync -> r:^package rsync is not installed"
       - "c:systemctl is-enabled rsyncd -> r:masked|No such file or directory"
 
-  # 2.3.1 Ensure telnet client is not installed. (Automated)
+  # 2.2.4 Ensure telnet client is not installed. (Automated)
   - id: 31574
     title: "Ensure telnet client is not installed."
     description: "The telnet package contains the telnet client, which allows users to start connections to other systems via the telnet protocol."
@@ -1849,7 +1849,7 @@ checks:
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
     remediation: "Run the following command to remove the telnet package: # dnf remove telnet."
     compliance:
-      - cis: ["2.3.1"]
+      - cis: ["2.2.4"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["2.6"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -2025,7 +2025,7 @@ checks:
   # 3.4.1 Configure firewalld
   ###############################################
 
-  # 3.4.1.1 Ensure nftables is installed. (Automated)
+  # 4.1.1 Ensure nftables is installed. (Automated)
   - id: 31579
     title: "Ensure nftables is installed."
     description: "nftables provides a new in-kernel packet classification framework that is based on a network-specific Virtual Machine (VM) and a new nft userspace command line tool. nftables reuses the existing Netfilter subsystems such as the existing hook infrastructure, the connection tracking system, NAT, userspace queuing and logging subsystem."
@@ -2033,7 +2033,7 @@ checks:
     impact: "Changing firewall settings while connected over the network can result in being locked out of the system."
     remediation: "Run the following command to install nftables # dnf install nftables."
     compliance:
-      - cis: ["3.4.1.1"]
+      - cis: ["4.1.1"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
@@ -2049,7 +2049,7 @@ checks:
     rules:
       - "c:rpm -q nftables -> r:nftables-"
 
-  # 3.4.1.2 Ensure a single firewall configuration utility is in use. (Automated)
+  # 4.1.2 Ensure a single firewall configuration utility is in use. (Automated)
   - id: 31580
     title: "Ensure a single firewall configuration utility is in use."
     description: "FirewallD - Is a firewall service daemon that provides a dynamic customizable host-based firewall with a D-Bus interface. Being dynamic, it enables creating, changing, and deleting the rules without the necessity to restart the firewall daemon each time the rules are changed NFTables - Includes the nft utility for configuration of the nftables subsystem of the Linux kernel Note: firewalld with nftables backend does not support passing custom nftables rules to firewalld, using the --direct option."
@@ -2058,7 +2058,7 @@ checks:
     references:
       - "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9/html-"
     compliance:
-      - cis: ["3.4.1.2"]
+      - cis: ["4.1.2"]
       - cis_csc_v8: ["4.4", "4.5"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
@@ -2101,7 +2101,7 @@ checks:
     rules:
       - "c:nft list tables -> r:^table"
 
-  # 3.4.2.3 Ensure nftables base chains exist. (Automated)
+  # 4.3.1 Ensure nftables base chains exist. (Automated)
   - id: 31582
     title: "Ensure nftables base chains exist."
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
@@ -2109,7 +2109,7 @@ checks:
     impact: "If configuring over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
     remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; } Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0 \\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }."
     compliance:
-      - cis: ["3.4.2.3"]
+      - cis: ["4.3.1"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
@@ -2126,10 +2126,10 @@ checks:
       - "c:nft list ruleset -> r:filter hook output"
 
   # 3.4.2.4 Ensure host based firewall loopback traffic is configured. (Automated) - Not Implemented
-  # 3.4.2.5 Ensure firewalld drops unnecessary services and ports. (Manual) - Not Implemented
-  # 3.4.2.6 Ensure nftables established connections are configured. (Manual) - Not Implemented
+  # 4.2.1 Ensure firewalld drops unnecessary services and ports. (Manual) - Not Implemented
+  # 4.3.2 Ensure nftables established connections are configured. (Manual) - Not Implemented
 
-  # 3.4.2.7 Ensure nftables default deny firewall policy. (Automated)
+  # 4.3.3 Ensure nftables default deny firewall policy. (Automated)
   - id: 31583
     title: "Ensure nftables default deny firewall policy."
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
@@ -2137,7 +2137,7 @@ checks:
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
     remediation: "If NFTables utility is in use on your system: Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\; } Example: # nft chain inet filter input { policy drop \\; } # nft chain inet filter forward { policy drop \\; }."
     compliance:
-      - cis: ["3.4.2.7"]
+      - cis: ["4.3.3"]
       - cis_csc_v8: ["4.4"]
       - cis_csc_v7: ["9.4"]
       - cmmc_v2.0: ["AC.L1-3.1.20", "CM.L2-3.4.7", "SC.L1-3.13.1", "SC.L2-3.13.6"]
@@ -2922,14 +2922,14 @@ checks:
     rules:
       - "c:systemctl is-enabled crond -> r:^enabled"
 
-  # 5.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
+  # 2.4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 31614
     title: "Ensure permissions on /etc/crontab are configured."
     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
     rationale: "This file contains information on what system jobs are run by cron. Write access to this file could provide unprivileged users with the ability to elevate their privileges. Read access to this file could provide users with the ability to gain insight on system jobs that run on the system and could provide them a way to gain unauthorized privileged access."
     remediation: "Run the following commands to set ownership and permissions on /etc/crontab : # chown root:root /etc/crontab # chmod og-rwx /etc/crontab."
     compliance:
-      - cis: ["5.1.2"]
+      - cis: ["2.4.1.2"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -2946,14 +2946,14 @@ checks:
     rules:
       - 'c:stat -L /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 5.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
+  # 2.4.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 31615
     title: "Ensure permissions on /etc/cron.hourly are configured."
     description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.hourly : # chown root:root /etc/cron.hourly # chmod og-rwx /etc/cron.hourly."
     compliance:
-      - cis: ["5.1.3"]
+      - cis: ["2.4.1.3"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -2970,14 +2970,14 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 5.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
+  # 2.4.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 31616
     title: "Ensure permissions on /etc/cron.daily are configured."
     description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.daily : # chown root:root /etc/cron.daily # chmod og-rwx /etc/cron.daily."
     compliance:
-      - cis: ["5.1.4"]
+      - cis: ["2.4.1.4"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -2994,14 +2994,14 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 5.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
+  # 2.4.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 31617
     title: "Ensure permissions on /etc/cron.weekly are configured."
     description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.weekly : # chown root:root /etc/cron.weekly # chmod og-rwx /etc/cron.weekly."
     compliance:
-      - cis: ["5.1.5"]
+      - cis: ["2.4.1.5"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -3018,14 +3018,14 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 5.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
+  # 2.4.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 31618
     title: "Ensure permissions on /etc/cron.monthly are configured."
     description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.monthly : # chown root:root /etc/cron.monthly # chmod og-rwx /etc/cron.monthly."
     compliance:
-      - cis: ["5.1.6"]
+      - cis: ["2.4.1.6"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -3042,14 +3042,14 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 5.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
+  # 2.4.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 31619
     title: "Ensure permissions on /etc/cron.d are configured."
     description: "The /etc/cron.d directory contains system cron jobs that need to run in a similar manner to the hourly, daily, weekly and monthly jobs from /etc/crontab , but require more granular control as to when they run. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
     rationale: "Granting write access to this directory for non-privileged users could provide them the means for gaining unauthorized elevated privileges. Granting read access to this directory could give an unprivileged user insight in how to gain elevated privileges or circumvent auditing controls."
     remediation: "Run the following commands to set ownership and permissions on /etc/cron.d : # chown root:root /etc/cron.d # chmod og-rwx /etc/cron.d."
     compliance:
-      - cis: ["5.1.7"]
+      - cis: ["2.4.1.7"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -3067,20 +3067,20 @@ checks:
       - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 5.1.8 Ensure cron is restricted to authorized users. (Automated) - Not Implemented
-  # 5.1.9 Ensure at is restricted to authorized users. (Automated) - Not Implemented
+  # 2.4.2.1 Ensure at is restricted to authorized users. (Automated) - Not Implemented
 
   ###############################################
   # 5.2 Configure SSH Server
   ###############################################
 
-  # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
+  # 5.1.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
   - id: 31620
     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
     rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod u-x,go-rwx /etc/ssh/sshd_config."
     compliance:
-      - cis: ["5.2.1"]
+      - cis: ["5.1.1"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -3097,7 +3097,7 @@ checks:
     rules:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 5.2.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
+  # 5.1.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
   # 5.2.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
   # 5.2.4 Ensure SSH access is limited. (Automated)
