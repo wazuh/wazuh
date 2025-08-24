@@ -7,49 +7,51 @@
 
 class SCAChecksumIntegrationTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        sampleCheck = {{"id", "integration_check_001"},
-                       {"policy_id", "integration_policy_001"},
-                       {"name", "Integration Test Check"},
-                       {"description", "Check for integration testing"},
-                       {"rationale", "Ensure integration works"},
-                       {"remediation", "Fix any integration issues"},
-                       {"refs", "https://integration.test"},
-                       {"condition", "all"},
-                       {"compliance", "TEST_STANDARD"},
-                       {"rules", "file:/etc/test -> exists"}};
-    }
+    protected:
+        void SetUp() override
+        {
+            sampleCheck = {{"id", "integration_check_001"},
+                {"policy_id", "integration_policy_001"},
+                {"name", "Integration Test Check"},
+                {"description", "Check for integration testing"},
+                {"rationale", "Ensure integration works"},
+                {"remediation", "Fix any integration issues"},
+                {"refs", "https://integration.test"},
+                {"condition", "all"},
+                {"compliance", "TEST_STANDARD"},
+                {"rules", "file:/etc/test -> exists"}
+            };
+        }
 
-    nlohmann::json sampleCheck;
+        nlohmann::json sampleCheck;
 };
 
 class SCAChecksumTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        // Sample check data for testing
-        sampleCheckData = {{"id", "test_check_001"},
-                           {"policy_id", "test_policy_001"},
-                           {"name", "Test Security Check"},
-                           {"description", "This is a test security check"},
-                           {"rationale", "Testing rationale for security"},
-                           {"remediation", "Steps to remediate the issue"},
-                           {"refs", "https://example.com/ref1,https://example.com/ref2"},
-                           {"condition", "all"},
-                           {"compliance", "PCI_DSS_3.2.1"},
-                           {"rules", "file:$SSH_CONFIG -> exists"}};
+    protected:
+        void SetUp() override
+        {
+            // Sample check data for testing
+            sampleCheckData = {{"id", "test_check_001"},
+                {"policy_id", "test_policy_001"},
+                {"name", "Test Security Check"},
+                {"description", "This is a test security check"},
+                {"rationale", "Testing rationale for security"},
+                {"remediation", "Steps to remediate the issue"},
+                {"refs", "https://example.com/ref1,https://example.com/ref2"},
+                {"condition", "all"},
+                {"compliance", "PCI_DSS_3.2.1"},
+                {"rules", "file:$SSH_CONFIG -> exists"}
+            };
 
-        minimalCheckData = {{"id", "minimal_check"}, {"policy_id", "minimal_policy"}};
+            minimalCheckData = {{"id", "minimal_check"}, {"policy_id", "minimal_policy"}};
 
-        emptyCheckData = nlohmann::json::object();
-    }
+            emptyCheckData = nlohmann::json::object();
+        }
 
-    nlohmann::json sampleCheckData;
-    nlohmann::json minimalCheckData;
-    nlohmann::json emptyCheckData;
+        nlohmann::json sampleCheckData;
+        nlohmann::json minimalCheckData;
+        nlohmann::json emptyCheckData;
 };
 
 TEST_F(SCAChecksumTest, CalculateChecksumFromJSON_ValidData_ReturnsNonEmptyString)
@@ -149,7 +151,8 @@ TEST_F(SCAChecksumTest, SensitiveToFieldOrder_DifferentFieldOrderProducesDiffere
 
 TEST_F(SCAChecksumTest, MissingFields_HandledGracefully)
 {
-    nlohmann::json partialData = {
+    nlohmann::json partialData =
+    {
         {"id", "partial_check"}, {"name", "Partial Check"}, {"description", "Only some fields present"}
         // Missing: policy_id, rationale, remediation, refs, condition, compliance, rules
     };
@@ -168,22 +171,23 @@ TEST_F(SCAChecksumTest, ValidSHA1Format_ChecksumContainsOnlyHexCharacters)
     for (char c : checksum)
     {
         EXPECT_TRUE((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
-            << "Invalid hex character found: " << c;
+                << "Invalid hex character found: " << c;
     }
 }
 
 TEST_F(SCAChecksumTest, SpecialCharacters_HandledCorrectly)
 {
     nlohmann::json specialData = {{"id", "special_check"},
-                                  {"policy_id", "policy:with:colons"},
-                                  {"name", "Check with \"quotes\" and 'apostrophes'"},
-                                  {"description", "Description with\nnewlines\tand\ttabs"},
-                                  {"rationale", "Rationale with special chars: !@#$%^&*()"},
-                                  {"remediation", "Remediation with unicode: αβγδε"},
-                                  {"refs", "ref1;ref2,ref3|ref4"},
-                                  {"condition", "any || all"},
-                                  {"compliance", "PCI_DSS_3.2.1 && NIST_800_53"},
-                                  {"rules", "command[bash] -> 'echo test' contains 'test'"}};
+        {"policy_id", "policy:with:colons"},
+        {"name", "Check with \"quotes\" and 'apostrophes'"},
+        {"description", "Description with\nnewlines\tand\ttabs"},
+        {"rationale", "Rationale with special chars: !@#$%^&*()"},
+        {"remediation", "Remediation with unicode: αβγδε"},
+        {"refs", "ref1;ref2,ref3|ref4"},
+        {"condition", "any || all"},
+        {"compliance", "PCI_DSS_3.2.1 && NIST_800_53"},
+        {"rules", "command[bash] -> 'echo test' contains 'test'"}
+    };
 
     std::string checksum = sca::calculateChecksum(specialData);
 

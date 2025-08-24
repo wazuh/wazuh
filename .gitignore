@@ -20,6 +20,8 @@ framework/wazuh/core/wazuh.json
 src/**/build/*
 src/generated_headers/*.h
 src/generated_headers/*.hpp
+src/wazuh_modules/sca/build
+src/wazuh_modules/sca/coverage_report
 
 # Compiled programs
 src/agent-auth

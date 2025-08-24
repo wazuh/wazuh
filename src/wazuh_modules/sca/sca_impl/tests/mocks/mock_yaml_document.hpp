@@ -6,7 +6,7 @@
 
 class MockYamlDocument : public IYamlDocument
 {
-public:
-    MOCK_METHOD(YamlNode, GetRoot, (), (override));
-    MOCK_METHOD(bool, IsValidDocument, (), (const, override));
+    public:
+        MOCK_METHOD(YamlNode, GetRoot, (), (override));
+        MOCK_METHOD(bool, IsValidDocument, (), (const, override));
 };

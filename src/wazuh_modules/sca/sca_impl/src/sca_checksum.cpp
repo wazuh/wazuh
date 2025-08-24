@@ -22,7 +22,7 @@ namespace sca
         const std::string rules = checkData.value("rules", "");
 
         return calculateChecksum(
-            id, policyId, name, description, rationale, remediation, refs, condition, compliance, rules);
+                   id, policyId, name, description, rationale, remediation, refs, condition, compliance, rules);
     }
 
     std::string calculateChecksum(const std::string& id,
@@ -53,7 +53,7 @@ namespace sca
 
         if (size < 0)
         {
-            throw std::runtime_error{"Error calculating checksum size."};
+            throw std::runtime_error{"Error calculating checksum size."}; // LCOV_EXCL_LINE
         }
 
         // Allocate buffer and format the string
@@ -81,10 +81,13 @@ namespace sca
             const auto hashResult = hash.hash();
             return Utils::asciiToHex(hashResult);
         }
+        // LCOV_EXCL_START
         catch (const std::exception& e)
         {
             throw std::runtime_error{"Error calculating checksum: " + std::string(e.what())};
         }
+
+        // LCOV_EXCL_STOP
     }
 
 } // namespace sca
