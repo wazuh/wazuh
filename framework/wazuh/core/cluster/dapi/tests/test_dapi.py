@@ -32,7 +32,7 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.cluster.dapi.dapi import DistributedAPI, APIRequestQueue, SendSyncRequestQueue
         from wazuh.core.manager import get_manager_status
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-        from wazuh import agent, cluster, ciscat, manager, WazuhError, WazuhInternalError
+        from wazuh import agent, cluster, manager, WazuhError, WazuhInternalError
         from wazuh.core.exception import WazuhClusterError, WazuhException
         from api.util import raise_if_exc
         from wazuh.core.cluster import local_client
@@ -141,7 +141,6 @@ def test_DistributedAPI_debug_log():
     (agent.get_agents_summary_status, 'local_master', 'master', 'local', True, None),
     (agent.restart_agents, 'distributed_master', 'master', 'forward', True, None),
     (cluster.get_node_wrapper, 'local_any', 'worker', 'local', True, 'token_nbf_time'),
-    (ciscat.get_ciscat_results, 'distributed_master', 'worker', 'remote', True, None),
     (manager.status, 'local_master', 'worker', 'local', False, {'password': 'testing'}),
     (manager.status, 'local_master', 'worker', 'local', False, None)
 ])

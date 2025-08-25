@@ -17,11 +17,6 @@
 
 /* Status structures */
 
-typedef struct _agent_ciscat_t {
-    uint64_t ciscat_queries;
-    struct timeval ciscat_time;
-} agent_ciscat_t;
-
 typedef struct _agent_rootcheck_t {
     uint64_t rootcheck_queries;
     struct timeval rootcheck_time;
@@ -115,7 +110,6 @@ typedef struct _agent_breakdown_t {
     struct timeval get_fragmentation_time;
     struct timeval open_calls_time;
     struct timeval sleep_time;
-    agent_ciscat_t ciscat;
     agent_rootcheck_t rootcheck;
     agent_sca_t sca;
     agent_sync_t sync;
@@ -414,19 +408,6 @@ void w_inc_agent_sca();
  * @param time Value to increment the counter.
  */
 void w_inc_agent_sca_time(struct timeval time);
-
-/**
- * @brief Increment ciscat agent queries counter
- *
- */
-void w_inc_agent_ciscat();
-
-/**
- * @brief Increment ciscat agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_agent_ciscat_time(struct timeval time);
 
 /**
  * @brief Increment dbsync agent queries counter

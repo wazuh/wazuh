@@ -117,16 +117,6 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  ciscat_read:
-    description: Allow read agent's ciscat results information.
-    policies:
-      ciscat:
-        actions:
-          - ciscat:read
-        resources:
-          - agent:id:*
-        effect: allow
-
   decoders_read:
     description: Allow reading all decoder files in the system.
     policies:
