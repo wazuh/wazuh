@@ -9,8 +9,8 @@
 
 #include <api/archiver/handlers.hpp>
 #include <api/catalog/catalog.hpp>
-#include <api/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
+#include <api/handlers.hpp>
 #include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
@@ -68,6 +68,7 @@ struct Options
 {
     bool runForeground = false;
     bool testConfig = false;
+    int debugCount {0};
 };
 
 void printUsage(const char* progName)
@@ -76,6 +77,8 @@ void printUsage(const char* progName)
               << "Options:\n"
               << "  -f    Run in foreground (do not daemonize)\n"
               << "  -t    Test configuration\n"
+              << "  -d    Test configurationRun in debug mode. This option may be repeated to increase the verbosity "
+                 "of the debug messages.\n"
               << "  -h    Show this help message and exit\n";
     std::exit(EXIT_SUCCESS);
 }
@@ -84,12 +87,13 @@ Options parseOptions(int argc, char* argv[])
 {
     Options opts;
     int c;
-    while ((c = getopt(argc, argv, "fth")) != -1)
+    while ((c = getopt(argc, argv, "ftdh")) != -1)
     {
         switch (c)
         {
             case 'f': opts.runForeground = true; break;
             case 't': opts.testConfig = true; break;
+            case 'd': ++opts.debugCount; break;
             case 'h':
             default: printUsage(argv[0]);
         }
@@ -101,10 +105,10 @@ int main(int argc, char* argv[])
 {
     // exit handler
     cmd::details::StackExecutor exitHandler {};
+    const auto opts = parseOptions(argc, argv);
 
     // CLI parse
     {
-        const auto opts = parseOptions(argc, argv);
         if (opts.testConfig)
         {
             return EXIT_SUCCESS;
@@ -117,13 +121,41 @@ int main(int argc, char* argv[])
         }
     }
 
-    // Initialize logging
+    const bool standalone = logging::standaloneModeEnabled();
+    const bool cliDebug = (opts.debugCount > 0);
+    void* libwazuhshared = nullptr;
+    if (standalone)
     {
         logging::LoggingConfig logConfig;
         logConfig.level = logging::Level::Info; // Default log level
         exitHandler.add([]() { logging::stop(); });
         logging::start(logConfig);
         LOG_INFO("Logging initialized.");
+    }
+    else
+    {
+        libwazuhshared = dlopen("libwazuhshared.so", RTLD_NOW | RTLD_GLOBAL);
+        if (!libwazuhshared)
+        {
+            fprintf(stderr, "dlopen libwazuhshared.so failed: %s\n", dlerror());
+            return EXIT_FAILURE;
+        }
+        exitHandler.add([libwazuhshared]() { dlclose(libwazuhshared); });
+
+        if (chdir(base::process::getWazuhHome().c_str()) == -1)
+        {
+            fprintf(stderr, "chdir to WAZUH_HOME failed: %s\n", strerror(errno));
+            return EXIT_FAILURE;
+        }
+
+        using log_fn_t = void (*)(int, const char*, const char*, int, const char*, const char*, va_list);
+        auto* wrapper = reinterpret_cast<log_fn_t>(dlsym(libwazuhshared, "mtLoggingFunctionsWrapper"));
+        if (!wrapper)
+        {
+            fprintf(stderr, "dlsym mtLoggingFunctionsWrapper failed: %s\n", dlerror());
+            return EXIT_FAILURE;
+        }
+        logging::init(wrapper);
     }
 
     // Load the configuration
@@ -208,12 +240,16 @@ int main(int argc, char* argv[])
 
         // Set new log level if it is different from the default
         {
-            const auto level = logging::strToLevel(confManager.get<std::string>(conf::key::LOGGING_LEVEL));
-            const auto currentLevel = logging::getLevel();
-            if (level != currentLevel)
+            const auto level =
+                logging::computeEffectiveLevel(opts.debugCount, confManager.get<std::string>(conf::key::LOGGING_LEVEL));
+
+            if (standalone)
             {
-                logging::setLevel(level);
-                LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(level));
+                logging::applyLevelStandalone(level);
+            }
+            else
+            {
+                logging::applyLevelWazuh(level, libwazuhshared);
             }
         }
 
@@ -223,7 +259,7 @@ int main(int argc, char* argv[])
 
         {
             SingletonLocator::registerManager<metrics::IManager,
-                                              base::PtrSingleton<metrics::IManager, metrics::Manager>>();
+                                            base::PtrSingleton<metrics::IManager, metrics::Manager>>();
             auto config = std::make_shared<metrics::Manager::ImplConfig>();
             config->logLevel = logging::Level::Err;
             config->exportInterval =
@@ -561,8 +597,9 @@ int main(int argc, char* argv[])
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
-            engineRemoteServer->addRoute(httpsrv::Method::POST,
-                "/events/enriched", //TODO: Double check route
+            engineRemoteServer->addRoute(
+                httpsrv::Method::POST,
+                "/events/enriched", // TODO: Double check route
                 api::event::handlers::pushEvent(orchestrator, api::event::protocol::getNDJsonParser(), archiver));
 
             // starting in a new thread
