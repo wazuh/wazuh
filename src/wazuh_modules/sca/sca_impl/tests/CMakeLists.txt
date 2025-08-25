@@ -78,8 +78,8 @@ add_executable(sca_checksum_unit_test sca_checksum_test.cpp)
 target_link_libraries(sca_checksum_unit_test PRIVATE SCAImpl)
 add_test(NAME SCAChecksumTest COMMAND sca_checksum_unit_test)
 
-add_executable(yaml_wrapper_unit_test yaml_wrapper_test.cpp ../src/yaml_document.cpp ../src/yaml_node.cpp)
-target_link_libraries(yaml_wrapper_unit_test PRIVATE yaml)
+add_executable(yaml_wrapper_unit_test yaml_wrapper_test.cpp)
+target_link_libraries(yaml_wrapper_unit_test PRIVATE SCAImpl)
 add_test(NAME YamlWrapperTest COMMAND yaml_wrapper_unit_test)
 
 if(WIN32)
