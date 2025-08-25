@@ -122,7 +122,7 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     return (0);
 }
 
-int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
+int Read_Global(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
 {
     int i = 0;
 
@@ -142,8 +142,10 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
     const char *xml_compress_alerts = "compress_alerts";
     const char *xml_agents_disconnection_time = "agents_disconnection_time";
     const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
+#ifndef CLIENT
     const char *xml_limits = "limits";
     const char *xml_cti_url = "cti-url";
+#endif
     const char *xml_update_check = "update_check";
 
 

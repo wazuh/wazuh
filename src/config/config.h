@@ -69,7 +69,7 @@ void PrintErrorAcordingToModules(int modules, const char *cfgfile);
 
 int Read_Global(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modules);
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
 int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);
 int Read_CSyslog(XML_NODE node, void *config1, void *config2);
