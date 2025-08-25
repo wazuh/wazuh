@@ -225,8 +225,6 @@ DWORD WINAPI req_receiver(__attribute__((unused)) LPVOID arg) {
 #else
 void * req_receiver(__attribute__((unused)) void * arg) {
 #endif
-    int attempts;
-    long nsec;
     ssize_t length = 0;
     req_node_t * node;
     char *buffer = NULL;

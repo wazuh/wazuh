@@ -27,7 +27,6 @@ int OS_MD5_SHA1_SHA256_File(const char *fname,
 {
     size_t n, read = 0;
     FILE *fp;
-    wfd_t *wfd;
     unsigned char buf[OS_BUFFER_SIZE + 2];
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char md5_digest[16];
