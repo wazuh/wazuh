@@ -29,7 +29,6 @@ LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
-CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
 INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
 
@@ -126,34 +125,6 @@ WriteSyscollector()
       cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
-}
-
-##########
-# Osquery()
-##########
-WriteOsquery()
-{
-    # Adding to the config file
-    OSQUERY_TEMPLATE=$(GetTemplate "osquery.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-}
-
-##########
-# WriteCISCAT()
-##########
-WriteCISCAT()
-{
-    # Adding to the config file
-    CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
 }
 
 ##########
@@ -397,14 +368,6 @@ WriteAgent()
     # Rootcheck
     WriteRootcheck "agent"
 
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "agent"
-
     # Syscollector configuration
     WriteSyscollector "agent"
 
@@ -508,14 +471,6 @@ WriteManager()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "manager"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Syscollector configuration
     WriteSyscollector "manager"
@@ -638,14 +593,6 @@ WriteLocal()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -1134,7 +1081,6 @@ InstallLocal()
     setForwarderConf
 
     # TODO Deletes old ruleset and stats, rootcheck and SCA?
-    ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/rootcheck
 
     InstallSecurityConfigurationAssessmentFiles "manager"
 
@@ -1309,8 +1255,6 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/agents
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/db
 
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/default
-
     if [ ! -f ${INSTALLDIR}/etc/shared/default/agent.conf ]; then
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/default
     fi
@@ -1397,11 +1341,9 @@ InstallAgent()
 
     ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 agent-auth ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming
-    ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wpk_root.pem ${INSTALLDIR}/etc/
 
     # Install the plugins files
