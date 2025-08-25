@@ -354,7 +354,6 @@ typedef struct fdb_t {
 typedef struct _config {
     int rootcheck;                                     /* set to 0 when rootcheck is disabled */
     int disabled;                                      /* is syscheck disabled? */
-    int scan_on_start;
     int max_depth;                                     /* max level of recursivity allowed */
     size_t file_max_size;                              /* max file size for calculating hashes */
 
@@ -429,9 +428,7 @@ typedef struct _config {
     rtfim *realtime;
     fdb_t *database;
 
-    char **prefilter_cmd;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
-    bool allow_remote_prefilter_cmd;
 } syscheck_config;
 
 

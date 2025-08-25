@@ -52,8 +52,6 @@ WriteSyscheck()
         echo "  <syscheck>" >> $NEWCONFIG
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
-        echo "    <scan_on_start>yes</scan_on_start>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
         echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG
         echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
@@ -334,7 +332,6 @@ WriteAgent()
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1514</port>" >> $NEWCONFIG
-    echo "      <protocol>tcp</protocol>" >> $NEWCONFIG
     echo "    </server>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
@@ -353,7 +350,6 @@ WriteAgent()
     echo "    <notify_time>20</notify_time>" >> $NEWCONFIG
     echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
-    echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 

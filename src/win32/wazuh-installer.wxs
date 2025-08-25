@@ -9,7 +9,6 @@
         <!-- Default configuration values -->
         <Property Id="WAZUH_MANAGER" Secure="yes"/>
         <Property Id="WAZUH_MANAGER_PORT" Secure="yes"/>
-        <Property Id="WAZUH_PROTOCOL" Secure="yes"/>
         <Property Id="WAZUH_REGISTRATION_SERVER" Secure="yes"/>
         <Property Id="WAZUH_REGISTRATION_PORT" Secure="yes"/>
         <Property Id="WAZUH_REGISTRATION_PASSWORD" Secure="yes"/>
@@ -28,7 +27,6 @@
         <Property Id="TIME_RECONNECT" Secure="yes"/>
         <Property Id="AUTHD_SERVER" Secure="yes"/>
         <Property Id="AUTHD_PORT" Secure="yes"/>
-        <Property Id="PROTOCOL" Secure="yes"/>
         <Property Id="PASSWORD" Secure="yes"/>
         <Property Id="CERTIFICATE" Secure="yes"/>
         <Property Id="PEM" Secure="yes"/>
@@ -99,7 +97,6 @@
 
         <CustomAction Id="SetWazuhManager" Property="WAZUH_MANAGER" Value="&quot;[ADDRESS]&quot;" />
         <CustomAction Id="SetWazuhManagerPort" Property="WAZUH_MANAGER_PORT" Value="&quot;[SERVER_PORT]&quot;" />
-        <CustomAction Id="SetWazuhManagerProtocol" Property="WAZUH_PROTOCOL" Value="&quot;[PROTOCOL]&quot;" />
         <CustomAction Id="SetRegistrationServer" Property="WAZUH_REGISTRATION_SERVER" Value="&quot;[AUTHD_SERVER]&quot;" />
         <CustomAction Id="SetRegistrationPort" Property="WAZUH_REGISTRATION_PORT" Value="&quot;[AUTHD_PORT]&quot;" />
         <CustomAction Id="SetRegistrationPassword" Property="WAZUH_REGISTRATION_PASSWORD" Value="&quot;[PASSWORD]&quot;" />
@@ -115,7 +112,7 @@
 
         <CustomAction Id="CheckSvcRunning" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
 
-        <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[OS_VERSION]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[WAZUH_PROTOCOL]&quot;/+/&quot;[NOTIFY_TIME]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;" />
+        <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[OS_VERSION]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[NOTIFY_TIME]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;" />
         <CustomAction Id="SetCustomActionDataForSetWazuhPermissions" Return="check" Property="SetWazuhPermissions" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
         <CustomAction Id="SetWazuhPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetWazuhPermissions" Return="check" Execute="commit" Impersonate="no"/>
@@ -159,7 +156,6 @@
             <!-- Set deployment values -->
             <Custom Action="SetWazuhManager" Before="SetCustomActionDataValue">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
             <Custom Action="SetWazuhManagerPort" Before="SetCustomActionDataValue">SERVER_PORT &lt;&gt; "" AND WAZUH_MANAGER_PORT = ""</Custom>
-            <Custom Action="SetWazuhManagerProtocol" Before="SetCustomActionDataValue">PROTOCOL &lt;&gt; "" AND WAZUH_PROTOCOL = ""</Custom>
             <Custom Action="SetRegistrationServer" Before="SetCustomActionDataValue">AUTHD_SERVER &lt;&gt; "" AND WAZUH_REGISTRATION_SERVER = ""</Custom>
             <Custom Action="SetRegistrationPort" Before="SetCustomActionDataValue">AUTHD_PORT &lt;&gt; "" AND WAZUH_REGISTRATION_PORT = ""</Custom>
             <Custom Action="SetRegistrationPassword" Before="SetCustomActionDataValue">PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = ""</Custom>

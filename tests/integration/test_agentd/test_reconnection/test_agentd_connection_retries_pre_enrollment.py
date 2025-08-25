@@ -125,7 +125,7 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
 
     input_description: An external YAML file (wazuh_conf.yaml) includes configuration settings for the agent.
                        Two test cases are found in the test module and include parameters
-                       for the environment setup using the TCP and UDP protocols.
+                       for the environment setup using the TCP protocols.
 
     expected_output:
         - r'Sending keep alive'
@@ -136,7 +136,7 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
         - keys
     '''
     # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
+    remoted_server = RemotedSimulator(protocol = 'tcp')
     remoted_server.start()
 
     # Start hearing logs

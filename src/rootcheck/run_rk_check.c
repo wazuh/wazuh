@@ -62,8 +62,6 @@ void run_rk_check()
 {
     time_t time1;
     time_t time2;
-    FILE *fp;
-    OSList *plist;
 
 #ifndef WIN32
     /* On non-Windows, always start at / */

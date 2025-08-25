@@ -25,15 +25,12 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osglobal = "global";                            /* Server Config */
     const char *ossyscheck = "syscheck";                        /* Agent Config  */
     const char *osrootcheck = "rootcheck";                      /* Agent Config  */
-    const char *osalerts = "alerts";                            /* Server Config */
     const char *osemailalerts = "email_alerts";                 /* Server Config */
-    const char *osdbd = "database_output";                      /* Server Config */
     const char *oscsyslogd = "syslog_output";                   /* Server Config */
     const char *oscagentless = "agentless";                     /* Server Config */
     const char *oslocalfile = "localfile";                      /* Agent Config  */
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
-    const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osbuffer = "client_buffer";                     /* Agent Buffer Config  */
     const char *oscommand = "command";                          /* ? Config      */
     const char *osintegratord = "integration";                  /* Server Config */
@@ -49,11 +46,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osindexer = "indexer";                          /* Indexer Config */
     const char *osgcp_pub = "gcp-pubsub";                       /* Google Cloud PubSub - Wazuh Module */
     const char *osgcp_bucket = "gcp-bucket";                    /* Google Cloud Bucket - Wazuh Module */
-    const char *wlogtest = "rule_test";                         /* Wazuh Logtest */
     const char *agent_upgrade = "agent-upgrade";                /* Agent Upgrade Module */
     const char *task_manager = "task-manager";                  /* Task Manager Module */
     const char *wazuh_db = "wdb";                               /* Wazuh-DB Daemon */
 #ifndef WIN32
+    const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osauthd = "auth";                               /* Authd Config */
     const char *osreports = "reports";                          /* Server Config */
 #ifndef CLIENT
@@ -98,7 +95,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
-            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
+            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
             if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {

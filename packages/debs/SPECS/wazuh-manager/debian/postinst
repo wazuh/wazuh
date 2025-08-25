@@ -270,7 +270,12 @@ case "$1" in
         fi
     fi
 
-    #Delete obsolete files
+    # Delete deprecated manage_agents binary
+    if [ -f ${DIR}/bin/manage_agents ]; then
+        rm -f ${DIR}/bin/manage_agents
+    fi
+
+    # Delete obsolete files
     if [ -f /etc/ossec-init.conf ]; then
         rm -f /etc/ossec-init.conf
     fi

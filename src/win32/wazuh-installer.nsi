@@ -153,8 +153,12 @@ Section "Wazuh Agent (required)" MainSec
     ; overwrite existing files
     SetOverwrite on
 
-    ; remove diff and state files when upgrading
+    ${If} $is_upgrade == "yes"
+        IfFileExists "$INSTDIR\agent-auth.exe" 0 +2
+            Delete "$INSTDIR\agent-auth.exe"
+    ${EndIf}
 
+    ; remove diff and state files when upgrading
     Push "$INSTDIR\queue\diff\local"
     Push "last-entry"
     Push $0

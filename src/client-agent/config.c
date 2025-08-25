@@ -42,10 +42,8 @@ int ClientConf(const char *cfgfile)
     agt->buflength = 5000;
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
-    agt->crypto_method = W_METH_AES;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;
-    agt->force_reconnect_interval = 0;
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
@@ -104,14 +102,9 @@ cJSON *getClientConfig(void) {
     if (agt->profile) cJSON_AddStringToObject(client,"config-profile",agt->profile);
     cJSON_AddNumberToObject(client,"notify_time",agt->notify_time);
     cJSON_AddNumberToObject(client,"time-reconnect",agt->max_time_reconnect_try);
-    cJSON_AddNumberToObject(client,"force_reconnect_interval",agt->force_reconnect_interval);
     cJSON_AddNumberToObject(client,"ip_update_interval",agt->main_ip_update_interval);
     if (agt->flags.auto_restart) cJSON_AddStringToObject(client,"auto_restart","yes"); else cJSON_AddStringToObject(client,"auto_restart","no");
     if (agt->flags.remote_conf) cJSON_AddStringToObject(client,"remote_conf","yes"); else cJSON_AddStringToObject(client,"remote_conf","no");
-    if (agt->crypto_method == W_METH_BLOWFISH)
-        cJSON_AddStringToObject(client,"crypto_method","blowfish");
-    else if (agt->crypto_method == W_METH_AES)
-        cJSON_AddStringToObject(client,"crypto_method","aes");
     if (agt->server) {
         cJSON *servers = cJSON_CreateArray();
         for (i=0;agt->server[i].rip;i++) {
@@ -125,7 +118,6 @@ cJSON *getClientConfig(void) {
             cJSON_AddNumberToObject(server, "max_retries", agt->server[i].max_retries);
             cJSON_AddNumberToObject(server, "retry_interval", agt->server[i].retry_interval);
 
-            if (agt->server[i].protocol == IPPROTO_UDP) cJSON_AddStringToObject(server,"protocol","udp"); else cJSON_AddStringToObject(server,"protocol","tcp");
             cJSON_AddItemToArray(servers,server);
         }
         cJSON_AddItemToObject(client,"server",servers);

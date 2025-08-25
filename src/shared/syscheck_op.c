@@ -19,7 +19,7 @@ const char *SYSCHECK_EVENT_STRINGS[] = {
     [FIM_READDED] = "readded",
     [FIM_DELETED] = "deleted"
 };
-/****************************************************************************************/
+*****************************************************************************************/
 
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
@@ -293,21 +293,21 @@ int sk_decode_sum(sk_sum_t *sum, char *c_sum, char *w_sum) {
             return -1;
         }
 
-        // Look for a defined tag 
+        // Look for a defined tag
         if (sum->tag = wstr_chr(sum->wdata.process_id, ':'), sum->tag) {
             *(sum->tag++) = '\0';
         } else {
             sum->tag = NULL;
         }
 
-        // Look for a symbolic path 
+        // Look for a symbolic path
         if (sum->tag && (symbolic_path = wstr_chr(sum->tag, ':'))) {
             *(symbolic_path++) = '\0';
         } else {
             symbolic_path = NULL;
         }
 
-        // Look if it is a silent event 
+        // Look if it is a silent event
         if (symbolic_path && (c_inode = wstr_chr(symbolic_path, ':'))) {
             *(c_inode++) = '\0';
             if (*c_inode == '+') {
