@@ -80,20 +80,6 @@ variables:
   wrong_file_xml:
     <agent_confi>
 
-    <wodle name="cis-cat">
-    <disabled>no</disabled>
-    <timeout>3600</timeout>
-    <interval>90d</interval>
-    <scan-on-start>yes</scan-on-start>
-
-    <java_path>/opt/java/bin</java_path>
-    <ciscat_path>/opt/scanner</ciscat_path>
-
-    <content type="xccdf" path="/opt/xccdf.xml">
-    <profile>level2</profile>
-    </content>
-    </wodle>
-
     <localfile>
     <log_format>full_command</log_format>
     <alias>ciscat-java-check</alias>

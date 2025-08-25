@@ -335,7 +335,6 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
