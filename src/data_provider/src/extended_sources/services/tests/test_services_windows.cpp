@@ -271,8 +271,6 @@ TEST_F(ServicesProviderTest, Collect_OpenSCManagerFails)
     // Mock OpenSCManagerWrapper to fail
     EXPECT_CALL(*mockWinSvcWrapper, OpenSCManagerWrapper(nullptr, nullptr, GENERIC_READ))
     .WillOnce(Return(nullptr));
-    EXPECT_CALL(*mockWinApiWrapper, GetLastErrorWrapper())
-    .WillOnce(Return(ERROR_DATABASE_DOES_NOT_EXIST));
 
     nlohmann::json results = servicesProvider->collect();
 
@@ -312,8 +310,7 @@ TEST_F(ServicesProviderTest, Collect_EnumServicesStatusExWFailsToGetData)
     EXPECT_CALL(*mockWinSvcWrapper, EnumServicesStatusExWWrapper(fakeScmHandle, SC_ENUM_PROCESS_INFO, SERVICE_WIN32 | SERVICE_DRIVER, SERVICE_STATE_ALL, nullptr, 0, _, _, nullptr, nullptr))
     .WillOnce(DoAll(SetArgPointee<6>(initialBytesNeeded), SetArgPointee<7>(initialServiceCount), Return(FALSE)));
     EXPECT_CALL(*mockWinApiWrapper, GetLastErrorWrapper())
-    .WillOnce(Return(ERROR_MORE_DATA))
-    .WillOnce(Return(ERROR_NOT_ENOUGH_MEMORY));
+    .WillOnce(Return(ERROR_MORE_DATA));
 
     // Mock EnumServicesStatusExWWrapper to fail getting actual data
     EXPECT_CALL(*mockWinSvcWrapper, EnumServicesStatusExWWrapper(fakeScmHandle, SC_ENUM_PROCESS_INFO, SERVICE_WIN32 | SERVICE_DRIVER, SERVICE_STATE_ALL, _, initialBytesNeeded, _, _, nullptr, nullptr))

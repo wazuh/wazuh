@@ -55,7 +55,7 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
 
     if (!svcHandle)
     {
-        std::cerr << "Error opening service handle: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
+        // std::cerr << "Error opening service handle: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
         return false;
     }
 
@@ -64,7 +64,7 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
 
     if (m_winApiWrapper->GetLastErrorWrapper() != ERROR_INSUFFICIENT_BUFFER)
     {
-        std::cerr << "Error getting config size: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
+        // std::cerr << "Error getting config size: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
         m_winSvcWrapper->CloseServiceHandleWrapper(svcHandle);
         return false;
     }
@@ -74,7 +74,7 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
 
     if (!m_winSvcWrapper->QueryServiceConfigWWrapper(svcHandle, config, cbBufSize, &cbBufSize))
     {
-        std::cerr << "Error reading service config: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
+        // std::cerr << "Error reading service config: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
         m_winSvcWrapper->CloseServiceHandleWrapper(svcHandle);
         return false;
     }
@@ -118,7 +118,7 @@ bool ServicesProvider::getService(SC_HANDLE scmHandle, const ENUM_SERVICE_STATUS
         }
         else
         {
-            std::cerr << "Warning: Failed to get service description. Error: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
+            // std::cerr << "Warning: Failed to get service description. Error: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
         }
     }
 
@@ -148,7 +148,7 @@ nlohmann::json ServicesProvider::collect()
 
     if (!scmHandle)
     {
-        std::cerr << "Failed to connect to Service Connection Manager: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
+        // std::cerr << "Failed to connect to Service Connection Manager: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
         return results;
     }
 
@@ -167,7 +167,7 @@ nlohmann::json ServicesProvider::collect()
 
     if (m_winApiWrapper->GetLastErrorWrapper() != ERROR_MORE_DATA)
     {
-        std::cerr << "Error querying buffer size: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
+        // std::cerr << "Error querying buffer size: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
         m_winSvcWrapper->CloseServiceHandleWrapper(scmHandle);
         return results;
     }
@@ -186,7 +186,7 @@ nlohmann::json ServicesProvider::collect()
                                                        nullptr,
                                                        nullptr))
     {
-        std::cerr << "Error enumerating services: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
+        // std::cerr << "Error enumerating services: " << m_winApiWrapper->GetLastErrorWrapper() << "\n";
         m_winSvcWrapper->CloseServiceHandleWrapper(scmHandle);
         return results;
     }
@@ -195,7 +195,7 @@ nlohmann::json ServicesProvider::collect()
     {
         if (!getService(scmHandle, services[i], results))
         {
-            std::cerr << "Warning: Failed to get details for service\n";
+            // std::cerr << "Warning: Failed to get details for service\n";
         }
     }
 

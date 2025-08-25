@@ -62,7 +62,16 @@ std::optional<std::wstring> ServicesHelper::readServiceDllFromParameters(const s
         return std::nullopt;
     }
 
+    constexpr DWORD MAX_SERVICE_DLL_PATH = 32768; // 32KB max path
+
+    if (dataSize == 0 || dataSize > MAX_SERVICE_DLL_PATH)
+    {
+        m_winapiWrapper->RegCloseKeyWrapper(hKey);
+        return std::nullopt;
+    }
+
     std::wstring buffer(dataSize / sizeof(wchar_t), L'\0');
+
     status = m_winapiWrapper->RegQueryValueExWWrapper(hKey, L"ServiceDll", nullptr, nullptr, reinterpret_cast<LPBYTE>(&buffer[0]), &dataSize);
 
     m_winapiWrapper->RegCloseKeyWrapper(hKey);
