@@ -242,21 +242,20 @@ testconfig()
 
 get_wazuh_engine_pid()
 {
-    local max_wait=10
-    local interval=0.1
-    local elapsed=0
+    local max_ticks=100
+    local ticks=0
     local pidfile
 
     ${DIR}/bin/wazuh-engine
 
-    while awk "BEGIN { exit !($elapsed < $max_wait) }"; do
+    while [ $ticks -lt $max_ticks ]; do
         pidfile=$(ls ${DIR}/var/run/wazuh-engine-*.pid 2>/dev/null | head -n1)
         if [ -n "$pidfile" ]; then
             echo "${pidfile##*-}" | sed 's/\.pid$//'
             return 0
         fi
-        sleep $interval
-        elapsed=$(awk "BEGIN { print $elapsed + $interval }")
+        ticks=$((ticks + 1))
+        sleep 0.1
     done
 
     return 1  # timeout
