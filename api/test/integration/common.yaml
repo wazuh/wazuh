@@ -171,10 +171,6 @@ variables:
         <log_format>plain</log_format>
       </logging>
 
-      <alerts>
-        <log_alert_level>300</log_alert_level>
-      </alerts>
-
       <remote>
         <connection>secure</connection>
         <port>1514</port>
@@ -205,10 +201,6 @@ variables:
         <log_format>plain</log_format>
       </logging>
 
-      <alerts>
-        <log_alert_level>300</log_alert_level>
-      </alerts>
-
       <remote>
         <connection>secure</connection>
         <port>1514</port>
@@ -230,10 +222,6 @@ variables:
     <ossec_config>
       <global>
       </global>
-
-      <alerts>
-        <log_alert_level>3</log_alert_level>
-      </alerts>
     
       <vulnerability-detection>
         <enabled>no</enabled>
@@ -255,10 +243,6 @@ variables:
       <logging>
         <log_format>plain</log_format>
       </logging>
-
-      <alerts>
-        <log_alert_level>300</log_alert_level>
-      </alerts>
 
       <remote>
         <connection>secure</connection>
@@ -283,10 +267,6 @@ variables:
       <logging>
         <log_format>plain</log_format>
       </logging>
-
-      <alerts>
-        <log_alert_level>300</log_alert_level>
-      </alerts>
 
       <remote>
         <connection>secure</connection>

@@ -1,5 +1,5 @@
   <global>
-    <agents_disconnection_time>10m</agents_disconnection_time>
+    <agents_disconnection_time>15m</agents_disconnection_time>
     <agents_disconnection_alert_time>0</agents_disconnection_alert_time>
     <update_check>yes</update_check>
   </global>

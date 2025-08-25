@@ -421,9 +421,6 @@ void test_MonitordConfig_success(void **state) {
 
     will_return_count(__wrap_getDefine_Int, 1, -1);
 
-    expect_value(__wrap_ReadConfig, modules, CREPORTS);
-    expect_string(__wrap_ReadConfig, cfgfile, cfg);
-    will_return(__wrap_ReadConfig, 0);
     expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
     will_return(__wrap_ReadConfig, 0);
@@ -454,7 +451,7 @@ void test_MonitordConfig_fail(void **state) {
 
     will_return_count(__wrap_getDefine_Int, 1, -1);
 
-    expect_value(__wrap_ReadConfig, modules, CREPORTS);
+    expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
     will_return(__wrap_ReadConfig, -1);
 
