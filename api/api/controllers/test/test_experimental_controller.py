@@ -16,7 +16,7 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.rbac.decorators
         from api.controllers.experimental_controller import (
             check_experimental_feature_value, clear_rootcheck_database,
-            clear_syscheck_database, get_cis_cat_results, get_hardware_info,
+            clear_syscheck_database, get_hardware_info,
             get_hotfixes_info, get_network_address_info,
             get_network_interface_info, get_network_protocol_info, get_os_info,
             get_packages_info, get_ports_info, get_processes_info)
