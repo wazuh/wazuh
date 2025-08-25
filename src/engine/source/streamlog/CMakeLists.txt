@@ -3,21 +3,23 @@ set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
-add_library(streamlogger STATIC
+# Implementation
+add_library(streamlogger_streamlogger STATIC
     ${SRC_DIR}/logger.cpp
     ${SRC_DIR}/channel.cpp
 )
-target_include_directories(streamlogger
+target_include_directories(streamlogger_streamlogger
     PUBLIC
     ${INC_DIR}
 )
-target_link_libraries(streamlogger
+target_link_libraries(streamlogger_streamlogger
     PUBLIC
     base
     queue
     PRIVATE
     urlrequest
 )
+add_library(streamlogger::streamlogger ALIAS streamlogger_streamlogger)
 
 # Tests
 if(ENGINE_BUILD_TEST)
@@ -30,7 +32,7 @@ add_executable(streamlogger_utest
     ${UNIT_SRC_DIR}/logger_test.cpp
     ${UNIT_SRC_DIR}/channel_test.cpp
 )
-target_link_libraries(streamlogger_utest GTest::gtest_main GTest::gmock streamlogger)
+target_link_libraries(streamlogger_utest GTest::gtest_main GTest::gmock streamlogger::streamlogger)
 target_include_directories(streamlogger_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(streamlogger_utest)
 
@@ -38,7 +40,7 @@ add_executable(streamlogger_ctest
     ${COMPONENT_SRC_DIR}/logger_test.cpp
 )
 
-target_link_libraries(streamlogger_ctest PRIVATE streamlogger GTest::gtest_main)
+target_link_libraries(streamlogger_ctest PRIVATE streamlogger::streamlogger GTest::gtest_main)
 gtest_discover_tests(streamlogger_ctest)
 
 endif(ENGINE_BUILD_TEST)
@@ -52,7 +54,7 @@ set(BENCH_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/benchmark/src)
 add_library(streamlogger_bench INTERFACE)
 
 target_include_directories(streamlogger_bench INTERFACE ${BENCH_DIR}/include)
-target_link_libraries(streamlogger_bench INTERFACE streamlogger benchmark::benchmark)
+target_link_libraries(streamlogger_bench INTERFACE streamlogger::streamlogger benchmark::benchmark)
 add_library(streamlogger::bench ALIAS streamlogger_bench)
 add_executable(streamlogger_benchmark
     ${BENCH_SRC_DIR}/async_vs_sync_bench.cpp

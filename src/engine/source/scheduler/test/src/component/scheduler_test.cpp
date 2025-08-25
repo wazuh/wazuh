@@ -7,12 +7,14 @@
 #include <gtest/gtest.h>
 
 #include <scheduler/scheduler.hpp>
+#include <base/logging.hpp>
 
 class SchedulerTest : public ::testing::Test
 {
 protected:
     void SetUp() override
     {
+        logging::testInit();
         scheduler = std::make_unique<scheduler::Scheduler>(2); // 2 worker threads
     }
 
@@ -53,7 +55,6 @@ TEST_F(SchedulerTest, ScheduleOneTimeTask)
     scheduler::TaskConfig config;
     config.interval = 0; // One-time task
     config.CPUPriority = 10;
-    config.IO_Priority = 5;
     config.timeout = 0;
     config.taskFunction = [&taskExecuted]()
     {
@@ -82,7 +83,6 @@ TEST_F(SchedulerTest, ScheduleRecurringTask)
     scheduler::TaskConfig config;
     config.interval = 1; // Every 1 second
     config.CPUPriority = 5;
-    config.IO_Priority = 3;
     config.timeout = 0;
     config.taskFunction = [&executionCount]()
     {
@@ -110,7 +110,6 @@ TEST_F(SchedulerTest, RemoveTask)
     scheduler::TaskConfig config;
     config.interval = 2; // Every 2 seconds
     config.CPUPriority = 10;
-    config.IO_Priority = 5;
     config.timeout = 0;
     config.taskFunction = [&taskExecuted]()
     {
@@ -143,7 +142,6 @@ TEST_F(SchedulerTest, MultipleTasks)
     scheduler::TaskConfig config1;
     config1.interval = 0;    // One-time
     config1.CPUPriority = 0; // No priority change for testing
-    config1.IO_Priority = 0;
     config1.timeout = 0;
     config1.taskFunction = [&task1Count]()
     {
@@ -153,7 +151,6 @@ TEST_F(SchedulerTest, MultipleTasks)
     scheduler::TaskConfig config2;
     config2.interval = 1;    // Recurring
     config2.CPUPriority = 0; // No priority change for testing
-    config2.IO_Priority = 0;
     config2.timeout = 0;
     config2.taskFunction = [&task2Count]()
     {
@@ -183,7 +180,6 @@ TEST_F(SchedulerTest, TaskPriority)
         scheduler::TaskConfig config;
         config.interval = 0; // One-time
         config.CPUPriority = priority;
-        config.IO_Priority = 5;
         config.timeout = 0;
         config.taskFunction = [&, taskId]()
         {

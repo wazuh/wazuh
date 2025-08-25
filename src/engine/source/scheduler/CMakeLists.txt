@@ -3,17 +3,26 @@ set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
-add_library(scheduler STATIC
+# Interface
+add_library(scheduler_ischeduler INTERFACE)
+target_include_directories(scheduler_ischeduler INTERFACE ${IFACE_DIR})
+target_link_libraries(scheduler_ischeduler INTERFACE base)
+add_library(scheduler::ischeduler ALIAS scheduler_ischeduler)
+
+# Implementation
+add_library(scheduler_scheduler STATIC
     ${SRC_DIR}/scheduler.cpp
 )
-target_include_directories(scheduler
+target_include_directories(scheduler_scheduler
     PUBLIC
     ${INC_DIR}
 )
-target_link_libraries(scheduler
+target_link_libraries(scheduler_scheduler
     PUBLIC
+    scheduler::ischeduler
     base
 )
+add_library(scheduler::scheduler ALIAS scheduler_scheduler)
 
 # Tests
 if(ENGINE_BUILD_TEST)
@@ -25,7 +34,7 @@ add_executable(scheduler_ctest
     ${COMPONENT_SRC_DIR}/scheduler_test.cpp
 )
 
-target_link_libraries(scheduler_ctest PRIVATE scheduler GTest::gtest_main)
+target_link_libraries(scheduler_ctest PRIVATE scheduler::scheduler GTest::gtest_main)
 gtest_discover_tests(scheduler_ctest)
 
 endif(ENGINE_BUILD_TEST)

@@ -4,7 +4,6 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -13,17 +12,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include <scheduler/ischeduler.hpp>
+
 namespace scheduler
 {
-
-struct TaskConfig
-{
-    std::size_t interval;               // in seconds, 0 means run once
-    int CPUPriority;                    // niceValue, lower means more priority (-20 to 19)
-    int IO_Priority;                    // IO priority, higher means more priority
-    int timeout;                        // in seconds, 0 means no timeout, for future use.
-    std::function<void()> taskFunction; // The function to run
-};
 
 struct ScheduledTask
 {
@@ -38,14 +30,14 @@ struct ScheduledTask
         , isOneTime(config.interval == 0)
     {
         // Schedule one-time tasks to run immediately, recurring tasks with a small delay
-        if (isOneTime)
+        nextRun = [&]() -> std::chrono::steady_clock::time_point
         {
-            nextRun = std::chrono::steady_clock::now();
-        }
-        else
-        {
-            nextRun = std::chrono::steady_clock::now() + std::chrono::seconds(config.interval);
-        }
+            if (isOneTime)
+            {
+                return std::chrono::steady_clock::now();
+            }
+            return std::chrono::steady_clock::now() + std::chrono::seconds(config.interval);
+        }();
     }
 
     void updateNextRun()
@@ -57,39 +49,36 @@ struct ScheduledTask
     }
 };
 
-// Custom comparator for priority queue to compare shared_ptr<ScheduledTask>
 struct TaskComparator
 {
     bool operator()(const std::shared_ptr<ScheduledTask>& lhs, const std::shared_ptr<ScheduledTask>& rhs) const
     {
-        // Earlier time has higher priority (min-heap behavior for time)
+        // Earlier time has higher priority
         return lhs->nextRun > rhs->nextRun;
     }
 };
 
-class Scheduler
+class Scheduler : public IScheduler
 {
 public:
     Scheduler(int threads = 1);
     ~Scheduler();
 
-    // Start and stop the scheduler
     void start();
     void stop();
     bool isRunning() const;
 
-    // Schedule a task to run at a specific interval, 0 means run once
-    void scheduleTask(std::string_view taskName, TaskConfig&& config);
-    void removeTask(std::string_view taskName);
+    // Implementation of IScheduler interface
+    void scheduleTask(std::string_view taskName, TaskConfig&& config) override;
+    void removeTask(std::string_view taskName) override;
 
-    // Get statistics
-    std::size_t getActiveTasksCount() const;
-    std::size_t getThreadCount() const;
+    std::size_t getActiveTasksCount() const override;
+    std::size_t getThreadCount() const override;
 
 private:
     void workerThread();
     void executeTask(const ScheduledTask& task);
-    void setCurrentThreadPriority(int cpuPriority, int ioPriority);
+    void setCurrentThreadPriority(int cpuPriority);
 
     std::atomic<bool> m_running;
     std::vector<std::thread> m_workers;

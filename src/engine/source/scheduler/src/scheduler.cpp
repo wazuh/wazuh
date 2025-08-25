@@ -2,9 +2,13 @@
 #include <iostream>
 #include <pthread.h>
 #include <sched.h>
-#include <scheduler/scheduler.hpp>
 #include <stdexcept>
+
 #include <sys/resource.h>
+
+#include <base/logging.hpp>
+#include <base/process.hpp>
+#include <scheduler/scheduler.hpp>
 
 namespace scheduler
 {
@@ -26,6 +30,7 @@ void Scheduler::start()
     {
         return;
     }
+    LOG_DEBUG("Starting scheduler with %d threads...", m_numThreads);
 
     m_running.store(true);
 
@@ -35,10 +40,13 @@ void Scheduler::start()
     {
         m_workers.emplace_back(&Scheduler::workerThread, this);
     }
+
+    LOG_INFO("Scheduler started");
 }
 
 void Scheduler::stop()
 {
+    LOG_DEBUG("Stopping scheduler...");
     if (!m_running.load())
     {
         return;
@@ -66,6 +74,8 @@ void Scheduler::stop()
     {
         m_taskQueue.pop();
     }
+
+    LOG_INFO("Scheduler stopped");
 }
 
 bool Scheduler::isRunning() const
@@ -161,10 +171,10 @@ void Scheduler::workerThread()
                 {
                     m_queueCondition.wait_for(lock, waitTime);
                 }
-                 // Don't remove task from queue, just continue the loop
+                // Don't remove task from queue, just continue the loop
                 continue;
             }
-            // Task is ready to execute
+            LOG_DEBUG("Task '%s' is due for execution", task->name);
             m_taskQueue.pop();
         }
 
@@ -173,25 +183,28 @@ void Scheduler::workerThread()
             std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
             if (m_tasks.find(task->name) == m_tasks.end())
             {
-                continue; // Task was removed
+                LOG_DEBUG("Task '%s' was removed before execution", task->name.c_str());
+                continue;
             }
         }
 
         // Execute the task
         executeTask(*task);
 
-        // Reschedule if it's a recurring task
+        // Reschedule if it's a recurring task, otherwise remove it
         if (!task->isOneTime && task->config.interval > 0)
         {
+            LOG_DEBUG("Rescheduling task '%s' to run at %lld",
+                      task->name,
+                      std::chrono::duration_cast<std::chrono::seconds>(task->nextRun.time_since_epoch()).count());
             task->updateNextRun();
-
             std::lock_guard<std::mutex> queueLock(m_queueMutex);
             m_taskQueue.push(task);
             m_queueCondition.notify_one();
+
         }
         else
         {
-            // Remove one-time task after execution
             std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
             m_tasks.erase(task->name);
         }
@@ -200,66 +213,48 @@ void Scheduler::workerThread()
 
 void Scheduler::executeTask(const ScheduledTask& task)
 {
+    if (task.config.taskFunction == nullptr)
+    {
+        return;
+    }
+
     try
     {
         // Set thread priority before executing task
-        if (task.config.CPUPriority != 0 || task.config.IO_Priority != 0)
+        if (task.config.CPUPriority != 0)
         {
-            setCurrentThreadPriority(task.config.CPUPriority, task.config.IO_Priority);
+            setCurrentThreadPriority(task.config.CPUPriority);
         }
 
-        // Execute the task function
-        if (task.config.taskFunction)
-        {
-            task.config.taskFunction();
-        }
+        task.config.taskFunction();
     }
     catch (const std::exception& e)
     {
-        // Log error (in a real implementation, you'd use proper logging)
-        std::cerr << "Error executing task '" << task.name << "': " << e.what() << std::endl;
+        LOG_WARNING("Error executing task '%s': %s", task.name.c_str(), e.what());
     }
     catch (...)
     {
-        std::cerr << "Unknown error executing task '" << task.name << "'" << std::endl;
+        LOG_WARNING("Unknown error executing task '%s'", task.name.c_str());
     }
 
-    // Reset thread priority
-    if (task.config.CPUPriority != 0 || task.config.IO_Priority != 0)
+    // Restore default priority
+    if (task.config.CPUPriority != 0)
     {
-        setCurrentThreadPriority(0, 0);
+        setCurrentThreadPriority(0);
     }
 }
 
-void Scheduler::setCurrentThreadPriority(int cpuPriority, int ioPriority)
+void Scheduler::setCurrentThreadPriority(int cpuPriority)
 {
-    try
-    {
-        // Set CPU priority (nice value)
-        if (cpuPriority != 0)
-        {
-            // Just in case, clamp the value to valid nice range
-            int niceValue = cpuPriority;
-            niceValue = std::max(-20, std::min(19, niceValue));
+    // Just in case, clamp the value to valid nice range
+    int niceValue = cpuPriority;
+    niceValue = std::max(-20, std::min(19, niceValue));
 
-            if (setpriority(PRIO_PROCESS, 0, niceValue) != 0)
-            {
-                // Handle error if needed - could log here
-            }
-        }
-
-        // Set I/O priority (ionice)
-        // Note: This requires ioprio_set system call which is Linux-specific
-        // For now, we'll skip this but it can be implemented if needed
-        if (ioPriority != 0)
-        {
-            // TODO: Implement ioprio_set if I/O priority is critical
-        }
-    }
-    catch (...)
+    if (setpriority(PRIO_PROCESS, 0, niceValue) != 0)
     {
-        // Ignore priority setting errors - task should still execute
+        LOG_WARNING("Failed to set thread CPU priority to %d", niceValue);
     }
+    LOG_DEBUG("Set thread CPU priority to %d", niceValue);
 }
 
 } // namespace scheduler
