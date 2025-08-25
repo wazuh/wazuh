@@ -583,17 +583,51 @@ def runTests(moduleName):
         for test in tests:
             path = os.path.join(currentDir, test)
             if ".exe" in test:
-                rootPath = os.path.join(utils.moduleDirPathBuild(moduleName), "bin")
+                # Don't copy DLLs!! Just add the correct paths
+                dll_dirs = [
+                    "/usr/i686-w64-mingw32/bin",
+                    "/usr/i686-w64-mingw32/lib",
+                    utils.currentPath(),
+                    currentDir,  # already chdir'ed to this later
+                    os.path.join(utils.moduleDirPathBuild("shared_modules/dbsync"), "build", "bin"),
+                    os.path.join(utils.moduleDirPathBuild("data_provider"), "build", "bin"),
+                ]
 
-                # Copy MinGW runtime DLLs
-                stdcpp = utils.findFile(name="libstdc++-6.dll", path=utils.rootPath())
-                libgcc = utils.findFile(name="libgcc_s_dw2-1.dll", path=utils.rootPath())
+                gcc_root = "/usr/lib/gcc/i686-w64-mingw32"
+                if os.path.isdir(gcc_root):
+                    for sub in os.listdir(gcc_root):
+                        p = os.path.join(gcc_root, sub)
+                        if os.path.isdir(p):
+                            dll_dirs.append(p)
 
-                safe_copy(stdcpp, os.path.join(rootPath, "libstdc++-6.dll"))
-                safe_copy(libgcc, os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
+                for _name in ("libstdc++-6.dll", "libgcc_s_dw2-1.dll", "libwinpthread-1.dll",
+                              "dbsync.dll", "sysinfo.dll", "libwazuhext.dll", "libagent_sync_protocol.dll"):
+                    try:
+                        _p = utils.findFile(name=_name, path=utils.rootPath())
+                        if _p:
+                            dll_dirs.append(os.path.dirname(_p))
+                    except Exception:
+                        pass
 
-                command = f'WINEPATH="/usr/i686-w64-mingw32/lib;{utils.currentPath()}" \
-                           WINEARCH=win64 /usr/bin/wine {path}'
+                # De-dup + keep only existing dirs
+                uniq_dirs = []
+                seen = set()
+                for d in (os.fspath(x) for x in dll_dirs if x and os.path.isdir(os.fspath(x))):
+                    if d not in seen:
+                        seen.add(d)
+                        uniq_dirs.append(d)
+
+                # Convert to Windows-style paths for Wine's %PATH% (Z:\… and backslashes)
+                win_path = ";".join(
+                    "Z:" + d.replace("/", "\\\\")
+                    for d in uniq_dirs
+                )
+
+                command = (
+                    f'WINEARCH=win64 '
+                    'wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f & '
+                    f'wine cmd /c "set PATH={win_path};%PATH% & {os.path.basename(path)}"'
+                )
             else:
                 command = path
             out = subprocess.run(command,
