@@ -127,7 +127,8 @@ CREATE TABLE IF NOT EXISTS sys_services (
     service_target_type TEXT,
     service_target_address TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
-    PRIMARY KEY (service_id)
+    item_id TEXT,
+    PRIMARY KEY (service_id, file_path)
 );
 
 INSERT INTO sync_info (component) VALUES ('syscollector-users');

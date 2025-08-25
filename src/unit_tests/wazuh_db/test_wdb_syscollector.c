@@ -4318,6 +4318,7 @@ static void test_wdb_services_save_transaction_fail(void **state) {
     const char * service_target_type = "service_target_type";
     const char * service_target_address = "service_target_address";
     const char * checksum = "checksum";
+    const char * item_id = "item_id";
 
     service_record_t service_record = {
         .scan_id = scan_id,
@@ -4354,7 +4355,8 @@ static void test_wdb_services_save_transaction_fail(void **state) {
         .service_target_ephemeral_id = service_target_ephemeral_id,
         .service_target_type = service_target_type,
         .service_target_address = service_target_address,
-        .checksum = checksum
+        .checksum = checksum,
+        .item_id = item_id
     };
 
     ret = wdb_services_save(data, &service_record, false);
@@ -4406,6 +4408,7 @@ static void test_wdb_services_save_insert_fail(void **state) {
     const char * service_target_type = "service_target_type";
     const char * service_target_address = "service_target_address";
     const char * checksum = "checksum";
+    const char * item_id = "item_id";
 
     service_record_t service_record = {
         .scan_id = scan_id,
@@ -4442,7 +4445,8 @@ static void test_wdb_services_save_insert_fail(void **state) {
         .service_target_ephemeral_id = service_target_ephemeral_id,
         .service_target_type = service_target_type,
         .service_target_address = service_target_address,
-        .checksum = checksum
+        .checksum = checksum,
+        .item_id = item_id
     };
 
     ret = wdb_services_save(data, &service_record, false);
@@ -4491,6 +4495,7 @@ static void test_wdb_services_save_success(void **state) {
     const char * service_target_type = "service_target_type";
     const char * service_target_address = "service_target_address";
     const char * checksum = "checksum";
+    const char * item_id = "item_id";
 
     will_return(__wrap_wdb_stmt_cache, 0);
     bind_text(1, scan_id, 0);
@@ -4528,6 +4533,7 @@ static void test_wdb_services_save_success(void **state) {
     bind_text(33, service_target_type, 0);
     bind_text(34, service_target_address, 0);
     bind_text(35, checksum, 0);
+    bind_text(36, item_id, 0);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
@@ -4566,7 +4572,8 @@ static void test_wdb_services_save_success(void **state) {
         .service_target_ephemeral_id = service_target_ephemeral_id,
         .service_target_type = service_target_type,
         .service_target_address = service_target_address,
-        .checksum = checksum
+        .checksum = checksum,
+        .item_id = item_id
     };
 
     ret = wdb_services_save(data, &service_record, false);
@@ -4614,6 +4621,7 @@ static void test_wdb_services_insert_sql_fail(void **state) {
     const char * service_target_type = "service_target_type";
     const char * service_target_address = "service_target_address";
     const char * checksum = "checksum";
+    const char * item_id = "item_id";
 
     will_return(__wrap_wdb_stmt_cache, 0);
     bind_text(1, scan_id, 0);
@@ -4651,6 +4659,7 @@ static void test_wdb_services_insert_sql_fail(void **state) {
     bind_text(33, service_target_type, 0);
     bind_text(34, service_target_address, 0);
     bind_text(35, checksum, 0);
+    bind_text(36, item_id, 0);
 
     will_return(__wrap_wdb_step, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");
@@ -4691,7 +4700,8 @@ static void test_wdb_services_insert_sql_fail(void **state) {
         .service_target_ephemeral_id = service_target_ephemeral_id,
         .service_target_type = service_target_type,
         .service_target_address = service_target_address,
-        .checksum = checksum
+        .checksum = checksum,
+        .item_id = item_id
     };
 
     ret = wdb_services_insert(data, &service_record, false);

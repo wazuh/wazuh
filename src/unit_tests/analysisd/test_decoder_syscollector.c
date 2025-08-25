@@ -653,7 +653,8 @@ int test_setup_services_valid_msg_modified(void **state)
                 "\"service_target_ephemeral_id\":\"12345\","
                 "\"service_target_type\":\"socket\","
                 "\"service_target_address\":\"127.0.0.1:9090\","
-                "\"checksum\":\"abc\""
+                "\"checksum\":\"abc\","
+                "\"item_id\":\"123456\""
             "}," \
             "\"operation\":\"MODIFIED\"," \
             "\"type\":\"dbsync_services\"" \
@@ -1189,7 +1190,8 @@ int test_setup_services_valid_msg_inserted(void **state)
                 "\"service_target_ephemeral_id\":\"12345\","
                 "\"service_target_type\":\"socket\","
                 "\"service_target_address\":\"127.0.0.1:9090\","
-                "\"checksum\":\"abc\""
+                "\"checksum\":\"abc\","
+                "\"item_id\":\"123456\""
             "}," \
             "\"operation\":\"INSERTED\","
             "\"type\":\"dbsync_services\"" \
@@ -2622,7 +2624,8 @@ void test_syscollector_dbsync_services_valid_msg_modified(void **state)
             "\"service_target_ephemeral_id\":\"12345\","
             "\"service_target_type\":\"socket\","
             "\"service_target_address\":\"127.0.0.1:9090\","
-            "\"checksum\":\"abc\""
+            "\"checksum\":\"abc\","
+            "\"item_id\":\"123456\""
         "}";
     const char *result = "ok ";
     int sock = 1;
@@ -3255,7 +3258,8 @@ void test_syscollector_dbsync_services_valid_msg_inserted(void **state)
             "\"service_target_ephemeral_id\":\"12345\","
             "\"service_target_type\":\"socket\","
             "\"service_target_address\":\"127.0.0.1:9090\","
-            "\"checksum\":\"abc\""
+            "\"checksum\":\"abc\","
+            "\"item_id\":\"123456\""
         "}";
     const char *result = "ok ";
     int sock = 1;
