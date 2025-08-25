@@ -963,6 +963,7 @@ typedef struct {
     const char *service_target_type;
     const char *service_target_address;
     const char *checksum;
+    const char *item_id;
 } service_record_t;
 
 // Save user info into DB.

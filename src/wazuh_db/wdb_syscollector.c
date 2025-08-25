@@ -1343,8 +1343,10 @@ int wdb_services_save(wdb_t * wdb, const service_record_t * service_record, cons
 int wdb_services_insert(wdb_t * wdb, const service_record_t * service_record, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    if (NULL == service_record->service_id &&
-        strlen(service_record->service_id) == 0) {
+    if ((NULL == service_record->service_id &&
+        strlen(service_record->service_id) == 0) ||
+        (NULL == service_record->file_path &&
+        strlen(service_record->file_path) == 0)) {
         return OS_INVALID;
     }
 
@@ -1410,6 +1412,7 @@ int wdb_services_insert(wdb_t * wdb, const service_record_t * service_record, co
     sqlite3_bind_text(stmt, 33, service_record->service_target_type, -1, NULL);
     sqlite3_bind_text(stmt, 34, service_record->service_target_address, -1, NULL);
     sqlite3_bind_text(stmt, 35, service_record->checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 36, service_record->item_id, -1, NULL);
 
     if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
@@ -1707,6 +1710,7 @@ int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
     const char * service_target_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_target_type"));
     const char * service_target_address = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_target_address"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
+    const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
 
     service_record_t service_record = {
         .scan_id = scan_id, .scan_time = scan_time, .service_id = service_id, .service_name = service_name,
@@ -1717,7 +1721,7 @@ int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
         .process_group_name = process_group_name, .process_working_directory = process_working_directory, .process_root_directory = process_root_directory, .file_path = file_path,
         .service_address = service_address, .log_file_path = log_file_path, .error_log_file_path = error_log_file_path, .service_exit_code = service_exit_code,
         .service_win32_exit_code = service_win32_exit_code, .service_following = service_following, .service_object_path = service_object_path, .service_target_ephemeral_id = service_target_ephemeral_id,
-        .service_target_type = service_target_type, .service_target_address = service_target_address, .checksum = checksum
+        .service_target_type = service_target_type, .service_target_address = service_target_address, .checksum = checksum, .item_id = item_id
     };
 
     return wdb_services_save(wdb, &service_record, TRUE);

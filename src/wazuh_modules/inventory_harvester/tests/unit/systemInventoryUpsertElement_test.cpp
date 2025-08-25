@@ -965,7 +965,8 @@ TEST_F(SystemInventoryUpsertElement, emptyServiceId_Services)
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return(""));
+    // Unusual case where the item_id is empty.
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
@@ -1012,14 +1013,14 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Services)
     EXPECT_CALL(*context, serviceTargetEphemeralId()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, serviceTargetType()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, serviceTargetAddress()).WillOnce(testing::Return(""));
-
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return("itemId"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_apache2","operation":"INSERTED","data":{"process":{"pid":0},"service":{"exit_code":0,"frequency":0,"id":"apache2","inetd_compatibility":true,"starts":{"on_mount":false},"target":{"ephemeral_id":"0"},"win32_exit_code":0},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_itemId","operation":"INSERTED","data":{"process":{"pid":0},"service":{"exit_code":0,"frequency":0,"id":"apache2","inetd_compatibility":true,"starts":{"on_mount":false},"target":{"ephemeral_id":"0"},"win32_exit_code":0},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validNegativeValues_Services)
@@ -1063,12 +1064,13 @@ TEST_F(SystemInventoryUpsertElement, validNegativeValues_Services)
     EXPECT_CALL(*context, serviceTargetEphemeralId()).WillOnce(testing::Return(-1));
     EXPECT_CALL(*context, serviceTargetType()).WillOnce(testing::Return("jobType"));
     EXPECT_CALL(*context, serviceTargetAddress()).WillOnce(testing::Return("jobPath"));
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return("itemId"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_wazuh-agent","operation":"INSERTED","data":{"file":{"path":"sourcePath"},"process":{"args":["arg1","arg2","arg3"],"executable":"/usr/bin/wazuh-agent","group":{"name":"groupName"},"root_dir":"/root/","user":{"name":"root"},"working_directory":"/home/"},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","following":"following","id":"wazuh-agent","inetd_compatibility":true,"name":"Wazuh Agent","object_path":"objectPath","restart":"restart","start_type":"startType","starts":{"on_mount":true,"on_not_empty_directory":["one","two","three"],"on_path_modified":["one","two","three"]},"state":"running","sub_state":"subState","target":{"address":"jobPath","type":"jobType"},"type":"type"},"log":{"file":{"path":"/var/log/"}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_itemId","operation":"INSERTED","data":{"file":{"path":"sourcePath"},"process":{"args":["arg1","arg2","arg3"],"executable":"/usr/bin/wazuh-agent","group":{"name":"groupName"},"root_dir":"/root/","user":{"name":"root"},"working_directory":"/home/"},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","following":"following","id":"wazuh-agent","inetd_compatibility":true,"name":"Wazuh Agent","object_path":"objectPath","restart":"restart","start_type":"startType","starts":{"on_mount":true,"on_not_empty_directory":["one","two","three"],"on_path_modified":["one","two","three"]},"state":"running","sub_state":"subState","target":{"address":"jobPath","type":"jobType"},"type":"type"},"log":{"file":{"path":"/var/log/"}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validCompleteData_Services)
@@ -1112,11 +1114,12 @@ TEST_F(SystemInventoryUpsertElement, validCompleteData_Services)
     EXPECT_CALL(*context, serviceTargetEphemeralId()).WillOnce(testing::Return(10));
     EXPECT_CALL(*context, serviceTargetType()).WillOnce(testing::Return("jobType"));
     EXPECT_CALL(*context, serviceTargetAddress()).WillOnce(testing::Return("jobPath"));
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return("itemId"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_wazuh-agent","operation":"INSERTED","data":{"file":{"path":"sourcePath"},"process":{"args":["arg1","arg2","arg3"],"executable":"/usr/bin/wazuh-agent","group":{"name":"groupName"},"pid":1234,"root_dir":"/root/","user":{"name":"root"},"working_directory":"/home/"},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","exit_code":1066,"following":"following","frequency":1000,"id":"wazuh-agent","inetd_compatibility":true,"name":"Wazuh Agent","object_path":"objectPath","restart":"restart","start_type":"startType","starts":{"on_mount":true,"on_not_empty_directory":["one","two","three"],"on_path_modified":["one","two","three"]},"state":"running","sub_state":"subState","target":{"address":"jobPath","ephemeral_id":"10","type":"jobType"},"type":"type","win32_exit_code":1066},"log":{"file":{"path":"/var/log/"}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_itemId","operation":"INSERTED","data":{"file":{"path":"sourcePath"},"process":{"args":["arg1","arg2","arg3"],"executable":"/usr/bin/wazuh-agent","group":{"name":"groupName"},"pid":1234,"root_dir":"/root/","user":{"name":"root"},"working_directory":"/home/"},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","exit_code":1066,"following":"following","frequency":1000,"id":"wazuh-agent","inetd_compatibility":true,"name":"Wazuh Agent","object_path":"objectPath","restart":"restart","start_type":"startType","starts":{"on_mount":true,"on_not_empty_directory":["one","two","three"],"on_path_modified":["one","two","three"]},"state":"running","sub_state":"subState","target":{"address":"jobPath","ephemeral_id":"10","type":"jobType"},"type":"type","win32_exit_code":1066},"log":{"file":{"path":"/var/log/"}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }

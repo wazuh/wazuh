@@ -498,7 +498,8 @@ TEST_F(SystemInventoryDeleteElement, emptyServiceID_Services)
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return(""));
+    // Unusual case where the itemId is empty.
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
@@ -510,10 +511,10 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Services)
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return("apache2"));
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return("itemId"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_NO_THROW(deleteElement->handleRequest(context));
 
-    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_apache2","operation":"DELETED"})");
+    EXPECT_EQ(context->m_serializedElement, R"({"id":"001_itemId","operation":"DELETED"})");
 }

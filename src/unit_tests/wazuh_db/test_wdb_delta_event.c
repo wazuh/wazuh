@@ -483,26 +483,42 @@ void test_wdb_dbsync_stmt_bind_services_multiple_fields_numeric_values(void **st
 
     // long fields
     const char * fields [] = {
-        "service_frequency",
+        "service_frequency",            // First long field
         "service_process_pid",
         "service_target_ephemeral_id",
-        "service_exit_code",
+        "service_exit_code",            // First int field
         "service_win32_exit_code"
     };
 
     for (int i = 0; i < sizeof(values)/sizeof(values[0]); ++i) {
         int value = i - 1;
         for (int j = 0; j < sizeof(fields)/sizeof(fields[0]); ++j) {
-            // The accepted value is greater or equal than zero for all fields.
-            if (i > 0) {
-                expect_value(__wrap_sqlite3_bind_int64, index, TEST_INDEX);
-                expect_value(__wrap_sqlite3_bind_int64, value, value);
-                will_return(__wrap_sqlite3_bind_int64, SQLITE_OK);
-            } else {
-                expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
-                will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+            int field_type = FIELD_INTEGER_LONG;
+            if (j >= 0 && j < 3) {
+                // The accepted long values are greater or equal than zero for all fields.
+                if (i > 0) {
+                    expect_value(__wrap_sqlite3_bind_int64, index, TEST_INDEX);
+                    expect_value(__wrap_sqlite3_bind_int64, value, value);
+                    will_return(__wrap_sqlite3_bind_int64, SQLITE_OK);
+                } else {
+                    printf("field: %s\n", fields[j]);
+                    expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+                    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+                }
             }
-            assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, FIELD_INTEGER_LONG, values[i], fields[j], SERVICES_TABLE, true));
+            if (j >= 3) {
+                field_type = FIELD_INTEGER;
+                // The accepted int values are greater or equal than zero for all fields.
+                if (i > 0) {
+                    expect_value(__wrap_sqlite3_bind_int, index, TEST_INDEX);
+                    expect_value(__wrap_sqlite3_bind_int, value, value);
+                    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+                } else {
+                    expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+                    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+                }
+            }
+            assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, field_type, values[i], fields[j], SERVICES_TABLE, true));
         }
         cJSON_Delete(values[i]);
     }

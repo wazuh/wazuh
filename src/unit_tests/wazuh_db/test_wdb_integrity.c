@@ -2175,10 +2175,10 @@ void test_wdbi_report_removed_services_success(void **state) {
     router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
 
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteService\","
-                                     "\"data\":{\"service_id\":\"apache2\"}}";
+                                     "\"data\":{\"item_id\":\"item_id\"}}";
 
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, "apache2");
+    will_return(__wrap_sqlite3_column_text, "item_id");
 
     expect_string(__wrap_router_provider_send, message, expected_message);
     expect_value(__wrap_router_provider_send, message_size, strlen(expected_message));
@@ -2198,13 +2198,13 @@ void test_wdbi_report_removed_services_success_multiple_steps(void **state) {
     router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
 
     const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteService\","
-                                     "\"data\":{\"service_id\":\"apache2\"}}";
+                                     "\"data\":{\"item_id\":\"item_id1\"}}";
 
     const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteService\","
-                                     "\"data\":{\"service_id\":\"nginx\"}}";
+                                     "\"data\":{\"item_id\":\"item_id2\"}}";
     // First service
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, "apache2");
+    will_return(__wrap_sqlite3_column_text, "item_id1");
 
     expect_string(__wrap_router_provider_send, message, expected_message_1);
     expect_value(__wrap_router_provider_send, message_size, strlen(expected_message_1));
@@ -2215,7 +2215,7 @@ void test_wdbi_report_removed_services_success_multiple_steps(void **state) {
 
     // Second service
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
-    will_return(__wrap_sqlite3_column_text, "nginx");
+    will_return(__wrap_sqlite3_column_text, "item_id2");
 
     expect_string(__wrap_router_provider_send, message, expected_message_2);
     expect_value(__wrap_router_provider_send, message_size, strlen(expected_message_2));
