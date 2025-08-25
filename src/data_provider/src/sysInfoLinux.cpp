@@ -31,11 +31,11 @@
 #include "linuxInfoHelper.h"
 #include "groups_linux.hpp"
 #include "user_groups_linux.hpp"
-
 #include "logged_in_users_linux.hpp"
 #include "shadow_linux.hpp"
 #include "sudoers_unix.hpp"
 #include "users_linux.hpp"
+#include "systemd_units_linux.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
 
@@ -839,6 +839,57 @@ nlohmann::json SysInfo::getUsers() const
         }
 
         result.push_back(std::move(userItem));
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getServices() const
+{
+    nlohmann::json result = nlohmann::json::array();
+
+    SystemdUnitsProvider servicesProvider;
+    auto collectedServices = servicesProvider.collect();
+
+    for (auto& svc : collectedServices)
+    {
+        nlohmann::json serviceItem{};
+
+        // ECS mapping based on the provided table
+        serviceItem["service_id"]                            = svc.value("id",                UNKNOWN_VALUE);
+        serviceItem["service_name"]                          = UNKNOWN_VALUE;
+        serviceItem["service_description"]                   = svc.value("description",       UNKNOWN_VALUE);
+        serviceItem["service_type"]                          = UNKNOWN_VALUE;
+        serviceItem["service_state"]                         = svc.value("active_state",      UNKNOWN_VALUE);
+        serviceItem["service_sub_state"]                     = svc.value("sub_state",         UNKNOWN_VALUE);
+        serviceItem["service_enabled"]                       = svc.value("unit_file_state",   UNKNOWN_VALUE);
+        serviceItem["service_start_type"]                    = UNKNOWN_VALUE;
+        serviceItem["service_restart"]                       = UNKNOWN_VALUE;
+        serviceItem["service_frequency"]                     = 0;
+        serviceItem["service_starts_on_mount"]               = 0;
+        serviceItem["service_starts_on_path_modified"]       = UNKNOWN_VALUE;
+        serviceItem["service_starts_on_not_empty_directory"] = UNKNOWN_VALUE;
+        serviceItem["service_inetd_compatibility"]           = 0;
+        serviceItem["process_pid"]                           = 0;
+        serviceItem["process_executable"]                    = svc.value("fragment_path",     UNKNOWN_VALUE);
+        serviceItem["process_args"]                          = UNKNOWN_VALUE;
+        serviceItem["process_user_name"]                     = svc.value("user",              UNKNOWN_VALUE);
+        serviceItem["process_group_name"]                    = UNKNOWN_VALUE;
+        serviceItem["process_working_directory"]             = UNKNOWN_VALUE;
+        serviceItem["process_root_directory"]                = UNKNOWN_VALUE;
+        serviceItem["file_path"]                             = svc.value("source_path",       UNKNOWN_VALUE);
+        serviceItem["service_address"]                       = UNKNOWN_VALUE;
+        serviceItem["log_file_path"]                         = UNKNOWN_VALUE;
+        serviceItem["error_log_file_path"]                   = UNKNOWN_VALUE;
+        serviceItem["service_exit_code"]                     = 0;
+        serviceItem["service_win32_exit_code"]               = 0;
+        serviceItem["service_following"]                     = svc.value("following",         UNKNOWN_VALUE);
+        serviceItem["service_object_path"]                   = svc.value("object_path",       UNKNOWN_VALUE);
+        serviceItem["service_target_ephemeral_id"]           = svc.value("job_id",        0);
+        serviceItem["service_target_type"]                   = svc.value("job_type",          UNKNOWN_VALUE);
+        serviceItem["service_target_address"]                = svc.value("job_path",          UNKNOWN_VALUE);
+
+        result.push_back(std::move(serviceItem));
     }
 
     return result;
