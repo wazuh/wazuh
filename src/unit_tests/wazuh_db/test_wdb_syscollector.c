@@ -4131,7 +4131,7 @@ void test_wdb_browser_extensions_save_success(void **state) {
     const char * package_version = "package_version";
     const char * package_description = "package_description";
     const char * package_vendor = "package_vendor";
-    const char * package_build_version = "package_biuld_version";
+    const char * package_build_version = "package_build_version";
     const char * package_path = "package_path";
     const char * browser_profile_name = "browser_profile_name";
     const char * browser_profile_path = "browser_profile_path";
