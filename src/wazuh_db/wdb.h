@@ -972,7 +972,7 @@ int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
                       const char * group_users, const char * checksum, const bool replace);
 
 // Save web browser extensions info into DB.
-int wb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace);
+int wdb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace);
 
 // Insert web browser extensions info tuple. Return 0 on success or -1 on error.
 int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace);
