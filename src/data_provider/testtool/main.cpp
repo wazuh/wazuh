@@ -69,6 +69,11 @@ class SysInfoPrinter final
             m_data["users"] = m_sysinfo.users();
         }
 
+        void printBrowserExtensionsInfo()
+        {
+            m_data["browser_extensions"] = m_sysinfo.browserExtensions();
+        }
+
         void printData()
         {
             std::cout << m_data.dump(JSON_PRETTY_SPACES) << std::endl;
@@ -112,6 +117,7 @@ int main(int argc, const char* argv[])
             printer.printPortsInfo();
             printer.printHotfixes();
             printer.printUsers();
+            printer.printBrowserExtensionsInfo();
             printer.printData();
             printer.printPackagesInfoCallback();
             printer.printProcessesInfoCallback();
@@ -163,6 +169,10 @@ int main(int argc, const char* argv[])
             else if (cmdLineArgs.groupsArg())
             {
                 printer.printGroupsInfo();
+            }
+            else if (cmdLineArgs.browserExtensionsArg())
+            {
+                printer.printBrowserExtensionsInfo();
             }
             else
             {

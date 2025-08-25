@@ -1,0 +1,735 @@
+{
+   "ConvertVerbDescription": {
+      "message": "Convert documents to or from PDF."
+   },
+   "Disable": {
+      "message": "Disable"
+   },
+   "EditVerbDescription": {
+      "message": "Reorder, rotate or delete pages in your PDF."
+   },
+   "Enable": {
+      "message": "Enable"
+   },
+   "LearnMoreURL": {
+      "message": "https://helpx.adobe.com/acrobat/kb/acrobat-pro-aip-for-chrome.html"
+   },
+   "LearnMoreURLEdge": {
+      "message": "https://helpx.adobe.com/acrobat/kb/acrobat-pro-aip-for-edge.html"
+   },
+   "acrobatEmbeddedTouchPointPreferenceDescription": {
+      "message": "The shortcut can be used to open PDFs within extension for easy editing, summarizing, saving, and more."
+   },
+   "acrobatEmbeddedTouchPointPreferenceTitle": {
+      "message": "Show Acrobat shortcut in embedded web PDFs"
+   },
+   "acrobatGdriveTripleDotMenuTouchPointText": {
+      "message": "Open with Acrobat"
+   },
+   "acrobatGmailFteToolTipButton": {
+      "message": "Got it"
+   },
+   "acrobatGmailFteToolTipDescription": {
+      "message": "Edit, convert, comment & sign - right in Chrome with Acrobat"
+   },
+   "acrobatGmailFteToolTipTitle": {
+      "message": "Open this PDF in Acrobat"
+   },
+   "acrobatGsuiteFteToolTipButton": {
+      "message": "Got it"
+   },
+   "acrobatGsuiteFteToolTipButtonDV": {
+      "message": "OK"
+   },
+   "acrobatGsuiteFteToolTipButtonNonDV": {
+      "message": "OK"
+   },
+   "acrobatGsuiteFteToolTipDescription": {
+      "message": "Edit, convert, comment & sign - right in Chrome with Acrobat"
+   },
+   "acrobatGsuiteFteToolTipDescriptionDV": {
+      "message": "Try PDF tools like edit, comment, convert, and e-sign from $surfaceName$ by making Acrobat your default PDF viewer.",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "acrobatGsuiteFteToolTipDescriptionNonDV": {
+      "message": "Try Acrobat PDF tools like edit, comment, convert, and e-sign — right from $surfaceName$.",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "acrobatGsuiteFteToolTipTitle": {
+      "message": "Open this PDF in Acrobat"
+   },
+   "acrobatGsuiteFteToolTipTitleDV": {
+      "message": "Open all PDFs in Adobe Acrobat"
+   },
+   "acrobatGsuiteFteToolTipTitleNonDV": {
+      "message": "Open this PDF in Adobe Acrobat"
+   },
+   "acrobatGsuiteTouchPointPreferenceDescription": {
+      "message": "Add Acrobat icons to Gmail and Google Drive to quickly open PDFs in Acrobat and access PDF tools."
+   },
+   "acrobatGsuiteTouchPointPreferenceTitle": {
+      "message": "Integrate Acrobat into Gmail and Google Drive"
+   },
+   "acrobatTouchPointInOtherSitesPreferenceDescription": {
+      "message": "Integrate Acrobat with websites, including Gmail and Google Drive, for easy access to PDF tools."
+   },
+   "acrobatTouchPointInOtherSitesPreferenceTitle": {
+      "message": "Show Open in Acrobat icon in other websites"
+   },
+   "acrobatTouchPointInOtherSurfacesPreferenceDescription": {
+      "message": "Integrate Acrobat with websites, including Gmail, Google Drive, and Outlook for easy access to PDF tools."
+   },
+   "addWebpageToProjectContextMenuTitle": {
+      "message": "Add to a PDF Project..."
+   },
+   "adobeYoloErrorMessage": {
+      "message": "Sorry, This link is invalid"
+   },
+   "adobeYoloMessage": {
+      "message": "Signing you into Acrobat..."
+   },
+   "aiAcBody": {
+      "message": "Quickly summarize webpages and get key insights using Acrobat AI Assistant."
+   },
+   "aiAcHeader": {
+      "message": "Do more with your Acrobat extension"
+   },
+   "aiMarkerTouchpointPreferenceDescription": {
+      "message": "Always display AI Assistant menu when hovering over PDFs on webpages."
+   },
+   "aiMarkerTouchpointPreferenceTitle": {
+      "message": "AI Assistant contextual menu"
+   },
+   "analyticsOptinTitle": {
+      "message": "Send usage data"
+   },
+   "appearancePrefDesc": {
+      "message": "Switch between dark and light theme"
+   },
+   "appearancePrefOp1": {
+      "message": "Use system setting"
+   },
+   "appearancePrefOp2": {
+      "message": "Dark mode"
+   },
+   "appearancePrefOp3": {
+      "message": "Light mode"
+   },
+   "appearancePrefTitle": {
+      "message": "Dark mode settings"
+   },
+   "askAssistantBannerContentText": {
+      "message": "Get fast summaries and key insights with AI Assistant on webpages."
+   },
+   "askAssistantBannerTitle": {
+      "message": "AI Assistant for webpages"
+   },
+   "canQuesBriefOverview": {
+      "message": "Provide a brief overview of this article"
+   },
+   "canQuesCreateFAQ": {
+      "message": "Create an FAQ list based on this info"
+   },
+   "canQuesDraftEmail": {
+      "message": "Draft an email summarizing the key points"
+   },
+   "canQuesImpTopics": {
+      "message": "List all important topics and keywords"
+   },
+   "canQuesSummarise": {
+      "message": "Summarize this article"
+   },
+   "closeButton": {
+      "message": "Close"
+   },
+   "cropImageContextMenu": {
+      "message": "Crop Image"
+   },
+   "dcWebBookmarkTitle": {
+      "message": "Adobe Acrobat Home"
+   },
+   "doNotShowButton": {
+      "message": "Don't show again"
+   },
+   "domainPreferenceTitle": {
+      "message": "Websites where AI Assistant FAB is hidden"
+   },
+   "downloadBannerContinue": {
+      "message": "Turn on"
+   },
+   "downloadBannerText": {
+      "message": "Open all downloaded PDFs in Acrobat by setting the app as default PDF viewer in Chrome"
+   },
+   "editImageContextMenu": {
+      "message": "Edit Image"
+   },
+   "editMegaVerbText": {
+      "message": "Edit"
+   },
+   "effectsImageContextMenu": {
+      "message": "Apply Effects"
+   },
+   "embeddedPDFHideIconForNow": {
+      "message": "Hide icon for now"
+   },
+   "embeddedPDFManagePreferences": {
+      "message": "Manage preferences"
+   },
+   "embeddedPDFOpenInAcrobatTooltip": {
+      "message": "Open in Acrobat"
+   },
+   "embeddedPDFOpenPDFInAcrobat": {
+      "message": "Open PDF in Acrobat"
+   },
+   "embeddedPDFTouchPointFTEBody": {
+      "message": "Edit, summarize, and more right from the Acrobat extension. You can hide this shortcut anytime in Preferences."
+   },
+   "embeddedPDFTouchPointFTEHeader": {
+      "message": "Open this PDF in Adobe Acrobat"
+   },
+   "enableGenAIFeaturesDescription": {
+      "message": "Your file will be processed in the cloud to deliver a generative AI capability when you use a generative AI feature. Turning off this feature prevents your file from being processed and disables generative AI. You can reactivate it anytime."
+   },
+   "enableGenAIFeaturesTitle": {
+      "message": "Enable Generative AI features in Acrobat"
+   },
+   "expressContextualFteCtaLabel": {
+      "message": "Close"
+   },
+   "expressContextualFteDescription": {
+      "message": "Easily crop, remove the background, and more. Powered by Adobe Express."
+   },
+   "expressContextualFteTitle": {
+      "message": "Edit this image in $surfaceName$",
+      "placeholders": {
+         "surfaceName": {
+            "content": "$1"
+         }
+      }
+   },
+   "expressDropdownMenuTitle": {
+      "message": "Adobe Acrobat"
+   },
+   "expressDropdownMenuTooltip": {
+      "message": "Easily crop, remove background and more. Powered by Adobe Express."
+   },
+   "expressEditImageParentContextMenu": {
+      "message": "Edit Image"
+   },
+   "expressEditImagePoweredByExpressContextMenu": {
+      "message": "Powered by Adobe Express"
+   },
+   "expressExportOptionsDownloadLabel": {
+      "message": "Download"
+   },
+   "expressExportOptionsSaveLabel": {
+      "message": "Save"
+   },
+   "expressFTEDescription": {
+      "message": "Right click to crop, remove background, or reimagine an image using AI."
+   },
+   "expressFTEFooter": {
+      "message": "Via \u003Cb>Adobe Acrobat\u003C/b>"
+   },
+   "expressFTETitle": {
+      "message": "Edit image with Adobe Express"
+   },
+   "expressPopoverFTEDescription": {
+      "message": "Right-click on any online image to quickly remove the background, crop, or reimagine it using AI with Adobe Express"
+   },
+   "expressPopoverFTETitle": {
+      "message": "Edit images right in your browser"
+   },
+   "expressPublishModalTitle": {
+      "message": "Downloading image..."
+   },
+   "expressTouchpointPreferenceDescription": {
+      "message": "Adobe Acrobat extension lets you edit images with Adobe Express. Turning off this feature will remove this capability. You can reactivate it any time."
+   },
+   "expressTouchpointPreferenceTitle": {
+      "message": "Enable Adobe Express actions in Acrobat"
+   },
+   "extensionMenuTitle": {
+      "message": "Acrobat Extension - Shortcut to all your PDF tools"
+   },
+   "failToastText": {
+      "message": "An unexpected error has occurred, please try again later."
+   },
+   "fteOwnershipSideRedCardContent": {
+      "message": "Comment, fill forms, sign, and more right in Chrome when you set Acrobat as your default PDF viewer."
+   },
+   "fteSideCardPrimaryHeader": {
+      "message": "Use Acrobat"
+   },
+   "fteSideCardSecondaryHeader": {
+      "message": "right in Chrome"
+   },
+   "gDriveDVPAppListCoachMarkContent": {
+      "message": "Enable the checkbox 'Use by default' to directly open Google Drive PDFs in Acrobat from next time"
+   },
+   "gDriveDVPCoachMarkTitle": {
+      "message": "Set Acrobat as default viewer"
+   },
+   "gDriveDVPManageAppCoachMarkContent": {
+      "message": "Click on 'Manage Apps' to view, comment, edit PDFs by opening all Google Drive PDFs in Acrobat directly"
+   },
+   "gSuiteDVPAddOnDefaultDesc": {
+      "message": "Acrobat Add On is now set as default"
+   },
+   "genAIFabPreferenceDescription": {
+      "message": "Always display Al Assistant button at the edge of your browser window."
+   },
+   "genAIFabPreferenceTitle": {
+      "message": "Al Assistant button"
+   },
+   "generativeFillImageContextMenu": {
+      "message": "Generative Fill"
+   },
+   "genericDVPCoachMarkContent": {
+      "message": "Click on 'Manage Apps', then scroll down to Acrobat Add On and click on 'Use by default' checkbox"
+   },
+   "getInsight": {
+      "message": "Get insights with Acrobat AI Assistant"
+   },
+   "getSummary": {
+      "message": "Summarize PDF"
+   },
+   "gmailPromptFTETooltip": {
+      "message": "Open PDFs in Acrobat to use tools like Edit, Sign and more"
+   },
+   "gsuiteEditWithAcrobat": {
+      "message": "Edit with Acrobat"
+   },
+   "gsuiteOpenWithAcrobat": {
+      "message": "Open in Acrobat"
+   },
+   "hideFabForDomain": {
+      "message": "Disable for this site"
+   },
+   "hideForNow": {
+      "message": "Hide for now"
+   },
+   "hidePopup": {
+      "message": "Hide for this session"
+   },
+   "insertObjectImageContextMenu": {
+      "message": "Insert Object"
+   },
+   "localFileBlockingPageOpenInChrome": {
+      "message": "Open this file in Chrome"
+   },
+   "localFileBlockingPageTitle": {
+      "message": "Enable Acrobat Extension"
+   },
+   "localFileOptionDesc": {
+      "message": "Grant Acrobat extension access to your local file URLs to open all your PDFs in Acrobat in Chrome."
+   },
+   "localFileOptionTitle": {
+      "message": "Opening local PDFs in Acrobat"
+   },
+   "localFilePromptContinueButton": {
+      "message": "Continue"
+   },
+   "localFilePromptDescription": {
+      "message": "Let Acrobat access files from this device for immediate access to all your tools so you can edit PDFs, convert files, and e-sign in a snap."
+   },
+   "localFilePromptHeader": {
+      "message": "Open in Acrobat to edit, sign, and more"
+   },
+   "localFteContinue": {
+      "message": "Go to settings"
+   },
+   "localFteDescription": {
+      "message": "Get the most out of the Acrobat extension and use it to open all PDFs. Turn on Allow access to file URLs in the extension settings."
+   },
+   "localFteDontShowAgainText": {
+      "message": "Don't show this again"
+   },
+   "localFteTitle": {
+      "message": "Switch to Acrobat to open your local files"
+   },
+   "neverDisplayFab": {
+      "message": "Never display"
+   },
+   "openInAcrobat": {
+      "message": "Open In Acrobat"
+   },
+   "openSettings": {
+      "message": "Manage in settings"
+   },
+   "optionsFailurePrompt": {
+      "message": "We're unable to save your changes. please try again later"
+   },
+   "optionsSuccessPrompt": {
+      "message": "Preferences saved successfully"
+   },
+   "optionsSuccessPromptReloadRequired": {
+      "message": "Preference would be reflected only after reload"
+   },
+   "outlookErrorToastDescription": {
+      "message": "Something went wrong. Please close the file and try again."
+   },
+   "outlookErrorToastTitle": {
+      "message": "Unable to open file"
+   },
+   "outlookPDFTouchPointFTEBody": {
+      "message": "Edit, summarize, and sign PDFs by opening them in Acrobat."
+   },
+   "outlookPDFTouchPointFTEHeader": {
+      "message": "Open this PDF in Adobe Acrobat"
+   },
+   "pdfOwnerShipDmbConfirmBtn": {
+      "message": "Continue"
+   },
+   "pdfOwnerShipSideRedCardConfirmBtn": {
+      "message": "Continue"
+   },
+   "pdfOwnershipDefSideCardcontent": {
+      "message": "View, comment, fill forms, sign, and more when you set Adobe Acrobat as your default PDF viewer."
+   },
+   "pdfOwnershipExploreAcrobat": {
+      "message": "Use Acrobat in Chrome"
+   },
+   "pdfOwnershipExploreAcrobatEdge": {
+      "message": "Use Acrobat in Microsoft Edge"
+   },
+   "pdfOwnershipExploreOptionsDescription": {
+      "message": "Make Acrobat the default PDF viewer for your browser for quick access to commenting, Fill & Sign, and other PDF tools."
+   },
+   "pdfOwnershipExploreOptionsTitle": {
+      "message": "Open all PDFs in Acrobat"
+   },
+   "pdfOwnershipPromptCancel": {
+      "message": "Not now"
+   },
+   "pdfOwnershipPromptContent": {
+      "message": "Do more with PDFs in Chrome when you set Adobe Acrobat as your default viewer."
+   },
+   "pdfOwnershipPromptContent2": {
+      "message": "Set Acrobat as your default PDF viewer to use PDFs right in Google Chrome. Comment, fill, sign, and try tools like convert and compress."
+   },
+   "pdfOwnershipPromptContentEdge": {
+      "message": "Do more with PDFs in Microsoft Edge when you set Adobe Acrobat as your default viewer."
+   },
+   "pdfOwnershipPromptDeny": {
+      "message": "No thanks"
+   },
+   "pdfOwnershipPromptOk": {
+      "message": "Set as default"
+   },
+   "pdfOwnershipPromptOkFullscreen": {
+      "message": "Try it now"
+   },
+   "popupNoConnection": {
+      "message": "No Connection"
+   },
+   "popupOfflineMessage": {
+      "message": "Please contact your administrator to resume connection"
+   },
+   "preferences": {
+      "message": "Preferences"
+   },
+   "removeBackgroundImageContextMenu": {
+      "message": "Remove Background"
+   },
+   "removeObjectImageContextMenu": {
+      "message": "Remove Object"
+   },
+   "saveLocationOp1": {
+      "message": "Ask me every time"
+   },
+   "saveLocationOp2": {
+      "message": "Adobe cloud storage"
+   },
+   "saveLocationOp3": {
+      "message": "My Computer"
+   },
+   "saveLocationPreferenceDescription": {
+      "message": "Set a location to save your files"
+   },
+   "saveLocationPreferenceTitle": {
+      "message": "Save file location"
+   },
+   "sharepointPreferenceMessage": {
+      "message": "Allow checkout of SharePoint files in Acrobat."
+   },
+   "sidepanelLocationPreferenceButtonText": {
+      "message": "Change in browser settings"
+   },
+   "sidepanelLocationPreferenceDescription": {
+      "message": "Place the side panel on the left or right side of the browser window. Side panel is only available in Google Chrome 11.4 or later."
+   },
+   "sidepanelLocationPreferenceTitle": {
+      "message": "AI Assistant panel location"
+   },
+   "stripTextOpenAcrobat": {
+      "message": "Open in Acrobat"
+   },
+   "stripTextOpenFillnSign": {
+      "message": "Fill & Sign in Acrobat"
+   },
+   "successToastText": {
+      "message": "PDF downloads will now open in Adobe Acrobat"
+   },
+   "surfaceNameGdrive": {
+      "message": "Google Drive"
+   },
+   "surfaceNameGmail": {
+      "message": "Gmail"
+   },
+   "tooltipTextDisabled": {
+      "message": "AI Assistant isn't available for this webpage"
+   },
+   "tooltipTextEnabled": {
+      "message": "Get summaries and key insights using AI Assistant"
+   },
+   "tooltipTextSubText": {
+      "message": "powered by Adobe Acrobat"
+   },
+   "unsupportedFileTypeToastText": {
+      "message": "This file type isn’t supported. You can try editing another file."
+   },
+   "userLocale": {
+      "message": "User Locale"
+   },
+   "web2pdfAddButtonText": {
+      "message": "Add to existing PDF..."
+   },
+   "web2pdfAlwaysShow": {
+      "message": "Show automatically for PDFs"
+   },
+   "web2pdfAppendLinkContextMenu": {
+      "message": "Append Link Target to Existing PDF"
+   },
+   "web2pdfAppendPageContextMenu": {
+      "message": "Add Web Page to Existing PDF..."
+   },
+   "web2pdfBadVersion": {
+      "message": "This version of Chrome does not support Adobe Acrobat.  Minimum version is: $version$",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfBadVersionEdge": {
+      "message": "This version of Edge does not support Adobe Acrobat.  Minimum version is: $version$",
+      "placeholders": {
+         "version": {
+            "content": "$1"
+         }
+      }
+   },
+   "web2pdfClickToOpen": {
+      "message": "Click the link below to open PDF in Acrobat."
+   },
+   "web2pdfConvertButtonToolTip": {
+      "message": "Acrobat Extension - Shortcut to all your PDF tools."
+   },
+   "web2pdfConvertButtonToolTipERPReader": {
+      "message": "Acrobat Reader extension is currently disabled. Please contact your IT admin"
+   },
+   "web2pdfConvertButtonToolTipReader": {
+      "message": "Open PDF in Acrobat Reader"
+   },
+   "web2pdfConvertLinkContextMenu": {
+      "message": "Convert Link Target to Adobe PDF"
+   },
+   "web2pdfConvertPageContextMenu": {
+      "message": "Convert Web Page to Adobe PDF..."
+   },
+   "web2pdfCopyText": {
+      "message": "Copying to Acrobat"
+   },
+   "web2pdfDestinationText": {
+      "message": "Destination folder:"
+   },
+   "web2pdfDoneButtonText": {
+      "message": "Done"
+   },
+   "web2pdfExtnDescription": {
+      "message": "Use Acrobat in browser to view, convert, compress and sign PDFs"
+   },
+   "web2pdfExtnDescriptionBeta": {
+      "message": "Use Acrobat in browser to view, convert, compress and sign PDFs"
+   },
+   "web2pdfExtnDescriptionChrome": {
+      "message": "Do more in Google Chrome with Adobe Acrobat PDF tools. View, fill, comment, sign, and try convert and compress tools."
+   },
+   "web2pdfExtnDescriptionEdge": {
+      "message": "Do more in Microsoft Edge with Adobe Acrobat PDF tools. View, fill, comment, sign, and try convert and compress tools."
+   },
+   "web2pdfExtnName": {
+      "message": "Adobe Acrobat: PDF edit, convert, sign tools"
+   },
+   "web2pdfExtnNameBeta": {
+      "message": "Adobe Acrobat Beta"
+   },
+   "web2pdfExtnNameEdge": {
+      "message": "Adobe Acrobat: PDF edit, convert, sign tools"
+   },
+   "web2pdfExtnNameStage": {
+      "message": "Adobe Acrobat Stage"
+   },
+   "web2pdfFileLockedError": {
+      "message": "File cannot be saved because it is in use by another process."
+   },
+   "web2pdfFilename": {
+      "message": "Filename:"
+   },
+   "web2pdfFrictionlessToggleDescription": {
+      "message": "Adobe Acrobat extension recommends PDF tools to help you accomplish your task.  Our recommendation is based on what you searched and occurs on device; searches are not sent to Adobe."
+   },
+   "web2pdfFrictionlessUrl": {
+      "message": "https://www.adobe.com/go/fl_chromeext"
+   },
+   "web2pdfFrictionlessUrlEdge": {
+      "message": "https://www.adobe.com/acrobat/online.html?x_api_client_id=edge_extension&x_api_client_location=trefoil&mv=other&mv2=edge_extension:trefoil&trackingid=HM85XB76"
+   },
+   "web2pdfHTMLJSError": {
+      "message": "Error processing web page."
+   },
+   "web2pdfHTMLTooLarge": {
+      "message": "HTML Content is too large to process."
+   },
+   "web2pdfInfoHoverPopup": {
+      "message": "Adobe Acrobat extension recommends PDF tools to help you accomplish your task.  Our recommendation is based on what you searched and occurs on device; searches are not sent to Adobe. Click \u003Cspan class = \"tooltip-content-settings\">here\u003C/span> to disable this feature."
+   },
+   "web2pdfLoaderTitle": {
+      "message": "Loading..."
+   },
+   "web2pdfMissingMac": {
+      "message": "Adobe Acrobat for Chrome is not yet available for Mac"
+   },
+   "web2pdfMissingMacEdge": {
+      "message": "Adobe Acrobat for Microsoft Edge is not yet available for Mac"
+   },
+   "web2pdfNoFoldersText": {
+      "message": "You have no folders in your Acrobat DC storage."
+   },
+   "web2pdfNoWritePermissionOnSelectedFile": {
+      "message": "You do not have write permissions on the selected file."
+   },
+   "web2pdfOpenButtonText": {
+      "message": "Open in Acrobat"
+   },
+   "web2pdfOpenButtonTextOlder": {
+      "message": "Download Adobe PDF"
+   },
+   "web2pdfOpenButtonTextReader": {
+      "message": "Open in Acrobat Reader"
+   },
+   "web2pdfOpenConvertedPDFDescription": {
+      "message": "Automatically open the converted PDF in Acrobat once webpage to PDF conversion has completed."
+   },
+   "web2pdfOpenConvertedPDFTitle": {
+      "message": "Auto-open converted PDFs in Acrobat"
+   },
+   "web2pdfOpenInDCButtonText": {
+      "message": "Open PDF in Acrobat"
+   },
+   "web2pdfOptOut": {
+      "message": "To improve product features, this extension sends Adobe information about how you use it."
+   },
+   "web2pdfOptOutDisabled": {
+      "message": "None of your usage data is being shared."
+   },
+   "web2pdfOptions": {
+      "message": "Options"
+   },
+   "web2pdfOptionsTitle": {
+      "message": "Adobe Acrobat Preferences"
+   },
+   "web2pdfPDFOpenFailed": {
+      "message": "Failed to open PDF"
+   },
+   "web2pdfPDFOpenFailedv2": {
+      "message": "Failed to Open"
+   },
+   "web2pdfPDFOpened": {
+      "message": "PDF Opened"
+   },
+   "web2pdfPDFOpening": {
+      "message": "Opening PDF"
+   },
+   "web2pdfPreferencesButtonText": {
+      "message": "Preferences..."
+   },
+   "web2pdfPreferencesNewText": {
+      "message": "Conversion settings..."
+   },
+   "web2pdfPrivacy": {
+      "message": "About Adobe Acrobat"
+   },
+   "web2pdfReplaceWarning": {
+      "message": "already exists.\n Do you want to replace it?"
+   },
+   "web2pdfSave": {
+      "message": "Save"
+   },
+   "web2pdfSaveButton": {
+      "message": "Save preferences"
+   },
+   "web2pdfShowPDFTools": {
+      "message": "Show with Google search results"
+   },
+   "web2pdfShowPDFViewerOption": {
+      "message": "Use Acrobat as default PDF viewer"
+   },
+   "web2pdfShowPersistentOpen": {
+      "message": "Show \"Open in Acrobat\""
+   },
+   "web2pdfShowPersistentOpenAlways": {
+      "message": "Always show \"Open in Acrobat\""
+   },
+   "web2pdfShowPersistentOpenDescription": {
+      "message": "Show option to open PDF in Acrobat each time."
+   },
+   "web2pdfStatusCancelled": {
+      "message": "Conversion Cancelled"
+   },
+   "web2pdfStatusComplete": {
+      "message": "Conversion Successful"
+   },
+   "web2pdfStatusDownloading": {
+      "message": "Downloading for conversion..."
+   },
+   "web2pdfStatusDownloadingPDF": {
+      "message": "Downloading PDF"
+   },
+   "web2pdfStatusFailure": {
+      "message": "Conversion Failure"
+   },
+   "web2pdfStatusInProgress": {
+      "message": "Conversion in progress..."
+   },
+   "web2pdfStatusUnknownFailure": {
+      "message": "Unknown Failure"
+   },
+   "web2pdfStatusWaiting": {
+      "message": "Waiting to convert..."
+   },
+   "web2pdfTitle": {
+      "message": "Adobe Acrobat"
+   },
+   "web2pdfUnsupportedAcrobatVersion": {
+      "message": "A supported version of Acrobat could not be found. Install a \u003Ca target='_blank' href='https://acrobat.adobe.com/us/en/free-trial-download.html?trackingid=29NMCS7T&mv=other'>free 7-day trial\u003C/a>."
+   },
+   "web2pdfUntitledFileName": {
+      "message": "untitled"
+   },
+   "webpagePDFConversion": {
+      "message": "Webpage to PDF conversion setting"
+   },
+   "webpagePDFConversionDescription": {
+      "message": "When saving web pages as PDFs, you can set the margins, fonts and other layout details"
+   }
+}

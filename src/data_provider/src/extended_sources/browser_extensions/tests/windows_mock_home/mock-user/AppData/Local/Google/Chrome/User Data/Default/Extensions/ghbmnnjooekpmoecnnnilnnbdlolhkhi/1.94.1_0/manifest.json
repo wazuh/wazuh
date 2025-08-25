@@ -1,0 +1,38 @@
+{
+   "author": {
+      "email": "docs-hosted-app-own@google.com"
+   },
+   "background": {
+      "service_worker": "service_worker_bin_prod.js"
+   },
+   "content_capabilities": {
+      "matches": [ "https://docs.google.com/*", "https://drive.google.com/*", "https://drive-autopush.corp.google.com/*", "https://drive-daily-0.corp.google.com/*", "https://drive-daily-1.corp.google.com/*", "https://drive-daily-2.corp.google.com/*", "https://drive-daily-3.corp.google.com/*", "https://drive-daily-4.corp.google.com/*", "https://drive-daily-5.corp.google.com/*", "https://drive-daily-6.corp.google.com/*", "https://drive-preprod.corp.google.com/*", "https://drive-staging.corp.google.com/*" ],
+      "permissions": [ "clipboardRead", "clipboardWrite", "unlimitedStorage" ]
+   },
+   "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'"
+   },
+   "default_locale": "en_US",
+   "description": "__MSG_extDesc__",
+   "externally_connectable": {
+      "matches": [ "https://docs.google.com/*", "https://drive.google.com/*", "https://drive-autopush.corp.google.com/*", "https://drive-daily-0.corp.google.com/*", "https://drive-daily-1.corp.google.com/*", "https://drive-daily-2.corp.google.com/*", "https://drive-daily-3.corp.google.com/*", "https://drive-daily-4.corp.google.com/*", "https://drive-daily-5.corp.google.com/*", "https://drive-daily-6.corp.google.com/*", "https://drive-preprod.corp.google.com/*", "https://drive-staging.corp.google.com/*" ]
+   },
+   "host_permissions": [ "https://docs.google.com/*", "https://drive.google.com/*" ],
+   "icons": {
+      "128": "128.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnF7RGLAxIon0/XeNZ4MLdP3DMkoORzEAKVg0sb89JpA/W2osTHr91Wqwdc9lW0mFcSpCYS9Y3e7cUMFo/M2ETASIuZncMiUzX2/0rrWtGQ3UuEj3KSe5PdaVZfisyJw/FebvHwirEWrhqcgzVUj9fL9YjE0G45d1zMKcc1umKvLqPyTznNuKBZ9GJREdGLRJCBmUgCkI8iwtwC+QZTUppmaD50/ksnEUXv+QkgGN07/KoNA5oAgo49Jf1XBoMv4QXtVZQlBYZl84zAsI82hb63a6Gu29U/4qMWDdI7+3Ne5TRvo6Zi3EI4M2NQNplJhik105qrz+eTLJJxvf4slrWwIDAQAB",
+   "manifest_version": 3,
+   "minimum_chrome_version": "88",
+   "name": "__MSG_extName__",
+   "permissions": [ "alarms", "storage", "unlimitedStorage", "offscreen" ],
+   "storage": {
+      "managed_schema": "dasherSettingSchema.json"
+   },
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "1.94.1",
+   "web_accessible_resources": [ {
+      "matches": [ "\u003Call_urls>" ],
+      "resources": [ "page_embed_script.js" ]
+   } ]
+}

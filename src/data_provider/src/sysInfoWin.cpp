@@ -46,6 +46,8 @@
 #include "user_groups_windows.hpp"
 #include "logged_in_users_win.hpp"
 #include "users_windows.hpp"
+#include "chrome.hpp"
+#include "firefox.hpp"
 
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -1165,6 +1167,86 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_password_warning_days_before_expiration"] = 0;
 
         result.push_back(std::move(userItem));
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getBrowserExtensions() const
+{
+    nlohmann::json result = nlohmann::json::array();
+
+    try
+    {
+        // Collect Chrome extensions
+        chrome::ChromeExtensionsProvider chromeProvider;
+        auto collectedChromeExtensions = chromeProvider.collect();
+
+        for (auto& ext : collectedChromeExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            extensionItem["browser_name"]              = ext.value("browser_type",        UNKNOWN_VALUE);
+            extensionItem["user_id"]                   = ext.value("uid",                 UNKNOWN_VALUE);
+            extensionItem["package_name"]              = ext.value("name",                UNKNOWN_VALUE);
+            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
+            extensionItem["package_version"]           = ext.value("version",             UNKNOWN_VALUE);
+            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
+            extensionItem["package_vendor"]            = ext.value("author",              UNKNOWN_VALUE);
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = ext.value("profile",             UNKNOWN_VALUE);
+            extensionItem["browser_profile_path"]      = ext.value("profile_path",        UNKNOWN_VALUE);
+            extensionItem["package_reference"]         = ext.value("update_url",          UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = ext.value("permissions",         UNKNOWN_VALUE);
+            extensionItem["package_type"]              = UNKNOWN_VALUE;
+            extensionItem["package_enabled"]           = ext.contains("state") ? (ext["state"] == "1") : true;
+            extensionItem["package_autoupdate"]        = false;
+            extensionItem["package_persistent"]        = ext.contains("persistent") ? (ext["persistent"] == "1") : false;
+            extensionItem["package_from_webstore"]     = ext.contains("from_webstore") ? (ext["from_webstore"] == "1") : false;
+            extensionItem["browser_profile_referenced"] = ext.contains("referenced") ? (ext["referenced"] == "1") : false;
+            extensionItem["package_installed"]         = ext.value("install_time",       UNKNOWN_VALUE);
+            extensionItem["file_hash_sha256"]          = ext.value("manifest_hash",      UNKNOWN_VALUE);
+
+            result.push_back(std::move(extensionItem));
+        }
+
+        // Collect Firefox extensions
+        FirefoxAddonsProvider firefoxProvider;
+        auto collectedFirefoxExtensions = firefoxProvider.collect();
+
+        for (auto& ext : collectedFirefoxExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            extensionItem["browser_name"]              = "firefox";
+            extensionItem["user_id"]                   = ext.value("uid",                 UNKNOWN_VALUE);
+            extensionItem["package_name"]              = ext.value("name",                UNKNOWN_VALUE);
+            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
+            extensionItem["package_version"]           = ext.value("version",             UNKNOWN_VALUE);
+            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
+            extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
+            extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);
+            extensionItem["package_enabled"]           = ext.contains("disabled") ? !ext["disabled"].get<bool>() : true;
+            extensionItem["package_autoupdate"]        = ext.contains("autoupdate") ? ext["autoupdate"].get<bool>() : false;
+            extensionItem["package_persistent"]        = false;
+            extensionItem["package_from_webstore"]     = false;
+            extensionItem["browser_profile_referenced"] = false;
+            extensionItem["package_installed"]         = UNKNOWN_VALUE;
+            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
+
+            result.push_back(std::move(extensionItem));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        // Log error but don't fail completely
     }
 
     return result;

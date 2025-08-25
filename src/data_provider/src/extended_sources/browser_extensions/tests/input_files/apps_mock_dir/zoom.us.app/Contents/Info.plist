@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BuildMachineOSBuild</key>
+	<string>23G93</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>zoom.us</string>
+	<key>CFBundleIconFile</key>
+	<string>ZPLogo</string>
+	<key>CFBundleIdentifier</key>
+	<string>us.zoom.xos</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>zoom.us</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>6.4.12 (56699)</string>
+	<key>CFBundleSignature</key>
+	<string>ZMZV</string>
+	<key>CFBundleSupportedPlatforms</key>
+	<array>
+		<string>MacOSX</string>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.zoom.video</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>zoommtg</string>
+				<string>callto</string>
+				<string>tel</string>
+				<string>zoomus</string>
+				<string>mailto</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string></string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>sip</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>6.4.12.56699</string>
+	<key>DTCompiler</key>
+	<string>com.apple.compilers.llvm.clang.1_0</string>
+	<key>DTPlatformBuild</key>
+	<string>24B75</string>
+	<key>DTPlatformName</key>
+	<string>macosx</string>
+	<key>DTPlatformVersion</key>
+	<string>15.1</string>
+	<key>DTSDKBuild</key>
+	<string>24B75</string>
+	<key>DTSDKName</key>
+	<string>macosx15.1</string>
+	<key>DTXcode</key>
+	<string>1610</string>
+	<key>DTXcodeBuild</key>
+	<string>16B40</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.video</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>11.0</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string></string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>This will allow Zoom Workplace to find nearby Zoom Rooms.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>In order to join meetings, Zoom requires access to your Calendar.</string>
+	<key>NSCameraReactionEffectGesturesEnabledDefault</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>In order for participants to see you, Zoom requires access to your camera.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright ©2012-2025 Zoom Communications, Inc. All rights reserved</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This process is needed to enable AirPlay and peer-to-peer meetings in Zoom client.</string>
+	<key>NSMainNibFile</key>
+	<string>MainMenu</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>In order to speak to participants, Zoom requires access to your microphone.</string>
+	<key>NSPrefersDisplaySafeAreaCompatibilityMode</key>
+	<false/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
+	<key>SMPrivilegedExecutables</key>
+	<dict>
+		<key>us.zoom.ZMSipLocationHelper</key>
+		<string>identifier "us.zoom.ZMSipLocationHelper" and anchor apple generic and certificate leaf[subject.OU] = BJ4HAAB9B3 and certificate leaf[subject.CN] = "Developer ID Application: Zoom Video Communications, Inc. (BJ4HAAB9B3)"</string>
+		<key>us.zoom.ZoomDaemon</key>
+		<string>identifier "us.zoom.ZoomDaemon" and anchor apple generic and certificate leaf[subject.OU] = BJ4HAAB9B3 and certificate leaf[subject.CN] = "Developer ID Application: Zoom Video Communications, Inc. (BJ4HAAB9B3)"</string>
+	</dict>
+</dict>
+</plist>
