@@ -162,6 +162,13 @@ public:
                                                                               InventoryType::SYSTEM_INVENTORY),
             false, // Don't use seek for delete operation
             Log::GLOBAL_LOG_FUNCTION);
+        m_indexerConnectorInstances[SystemContext::AffectedComponentType::Service] = std::make_unique<IndexerConnector>(
+            PolicyHarvesterManager::instance().buildIndexerConfig("services", InventoryType::SYSTEM_INVENTORY),
+            PolicyHarvesterManager::instance().buildIndexerTemplatePath("services", InventoryType::SYSTEM_INVENTORY),
+            PolicyHarvesterManager::instance().buildIndexerUpdateTemplatePath("services",
+                                                                              InventoryType::SYSTEM_INVENTORY),
+            false, // Don't use seek for delete operation
+            Log::GLOBAL_LOG_FUNCTION);
 
         m_orchestrations[SystemContext::Operation::Upsert] =
             SystemFactoryOrchestrator::create(SystemContext::Operation::Upsert, m_indexerConnectorInstances);

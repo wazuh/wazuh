@@ -805,3 +805,44 @@ The following sections present representative examples of the supported modules 
   }
 }
 ```
+
+### Services
+
+```json
+{
+  "agent": {
+    "id": "001",
+    "name": "centos9",
+    "version": "v4.14.0"
+  },
+  "file": {
+    "path": "/usr/sbin/sshd"
+  },
+  "process": {
+    "executable": "/usr/sbin/sshd",
+    "pid": 1234
+  },
+  "service": {
+    "description": "OpenSSH server daemon",
+    "enabled": "enabled",
+    "exit_code": 0,
+    "id": "sshd",
+    "name": "OpenSSH Daemon",
+    "start_type": "enabled",
+    "state": "running",
+    "sub_state": "running",
+    "type": "simple"
+  },
+  "user": {
+    "name": "root"
+  },
+  "wazuh": {
+    "cluster": {
+      "name": "cluster01"
+    },
+    "schema": {
+      "version": "1.0"
+    }
+  }
+}
+```

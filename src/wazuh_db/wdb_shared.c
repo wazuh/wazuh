@@ -38,6 +38,7 @@ const char* WDBC_VALID_COMPONENTS[] = {
     [WB_COMP_SYSCOLLECTOR_OSINFO]           = "syscollector_osinfo",
     [WB_COMP_SYSCOLLECTOR_USERS]            = "syscollector_users",
     [WB_COMP_SYSCOLLECTOR_GROUPS]           = "syscollector_groups",
+    [WB_COMP_SYSCOLLECTOR_SERVICES]         = "syscollector_services",
     [WB_COMP_SYSCHECK]                      = "syscheck",
     [WB_COMP_FIM_FILE]                      = "fim_file",
     [WB_COMP_FIM_REGISTRY]                  = "fim_registry",

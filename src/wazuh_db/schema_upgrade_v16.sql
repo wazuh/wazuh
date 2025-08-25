@@ -62,8 +62,48 @@ CREATE TABLE IF NOT EXISTS sys_groups (
     PRIMARY KEY (group_name)
 );
 
+CREATE TABLE IF NOT EXISTS sys_services (
+    scan_id INTEGER,
+    scan_time TEXT,
+    service_id TEXT,
+    service_name TEXT,
+    service_description TEXT,
+    service_type TEXT,
+    service_state TEXT,
+    service_sub_state TEXT,
+    service_enabled TEXT,
+    service_start_type TEXT,
+    service_restart TEXT,
+    service_frequency INTEGER,
+    service_starts_on_mount INTEGER,
+    service_starts_on_path_modified TEXT,
+    service_starts_on_not_empty_directory TEXT,
+    service_inetd_compatibility INTEGER,
+    process_pid INTEGER,
+    process_executable TEXT,
+    process_args TEXT,
+    process_user_name TEXT,
+    process_group_name TEXT,
+    process_working_directory TEXT,
+    process_root_directory TEXT,
+    file_path TEXT,
+    service_address TEXT,
+    log_file_path TEXT,
+    error_log_file_path TEXT,
+    service_exit_code INTEGER,
+    service_win32_exit_code INTEGER,
+    service_following TEXT,
+    service_object_path TEXT,
+    service_target_ephemeral_id INTEGER,
+    service_target_type TEXT,
+    service_target_address TEXT,
+    checksum TEXT NOT NULL CHECK (checksum <> ''),
+    PRIMARY KEY (service_id)
+);
+
 INSERT INTO sync_info (component) VALUES ('syscollector-users');
 INSERT INTO sync_info (component) VALUES ('syscollector-groups');
+INSERT INTO sync_info (component) VALUES ('syscollector-services');
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 16);
 

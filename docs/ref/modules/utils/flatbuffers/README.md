@@ -94,6 +94,7 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | dbsync_processes        | Running processes. |
 |                              | dbsync_users            | Operating system users. |
 |                              | dbsync_groups           | Operating system groups. |
+|                              | dbsync_services         | Operating system services and daemons. |
 
 ### Inventory providers
 - Provider tables for inventory delta events.
@@ -206,6 +207,41 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | source             | string    | Source of the package. |
 |                              | format             | string    | Format of the package. |
 |                              | item_id            | string    | Unique identifier for the package entry. |
+| **dbsync_services**          | name               | string    | Service name or unit name. |
+|                              | display_name       | string    | Display name of the service. |
+|                              | description        | string    | Description of the service/unit. |
+|                              | service_type       | string    | Type of service (e.g., OWN_PROCESS). |
+|                              | start_type         | string    | Start type (e.g., AUTO_START, DEMAND_START). |
+|                              | state              | string    | Current state (e.g., RUNNING, STOPPED, active). |
+|                              | pid                | long      | Process ID of the running service. |
+|                              | ppid               | long      | Parent process ID. |
+|                              | binary_path        | string    | Path to the service executable or unit file. |
+|                              | load_state         | string    | Load state of the unit. |
+|                              | active_state       | string    | Active state of the unit. |
+|                              | sub_state          | string    | Low-level systemd substate. |
+|                              | unit_file_state    | string    | Whether the unit is enabled/disabled. |
+|                              | status             | string    | Service status information. |
+|                              | user               | string    | User account running the service. |
+|                              | can_stop           | string    | Whether the service can be stopped. |
+|                              | can_reload         | string    | Whether the service can be reloaded. |
+|                              | service_exit_code  | long      | Service-specific exit code on failure. |
+|                              | service_name       | string    | ECS: service.name (File name of plist for macOS). |
+|                              | process_executable | string    | ECS: process.executable (Path to the service executable). |
+|                              | process_args       | string    | ECS: process.args (Command line arguments for the service). |
+|                              | file_path          | string    | ECS: file.path (Path to the .plist definition file for macOS). |
+|                              | process_user_name  | string    | ECS: process.user.name (User account running the job). |
+|                              | process_group_name | string    | ECS: process.group.name (Group account running the job). |
+|                              | service_enabled    | string    | ECS: service.enabled (unified as text: enabled/disabled for Linux, true/false for macOS). |
+|                              | service_restart    | string    | Custom: service.restart (Restart policy: always/on-failure/never). |
+|                              | service_frequency  | long      | Custom: service.frequency (Run frequency in seconds). |
+|                              | log_file_path      | string    | Custom: log.file.path (Redirect stdout to a file/pipe). |
+|                              | error_log_file_path| string    | Custom: error.log.file.path (Redirect stderr to a file/pipe). |
+|                              | process_working_directory| string    | ECS: process.working_directory (Working directory of the job). |
+|                              | process_root_directory   | string    | Custom: process.root_directoryectory (Chroot directory before execution). |
+|                              | service_starts_on_mount | bool | Custom: service.starts_on_mount (Launch when a filesystem is mounted). |
+|                              | service_starts_on_path_modified | string | Custom: service.starts_on_path_modified (Launch when a path is modified). |
+|                              | service_starts_on_not_empty_directory | string | Custom: service.starts_on_not_empty_directory (Launch when a directory is not empty). |
+|                              | service_inetd_compatibility | bool | Custom: service.inetd_compatibility (Indicates if the daemon expects to be run as if it were launched from inetd). |
 
 
 ### SyncMsg table
@@ -255,6 +291,7 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | syscollector_packages           | Equivalent to dbsync_packages . |
 |                              | syscollector_ports              | Equivalent to dbsync_ports . |
 |                              | syscollector_processes          | Equivalent to dbsync_processes . |
+|                              | syscollector_services           | Equivalent to dbsync_services . |
 |                              | fim_file                        | File monitoring. |
 |                              | fim_registry_key                | Registry monitoring key. |
 |                              | fim_registry_value              | Registry monitoring value. |

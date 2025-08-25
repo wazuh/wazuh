@@ -23,6 +23,7 @@
 #include "elements/packageElement.hpp"
 #include "elements/portElement.hpp"
 #include "elements/processElement.hpp"
+#include "elements/serviceElement.hpp"
 #include "elements/userElement.hpp"
 #include "loggerHelper.h"
 
@@ -89,6 +90,10 @@ public:
         else if (originTable == TContext::OriginTable::Groups)
         {
             data->m_serializedElement = serializeToJSON(GroupElement<TContext>::build(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::Services)
+        {
+            data->m_serializedElement = serializeToJSON(ServiceElement<TContext>::build(data.get()));
         }
         else
         {
