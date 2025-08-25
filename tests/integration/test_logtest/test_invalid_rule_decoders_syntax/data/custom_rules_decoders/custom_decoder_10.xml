@@ -1,4 +1,0 @@
-<!-- Test: invalid offset-->
-<decoder name="name">
-    <prematch offset="after_prematch">^example</prematch>
-</decoder>

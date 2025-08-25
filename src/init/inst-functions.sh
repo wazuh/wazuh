@@ -480,14 +480,7 @@ WriteManager()
 
     echo "<ossec_config>" >> $NEWCONFIG
 
-    if [ "$EMAILNOTIFY" = "yes"   ]; then
-        GLOBAL_CONTENT=$(sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
-        s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
-        s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}")
-    else
-        GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
-    fi
+    GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
 
     if [ "$UPDATE_CHECK" = "no" ]; then
         GLOBAL_CONTENT=$(echo "$GLOBAL_CONTENT" | sed "s|<update_check>yes</update_check>|<update_check>no</update_check>|g")
@@ -621,15 +614,7 @@ WriteLocal()
     echo "" >> $NEWCONFIG
 
     echo "<ossec_config>" >> $NEWCONFIG
-
-    if [ "$EMAILNOTIFY" = "yes"   ]; then
-        sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
-        s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
-        s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
-    else
-        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
-    fi
+    cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Logging format
