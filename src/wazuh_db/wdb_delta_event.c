@@ -140,6 +140,10 @@ const char * SERVICEINFO_FIELDS[] = {
     !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_PROCESS_PID]) ? \
         GE(field_value, 0) : \
     !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_TARGET_EPHEMERAL_ID]) ? \
+        GE(field_value, 0) : \
+    !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_EXIT_CODE]) ? \
+        GE(field_value, 0) : \
+    !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_WIN32_EXIT_CODE]) ? \
         GE(field_value, 0) : true \
 )
 

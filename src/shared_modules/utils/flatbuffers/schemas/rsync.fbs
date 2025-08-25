@@ -266,6 +266,7 @@ table syscollector_services {
     service_target_type:string;
     service_target_address:string;
     checksum:string;
+    item_id:string;
 }
 
 table fim_file {

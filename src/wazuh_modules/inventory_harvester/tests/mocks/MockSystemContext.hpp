@@ -248,6 +248,7 @@ public:
     MOCK_METHOD(int64_t, serviceTargetEphemeralId, (), (const));
     MOCK_METHOD(std::string_view, serviceTargetType, (), (const));
     MOCK_METHOD(std::string_view, serviceTargetAddress, (), (const));
+    MOCK_METHOD(std::string_view, serviceItemId, (), (const));
 
     std::string m_serializedElement;
 };
