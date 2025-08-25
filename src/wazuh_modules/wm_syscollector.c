@@ -21,15 +21,16 @@
 
 #ifndef CLIENT
 #include "router.h"
-#include "utils/flatbuffers/include/rsync_schema.h"
 #include "utils/flatbuffers/include/syscollector_deltas_schema.h"
 #include "agent_messages_adapter.h"
 #endif // CLIENT
 
 #ifdef WIN32
 static DWORD WINAPI wm_sys_main(void *arg);         // Module main function. It won't return
+static DWORD WINAPI wm_sync_module(__attribute__((unused)) void * args);
 #else
 static void* wm_sys_main(wm_sys_t *sys);        // Module main function. It won't return
+static void * wm_sync_module(__attribute__((unused)) void * args);
 #endif
 static void wm_sys_destroy(wm_sys_t *data);      // Destroy data
 static void wm_sys_stop(wm_sys_t *sys);         // Module stopper
@@ -55,19 +56,22 @@ const wm_context WM_SYS_CONTEXT = {
 void *syscollector_module = NULL;
 syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
-syscollector_sync_message_func syscollector_sync_message_ptr = NULL;
 
 #ifndef CLIENT
 void *router_module_ptr = NULL;
 router_provider_create_func router_provider_create_func_ptr = NULL;
 router_provider_send_fb_func router_provider_send_fb_func_ptr = NULL;
-ROUTER_PROVIDER_HANDLE rsync_handle = NULL;
 ROUTER_PROVIDER_HANDLE syscollector_handle = NULL;
 int disable_manager_scan = 1;
 #endif // CLIENT
 
-long syscollector_sync_max_eps = 10;    // Database synchronization number of events per second (default value)
-int queue_fd = 0;                       // Output queue file descriptor
+unsigned int enable_synchronization = 1; // Database synchronization enabled (default value)
+uint32_t sync_interval = 300;            // Database synchronization interval (default value)
+uint32_t sync_response_timeout = 30;     // Database synchronization response timeout (default value)
+long sync_max_eps = 10;                  // Database synchronization number of events per second (default value)
+
+long syscollector_max_eps = 50;          // Number of events per second (default value)
+int queue_fd = 0;                        // Output queue file descriptor
 
 static bool is_shutdown_process_started() {
     bool ret_val = shutdown_process_started;
@@ -76,7 +80,7 @@ static bool is_shutdown_process_started() {
 
 static void wm_sys_send_message(const void* data, const char queue_id) {
     if (!is_shutdown_process_started()) {
-        const int eps = 1000000/syscollector_sync_max_eps;
+        const int eps = 1000000/syscollector_max_eps;
         if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, queue_id, &is_shutdown_process_started) < 0) {
     #ifdef CLIENT
             mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
@@ -113,18 +117,16 @@ static void wm_sys_send_diff_message(const void* data) {
 #endif // CLIENT
 }
 
-static void wm_sys_send_dbsync_message(const void* data) {
-    wm_sys_send_message(data, DBSYNC_MQ);
-#ifndef CLIENT
-    if(!disable_manager_scan)
-    {
-        char* msg_to_send = adapt_sync_message(data, "localhost", "000", "127.0.0.1", NULL);
-        if (msg_to_send && router_provider_send_fb_func_ptr) {
-            router_provider_send_fb_func_ptr(rsync_handle, msg_to_send, rsync_SCHEMA);
-        }
-        cJSON_free(msg_to_send);
+static void wm_sys_persist_diff_message(const void* data) {
+    if (enable_synchronization) {
+        const char* msg = (const char*)data;
+
+        mdebug2("Persisting Inventory event: %s", msg);
+
+        // inventory_persist_stateful_event(msg);
+    } else {
+        mdebug2("Inventory synchronization is disabled");
     }
-#endif // CLIENT
 }
 
 static void wm_sys_log_config(wm_sys_t *sys)
@@ -177,19 +179,7 @@ void* wm_sys_main(wm_sys_t *sys) {
     {
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
-        syscollector_sync_message_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_message");
 
-        void* rsync_module = NULL;
-        if(rsync_module = so_check_module_loaded("rsync"), rsync_module) {
-            rsync_initialize_full_log_func rsync_initialize_log_function_ptr = so_get_function_sym(rsync_module, "rsync_initialize_full_log_function");
-            if(rsync_initialize_log_function_ptr) {
-                rsync_initialize_log_function_ptr(mtLoggingFunctionsWrapper);
-            }
-            // Even when the RTLD_NOLOAD flag was used for dlopen(), we need a matching call to dlclose()
-#ifndef WIN32
-            so_free_library(rsync_module);
-#endif
-        }
 #ifndef CLIENT
         // Load router module only for manager if is enabled
         disable_manager_scan = getDefine_Int("vulnerability-detection", "disable_scan_manager", 0, 1);
@@ -218,11 +208,18 @@ void* wm_sys_main(wm_sys_t *sys) {
         w_mutex_lock(&sys_stop_mutex);
         need_shutdown_wait = true;
         w_mutex_unlock(&sys_stop_mutex);
-        const long max_eps = sys->sync.sync_max_eps;
-        if (0 != max_eps) {
-            syscollector_sync_max_eps = max_eps;
+
+        enable_synchronization = sys->sync.enable_synchronization;
+        if (enable_synchronization) {
+            sync_interval = sys->sync.sync_interval;
+            sync_response_timeout = sys->sync.sync_response_timeout;
+            sync_max_eps = sys->sync.sync_max_eps;
         }
-        // else: if max_eps is 0 (from configuration) let's use the default max_eps value (10)
+
+        if (sys->max_eps) {
+            syscollector_max_eps = sys->max_eps;
+        }
+
         wm_sys_log_config(sys);
 #ifndef CLIENT
         // Router providers initialization
@@ -230,15 +227,29 @@ void* wm_sys_main(wm_sys_t *sys) {
             if(syscollector_handle = router_provider_create_func_ptr("deltas-syscollector", true), !syscollector_handle) {
                 mdebug2("Failed to create router handle for 'syscollector'.");
             }
-
-            if (rsync_handle = router_provider_create_func_ptr("rsync-syscollector", true), !rsync_handle) {
-                mdebug2("Failed to create router handle for 'rsync'.");
-            }
         }
 #endif // CLIENT
+
+#ifndef WIN32
+        if (enable_synchronization) {
+            // Launch inventory synchronization thread
+            w_create_thread(wm_sync_module, NULL);
+        } else {
+            mdebug1("Inventory synchronization is disabled");
+        }
+#else
+        if (enable_synchronization) {
+            if (CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL) == NULL) {
+                merror(THREAD_ERROR);
+            }
+        } else {
+            mdebug1("Inventory synchronization is disabled");
+        }
+#endif
+
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
-                               wm_sys_send_dbsync_message,
+                               wm_sys_persist_diff_message,
                                taggedLogFunction,
                                SYSCOLLECTOR_DB_DISK_PATH,
                                SYSCOLLECTOR_NORM_CONFIG_DISK_PATH,
@@ -253,12 +264,12 @@ void* wm_sys_main(wm_sys_t *sys) {
                                sys->flags.procinfo,
                                sys->flags.hotfixinfo,
                                sys->flags.groups,
-                               sys->flags.users);
+                               sys->flags.users,
+                               sys->flags.notify_first_scan);
     } else {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
         pthread_exit(NULL);
     }
-    syscollector_sync_message_ptr = NULL;
     syscollector_start_ptr = NULL;
     syscollector_stop_ptr = NULL;
 
@@ -296,7 +307,6 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
     data->flags.running = false;
 
     mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
-    syscollector_sync_message_ptr = NULL;
     if (syscollector_stop_ptr){
         shutdown_process_started = true;
         syscollector_stop_ptr();
@@ -316,6 +326,8 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     if (sys->flags.enabled) cJSON_AddStringToObject(wm_sys,"disabled","no"); else cJSON_AddStringToObject(wm_sys,"disabled","yes");
     if (sys->flags.scan_on_start) cJSON_AddStringToObject(wm_sys,"scan-on-start","yes"); else cJSON_AddStringToObject(wm_sys,"scan-on-start","no");
     cJSON_AddNumberToObject(wm_sys,"interval",sys->interval);
+    cJSON_AddNumberToObject(wm_sys, "max_eps", sys->max_eps);
+    if (sys->flags.notify_first_scan) cJSON_AddStringToObject(wm_sys,"notify_first_scan","yes"); else cJSON_AddStringToObject(wm_sys,"notify_first_scan","no");
     if (sys->flags.netinfo) cJSON_AddStringToObject(wm_sys,"network","yes"); else cJSON_AddStringToObject(wm_sys,"network","no");
     if (sys->flags.osinfo) cJSON_AddStringToObject(wm_sys,"os","yes"); else cJSON_AddStringToObject(wm_sys,"os","no");
     if (sys->flags.hwinfo) cJSON_AddStringToObject(wm_sys,"hardware","yes"); else cJSON_AddStringToObject(wm_sys,"hardware","no");
@@ -328,21 +340,51 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
 #ifdef WIN32
     if (sys->flags.hotfixinfo) cJSON_AddStringToObject(wm_sys,"hotfixes","yes"); else cJSON_AddStringToObject(wm_sys,"hotfixes","no");
 #endif
+
     // Database synchronization values
-    cJSON_AddNumberToObject(wm_sys,"sync_max_eps",sys->sync.sync_max_eps);
+    cJSON * synchronization = cJSON_CreateObject();
+    cJSON_AddStringToObject(synchronization, "enabled", sys->sync.enable_synchronization ? "yes" : "no");
+    cJSON_AddNumberToObject(synchronization, "interval", sys->sync.sync_interval);
+    cJSON_AddNumberToObject(synchronization, "max_eps", sys->sync.sync_max_eps);
+    cJSON_AddNumberToObject(synchronization, "response_timeout", sys->sync.sync_response_timeout);
+
+    cJSON_AddItemToObject(wm_sys, "synchronization", synchronization);
 
     cJSON_AddItemToObject(root,"syscollector",wm_sys);
 
     return root;
 }
 
-int wm_sync_message(const char *data)
-{
-    int ret_val = 0;
+int wm_sync_message(const char *data) {
+    if (enable_synchronization) {
+        // inventory_sync_push_msg(data);
+        return 0;
+    } else {
+        mdebug1("Inventory synchronization is disabled");
+        return -1;
+    }
+}
 
-    if (syscollector_sync_message_ptr) {
-        ret_val = syscollector_sync_message_ptr(data);
+#ifdef WIN32
+DWORD WINAPI wm_sync_module(__attribute__((unused)) void * args) {
+#else
+void * wm_sync_module(__attribute__((unused)) void * args) {
+#endif
+    // Initial wait until syscollector is started
+    sleep(sync_interval);
+
+    while (FOREVER()) {
+        mdebug1("Running inventory synchronization.");
+
+        // inventory_synchronize(sync_response_timeout, sync_max_eps);
+
+        mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", sync_interval);
+        sleep(sync_interval);
     }
 
-    return ret_val;
+#ifdef WIN32
+    return 0;
+#else
+    return NULL;
+#endif
 }

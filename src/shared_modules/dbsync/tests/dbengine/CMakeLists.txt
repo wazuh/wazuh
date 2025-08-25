@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(dbengine_unit_test)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -std=c++14 --coverage")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra --coverage")
 
 include_directories(${CMAKE_SOURCE_DIR}/include/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
@@ -19,8 +21,8 @@ file(GLOB DBENGINE_UNITTEST_SRC
 file(GLOB SQLITE_ENGINE_SRC
     "${CMAKE_SOURCE_DIR}/src/sqlite/sqlite_dbengine.cpp")
 
-add_executable(dbengine_unit_test 
-    ${DBENGINE_UNITTEST_SRC} 
+add_executable(dbengine_unit_test
+    ${DBENGINE_UNITTEST_SRC}
     ${SQLITE_ENGINE_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(dbengine_unit_test

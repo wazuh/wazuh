@@ -127,7 +127,7 @@ if(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_transaction_start \
                                      -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_transaction_deleted_rows \
                                      -Wl,--wrap=fim_db_file_update -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=is_fim_shutdown \
-                                     -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS}")
 endif()
@@ -153,7 +153,7 @@ if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=utf8_GetShortPathName")
+                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap=utf8_GetShortPathName")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
 endif()
@@ -175,7 +175,7 @@ if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=fim_db_teardown")
 
   # Create event channel tests for run_realtime
   list(APPEND syscheckd_event_tests_names "test_run_realtime_event")
@@ -184,7 +184,7 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
                                            -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch
                                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                                           -Wl,--wrap=fim_db_teardown \
                                            -Wl,--wrap=utf8_CreateFile")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
@@ -209,7 +209,7 @@ else()
                                       -Wl,--wrap=fim_db_get_count_registry_data \
                                       -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                       -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                      -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                      -Wl,--wrap=fim_db_teardown")
   else()
     list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
   endif()
@@ -236,7 +236,7 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap=fim_db_get_count_registry_data \
                                     -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                    -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                    -Wl,--wrap=fim_db_teardown")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
@@ -266,7 +266,7 @@ elseif(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
                                      -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=fim_db_teardown")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
@@ -284,7 +284,7 @@ elseif(${TARGET} STREQUAL "winagent")
                                                                    -Wl,--wrap=fim_generate_delete_event \
                                                                    -Wl,--wrap=is_fim_shutdown \
                                                                    -Wl,--wrap=_imp__dbsync_initialize \
-                                                                   -Wl,--wrap=_imp__rsync_initialize \
+                                                                   \
                                                                    -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
@@ -383,7 +383,7 @@ if(${TARGET} STREQUAL "winagent")
                                           -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
                                           -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg \
                                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                          -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                                          -Wl,--wrap=fim_db_teardown \
                                           -Wl,--wrap=utf8_stat64"
                                           fimdb)
 else()

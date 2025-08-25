@@ -136,13 +136,14 @@ int receive_msg()
 
             /* Syscheck */
             else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0
-                     || strncmp(tmp_msg, HC_FIM_SYNC, strlen(HC_FIM_SYNC)) == 0) {
+                     || strncmp(tmp_msg, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
                 ag_send_syscheck(tmp_msg);
                 continue;
             }
 
             /* Syscollector */
-            else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
+            else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0
+                     || strncmp(tmp_msg, SYSCOLECTOR_SYNC_HEADER, strlen(SYSCOLECTOR_SYNC_HEADER)) == 0) {
                 wmcom_send(tmp_msg);
                 continue;
             }

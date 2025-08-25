@@ -20,7 +20,7 @@ extern "C" {
 
 void syscollector_start(const unsigned int inverval,
                         send_data_callback_t callbackDiff,
-                        send_data_callback_t callbackSync,
+                        send_data_callback_t callbackPersistDiff,
                         log_callback_t callbackLog,
                         const char* dbPath,
                         const char* normalizerConfigPath,
@@ -35,7 +35,8 @@ void syscollector_start(const unsigned int inverval,
                         const bool processes,
                         const bool hotfixes,
                         const bool groups,
-                        const bool users)
+                        const bool users,
+                        const bool notifyOnFirstScan)
 {
     std::function<void(const std::string&)> callbackDiffWrapper
     {
@@ -45,11 +46,11 @@ void syscollector_start(const unsigned int inverval,
         }
     };
 
-    std::function<void(const std::string&)> callbackSyncWrapper
+    std::function<void(const std::string&)> callbackPersistDiffWrapper
     {
-        [callbackSync](const std::string & data)
+        [callbackPersistDiff](const std::string & data)
         {
-            callbackSync(data.c_str());
+            callbackPersistDiff(data.c_str());
         }
     };
 
@@ -75,7 +76,7 @@ void syscollector_start(const unsigned int inverval,
     {
         Syscollector::instance().init(std::make_shared<SysInfo>(),
                                       std::move(callbackDiffWrapper),
-                                      std::move(callbackSyncWrapper),
+                                      std::move(callbackPersistDiffWrapper),
                                       std::move(callbackLogWrapper),
                                       dbPath,
                                       normalizerConfigPath,
@@ -91,7 +92,8 @@ void syscollector_start(const unsigned int inverval,
                                       processes,
                                       hotfixes,
                                       groups,
-                                      users);
+                                      users,
+                                      notifyOnFirstScan);
     }
     catch (const std::exception& ex)
     {
@@ -102,23 +104,6 @@ void syscollector_stop()
 {
     Syscollector::instance().destroy();
 }
-
-int syscollector_sync_message(const char* data)
-{
-    int ret{-1};
-
-    try
-    {
-        Syscollector::instance().push(data);
-        ret = 0;
-    }
-    catch (...)
-    {
-    }
-
-    return ret;
-}
-
 
 #ifdef __cplusplus
 }

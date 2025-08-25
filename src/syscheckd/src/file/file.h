@@ -16,9 +16,6 @@
 #define check_removed_file(x) ({ strstr(x, ":\\$recycle.bin") ? 1 : 0; })
 #endif
 
-// Global variables
-extern int _base_line;
-
 typedef struct callback_ctx
 {
     event_data_t* event;

@@ -45,7 +45,7 @@ extern bool is_fim_shutdown;
 /* Shut down syscheckd properly */
 static void fim_shutdown(int sig)
 {
-    /* Close sync thread and release dbsync and rsync */
+    /* Close sync thread and release dbsync */
     minfo(SK_SHUTDOWN);
     is_fim_shutdown = true;
     fim_db_teardown();
@@ -120,7 +120,6 @@ int main(int argc, char **argv)
 
     /* Initialize error logging for shared modulesd */
     dbsync_initialize(loggingErrorFunction);
-    rsync_initialize(loggingErrorFunction);
 
     /* Read internal options */
     read_internal(debug_level);

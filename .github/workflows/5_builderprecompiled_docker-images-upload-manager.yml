@@ -2,9 +2,6 @@ run-name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.a
 name: Package - Upload manager images
 
 on:
-  push:
-    paths:
-      - '.github/workflows/5_builderprecompiled_docker-images-upload-manager.yml'
   workflow_dispatch:
     inputs:
       docker_image_tag:
@@ -31,6 +28,7 @@ on:
         options:
           - deb
           - rpm
+        required: true
       source_reference:
         description: |
           Branch from wazuh/wazuh repository to use.

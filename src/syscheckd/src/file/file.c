@@ -27,9 +27,6 @@
 #define STATIC static
 #endif
 
-// Global variables
-int _base_line = 0;
-
 static const char *FIM_EVENT_TYPE_ARRAY[] = {
     "added",
     "deleted",
@@ -188,7 +185,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddStringToObject(file_stateless, "tags", txn_context->config->tag);
     }
 
-    if (_base_line != 0 && txn_context->event->report_event) {
+    if (notify_scan != 0 && txn_context->event->report_event) {
         send_syscheck_msg(stateless_event);
     }
 
