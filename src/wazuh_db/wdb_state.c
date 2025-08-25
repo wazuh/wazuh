@@ -1145,8 +1145,9 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_packages", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_queries);
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_ports", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_queries);
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_processes", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_queries);
-    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_services", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_services_queries);
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_users", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_users_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_groups", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_groups_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_services", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_services_queries);
 
     cJSON *_agent_tables_syscollector_deprecated = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_tables_syscollector, "deprecated", _agent_tables_syscollector_deprecated);

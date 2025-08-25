@@ -325,56 +325,53 @@ public:
     }
 
     // Service data fields
-    std::string_view serviceName() const
+    std::string_view serviceId() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->name())
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->service_id())
             {
-                return m_delta->data_as_dbsync_services()->name()->string_view();
+                return m_delta->data_as_dbsync_services()->service_id()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->name())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_id())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->name()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_id()->string_view();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/name"_json_pointer))
+            if (m_jsonData->contains("/data/service_id"_json_pointer))
             {
-                return m_jsonData->at("/data/name"_json_pointer).get<std::string_view>();
+                return m_jsonData->at("/data/service_id"_json_pointer).get<std::string_view>();
             }
         }
         return "";
     }
 
-    std::string_view serviceDisplayName() const
+    std::string_view serviceName() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->display_name())
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->service_name())
             {
-                return m_delta->data_as_dbsync_services()->display_name()->string_view();
+                return m_delta->data_as_dbsync_services()->service_name()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->display_name())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_name())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->display_name()->string_view();
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_name()->string_view();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/display_name"_json_pointer))
-            {
-                return m_jsonData->at("/data/display_name"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -383,25 +380,25 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->description())
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->service_description())
             {
-                return m_delta->data_as_dbsync_services()->description()->string_view();
+                return m_delta->data_as_dbsync_services()->service_description()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->description())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_description())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->description()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->service_description()
+                    ->string_view();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/description"_json_pointer))
-            {
-                return m_jsonData->at("/data/description"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -425,37 +422,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_type"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_type"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    std::string_view serviceStartType() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->start_type())
-            {
-                return m_delta->data_as_dbsync_services()->start_type()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->start_type())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->start_type()->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/start_type"_json_pointer))
-            {
-                return m_jsonData->at("/data/start_type"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -464,25 +431,25 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->state())
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->service_state())
             {
-                return m_delta->data_as_dbsync_services()->state()->string_view();
+                return m_delta->data_as_dbsync_services()->service_state()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->state())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_state())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->state()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->service_state()
+                    ->string_view();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/state"_json_pointer))
-            {
-                return m_jsonData->at("/data/state"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -491,348 +458,30 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->sub_state())
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->service_sub_state())
             {
-                return m_delta->data_as_dbsync_services()->sub_state()->string_view();
+                return m_delta->data_as_dbsync_services()->service_sub_state()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->sub_state())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_sub_state())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->sub_state()->string_view();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->service_sub_state()
+                    ->string_view();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/sub_state"_json_pointer))
-            {
-                return m_jsonData->at("/data/sub_state"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    long servicePid() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services())
-            {
-                return m_delta->data_as_dbsync_services()->pid() ? m_delta->data_as_dbsync_services()->pid().value()
-                                                                 : 0;
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->pid()
-                           ? m_syncMsg->data_as_state()->attributes_as_syscollector_services()->pid().value()
-                           : 0;
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/pid"_json_pointer))
-            {
-                return m_jsonData->at("/data/pid"_json_pointer).get<long>();
-            }
-        }
-        return 0;
-    }
-
-    std::string_view serviceBinaryPath() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->binary_path())
-            {
-                return m_delta->data_as_dbsync_services()->binary_path()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->binary_path())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->binary_path()->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/binary_path"_json_pointer))
-            {
-                return m_jsonData->at("/data/binary_path"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
 
     std::string_view serviceEnabled() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->unit_file_state())
-            {
-                return m_delta->data_as_dbsync_services()->unit_file_state()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->unit_file_state())
-            {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_services()
-                    ->unit_file_state()
-                    ->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/unit_file_state"_json_pointer))
-            {
-                return m_jsonData->at("/data/unit_file_state"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    long serviceExitCode() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services())
-            {
-                return m_delta->data_as_dbsync_services()->service_exit_code()
-                           ? m_delta->data_as_dbsync_services()->service_exit_code().value()
-                           : 0;
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_exit_code()
-                           ? m_syncMsg->data_as_state()
-                                 ->attributes_as_syscollector_services()
-                                 ->service_exit_code()
-                                 .value()
-                           : 0;
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/service_exit_code"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_exit_code"_json_pointer).get<long>();
-            }
-        }
-        return 0;
-    }
-
-    std::string_view serviceUser() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->user())
-            {
-                return m_delta->data_as_dbsync_services()->user()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->user())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->user()->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/user"_json_pointer))
-            {
-                return m_jsonData->at("/data/user"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    // New macOS launchd service fields
-    std::string_view serviceNameECS() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->service_name())
-            {
-                return m_delta->data_as_dbsync_services()->service_name()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_name())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_name()->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/service_name"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_name"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    std::string_view processExecutable() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_executable())
-            {
-                return m_delta->data_as_dbsync_services()->process_executable()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_executable())
-            {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_services()
-                    ->process_executable()
-                    ->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/process_executable"_json_pointer))
-            {
-                return m_jsonData->at("/data/process_executable"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    std::string_view processArgs() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_args())
-            {
-                return m_delta->data_as_dbsync_services()->process_args()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_args())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_args()->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/process_args"_json_pointer))
-            {
-                return m_jsonData->at("/data/process_args"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    std::string_view filePath() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->file_path())
-            {
-                return m_delta->data_as_dbsync_services()->file_path()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->file_path())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->file_path()->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/file_path"_json_pointer))
-            {
-                return m_jsonData->at("/data/file_path"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    std::string_view processUserName() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_user_name())
-            {
-                return m_delta->data_as_dbsync_services()->process_user_name()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_user_name())
-            {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_services()
-                    ->process_user_name()
-                    ->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/process_user_name"_json_pointer))
-            {
-                return m_jsonData->at("/data/process_user_name"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    std::string_view processGroupName() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_group_name())
-            {
-                return m_delta->data_as_dbsync_services()->process_group_name()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_group_name())
-            {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_services()
-                    ->process_group_name()
-                    ->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/process_group_name"_json_pointer))
-            {
-                return m_jsonData->at("/data/process_group_name"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    std::string_view serviceEnabledText() const
     {
         if (m_type == VariantType::Delta)
         {
@@ -854,10 +503,34 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_enabled"_json_pointer))
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view serviceStartType() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->service_start_type())
             {
-                return m_jsonData->at("/data/service_enabled"_json_pointer).get<std::string_view>();
+                return m_delta->data_as_dbsync_services()->service_start_type()->string_view();
             }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_start_type())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->service_start_type()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
         }
         return "";
     }
@@ -884,196 +557,65 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_restart"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_restart"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
 
-    long serviceFrequency() const
+    int64_t serviceFrequency() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services())
+            if (m_delta->data_as_dbsync_services() &&
+                std::optional<int64_t>(m_delta->data_as_dbsync_services()->service_frequency()).has_value())
             {
-                return m_delta->data_as_dbsync_services()->service_frequency()
-                           ? m_delta->data_as_dbsync_services()->service_frequency().value()
-                           : 0;
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
-            {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_frequency()
-                           ? m_syncMsg->data_as_state()
-                                 ->attributes_as_syscollector_services()
-                                 ->service_frequency()
-                                 .value()
-                           : 0;
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/service_frequency"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_frequency"_json_pointer).get<long>();
-            }
-        }
-        return 0;
-    }
-
-    std::string_view logFilePath() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->log_file_path())
-            {
-                return m_delta->data_as_dbsync_services()->log_file_path()->string_view();
+                return std::optional<int64_t>(m_delta->data_as_dbsync_services()->service_frequency()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->log_file_path())
+                std::optional<int64_t>(
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_frequency())
+                    .has_value())
             {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_services()
-                    ->log_file_path()
-                    ->string_view();
+                return std::optional<int64_t>(
+                           m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_frequency())
+                    .value();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/log_file_path"_json_pointer))
-            {
-                return m_jsonData->at("/data/log_file_path"_json_pointer).get<std::string_view>();
-            }
+            return -1;
         }
-        return "";
-    }
-
-    std::string_view errorLogFilePath() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->error_log_file_path())
-            {
-                return m_delta->data_as_dbsync_services()->error_log_file_path()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->error_log_file_path())
-            {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_services()
-                    ->error_log_file_path()
-                    ->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/error_log_file_path"_json_pointer))
-            {
-                return m_jsonData->at("/data/error_log_file_path"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    std::string_view processWorkingDir() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_working_directory())
-            {
-                return m_delta->data_as_dbsync_services()->process_working_directory()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_working_directory())
-            {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_services()
-                    ->process_working_directory()
-                    ->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/process_working_directory"_json_pointer))
-            {
-                return m_jsonData->at("/data/process_working_directory"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
-    }
-
-    std::string_view processRootDir() const
-    {
-        if (m_type == VariantType::Delta)
-        {
-            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_root_directory())
-            {
-                return m_delta->data_as_dbsync_services()->process_root_directory()->string_view();
-            }
-        }
-        else if (m_type == VariantType::SyncMsg)
-        {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_root_directory())
-            {
-                return m_syncMsg->data_as_state()
-                    ->attributes_as_syscollector_services()
-                    ->process_root_directory()
-                    ->string_view();
-            }
-        }
-        else
-        {
-            if (m_jsonData->contains("/data/process_root_directory"_json_pointer))
-            {
-                return m_jsonData->at("/data/process_root_directory"_json_pointer).get<std::string_view>();
-            }
-        }
-        return "";
+        return -1;
     }
 
     bool serviceStartsOnMount() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services())
+            if (m_delta->data_as_dbsync_services() &&
+                std::optional<bool>(m_delta->data_as_dbsync_services()->service_starts_on_mount()).has_value())
             {
-                return m_delta->data_as_dbsync_services()->service_starts_on_mount()
-                           ? m_delta->data_as_dbsync_services()->service_starts_on_mount().value()
-                           : false;
+                return std::optional<bool>(m_delta->data_as_dbsync_services()->service_starts_on_mount()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                std::optional<bool>(
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_mount())
+                    .has_value())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_mount()
-                           ? m_syncMsg->data_as_state()
-                                 ->attributes_as_syscollector_services()
-                                 ->service_starts_on_mount()
-                                 .value()
-                           : false;
+                return std::optional<bool>(
+                           m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_mount())
+                    .value();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/service_starts_on_mount"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_starts_on_mount"_json_pointer).get<bool>();
-            }
+            return false;
         }
         return false;
     }
@@ -1101,10 +643,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_starts_on_path_modified"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_starts_on_path_modified"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -1134,11 +673,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_starts_on_not_empty_directory"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_starts_on_not_empty_directory"_json_pointer)
-                    .get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -1147,36 +682,243 @@ public:
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services())
+            if (m_delta->data_as_dbsync_services() &&
+                std::optional<bool>(m_delta->data_as_dbsync_services()->service_inetd_compatibility()).has_value())
             {
-                return m_delta->data_as_dbsync_services()->service_inetd_compatibility()
-                           ? m_delta->data_as_dbsync_services()->service_inetd_compatibility().value()
-                           : false;
+                return std::optional<bool>(m_delta->data_as_dbsync_services()->service_inetd_compatibility()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                std::optional<bool>(
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_inetd_compatibility())
+                    .has_value())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_inetd_compatibility()
-                           ? m_syncMsg->data_as_state()
-                                 ->attributes_as_syscollector_services()
-                                 ->service_inetd_compatibility()
-                                 .value()
-                           : false;
+                return std::optional<bool>(m_syncMsg->data_as_state()
+                                               ->attributes_as_syscollector_services()
+                                               ->service_inetd_compatibility())
+                    .value();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/service_inetd_compatibility"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_inetd_compatibility"_json_pointer).get<bool>();
-            }
+            return false;
         }
         return false;
     }
 
-    // Additional service fields for unified ECS table
+    int64_t serviceProcessPid() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() &&
+                std::optional<int64_t>(m_delta->data_as_dbsync_services()->process_pid()).has_value())
+            {
+                return std::optional<int64_t>(m_delta->data_as_dbsync_services()->process_pid()).value();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                std::optional<int64_t>(m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_pid())
+                    .has_value())
+            {
+                return std::optional<int64_t>(
+                           m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_pid())
+                    .value();
+            }
+        }
+        else
+        {
+            return -1;
+        }
+        return -1;
+    }
+
+    std::string_view serviceProcessExecutable() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_executable())
+            {
+                return m_delta->data_as_dbsync_services()->process_executable()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_executable())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_executable()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view serviceProcessArgs() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_args())
+            {
+                return m_delta->data_as_dbsync_services()->process_args()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_args())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_args()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view serviceProcessUserName() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_user_name())
+            {
+                return m_delta->data_as_dbsync_services()->process_user_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_user_name())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_user_name()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view serviceProcessGroupName() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_group_name())
+            {
+                return m_delta->data_as_dbsync_services()->process_group_name()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_group_name())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_group_name()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view serviceProcessWorkingDir() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_working_directory())
+            {
+                return m_delta->data_as_dbsync_services()->process_working_directory()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_working_directory())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_working_directory()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view serviceProcessRootDir() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->process_root_directory())
+            {
+                return m_delta->data_as_dbsync_services()->process_root_directory()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->process_root_directory())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->process_root_directory()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view serviceFilePath() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->file_path())
+            {
+                return m_delta->data_as_dbsync_services()->file_path()->string_view();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->file_path())
+            {
+                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->file_path()->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
     std::string_view serviceAddress() const
     {
         if (m_type == VariantType::Delta)
@@ -1199,45 +941,121 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_address"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_address"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
 
-    long serviceWin32ExitCode() const
+    std::string_view serviceLogFilePath() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services())
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->log_file_path())
             {
-                return m_delta->data_as_dbsync_services()->service_win32_exit_code()
-                           ? m_delta->data_as_dbsync_services()->service_win32_exit_code().value()
-                           : 0;
+                return m_delta->data_as_dbsync_services()->log_file_path()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->log_file_path())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_win32_exit_code()
-                           ? m_syncMsg->data_as_state()
-                                 ->attributes_as_syscollector_services()
-                                 ->service_win32_exit_code()
-                                 .value()
-                           : 0;
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->log_file_path()
+                    ->string_view();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/service_win32_exit_code"_json_pointer))
+            return "";
+        }
+        return "";
+    }
+
+    std::string_view serviceErrorLogFilePath() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() && m_delta->data_as_dbsync_services()->error_log_file_path())
             {
-                return m_jsonData->at("/data/service_win32_exit_code"_json_pointer).get<long>();
+                return m_delta->data_as_dbsync_services()->error_log_file_path()->string_view();
             }
         }
-        return 0;
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                m_syncMsg->data_as_state()->attributes_as_syscollector_services()->error_log_file_path())
+            {
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_services()
+                    ->error_log_file_path()
+                    ->string_view();
+            }
+        }
+        else
+        {
+            return "";
+        }
+        return "";
+    }
+
+    int serviceExitCode() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() &&
+                std::optional<int>(m_delta->data_as_dbsync_services()->service_exit_code()))
+            {
+                return std::optional<int>(m_delta->data_as_dbsync_services()->service_exit_code()).value();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                std::optional<int>(
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_exit_code())
+                    .has_value())
+            {
+                return std::optional<int>(
+                           m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_exit_code())
+                    .value();
+            }
+        }
+        else
+        {
+            return -1;
+        }
+        return -1;
+    }
+
+    int serviceWin32ExitCode() const
+    {
+        if (m_type == VariantType::Delta)
+        {
+            if (m_delta->data_as_dbsync_services() &&
+                std::optional<int>(m_delta->data_as_dbsync_services()->service_win32_exit_code()).has_value())
+            {
+                return std::optional<int>(m_delta->data_as_dbsync_services()->service_win32_exit_code()).value();
+            }
+        }
+        else if (m_type == VariantType::SyncMsg)
+        {
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                std::optional<int>(
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_win32_exit_code())
+                    .has_value())
+            {
+                return std::optional<int>(
+                           m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_win32_exit_code())
+                    .value();
+            }
+        }
+        else
+        {
+            return -1;
+        }
+        return -1;
     }
 
     std::string_view serviceFollowing() const
@@ -1262,10 +1080,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_following"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_following"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -1292,43 +1107,41 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_object_path"_json_pointer))
+            if (m_jsonData->contains("/data/object_path"_json_pointer))
             {
-                return m_jsonData->at("/data/service_object_path"_json_pointer).get<std::string_view>();
+                return m_jsonData->at("/data/object_path"_json_pointer).get<std::string_view>();
             }
         }
         return "";
     }
 
-    long serviceTargetEphemeralId() const
+    int64_t serviceTargetEphemeralId() const
     {
         if (m_type == VariantType::Delta)
         {
-            if (m_delta->data_as_dbsync_services())
+            if (m_delta->data_as_dbsync_services() &&
+                std::optional<int64_t>(m_delta->data_as_dbsync_services()->service_target_ephemeral_id()).has_value())
             {
-                return m_delta->data_as_dbsync_services()->service_target_ephemeral_id()
-                           ? m_delta->data_as_dbsync_services()->service_target_ephemeral_id().value()
-                           : 0;
+                return std::optional<int64_t>(m_delta->data_as_dbsync_services()->service_target_ephemeral_id())
+                    .value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
-            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services())
+            if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
+                std::optional<int64_t>(
+                    m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_target_ephemeral_id())
+                    .has_value())
             {
-                return m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_target_ephemeral_id()
-                           ? m_syncMsg->data_as_state()
-                                 ->attributes_as_syscollector_services()
-                                 ->service_target_ephemeral_id()
-                                 .value()
-                           : 0;
+                return std::optional<int64_t>(m_syncMsg->data_as_state()
+                                                  ->attributes_as_syscollector_services()
+                                                  ->service_target_ephemeral_id())
+                    .value();
             }
         }
         else
         {
-            if (m_jsonData->contains("/data/service_target_ephemeral_id"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_target_ephemeral_id"_json_pointer).get<long>();
-            }
+            return 0;
         }
         return 0;
     }
@@ -1355,10 +1168,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_target_type"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_target_type"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
@@ -1385,10 +1195,7 @@ public:
         }
         else
         {
-            if (m_jsonData->contains("/data/service_target_address"_json_pointer))
-            {
-                return m_jsonData->at("/data/service_target_address"_json_pointer).get<std::string_view>();
-            }
+            return "";
         }
         return "";
     }
