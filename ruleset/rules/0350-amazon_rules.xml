@@ -542,7 +542,7 @@
 
   <rule id="80495" level="0">
     <if_sid>80200</if_sid>
-    <field name="aws.source">inspector</field>
+    <field name="aws.source">inspector|inspector2</field>
     <options>no_full_log</options>
     <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
@@ -550,7 +550,7 @@
 
   <rule id="80496" level="10">
     <if_sid>80495</if_sid>
-    <field name="aws.severity">High</field>
+    <field name="aws.severity">high|HIGH</field>
     <options>no_full_log</options>
     <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
@@ -558,7 +558,7 @@
 
   <rule id="80497" level="7">
     <if_sid>80495</if_sid>
-    <field name="aws.severity">Medium</field>
+    <field name="aws.severity">medium|MEDIUM</field>
     <options>no_full_log</options>
     <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
@@ -566,7 +566,7 @@
 
   <rule id="80498" level="4">
     <if_sid>80495</if_sid>
-    <field name="aws.severity">Low</field>
+    <field name="aws.severity">low|LOW</field>
     <options>no_full_log</options>
     <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
@@ -574,7 +574,23 @@
 
   <rule id="80499" level="3">
     <if_sid>80495</if_sid>
-    <field name="aws.severity">Informational</field>
+    <field name="aws.severity">informational|INFORMATIONAL</field>
+    <options>no_full_log</options>
+    <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <group>aws_inspector,</group>
+  </rule>
+
+  <rule id="99950" level="12">
+    <if_sid>80495</if_sid>
+    <field name="aws.severity">CRITICAL</field>
+    <options>no_full_log</options>
+    <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
+    <group>aws_inspector,</group>
+  </rule>
+
+  <rule id="99951" level="2">
+    <if_sid>80495</if_sid>
+    <field name="aws.severity">UNTRIAGED</field>
     <options>no_full_log</options>
     <description>AWS inspector - network assessment [$(aws.createdAt)]: $(aws.title) [$(aws.severity)].</description>
     <group>aws_inspector,</group>
