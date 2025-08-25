@@ -119,6 +119,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->sync_response_timeout           = 30;
     syscheck->sync_max_eps                    = 10;
     syscheck->max_eps                         = 50;
+    syscheck->notify_first_scan               = 0; // Default value, no notification on first scan
     syscheck->max_files_per_second            = 0;
     syscheck->allow_remote_prefilter_cmd      = false;
     syscheck->disk_quota_enabled              = true;
@@ -1625,6 +1626,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_process_priority = "process_priority";
     const char *xml_synchronization = "synchronization";
     const char *xml_max_eps = "max_eps";
+    const char *xml_notify_first_scan = "notify_first_scan";
     const char *xml_allow_remote_prefilter_cmd = "allow_remote_prefilter_cmd";
     const char *xml_diff = "diff";
 
@@ -2138,6 +2140,15 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
             } else {
                 syscheck->max_eps = value;
+            }
+        } else if (strcmp(node[i]->element, xml_notify_first_scan) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                syscheck->notify_first_scan = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                syscheck->notify_first_scan = 0;
+            } else {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
         } /* Allow prefilter cmd */
         else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {

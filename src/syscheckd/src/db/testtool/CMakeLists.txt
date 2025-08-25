@@ -5,11 +5,14 @@ project(fimdb_test_tool)
 include_directories(${CMAKE_SOURCE_DIR}/testtool/)
 link_directories(${CMAKE_BINARY_DIR}/lib)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if(COVERITY)
     add_definitions(-D__GNUC__=8)
 endif(COVERITY)
 
-set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -std=c++14 -pthread")
+set(CMAKE_CXX_FLAGS "-g -Wall -Wextra -pthread")
 
 if(FSANITIZE)
     set(CMAKE_CXX_FLAGS_DEBUG "-fsanitize=address,leak,undefined")
@@ -21,7 +24,6 @@ add_executable(fimdb_test_tool
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DOS_TYPE=OSType::WINDOWS)
     target_link_libraries(fimdb_test_tool
-        rsync
         fimdb
         dbsync
         -static-libstdc++
@@ -31,7 +33,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(fimdb_test_tool
         dbsync
         fimdb
-        rsync
         pthread
     )
 else()
@@ -39,7 +40,6 @@ else()
     target_link_libraries(fimdb_test_tool
         dbsync
         fimdb
-        rsync
         pthread
         dl
     )

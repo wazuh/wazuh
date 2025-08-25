@@ -69,35 +69,9 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     nlohmann::json jsProcessInfo{};
     jsProcessInfo["pid"]        = std::to_string(pid);
     jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
-
     jsProcessInfo["state"]      = UNKNOWN_VALUE;
-    jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
-
-    const auto eUser { getpwuid(taskInfo.pbsd.pbi_uid) };
-
-    if (eUser)
-    {
-        jsProcessInfo["euser"]  = eUser->pw_name;
-    }
-
-    const auto rUser { getpwuid(taskInfo.pbsd.pbi_ruid) };
-
-    if (rUser)
-    {
-        jsProcessInfo["ruser"]  = rUser->pw_name;
-    }
-
-    const auto rGroup { getgrgid(taskInfo.pbsd.pbi_rgid) };
-
-    if (rGroup)
-    {
-        jsProcessInfo["rgroup"] = rGroup->gr_name;
-    }
-
-    jsProcessInfo["priority"]   = taskInfo.ptinfo.pti_priority;
-    jsProcessInfo["nice"]       = taskInfo.pbsd.pbi_nice;
-    jsProcessInfo["vm_size"]    = taskInfo.ptinfo.pti_virtual_size / KByte;
-    jsProcessInfo["start_time"] = taskInfo.pbsd.pbi_start_tvsec;
+    jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
+    jsProcessInfo["start"]      = taskInfo.pbsd.pbi_start_tvsec;
     return jsProcessInfo;
 }
 
@@ -288,11 +262,11 @@ nlohmann::json SysInfo::getOsInfo() const
 
     if (uname(&uts) >= 0)
     {
-        ret["sysname"] = uts.sysname;
+        ret["os_kernel_name"] = uts.sysname;
         ret["hostname"] = uts.nodename;
-        ret["version"] = uts.version;
+        ret["os_kernel_version"] = uts.version;
         ret["architecture"] = uts.machine;
-        ret["release"] = uts.release;
+        ret["os_kernel_release"] = uts.release;
     }
 
     if (isRunningOnRosetta())

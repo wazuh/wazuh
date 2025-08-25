@@ -11,10 +11,12 @@
 #include "syscollector.h"
 #include "syscollector.hpp"
 #include "json.hpp"
-#include <iostream>
 #include "stringHelper.h"
 #include "hashHelper.h"
 #include "timeHelper.h"
+#include <iostream>
+#include <stack>
+
 #include "syscollectorTablesDef.hpp"
 
 #define TRY_CATCH_TASK(task)                                            \
@@ -36,6 +38,9 @@ do                                                                      \
     }                                                                   \
 }while(0)
 
+constexpr auto EMPTY_VALUE {""};
+constexpr auto UNKNOWN_VALUE {" "};
+
 constexpr auto QUEUE_SIZE
 {
     4096
@@ -44,65 +49,14 @@ constexpr auto QUEUE_SIZE
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
     // LCOV_EXCL_START
-    {MODIFIED, "MODIFIED"},
-    {DELETED, "DELETED"},
-    {INSERTED, "INSERTED"},
-    {MAX_ROWS, "MAX_ROWS"},
-    {DB_ERROR, "DB_ERROR"},
-    {SELECTED, "SELECTED"},
+    {MODIFIED, "modified"},
+    {DELETED, "deleted"},
+    {INSERTED, "created"},
+    {MAX_ROWS, "max_rows"},
+    {DB_ERROR, "db_error"},
+    {SELECTED, "selected"},
     // LCOV_EXCL_STOP
 };
-
-static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
-{
-    Utils::HashData hash;
-
-    for (const auto& field : idFields)
-    {
-        const auto& value{item.at(field)};
-
-        if (value.is_string())
-        {
-            const auto& valueString{value.get<std::string>()};
-            hash.update(valueString.c_str(), valueString.size());
-        }
-        else
-        {
-            const auto& valueNumber{value.get<unsigned long>()};
-            const auto valueString{std::to_string(valueNumber)};
-            hash.update(valueString.c_str(), valueString.size());
-        }
-    }
-
-    return Utils::asciiToHex(hash.hash());
-}
-
-static std::string getItemChecksum(const nlohmann::json& item)
-{
-    const auto content{item.dump()};
-    Utils::HashData hash;
-    hash.update(content.c_str(), content.size());
-    return Utils::asciiToHex(hash.hash());
-}
-
-static void removeKeysWithEmptyValue(nlohmann::json& input)
-{
-    for (auto& data : input)
-    {
-        for (auto it = data.begin(); it != data.end(); )
-        {
-            if (it.value().type() == nlohmann::detail::value_t::string &&
-                    it.value().get_ref<const std::string&>().empty())
-            {
-                it = data.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-    }
-}
 
 static void sanitizeJsonValue(nlohmann::json& input)
 {
@@ -133,6 +87,38 @@ static void sanitizeJsonValue(nlohmann::json& input)
     }
 }
 
+static std::string getItemChecksum(const nlohmann::json& item)
+{
+    const auto content{item.dump()};
+    Utils::HashData hash;
+    hash.update(content.c_str(), content.size());
+    return Utils::asciiToHex(hash.hash());
+}
+
+static std::string getItemId(const nlohmann::json& item, const std::vector<std::string>& idFields)
+{
+    Utils::HashData hash;
+
+    for (const auto& field : idFields)
+    {
+        const auto& value{item.at(field)};
+
+        if (value.is_string())
+        {
+            const auto& valueString{value.get<std::string>()};
+            hash.update(valueString.c_str(), valueString.size());
+        }
+        else
+        {
+            const auto& valueNumber{value.get<unsigned long>()};
+            const auto valueString{std::to_string(valueNumber)};
+            hash.update(valueString.c_str(), valueString.size());
+        }
+    }
+
+    return Utils::asciiToHex(hash.hash());
+}
+
 static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std::string, std::string>& keyValue)
 {
     const auto it
@@ -151,37 +137,57 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
     {
         m_logFunction(LOG_ERROR, data.dump());
     }
-    else if (m_notify && !m_stopping)
+    else if (!m_stopping)
     {
         if (data.is_array())
         {
             for (const auto& item : data)
             {
-                nlohmann::json msg;
-                msg["type"] = table;
-                msg["operation"] = OPERATION_MAP.at(result);
-                msg["data"] = item;
-                msg["data"]["scan_time"] = m_scanTime;
-                removeKeysWithEmptyValue(msg["data"]);
-                const auto msgToSend{msg.dump()};
-                m_reportDiffFunction(msgToSend);
-                m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
+                processEvent(result, item, table);
             }
         }
         else
         {
-            // LCOV_EXCL_START
-            nlohmann::json msg;
-            msg["type"] = table;
-            msg["operation"] = OPERATION_MAP.at(result);
-            msg["data"] = data;
-            msg["data"]["scan_time"] = m_scanTime;
-            removeKeysWithEmptyValue(msg["data"]);
-            const auto msgToSend{msg.dump()};
-            m_reportDiffFunction(msgToSend);
-            m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
-            // LCOV_EXCL_STOP
+            processEvent(result, data, table);
         }
+    }
+}
+
+void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
+{
+    nlohmann::json newData;
+
+    newData = ecsData(result == MODIFIED ? data["new"] : data, table);
+
+    const auto statefulToSend{newData.dump()};
+    m_persistDiffFunction(statefulToSend);
+
+    // Remove checksum from newData to avoid sending it in the diff
+    if (newData.contains("checksum"))
+    {
+        newData.erase("checksum");
+    }
+
+    if (m_notify)
+    {
+        nlohmann::json stateless;
+        nlohmann::json oldData;
+
+        stateless["collector"] = table;
+        stateless["module"] = "inventory";
+
+        oldData = (result == MODIFIED) ? ecsData(data["old"], table, false) : nlohmann::json {};
+
+        auto changedFields = addPreviousFields(newData, oldData);
+
+        stateless["data"] = newData;
+        stateless["data"]["event"]["changed_fields"] = changedFields;
+        stateless["data"]["event"]["created"] = Utils::getCurrentISO8601();
+        stateless["data"]["event"]["type"] = OPERATION_MAP.at(result);
+
+        const auto statelessToSend{stateless.dump()};
+        m_reportDiffFunction(statelessToSend);
+        m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + statelessToSend);
     }
 }
 
@@ -206,6 +212,8 @@ void Syscollector::updateChanges(const std::string& table,
     nlohmann::json input;
     input["table"] = table;
     input["data"] = values;
+    input["options"]["return_old_data"] = true;
+
     txn.syncTxnRow(input);
     txn.getDeletedRows(callback);
 }
@@ -246,132 +254,9 @@ std::string Syscollector::getCreateStatement() const
 }
 
 
-void Syscollector::registerWithRsync()
-{
-    const auto reportSyncWrapper
-    {
-        [this](const std::string & dataString)
-        {
-            auto jsonData(nlohmann::json::parse(dataString));
-            auto it{jsonData.find("data")};
-
-            if (!m_stopping)
-            {
-                if (it != jsonData.end())
-                {
-                    auto& data{*it};
-                    it = data.find("attributes");
-
-                    if (it != data.end())
-                    {
-                        auto& fieldData { *it };
-                        removeKeysWithEmptyValue(fieldData);
-                        fieldData["scan_time"] = Utils::getCurrentTimestamp();
-                        const auto msgToSend{jsonData.dump()};
-                        m_reportSyncFunction(msgToSend);
-                        m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + msgToSend);
-                    }
-                    else
-                    {
-                        m_reportSyncFunction(dataString);
-                        m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
-                    }
-                }
-                else
-                {
-                    //LCOV_EXCL_START
-                    m_reportSyncFunction(dataString);
-                    m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
-                    //LCOV_EXCL_STOP
-                }
-            }
-        }
-    };
-
-    if (m_os)
-    {
-        m_spRsync->registerSyncID("syscollector_osinfo",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(OS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_hardware)
-    {
-        m_spRsync->registerSyncID("syscollector_hwinfo",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(HW_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_processes)
-    {
-        m_spRsync->registerSyncID("syscollector_processes",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(PROCESSES_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_packages)
-    {
-        m_spRsync->registerSyncID("syscollector_packages",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(PACKAGES_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_hotfixes)
-    {
-        m_spRsync->registerSyncID("syscollector_hotfixes",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(HOTFIXES_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_ports)
-    {
-        m_spRsync->registerSyncID("syscollector_ports",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(PORTS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_network)
-    {
-        m_spRsync->registerSyncID("syscollector_network_iface",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(NETIFACE_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-        m_spRsync->registerSyncID("syscollector_network_protocol",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(NETPROTO_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-        m_spRsync->registerSyncID("syscollector_network_address",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(NETADDRESS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_groups)
-    {
-        m_spRsync->registerSyncID("syscollector_groups",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(GROUPS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-    if (m_users)
-    {
-        m_spRsync->registerSyncID("syscollector_users",
-                                  m_spDBSync->handle(),
-                                  nlohmann::json::parse(USERS_SYNC_CONFIG_STATEMENT),
-                                  reportSyncWrapper);
-    }
-
-}
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
-                        const std::function<void(const std::string&)> reportSyncFunction,
+                        const std::function<void(const std::string&)> persistDiffFunction,
                         const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
@@ -392,7 +277,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
 {
     m_spInfo = spInfo;
     m_reportDiffFunction = std::move(reportDiffFunction);
-    m_reportSyncFunction = std::move(reportSyncFunction);
+    m_persistDiffFunction = std::move(persistDiffFunction);
     m_logFunction = std::move(logFunction);
     m_intervalValue = interval;
     m_scanOnStart = scanOnStart;
@@ -408,18 +293,15 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_groups = groups;
     m_users = users;
 
-    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement());
-    auto remoteSync = std::make_unique<RemoteSync>();
+    auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
 
     m_spDBSync      = std::move(dbSync);
-    m_spRsync       = std::move(remoteSync);
     m_spNormalizer  = std::move(normalizer);
 
-    registerWithRsync();
     syncLoop(lock);
 }
 
@@ -429,6 +311,270 @@ void Syscollector::destroy()
     m_stopping = true;
     m_cv.notify_all();
     lock.unlock();
+}
+
+nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
+{
+    nlohmann::json ret;
+
+    if (table == OS_TABLE)
+    {
+        ret = ecsSystemData(data, createFields);
+    }
+    else if (table == HW_TABLE)
+    {
+        ret = ecsHardwareData(data, createFields);
+    }
+    else if (table == HOTFIXES_TABLE)
+    {
+        ret = ecsHotfixesData(data, createFields);
+    }
+    else if (table == PACKAGES_TABLE)
+    {
+        ret = ecsPackageData(data, createFields);
+    }
+    else if (table == PROCESSES_TABLE)
+    {
+        ret = ecsProcessesData(data, createFields);
+    }
+    else if (table == PORTS_TABLE)
+    {
+        ret = ecsPortData(data, createFields);
+    }
+    else if (table == NET_IFACE_TABLE)
+    {
+        ret = ecsNetworkInterfaceData(data, createFields);
+    }
+    else if (table == NET_PROTOCOL_TABLE)
+    {
+        ret = ecsNetworkProtocolData(data, createFields);
+    }
+    else if (table == NET_ADDRESS_TABLE)
+    {
+        ret = ecsNetworkAddressData(data, createFields);
+    }
+    else if (table == USERS_TABLE)
+    {
+        ret = ecsUsersData(data, createFields);
+    }
+    else if (table == GROUPS_TABLE)
+    {
+        ret = ecsGroupsData(data, createFields);
+    }
+
+    if (createFields)
+    {
+        setJsonField(ret, data, "/checksum/hash/sha1", "checksum", std::nullopt, true);
+    }
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/host/architecture", "architecture", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/hostname", "hostname", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/build", "os_build", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/codename", "os_codename", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/distribution/release", "os_distribution_release", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/full", "os_full", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/kernel/name", "os_kernel_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/kernel/release", "os_kernel_release", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/kernel/version", "os_kernel_version", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/major", "os_major", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/minor", "os_minor", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/name", "os_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/patch", "os_patch", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/platform", "os_platform", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/os/version", "os_version", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/host/cpu/cores", "cpu_cores", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/cpu/name", "cpu_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/cpu/speed", "cpu_speed", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/memory/free", "memory_free", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/memory/total", "memory_total", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/memory/used", "memory_used", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/serial_number", "serial_number", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsHotfixesData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/package/hotfix/name", "hotfix_name", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsPackageData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/package/architecture", "architecture", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/category", "category", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/description", "description", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/installed", "installed", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/multiarch", "multiarch", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/name", "name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/path", "path", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/priority", "priority", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/size", "size", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/source", "source", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/type", "type", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/vendor", "vendor", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/version", "version", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsProcessesData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonFieldArray(ret, originalData, "/process/args", "args", createFields);
+    setJsonField(ret, originalData, "/process/args_count", "args_count", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/command_line", "command_line", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/name", "name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/parent/pid", "parent_pid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/pid", "pid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/start", "start", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/state", "state", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/stime", "stime", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/utime", "utime", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/destination/ip", "destination_ip", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/destination/port", "destination_port", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/file/inode", "file_inode", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/queue", "host_network_egress_queue", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/queue", "host_network_ingress_queue", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/state", "interface_state", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/transport", "network_transport", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/name", "process_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/pid", "process_pid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/source/ip", "source_ip", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/source/port", "source_port", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsNetworkInterfaceData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonFieldArray(ret, originalData, "/host/mac", "host_mac", createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/bytes", "host_network_ingress_bytes", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/drops", "host_network_ingress_drops", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/errors", "host_network_ingress_errors", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/packets", "host_network_ingress_packages", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/bytes", "host_network_egress_bytes", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/drops", "host_network_egress_drops", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/errors", "host_network_egress_errors", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/egress/packets", "host_network_egress_packages", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/alias", "interface_alias", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/mtu", "interface_mtu", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/name", "interface_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/state", "interface_state", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/type", "interface_type", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsNetworkProtocolData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/interface/name", "interface_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/dhcp", "network_dhcp", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/gateway", "network_gateway", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/metric", "network_metric", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/type", "network_type", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsNetworkAddressData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/interface/name", "interface_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/broadcast", "network_broadcast", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/ip", "network_ip", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/netmask", "network_netmask", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/network/protocol", "network_protocol", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsUsersData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonFieldArray(ret, originalData, "/host/ip", "host_ip", createFields);
+    setJsonField(ret, originalData, "/login/status", "login_status", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/login/tty", "login_tty", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/login/type", "login_type", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/pid", "process_pid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/auth_failures/count", "user_auth_failed_count", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/auth_failures/timestamp", "user_auth_failed_timestamp", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/created", "user_created", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/full_name", "user_full_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/group/id", "user_group_id", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/group/id_signed", "user_group_id_signed", std::nullopt, createFields);
+    setJsonFieldArray(ret, originalData, "/user/groups", "user_groups", createFields);
+    setJsonField(ret, originalData, "/user/home", "user_home", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/id", "user_id", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/is_hidden", "user_is_hidden", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/is_remote", "user_is_remote", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/last_login", "user_last_login", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/name", "user_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/expiration_date", "user_password_expiration_date", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/hash_algorithm", "user_password_hash_algorithm", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/inactive_days", "user_password_inactive_days", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/last_change", "user_password_last_change", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/max_days_between_changes", "user_password_max_days_between_changes", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/min_days_between_changes", "user_password_min_days_between_changes", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/status", "user_password_status", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/password/warning_days_before_expiration", "user_password_warning_days_before_expiration", std::nullopt, createFields);
+    setJsonFieldArray(ret, originalData, "/user/roles", "user_roles", createFields);
+    setJsonField(ret, originalData, "/user/shell", "user_shell", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/type", "user_type", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/uid_signed", "user_uid_signed", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/uuid", "user_uuid", std::nullopt, createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsGroupsData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/group/description", "group_description", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/id", "group_id", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/id_signed", "group_id_signed", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/is_hidden", "group_is_hidden", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/name", "group_name", std::nullopt, createFields);
+    setJsonFieldArray(ret, originalData, "/group/users", "group_users", createFields);
+    setJsonField(ret, originalData, "/group/uuid", "group_uuid", std::nullopt, createFields);
+
+    return ret;
 }
 
 nlohmann::json Syscollector::getHardwareData()
@@ -451,17 +597,12 @@ void Syscollector::scanHardware()
     }
 }
 
-void Syscollector::syncHardware()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HW_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 nlohmann::json Syscollector::getOSData()
 {
     nlohmann::json ret;
     ret[0] = m_spInfo->os();
     sanitizeJsonValue(ret[0]);
-    ret[0]["checksum"] = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    ret[0]["checksum"] = getItemChecksum(ret[0]);
     return ret;
 }
 
@@ -474,11 +615,6 @@ void Syscollector::scanOs()
         updateChanges(OS_TABLE, osData);
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending os scan");
     }
-}
-
-void Syscollector::syncOs()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(OS_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 nlohmann::json Syscollector::getNetworkData()
@@ -508,47 +644,44 @@ nlohmann::json Syscollector::getNetworkData()
                 // Split the resulting networks data into the specific DB tables
                 // "dbsync_network_iface" table data to update and notify
                 nlohmann::json ifaceTableData {};
-                ifaceTableData["name"]       = item.at("name");
-                ifaceTableData["adapter"]    = item.at("adapter");
-                ifaceTableData["type"]       = item.at("type");
-                ifaceTableData["state"]      = item.at("state");
-                ifaceTableData["mtu"]        = item.at("mtu");
-                ifaceTableData["mac"]        = item.at("mac");
-                ifaceTableData["tx_packets"] = item.at("tx_packets");
-                ifaceTableData["rx_packets"] = item.at("rx_packets");
-                ifaceTableData["tx_errors"]  = item.at("tx_errors");
-                ifaceTableData["rx_errors"]  = item.at("rx_errors");
-                ifaceTableData["tx_bytes"]   = item.at("tx_bytes");
-                ifaceTableData["rx_bytes"]   = item.at("rx_bytes");
-                ifaceTableData["tx_dropped"] = item.at("tx_dropped");
-                ifaceTableData["rx_dropped"] = item.at("rx_dropped");
-                ifaceTableData["checksum"]   = getItemChecksum(ifaceTableData);
-                ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
+                ifaceTableData["interface_name"]                = item.at("interface_name");
+                ifaceTableData["interface_alias"]               = item.at("interface_alias");
+                ifaceTableData["interface_type"]                = item.at("interface_type");
+                ifaceTableData["interface_state"]               = item.at("interface_state");
+                ifaceTableData["interface_mtu"]                 = item.at("interface_mtu");
+                ifaceTableData["host_mac"]                      = item.at("host_mac");
+                ifaceTableData["host_network_egress_packages"]  = item.at("host_network_egress_packages");
+                ifaceTableData["host_network_ingress_packages"] = item.at("host_network_ingress_packages");
+                ifaceTableData["host_network_egress_errors"]    = item.at("host_network_egress_errors");
+                ifaceTableData["host_network_ingress_errors"]   = item.at("host_network_ingress_errors");
+                ifaceTableData["host_network_egress_bytes"]     = item.at("host_network_egress_bytes");
+                ifaceTableData["host_network_ingress_bytes"]    = item.at("host_network_ingress_bytes");
+                ifaceTableData["host_network_egress_drops"]     = item.at("host_network_egress_drops");
+                ifaceTableData["host_network_ingress_drops"]    = item.at("host_network_ingress_drops");
+                ifaceTableData["checksum"]                      = getItemChecksum(ifaceTableData);
                 ifaceTableDataList.push_back(std::move(ifaceTableData));
 
                 if (item.find("IPv4") != item.end())
                 {
                     // "dbsync_network_protocol" table data to update and notify
                     nlohmann::json protoTableData {};
-                    protoTableData["iface"]   = item.at("name");
-                    protoTableData["gateway"] = item.at("gateway");
-                    protoTableData["type"]    = IP_TYPE.at(IPV4);
-                    protoTableData["dhcp"]    = item.at("IPv4").begin()->at("dhcp");
-                    protoTableData["metric"]  = item.at("IPv4").begin()->at("metric");
-                    protoTableData["checksum"]  = getItemChecksum(protoTableData);
-                    protoTableData["item_id"]   = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
+                    protoTableData["interface_name"]  = item.at("interface_name");
+                    protoTableData["network_gateway"] = item.at("network_gateway");
+                    protoTableData["network_type"]    = IP_TYPE.at(IPV4);
+                    protoTableData["network_dhcp"]    = item.at("IPv4").begin()->at("network_dhcp");
+                    protoTableData["network_metric"]  = item.at("IPv4").begin()->at("network_metric");
+                    protoTableData["checksum"]        = getItemChecksum(protoTableData);
                     protoTableDataList.push_back(std::move(protoTableData));
 
                     for (auto addressTableData : item.at("IPv4"))
                     {
                         // "dbsync_network_address" table data to update and notify
-                        addressTableData["iface"]     = item.at("name");
-                        addressTableData["proto"]     = IPV4;
-                        addressTableData["checksum"]  = getItemChecksum(addressTableData);
-                        addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        addressTableData["interface_name"]   = item.at("interface_name");
+                        addressTableData["network_protocol"] = IPV4;
+                        addressTableData["checksum"]         = getItemChecksum(addressTableData);
                         // Remove unwanted fields for dbsync_network_address table
-                        addressTableData.erase("dhcp");
-                        addressTableData.erase("metric");
+                        addressTableData.erase("network_dhcp");
+                        addressTableData.erase("network_metric");
 
                         addressTableDataList.push_back(std::move(addressTableData));
                     }
@@ -558,25 +691,23 @@ nlohmann::json Syscollector::getNetworkData()
                 {
                     // "dbsync_network_protocol" table data to update and notify
                     nlohmann::json protoTableData {};
-                    protoTableData["iface"]   = item.at("name");
-                    protoTableData["gateway"] = item.at("gateway");
-                    protoTableData["type"]    = IP_TYPE.at(IPV6);
-                    protoTableData["dhcp"]    = item.at("IPv6").begin()->at("dhcp");
-                    protoTableData["metric"]  = item.at("IPv6").begin()->at("metric");
-                    protoTableData["checksum"]  = getItemChecksum(protoTableData);
-                    protoTableData["item_id"]   = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
+                    protoTableData["interface_name"]  = item.at("interface_name");
+                    protoTableData["network_gateway"] = item.at("network_gateway");
+                    protoTableData["network_type"]    = IP_TYPE.at(IPV6);
+                    protoTableData["network_dhcp"]    = item.at("IPv6").begin()->at("network_dhcp");
+                    protoTableData["network_metric"]  = item.at("IPv6").begin()->at("network_metric");
+                    protoTableData["checksum"]        = getItemChecksum(protoTableData);
                     protoTableDataList.push_back(std::move(protoTableData));
 
                     for (auto addressTableData : item.at("IPv6"))
                     {
                         // "dbsync_network_address" table data to update and notify
-                        addressTableData["iface"]     = item.at("name");
-                        addressTableData["proto"]     = IPV6;
-                        addressTableData["checksum"]  = getItemChecksum(addressTableData);
-                        addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        addressTableData["interface_name"]   = item.at("interface_name");
+                        addressTableData["network_protocol"] = IPV6;
+                        addressTableData["checksum"]         = getItemChecksum(addressTableData);
                         // Remove unwanted fields for dbsync_network_address table
-                        addressTableData.erase("dhcp");
-                        addressTableData.erase("metric");
+                        addressTableData.erase("network_dhcp");
+                        addressTableData.erase("network_metric");
 
                         addressTableDataList.push_back(std::move(addressTableData));
                     }
@@ -627,13 +758,6 @@ void Syscollector::scanNetwork()
     }
 }
 
-void Syscollector::syncNetwork()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETIFACE_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETPROTO_START_CONFIG_STATEMENT), m_reportSyncFunction);
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(NETADDRESS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 void Syscollector::scanPackages()
 {
     if (m_packages)
@@ -660,7 +784,6 @@ void Syscollector::scanPackages()
 
             sanitizeJsonValue(rawData);
             rawData["checksum"] = getItemChecksum(rawData);
-            rawData["item_id"] = getItemId(rawData, PACKAGES_ITEM_ID_FIELDS);
 
             input["table"] = PACKAGES_TABLE;
             m_spNormalizer->normalize("packages", rawData);
@@ -669,6 +792,8 @@ void Syscollector::scanPackages()
             if (!rawData.empty())
             {
                 input["data"] = nlohmann::json::array( { rawData } );
+                input["options"]["return_old_data"] = true;
+
                 txn.syncTxnRow(input);
             }
         });
@@ -701,16 +826,6 @@ void Syscollector::scanHotfixes()
     }
 }
 
-void Syscollector::syncPackages()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PACKAGES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
-void Syscollector::syncHotfixes()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(HOTFIXES_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 nlohmann::json Syscollector::getPortsData()
 {
     nlohmann::json ret;
@@ -719,13 +834,15 @@ nlohmann::json Syscollector::getPortsData()
     constexpr auto UDP_PROTOCOL { "udp" };
     auto data(m_spInfo->ports());
 
+    const std::vector<std::string> PORTS_ITEM_ID_FIELDS {"file_inode", "network_transport", "source_ip", "source_port"};
+
     if (!data.is_null())
     {
         sanitizeJsonValue(data);
 
         for (auto& item : data)
         {
-            const auto protocol { item.at("protocol").get_ref<const std::string&>() };
+            const auto protocol { item.at("network_transport").get_ref<const std::string&>() };
 
             if (Utils::startsWith(protocol, TCP_PROTOCOL))
             {
@@ -744,7 +861,7 @@ nlohmann::json Syscollector::getPortsData()
                 else
                 {
                     // Only listening ports.
-                    const auto isListeningState { item.at("state") == PORT_LISTENING_STATE };
+                    const auto isListeningState { item.at("interface_state") == PORT_LISTENING_STATE };
 
                     if (isListeningState)
                     {
@@ -816,11 +933,6 @@ void Syscollector::scanPorts()
     }
 }
 
-void Syscollector::syncPorts()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PORTS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 void Syscollector::scanProcesses()
 {
     if (m_processes)
@@ -850,6 +962,7 @@ void Syscollector::scanProcesses()
 
             input["table"] = PROCESSES_TABLE;
             input["data"] = nlohmann::json::array( { rawData } );
+            input["options"]["return_old_data"] = true;
 
             txn.syncTxnRow(input);
         });
@@ -857,11 +970,6 @@ void Syscollector::scanProcesses()
 
         m_logFunction(LOG_DEBUG_VERBOSE, "Ending processes scan");
     }
-}
-
-void Syscollector::syncProcesses()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(PROCESSES_START_CONFIG_STATEMENT), m_reportSyncFunction);
 }
 
 void Syscollector::scanGroups()
@@ -875,11 +983,6 @@ void Syscollector::scanGroups()
     }
 }
 
-void Syscollector::syncGroups()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(GROUPS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 void Syscollector::scanUsers()
 {
     if (m_users)
@@ -891,16 +994,9 @@ void Syscollector::scanUsers()
     }
 }
 
-void Syscollector::syncUsers()
-{
-    m_spRsync->startSync(m_spDBSync->handle(), nlohmann::json::parse(USERS_START_CONFIG_STATEMENT), m_reportSyncFunction);
-}
-
 void Syscollector::scan()
 {
     m_logFunction(LOG_INFO, "Starting evaluation.");
-    m_scanTime = Utils::getCurrentTimestamp();
-
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
     TRY_CATCH_TASK(scanNetwork);
@@ -914,21 +1010,6 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
-void Syscollector::sync()
-{
-    m_logFunction(LOG_DEBUG, "Starting syscollector sync");
-    TRY_CATCH_TASK(syncHardware);
-    TRY_CATCH_TASK(syncOs);
-    TRY_CATCH_TASK(syncNetwork);
-    TRY_CATCH_TASK(syncPackages);
-    TRY_CATCH_TASK(syncHotfixes);
-    TRY_CATCH_TASK(syncPorts);
-    TRY_CATCH_TASK(syncProcesses);
-    TRY_CATCH_TASK(syncGroups);
-    TRY_CATCH_TASK(syncUsers);
-    m_logFunction(LOG_DEBUG, "Ending syscollector sync");
-}
-
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
     m_logFunction(LOG_INFO, "Module started.");
@@ -936,7 +1017,6 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     if (m_scanOnStart)
     {
         scan();
-        sync();
     }
 
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
@@ -945,32 +1025,184 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 }))
     {
         scan();
-        sync();
     }
-    m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
 }
 
-void Syscollector::push(const std::string& data)
+std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& data, const std::string& table)
 {
-    std::unique_lock<std::mutex> lock{m_mutex};
+    std::string ret;
 
-    if (!m_stopping)
+    if (table == OS_TABLE)
     {
-        auto rawData{data};
-        Utils::replaceFirst(rawData, "dbsync ", "");
-        const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+        ret = data["os_name"];
+    }
+    else if (table == HW_TABLE)
+    {
+        ret = data["serial_number"];
+    }
+    else if (table == HOTFIXES_TABLE)
+    {
+        ret = data["hotfix_name"];
+    }
+    else if (table == PACKAGES_TABLE)
+    {
+        ret = data["name"].get<std::string>() + ":" + data["version"].get<std::string>() + ":" +
+              data["architecture"].get<std::string>() + ":" + data["type"].get<std::string>() + ":" +
+              data["path"].get<std::string>();
+    }
+    else if (table == PROCESSES_TABLE)
+    {
+        ret = data["pid"];
+    }
+    else if (table == PORTS_TABLE)
+    {
+        ret = std::to_string(data["file_inode"].get<int>()) + ":" + data["network_transport"].get<std::string>() + ":" +
+              data["source_ip"].get<std::string>() + ":" + std::to_string(data["source_port"].get<int>());
+    }
+    else if (table == NET_IFACE_TABLE)
+    {
+        ret = data["interface_name"].get<std::string>() + ":" + data["interface_alias"].get<std::string>() + ":" +
+              data["interface_type"].get<std::string>();
+    }
+    else if (table == NET_PROTOCOL_TABLE)
+    {
+        ret = data["interface_name"].get<std::string>() + ":" + data["network_type"].get<std::string>();
+    }
+    else if (table == NET_ADDRESS_TABLE)
+    {
+        ret = data["interface_name"].get<std::string>() + ":" + std::to_string(data["network_protocol"].get<int>()) + ":" +
+              data["network_ip"].get<std::string>();
+    }
+    else if (table == USERS_TABLE)
+    {
+        ret = data["user_name"];
+    }
+    else if (table == GROUPS_TABLE)
+    {
+        ret = data["group_name"];
+    }
 
-        try
+    return ret;
+}
+
+std::string Syscollector::calculateHashId(const nlohmann::json& data, const std::string& table)
+{
+    const std::string primaryKey = getPrimaryKeys(data, table);
+
+    Utils::HashData hash(Utils::HashType::Sha1);
+    hash.update(primaryKey.c_str(), primaryKey.size());
+
+    return Utils::asciiToHex(hash.hash());
+}
+
+nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nlohmann::json& previous)
+{
+    using JsonPair = std::pair<nlohmann::json*, const nlohmann::json*>;
+    using PathPair = std::pair<std::string, JsonPair>;
+
+    std::stack<PathPair> stack;
+    nlohmann::json modifiedKeys = nlohmann::json::array();
+
+    stack.emplace("", JsonPair(&current, &previous));
+
+    while (!stack.empty())
+    {
+        auto [path, pair] = stack.top();
+        auto [curr, prev] = pair;
+        stack.pop();
+
+        for (auto& [key, value] : prev->items())
         {
-            m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
-        }
-        // LCOV_EXCL_START
-        catch (const std::exception& ex)
-        {
-            m_logFunction(LOG_ERROR, ex.what());
+            std::string currentPath = path;
+
+            if (!path.empty())
+            {
+                currentPath.append(".").append(key);
+            }
+            else
+            {
+                currentPath = key;
+            }
+
+            if (curr->contains(key))
+            {
+                if ((*curr)[key].is_object() && value.is_object())
+                {
+                    stack.emplace(currentPath, JsonPair(&((*curr)[key]), &value));
+                }
+                else if ((*curr)[key] != value)
+                {
+                    modifiedKeys.push_back(currentPath);
+
+                    size_t dotPos = currentPath.find('.');
+                    std::string topLevelKey = (dotPos != std::string::npos) ? currentPath.substr(0, dotPos) : currentPath;
+
+                    if (!current[topLevelKey].contains("previous"))
+                    {
+                        current[topLevelKey]["previous"] = nlohmann::json::object();
+                    }
+
+                    if (dotPos != std::string::npos)
+                    {
+                        std::string relativePath = currentPath.substr(dotPos + 1);
+                        nlohmann::json::json_pointer pointer("/" + std::regex_replace(relativePath, std::regex("\\."), "/"));
+                        current[topLevelKey]["previous"][pointer] = value;
+                    }
+                    else
+                    {
+                        current[topLevelKey]["previous"][key] = value;
+                    }
+                }
+            }
         }
     }
 
-    // LCOV_EXCL_STOP
+    return modifiedKeys;
+}
+
+void Syscollector::setJsonField(nlohmann::json& target,
+                                const nlohmann::json& source,
+                                const std::string& keyPath,
+                                const std::string& jsonKey,
+                                const std::optional<std::string>& defaultValue,
+                                bool createFields)
+{
+    if (createFields || source.contains(jsonKey))
+    {
+        const nlohmann::json::json_pointer pointer(keyPath);
+
+        if (source.contains(jsonKey) && source[jsonKey] != EMPTY_VALUE && source[jsonKey] != UNKNOWN_VALUE)
+        {
+            target[pointer] = source[jsonKey];
+        }
+        else if (defaultValue.has_value())
+        {
+            target[pointer] = *defaultValue;
+        }
+        else
+        {
+            target[pointer] = nullptr;
+        }
+    }
+}
+
+void Syscollector::setJsonFieldArray(nlohmann::json& target,
+                                     const nlohmann::json& source,
+                                     const std::string& destPath,
+                                     const std::string& sourceKey,
+                                     bool createFields)
+{
+    if (createFields || source.contains(sourceKey))
+    {
+        const nlohmann::json::json_pointer destPointer(destPath);
+        target[destPointer] = nullptr;
+
+        if (source.contains(sourceKey) && !source[sourceKey].is_null() && source[sourceKey] != EMPTY_VALUE && source[sourceKey] != UNKNOWN_VALUE)
+        {
+            const auto& value = source[sourceKey];
+            target[destPointer] = nlohmann::json::array();
+            target[destPointer].push_back(value);
+        }
+    }
 }

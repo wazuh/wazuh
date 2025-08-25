@@ -63,14 +63,14 @@ TEST_F(SysInfoSolarisPackagesTest, Test_Success_Data)
 
     EXPECT_EQ("libstdc++6", packages.at("name").get_ref<const std::string&>());
     EXPECT_EQ("5.5.0", packages.at("version").get_ref<const std::string&>());
-    EXPECT_EQ("application", packages.at("groups").get_ref<const std::string&>());
+    EXPECT_EQ("application", packages.at("category").get_ref<const std::string&>());
     EXPECT_EQ("libstdc++6 - The GNU Compiler Collection, libstdc++.so.6", packages.at("description").get_ref<const std::string&>());
     EXPECT_EQ("i386", packages.at("architecture").get_ref<const std::string&>());
-    EXPECT_EQ("pkg", packages.at("format").get_ref<const std::string&>());
+    EXPECT_EQ("pkg", packages.at("type").get_ref<const std::string&>());
     EXPECT_EQ("", packages.at("source").get_ref<const std::string&>());
-    EXPECT_EQ("", packages.at("location").get_ref<const std::string&>());
+    EXPECT_EQ("", packages.at("path").get_ref<const std::string&>());
     EXPECT_EQ("", packages.at("priority").get_ref<const std::string&>());
     EXPECT_EQ(0, packages.at("size").get<const int>());
     EXPECT_EQ("Oracle corporation", packages.at("vendor").get_ref<const std::string&>());
-    EXPECT_EQ("2022/01/13 14:48:58", packages.at("install_time").get_ref<const std::string&>());
+    EXPECT_EQ("2022/01/13 14:48:58", packages.at("installed").get_ref<const std::string&>());
 }

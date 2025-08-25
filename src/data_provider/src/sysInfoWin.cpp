@@ -343,18 +343,13 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         SysInfoProcess process(pId, processHandle);
 
         // Current process information
-        jsProcessInfo["name"]       = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
-        jsProcessInfo["cmd"]        = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8((isSystemProcess(pId)) ? "none" : process.cmd());
-        jsProcessInfo["stime"]      = process.kernelModeTime();
-        jsProcessInfo["size"]       = process.pageFileUsage();
-        jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
-        jsProcessInfo["priority"]   = processEntry.pcPriClassBase;
-        jsProcessInfo["pid"]        = std::to_string(pId);
-        jsProcessInfo["session"]    = process.sessionId();
-        jsProcessInfo["nlwp"]       = processEntry.cntThreads;
-        jsProcessInfo["utime"]      = process.userModeTime();
-        jsProcessInfo["vm_size"]    = process.virtualSize();
-        jsProcessInfo["start_time"] = process.creationTime();
+        jsProcessInfo["name"]         = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
+        jsProcessInfo["command_line"] = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8((isSystemProcess(pId)) ? "none" : process.cmd());
+        jsProcessInfo["stime"]        = process.kernelModeTime();
+        jsProcessInfo["parent_pid"]   = processEntry.th32ParentProcessID;
+        jsProcessInfo["pid"]          = std::to_string(pId);
+        jsProcessInfo["utime"]        = process.userModeTime();
+        jsProcessInfo["start"]        = process.creationTime();
         CloseHandle(processHandle);
     }
 
@@ -438,15 +433,15 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                     packageJson["name"]         = std::move(name);
                     packageJson["description"]  = UNKNOWN_VALUE;
                     packageJson["version"]      = version.empty() ? UNKNOWN_VALUE : std::move(version);
-                    packageJson["groups"]       = UNKNOWN_VALUE;
-                    packageJson["priority"]       = UNKNOWN_VALUE;
-                    packageJson["size"]           = 0;
+                    packageJson["category"]     = UNKNOWN_VALUE;
+                    packageJson["priority"]     = UNKNOWN_VALUE;
+                    packageJson["size"]         = 0;
                     packageJson["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : std::move(vendor);
                     packageJson["source"]       = UNKNOWN_VALUE;
-                    packageJson["install_time"] = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);
-                    packageJson["location"]     = location.empty() ? UNKNOWN_VALUE : std::move(location);
+                    packageJson["installed"]    = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);
+                    packageJson["path"]         = location.empty() ? UNKNOWN_VALUE : std::move(location);
                     packageJson["architecture"] = std::move(architecture);
-                    packageJson["format"]       = "win";
+                    packageJson["type"]         = "win";
 
                     returnCallback(packageJson);
                 }
@@ -568,9 +563,9 @@ static void getMemory(nlohmann::json& info)
 
     if (GlobalMemoryStatusEx(&statex))
     {
-        info["ram_total"] = statex.ullTotalPhys / KByte;
-        info["ram_free"] = statex.ullAvailPhys / KByte;
-        info["ram_usage"] = statex.dwMemoryLoad;
+        info["memory_total"] = statex.ullTotalPhys / KByte;
+        info["memory_free"] = statex.ullAvailPhys / KByte;
+        info["memory_used"] = statex.dwMemoryLoad;
     }
     else
     {
@@ -586,10 +581,10 @@ static void getMemory(nlohmann::json& info)
 nlohmann::json SysInfo::getHardware() const
 {
     nlohmann::json hardware;
-    hardware["board_serial"] = getSerialNumber();
+    hardware["serial_number"] = getSerialNumber();
     hardware["cpu_name"] = getCpuName();
     hardware["cpu_cores"] = getCpuCores();
-    hardware["cpu_mhz"] = double(getCpuMHz());
+    hardware["cpu_speed"] = double(getCpuMHz());
     getMemory(hardware);
     return hardware;
 }
@@ -984,7 +979,7 @@ nlohmann::json SysInfo::getHotfixes() const
     for (auto& hotfix : hotfixes)
     {
         nlohmann::json hotfixValue;
-        hotfixValue["hotfix"] = std::move(hotfix);
+        hotfixValue["hotfix_name"] = std::move(hotfix);
         ret.push_back(std::move(hotfixValue));
     }
 

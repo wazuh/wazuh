@@ -133,12 +133,12 @@ TEST_F(SysInfoTest, packages_cb)
 
     auto expectedValue1
     {
-        R"({"architecture":"x86_64","hostname":"TINACHO","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 95","os_release":"sp1","os_version":"6.1.7601"})"_json
+        R"({"architecture":"x86_64","hostname":"TINACHO","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 95","os_distribution_release":"sp1","os_version":"6.1.7601"})"_json
     };
 
     auto expectedValue2
     {
-        R"({"architecture":"x86_64","hostname":"OCTACORE","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 3.1","os_release":"sp1","os_version":"6.1.7601"})"_json
+        R"({"architecture":"x86_64","hostname":"OCTACORE","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 3.1","os_distribution_release":"sp1","os_version":"6.1.7601"})"_json
     };
 
     const auto packagesCallback
@@ -171,12 +171,12 @@ TEST_F(SysInfoTest, processes_cb)
 
     auto expectedValue1
     {
-        R"({"argvs":"180","cmd":"sleep","egroup":"root","euser":"root","fgroup":"root","name":"sleep","nice":0,"nlwp":1,"pgrp":2478,"pid":"193797","ppid":2480,"priority":20,"processor":2,"resident":148,"rgroup":"root","ruser":"root","session":2478,"sgroup":"root","share":132,"size":2019,"start_time":6244007,"state":"S","stime":0,"suser":"root","tgid":193797,"tty":0,"utime":0,"vm_size":8076})"_json
+        R"({"args":"180","args_count":1,"command_line":"sleep","name":"sleep","pid":"193797","parent_pid":2480,"start":6244007,"state":"S","stime":0,"utime":0})"_json
     };
 
     auto expectedValue2
     {
-        R"({"argvs":"181","cmd":"ls","egroup":"dword","euser":"dword","fgroup":"dword","name":"sleep","nice":0,"nlwp":1,"pgrp":2478,"pid":"193797","ppid":2480,"priority":20,"processor":2,"resident":148,"rgroup":"root","ruser":"root","session":2478,"sgroup":"root","share":132,"size":2019,"start_time":6244007,"state":"S","stime":0,"suser":"root","tgid":193797,"tty":0,"utime":0,"vm_size":8076})"_json
+        R"({"args":"181","args_count":1,"command_line":"ls","name":"sleep","pid":"193797","parent_pid":2480,"start":6244007,"state":"S","stime":0,"utime":0})"_json
     };
 
     const auto processesCallback

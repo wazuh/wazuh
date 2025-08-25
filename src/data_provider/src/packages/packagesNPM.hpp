@@ -47,16 +47,16 @@ class NPM final
                     const auto packageJson = TJsonReader::readJson(path);
                     nlohmann::json packageInfo;
 
-                    packageInfo["groups"] = UNKNOWN_VALUE;
+                    packageInfo["category"] = UNKNOWN_VALUE;
                     packageInfo["description"] = UNKNOWN_VALUE;
                     packageInfo["architecture"] = UNKNOWN_VALUE;
-                    packageInfo["format"] = "npm";
+                    packageInfo["type"] = "npm";
                     packageInfo["source"] = UNKNOWN_VALUE;
-                    packageInfo["location"] = path.string();
+                    packageInfo["path"] = path.string();
                     packageInfo["priority"] = UNKNOWN_VALUE;
                     packageInfo["size"] = 0;
                     packageInfo["vendor"] = UNKNOWN_VALUE;
-                    packageInfo["install_time"] = UNKNOWN_VALUE;
+                    packageInfo["installed"] = UNKNOWN_VALUE;
                     // The multiarch field won't have a default value
 
                     // Iterate over fields

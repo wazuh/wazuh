@@ -3,7 +3,8 @@ project(fim_ebpf_whodata_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
@@ -19,7 +20,6 @@ set(TEST_FILES
     close_libbpf_test.cpp
     pop_event_test.cpp
 )
-
 
 # Create an executable for each test file
 foreach(TEST_FILE ${TEST_FILES})

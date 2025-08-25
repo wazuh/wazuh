@@ -18,7 +18,7 @@ set(WM_GITHUB_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merr
                           -Wl,--wrap,isDebug")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND tests_flags "${WM_GITHUB_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
-                             -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize")
+                             -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize")
 else()
     list(APPEND tests_flags "${WM_GITHUB_BASE_FLAGS}")
 endif()
