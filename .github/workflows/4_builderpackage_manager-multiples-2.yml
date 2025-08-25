@@ -5,10 +5,6 @@ on:
   pull_request:
     # Pull request events
     types: [synchronize, opened, reopened, ready_for_review]
-    paths:
-      - "src/**"
-      - "packages/**"
-      - ".github/workflows/4_builderpackage_manager-multiples-2.yml"
 
 jobs:
   Generate-Packages:
