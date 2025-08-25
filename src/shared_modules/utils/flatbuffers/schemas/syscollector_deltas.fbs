@@ -226,8 +226,8 @@ table dbsync_services {
     service_address:string;
     log_file_path:string;
     error_log_file_path:string;
-    service_exit_code:long = null;
-    service_win32_exit_code:long = null;
+    service_exit_code:int = null;
+    service_win32_exit_code:int = null;
     service_following:string;
     service_object_path:string;
     service_target_ephemeral_id:long = null;

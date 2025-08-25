@@ -959,13 +959,13 @@ TEST_F(SystemInventoryUpsertElement, emptyAgentID_Services)
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
 }
 
-TEST_F(SystemInventoryUpsertElement, emptyServiceName_Services)
+TEST_F(SystemInventoryUpsertElement, emptyServiceId_Services)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_ANY_THROW(upsertElement->handleRequest(context));
@@ -977,28 +977,98 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Services)
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("apache2"));
-    EXPECT_CALL(*context, serviceDisplayName()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceSubState()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceExitCode()).WillOnce(testing::Return(0));
-    EXPECT_CALL(*context, serviceEnabled()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceUser()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceBinaryPath()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, servicePid()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
     EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return("apache2"));
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceSubState()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceEnabled()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceRestart()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceFrequency()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, serviceStartsOnPathModified()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceStartsOnNotEmptyDirectory()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessPid()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceProcessExecutable()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessArgs()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessUserName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessGroupName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessWorkingDir()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessRootDir()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceAddress()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceLogFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceErrorLogFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceExitCode()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceWin32ExitCode()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceFollowing()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceObjectPath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceTargetEphemeralId()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceTargetType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceTargetAddress()).WillOnce(testing::Return(""));
+
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_apache2","operation":"INSERTED","data":{"service":{"id":"apache2","exit_code":0},"process":{"pid":0},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_apache2","operation":"INSERTED","data":{"process":{"pid":0},"service":{"exit_code":0,"frequency":0,"id":"apache2","inetd_compatibility":true,"starts":{"on_mount":false},"target":{"ephemeral_id":"0"},"win32_exit_code":0},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validNegativeValues_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return("wazuh-agent"));
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("Wazuh Agent"));
+    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return("Monitors system activity"));
+    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return("type"));
+    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return("running"));
+    EXPECT_CALL(*context, serviceSubState()).WillOnce(testing::Return("subState"));
+    EXPECT_CALL(*context, serviceEnabled()).WillOnce(testing::Return("enabled"));
+    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return("startType"));
+    EXPECT_CALL(*context, serviceRestart()).WillOnce(testing::Return("restart"));
+    EXPECT_CALL(*context, serviceFrequency()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, serviceStartsOnPathModified()).WillOnce(testing::Return("one,two,three"));
+    EXPECT_CALL(*context, serviceStartsOnNotEmptyDirectory()).WillOnce(testing::Return("one,two,three"));
+    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, serviceProcessPid()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceProcessExecutable()).WillOnce(testing::Return("/usr/bin/wazuh-agent"));
+    EXPECT_CALL(*context, serviceProcessArgs()).WillOnce(testing::Return("arg1,arg2,arg3"));
+    EXPECT_CALL(*context, serviceProcessUserName()).WillOnce(testing::Return("root"));
+    EXPECT_CALL(*context, serviceProcessGroupName()).WillOnce(testing::Return("groupName"));
+    EXPECT_CALL(*context, serviceProcessWorkingDir()).WillOnce(testing::Return("/home/"));
+    EXPECT_CALL(*context, serviceProcessRootDir()).WillOnce(testing::Return("/root/"));
+    EXPECT_CALL(*context, serviceFilePath()).WillOnce(testing::Return("sourcePath"));
+    EXPECT_CALL(*context, serviceAddress()).WillOnce(testing::Return("/lib/systemd/system/wazuh-agent.service"));
+    EXPECT_CALL(*context, serviceLogFilePath()).WillOnce(testing::Return("/var/log/"));
+    EXPECT_CALL(*context, serviceErrorLogFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceExitCode()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceWin32ExitCode()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceFollowing()).WillOnce(testing::Return("following"));
+    EXPECT_CALL(*context, serviceObjectPath()).WillOnce(testing::Return("objectPath"));
+    EXPECT_CALL(*context, serviceTargetEphemeralId()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceTargetType()).WillOnce(testing::Return("jobType"));
+    EXPECT_CALL(*context, serviceTargetAddress()).WillOnce(testing::Return("jobPath"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_wazuh-agent","operation":"INSERTED","data":{"file":{"path":"sourcePath"},"process":{"args":["arg1","arg2","arg3"],"executable":"/usr/bin/wazuh-agent","group":{"name":"groupName"},"root_dir":"/root/","user":{"name":"root"},"working_directory":"/home/"},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","following":"following","id":"wazuh-agent","inetd_compatibility":true,"name":"Wazuh Agent","object_path":"objectPath","restart":"restart","start_type":"startType","starts":{"on_mount":true,"on_not_empty_directory":["one","two","three"],"on_path_modified":["one","two","three"]},"state":"running","sub_state":"subState","target":{"address":"jobPath","type":"jobType"},"type":"type"},"log":{"file":{"path":"/var/log/"}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validCompleteData_Services)
@@ -1007,26 +1077,46 @@ TEST_F(SystemInventoryUpsertElement, validCompleteData_Services)
     auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("apache2"));
-    EXPECT_CALL(*context, serviceDisplayName()).WillOnce(testing::Return("Apache HTTP Server"));
-    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return("Apache web server"));
-    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return("running"));
-    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return("service"));
-    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return("auto"));
-    EXPECT_CALL(*context, serviceSubState()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceExitCode()).WillOnce(testing::Return(0));
-    EXPECT_CALL(*context, serviceEnabled()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceUser()).WillOnce(testing::Return("www-data"));
-    EXPECT_CALL(*context, serviceBinaryPath()).WillOnce(testing::Return("/usr/sbin/apache2"));
-    EXPECT_CALL(*context, servicePid()).WillOnce(testing::Return(1234));
     EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
     EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
     EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return("wazuh-agent"));
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("Wazuh Agent"));
+    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return("Monitors system activity"));
+    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return("type"));
+    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return("running"));
+    EXPECT_CALL(*context, serviceSubState()).WillOnce(testing::Return("subState"));
+    EXPECT_CALL(*context, serviceEnabled()).WillOnce(testing::Return("enabled"));
+    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return("startType"));
+    EXPECT_CALL(*context, serviceRestart()).WillOnce(testing::Return("restart"));
+    EXPECT_CALL(*context, serviceFrequency()).WillOnce(testing::Return(1000));
+    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, serviceStartsOnPathModified()).WillOnce(testing::Return("one,two,three"));
+    EXPECT_CALL(*context, serviceStartsOnNotEmptyDirectory()).WillOnce(testing::Return("one,two,three"));
+    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, serviceProcessPid()).WillOnce(testing::Return(1234));
+    EXPECT_CALL(*context, serviceProcessExecutable()).WillOnce(testing::Return("/usr/bin/wazuh-agent"));
+    EXPECT_CALL(*context, serviceProcessArgs()).WillOnce(testing::Return("arg1,arg2,arg3"));
+    EXPECT_CALL(*context, serviceProcessUserName()).WillOnce(testing::Return("root"));
+    EXPECT_CALL(*context, serviceProcessGroupName()).WillOnce(testing::Return("groupName"));
+    EXPECT_CALL(*context, serviceProcessWorkingDir()).WillOnce(testing::Return("/home/"));
+    EXPECT_CALL(*context, serviceProcessRootDir()).WillOnce(testing::Return("/root/"));
+    EXPECT_CALL(*context, serviceFilePath()).WillOnce(testing::Return("sourcePath"));
+    EXPECT_CALL(*context, serviceAddress()).WillOnce(testing::Return("/lib/systemd/system/wazuh-agent.service"));
+    EXPECT_CALL(*context, serviceLogFilePath()).WillOnce(testing::Return("/var/log/"));
+    EXPECT_CALL(*context, serviceErrorLogFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceExitCode()).WillOnce(testing::Return(1066));
+    EXPECT_CALL(*context, serviceWin32ExitCode()).WillOnce(testing::Return(1066));
+    EXPECT_CALL(*context, serviceFollowing()).WillOnce(testing::Return("following"));
+    EXPECT_CALL(*context, serviceObjectPath()).WillOnce(testing::Return("objectPath"));
+    EXPECT_CALL(*context, serviceTargetEphemeralId()).WillOnce(testing::Return(10));
+    EXPECT_CALL(*context, serviceTargetType()).WillOnce(testing::Return("jobType"));
+    EXPECT_CALL(*context, serviceTargetAddress()).WillOnce(testing::Return("jobPath"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_apache2","operation":"INSERTED","data":{"service":{"id":"apache2","name":"Apache HTTP Server","description":"Apache web server","state":"running","start_type":"auto","type":"service","exit_code":0},"process":{"pid":1234,"executable":"/usr/sbin/apache2"},"user":{"name":"www-data"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_wazuh-agent","operation":"INSERTED","data":{"file":{"path":"sourcePath"},"process":{"args":["arg1","arg2","arg3"],"executable":"/usr/bin/wazuh-agent","group":{"name":"groupName"},"pid":1234,"root_dir":"/root/","user":{"name":"root"},"working_directory":"/home/"},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","exit_code":1066,"following":"following","frequency":1000,"id":"wazuh-agent","inetd_compatibility":true,"name":"Wazuh Agent","object_path":"objectPath","restart":"restart","start_type":"startType","starts":{"on_mount":true,"on_not_empty_directory":["one","two","three"],"on_path_modified":["one","two","three"]},"state":"running","sub_state":"subState","target":{"address":"jobPath","ephemeral_id":"10","type":"jobType"},"type":"type","win32_exit_code":1066},"log":{"file":{"path":"/var/log/"}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
