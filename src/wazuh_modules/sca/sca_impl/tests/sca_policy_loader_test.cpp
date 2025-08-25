@@ -22,7 +22,7 @@ class ScaPolicyLoaderTest : public ::testing::Test
             // Set up the logging callback to avoid "Log callback not set" errors
             LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* log)
             {
-                std::cout << log << "\n";
+                // noop
             });
 
             mockFileSystem = std::make_shared<testing::NiceMock<MockFileSystemWrapper>>();
