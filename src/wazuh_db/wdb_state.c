@@ -181,18 +181,6 @@ void w_inc_agent_sca_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_agent_ciscat() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_agent_ciscat_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_time, &time, &wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
 void w_inc_agent_dbsync() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.agent_breakdown.sync.dbsync_queries++;
@@ -1077,11 +1065,6 @@ cJSON* wdb_create_state_json() {
     cJSON *_agent_tables = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_breakdown, "tables", _agent_tables);
 
-    cJSON *_agent_tables_ciscat = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_tables, "ciscat", _agent_tables_ciscat);
-
-    cJSON_AddNumberToObject(_agent_tables_ciscat, "ciscat", wdb_state_cpy.queries_breakdown.agent_breakdown.ciscat.ciscat_queries);
-
     cJSON *_agent_tables_rootcheck = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_tables, "rootcheck", _agent_tables_rootcheck);
 
@@ -1258,11 +1241,6 @@ cJSON* wdb_create_state_json() {
     cJSON *_agent_tables_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_breakdown_t, "tables", _agent_tables_t);
 
-    cJSON *_agent_tables_ciscat_t = cJSON_CreateObject();
-    cJSON_AddItemToObject(_agent_tables_t, "ciscat", _agent_tables_ciscat_t);
-
-    cJSON_AddNumberToObject(_agent_tables_ciscat_t, "ciscat", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.ciscat.ciscat_time));
-
     cJSON *_agent_tables_rootcheck_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_tables_t, "rootcheck", _agent_tables_rootcheck_t);
 
@@ -1432,7 +1410,6 @@ STATIC uint64_t get_agent_time(wdb_state_t *state){
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscheck.fim_registry_value_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.rootcheck.rootcheck_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.sca.sca_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.agent_breakdown.ciscat.ciscat_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_packages_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.agent_breakdown.syscollector.syscollector_hotfixes_time, &task_time);

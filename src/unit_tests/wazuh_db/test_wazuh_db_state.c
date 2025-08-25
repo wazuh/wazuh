@@ -40,7 +40,6 @@ static int test_setup(void ** state) {
     wdb_state.queries_breakdown.agent_breakdown.syscheck.fim_registry_value_queries = 12;
     wdb_state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_queries = 8;
     wdb_state.queries_breakdown.agent_breakdown.sca.sca_queries = 2;
-    wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_queries = 75;
     wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_queries = 2;
     wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_queries = 2;
     wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_hotfixes_queries = 9;
@@ -90,8 +89,6 @@ static int test_setup(void ** state) {
     wdb_state.queries_breakdown.agent_breakdown.rootcheck.rootcheck_time.tv_usec = 146684;
     wdb_state.queries_breakdown.agent_breakdown.sca.sca_time.tv_sec = 2;
     wdb_state.queries_breakdown.agent_breakdown.sca.sca_time.tv_usec = 351940;
-    wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_time.tv_sec = 1;
-    wdb_state.queries_breakdown.agent_breakdown.ciscat.ciscat_time.tv_usec = 896460;
     wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time.tv_sec = 0;
     wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time.tv_usec = 356110;
     wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_time.tv_sec = 0;
@@ -327,10 +324,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(agent_sca_queries, "sca"));
     assert_int_equal(cJSON_GetObjectItem(agent_sca_queries, "sca")->valueint, 2);
 
-    cJSON* agent_ciscat_queries = cJSON_GetObjectItem(agent_queries_tables, "ciscat");
-    assert_non_null(cJSON_GetObjectItem(agent_ciscat_queries, "ciscat"));
-    assert_int_equal(cJSON_GetObjectItem(agent_ciscat_queries, "ciscat")->valueint, 75);
-
     cJSON* agent_syscollector_queries = cJSON_GetObjectItem(agent_queries_tables, "syscollector");
     assert_non_null(cJSON_GetObjectItem(agent_syscollector_queries, "syscollector_processes"));
     assert_int_equal(cJSON_GetObjectItem(agent_syscollector_queries, "syscollector_processes")->valueint, 2);
@@ -542,10 +535,6 @@ void test_wazuhdb_create_state_json(void ** state) {
     cJSON* agent_sca_time = cJSON_GetObjectItem(agent_time_tables, "sca");
     assert_non_null(cJSON_GetObjectItem(agent_sca_time, "sca"));
     assert_int_equal(cJSON_GetObjectItem(agent_sca_time, "sca")->valueint, 2351);
-
-    cJSON* agent_ciscat_time = cJSON_GetObjectItem(agent_time_tables, "ciscat");
-    assert_non_null(cJSON_GetObjectItem(agent_ciscat_time, "ciscat"));
-    assert_int_equal(cJSON_GetObjectItem(agent_ciscat_time, "ciscat")->valueint, 1896);
 
     cJSON* agent_syscollector_time = cJSON_GetObjectItem(agent_time_tables, "syscollector");
     assert_non_null(cJSON_GetObjectItem(agent_syscollector_time, "syscollector_processes"));
