@@ -11,7 +11,7 @@
 
 #include "utilsWrapperLinux.hpp"
 #include "cmdHelper.h"
-#include "filesystemHelper.h"
+#include <filesystem_wrapper.hpp>
 
 std::string UtilsWrapperLinux::exec(const std::string& cmd, const size_t bufferSize)
 {
@@ -20,5 +20,7 @@ std::string UtilsWrapperLinux::exec(const std::string& cmd, const size_t bufferS
 
 bool UtilsWrapperLinux::existsRegular(const std::string& path)
 {
-    return Utils::existsRegular(path);
+    const file_system::FileSystemWrapper fs;
+
+    return fs.is_regular_file(path);
 }

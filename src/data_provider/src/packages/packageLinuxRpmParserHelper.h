@@ -16,6 +16,8 @@
 #include "rpmPackageManager.h"
 #include "sharedDefs.h"
 
+#include "stringHelper.h"
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 

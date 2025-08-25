@@ -17,7 +17,6 @@ config --> main_thread : Config
 note right
     - Enabled
     - Scan on start
-    - skip_nfs
     - Policies
 end note
 

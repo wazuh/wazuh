@@ -2,6 +2,5 @@
     <enabled>yes</enabled>
     <scan_on_start>yes</scan_on_start>
     <interval>12h</interval>
-    <skip_nfs>yes</skip_nfs>
   </sca>
   

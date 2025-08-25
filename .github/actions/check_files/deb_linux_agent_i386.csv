@@ -30,6 +30,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904752,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2123404,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,594996,0.1
+/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,9541568,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,118632,0.1
 /var/ossec/lib/librsync.so,root,wazuh,750,file,-rwxr-x---,404176,0.1
 /var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,14480,0.1

@@ -10,6 +10,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
