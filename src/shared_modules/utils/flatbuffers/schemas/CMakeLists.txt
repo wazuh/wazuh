@@ -6,6 +6,7 @@ list(APPEND schemas
             rsync
             messageBuffer
             inventorySync
+            agentInfo
 )
 
 add_custom_target(compile_schemas_input)

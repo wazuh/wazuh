@@ -1,0 +1,72 @@
+{
+  "description": "Expected results for simple ReqRet test",
+  "expected_message_count": 6,
+  "validate_session_consistency": true,
+  "expected_messages": [
+    {
+      "type": "start",
+      "expected_status": "sent",
+      "description": "Start message should be sent successfully",
+      "expected_response": {
+        "type": "flatbuffer",
+        "data": {
+          "type": "start_ack",
+          "status": 0
+        },
+        "validate_session": true,
+        "timeout": 5.0
+      }
+    },
+    {
+      "type": "data",
+      "expected_status": "sent",
+      "description": "First data message (seq=0) should be sent successfully",
+      "expected_response": null
+    },
+    {
+      "type": "data",
+      "expected_status": "sent",
+      "description": "Second data message (seq=2, skipping seq=1) should be sent successfully",
+      "expected_response": null
+    },
+    {
+      "type": "end",
+      "expected_status": "sent",
+      "description": "End message should trigger ReqRet for missing seq=1",
+      "expected_response": {
+        "type": "flatbuffer",
+        "data": {
+          "type": "reqret"
+        },
+        "validate_session": true,
+        "timeout": 5.0
+      }
+    },
+    {
+      "type": "data",
+      "expected_status": "sent",
+      "description": "Retransmitted data message (seq=1) should be sent successfully",
+      "expected_response": null
+    },
+    {
+      "type": "end",
+      "expected_status": "sent",
+      "description": "Second end message should receive end_ack since all sequences are complete",
+      "expected_response": {
+        "type": "flatbuffer",
+        "data": {
+          "type": "end_ack",
+          "status": 0
+        },
+        "validate_session": true,
+        "timeout": 25.0
+      }
+    }
+  ],
+  "validation_rules": {
+    "session_consistency": "All messages should use the same session ID",
+    "message_order": "Messages should be sent in the correct order with proper gaps",
+    "response_format": "Start and End should receive responses, ReqRet should be sent when gaps detected",
+    "reqret_detection": "Manager should detect missing sequence 1 and send ReqRet"
+  }
+}

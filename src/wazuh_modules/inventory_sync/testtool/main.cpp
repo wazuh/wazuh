@@ -104,7 +104,6 @@ int main(int argc, char* argv[])
         flatbuffers::FlatBufferBuilder builder;
         auto module_offset = builder.CreateString(module_name);
         auto start_builder = Wazuh::SyncSchema::StartBuilder(builder);
-        start_builder.add_agent_id(agent_id);
         start_builder.add_size(num_messages);
         start_builder.add_module_(module_offset);
         start_builder.add_mode(Wazuh::SyncSchema::Mode_Full);

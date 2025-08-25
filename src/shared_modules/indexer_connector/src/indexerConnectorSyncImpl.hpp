@@ -120,6 +120,7 @@ class IndexerConnectorSyncImpl final
             url += "/";
             url += index;
             url += "/_delete_by_query";
+            logDebug2(IC_NAME, "Deleting by query: %s", url.c_str());
             m_httpRequest->post(
                 RequestParameters {
                     .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
@@ -191,6 +192,8 @@ class IndexerConnectorSyncImpl final
                 std::string url;
                 url += m_selector->getNext();
                 url += "/_bulk?refresh=wait_for";
+                logDebug2(IC_NAME, "Sending bulk data to: %s", url.c_str());
+                logDebug2(IC_NAME, "Bulk data: %s", m_bulkData.c_str());
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = m_bulkData,
@@ -327,6 +330,7 @@ class IndexerConnectorSyncImpl final
                 return;
             }
             needToRetry = false;
+            logDebug2(IC_NAME, "Sending bulk chunk to: %s", url.c_str());
             m_httpRequest->post(RequestParametersStringView {.url = HttpURL(url),
                                                              .data = data,
                                                              .secureCommunication = m_secureCommunication},
@@ -455,6 +459,10 @@ public:
                         catch (const IndexerConnectorException& e)
                         {
                             logError(IC_NAME, "Error processing bulk: %s", e.what());
+                        }
+                        catch (const std::exception& e)
+                        {
+                            logDebug2(IC_NAME, "Cannot process bulk: %s", e.what());
                         }
                     }
 

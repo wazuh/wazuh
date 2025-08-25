@@ -20,7 +20,7 @@ using namespace ::testing;
 class MockResponseQueue
 {
 public:
-    MOCK_METHOD(void, push, (std::shared_ptr<flatbuffers::FlatBufferBuilder> data));
+    MOCK_METHOD(void, push, (ResponseMessage && message));
 };
 
 class ResponseDispatcherTest : public ::testing::Test
@@ -34,23 +34,25 @@ TEST_F(ResponseDispatcherTest, SendStartAck)
     auto* mockQueue = new StrictMock<MockResponseQueue>();
     ResponseDispatcherForTest dispatcher(mockQueue);
 
-    auto context = std::make_shared<Context>(Context {Wazuh::SyncSchema::Mode_Full, 12345, 1, "syscollector"});
+    uint64_t agentId = 1;
+    uint64_t sessionId = 12345;
+    std::string moduleName = "syscollector";
 
     EXPECT_CALL(*mockQueue, push(_))
         .WillOnce(Invoke(
-            [&](std::shared_ptr<flatbuffers::FlatBufferBuilder> fb)
+            [&](ResponseMessage&& responseMsg)
             {
-                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(fb->GetBufferPointer());
+                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(responseMsg.builder.GetBufferPointer());
                 ASSERT_EQ(msg->content_type(), Wazuh::SyncSchema::MessageType_StartAck);
 
                 auto startAck = msg->content_as_StartAck();
                 ASSERT_NE(startAck, nullptr);
                 EXPECT_EQ(startAck->status(), Wazuh::SyncSchema::Status_Ok);
                 EXPECT_EQ(startAck->session(), 12345);
-                EXPECT_STREQ(startAck->module_()->c_str(), "syscollector");
+                // Note: StartAck schema doesn't include module field
             }));
 
-    dispatcher.sendStartAck(Wazuh::SyncSchema::Status_Ok, context);
+    dispatcher.sendStartAck(Wazuh::SyncSchema::Status_Ok, agentId, sessionId, moduleName);
 }
 
 TEST_F(ResponseDispatcherTest, SendEndAck)
@@ -58,23 +60,25 @@ TEST_F(ResponseDispatcherTest, SendEndAck)
     auto* mockQueue = new StrictMock<MockResponseQueue>();
     ResponseDispatcherForTest dispatcher(mockQueue);
 
-    auto context = std::make_shared<Context>(Context {Wazuh::SyncSchema::Mode_Full, 54321, 2, "another_module"});
+    uint64_t agentId = 2;
+    uint64_t sessionId = 54321;
+    std::string moduleName = "another_module";
 
     EXPECT_CALL(*mockQueue, push(_))
         .WillOnce(Invoke(
-            [&](std::shared_ptr<flatbuffers::FlatBufferBuilder> fb)
+            [&](ResponseMessage&& responseMsg)
             {
-                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(fb->GetBufferPointer());
+                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(responseMsg.builder.GetBufferPointer());
                 ASSERT_EQ(msg->content_type(), Wazuh::SyncSchema::MessageType_EndAck);
 
                 auto endAck = msg->content_as_EndAck();
                 ASSERT_NE(endAck, nullptr);
                 EXPECT_EQ(endAck->status(), Wazuh::SyncSchema::Status_Error);
                 EXPECT_EQ(endAck->session(), 54321);
-                EXPECT_STREQ(endAck->module_()->c_str(), "another_module");
+                // Note: EndAck schema doesn't include module field
             }));
 
-    dispatcher.sendEndAck(Wazuh::SyncSchema::Status_Error, context);
+    dispatcher.sendEndAck(Wazuh::SyncSchema::Status_Error, agentId, sessionId, moduleName);
 }
 
 TEST_F(ResponseDispatcherTest, SendEndMissingSeq)
@@ -87,9 +91,9 @@ TEST_F(ResponseDispatcherTest, SendEndMissingSeq)
 
     EXPECT_CALL(*mockQueue, push(_))
         .WillOnce(Invoke(
-            [&](std::shared_ptr<flatbuffers::FlatBufferBuilder> fb)
+            [&](ResponseMessage&& responseMsg)
             {
-                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(fb->GetBufferPointer());
+                auto msg = flatbuffers::GetRoot<Wazuh::SyncSchema::Message>(responseMsg.builder.GetBufferPointer());
                 ASSERT_EQ(msg->content_type(), Wazuh::SyncSchema::MessageType_ReqRet);
 
                 auto reqRet = msg->content_as_ReqRet();
@@ -104,5 +108,5 @@ TEST_F(ResponseDispatcherTest, SendEndMissingSeq)
                 EXPECT_EQ(receivedRanges->Get(1)->end(), 10);
             }));
 
-    dispatcher.sendEndMissingSeq(sessionId, ranges);
+    dispatcher.sendEndMissingSeq(1, sessionId, "test_module", ranges);
 }

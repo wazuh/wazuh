@@ -22,6 +22,7 @@ struct Context final
     uint64_t sessionId;
     uint64_t agentId;
     std::string moduleName;
+    bool transactionDispatched = false;
 };
 
 #endif // _INVENTORY_SYNC_CONTEXT_HPP

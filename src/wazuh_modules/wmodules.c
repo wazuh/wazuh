@@ -101,6 +101,10 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
+    // Inventory sync
+    if ((module = wm_inventory_sync_read()))
+        wm_add(module);
+
 #endif
 
 #if defined (__linux__) || (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)

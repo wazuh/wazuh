@@ -10,13 +10,14 @@
  */
 
 #include "router.h"
+#include <atomic>
 #include <gtest/gtest.h>
 #include <string>
 #include <thread>
 #include <vector>
 
 // Simple log callback for testing
-void test_log_callback(const modules_log_level_t /*level*/, const char* /*message*/, const char* /*tag*/)
+void testLogCallback(const modules_log_level_t /*level*/, const char* /*message*/, const char* /*tag*/)
 {
     // Just capture calls, don't do anything
 }
@@ -33,7 +34,7 @@ protected:
     void SetUp() override
     {
         // Initialize router for each test
-        router_initialize(test_log_callback);
+        router_initialize(testLogCallback);
     }
 
     void TearDown() override
@@ -49,7 +50,7 @@ protected:
 TEST_F(RouterAPITest, TestRouterInitialize)
 {
     // Test with valid callback
-    EXPECT_EQ(0, router_initialize(test_log_callback));
+    EXPECT_EQ(0, router_initialize(testLogCallback));
 
     // Test with null callback
     EXPECT_EQ(0, router_initialize(nullptr));
@@ -539,6 +540,322 @@ TEST_F(RouterAPITest, TestProviderOperationsInvalidHandle)
     EXPECT_EQ(-1, router_provider_send_fb(fakeHandle, message, "schema"));
 
     EXPECT_NO_THROW(router_provider_destroy(fakeHandle));
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with valid parameters
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxValid)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const char* message = "test message";
+    size_t messageSize = strlen(message);
+
+    agent_ctx agentCtx = {
+        .id = "agent001", .name = "test-agent", .ip = "192.168.1.100", .version = "4.8.0", .module = "inventory"};
+
+    EXPECT_EQ(0, router_provider_send_fb_agent_ctx(handle, message, messageSize, &agentCtx));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with null message
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxNullMessage)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    agent_ctx agentCtx = {
+        .id = "agent001", .name = "test-agent", .ip = "192.168.1.100", .version = "4.8.0", .module = "inventory"};
+
+    EXPECT_EQ(-1, router_provider_send_fb_agent_ctx(handle, nullptr, 10, &agentCtx));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with null handle
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxNullHandle)
+{
+    router_start();
+
+    const char* message = "test message";
+    size_t messageSize = strlen(message);
+
+    agent_ctx agentCtx = {
+        .id = "agent001", .name = "test-agent", .ip = "192.168.1.100", .version = "4.8.0", .module = "inventory"};
+
+    EXPECT_EQ(-1, router_provider_send_fb_agent_ctx(nullptr, message, messageSize, &agentCtx));
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with null agent context
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxNullAgentCtx)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const char* message = "test message";
+    size_t messageSize = strlen(message);
+
+    EXPECT_EQ(-1, router_provider_send_fb_agent_ctx(handle, message, messageSize, nullptr));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with zero message size
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxZeroSize)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const char* message = "test message";
+
+    agent_ctx agentCtx = {
+        .id = "agent001", .name = "test-agent", .ip = "192.168.1.100", .version = "4.8.0", .module = "inventory"};
+
+    EXPECT_EQ(0, router_provider_send_fb_agent_ctx(handle, message, 0, &agentCtx));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with agent context having null fields
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxNullFields)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const char* message = "test message";
+    size_t messageSize = strlen(message);
+
+    // Test with some null fields in agent context
+    agent_ctx agentCtx = {.id = "agent001",
+                          .name = nullptr, // null name
+                          .ip = "192.168.1.100",
+                          .version = nullptr, // null version
+                          .module = "inventory"};
+
+    EXPECT_EQ(0, router_provider_send_fb_agent_ctx(handle, message, messageSize, &agentCtx));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with all agent context fields null
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxAllNullFields)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const char* message = "test message";
+    size_t messageSize = strlen(message);
+
+    agent_ctx agentCtx = {.id = nullptr, .name = nullptr, .ip = nullptr, .version = nullptr, .module = nullptr};
+
+    EXPECT_EQ(0, router_provider_send_fb_agent_ctx(handle, message, messageSize, &agentCtx));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with empty string fields
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxEmptyFields)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const char* message = "test message";
+    size_t messageSize = strlen(message);
+
+    agent_ctx agentCtx = {.id = "", .name = "", .ip = "", .version = "", .module = ""};
+
+    EXPECT_EQ(0, router_provider_send_fb_agent_ctx(handle, message, messageSize, &agentCtx));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with large message
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxLargeMessage)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create a large message (1MB)
+    const size_t largeSize = 1024 * 1024;
+    std::vector<char> largeMessage(largeSize, 'B');
+
+    agent_ctx agentCtx = {
+        .id = "agent001", .name = "test-agent", .ip = "192.168.1.100", .version = "4.8.0", .module = "inventory"};
+
+    EXPECT_EQ(0, router_provider_send_fb_agent_ctx(handle, largeMessage.data(), largeMessage.size(), &agentCtx));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with invalid handle
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxInvalidHandle)
+{
+    router_start();
+
+    // Create fake handle
+    auto fakeHandle = reinterpret_cast<ROUTER_PROVIDER_HANDLE>(0xDEADBEEF);
+
+    const char* message = "test message";
+    size_t messageSize = strlen(message);
+
+    agent_ctx agentCtx = {
+        .id = "agent001", .name = "test-agent", .ip = "192.168.1.100", .version = "4.8.0", .module = "inventory"};
+
+    EXPECT_EQ(-1, router_provider_send_fb_agent_ctx(fakeHandle, message, messageSize, &agentCtx));
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with long agent fields
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxLongFields)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const char* message = "test message";
+    size_t messageSize = strlen(message);
+
+    // Create long strings for agent fields
+    std::string longId(1000, 'A');
+    std::string longName(1000, 'N');
+    std::string longIp(1000, 'I');
+    std::string longVersion(1000, 'V');
+    std::string longModule(1000, 'M');
+
+    agent_ctx agentCtx = {.id = longId.c_str(),
+                          .name = longName.c_str(),
+                          .ip = longIp.c_str(),
+                          .version = longVersion.c_str(),
+                          .module = longModule.c_str()};
+
+    EXPECT_EQ(0, router_provider_send_fb_agent_ctx(handle, message, messageSize, &agentCtx));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx with special characters in agent fields
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxSpecialCharacters)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const char* message = "test message with unicode: ñáéíóú €";
+    size_t messageSize = strlen(message);
+
+    agent_ctx agentCtx = {.id = "agent-ñ001",
+                          .name = "test-agent-€",
+                          .ip = "2001:db8::1", // IPv6 address
+                          .version = "4.8.0-β",
+                          .module = "inventory-ñ"};
+
+    EXPECT_EQ(0, router_provider_send_fb_agent_ctx(handle, message, messageSize, &agentCtx));
+
+    router_provider_destroy(handle);
+}
+
+/*
+ * @brief Tests router_provider_send_fb_agent_ctx concurrent calls
+ */
+TEST_F(RouterAPITest, TestProviderSendFBAgentCtxConcurrent)
+{
+    router_start();
+
+    const char* providerName = "test-provider";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    const int numThreads = 4;
+    const int numCallsPerThread = 10;
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+    std::atomic<int> successCount(0);
+
+    for (int t = 0; t < numThreads; ++t)
+    {
+        threads.emplace_back(
+            [&, t]()
+            {
+                for (int i = 0; i < numCallsPerThread; ++i)
+                {
+                    std::string message = "thread-" + std::to_string(t) + "-message-" + std::to_string(i);
+                    std::string agentId = "agent-" + std::to_string(t) + "-" + std::to_string(i);
+
+                    agent_ctx agentCtx = {.id = agentId.c_str(),
+                                          .name = "concurrent-agent",
+                                          .ip = "192.168.1.100",
+                                          .version = "4.8.0",
+                                          .module = "inventory"};
+
+                    if (router_provider_send_fb_agent_ctx(handle, message.c_str(), message.size(), &agentCtx) == 0)
+                    {
+                        successCount++;
+                    }
+                }
+            });
+    }
+
+    // Wait for all threads
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    EXPECT_EQ(numThreads * numCallsPerThread, successCount.load());
+
+    router_provider_destroy(handle);
 }
 
 /*
