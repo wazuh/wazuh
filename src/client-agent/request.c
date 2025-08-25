@@ -267,7 +267,7 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         } else if (strncmp(node->target, "syscheck", 8) == 0) {
             length = syscom_dispatch(node->buffer, node->length, &buffer);
         } else if (strncmp(node->target, "wmodules", 8) == 0) {
-            length = wmcom_dispatch(node->buffer, &buffer);
+            length = wmcom_dispatch(node->buffer, node->length, &buffer);
         } else if (strncmp(node->target, "upgrade", 7) == 0) {
             length = wm_agent_upgrade_process_command(node->buffer, &buffer);
         } else {
