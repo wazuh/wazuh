@@ -290,7 +290,7 @@ void w_agentd_buffer_free(unsigned int current_capacity) {
     }
 
     mdebug2("Freeing the client-buffer.");
-    for ( int i=0; i <= current_capacity; i++) {
+    for (unsigned int i=0; i <= current_capacity; i++) {
         os_free(buffer[i]);
     }
 
@@ -333,7 +333,7 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
     }
 
     w_mutex_lock(&mutex_lock);
-    
+
     char **temp_buffer = NULL;
     if (desired_capacity > current_capacity) {
         // We add +1 to the desired capacity for internal management of the circular buffer,
