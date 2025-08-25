@@ -1,0 +1,9 @@
+{
+    "message_loss_rate": 0.8,
+    "delay_between_messages_ms": 100,
+    "is_random_order": false,
+    "has_duplicates": false,
+    "duplicate_rate": 0.7,
+    "batch_size": 1000,
+    "network_issues": false
+}
