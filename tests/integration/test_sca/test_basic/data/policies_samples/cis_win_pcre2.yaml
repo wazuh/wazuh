@@ -12,7 +12,7 @@ requirements:
   description: Requirements for running the policy against Windows family.
   condition: any
   rules:
-    - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+    - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
 
 checks:
 
@@ -33,8 +33,7 @@ checks:
       - tsc: [CC6.1, CC6.8, CC7.2, CC7.3, CC7.4]
     condition: all
     rules:
-      # - 'c:net user administrator -> r:Account active\s+No'
-      - 'c:net user administrator'
+      - 'c:net user administrator -> r:Account active\s+No'
 
   # Check with PCRE2 value
   - id: 2
@@ -53,6 +52,5 @@ checks:
       - tsc: [CC6.1, CC6.8, CC7.2, CC7.3, CC7.4]
     condition: all
     rules:
-      # - 'c:net user administrator -> r:Account active\s+No'
-      - 'c:net user administrator'
+      - 'c:net user administrator -> r:Account active\s+No'
     regex_type: pcre2
