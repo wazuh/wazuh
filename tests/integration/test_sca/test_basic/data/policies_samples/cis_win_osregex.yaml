@@ -32,8 +32,7 @@ checks:
       - tsc: [CC6.1, CC6.8, CC7.2, CC7.3, CC7.4]
     condition: all
     rules:
-      # - 'c:net user administrator -> r:Account active\s+No'
-      - 'c:net user administrator'
+      - 'c:net user administrator -> r:Account active\s+No'
 
   # Check with PCRE2 value
   - id: 2
@@ -52,6 +51,5 @@ checks:
       - tsc: [CC6.1, CC6.8, CC7.2, CC7.3, CC7.4]
     condition: all
     rules:
-      # - 'c:net user administrator -> r:Account active\s+No'
-      - 'c:net user administrator'
+      - 'c:net user administrator -> r:Account active\s+No'
     regex_type: pcre2
