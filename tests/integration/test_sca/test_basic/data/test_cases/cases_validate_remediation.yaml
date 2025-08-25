@@ -8,8 +8,8 @@
     policy_file: cis_centos8_validate_remediation.yaml
     check_id: 1
     perms: 0222
-    initial_result: failed
-    final_result: passed
+    initial_result: Failed
+    final_result: Passed
 
 - name: SCA Rule Check Passes - Change system cause Fail
   description: A given rule check passes in SCA scan. After changing system, it fails in next scan.
@@ -21,5 +21,5 @@
     policy_file: cis_centos8_validate_remediation.yaml
     check_id: 2
     perms: 0222
-    initial_result: passed
-    final_result: failed
+    initial_result: Passed
+    final_result: Failed

@@ -56,7 +56,6 @@ from wazuh_testing.constants.platforms import WINDOWS
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
-
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2'}
@@ -66,7 +65,7 @@ configurations_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_sca.yaml')
 
 # ---------------------------------------------------- TEST_ENABLED ---------------------------------------------------
 # Test configurations
-t1_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_sca_enabled.yaml')
+t1_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_sca_enabled_win.yaml' if sys.platform == WINDOWS else 'cases_sca_enabled.yaml')
 t1_configuration_parameters, t1_configuration_metadata, t1_case_ids = configuration.get_test_cases_data(t1_cases_path)
 t1_configurations = configuration.load_configuration_template(configurations_path, t1_configuration_parameters,
                                                 t1_configuration_metadata)
@@ -81,8 +80,6 @@ t2_configurations = configuration.load_configuration_template(configurations_pat
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-# TODO: Fix test before re-enabling
-@pytest.mark.skip(reason="Needs to be fixed")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t1_configurations, t1_configuration_metadata), ids=t1_case_ids)
 def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
                      set_wazuh_configuration, configure_local_internal_options, daemons_handler):
@@ -134,21 +131,38 @@ def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_fil
         - the cis*.yaml files located in the policies folder provide the sca rules to check.
 
     expected_output:
-        - r'.*sca.*INFO: (Module started.)'
-        - r'.*sca.*INFO: (Starting Security Configuration Assessment scan).'
-        - r".*sca.*INFO: Security Configuration Assessment scan finished. Duration: (\\d+) seconds."
+        - r".*sca.*INFO: SCA Module enabled"
+        - r".*sca.*INFO: Starting SCA module"
+        - r".*sca.*INFO: SCA module running"
+        - r".*sca.*DEBUG: Starting Policy requirements evaluation for policy \"(.*?)\""
+        - r".*sca.*DEBUG: Policy requirements evaluation completed for policy \"(.*?)\", result: (Passed|Failed)"
+        - r".*sca.*DEBUG: Starting Policy checks evaluation for policy \"(.*?)\""
+        - r".*sca.*DEBUG: Policy checks evaluation completed for policy \"(.*?)\""
     '''
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
-    assert log_monitor.callback_result
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_STARTED), timeout=10)
-    assert log_monitor.callback_result
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_ENDED), timeout=30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
     assert log_monitor.callback_result
 
-# TODO: Fix test before re-enabling
-@pytest.mark.skip(reason="Needs to be fixed")
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_STARTING), timeout=10)
+    assert log_monitor.callback_result
+
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_RUNNING), timeout=30)
+    assert log_monitor.callback_result
+
+    expected_policy = Path(test_metadata['policy_file']).stem
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_REQ), timeout=40)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
+
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=10)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
+
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=30)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
+
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=30)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
+
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
 def test_sca_disabled(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
                       set_wazuh_configuration, configure_local_internal_options, daemons_handler):
@@ -196,10 +210,10 @@ def test_sca_disabled(test_configuration, test_metadata, prepare_cis_policies_fi
         - the cis*.yaml files located in the policies folder provide the sca rules to check.
 
     expected_output:
-        - r".*sca.*INFO: (Module disabled). Exiting."
+        - r".*sca.*INFO: SCA Module disabled\. Exiting"
     '''
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_DISABLED), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_DISABLED), timeout=10)
     assert log_monitor.callback_result
