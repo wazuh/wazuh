@@ -588,10 +588,11 @@ void* syscom_main(void* arg);
  * @brief Dispatches messages from API directed to syscheck module
  *
  * @param [in] command The input command sent from the API
+ * @param [in] command_len Length in bytes of the input command
  * @param [out] output The output buffer to be filled (answer for the API)
  * @return The size of the output buffer
  */
-size_t syscom_dispatch(char* command, char** output);
+size_t syscom_dispatch(char* command, size_t command_len, char** output);
 
 /**
  * @brief

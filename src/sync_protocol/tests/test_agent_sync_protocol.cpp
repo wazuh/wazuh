@@ -22,55 +22,67 @@ using ::testing::Return;
 using ::testing::DoAll;
 
 // IPersistentQueue Mock
-class MockPersistentQueue : public IPersistentQueue {
-public:
-    MOCK_METHOD(void, submit, (const std::string& id,
-                                const std::string& index,
-                                const std::string& data,
-                                Operation operation), (override));
-    MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
-    MOCK_METHOD(void, clearSyncedItems, (), (override));
-    MOCK_METHOD(void, resetSyncingItems, (), (override));
+class MockPersistentQueue : public IPersistentQueue
+{
+    public:
+        MOCK_METHOD(void, submit, (const std::string& id,
+                                   const std::string& index,
+                                   const std::string& data,
+                                   Operation operation), (override));
+        MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
+        MOCK_METHOD(void, clearSyncedItems, (), (override));
+        MOCK_METHOD(void, resetSyncingItems, (), (override));
 
 };
 
 class AgentSyncProtocolTest : public ::testing::Test
 {
-protected:
-    void SetUp() override
-    {
-        // Set logger via asp_create
-        MQ_Functions tmpMq{
-            [](const char*, short, short) { return 0; },
-            [](int, const void*, size_t, const char*, char) { return 0; }
-        };
+    protected:
+        void SetUp() override
+        {
+            // Set logger via asp_create
+            MQ_Functions tmpMq
+            {
+                [](const char*, short, short) { return 0; },
+                [](int, const void*, size_t, const char*, char)
+                {
+                    return 0;
+                }
+            };
 
-        auto handle = asp_create(
-            "test_module",
-            ":memory:",
-            &tmpMq,
-            +[](modules_log_level_t, const char* s) { std::cout << s << std::endl; }
-        );
-        asp_destroy(handle);
-    }
+            auto handle = asp_create(
+                              "test_module",
+                              ":memory:",
+                              &tmpMq,
+                              +[](modules_log_level_t, const char* s)
+            {
+                std::cout << s << std::endl;
+            }
+                          );
+            asp_destroy(handle);
+        }
 
-    std::shared_ptr<MockPersistentQueue> mockQueue;
-    std::unique_ptr<AgentSyncProtocol> protocol;
-    const uint64_t session = 1234;
-    const uint64_t session2 = 5678;
-    const unsigned int retries = 1;
-    const unsigned int maxEps = 100;
-    const unsigned int delay = 100;
-    const uint8_t min_timeout = 1;
-    const uint8_t max_timeout = 3;
+        std::shared_ptr<MockPersistentQueue> mockQueue;
+        std::unique_ptr<AgentSyncProtocol> protocol;
+        const uint64_t session = 1234;
+        const uint64_t session2 = 5678;
+        const unsigned int retries = 1;
+        const unsigned int maxEps = 100;
+        const unsigned int delay = 100;
+        const uint8_t min_timeout = 1;
+        const uint8_t max_timeout = 3;
 };
 
 TEST_F(AgentSyncProtocolTest, PersistDifferenceSuccess)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
@@ -80,7 +92,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceSuccess)
     const Operation testOperation = Operation::CREATE; // Any value
 
     EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation))
-        .Times(1);
+    .Times(1);
 
     protocol->persistDifference(testId, testOperation, testIndex, testData);
 }
@@ -88,9 +100,13 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceSuccess)
 TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
@@ -100,7 +116,7 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
     const Operation testOperation = Operation::CREATE; // Any value
 
     EXPECT_CALL(*mockQueue, submit(testId, testIndex, testData, testOperation))
-        .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
+    .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
     EXPECT_NO_THROW(protocol->persistDifference(testId, testOperation, testIndex, testData));
 }
@@ -108,19 +124,23 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions failingStartMqFuncs = {
+    MQ_Functions failingStartMqFuncs =
+    {
         .start = [](const char*, short int, short int) { return -1; }, // Fail to start queue
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
 
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, mockQueue);
 
     bool result = protocol->synchronizeModule(
-        Wazuh::SyncSchema::Mode::Full,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
-    );
+                      Wazuh::SyncSchema::Mode::Full,
+                      std::chrono::seconds(min_timeout),
+                      retries,
+                      maxEps
+                  );
 
     EXPECT_FALSE(result);
 }
@@ -128,21 +148,25 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsException)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
+    .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
     bool result = protocol->synchronizeModule(
-        Wazuh::SyncSchema::Mode::Full,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
-    );
+                      Wazuh::SyncSchema::Mode::Full,
+                      std::chrono::seconds(min_timeout),
+                      retries,
+                      maxEps
+                  );
 
     EXPECT_FALSE(result);
 }
@@ -150,21 +174,25 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsExceptio
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(std::vector<PersistedData>{}));
+    .WillOnce(Return(std::vector<PersistedData> {}));
 
     bool result = protocol->synchronizeModule(
-        Wazuh::SyncSchema::Mode::Full,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
-    );
+                      Wazuh::SyncSchema::Mode::Full,
+                      std::chrono::seconds(min_timeout),
+                      retries,
+                      maxEps
+                  );
 
     EXPECT_TRUE(result);
 }
@@ -172,29 +200,34 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions failingSendStartMqFuncs = {
+    MQ_Functions failingSendStartMqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return -1; } // Fail to send Start message
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return -1;    // Fail to send Start message
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendStartMqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     bool result = protocol->synchronizeModule(
-        Wazuh::SyncSchema::Mode::Full,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
-    );
+                      Wazuh::SyncSchema::Mode::Full,
+                      std::chrono::seconds(min_timeout),
+                      retries,
+                      maxEps
+                  );
 
     EXPECT_FALSE(result);
 }
@@ -202,31 +235,37 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_FALSE(result);
     });
 
@@ -244,13 +283,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    protocol->parseResponseBuffer(buffer);
+    protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     syncThread.join();
 }
@@ -258,29 +297,34 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartAckTimeout)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     bool result = protocol->synchronizeModule(
-        Wazuh::SyncSchema::Mode::Full,
-        std::chrono::seconds(min_timeout),
-        retries,
-        maxEps
-    );
+                      Wazuh::SyncSchema::Mode::Full,
+                      std::chrono::seconds(min_timeout),
+                      retries,
+                      maxEps
+                  );
 
     EXPECT_FALSE(result);
 }
@@ -290,37 +334,44 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
     mockQueue = std::make_shared<MockPersistentQueue>();
 
     static int callCount = 0;
-    MQ_Functions failingSendDataMqFuncs = {
+    MQ_Functions failingSendDataMqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) {
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
             callCount++;
-            if (callCount > 1) {
+
+            if (callCount > 1)
+            {
                 return -1; // Fail data messages
             }
+
             return 0; // Allow Start message to succeed
         }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendDataMqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_FALSE(result);
     });
 
@@ -338,13 +389,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    protocol->parseResponseBuffer(buffer);
+    protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     syncThread.join();
 }
@@ -354,37 +405,44 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
     mockQueue = std::make_shared<MockPersistentQueue>();
 
     static int callCount = 0;
-    MQ_Functions failingSendEndMqFuncs = {
+    MQ_Functions failingSendEndMqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) {
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
             callCount++;
-            if (callCount > 3) {
+
+            if (callCount > 3)
+            {
                 return -1; // Fail End message
             }
+
             return 0; // Allow Start and Data messages to succeed
         }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingSendEndMqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_FALSE(result);
     });
 
@@ -402,13 +460,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    protocol->parseResponseBuffer(buffer);
+    protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     syncThread.join();
 }
@@ -416,31 +474,37 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_FALSE(result);
     });
 
@@ -458,13 +522,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for data messages to be sent
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -480,13 +544,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
-        endBuilder,
-        Wazuh::SyncSchema::MessageType::EndAck,
-        endAckOffset.Union());
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
     endBuilder.Finish(endMessage);
 
     const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer);
+    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
 
     syncThread.join();
 }
@@ -494,31 +558,37 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_FALSE(result);
     });
 
@@ -536,13 +606,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for data messages to be sent
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -558,13 +628,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
     auto reqRetMessage = Wazuh::SyncSchema::CreateMessage(
-        reqRetBuilder,
-        Wazuh::SyncSchema::MessageType::ReqRet,
-        reqRetOffset.Union());
+                             reqRetBuilder,
+                             Wazuh::SyncSchema::MessageType::ReqRet,
+                             reqRetOffset.Union());
     reqRetBuilder.Finish(reqRetMessage);
 
     const uint8_t* reqRetBuffer = reqRetBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(reqRetBuffer);
+    protocol->parseResponseBuffer(reqRetBuffer, reqRetBuilder.GetSize());
 
     syncThread.join();
 }
@@ -572,31 +642,37 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_FALSE(result);
     });
 
@@ -614,13 +690,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for data messages to be sent
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -649,13 +725,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
     auto reqRetMessage = Wazuh::SyncSchema::CreateMessage(
-        reqRetBuilder,
-        Wazuh::SyncSchema::MessageType::ReqRet,
-        reqRetOffset.Union());
+                             reqRetBuilder,
+                             Wazuh::SyncSchema::MessageType::ReqRet,
+                             reqRetOffset.Union());
     reqRetBuilder.Finish(reqRetMessage);
 
     const uint8_t* reqRetBuffer = reqRetBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(reqRetBuffer);
+    protocol->parseResponseBuffer(reqRetBuffer, reqRetBuilder.GetSize());
 
     syncThread.join();
 }
@@ -665,37 +741,44 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
     mockQueue = std::make_shared<MockPersistentQueue>();
 
     static int callCount = 0;
-    MQ_Functions failingReqRetDataMqFuncs = {
+    MQ_Functions failingReqRetDataMqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) {
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
             callCount++;
-            if (callCount > 4) {
+
+            if (callCount > 4)
+            {
                 return -1; // Fail data resend for ReqRet
             }
+
             return 0; // Allow Start, initial Data messages and End
         }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingReqRetDataMqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_FALSE(result);
     });
 
@@ -713,13 +796,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for initial data messages to be sent
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -743,13 +826,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
     auto reqRetMessage = Wazuh::SyncSchema::CreateMessage(
-        reqRetBuilder,
-        Wazuh::SyncSchema::MessageType::ReqRet,
-        reqRetOffset.Union());
+                             reqRetBuilder,
+                             Wazuh::SyncSchema::MessageType::ReqRet,
+                             reqRetOffset.Union());
     reqRetBuilder.Finish(reqRetMessage);
 
     const uint8_t* reqRetBuffer = reqRetBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(reqRetBuffer);
+    protocol->parseResponseBuffer(reqRetBuffer, reqRetBuilder.GetSize());
 
     syncThread.join();
 }
@@ -758,31 +841,37 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
 
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, resetSyncingItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_FALSE(result);
     });
 
@@ -800,13 +889,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    protocol->parseResponseBuffer(buffer);
+    protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     syncThread.join();
 }
@@ -815,31 +904,37 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
 
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, clearSyncedItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_TRUE(result);
     });
 
@@ -857,13 +952,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    protocol->parseResponseBuffer(buffer);
+    protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     // Wait for data messages
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -879,13 +974,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
-        endBuilder,
-        Wazuh::SyncSchema::MessageType::EndAck,
-        endAckOffset.Union());
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
     endBuilder.Finish(endMessage);
 
     const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer);
+    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
 
     syncThread.join();
 }
@@ -894,31 +989,37 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
 
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
-    std::vector<PersistedData> testData = {
+    std::vector<PersistedData> testData =
+    {
         {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE},
         {0, "test_id_2", "test_index_2", "test_data_2", Operation::MODIFY}
     };
 
     EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-        .WillOnce(Return(testData));
+    .WillOnce(Return(testData));
 
     EXPECT_CALL(*mockQueue, clearSyncedItems())
-        .Times(1);
+    .Times(1);
 
     // Start synchronization
-    std::thread syncThread([this]() {
+    std::thread syncThread([this]()
+    {
         bool result = protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
-            std::chrono::seconds(max_timeout),
-            retries,
-            maxEps
-        );
+                          Wazuh::SyncSchema::Mode::Full,
+                          std::chrono::seconds(max_timeout),
+                          retries,
+                          maxEps
+                      );
         EXPECT_TRUE(result);
     });
 
@@ -936,13 +1037,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for initial data messages to be sent
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -966,13 +1067,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
     auto reqRetMessage = Wazuh::SyncSchema::CreateMessage(
-        reqRetBuilder,
-        Wazuh::SyncSchema::MessageType::ReqRet,
-        reqRetOffset.Union());
+                             reqRetBuilder,
+                             Wazuh::SyncSchema::MessageType::ReqRet,
+                             reqRetOffset.Union());
     reqRetBuilder.Finish(reqRetMessage);
 
     const uint8_t* reqRetBuffer = reqRetBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(reqRetBuffer);
+    protocol->parseResponseBuffer(reqRetBuffer, reqRetBuilder.GetSize());
 
     // Wait for data resend
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -988,13 +1089,13 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
-        endBuilder,
-        Wazuh::SyncSchema::MessageType::EndAck,
-        endAckOffset.Union());
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
     endBuilder.Finish(endMessage);
 
     const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(endBuffer);
+    protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
 
     syncThread.join();
 }
@@ -1002,13 +1103,17 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithNullBuffer)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
-    bool response = protocol->parseResponseBuffer(nullptr);
+    bool response = protocol->parseResponseBuffer(nullptr, 0);
 
     EXPECT_FALSE(response);
 }
@@ -1016,9 +1121,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithNullBuffer)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForStartAck)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
@@ -1033,13 +1142,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForStartAck)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(buffer);
+    bool response = protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     EXPECT_TRUE(response);
 }
@@ -1047,20 +1156,26 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForStartAck)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     // Enter in WaitingStartAck phase
-    std::thread syncThread([this]() {
-        std::vector<PersistedData> testData = {
+    std::thread syncThread([this]()
+    {
+        std::vector<PersistedData> testData =
+        {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-            .WillOnce(Return(testData));
+        .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
             Wazuh::SyncSchema::Mode::Full,
@@ -1084,13 +1199,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(buffer);
+    bool response = protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     EXPECT_TRUE(response);
 
@@ -1100,20 +1215,26 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     // Enter in WaitingStartAck phase
-    std::thread syncThread([this]() {
-        std::vector<PersistedData> testData = {
+    std::thread syncThread([this]()
+    {
+        std::vector<PersistedData> testData =
+        {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-            .WillOnce(Return(testData));
+        .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
             Wazuh::SyncSchema::Mode::Full,
@@ -1137,13 +1258,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(buffer);
+    bool response = protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     EXPECT_TRUE(response);
 
@@ -1153,20 +1274,26 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     // Enter in WaitingStartAck phase
-    std::thread syncThread([this]() {
-        std::vector<PersistedData> testData = {
+    std::thread syncThread([this]()
+    {
+        std::vector<PersistedData> testData =
+        {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-            .WillOnce(Return(testData));
+        .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
             Wazuh::SyncSchema::Mode::Full,
@@ -1190,13 +1317,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(buffer);
+    bool response = protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     EXPECT_TRUE(response);
 
@@ -1206,9 +1333,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForEndAck)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
@@ -1222,13 +1353,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForEndAck)
     auto endAckOffset = endAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::EndAck,
-        endAckOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::EndAck,
+                       endAckOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(buffer);
+    bool response = protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     EXPECT_TRUE(response);
 }
@@ -1236,20 +1367,26 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForEndAck)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     // Enter in WaitingEndAck phase
-    std::thread syncThread([this]() {
-        std::vector<PersistedData> testData = {
+    std::thread syncThread([this]()
+    {
+        std::vector<PersistedData> testData =
+        {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-            .WillOnce(Return(testData));
+        .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
             Wazuh::SyncSchema::Mode::Full,
@@ -1273,13 +1410,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for WaitingEndAck phase
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -1295,13 +1432,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
-        endBuilder,
-        Wazuh::SyncSchema::MessageType::EndAck,
-        endAckOffset.Union());
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
     endBuilder.Finish(endMessage);
 
     const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(endBuffer);
+    bool response = protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
 
     EXPECT_TRUE(response);
 
@@ -1311,20 +1448,26 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     // Enter in WaitingEndAck phase
-    std::thread syncThread([this]() {
-        std::vector<PersistedData> testData = {
+    std::thread syncThread([this]()
+    {
+        std::vector<PersistedData> testData =
+        {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-            .WillOnce(Return(testData));
+        .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
             Wazuh::SyncSchema::Mode::Full,
@@ -1348,13 +1491,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for WaitingEndAck phase
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -1370,13 +1513,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
-        endBuilder,
-        Wazuh::SyncSchema::MessageType::EndAck,
-        endAckOffset.Union());
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
     endBuilder.Finish(endMessage);
 
     const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(endBuffer);
+    bool response = protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
 
     EXPECT_TRUE(response);
 
@@ -1386,20 +1529,26 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     // Enter in WaitingEndAck phase
-    std::thread syncThread([this]() {
-        std::vector<PersistedData> testData = {
+    std::thread syncThread([this]()
+    {
+        std::vector<PersistedData> testData =
+        {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-            .WillOnce(Return(testData));
+        .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
             Wazuh::SyncSchema::Mode::Full,
@@ -1423,13 +1572,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for WaitingEndAck phase
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -1445,13 +1594,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
-        endBuilder,
-        Wazuh::SyncSchema::MessageType::EndAck,
-        endAckOffset.Union());
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
     endBuilder.Finish(endMessage);
 
     const uint8_t* endBuffer = endBuilder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(endBuffer);
+    bool response = protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
 
     EXPECT_TRUE(response);
 
@@ -1461,9 +1610,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForReqRet)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
@@ -1483,13 +1636,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForReqRet)
     auto reqRetOffset = reqRetBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
-        builder,
-        Wazuh::SyncSchema::MessageType::ReqRet,
-        reqRetOffset.Union());
+                       builder,
+                       Wazuh::SyncSchema::MessageType::ReqRet,
+                       reqRetOffset.Union());
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(buffer);
+    bool response = protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     EXPECT_TRUE(response);
 }
@@ -1497,20 +1650,26 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForReqRet)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     // Enter in WaitingEndAck phase
-    std::thread syncThread([this]() {
-        std::vector<PersistedData> testData = {
+    std::thread syncThread([this]()
+    {
+        std::vector<PersistedData> testData =
+        {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-            .WillOnce(Return(testData));
+        .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
             Wazuh::SyncSchema::Mode::Full,
@@ -1534,13 +1693,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for WaitingEndAck phase
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -1556,13 +1715,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
     auto reqRetMessage = Wazuh::SyncSchema::CreateMessage(
-        reqRetBuilder,
-        Wazuh::SyncSchema::MessageType::ReqRet,
-        reqRetOffset.Union());
+                             reqRetBuilder,
+                             Wazuh::SyncSchema::MessageType::ReqRet,
+                             reqRetOffset.Union());
     reqRetBuilder.Finish(reqRetMessage);
 
     const uint8_t* reqRetBuffer = reqRetBuilder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(reqRetBuffer);
+    bool response = protocol->parseResponseBuffer(reqRetBuffer, reqRetBuilder.GetSize());
 
     EXPECT_TRUE(response);
 
@@ -1572,20 +1731,26 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     // Enter in WaitingEndAck phase
-    std::thread syncThread([this]() {
-        std::vector<PersistedData> testData = {
+    std::thread syncThread([this]()
+    {
+        std::vector<PersistedData> testData =
+        {
             {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE}
         };
 
         EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
-            .WillOnce(Return(testData));
+        .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
             Wazuh::SyncSchema::Mode::Full,
@@ -1609,13 +1774,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
-        startBuilder,
-        Wazuh::SyncSchema::MessageType::StartAck,
-        startAckOffset.Union());
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
     startBuilder.Finish(startMessage);
 
     const uint8_t* startBuffer = startBuilder.GetBufferPointer();
-    protocol->parseResponseBuffer(startBuffer);
+    protocol->parseResponseBuffer(startBuffer, startBuilder.GetSize());
 
     // Wait for WaitingEndAck phase
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -1636,13 +1801,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
     auto reqRetMessage = Wazuh::SyncSchema::CreateMessage(
-        reqRetBuilder,
-        Wazuh::SyncSchema::MessageType::ReqRet,
-        reqRetOffset.Union());
+                             reqRetBuilder,
+                             Wazuh::SyncSchema::MessageType::ReqRet,
+                             reqRetOffset.Union());
     reqRetBuilder.Finish(reqRetMessage);
 
     const uint8_t* reqRetBuffer = reqRetBuilder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(reqRetBuffer);
+    bool response = protocol->parseResponseBuffer(reqRetBuffer, reqRetBuilder.GetSize());
 
     EXPECT_TRUE(response);
 
@@ -1653,9 +1818,13 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
 TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnknownMessageType)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
-    MQ_Functions mqFuncs = {
+    MQ_Functions mqFuncs =
+    {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
@@ -1665,7 +1834,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithUnknownMessageType)
     builder.Finish(message);
 
     const uint8_t* buffer = builder.GetBufferPointer();
-    bool response = protocol->parseResponseBuffer(buffer);
+    bool response = protocol->parseResponseBuffer(buffer, builder.GetSize());
 
     EXPECT_FALSE(response);
 }

@@ -487,7 +487,7 @@ static void test_ag_send_syscheck_success(void **state) {
 
     will_return(__wrap_OS_SendSecureTCP, 48);
 
-    ag_send_syscheck(input);
+    ag_send_syscheck(input, strlen(input));
 }
 
 static void test_ag_send_syscheck_unable_to_connect(void **state) {
@@ -503,7 +503,7 @@ static void test_ag_send_syscheck_unable_to_connect(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "dbsync: cannot connect to syscheck: Cannot assign requested address (99)");
 
-    ag_send_syscheck(input);
+    ag_send_syscheck(input, strlen(input));
 
     errno = 0;
 }
@@ -526,7 +526,7 @@ static void test_ag_send_syscheck_error_sending_message(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "Cannot send message to syscheck: Resource temporarily unavailable (11)");
 
-    ag_send_syscheck(input);
+    ag_send_syscheck(input, strlen(input));
 
     errno = 0;
 }
@@ -538,7 +538,7 @@ static void test_ag_send_syscheck(void **state) {
     will_return(__wrap_syscom_dispatch, response);
     will_return(__wrap_syscom_dispatch, 23);
 
-    ag_send_syscheck("command");
+    ag_send_syscheck("command", strlen("command"));
 }
 #endif
 
