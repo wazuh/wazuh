@@ -1,5 +1,0 @@
-<!-- Test: invalid plugin_decoder -->
-<decoder name="name">
-  <prematch>^{\s*"</prematch>
-  <plugin_decoder>INVALID_Decoder</plugin_decoder>
-</decoder>

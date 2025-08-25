@@ -10508,10 +10508,6 @@ paths:
                 data:
                   affected_items:
                     - global:
-                        jsonout_output: yes
-                        alerts_log: yes
-                        logall: no
-                        logall_json: no
                         agents_disconnection_time: "10m"
                         agents_disconnection_alert_time: 0
                         update_check: yes
@@ -10522,7 +10518,6 @@ paths:
                           - 80.58.61.254
                       alerts:
                         log_alert_level: "3"
-                        email_alert_level: "12"
                       remote:
                         connection: secure
                         port: 1514
@@ -12213,10 +12208,6 @@ paths:
                 data:
                   affected_items:
                     - global:
-                        jsonout_output: yes
-                        alerts_log: yes
-                        logall: no
-                        logall_json: no
                         queue_size: 131072
                         update_check: yes
                         white_list:
@@ -12225,7 +12216,6 @@ paths:
                           - 127.0.0.53
                       alerts:
                         log_alert_level: "3"
-                        email_alert_level: "12"
                       cis-cat:
                         disabled: yes
                         timeout: 1800

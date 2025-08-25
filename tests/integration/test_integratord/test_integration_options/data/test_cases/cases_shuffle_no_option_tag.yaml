@@ -1,5 +1,0 @@
-- name: shuffle_works_with_no_option_tag_present
-  description: When the option tag is missing, the shuffle integration works
-  configuration_parameters:
-  metadata:
-    integration: shuffle

@@ -32,8 +32,7 @@ Fast way steps:
    /var/ossec/bin/wazuh-control start
 
 3- If you are running it on multiple clients, make sure to install
-   the server first. Use the manage_agents tool
-   to create the right encryption keys.
+   the server first.
 
 4- Enjoy.
 

@@ -22,11 +22,11 @@
 #define CMAIL         0000000400
 #define CAR           0000001000
 #define CDBD          0000002000 /// Deprecated module
-#define CSYSLOGD      0000004000
+#define CSYSLOGD      0000004000 /// Deprecated module
 #define CAGENT_CONFIG 0000010000
-#define CAGENTLESS    0000020000
-#define CREPORTS      0000040000
-#define CINTEGRATORD  0000100000
+#define CAGENTLESS    0000020000 /// Deprecated module
+#define CREPORTS      0000040000 /// Deprecated module
+#define CINTEGRATORD  0000100000 /// Deprecated module
 #define CWMODULE      0000200000
 #define CLABELS       0000400000
 #define CAUTHD        0001000000
@@ -51,12 +51,6 @@
                             (modules & CLGCSOCKET    ) | (modules & CLOGTEST      ) | (modules & WAZUHDB       ) |\
                             (modules & CANDSOCKET    ) )
 
-typedef enum needed_tags {
-    JSONOUT_OUTPUT = 0,
-    ALERTS_LOG,
-    LOGALL,
-    LOGALL_JSON
-} NeededTags;
 
 
 #include "../os_xml/os_xml.h"
@@ -71,9 +65,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_GlobalSK(XML_NODE node, void *configp, void *mailp);
 int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *d1, void *d2, int modules);
 int Read_Rootcheck(XML_NODE node, void *d1, void *d2);
-int Read_EmailAlerts(XML_NODE node, void *d1, void *d2);
-int Read_CSyslog(XML_NODE node, void *config1, void *config2);
-int Read_CAgentless(XML_NODE node, void *config1, void *config2);
 int Read_Localfile(XML_NODE node, void *d1, void *d2);
 int Read_Integrator(XML_NODE node, void *config1, void *config2);
 int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
@@ -81,7 +72,6 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
-int Read_CReports(XML_NODE node, void *config1, void *config2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 
