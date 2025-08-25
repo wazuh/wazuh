@@ -152,11 +152,7 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     mond->global.agents_disconnection_time = 900;
     mond->global.agents_disconnection_alert_time = 0;
 
-    modules |= CREPORTS;
-
-    //TODO: double check
-    if (ReadConfig(modules, cfg, mond, NULL) < 0 ||
-        ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
+    if (ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 
