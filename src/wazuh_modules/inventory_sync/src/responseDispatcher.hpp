@@ -13,14 +13,9 @@
 #define _RESPONSE_DISPATCHER_HPP
 
 #include "asyncValueDispatcher.hpp"
-#include "context.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "loggerHelper.h"
 #include "socketClient.hpp"
-#include "stringHelper.h"
-#include "threadDispatcher.h"
-#include <algorithm>
-#include <cstdint>
 #include <memory>
 #include <ranges>
 #include <vector>
@@ -125,25 +120,22 @@ public:
             [responseSocketClient](const ResponseMessage& data)
             {
                 thread_local std::vector<uint8_t> messageVector;
-                const size_t totalSize =
-                    MSG_HEADER_SIZE + data.agentId.size() + 1 + data.moduleName.size() + 1 + data.builder.GetSize();
-                // Prepare buffer with exact size needed
+                constexpr auto header = "(msg_to_agent) [] N!s ";
+                constexpr auto headerSize = 22;
                 messageVector.clear();
-                messageVector.reserve(totalSize);
-
-                // Construct message efficiently
-                messageVector.assign(MSG_HEADER.begin(), MSG_HEADER.end());
+                messageVector.reserve(headerSize + 5 + data.builder.GetSize());
+                messageVector.assign(header, header + headerSize);
                 std::ranges::copy(data.agentId, std::back_inserter(messageVector));
-                messageVector.push_back(MSG_SEPARATOR);
+                messageVector.push_back(' ');
+                // Send the payload size
+                std::ranges::copy(std::to_string(data.builder.GetSize()), std::back_inserter(messageVector));
+                messageVector.push_back(' ');
                 std::ranges::copy(data.moduleName, std::back_inserter(messageVector));
-                messageVector.push_back(MSG_SEPARATOR);
+                std::ranges::copy("_sync ", std::back_inserter(messageVector));
+                std::ranges::copy(data.builder.GetBufferPointer(),
+                                  data.builder.GetBufferPointer() + data.builder.GetSize(),
+                                  std::back_inserter(messageVector));
 
-                // Append FlatBuffers data
-                const uint8_t* bufferPtr = data.builder.GetBufferPointer();
-                const size_t bufferSize = data.builder.GetSize();
-                std::ranges::copy(bufferPtr, bufferPtr + bufferSize, std::back_inserter(messageVector));
-
-                // Send the constructed message
                 responseSocketClient->send(reinterpret_cast<const char*>(messageVector.data()), messageVector.size());
             });
     }
@@ -188,22 +180,26 @@ public:
      * - Optimized agent ID formatting
      * - Efficient FlatBuffers message construction
      */
-    void sendStartAck(const Wazuh::SyncSchema::Status status, const std::shared_ptr<Context> ctx) const
+    void sendStartAck(const Wazuh::SyncSchema::Status status,
+                      const uint64_t agentId,
+                      const uint64_t sessionId,
+                      std::string_view moduleName) const
     {
         ResponseMessage responseMessage;
         responseMessage.builder.Clear();
-        responseMessage.agentId = formatAgentId(ctx->agentId);
-        responseMessage.moduleName = ctx->moduleName;
 
-        // Create FlatBuffers message
-        auto startAckOffset = Wazuh::SyncSchema::CreateStartAck(responseMessage.builder, status, ctx->sessionId);
+        responseMessage.agentId = std::to_string(agentId);
+        if (responseMessage.agentId.length() < 3)
+        {
+            responseMessage.agentId.insert(0, 3 - responseMessage.agentId.length(), '0');
+        }
+        responseMessage.moduleName = moduleName;
+        auto startAckOffset = Wazuh::SyncSchema::CreateStartAck(responseMessage.builder, status, sessionId);
 
         auto messageOffset = Wazuh::SyncSchema::CreateMessage(
             responseMessage.builder, Wazuh::SyncSchema::MessageType_StartAck, startAckOffset.Union());
+        responseMessage.builder.Finish(messageOffset); // Print complete message buffer in hex with spaces
 
-        responseMessage.builder.Finish(messageOffset);
-
-        // Dispatch with move semantics
         m_responseDispatcher->push(std::move(responseMessage));
     }
 
@@ -212,19 +208,23 @@ public:
      * @param status Final synchronization status
      * @param ctx Shared context containing session information
      */
-    void sendEndAck(const Wazuh::SyncSchema::Status status, const std::shared_ptr<Context> ctx) const
+    void sendEndAck(const Wazuh::SyncSchema::Status status,
+                    const uint64_t agentId,
+                    const uint64_t sessionId,
+                    std::string_view moduleName) const
     {
         ResponseMessage responseMessage;
         responseMessage.builder.Clear();
-        // Note: End acknowledgment doesn't use padded agent ID (maintaining original behavior)
-        responseMessage.agentId = std::to_string(ctx->agentId);
-        responseMessage.moduleName = ctx->moduleName;
-
-        auto endAckOffset = Wazuh::SyncSchema::CreateEndAck(responseMessage.builder, status, ctx->sessionId);
+        responseMessage.agentId = std::to_string(agentId);
+        if (responseMessage.agentId.length() < 3)
+        {
+            responseMessage.agentId.insert(0, 3 - responseMessage.agentId.length(), '0');
+        }
+        responseMessage.moduleName = moduleName;
+        auto startAckOffset = Wazuh::SyncSchema::CreateEndAck(responseMessage.builder, status, sessionId);
 
         auto messageOffset = Wazuh::SyncSchema::CreateMessage(
-            responseMessage.builder, Wazuh::SyncSchema::MessageType_EndAck, endAckOffset.Union());
-
+            responseMessage.builder, Wazuh::SyncSchema::MessageType_EndAck, startAckOffset.Union());
         responseMessage.builder.Finish(messageOffset);
 
         m_responseDispatcher->push(std::move(responseMessage));
@@ -242,32 +242,29 @@ public:
      *
      * @throws std::invalid_argument if ranges vector is too large
      */
-    void sendEndMissingSeq(const uint64_t sessionId, const std::vector<std::pair<uint64_t, uint64_t>>& ranges) const
+    void sendEndMissingSeq(const uint64_t agentId,
+                           const uint64_t sessionId,
+                           std::string_view moduleName,
+                           const std::vector<std::pair<uint64_t, uint64_t>>& ranges) const
     {
-        // Validate input to prevent memory exhaustion
-        if (ranges.size() > MAX_RANGES_BATCH_SIZE)
-        {
-            logWarn(LOGGER_DEFAULT_TAG, "Large ranges batch size: %zu, consider splitting", ranges.size());
-        }
-
         ResponseMessage responseMessage;
-
-        // Convert ranges to FlatBuffers format efficiently
+        responseMessage.builder.Clear();
+        responseMessage.agentId = std::to_string(agentId);
+        if (responseMessage.agentId.length() < 3)
+        {
+            responseMessage.agentId.insert(0, 3 - responseMessage.agentId.length(), '0');
+        }
+        responseMessage.moduleName = moduleName;
         std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> convertedRanges;
-        convertedRanges.reserve(ranges.size()); // Avoid reallocations
-
         for (const auto& [first, second] : ranges)
         {
             auto offset = Wazuh::SyncSchema::CreatePair(responseMessage.builder, first, second);
             convertedRanges.push_back(offset);
         }
 
-        // Create the retransmission request
         auto endOffset = Wazuh::SyncSchema::CreateReqRetDirect(responseMessage.builder, &convertedRanges, sessionId);
-
         auto messageOffset = Wazuh::SyncSchema::CreateMessage(
             responseMessage.builder, Wazuh::SyncSchema::MessageType_ReqRet, endOffset.Union());
-
         responseMessage.builder.Finish(messageOffset);
 
         m_responseDispatcher->push(std::move(responseMessage));
