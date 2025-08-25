@@ -963,7 +963,7 @@ const char *get_ip_from_resolved_hostname(const char *resolved_hostname){
     return tmp_str ? ++tmp_str : resolved_hostname;
 }
 
-int external_socket_connect(char *socket_path, int response_timeout) {
+int external_socket_connect(__attribute__((unused)) char *socket_path, __attribute__((unused)) int response_timeout) {
 #ifndef WIN32
     int sock =  OS_ConnectUnixDomain(socket_path, SOCK_STREAM, OS_MAXSTR);
 
