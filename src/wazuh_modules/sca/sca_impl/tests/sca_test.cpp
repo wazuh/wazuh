@@ -20,10 +20,13 @@ class ScaTest : public ::testing::Test
     protected:
         void SetUp() override
         {
+            m_logOutput.clear();
+
             // Set up the logging callback to avoid "Log callback not set" errors
-            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* log)
+            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
             {
-                std::cout << log << "\n";
+                m_logOutput += log;
+                m_logOutput += "\n";
             });
 
             m_mockDBSync = std::make_shared<MockDBSync>();
@@ -36,6 +39,7 @@ class ScaTest : public ::testing::Test
 
         std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
         std::shared_ptr<SecurityConfigurationAssessment> m_sca = nullptr;
+        std::string m_logOutput;
 };
 
 TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
@@ -210,19 +214,14 @@ TEST_F(ScaTest, RunDoesNothingWhenDisabled)
 {
     m_sca->Setup(false, true, 1000, 30, false, {});
 
-    testing::internal::CaptureStdout();
     m_sca->Run();
-    std::string output = testing::internal::GetCapturedStdout();
-    EXPECT_THAT(output, testing::HasSubstr("SCA module is disabled"));
+    EXPECT_NE(m_logOutput.find("SCA module is disabled"), std::string::npos);
 }
 
 TEST_F(ScaTest, StopSetsKeepRunningToFalse)
 {
-    testing::internal::CaptureStdout();
-
     m_sca->Stop();
-    std::string output = testing::internal::GetCapturedStdout();
-    EXPECT_THAT(output, testing::HasSubstr("SCA module stopped."));
+    EXPECT_NE(m_logOutput.find("SCA module stopped."), std::string::npos);
 }
 
 TEST_F(ScaTest, SetGlobalWmExecFunctionStoresPointer)
@@ -242,7 +241,7 @@ TEST_F(ScaTest, SetGlobalWmExecFunctionStoresPointer)
 TEST_F(ScaTest, RunExecutesPoliciesWhenEnabled)
 {
     m_sca->Setup(true, true, 100, 30, false, {});
-    testing::internal::CaptureStdout();
+
     std::thread t([&]
     {
         m_sca->Run();
@@ -253,9 +252,7 @@ TEST_F(ScaTest, RunExecutesPoliciesWhenEnabled)
 
     t.join();
 
-    std::string output = testing::internal::GetCapturedStdout();
-    EXPECT_THAT(output, testing::HasSubstr("SCA module scan on start."));
-    //SUCCEED();
+    EXPECT_NE(m_logOutput.find("SCA module scan on start"), std::string::npos);
 }
 
 TEST_F(ScaTest, GetCreateStatement)
