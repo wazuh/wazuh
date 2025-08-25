@@ -65,31 +65,7 @@ configurations = configuration.load_configuration_template(configurations_path, 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-# Callback functions
-def callback_scan_id_result(line):
-    '''Callback that returns the ID an result of a SCA check
-    Args:
-        line (str): line string to check for match.
-    '''
-    match = re.match(patterns.CB_SCAN_RULE_RESULT, line)
-    if match:
-        return [match.group(1), match.group(2)]
-
-
-def callback_detect_sca_scan_summary(line):
-    '''Callback that return the json from a SCA summary event.
-    Args:
-        line (str): line string to check for match.
-    '''
-    match = re.match(patterns.CB_SCA_SCAN_EVENT, line)
-    if match:
-        if json.loads(match.group(1))['type'] == 'summary':
-            return json.loads(match.group(1))
-
-
 # Tests
-# TODO: Fix test before re-enabling
-@pytest.mark.skip(reason="Needs to be fixed")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
 def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policies_file, truncate_monitored_files,
                           set_wazuh_configuration, configure_local_internal_options, daemons_handler,
@@ -139,41 +115,47 @@ def test_sca_scan_results(test_configuration, test_metadata, prepare_cis_policie
 
     assertions:
         - Verify that when the `enabled` option is set to `yes`, the SCA module is enabled.
-        - Assert the engine used matches the regex_type configured in the metadata
-        - Assert the scan gets results from each rule check
+        - Verify the module uses the correct policy.
+        - Verify the scan gets results from each rule check.
 
     input_description:
         - The `cases_scan_results.yaml` file provides the module configuration for this test.
         - The cis*.yaml files located in the policies folder provide the sca rules to check.
 
     expected_output:
-        - r'.*sca.*INFO: (Module started.)'
-        - r'.*sca.*INFO: (Starting Security Configuration Assessment scan).'
-        - r".*sca.*DEBUG: SCA will use '(.*)' engine to check the rules."
-        - r".*sca.*wm_sca_hash_integrity.*DEBUG: ID: (\\d+); Result: '(.*)'"
-        - r'.*sca_send_alert.*Sending event: (.*)'
+        - r".*sca.*INFO: SCA Module enabled"
+        - r".*sca.*INFO: Starting SCA module"
+        - r".*sca.*INFO: SCA module running"
+        - r".*sca.*DEBUG: Starting Policy requirements evaluation for policy \"(.*?)\""
+        - r".*sca.*DEBUG: Policy requirements evaluation completed for policy \"(.*?)\", result: (Passed|Failed)"
+        - r".*sca.*DEBUG: Starting Policy checks evaluation for policy \"(.*?)\""
+        - r".*sca.*DEBUG: Policy check \"(\d+)\" evaluation completed for policy \"(.*?)\", result: (Passed|Failed)"
+        - r".*sca.*DEBUG: Policy checks evaluation completed for policy \"(.*?)\""
     '''
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
-    # Wait for the end of SCA scan
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_SCAN_STARTED), timeout=10)
+    # Verify that the SCA module is enabled
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_ENABLED), timeout=60 if sys.platform == WINDOWS else 10)
     assert log_monitor.callback_result
 
-    # Check the regex engine used by SCA
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCA_OSREGEX_ENGINE), timeout=10)
-    engine = log_monitor.callback_result[0] if log_monitor.callback_result != None else None
+    # Wait for the SCA scan requirements to start for the specific policy
+    expected_policy = Path(test_metadata['policy_file']).stem
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_REQ), timeout=40)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    assert engine == test_metadata['regex_type'], \
-        f"Wrong regex-engine found: {engine}, expected: {test_metadata['regex_type']}"
+    # Wait for the SCA scan requirements to end for the specific policy
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=10)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    # Check all checks have been done
-    log_monitor.start(callback=callback_scan_id_result, timeout=20, accumulations=int(test_metadata['results']))
+    # Wait for the SCA scan checks to start for the specific policy
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=30)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    # # Get scan summary event and check it matches with the policy file used
-    log_monitor.start(callback=callback_detect_sca_scan_summary, timeout=20)
-    summary = log_monitor.callback_result
+    # Get the results for the checks obtained in the SCA scan
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=30, accumulations=int(test_metadata['results']))
+    assert log_monitor.callback_result is not None and all(result[1] == expected_policy for result in log_monitor.callback_result)
 
-    assert summary['policy_id'] == test_metadata['policy_file'][0:-5], f"Unexpected policy_id found. Got \
-                                                                    {summary['policy_id']}, expected \
-                                                                    {test_metadata['policy_file'][0:-5]}"
+    # Wait for the SCA scan checks to end for the specific policy
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=30)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
