@@ -37,10 +37,10 @@ public:
             throw std::runtime_error("ServiceElement::build: Agent ID is empty.");
         }
 
-        auto serviceName = data->serviceName();
-        if (serviceName.empty())
+        auto serviceId = data->serviceId();
+        if (serviceId.empty())
         {
-            throw std::runtime_error("ServiceElement::build: Service name is empty.");
+            throw std::runtime_error("ServiceElement::build: Service ID is empty.");
         }
 
         DataHarvester<InventoryServiceHarvester> element;
@@ -48,7 +48,7 @@ public:
         // Key
         element.id = agentId;
         element.id += "_";
-        element.id += serviceName;
+        element.id += serviceId;
 
         // Operation
         element.operation = "INSERTED";
@@ -62,51 +62,74 @@ public:
             element.data.agent.host.ip = agentIp;
         }
 
-        // Service information
-        element.data.service.id = serviceName;
-        element.data.service.name = data->serviceDisplayName();
-        element.data.service.description = data->serviceDescription();
-        element.data.service.state = data->serviceState();
-        element.data.service.sub_state = data->serviceSubState();
-        element.data.service.start_type = data->serviceStartType();
-        element.data.service.type = data->serviceType();
-        element.data.service.exit_code = data->serviceExitCode();
-        element.data.service.enabled = data->serviceEnabled();
+        // File information
+        element.data.file.path = data->serviceFilePath();
 
         // Process information
-        element.data.process.pid = data->servicePid();
-        element.data.process.executable = data->processExecutable();
-        element.data.process.args = data->processArgs();
-        element.data.process.working_directory = data->processWorkingDir();
-        element.data.process.root_directory = data->processRootDir();
+        if (auto serviceProcessArgs = data->serviceProcessArgs();
+            !serviceProcessArgs.empty() && serviceProcessArgs.compare(" ") != 0)
+        {
+            element.data.process.args = Utils::splitView(serviceProcessArgs, ',');
+        }
+        element.data.process.executable = data->serviceProcessExecutable();
+        element.data.process.group.name = data->serviceProcessGroupName();
+        if (auto serviceProcessPid = data->serviceProcessPid(); serviceProcessPid >= 0)
+        {
+            element.data.process.pid = serviceProcessPid;
+        }
+        element.data.process.root_dir = data->serviceProcessRootDir();
+        element.data.process.user.name = data->serviceProcessUserName();
+        element.data.process.working_directory = data->serviceProcessWorkingDir();
 
-        // Process User and Group information
-        element.data.process.user.name = data->processUserName();
-        element.data.process.group.name = data->processGroupName();
-
-        // Service additional fields
-        element.data.service.restart = data->serviceRestart();
-        element.data.service.frequency = data->serviceFrequency();
-        element.data.service.starts_on_mount = data->serviceStartsOnMount();
-        element.data.service.starts_on_path_modified = data->serviceStartsOnPathModified();
-        element.data.service.starts_on_not_empty_directory = data->serviceStartsOnNotEmptyDirectory();
-        element.data.service.inetd_compatibility = data->serviceInetdCompatibility();
+        // Service information
         element.data.service.address = data->serviceAddress();
-        element.data.service.win32_exit_code = data->serviceWin32ExitCode();
+        element.data.service.description = data->serviceDescription();
+        element.data.service.enabled = data->serviceEnabled();
+        if (auto serviceExitCode = data->serviceExitCode(); serviceExitCode >= 0)
+        {
+            element.data.service.exit_code = serviceExitCode;
+        }
         element.data.service.following = data->serviceFollowing();
+        if (auto serviceFrequency = data->serviceFrequency(); serviceFrequency >= 0)
+        {
+            element.data.service.frequency = serviceFrequency;
+        }
+        element.data.service.id = serviceId;
+        element.data.service.inetd_compatibility = data->serviceInetdCompatibility();
+        element.data.service.name = data->serviceName();
         element.data.service.object_path = data->serviceObjectPath();
-
-        // File information
-        element.data.file.path = data->filePath();
+        element.data.service.restart = data->serviceRestart();
+        element.data.service.start_type = data->serviceStartType();
+        element.data.service.starts.on_mount = data->serviceStartsOnMount();
+        if (auto serviceOnNotEmptyDirectory = data->serviceStartsOnNotEmptyDirectory();
+            !serviceOnNotEmptyDirectory.empty() && serviceOnNotEmptyDirectory.compare(" ") != 0)
+        {
+            element.data.service.starts.on_not_empty_directory = Utils::splitView(serviceOnNotEmptyDirectory, ',');
+        }
+        if (auto serviceOnPathModified = data->serviceStartsOnPathModified();
+            !serviceOnPathModified.empty() && serviceOnPathModified.compare(" ") != 0)
+        {
+            element.data.service.starts.on_path_modified = Utils::splitView(serviceOnPathModified, ',');
+        }
+        element.data.service.state = data->serviceState();
+        element.data.service.sub_state = data->serviceSubState();
+        element.data.service.target.address = data->serviceTargetAddress();
+        if (auto serviceTargetEphemeralId = data->serviceTargetEphemeralId(); serviceTargetEphemeralId >= 0)
+        {
+            element.data.service.target.ephemeral_id = std::to_string(serviceTargetEphemeralId);
+        }
+        element.data.service.target.type = data->serviceTargetType();
+        element.data.service.type = data->serviceType();
+        if (auto serviceWin32ExitCode = data->serviceWin32ExitCode(); serviceWin32ExitCode >= 0)
+        {
+            element.data.service.win32_exit_code = serviceWin32ExitCode;
+        }
 
         // Log information
-        element.data.log.file.path = data->logFilePath();
-        element.data.error.log.file.path = data->errorLogFilePath();
+        element.data.log.file.path = data->serviceLogFilePath();
 
-        // Target information
-        element.data.target.ephemeral_id = data->serviceTargetEphemeralId();
-        element.data.target.type = data->serviceTargetType();
-        element.data.target.address = data->serviceTargetAddress();
+        // Error information
+        element.data.error.log.file.path = data->serviceErrorLogFilePath();
 
         // Wazuh cluster information
         auto& instancePolicyManager = PolicyHarvesterManager::instance();
@@ -127,17 +150,17 @@ public:
             throw std::runtime_error("ServiceElement::deleteElement: Agent ID is empty.");
         }
 
-        auto serviceName = data->serviceName();
-        if (serviceName.empty())
+        auto serviceId = data->serviceId();
+        if (serviceId.empty())
         {
-            throw std::runtime_error("ServiceElement::deleteElement: Service name is empty.");
+            throw std::runtime_error("ServiceElement::deleteElement: Service ID is empty.");
         }
 
         NoDataHarvester element;
         // Key
         element.id = agentId;
         element.id += "_";
-        element.id += serviceName;
+        element.id += serviceId;
 
         // Operation
         element.operation = "DELETED";
