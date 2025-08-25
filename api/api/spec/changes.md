@@ -281,9 +281,6 @@ or a list of them if parameter **nodes_list** is used.
 * Added **agents_list** parameter in query to all experimental endpoints.
 * Removed **agent_id** parameter from all endpoints.
 
-### GET ​   /experimental/ciscat/results
-* Removed **agent_id** parameter in query.
-
 ### GET     /experimental/syscollector/hardware
 * Renamed **ram_free** parameter in query to **ram.free** and changed it's type to integer.
 * Renamed **ram_total** parameter in query to **ram.total** and changed it's type to integer.
