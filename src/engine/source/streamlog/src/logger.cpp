@@ -13,11 +13,18 @@ namespace streamlog
  *
  * @param name The name of the log channel to register.
  * @param cfg The rotation configuration for the log channel.
+ * @param ext The file extension for the lastest link file.
  * @throws std::runtime_error if the channel already exists or if the configuration is invalid.
  */
-void LogManager::registerLog(const std::string& name, const RotationConfig& cfg)
+void LogManager::registerLog(const std::string& name, const RotationConfig& cfg, std::string_view ext)
 {
     std::unique_lock lock(m_channelsMutex);
+
+    // Validate extension
+    if (ext.empty() || ext.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") != std::string::npos)
+    {
+        throw std::runtime_error("Invalid file extension: " + std::string(ext));
+    }
 
     // Check if the channel already exists
     if (m_channels.find(name) != m_channels.end())
@@ -26,7 +33,7 @@ void LogManager::registerLog(const std::string& name, const RotationConfig& cfg)
     }
 
     // Create a new ChannelHandler instance and register it
-    auto handler = ChannelHandler::create(cfg, name);
+    auto handler = ChannelHandler::create(cfg, name, m_scheduler, ext);
     m_channels[name] = std::move(handler);
 
     LOG_DEBUG("Log channel '{}' registered successfully", name);
@@ -39,8 +46,14 @@ void LogManager::registerLog(const std::string& name, const RotationConfig& cfg)
  * @param cfg The new rotation configuration for the log channel.
  * @throws std::runtime_error if the channel does not exist or if the new configuration is invalid.
  */
-void LogManager::updateConfig(const std::string& name, const RotationConfig& cfg)
+void LogManager::updateConfig(const std::string& name, const RotationConfig& cfg, std::string_view ext)
 {
+    // Check extension
+    if (ext.empty() || ext.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") != std::string::npos)
+    {
+        throw std::runtime_error("Invalid file extension: " + std::string(ext));
+    }
+
     std::unique_lock lock(m_channelsMutex);
 
     // Find the channel
@@ -64,7 +77,7 @@ void LogManager::updateConfig(const std::string& name, const RotationConfig& cfg
     }
 
     // Replace the existing channel handler with a new one
-    it->second = ChannelHandler::create(validatedConfig, name);
+    it->second = ChannelHandler::create(validatedConfig, name, m_scheduler, ext);
 
     LOG_DEBUG("Log channel '{}' updated successfully", name);
 }

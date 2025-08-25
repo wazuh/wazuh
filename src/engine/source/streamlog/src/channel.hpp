@@ -15,6 +15,7 @@
 
 #include <base/logging.hpp>
 #include <queue/concurrentQueue.hpp>
+#include <scheduler/ischeduler.hpp>
 
 namespace streamlog
 {
@@ -97,6 +98,9 @@ private:
     const RotationConfig m_config;   ///< The rotation configuration for the log channel.
     const std::string m_channelName; ///< The name of the log channel.
 
+    std::weak_ptr<scheduler::IScheduler> m_scheduler; ///< Scheduler for compressing log writes
+    const std::string m_fileExtension; ///< The file extension for log files.
+
     struct ActiveWriters
     {
         mutable std::mutex mutex; ///< Mutex to protect the writers reference count
@@ -162,9 +166,25 @@ private:
     void onWriterDestroyed();
 
     /**
+     * @brief Compresses a rotated log file using gzip in a background task.
+     * @note Static method to allow scheduling without needing an instance.
+     */
+    static void compressLogFile(std::filesystem::path filePath, int compressionLevel);
+
+    /**
+     * @brief Creates a TaskConfig for compressing a log file.
+     * @param filePath The path of the log file to compress.
+     * @return A TaskConfig configured for compressing the specified log file.
+     */
+    scheduler::TaskConfig createCompressionTaskConfig(std::filesystem::path filePath) const;
+
+    /**
      * @brief Private constructor - use create() instead
      */
-    ChannelHandler(RotationConfig config, std::string channelName);
+    ChannelHandler(RotationConfig config,
+                   std::string channelName,
+                   std::weak_ptr<scheduler::IScheduler> scheduler,
+                   std::string_view ext);
 
 public:
     /**
@@ -185,10 +205,15 @@ public:
      * @brief Factory method to create a ChannelHandler as a shared_ptr
      * @param config The rotation configuration for the log channel
      * @param channelName The name of the log channel
+     * @param scheduler Optional scheduler for handling compression tasks
+     * @param ext The file extension for log files
      * @return A shared_ptr to the newly created ChannelHandler
      * @throws std::runtime_error if the configuration is invalid or initialization fails
      */
-    static std::shared_ptr<ChannelHandler> create(RotationConfig config, std::string channelName);
+    static std::shared_ptr<ChannelHandler> create(RotationConfig config,
+                                                  std::string channelName,
+                                                  std::weak_ptr<scheduler::IScheduler> scheduler = {},
+                                                  std::string_view ext = "json");
 
     /**
      * @brief Creates a new ChannelWriter and starts the worker thread if it's the first writer
@@ -201,6 +226,15 @@ public:
      * @return The name of the channel
      */
     const std::string& getChannelName() const { return m_channelName; }
+
+    /**
+     * @brief Get the current file path being written to
+     * @return The current log file path
+     */
+    std::filesystem::path getCurrentFilePath() const
+    {
+        return m_stateData.currentFile;
+    }
 
     /**
      * @brief Gets the number of active writers for this channel

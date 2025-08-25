@@ -97,7 +97,7 @@ TEST_F(LogManagerTest, RegisterLogSuccess)
 {
     streamlog::LogManager logManager;
 
-    EXPECT_NO_THROW(logManager.registerLog("test-channel", defaultConfig));
+    EXPECT_NO_THROW(logManager.registerLog("test-channel", defaultConfig, "log"));
 
     // Verify the channel exists
     EXPECT_TRUE(logManager.hasChannel("test-channel"));
@@ -109,10 +109,10 @@ TEST_F(LogManagerTest, RegisterLogDuplicate)
     streamlog::LogManager logManager;
 
     // Register first channel
-    EXPECT_NO_THROW(logManager.registerLog("test-channel", defaultConfig));
+    EXPECT_NO_THROW(logManager.registerLog("test-channel", defaultConfig, "log"));
 
     // Attempt to register duplicate should throw
-    EXPECT_THROW(logManager.registerLog("test-channel", defaultConfig), std::runtime_error);
+    EXPECT_THROW(logManager.registerLog("test-channel", defaultConfig, "log"), std::runtime_error);
 }
 
 TEST_F(LogManagerTest, RegisterLogInvalidConfig)
@@ -122,12 +122,12 @@ TEST_F(LogManagerTest, RegisterLogInvalidConfig)
     // Invalid base path
     auto invalidConfig = defaultConfig;
     invalidConfig.basePath = "/non/existent/path";
-    EXPECT_THROW(logManager.registerLog("test", invalidConfig), std::runtime_error);
+    EXPECT_THROW(logManager.registerLog("test", invalidConfig, "log"), std::runtime_error);
 
     // Empty pattern
     invalidConfig = defaultConfig;
     invalidConfig.pattern = "";
-    EXPECT_THROW(logManager.registerLog("test", invalidConfig), std::runtime_error);
+    EXPECT_THROW(logManager.registerLog("test", invalidConfig, "log"), std::runtime_error);
 }
 
 TEST_F(LogManagerTest, RegisterLogInvalidChannelName)
@@ -135,12 +135,12 @@ TEST_F(LogManagerTest, RegisterLogInvalidChannelName)
     streamlog::LogManager logManager;
 
     // Empty name
-    EXPECT_THROW(logManager.registerLog("", defaultConfig), std::runtime_error);
+    EXPECT_THROW(logManager.registerLog("", defaultConfig, "log"), std::runtime_error);
 
     // Invalid characters
-    EXPECT_THROW(logManager.registerLog("test channel", defaultConfig), std::runtime_error);
-    EXPECT_THROW(logManager.registerLog("test.channel", defaultConfig), std::runtime_error);
-    EXPECT_THROW(logManager.registerLog("test/channel", defaultConfig), std::runtime_error);
+    EXPECT_THROW(logManager.registerLog("test channel", defaultConfig, "log"), std::runtime_error);
+    EXPECT_THROW(logManager.registerLog("test.channel", defaultConfig, "log"), std::runtime_error);
+    EXPECT_THROW(logManager.registerLog("test/channel", defaultConfig, "log"), std::runtime_error);
 }
 
 TEST_F(LogManagerTest, HasChannelFunctionality)
@@ -152,8 +152,8 @@ TEST_F(LogManagerTest, HasChannelFunctionality)
     EXPECT_FALSE(logManager.hasChannel("another-channel"));
 
     // Register some channels
-    logManager.registerLog("test-channel", defaultConfig);
-    logManager.registerLog("another-channel", defaultConfig);
+    logManager.registerLog("test-channel", defaultConfig, "log");
+    logManager.registerLog("another-channel", defaultConfig, "log");
 
     // Verify channels exist
     EXPECT_TRUE(logManager.hasChannel("test-channel"));
@@ -164,7 +164,7 @@ TEST_F(LogManagerTest, HasChannelFunctionality)
 TEST_F(LogManagerTest, GetConfigSuccess)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("test-channel", defaultConfig);
+    logManager.registerLog("test-channel", defaultConfig, "log");
 
     const auto& config = logManager.getConfig("test-channel");
     EXPECT_EQ(config.basePath, defaultConfig.basePath);
@@ -183,7 +183,7 @@ TEST_F(LogManagerTest, GetConfigNonExistent)
 TEST_F(LogManagerTest, GetWriterSuccess)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("test-channel", defaultConfig);
+    logManager.registerLog("test-channel", defaultConfig, "log");
 
     auto writer = logManager.getWriter("test-channel");
     EXPECT_NE(writer, nullptr);
@@ -202,7 +202,7 @@ TEST_F(LogManagerTest, GetWriterNonExistent)
 TEST_F(LogManagerTest, GetActiveWritersCountSuccess)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("test-channel", defaultConfig);
+    logManager.registerLog("test-channel", defaultConfig, "log");
 
     // Initially no writers
     EXPECT_EQ(logManager.getActiveWritersCount("test-channel"), 0);
@@ -234,7 +234,7 @@ TEST_F(LogManagerTest, GetActiveWritersCountNonExistent)
 TEST_F(LogManagerTest, UpdateConfigSuccess)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("test-channel", defaultConfig);
+    logManager.registerLog("test-channel", defaultConfig, "log");
 
     // Create new config
     auto newConfig = defaultConfig;
@@ -242,7 +242,7 @@ TEST_F(LogManagerTest, UpdateConfigSuccess)
     newConfig.bufferSize = 20;
 
     // Update config (no active writers)
-    EXPECT_NO_THROW(logManager.updateConfig("test-channel", newConfig));
+    EXPECT_NO_THROW(logManager.updateConfig("test-channel", newConfig, "log"));
 
     // Verify config was updated (accounting for normalization)
     const auto& updatedConfig = logManager.getConfig("test-channel");
@@ -254,13 +254,13 @@ TEST_F(LogManagerTest, UpdateConfigNonExistent)
 {
     streamlog::LogManager logManager;
 
-    EXPECT_THROW(logManager.updateConfig("non-existent", defaultConfig), std::runtime_error);
+    EXPECT_THROW(logManager.updateConfig("non-existent", defaultConfig, "log"), std::runtime_error);
 }
 
 TEST_F(LogManagerTest, UpdateConfigWithActiveWriters)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("test-channel", defaultConfig);
+    logManager.registerLog("test-channel", defaultConfig, "log");
 
     // Create an active writer
     auto writer = logManager.getWriter("test-channel");
@@ -268,34 +268,34 @@ TEST_F(LogManagerTest, UpdateConfigWithActiveWriters)
     // Attempt to update config should throw
     auto newConfig = defaultConfig;
     newConfig.maxSize = 1024;
-    EXPECT_THROW(logManager.updateConfig("test-channel", newConfig), std::runtime_error);
+    EXPECT_THROW(logManager.updateConfig("test-channel", newConfig, "log"), std::runtime_error);
 
     // After destroying writer, update should work
     writer.reset();
     std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Brief pause for cleanup
-    EXPECT_NO_THROW(logManager.updateConfig("test-channel", newConfig));
+    EXPECT_NO_THROW(logManager.updateConfig("test-channel", newConfig, "log"));
 }
 
 TEST_F(LogManagerTest, UpdateConfigInvalidConfig)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("test-channel", defaultConfig);
+    logManager.registerLog("test-channel", defaultConfig, "log");
 
     // Invalid base path
     auto invalidConfig = defaultConfig;
     invalidConfig.basePath = "/non/existent/path";
-    EXPECT_THROW(logManager.updateConfig("test-channel", invalidConfig), std::runtime_error);
+    EXPECT_THROW(logManager.updateConfig("test-channel", invalidConfig, "log"), std::runtime_error);
 
     // Empty pattern
     invalidConfig = defaultConfig;
     invalidConfig.pattern = "";
-    EXPECT_THROW(logManager.updateConfig("test-channel", invalidConfig), std::runtime_error);
+    EXPECT_THROW(logManager.updateConfig("test-channel", invalidConfig, "log"), std::runtime_error);
 }
 
 TEST_F(LogManagerTest, DestroyChannelSuccess)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("test-channel", defaultConfig);
+    logManager.registerLog("test-channel", defaultConfig, "log");
 
     // Verify channel exists
     EXPECT_TRUE(logManager.hasChannel("test-channel"));
@@ -317,7 +317,7 @@ TEST_F(LogManagerTest, DestroyChannelNonExistent)
 TEST_F(LogManagerTest, DestroyChannelWithActiveWriters)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("test-channel", defaultConfig);
+    logManager.registerLog("test-channel", defaultConfig, "log");
 
     // Create an active writer
     auto writer = logManager.getWriter("test-channel");
@@ -338,9 +338,9 @@ TEST_F(LogManagerTest, MultipleChannels)
     streamlog::LogManager logManager;
 
     // Register multiple channels
-    logManager.registerLog("channel-1", defaultConfig);
-    logManager.registerLog("channel-2", defaultConfig);
-    logManager.registerLog("channel-3", defaultConfig);
+    logManager.registerLog("channel-1", defaultConfig, "log");
+    logManager.registerLog("channel-2", defaultConfig, "log");
+    logManager.registerLog("channel-3", defaultConfig, "log");
 
     // Verify all channels exist
     EXPECT_TRUE(logManager.hasChannel("channel-1"));
@@ -372,7 +372,7 @@ TEST_F(LogManagerTest, MultipleChannels)
 TEST_F(LogManagerTest, ConcurrentChannelAccess)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("concurrent-channel", defaultConfig);
+    logManager.registerLog("concurrent-channel", defaultConfig, "log");
 
     const int numThreads = 5;
     const int writersPerThread = 3;
@@ -417,7 +417,7 @@ TEST_F(LogManagerTest, ConcurrentChannelAccess)
 TEST_F(LogManagerTest, WriterFunctionality)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("write-test", defaultConfig);
+    logManager.registerLog("write-test", defaultConfig, "log");
 
     auto writer = logManager.getWriter("write-test");
     ASSERT_NE(writer, nullptr);
@@ -447,7 +447,7 @@ TEST_F(LogManagerTest, ConfigurationPersistence)
     customConfig.bufferSize = 50;
     customConfig.pattern = "custom-${name}-${YYYY}.log"; // ${counter} will be added due to maxSize
 
-    logManager.registerLog("persist-test", customConfig);
+    logManager.registerLog("persist-test", customConfig, "log");
 
     // Verify configuration is stored correctly (accounting for normalization)
     const auto& storedConfig = logManager.getConfig("persist-test");
@@ -483,11 +483,11 @@ TEST_F(LogManagerTest, EmptyStringOperations)
     EXPECT_FALSE(logManager.hasChannel(""));
 
     // All modification operations with empty string should throw
-    EXPECT_THROW(logManager.registerLog("", defaultConfig), std::runtime_error);
+    EXPECT_THROW(logManager.registerLog("", defaultConfig, "log"), std::runtime_error);
     EXPECT_THROW(logManager.getWriter(""), std::runtime_error);
     EXPECT_THROW(logManager.getConfig(""), std::runtime_error);
     EXPECT_THROW(logManager.getActiveWritersCount(""), std::runtime_error);
-    EXPECT_THROW(logManager.updateConfig("", defaultConfig), std::runtime_error);
+    EXPECT_THROW(logManager.updateConfig("", defaultConfig, "log"), std::runtime_error);
     EXPECT_THROW(logManager.destroyChannel(""), std::runtime_error);
 }
 
@@ -497,7 +497,7 @@ TEST_F(LogManagerTest, LongChannelNames)
 
     // Test valid long name (should work)
     std::string longName = std::string(200, 'A');
-    EXPECT_NO_THROW(logManager.registerLog(longName, defaultConfig));
+    EXPECT_NO_THROW(logManager.registerLog(longName, defaultConfig, "log"));
     EXPECT_TRUE(logManager.hasChannel(longName));
 
     // Test extremely long name (may fail depending on limits)
@@ -505,7 +505,7 @@ TEST_F(LogManagerTest, LongChannelNames)
     // This might throw due to filesystem limits, but should be handled gracefully
     try
     {
-        logManager.registerLog(extremelyLongName, defaultConfig);
+        logManager.registerLog(extremelyLongName, defaultConfig, "log");
         EXPECT_TRUE(logManager.hasChannel(extremelyLongName));
     }
     catch (const std::runtime_error&)
@@ -519,7 +519,7 @@ TEST_F(LogManagerTest, DestructorCleanup)
     // Test that LogManager destructor properly cleans up
     {
         auto logManager = std::make_unique<streamlog::LogManager>();
-        logManager->registerLog("cleanup-test", defaultConfig);
+        logManager->registerLog("cleanup-test", defaultConfig, "log");
 
         auto writer = logManager->getWriter("cleanup-test");
         EXPECT_EQ(logManager->getActiveWritersCount("cleanup-test"), 1);
@@ -534,7 +534,7 @@ TEST_F(LogManagerTest, DestructorCleanup)
 TEST_F(LogManagerTest, MultipleWriterLifecycles)
 {
     streamlog::LogManager logManager;
-    logManager.registerLog("lifecycle-test", defaultConfig);
+    logManager.registerLog("lifecycle-test", defaultConfig, "log");
 
     // Create multiple writers in sequence
     for (int i = 0; i < 10; ++i)

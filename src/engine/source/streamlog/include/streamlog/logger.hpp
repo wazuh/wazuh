@@ -6,9 +6,11 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
-#include <shared_mutex>
+
+#include <scheduler/ischeduler.hpp>
 
 /**
  * @brief Asynchronous, rotating log management module. Handles named, rotating log channels with asynchronous writes.
@@ -111,7 +113,6 @@
 namespace streamlog
 {
 
-
 /**
  * @brief Abstract base class for writer event handlers.
  *
@@ -141,8 +142,10 @@ struct RotationConfig
     std::filesystem::path basePath; ///< The base directory path where log files will be stored, should be an absolute
                                     ///< path and must exist and be writable.
     std::string pattern;            ///< The pattern used for naming log files, which can include placeholders.
-    size_t maxSize;                 ///< Optional maximum size (in bytes) for a log file before rotation, 0 means no size limit.
-    size_t bufferSize = 1 << 20;    ///<  The size (in events) of the buffer used for logging operations.
+    size_t maxSize; ///< Optional maximum size (in bytes) for a log file before rotation, 0 means no size limit.
+    size_t bufferSize = 1 << 20; ///<  The size (in events) of the buffer used for logging operations.
+    bool shouldCompress {true};  ///< If true, the rotated log files will be compressed using gzip.
+    size_t compressionLevel {5}; ///< Compression level for gzip (1-9), where 1 is fastest and 9 is best compression.
 };
 
 /**
@@ -158,22 +161,25 @@ class LogManager
 
 private:
     std::unordered_map<std::string, std::shared_ptr<ChannelHandler>> m_channels; ///< Channel names to ChannelHandler
-    mutable std::shared_mutex m_channelsMutex; ///< Mutex to protect access to m_channels
+    mutable std::shared_mutex m_channelsMutex;        ///< Mutex to protect access to m_channels
+    std::weak_ptr<scheduler::IScheduler> m_scheduler; ///< Scheduler for compressing log writes
 
 public:
-
-    LogManager() : m_channels(), m_channelsMutex()
-    {};
+    LogManager(std::weak_ptr<scheduler::IScheduler> scheduler = {})
+        : m_scheduler(scheduler)
+        , m_channels()
+        , m_channelsMutex() {};
 
     /**
      * @brief Registers a new log channel with the specified name and rotation configuration.
      *
      * @param name The name of the log channel.
      * @param cfg The rotation configuration for the log channel.
+     * @param ext The file extension for the lastest link file.
      * @throws std::runtime_error if the log channel cannot be registered due to an existing channel with the same name,
      *         invalid configuration, or if the base path does not exist or is not writable.
      */
-    void registerLog(const std::string& name, const RotationConfig& cfg);
+    void registerLog(const std::string& name, const RotationConfig& cfg, std::string_view ext);
 
     /**
      * @brief Checks if a log channel with the specified name exists.
@@ -192,11 +198,12 @@ public:
      *
      * @param name The name of the log channel to update.
      * @param cfg The new rotation configuration for the log channel.
+     * @param ext The file extension for the lastest link file.
      * @throws std::runtime_error if the log channel does not exist or if the new configuration is invalid.
      * @warning if the channel is currently in use by a writer, the update not take effect until all writers are
      * destroyed.
      */
-    void updateConfig(const std::string& name, const RotationConfig& cfg);
+    void updateConfig(const std::string& name, const RotationConfig& cfg, std::string_view ext);
 
     /**
      * @brief Retrieves a writer functor for the specified log channel.

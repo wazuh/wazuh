@@ -1,5 +1,7 @@
 #include "channel.hpp"
 
+#include <zlibHelper.hpp>
+
 #include <base/process.hpp>
 
 namespace streamlog
@@ -137,6 +139,7 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
     }();
 
     // Try update the file path with the current time and counter
+    const auto previousFile = m_stateData.currentFile;
     try
     {
         auto newFilePath = m_config.basePath / replacePlaceholders(now);
@@ -175,6 +178,22 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
         return;
     }
 
+    // Schedule compression of the previous file if needed
+    if (previousFile != m_stateData.currentFile && m_config.shouldCompress)
+    {
+        // Schedule compression of the previous file if needed
+        if (auto schedulerPtr = m_scheduler.lock())
+        {
+            const auto taskName = "CompressLog-" + m_channelName + "-" + previousFile.filename().string();
+            auto config = createCompressionTaskConfig(previousFile);
+            schedulerPtr->scheduleTask(taskName, std::move(config));
+            LOG_DEBUG("Scheduled compression for rotated log file: {}", previousFile.string());
+        }
+        else
+        {
+            LOG_WARNING("Scheduler is no longer available; cannot schedule compression for channel '{}'", m_channelName);
+        }
+    }
     LOG_INFO("Rotated the channel '{}' to new file: {}", m_channelName, m_stateData.currentFile.string());
 }
 
@@ -398,6 +417,12 @@ void ChannelHandler::validateAndNormalizeConfig(RotationConfig& config)
         std::filesystem::remove(testDirPath, ec);
     }
 
+    // Validate compression level
+    if (config.shouldCompress && (config.compressionLevel < 1 || config.compressionLevel > 9))
+    {
+        throw std::runtime_error("Compression level must be between 1 (fastest) and 9 (best)");
+    }
+
     // Validate the pattern
     if (config.pattern.empty())
     {
@@ -449,7 +474,10 @@ void ChannelHandler::validateAndNormalizeConfig(RotationConfig& config)
     }
 }
 
-ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
+ChannelHandler::ChannelHandler(RotationConfig config,
+                               std::string channelName,
+                               std::weak_ptr<scheduler::IScheduler> scheduler,
+                               std::string_view ext)
     : m_config(
           [&config]()
           {
@@ -463,26 +491,57 @@ ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
               return std::move(channelName);
           }())
     , m_stateData()
+    , m_scheduler(std::move(scheduler))
+    , m_fileExtension(ext)
 {
 
     // Initial state data: File paths
-    m_stateData.latestLink = m_config.basePath / (m_channelName + ".json");
+    m_stateData.latestLink = m_config.basePath / (m_channelName + "." + m_fileExtension);
     m_stateData.currentFile = [&]() -> std::filesystem::path
     {
         const auto now = std::chrono::system_clock::now();
         if (m_config.maxSize > 0)
         {
             auto candidate = m_config.basePath / replacePlaceholders(now);
-            while (std::filesystem::exists(candidate))
+            std::optional<std::filesystem::path> compressionCandidate;
+
+            if (m_config.shouldCompress)
+            {
+                *compressionCandidate = candidate.string() + ".gz";
+            }
+
+            // Increment counter until we find a non-existing file, considering compression if enabled
+            m_stateData.counter = 0;
+            while (std::filesystem::exists(candidate) || (compressionCandidate && std::filesystem::exists(*compressionCandidate)))
             {
                 m_stateData.counter++;
                 candidate = m_config.basePath / replacePlaceholders(now);
+                if (compressionCandidate)
+                {
+                    *compressionCandidate = candidate.string() + ".gz";
+                }
             }
+
+            // The cantidate cannot be existing here, so we decrement the counter to start from the last existing
             if (m_stateData.counter > 0)
             {
                 m_stateData.counter--;
                 candidate = m_config.basePath / replacePlaceholders(now);
+                if (compressionCandidate)
+                {
+                    *compressionCandidate = candidate.string() + ".gz";
+                }
             }
+
+            // Corner case: if the .json does not exist but the .gz does, we increment the counter again,
+            // so the new file will not overwrite the compressed one
+            // This only happens if an external process deleted the .json but not the .gz
+            if (compressionCandidate && std::filesystem::exists(*compressionCandidate))
+            {
+                m_stateData.counter++;
+                candidate = m_config.basePath / replacePlaceholders(now);
+            }
+
             return candidate;
         }
         return m_config.basePath / replacePlaceholders(now);
@@ -519,9 +578,13 @@ ChannelHandler::ChannelHandler(RotationConfig config, std::string channelName)
 /**
  * @brief Factory method to create a ChannelHandler as a shared_ptr
  */
-std::shared_ptr<ChannelHandler> ChannelHandler::create(RotationConfig config, std::string channelName)
+std::shared_ptr<ChannelHandler> ChannelHandler::create(RotationConfig config,
+                                                       std::string channelName,
+                                                       std::weak_ptr<scheduler::IScheduler> scheduler,
+                                                       std::string_view ext)
 {
-    return std::shared_ptr<ChannelHandler>(new ChannelHandler(std::move(config), std::move(channelName)));
+    return std::shared_ptr<ChannelHandler>(
+        new ChannelHandler(std::move(config), std::move(channelName), std::move(scheduler), ext));
 }
 
 /**
@@ -603,6 +666,43 @@ void ChannelHandler::onWriterDestroyed()
         LOG_DEBUG("Stopping worker thread for channel '{}' - no more active writers", m_channelName);
         stopWorkerThread();
     }
+}
+
+// CompressLogFile static method
+void ChannelHandler::compressLogFile(std::filesystem::path filePath, int compressionLevel)
+{
+    try
+    {
+        Utils::ZlibHelper::gzipCompress(filePath, filePath.string() + ".gz", compressionLevel);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to compress log file '{}': {}", filePath.string(), e.what());
+        return;
+    }
+    // Remove the original
+    std::error_code ec;
+    std::filesystem::remove(filePath, ec);
+    if (ec)
+    {
+        LOG_WARNING("Failed to remove original log file '{}' after compression: {}", filePath.string(), ec.message());
+    }
+    else
+    {
+        LOG_DEBUG("Successfully compressed log file '{}'", filePath.string());
+    }
+}
+
+scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(std::filesystem::path filePath) const
+{
+    return scheduler::TaskConfig {
+        .interval = 0, // One-time task
+        .CPUPriority = 0,
+        .timeout = 0,
+        .taskFunction = [filePath, compressionLevel = m_config.compressionLevel]() {
+            compressLogFile(filePath, compressionLevel);
+        },
+    };
 }
 
 // Implementation of ChannelWriter destructor

@@ -16,6 +16,7 @@ target_link_libraries(streamlogger_streamlogger
     PUBLIC
     base
     queue
+    scheduler::ischeduler
     PRIVATE
     urlrequest
 )
@@ -32,7 +33,13 @@ add_executable(streamlogger_utest
     ${UNIT_SRC_DIR}/logger_test.cpp
     ${UNIT_SRC_DIR}/channel_test.cpp
 )
-target_link_libraries(streamlogger_utest GTest::gtest_main GTest::gmock streamlogger::streamlogger)
+target_link_libraries(streamlogger_utest
+    PRIVATE
+    GTest::gtest_main
+    GTest::gmock
+    streamlogger::streamlogger
+    scheduler::mocks
+)
 target_include_directories(streamlogger_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(streamlogger_utest)
 

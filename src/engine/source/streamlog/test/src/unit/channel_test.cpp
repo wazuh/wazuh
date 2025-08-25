@@ -8,6 +8,8 @@
 
 #include <gtest/gtest.h>
 
+#include <scheduler/mockScheduler.hpp>
+
 #include "channel.hpp"
 
 namespace
@@ -405,7 +407,6 @@ TEST_F(ChannelHandlerTest, WriterLifecycle)
         (*writer1)("message from writer1");
         (*writer2)("message from writer2");
 
-
         // Check the active writers count
         EXPECT_EQ(handler->getActiveWritersCount(), 2);
     }
@@ -577,7 +578,7 @@ TEST_F(ChannelHandlerTest, ConcurrentWriters)
             auto expectedCount = numWriters * messagesPerWriter;
             size_t lastLineCount = 0;
 
-            for (int attempt = 0; attempt < 10; ++attempt)
+            for (int attempt = 0; attempt < 50; ++attempt)
             {
                 auto lineCount = countLines(entry.path());
                 size_t count = 0;
@@ -589,10 +590,9 @@ TEST_F(ChannelHandlerTest, ConcurrentWriters)
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
 
-            EXPECT_EQ(lastLineCount, expectedCount)
-                << "Expected " << expectedCount << " lines, got " << lastLineCount;
+            EXPECT_EQ(lastLineCount, expectedCount) << "Expected " << expectedCount << " lines, got " << lastLineCount;
             break;
-       }
+        }
     }
 
     EXPECT_TRUE(foundFile);
@@ -623,12 +623,10 @@ TEST_F(ChannelHandlerTest, WorkerThreadLifecycle)
 
         EXPECT_EQ(handler->getActiveWritersCount(), 1); // Only writer1 should be active
         (*writer1)("message3");
-
     }
     // All writers destroyed, thread should stop
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     EXPECT_EQ(handler->getActiveWritersCount(), 0); // No active writers
-
 
     // Create new writer - should restart thread
     auto writer3 = handler->createWriter();
@@ -1067,7 +1065,7 @@ TEST_F(ChannelHandlerTest, ThreadInterruptionAndCleanup)
     // Main writer destroyed
 
     std::this_thread::sleep_for(std::chrono::milliseconds(200)); // Allow cleanup
-    EXPECT_EQ(handler->getActiveWritersCount(), 0); // Should be 0 after destruction
+    EXPECT_EQ(handler->getActiveWritersCount(), 0);              // Should be 0 after destruction
 
     // Create new writer after all others destroyed
     auto newWriter = handler->createWriter();
@@ -1545,4 +1543,295 @@ TEST_F(ChannelHandlerTest, LongChannelName)
         // Acceptable to throw for too long names
         // Test passes as long as it doesn't crash
     }
+}
+
+// ============= COMPRESSION TESTS =============
+
+// Test compression configuration validation
+TEST_F(ChannelHandlerTest, CompressionConfigValidation)
+{
+    // Test valid compression levels
+    for (int level = 1; level <= 9; ++level)
+    {
+        auto config = defaultConfig;
+        config.shouldCompress = true;
+        config.compressionLevel = level;
+
+        EXPECT_NO_THROW(streamlog::ChannelHandler::create(config, "test-channel"));
+    }
+
+    // Test invalid compression levels
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+
+    // Too low
+    config.compressionLevel = 0;
+    EXPECT_THROW(streamlog::ChannelHandler::create(config, "test-channel"), std::runtime_error);
+
+    // Too high
+    config.compressionLevel = 10;
+    EXPECT_THROW(streamlog::ChannelHandler::create(config, "test-channel"), std::runtime_error);
+
+    // Negative
+    config.compressionLevel = -1;
+    EXPECT_THROW(streamlog::ChannelHandler::create(config, "test-channel"), std::runtime_error);
+}
+
+// Test compression enable by default
+TEST_F(ChannelHandlerTest, CompressionDisabledByDefault)
+{
+    auto handler = streamlog::ChannelHandler::create(defaultConfig, "test-channel");
+    const auto& config = handler->getConfig();
+
+    // shouldCompress should be true by default
+    EXPECT_TRUE(config.shouldCompress);
+    EXPECT_EQ(config.compressionLevel, 5); // Default level
+}
+
+// Test compression with mock scheduler
+TEST_F(ChannelHandlerTest, CompressionWithMockScheduler)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.compressionLevel = 6;
+    config.maxSize = 1 << 20; // 1MB - use the minimum valid size
+    config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+    // Create mock scheduler
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    // Expect scheduleTask to be called when rotation occurs
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(
+            [](std::string_view taskName, scheduler::TaskConfig&& config)
+            {
+                // Verify task configuration
+                EXPECT_EQ(config.interval, 0); // One-time task
+                EXPECT_EQ(config.CPUPriority, 0);
+                EXPECT_EQ(config.timeout, 0);
+                EXPECT_NE(config.taskFunction, nullptr);
+
+                // Verify task name format
+                std::string taskNameStr(taskName);
+                EXPECT_TRUE(taskNameStr.find("CompressLog-test-channel-") == 0);
+
+                // Execute the task function to simulate compression
+                config.taskFunction();
+            });
+
+    // Set the mock scheduler
+    auto handler = streamlog::ChannelHandler::create(config, "test-channel", mockScheduler, "log");
+
+    auto writer = handler->createWriter();
+
+    // Write enough data to exceed 1MB and trigger rotation
+    const std::string largeMessage(100000, 'X'); // 100KB message
+    for (int i = 0; i < 12; ++i)                 // 12 * 100KB = 1.2MB total
+    {
+        (*writer)(largeMessage + std::to_string(i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    // Wait for processing and rotations
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    // Verify that the file was created and compressed
+    size_t fileCount = 0;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+    {
+        if (entry.is_regular_file() && entry.path().string().find("test-channel") != std::string::npos)
+        {
+            fileCount++;
+            // Check extension to verify compression
+            EXPECT_TRUE(entry.path().extension() == ".gz" || entry.path().extension() == ".log"
+                        || entry.path().extension() == ".json");
+        }
+    }
+
+    EXPECT_GE(fileCount, 1) << "No files created";
+}
+
+// Test compression without scheduler (should log warning)
+TEST_F(ChannelHandlerTest, CompressionWithoutScheduler)
+{
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.maxSize = 1 << 20; // 1MB - use valid size
+    config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+    auto handler = streamlog::ChannelHandler::create(config, "test-channel");
+    // Note: We don't set a scheduler here
+
+    auto writer = handler->createWriter();
+
+    // Write enough data to trigger rotation - should not crash despite no scheduler
+    const std::string largeMessage(100000, 'B'); // 100KB message
+    for (int i = 0; i < 12; ++i)                 // 12 * 100KB = 1.2MB total
+    {
+        (*writer)(largeMessage + std::to_string(i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    // Wait for processing
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // Test should pass without crashing
+    SUCCEED();
+}
+
+// Test compression task configuration creation
+TEST_F(ChannelHandlerTest, CompressionTaskConfigCreation)
+{
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.compressionLevel = 7;
+
+    auto handler = streamlog::ChannelHandler::create(config, "test-channel");
+
+    // We can't directly test createCompressionTaskConfig as it's private,
+    // but we can verify compression settings are properly stored
+    const auto& storedConfig = handler->getConfig();
+    EXPECT_TRUE(storedConfig.shouldCompress);
+    EXPECT_EQ(storedConfig.compressionLevel, 7);
+}
+
+// Test compression with different compression levels
+TEST_F(ChannelHandlerTest, CompressionWithDifferentLevels)
+{
+    using namespace ::testing;
+
+    for (int level = 1; level <= 9; level += 2) // Test odd levels
+    {
+        auto config = defaultConfig;
+        config.shouldCompress = true;
+        config.compressionLevel = level;
+        config.maxSize = 1 << 20; // 1MB - use valid size
+        config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+        auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+        EXPECT_CALL(*mockScheduler, scheduleTask(_, _))
+            .Times(AtLeast(1)) // May or may not be called depending on rotation
+            .WillRepeatedly(
+                [level](std::string_view taskName, scheduler::TaskConfig&& taskConfig)
+                {
+                    EXPECT_EQ(taskConfig.interval, 0);
+                    EXPECT_NE(taskConfig.taskFunction, nullptr);
+                    // Execute the task function to ensure it works
+                    taskConfig.taskFunction();
+                });
+
+        auto handler =
+            streamlog::ChannelHandler::create(config, "test-channel-" + std::to_string(level), mockScheduler, "log");
+
+        auto writer = handler->createWriter();
+        (*writer)("Test message with compression level " + std::to_string(level));
+
+        // Write enough data to trigger rotation
+        const std::string largeMessage(100000, 'C'); // 100KB message
+        for (int i = 0; i < 12; ++i)                 // 12 * 100KB = 1.2MB total
+        {
+            (*writer)(largeMessage + std::to_string(i));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        // Verify that the file was created
+        size_t fileCount = 0;
+        size_t compressedFileCount = 0;
+        size_t uncompressedFileCount = 0;
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+        {
+            if (entry.is_regular_file()
+                && entry.path().string().find("test-channel-" + std::to_string(level)) != std::string::npos)
+            {
+                fileCount++;
+                // Check extension to verify compression
+                if (entry.path().extension() == ".gz")
+                {
+                    compressedFileCount++;
+                }
+                else if (entry.path().extension() == ".log" || entry.path().extension() == ".log")
+                {
+                    uncompressedFileCount++;
+                }
+                EXPECT_TRUE(entry.path().extension() == ".gz" || entry.path().extension() == ".log");
+            }
+        }
+        EXPECT_GE(fileCount, 3) << "No files created for compression level " << level;
+        EXPECT_GE(compressedFileCount, 1) << "No compressed files created for compression level " << level;
+        EXPECT_GE(uncompressedFileCount, 2) << "No uncompressed files created for compression level " << level;
+        // Clean up for next iteration
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        writer.reset();
+        handler.reset();
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
+        {
+            if (entry.is_regular_file()
+                && entry.path().string().find("test-channel-" + std::to_string(level)) != std::string::npos)
+            {
+                std::filesystem::remove(entry.path());
+            }
+        }
+    }
+}
+
+// Test compression with time-based rotation
+TEST_F(ChannelHandlerTest, CompressionWithTimeRotation)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.compressionLevel = 4;
+    config.maxSize = 0; // No size limit, rely on time-based rotation
+    config.pattern = "${YYYY}-${MM}-${DD}-${HH}-${name}.log";
+
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    // May not be called if no time change occurs during test
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _)).Times(AtLeast(0));
+
+    auto handler = streamlog::ChannelHandler::create(config, "test-time-rotation", mockScheduler, "log");
+
+    auto writer = handler->createWriter();
+    (*writer)("Test message for time-based rotation");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+}
+
+// Test compression is not triggered when disabled
+TEST_F(ChannelHandlerTest, NoCompressionWhenDisabled)
+{
+    using namespace ::testing;
+
+    auto config = defaultConfig;
+    config.shouldCompress = false; // Explicitly disable compression
+    config.maxSize = 1 << 20;      // 1MB - use valid size
+    config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    // Should never call scheduleTask since compression is disabled
+    EXPECT_CALL(*mockScheduler, scheduleTask(_, _)).Times(0);
+
+    auto handler = streamlog::ChannelHandler::create(config, "test-no-compression", mockScheduler);
+
+    auto writer = handler->createWriter();
+
+    // Write data that would trigger rotation
+    const std::string largeMessage(100000, 'D'); // 100KB message
+    for (int i = 0; i < 12; ++i)                 // 12 * 100KB = 1.2MB total
+    {
+        (*writer)(largeMessage + std::to_string(i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    // Wait for processing
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }

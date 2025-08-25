@@ -17,3 +17,5 @@ public:
 };
 
 } // namespace scheduler::mocks
+
+#endif // _MOCKS_ISCHEDULER_HPP
