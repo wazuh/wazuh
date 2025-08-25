@@ -163,7 +163,7 @@ int main(int argc, char **argv)
         unsigned long days_val = 0;
         unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfigj:D:p:c:v:sx:k:PF:ar:L:C:B:K:X:S:"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfig:j:D:p:c:v:sx:k:PF:ar:L:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
