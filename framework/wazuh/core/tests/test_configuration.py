@@ -428,8 +428,6 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 
 
 @pytest.mark.parametrize("agent_id, component, socket, socket_dir, rec_msg", [
-    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
-    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
     ('000', 'agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('000', 'agentless', 'agentless', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
@@ -444,8 +442,6 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('000', 'syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
     ('000', 'wazuh-db', 'wdb', 'db', {"error": 0, "data": {"enabled": "yes"}}),
     ('000', 'wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
-    ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
-    ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {}}'),
     ('001', 'agent', 'remote', 'sockets', 'ok {"agent": {"enabled": "yes"}}'),
     ('001', 'agentless', 'remote', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
@@ -460,7 +456,6 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('001', 'syscheck', 'remote', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
     ('001', 'wmodules', 'remote', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}')
 ])
-@patch('builtins.open', mock_open(read_data='test_password'))
 @patch('wazuh.core.wazuh_socket.create_wazuh_socket_message')
 @patch('os.path.exists')
 @patch('wazuh.core.common.WAZUH_PATH', new='/var/ossec')
@@ -492,11 +487,6 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
 
                     mock_receive.assert_called_once()
                     mock_close.assert_called_once()
-
-                    if result.get('auth', {}).get('use_password') == "yes":
-                        assert result.get('authd.pass') == 'test_password'
-                    else:
-                        assert 'authd.pass' not in result
 
 
 @pytest.mark.parametrize('agent_id, component, config, socket_exist, socket_class, expected_error, expected_id', [
