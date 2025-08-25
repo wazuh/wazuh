@@ -4279,6 +4279,10 @@ static void test_wdb_services_save_transaction_fail(void **state) {
     int ret = OS_INVALID;
     wdb_t *data = (wdb_t *)*state;
 
+    data->transaction = 0;
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_save(): cannot begin transaction");
+
     const char * scan_id = "scan_id";
     const char * scan_time = "scan_time";
     const char * service_name = "service_name";
@@ -4353,10 +4357,6 @@ static void test_wdb_services_save_transaction_fail(void **state) {
         .checksum = checksum
     };
 
-    data->transaction = 0;
-    will_return(__wrap_wdb_begin2, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_save(): cannot begin transaction");
-
     ret = wdb_services_save(data, &service_record, false);
 
     assert_int_equal(ret, OS_INVALID);
@@ -4365,6 +4365,11 @@ static void test_wdb_services_save_transaction_fail(void **state) {
 static void test_wdb_services_save_insert_fail(void **state) {
     int ret = OS_INVALID;
     wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 1;
+
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_insert(): cannot cache statement");
 
     const char * scan_id = "scan_id";
     const char * scan_time = "scan_time";
@@ -4401,11 +4406,6 @@ static void test_wdb_services_save_insert_fail(void **state) {
     const char * service_target_type = "service_target_type";
     const char * service_target_address = "service_target_address";
     const char * checksum = "checksum";
-
-    data->transaction = 1;
-
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_insert(): cannot cache statement");
 
     service_record_t service_record = {
         .scan_id = scan_id,
@@ -4492,10 +4492,11 @@ static void test_wdb_services_save_success(void **state) {
     const char * service_target_address = "service_target_address";
     const char * checksum = "checksum";
 
+    will_return(__wrap_wdb_stmt_cache, 0);
     bind_text(1, scan_id, 0);
     bind_text(2, scan_time, 0);
-    bind_text(3, service_name, 0);
-    bind_text(4, service_id, 0);
+    bind_text(3, service_id, 0);
+    bind_text(4, service_name, 0);
     bind_text(5, service_description, 0);
     bind_text(6, service_type, 0);
     bind_text(7, service_state, 0);
@@ -4576,7 +4577,7 @@ static void test_wdb_services_save_success(void **state) {
 /* wdb_services_insert */
 static void test_wdb_services_insert_sql_fail(void **state) {
     int ret = OS_INVALID;
-    test_struct_t *data = (test_struct_t *)*state;
+    wdb_t *data = (wdb_t *)*state;
 
     const char * scan_id = "scan_id";
     const char * scan_time = "scan_time";
@@ -4614,10 +4615,11 @@ static void test_wdb_services_insert_sql_fail(void **state) {
     const char * service_target_address = "service_target_address";
     const char * checksum = "checksum";
 
+    will_return(__wrap_wdb_stmt_cache, 0);
     bind_text(1, scan_id, 0);
     bind_text(2, scan_time, 0);
-    bind_text(3, service_name, 0);
-    bind_text(4, service_id, 0);
+    bind_text(3, service_id, 0);
+    bind_text(4, service_name, 0);
     bind_text(5, service_description, 0);
     bind_text(6, service_type, 0);
     bind_text(7, service_state, 0);
@@ -4650,8 +4652,9 @@ static void test_wdb_services_insert_sql_fail(void **state) {
     bind_text(34, service_target_address, 0);
     bind_text(35, checksum, 0);
 
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_insert(): cannot cache statement");
+    will_return(__wrap_wdb_step, 1);
+    will_return(__wrap_sqlite3_errmsg, "ERROR");
+    expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
     service_record_t service_record = {
         .scan_id = scan_id,
@@ -4691,7 +4694,7 @@ static void test_wdb_services_insert_sql_fail(void **state) {
         .checksum = checksum
     };
 
-    ret = wdb_services_insert(data->wdb, &service_record, false);
+    ret = wdb_services_insert(data, &service_record, false);
 
     assert_int_equal(ret, OS_INVALID);
 }

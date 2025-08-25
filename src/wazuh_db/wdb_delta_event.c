@@ -73,22 +73,18 @@ const char * USERINFO_FIELDS[] = {
 
 typedef enum service_fields {
     SERVICE_FREQUENCY,
-    SERVICE_STARTS_ON_MOUNT,
-    SERVICE_INETD_COMPATIBILITY,
     SERVICE_PROCESS_PID,
+    SERVICE_TARGET_EPHEMERAL_ID,
     SERVICE_EXIT_CODE,
-    SERVICE_WIN32_EXIT_CODE,
-    SERVICE_TARGET_EPHEMERAL_ID
+    SERVICE_WIN32_EXIT_CODE
 } service_fields;
 
 const char * SERVICEINFO_FIELDS[] = {
     [SERVICE_FREQUENCY] = "service_frequency",
-    [SERVICE_STARTS_ON_MOUNT] = "service_starts_on_mount",
-    [SERVICE_INETD_COMPATIBILITY] = "service_inetd_compatibility",
-    [SERVICE_PROCESS_PID] = "process_pid",
+    [SERVICE_PROCESS_PID] = "service_process_pid",
+    [SERVICE_TARGET_EPHEMERAL_ID] = "service_target_ephemeral_id",
     [SERVICE_EXIT_CODE] = "service_exit_code",
-    [SERVICE_WIN32_EXIT_CODE] = "service_win32_exit_code",
-    [SERVICE_TARGET_EPHEMERAL_ID] = "service_target_ephemeral_id"
+    [SERVICE_WIN32_EXIT_CODE] = "service_win32_exit_code"
 };
 
 #define IS_VALID_GROUPS_VALUE(field_name, field_value) ( \
@@ -141,16 +137,8 @@ const char * SERVICEINFO_FIELDS[] = {
 #define IS_VALID_SERVICE_VALUE(field_name, field_value) ( \
     !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_FREQUENCY]) ? \
         GE(field_value, 0) : \
-    !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_STARTS_ON_MOUNT]) ? \
-        (EQ(field_value, 0) || EQ(field_value, 1)) : \
-    !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_INETD_COMPATIBILITY]) ? \
-        (EQ(field_value, 0) || EQ(field_value, 1)) : \
     !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_PROCESS_PID]) ? \
         GE(field_value, 0) : \
-    !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_EXIT_CODE]) ? \
-        true : \
-    !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_WIN32_EXIT_CODE]) ? \
-        true : \
     !strcmp(field_name, SERVICEINFO_FIELDS[SERVICE_TARGET_EPHEMERAL_ID]) ? \
         GE(field_value, 0) : true \
 )
