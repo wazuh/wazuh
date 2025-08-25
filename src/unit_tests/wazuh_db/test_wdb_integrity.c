@@ -2175,7 +2175,7 @@ void test_wdbi_report_removed_services_success(void **state) {
     router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
 
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteService\","
-                                     "\"data\":{\"service_name\":\"apache2\"}}";
+                                     "\"data\":{\"service_id\":\"apache2\"}}";
 
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "apache2");
@@ -2198,10 +2198,10 @@ void test_wdbi_report_removed_services_success_multiple_steps(void **state) {
     router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
 
     const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteService\","
-                                     "\"data\":{\"service_name\":\"apache2\"}}";
+                                     "\"data\":{\"service_id\":\"apache2\"}}";
 
     const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteService\","
-                                     "\"data\":{\"service_name\":\"nginx\"}}";
+                                     "\"data\":{\"service_id\":\"nginx\"}}";
     // First service
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "apache2");

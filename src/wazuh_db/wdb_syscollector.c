@@ -1357,8 +1357,8 @@ int wdb_services_insert(wdb_t * wdb, const service_record_t * service_record, co
 
     sqlite3_bind_text(stmt, 1, service_record->scan_id, -1, NULL);
     sqlite3_bind_text(stmt, 2, service_record->scan_time, -1, NULL);
-    sqlite3_bind_text(stmt, 3, service_record->service_name, -1, NULL);
-    sqlite3_bind_text(stmt, 4, service_record->service_id, -1, NULL);
+    sqlite3_bind_text(stmt, 3, service_record->service_id, -1, NULL);
+    sqlite3_bind_text(stmt, 4, service_record->service_name, -1, NULL);
     sqlite3_bind_text(stmt, 5, service_record->service_description, -1, NULL);
     sqlite3_bind_text(stmt, 6, service_record->service_type, -1, NULL);
     sqlite3_bind_text(stmt, 7, service_record->service_state, -1, NULL);
@@ -1390,11 +1390,19 @@ int wdb_services_insert(wdb_t * wdb, const service_record_t * service_record, co
     sqlite3_bind_text(stmt, 25, service_record->service_address, -1, NULL);
     sqlite3_bind_text(stmt, 26, service_record->log_file_path, -1, NULL);
     sqlite3_bind_text(stmt, 27, service_record->error_log_file_path, -1, NULL);
-    sqlite3_bind_int(stmt, 28, service_record->service_exit_code);
-    sqlite3_bind_int(stmt, 29, service_record->service_win32_exit_code);
+    if (service_record->service_exit_code >= 0) {
+        sqlite3_bind_int(stmt, 28, service_record->service_exit_code);
+    } else {
+        sqlite3_bind_null(stmt, 28);
+    }
+    if (service_record->service_win32_exit_code >= 0) {
+        sqlite3_bind_int(stmt, 29, service_record->service_win32_exit_code);
+    } else {
+        sqlite3_bind_null(stmt, 29);
+    }
     sqlite3_bind_text(stmt, 30, service_record->service_following, -1, NULL);
     sqlite3_bind_text(stmt, 31, service_record->service_object_path, -1, NULL);
-    if (service_record->service_target_ephemeral_id) {
+    if (service_record->service_target_ephemeral_id >= 0) {
         sqlite3_bind_int64(stmt, 32, service_record->service_target_ephemeral_id);
     } else {
         sqlite3_bind_null(stmt, 32);
@@ -1666,8 +1674,8 @@ int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
 {
     const char * scan_id = "0";
     const char * scan_time = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "scan_time"));
-    const char * service_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_name"));
     const char * service_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_id"));
+    const char * service_name = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_name"));
     const char * service_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_description"));
     const char * service_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_type"));
     const char * service_state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_state"));
@@ -1701,28 +1709,15 @@ int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
 
     service_record_t service_record = {
-        .scan_time = scan_time, .scan_id = scan_id, .service_name = service_name, .service_id = service_id,
-        .service_starts_on_not_empty_directory = service_starts_on_not_empty_directory,
-        .service_inetd_compatibility = service_inetd_compatibility,
-        .process_pid = process_pid,
-        .process_executable = process_executable,
-        .process_args = process_args,
-        .process_user_name = process_user_name,
-        .process_group_name = process_group_name,
-        .process_working_directory = process_working_directory,
-        .process_root_directory = process_root_directory,
-        .file_path = file_path,
-        .service_address = service_address,
-        .log_file_path = log_file_path,
-        .error_log_file_path = error_log_file_path,
-        .service_exit_code = service_exit_code,
-        .service_win32_exit_code = service_win32_exit_code,
-        .service_following = service_following,
-        .service_object_path = service_object_path,
-        .service_target_ephemeral_id = service_target_ephemeral_id,
-        .service_target_type = service_target_type,
-        .service_target_address = service_target_address,
-        .checksum = checksum
+        .scan_id = scan_id, .scan_time = scan_time, .service_id = service_id, .service_name = service_name,
+        .service_description = service_description, .service_type = service_type, .service_state = service_state, .service_sub_state = service_sub_state,
+        .service_enabled = service_enabled, .service_start_type = service_start_type, .service_restart = service_restart, .service_frequency = service_frequency,
+        .service_starts_on_mount = service_starts_on_mount, .service_starts_on_path_modified = service_starts_on_path_modified, .service_starts_on_not_empty_directory = service_starts_on_not_empty_directory, .service_inetd_compatibility = service_inetd_compatibility,
+        .process_pid = process_pid, .process_executable = process_executable, .process_args = process_args, .process_user_name = process_user_name,
+        .process_group_name = process_group_name, .process_working_directory = process_working_directory, .process_root_directory = process_root_directory, .file_path = file_path,
+        .service_address = service_address, .log_file_path = log_file_path, .error_log_file_path = error_log_file_path, .service_exit_code = service_exit_code,
+        .service_win32_exit_code = service_win32_exit_code, .service_following = service_following, .service_object_path = service_object_path, .service_target_ephemeral_id = service_target_ephemeral_id,
+        .service_target_type = service_target_type, .service_target_address = service_target_address, .checksum = checksum
     };
 
     return wdb_services_save(wdb, &service_record, TRUE);

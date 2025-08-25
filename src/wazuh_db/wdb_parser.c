@@ -218,7 +218,7 @@ static struct column_list const TABLE_USERS[USERS_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 31, false, false, NULL, "login_status", {.integer = 0}, true}, .next = &TABLE_USERS[31]},
     { .value = { FIELD_TEXT, 32, false, false, NULL, "login_tty", {.text = ""}, true}, .next = &TABLE_USERS[32]},
     { .value = { FIELD_TEXT, 33, false, false, NULL, "login_type", {.text = ""}, true}, .next = &TABLE_USERS[33]},
-    { .value = { FIELD_TEXT, 34, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
+    { .value = { FIELD_TEXT, 34, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL}
 };
 
 #define GROUPS_FIELD_COUNT 9
@@ -232,10 +232,10 @@ static struct column_list const TABLE_GROUPS[GROUPS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 7, false, false, NULL, "group_uuid", {.text = ""}, true}, .next = &TABLE_GROUPS[7]},
     { .value = { FIELD_INTEGER, 8, false, false, NULL, "group_is_hidden", {.integer = 0}, true}, .next = &TABLE_GROUPS[8]},
     { .value = { FIELD_TEXT, 9, false, false, NULL, "group_users", {.text = ""}, true}, .next = &TABLE_GROUPS[9]},
-    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL}
 };
 
-#define SERVICES_FIELD_COUNT 35
+#define SERVICES_FIELD_COUNT 34
 static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_SERVICES[1]},
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_SERVICES[2]},
@@ -248,7 +248,7 @@ static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 9, false, false, NULL, "service_enabled", {.text = ""}, true}, .next = &TABLE_SERVICES[9]},
     { .value = { FIELD_TEXT, 10, false, false, NULL, "service_start_type", {.text = ""}, true}, .next = &TABLE_SERVICES[10]},
     { .value = { FIELD_TEXT, 11, false, false, NULL, "service_restart", {.text = ""}, true}, .next = &TABLE_SERVICES[11]},
-    { .value = { FIELD_INTEGER_LONG, 12, false, false, NULL, "service_frequency", {.integer_long= 0LL}, true}, .next = &TABLE_SERVICES[12]},
+    { .value = { FIELD_INTEGER_LONG, 12, false, false, NULL, "service_frequency", {.integer_long = 0LL}, true}, .next = &TABLE_SERVICES[12]},
     { .value = { FIELD_INTEGER, 13, false, false, NULL, "service_starts_on_mount", {.integer = 0}, true}, .next = &TABLE_SERVICES[13]},
     { .value = { FIELD_TEXT, 14, false, false, NULL, "service_starts_on_path_modified", {.text = ""}, true}, .next = &TABLE_SERVICES[14]},
     { .value = { FIELD_TEXT, 15, false, false, NULL, "service_starts_on_not_empty_directory", {.text = ""}, true}, .next = &TABLE_SERVICES[15]},
@@ -271,7 +271,7 @@ static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER_LONG, 32, false, false, NULL, "service_target_ephemeral_id", {.integer_long = 0LL}, true}, .next = &TABLE_SERVICES[32]},
     { .value = { FIELD_TEXT, 33, false, false, NULL, "service_target_type", {.text = ""}, true}, .next = &TABLE_SERVICES[33]},
     { .value = { FIELD_TEXT, 34, false, false, NULL, "service_target_address", {.text = ""}, true}, .next = &TABLE_SERVICES[34]},
-    { .value = { FIELD_TEXT, 35, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL},
+    { .value = { FIELD_TEXT, 35, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL},
 };
 
 static struct kv_list const TABLE_MAP[] = {

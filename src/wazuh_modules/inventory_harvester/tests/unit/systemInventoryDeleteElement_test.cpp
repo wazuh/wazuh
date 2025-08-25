@@ -492,13 +492,13 @@ TEST_F(SystemInventoryDeleteElement, emptyAgentID_Services)
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
 }
 
-TEST_F(SystemInventoryDeleteElement, emptyServiceName_Services)
+TEST_F(SystemInventoryDeleteElement, emptyServiceID_Services)
 {
     auto context = std::make_shared<MockSystemContext>();
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_ANY_THROW(deleteElement->handleRequest(context));
@@ -510,7 +510,7 @@ TEST_F(SystemInventoryDeleteElement, validAgentID_Services)
     auto deleteElement = std::make_shared<DeleteSystemElement<MockSystemContext>>();
 
     EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
-    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("apache2"));
+    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return("apache2"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
 
     EXPECT_NO_THROW(deleteElement->handleRequest(context));

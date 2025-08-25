@@ -191,18 +191,38 @@ public:
     MOCK_METHOD(std::string_view, groupUsers, (), (const));
 
     // Services
+    MOCK_METHOD(std::string_view, serviceId, (), (const));
     MOCK_METHOD(std::string_view, serviceName, (), (const));
-    MOCK_METHOD(std::string_view, serviceDisplayName, (), (const));
     MOCK_METHOD(std::string_view, serviceDescription, (), (const));
     MOCK_METHOD(std::string_view, serviceType, (), (const));
-    MOCK_METHOD(std::string_view, serviceStartType, (), (const));
     MOCK_METHOD(std::string_view, serviceState, (), (const));
     MOCK_METHOD(std::string_view, serviceSubState, (), (const));
-    MOCK_METHOD(int64_t, servicePid, (), (const));
-    MOCK_METHOD(std::string_view, serviceBinaryPath, (), (const));
     MOCK_METHOD(std::string_view, serviceEnabled, (), (const));
-    MOCK_METHOD(long, serviceExitCode, (), (const));
-    MOCK_METHOD(std::string_view, serviceUser, (), (const));
+    MOCK_METHOD(std::string_view, serviceStartType, (), (const));
+    MOCK_METHOD(std::string_view, serviceRestart, (), (const));
+    MOCK_METHOD(int64_t, serviceFrequency, (), (const));
+    MOCK_METHOD(bool, serviceStartsOnMount, (), (const));
+    MOCK_METHOD(std::string_view, serviceStartsOnPathModified, (), (const));
+    MOCK_METHOD(std::string_view, serviceStartsOnNotEmptyDirectory, (), (const));
+    MOCK_METHOD(bool, serviceInetdCompatibility, (), (const));
+    MOCK_METHOD(int64_t, serviceProcessPid, (), (const));
+    MOCK_METHOD(std::string_view, serviceProcessExecutable, (), (const));
+    MOCK_METHOD(std::string_view, serviceProcessArgs, (), (const));
+    MOCK_METHOD(std::string_view, serviceProcessUserName, (), (const));
+    MOCK_METHOD(std::string_view, serviceProcessGroupName, (), (const));
+    MOCK_METHOD(std::string_view, serviceProcessWorkingDir, (), (const));
+    MOCK_METHOD(std::string_view, serviceProcessRootDir, (), (const));
+    MOCK_METHOD(std::string_view, serviceFilePath, (), (const));
+    MOCK_METHOD(std::string_view, serviceAddress, (), (const));
+    MOCK_METHOD(std::string_view, serviceLogFilePath, (), (const));
+    MOCK_METHOD(std::string_view, serviceErrorLogFilePath, (), (const));
+    MOCK_METHOD(int, serviceExitCode, (), (const));
+    MOCK_METHOD(int, serviceWin32ExitCode, (), (const));
+    MOCK_METHOD(std::string_view, serviceFollowing, (), (const));
+    MOCK_METHOD(std::string_view, serviceObjectPath, (), (const));
+    MOCK_METHOD(int64_t, serviceTargetEphemeralId, (), (const));
+    MOCK_METHOD(std::string_view, serviceTargetType, (), (const));
+    MOCK_METHOD(std::string_view, serviceTargetAddress, (), (const));
 
     std::string m_serializedElement;
 };
