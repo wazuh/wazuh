@@ -48,14 +48,15 @@ public:
         const std::function<void(const std::vector<char>&)>& callback,
         const std::string& socketPath,
         const std::function<void()>& onConnect = []() {})
-        : m_endpointName {std::move(endpoint)}
+        : m_remoteSubscriptionManager {std::make_unique<RemoteSubscriptionManager>()}
+        , m_endpointName {std::move(endpoint)}
         , m_isRegistered {false}
-        , m_remoteSubscriptionManager {std::make_unique<RemoteSubscriptionManager>()}
     {
         std::promise<void> promise;
         m_socketClient =
             std::make_unique<SocketClient<Socket<OSPrimitives>, EpollWrapper>>(socketPath + m_endpointName);
 
+        // LCOV_EXCL_START
         m_remoteSubscriptionManager->sendInitProviderMessage(
             m_endpointName,
             [this, callback, socketClient = m_socketClient.get(), subscriberId, onConnect]()
@@ -101,8 +102,8 @@ public:
                         socketClient->send(jsonMessageString.c_str(), jsonMessageString.length());
                     });
             });
+        // LCOV_EXCL_STOP
     }
-
     ~RemoteSubscriber() = default;
 };
 

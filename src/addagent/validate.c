@@ -81,8 +81,6 @@ int OS_RemoveAgent(const char *u_id) {
     char *buffer;
     char buf_curline[OS_BUFFER_SIZE];
     struct stat fp_stat;
-    char wdbquery[OS_SIZE_128 + 1];
-    char *wdboutput;
 
     id_exist = IDExist(u_id, 1);
 
@@ -171,19 +169,8 @@ int OS_RemoveAgent(const char *u_id) {
         free(name);
     }
 
-    // Remove DB from wazuh-db
+    // Remove agent from wazuh-db
     int sock = -1;
-    int error;
-    snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", u_id);
-    os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
-    if (error = wdbc_query_ex(&sock, wdbquery, wdboutput, OS_SIZE_6144), !error) {
-        mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
-    } else {
-        merror("Could not remove the DB of the agent %s. Error: %d.", u_id, error);
-    }
-
-    os_free(wdboutput);
-
     if (wdb_remove_agent(atoi(u_id), &sock) != OS_SUCCESS) {
         mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
     }

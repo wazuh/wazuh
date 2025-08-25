@@ -101,10 +101,6 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
-    // Inventory harvester
-    if ((module = wm_inventory_harvester_read()))
-        wm_add(module);
-
 #endif
 
 #if defined (__linux__) || (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
@@ -387,6 +383,43 @@ size_t wm_module_query(char * query, char ** output) {
     }
 
     return module->context->query(module->data, args, output);
+}
+
+// Process a sync response in a module
+
+size_t wm_module_sync_response(char * response, char ** output) {
+    char *module_name = response;
+    char *data = NULL;
+
+    if ((data = strstr(module_name, SYNC_HEADER)), (data == NULL)) {
+        mdebug1("WMCOM Invalid sync message.");
+        os_strdup("err Invalid sync message", *output);
+        return strlen(*output);
+    }
+
+    *data = '\0';
+    data += strlen(SYNC_HEADER);
+
+    wmodule * module = wm_find_module(module_name);
+
+    if (module == NULL) {
+        mdebug1("WMCOM Unrecognized module '%s'.", module_name);
+        os_strdup("err Unrecognized module", *output);
+        return strlen(*output);
+    }
+
+    mdebug2("WMCOM Syncing module '%s' with data '%s'.", module_name, data);
+
+    int ret = 0;
+    // TODO: int ret = module->context->sync_response(data);
+
+    if (ret != 0) {
+        mdebug1("WMCOM Error syncing module '%s'.", module_name);
+        os_strdup("err Error syncing module", *output);
+        return strlen(*output);
+    }
+
+    return 0;
 }
 
 cJSON *getModulesInternalOptions(void) {

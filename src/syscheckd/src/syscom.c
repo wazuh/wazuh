@@ -14,6 +14,7 @@
 #include "../os_net/os_net.h"
 #include "../wazuh_modules/wmodules.h"
 #include "db/include/db.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
@@ -109,7 +110,21 @@ size_t syscom_dispatch(char * command, char ** output){
         }
     } else if (strncmp(command, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
         if (syscheck.enable_synchronization) {
-            // fim_sync_push_msg(command);
+            char *data = command;
+
+            data += strlen(FIM_SYNC_HEADER);
+
+            mdebug2("WMCOM Syncing module with data '%s'.", data);
+
+            bool ret = false;
+            ret = asp_parse_response_buffer(syscheck.sync_handle, (const uint8_t *)data);
+
+            if (!ret) {
+                mdebug1("WMCOM Error syncing module");
+                os_strdup("err Error syncing module", *output);
+                return strlen(*output);
+            }
+
             return 0;
         } else {
             mdebug1("FIM synchronization is disabled");

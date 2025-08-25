@@ -13,13 +13,13 @@
 #define _CONTENT_MODULE_HPP
 
 #include "singleton.hpp"
+#include <cstdarg>
 #include <functional>
 #include <memory>
 #include <shared_mutex>
 #include <string_view>
 #include <thread>
 #include <unordered_map>
-#include <cstdarg>
 
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))

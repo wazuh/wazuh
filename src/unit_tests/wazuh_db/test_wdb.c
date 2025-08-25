@@ -798,7 +798,7 @@ void test_wdb_init_stmt_in_cache_success(void **state) {
     will_return(__wrap_sqlite3_reset, SQLITE_OK);
     will_return(__wrap_sqlite3_clear_bindings, SQLITE_OK);
 
-    sqlite3_stmt* result = wdb_init_stmt_in_cache(data->wdb, WDB_STMT_FIM_LOAD);
+    sqlite3_stmt* result = wdb_init_stmt_in_cache(data->wdb, WDB_STMT_GLOBAL_INSERT_AGENT);
 
     assert_non_null(result);
 }

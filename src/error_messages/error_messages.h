@@ -337,10 +337,6 @@
 #define DB_SQL_ERROR          "(5211): SQL error: '%s'"
 #define DB_TRANSACTION_ERROR  "(5212): Cannot begin transaction."
 #define DB_CACHE_ERROR        "(5213): Cannot cache statement."
-#define DB_CACHE_NULL_STMT    "(5214): Null statement on internal cache."
-#define DB_AGENT_SQL_ERROR    "(5215): DB(%s) SQL Error: '%s'."
-#define DB_INVALID_DELTA_MSG  "(5216): DB(%s) Could not bind delta field '%s' from '%s' scan."
-#define DB_DELTA_PARSING_ERR  "(5217): Could not parse syscollector delta information as JSON."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_WHODATA_SUM_MAX                   "(6603): The whodata sum for '%s' file could not be included in the alert as it is too large."

@@ -26,16 +26,25 @@ void *EventForward()
     msg[OS_MAXSTR] = '\0';
 
     while ((recv_b = recv(agt->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0) {
-        msg[recv_b] = '\0';
         if (agt->buffer){
-            if (buffer_append(msg) < 0) {
-                break;
+            if (msg[0] == 's') {
+                if (buffer_append(msg, recv_b) < 0) {
+                    break;
+                }
+            } else {
+                msg[recv_b] = '\0';
+                if (buffer_append(msg, -1) < 0) {
+                    break;
+                }
             }
         }else{
             w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
 
-            if (send_msg(msg, -1) < 0) {
-                break;
+            if (msg[0] == 's') {
+                if (send_msg(msg, recv_b) < 0) break;
+            } else {
+                msg[recv_b] = '\0';
+                if (send_msg(msg, -1) < 0) break;
             }
         }
 

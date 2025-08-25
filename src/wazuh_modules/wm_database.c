@@ -84,9 +84,6 @@ static void wm_check_agents();
  */
 static void wm_sync_agents();
 
-// Clean dangling database files
-static void wm_clean_dangling_wdb_dbs();
-
 #endif // LOCAL
 
 static int wm_sync_shared_group(const char *fname);
@@ -130,9 +127,6 @@ void* wm_database_main(wm_database *data) {
     // and then removed in case an upgrade has just been performed.
 #ifndef LOCAL
     wm_sync_legacy_groups_files();
-
-    // Remove dangling agent databases
-    wm_clean_dangling_wdb_dbs();
 #endif
 
 #ifdef INOTIFY_ENABLED
@@ -343,7 +337,7 @@ void sync_keys_with_wdb(keystore *keys) {
             }
 
             // Agent not found. Removing agent artifacts
-            wm_clean_agent_artifacts(agent_id, agent_name);
+            delete_diff(agent_name);
 
             // Remove agent-related files
             OS_RemoveCounter(ids[i]);
@@ -355,69 +349,6 @@ void sync_keys_with_wdb(keystore *keys) {
 
     free_strarray(ids);
     rbtree_destroy(agents);
-}
-
-/**
- * @brief This function removes the wazuh-db agent DB and the diff folder of an agent.
- *
- * @param agent_id The ID of the agent.
- * @param agent_name The name of the agent.
- */
-void wm_clean_agent_artifacts(int agent_id, const char* agent_name) {
-    int result = OS_INVALID;
-
-    // Removing wazuh-db database
-    char wdbquery[OS_SIZE_128 + 1];
-    char wdboutput[OS_SIZE_1024];
-    snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %d", agent_id);
-    if (result = wdbc_query_ex(&wdb_wmdb_sock, wdbquery, wdboutput, sizeof(wdboutput)), result) {
-        mtdebug1(WM_DATABASE_LOGTAG, "Could not remove the wazuh-db DB of the agent %d.", agent_id);
-    }
-
-    delete_diff(agent_name);
-}
-
-// Clean dangling database files
-void wm_clean_dangling_wdb_dbs() {
-    char path[PATH_MAX];
-    char * end = NULL;
-    char * name = NULL;
-    struct dirent * dirent = NULL;
-    DIR * dir;
-
-    if (!(dir = wopendir(WDB2_DIR))) {
-        mterror(WM_DATABASE_LOGTAG, "Couldn't open directory '%s': %s.", WDB2_DIR, strerror(errno));
-        return;
-    }
-
-    while ((dirent = readdir(dir)) != NULL) {
-        // Taking only databases with numbers as a first character in the names to
-        // exclude global.db, global.db-journal, wdb socket, and current directory.
-        if (dirent->d_name[0] >= '0' && dirent->d_name[0] <= '9') {
-            if (end = strchr(dirent->d_name, '.'), end) {
-                int id = (int)strtol(dirent->d_name, &end, 10);
-
-                if (id > 0 && strncmp(end, ".db", 3) == 0 && (name = wdb_get_agent_name(id, &wdb_wmdb_sock)) != NULL) {
-                    if (*name == '\0') {
-                        // Agent not found.
-
-                        if (snprintf(path, sizeof(path), "%s/%s", WDB2_DIR, dirent->d_name) < (int)sizeof(path)) {
-                            mtwarn(WM_DATABASE_LOGTAG, "Removing dangling WDB DB file: '%s'", path);
-                            if (remove(path) < 0) {
-                                mtdebug1(WM_DATABASE_LOGTAG, DELETE_ERROR, path, errno, strerror(errno));
-                            }
-                        }
-                    }
-
-                    free(name);
-                }
-            } else {
-                mtwarn(WM_DATABASE_LOGTAG, "Strange file found: '%s/%s'", WDB2_DIR, dirent->d_name);
-            }
-        }
-    }
-
-    closedir(dir);
 }
 
 void wm_sync_legacy_groups_files() {

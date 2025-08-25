@@ -84,7 +84,6 @@ typedef enum crypto_type {
 #include "wm_content_manager.h"
 #include "wm_vulnerability_scanner.h"
 #include "wm_ms_graph.h"
-#include "wm_harvester.h"
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
@@ -223,5 +222,14 @@ wmodule * wm_find_module(const char * name);
  * @return Size of the output
  */
 size_t wm_module_query(char * query, char ** output);
+
+/**
+ * @brief Process a sync response in a module
+ *
+ * @param response Response payload
+ * @param output Output payload
+ * @return Size of the output
+ */
+size_t wm_module_sync_response(char * response, char ** output);
 
 #endif // W_MODULES

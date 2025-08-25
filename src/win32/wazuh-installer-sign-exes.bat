@@ -11,5 +11,6 @@ signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\shared_modules\rsync\build\bin\rsync.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\wazuh_modules\syscollector\build\bin\syscollector.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\syscheckd\build\bin\libfimdb.dll"
+signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\sync_protocol\build\bin\libagent_sync_protocol.dll"
 signtool.exe sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "InstallerScripts.vbs"
 pause

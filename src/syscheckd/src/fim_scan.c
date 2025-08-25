@@ -11,7 +11,6 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "syscheck_op.h"
-#include "integrity_op.h"
 #include "time_op.h"
 #include "db/include/db.h"
 #include "file/file.h"

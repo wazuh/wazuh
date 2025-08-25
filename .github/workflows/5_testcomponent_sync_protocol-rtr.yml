@@ -1,0 +1,44 @@
+name: Running RTR. Module sync_protocol for agent/winagent targets
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/ci/**"
+      - "src/build.py"
+      - "src/sync_protocol/**"
+      - ".github/workflows/5_testcomponent_sync_protocol-rtr.yml"
+      - ".github/actions/**"
+
+jobs:
+  rtr:
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [sync_protocol]
+        target: [agent, winagent]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: "Install dependencies"
+        uses: ./.github/actions/install_build_deps
+        with:
+          target: ${{ matrix.target }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version"
+          architecture: x64
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
+      - name: Run RTR for module ${{ matrix.module }} and target ${{ matrix.target }}
+        run: |
+          cd src/
+          python build.py --target ${{ matrix.target }} --readytoreview ${{ matrix.module }}
+      - name: Uploading coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage_report ${{ matrix.target }}
+          path: ./**/coverage_report/**

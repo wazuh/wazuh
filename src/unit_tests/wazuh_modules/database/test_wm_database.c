@@ -491,15 +491,6 @@ void test_sync_keys_with_wdb_insert_delete(void **state) {
     expect_value(__wrap_wdb_remove_agent, id, 1);
     will_return(__wrap_wdb_remove_agent, 0);
 
-    expect_value(__wrap_wdbc_query_ex, *sock, -1);
-    expect_string(__wrap_wdbc_query_ex, query, "wazuhdb remove 1");
-    expect_value(__wrap_wdbc_query_ex, len, OS_SIZE_1024);
-    will_return(__wrap_wdbc_query_ex, "ok");
-    will_return(__wrap_wdbc_query_ex, -1);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Could not remove the wazuh-db DB of the agent 1.");
-
     expect_string(__wrap_rmdir_ex, name, "queue/diff/TESTNAME");
     will_return(__wrap_rmdir_ex, 0);
 

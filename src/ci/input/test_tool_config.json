@@ -91,6 +91,14 @@
             []
         }
     ],
+    "sync_protocol":
+    [
+        {
+            "test_tool_name": "sync_protocol_test_tool",
+            "is_smoke_with_configuration": false,
+            "args": []
+        }
+    ],
     "syscheckd":
     [
         {

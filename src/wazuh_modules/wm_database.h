@@ -38,14 +38,6 @@ wmodule* wm_database_read();
 void sync_keys_with_wdb(keystore *keys);
 
 /**
- * @brief This function removes the wazuh-db agent DB and the diff folder of an agent.
- *
- * @param agent_id The ID of the agent.
- * @param agent_name The name of the agent.
- */
-void wm_clean_agent_artifacts(int agent_id, const char* agent_name);
-
-/**
  * @brief This method will read the legacy GROUPS_DIR folder to insert in the global.db the groups information it founds.
  *        After every successful insertion, the legacy file is deleted. If we are in a worker, the files are deleted without inserting.
  *        If the folder is empty, it will be removed.
