@@ -410,7 +410,7 @@ bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>
     return true;
 }
 
-bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
+bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
 {
     if (!data)
     {
@@ -420,6 +420,14 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data)
 
     try
     {
+        flatbuffers::Verifier verifier(data, length);
+
+        if (!Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, "Invalid FlatBuffer message");
+            return false;
+        }
+
         const auto* message = Wazuh::SyncSchema::GetMessage(data);
         const auto messageType = message->content_type();
 

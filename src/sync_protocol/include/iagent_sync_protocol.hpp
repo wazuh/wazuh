@@ -41,6 +41,7 @@ class IAgentSyncProtocol
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
+        /// @param length Size of the FlatBuffer message in bytes.
         /// @return true if the message was successfully parsed and processed; false otherwise.
-        virtual bool parseResponseBuffer(const uint8_t* data) = 0;
+        virtual bool parseResponseBuffer(const uint8_t* data, size_t length) = 0;
 };

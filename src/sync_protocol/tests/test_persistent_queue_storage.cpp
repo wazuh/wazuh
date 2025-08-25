@@ -92,8 +92,8 @@ INSTANTIATE_TEST_SUITE_P(
     FullQueueCases,
     PersistentQueueFullParamTest,
     ::testing::Values(
-// 1. CREATE
-QueueScenario
+        // 1. CREATE
+        QueueScenario
 {
     "Case 1",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },

@@ -149,7 +149,7 @@ char *get_group(int gid) {
 }
 
 /* Send a one-way message to Syscheck */
-void ag_send_syscheck(char * message) {
+void ag_send_syscheck(char * message, size_t length) {
     int sock = OS_ConnectUnixDomain(SYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR);
 
     if (sock < 0) {
@@ -157,7 +157,7 @@ void ag_send_syscheck(char * message) {
         return;
     }
 
-    if (OS_SendSecureTCP(sock, strlen(message), message) < 0) {
+    if (OS_SendSecureTCP(sock, length, message) < 0) {
         mwarn("Cannot send message to syscheck: %s (%d)", strerror(errno), errno);
     }
 
@@ -696,9 +696,9 @@ unsigned int get_registry_mtime(HKEY hndl) {
 }
 
 /* Send a one-way message to Syscheck */
-void ag_send_syscheck(char * message) {
+void ag_send_syscheck(char * message, size_t length) {
     char * response = NULL;
-    syscom_dispatch(message, &response);
+    syscom_dispatch(message, length, &response);
     os_free(response);
 }
 
