@@ -3,6 +3,8 @@
 
 #include <sca_policy_check.hpp>
 
+#include "logging_helper.hpp"
+
 #include <filesystem>
 #include <memory>
 #include <stdexcept>
@@ -19,6 +21,12 @@ class RegistryRuleEvaluatorTest : public ::testing::Test
 
         void SetUp() override
         {
+            // Set up the logging callback to avoid "Log callback not set" errors
+            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+            {
+                // Mock logging callback that does nothing
+            });
+
             m_isValidKey = [](const std::string&)
             {
                 return true;
