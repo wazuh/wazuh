@@ -44,11 +44,24 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     ${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows/
   )
 
+  list(APPEND SRC_FILES 
+    src/ie_explorer.cpp
+  )
+
   add_library(browser_extensions STATIC ${SRC_FILES})
   target_link_libraries(browser_extensions
     ${SRC_FOLDER}/external/openssl/libcrypto.a
     ws2_32
     crypt32
+    version
+  )
+
+  add_executable(ie_extensions_main src/main.cpp)
+  target_link_libraries(ie_extensions_main 
+    browser_extensions
+    -static-libgcc
+    -static-libstdc++
+    -static
   )
 endif()
 
