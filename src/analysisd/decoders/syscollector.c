@@ -311,7 +311,8 @@ static struct deltas_fields_match_list const SERVICE_FIELDS[] = {
     { .current = { "service_target_ephemeral_id", "service.service_target_ephemeral_id" }, .next = &SERVICE_FIELDS[31]},
     { .current = { "service_target_type", "service.service_target_type" }, .next = &SERVICE_FIELDS[32]},
     { .current = { "service_target_address", "service.service_target_address" }, .next = &SERVICE_FIELDS[33]},
-    { .current = { "checksum", NULL }, .next = NULL}
+    { .current = { "checksum", NULL }, .next = &SERVICE_FIELDS[34]},
+    { .current = { "item_id", NULL }, .next = NULL}
 };
 
 void SyscollectorInit(){

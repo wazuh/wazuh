@@ -37,6 +37,12 @@ public:
             throw std::runtime_error("ServiceElement::build: Agent ID is empty.");
         }
 
+        auto itemId = data->serviceItemId();
+        if (itemId.empty())
+        {
+            throw std::runtime_error("ServiceElement::build: Service Item ID is empty.");
+        }
+
         auto serviceId = data->serviceId();
         if (serviceId.empty())
         {
@@ -48,7 +54,7 @@ public:
         // Key
         element.id = agentId;
         element.id += "_";
-        element.id += serviceId;
+        element.id += itemId;
 
         // Operation
         element.operation = "INSERTED";
@@ -150,17 +156,17 @@ public:
             throw std::runtime_error("ServiceElement::deleteElement: Agent ID is empty.");
         }
 
-        auto serviceId = data->serviceId();
-        if (serviceId.empty())
+        auto itemId = data->serviceItemId();
+        if (itemId.empty())
         {
-            throw std::runtime_error("ServiceElement::deleteElement: Service ID is empty.");
+            throw std::runtime_error("ServiceElement::deleteElement: Service Item ID is empty.");
         }
 
         NoDataHarvester element;
         // Key
         element.id = agentId;
         element.id += "_";
-        element.id += serviceId;
+        element.id += itemId;
 
         // Operation
         element.operation = "DELETED";
