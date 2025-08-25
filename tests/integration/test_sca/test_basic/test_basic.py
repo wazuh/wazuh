@@ -157,10 +157,10 @@ def test_sca_enabled(test_configuration, test_metadata, prepare_cis_policies_fil
     log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_REQ), timeout=10)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=200 if sys.platform == WINDOWS else 30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=30)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=200 if sys.platform == WINDOWS else 30)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_ENDED_CHECK), timeout=30)
     assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
