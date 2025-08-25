@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if(FSANITIZE)
-  set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
+  set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -130,15 +130,13 @@ target_link_libraries(
 
 if(UNIT_TEST)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(SCAImpl PRIVATE -fprofile-arcs -ftest-coverage)
         target_link_libraries(SCAImpl PRIVATE -fprofile-arcs)
     else()
+        target_compile_options(SCAImpl PRIVATE --coverage)
         target_link_libraries(SCAImpl PRIVATE gcov)
-    endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    endif()
 
     enable_testing()
     add_subdirectory(tests)
-else()
-  if(FSANITIZE)
-    target_link_libraries(SCAImpl PRIVATE gcov)
-  endif(FSANITIZE)
-endif(UNIT_TEST)
+endif()
