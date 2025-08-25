@@ -58,7 +58,7 @@ struct BrowserExtension final
         std::string_view installed;
         std::string_view name;
         std::string_view path;
-        std::string_view permissions;
+        std::vector<std::string_view> permissions;
         bool persistent;
         std::string_view reference;
         std::string_view type;

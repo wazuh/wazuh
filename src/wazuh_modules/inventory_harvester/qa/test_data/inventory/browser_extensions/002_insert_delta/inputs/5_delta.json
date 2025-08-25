@@ -20,7 +20,7 @@
     "browser_profile_name": "Default",
     "browser_profile_path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default",
     "package_reference": "https://clients2.google.com/service/update2/crx",
-    "package_permissions": "[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]",
+    "package_permissions": "activeTab,storage,tabs,webNavigation",
     "package_type": "extension",
     "package_enabled": 1,
     "package_autoupdate": 1,

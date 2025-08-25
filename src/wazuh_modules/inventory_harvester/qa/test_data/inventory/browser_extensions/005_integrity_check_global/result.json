@@ -31,7 +31,12 @@
                     "installed": "2024-03-15T08:03:41.000Z",
                     "name": "UBlock Origin",
                     "path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0",
-                    "permissions": "[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]",
+                    "permissions": [
+                        "activeTab",
+                        "storage",
+                        "tabs",
+                        "webNavigation"
+                    ],
                     "persistent": true,
                     "reference": "https://clients2.google.com/service/update2/crx",
                     "type": "extension",
@@ -79,7 +84,12 @@
                     "installed": "2024-03-15T08:03:41.000Z",
                     "name": "vimium",
                     "path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\5b7ed951031058a7e3e8af81d2dfdd1d\\2.3_0",
-                    "permissions": "[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]",
+                    "permissions": [
+                        "activeTab",
+                        "storage",
+                        "tabs",
+                        "webNavigation"
+                    ],
                     "persistent": true,
                     "reference": "https://clients2.google.com/service/update2/crx",
                     "type": "extension",

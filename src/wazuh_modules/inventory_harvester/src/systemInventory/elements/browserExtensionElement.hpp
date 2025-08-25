@@ -90,7 +90,11 @@ public:
         element.data.package.installed = data->browserExtensionPackageInstalled();
         element.data.package.name = packageName;
         element.data.package.path = data->browserExtensionPackagePath();
-        element.data.package.permissions = data->browserExtensionPackagePermissions();
+        if (auto packagePermissions = data->browserExtensionPackagePermissions();
+            !packagePermissions.empty() && packagePermissions.compare(" ") != 0)
+        {
+            element.data.package.permissions = Utils::splitView(packagePermissions, ',');
+        }
         element.data.package.persistent = data->browserExtensionPackagePersistent();
         element.data.package.reference = data->browserExtensionPackageReference();
         element.data.package.type = data->browserExtensionPackageType();
