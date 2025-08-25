@@ -166,6 +166,7 @@ def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
 
     assert result == [{'filename': rule_file, 'relative_dirname': rule_path, 'status': rule_status}]
 
+
 @pytest.mark.parametrize('groups, general_groups', [
     (['virus', 'pci_dss_5.1', 'pci_dss_5.2', 'pci_dss_10.6.1', 'pci_dss_11.4', 'gpg13_4.2', 'gdpr_IV_35.7.d',
       'hipaa_164.312.b', 'nist_800_53_SI.3', 'nist_800_53_AU.6', 'nist_800_53_SI.4', 'tsc_CC7.4', 'mitre_T1017'],
@@ -181,6 +182,7 @@ def test_set_groups(groups, general_groups):
     rule.set_groups(groups, general_groups, empty_rule)
 
     assert empty_rule == expected_result
+
 
 @pytest.mark.parametrize('groups, general_groups, expected_groups', [
     (
