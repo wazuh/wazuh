@@ -79,7 +79,8 @@ public:
                 constexpr auto estimatedModuleNameLength = 20;
                 constexpr auto estimatedPayloadLength = 10;
                 messageVector.clear();
-                messageVector.reserve(headerLength + agentIdLength + estimatedModuleNameLength + estimatedPayloadLength + data.builder.GetSize());
+                messageVector.reserve(headerLength + agentIdLength + estimatedModuleNameLength +
+                                      estimatedPayloadLength + data.builder.GetSize());
                 messageVector.assign(header, header + headerLength);
                 std::ranges::copy(data.agentId, std::back_inserter(messageVector));
                 messageVector.push_back(' ');
