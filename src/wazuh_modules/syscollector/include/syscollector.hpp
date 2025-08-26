@@ -22,6 +22,7 @@
 #include "dbsync.hpp"
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
+#include "agent_sync_protocol.hpp"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -47,7 +48,7 @@ class EXPORTED Syscollector final
 
         void init(const std::shared_ptr<ISysInfo>& spInfo,
                   const std::function<void(const std::string&)> reportDiffFunction,
-                  const std::function<void(const std::string&)> persistDiffFunction,
+                  const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> persistDiffFunction,
                   const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                   const std::string& dbPath,
                   const std::string& normalizerConfigPath,
@@ -67,6 +68,12 @@ class EXPORTED Syscollector final
                   const bool notifyOnFirstScan = false);
 
         void destroy();
+
+        // Sync protocol methods
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs);
+        bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+        bool parseResponseBuffer(const uint8_t* data, size_t length);
     private:
         Syscollector();
         ~Syscollector() = default;
@@ -131,28 +138,29 @@ class EXPORTED Syscollector final
                                const std::string& sourceKey,
                                bool createFields);
 
-        std::shared_ptr<ISysInfo>                                               m_spInfo;
-        std::function<void(const std::string&)>                                 m_reportDiffFunction;
-        std::function<void(const std::string&)>                                 m_persistDiffFunction;
-        std::function<void(const modules_log_level_t, const std::string&)>      m_logFunction;
-        unsigned int                                                            m_intervalValue;
-        bool                                                                    m_scanOnStart;
-        bool                                                                    m_hardware;
-        bool                                                                    m_os;
-        bool                                                                    m_network;
-        bool                                                                    m_packages;
-        bool                                                                    m_ports;
-        bool                                                                    m_portsAll;
-        bool                                                                    m_processes;
-        bool                                                                    m_hotfixes;
-        bool                                                                    m_stopping;
-        bool                                                                    m_notify;
-        bool                                                                    m_groups;
-        bool                                                                    m_users;
-        std::unique_ptr<DBSync>                                                 m_spDBSync;
-        std::condition_variable                                                 m_cv;
-        std::mutex                                                              m_mutex;
-        std::unique_ptr<SysNormalizer>                                          m_spNormalizer;
+        std::shared_ptr<ISysInfo>                                                m_spInfo;
+        std::function<void(const std::string&)>                                  m_reportDiffFunction;
+        std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> m_persistDiffFunction;
+        std::function<void(const modules_log_level_t, const std::string&)>       m_logFunction;
+        unsigned int                                                             m_intervalValue;
+        bool                                                                     m_scanOnStart;
+        bool                                                                     m_hardware;
+        bool                                                                     m_os;
+        bool                                                                     m_network;
+        bool                                                                     m_packages;
+        bool                                                                     m_ports;
+        bool                                                                     m_portsAll;
+        bool                                                                     m_processes;
+        bool                                                                     m_hotfixes;
+        bool                                                                     m_stopping;
+        bool                                                                     m_notify;
+        bool                                                                     m_groups;
+        bool                                                                     m_users;
+        std::unique_ptr<DBSync>                                                  m_spDBSync;
+        std::condition_variable                                                  m_cv;
+        std::mutex                                                               m_mutex;
+        std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
+        std::unique_ptr<AgentSyncProtocol>                                       m_spSyncProtocol;
 };
 
 

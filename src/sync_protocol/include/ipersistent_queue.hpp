@@ -19,10 +19,17 @@
 /// @brief Defines the type of modification operation.
 enum class Operation : int
 {
-    CREATE = OPERATION_CREATE, ///< The operation is to create a new record.
-    MODIFY = OPERATION_MODIFY, ///< The operation is to modify an existing record.
-    DELETE = OPERATION_DELETE, ///< The operation is to delete a record.
-    NO_OP  = OPERATION_NO_OP   ///< No specific operation is being synchronized. Represents a neutral state.
+    CREATE = OPERATION_CREATE,  ///< The operation is to create a new record.
+    MODIFY = OPERATION_MODIFY,  ///< The operation is to modify an existing record.
+    DELETE_ = OPERATION_DELETE, ///< The operation is to delete a record.
+    NO_OP  = OPERATION_NO_OP    ///< No specific operation is being synchronized. Represents a neutral state.
+};
+
+/// @brief Defines the type of synchronization mode.
+enum class Mode : int
+{
+    FULL  = MODE_FULL,  ///< Full synchronization mode.
+    DELTA = MODE_DELTA  ///< Delta synchronization mode.
 };
 
 /// @brief Represents a persisted message used in module synchronization.

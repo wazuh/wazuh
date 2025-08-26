@@ -72,7 +72,7 @@ int main() {
     proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}");
     proto.persistDifference("id2", Operation::MODIFY, "idx2", "{\"k\":\"v2\"}");
 
-    bool ok = proto.synchronizeModule(Wazuh::SyncSchema::Mode::Full, std::chrono::seconds{2}, 1, 0);
+    bool ok = proto.synchronizeModule(Mode::FULL, std::chrono::seconds{2}, 1, 0);
     std::cout << (ok ? "OK" : "FAIL") << std::endl;
     return ok ? 0 : 1;
 }

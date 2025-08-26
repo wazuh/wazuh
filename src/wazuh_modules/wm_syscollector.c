@@ -19,11 +19,8 @@
 #include "headers/logging_helper.h"
 #include "commonDefs.h"
 
-#ifndef CLIENT
-#include "router.h"
-#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
-#include "agent_messages_adapter.h"
-#endif // CLIENT
+#define SYS_SYNC_PROTOCOL_DB_PATH "queue/syscollector/db/syscollector_sync.db"
+#define SYS_SYNC_RETRIES 3
 
 #ifdef WIN32
 static DWORD WINAPI wm_sys_main(void *arg);         // Module main function. It won't return
@@ -36,7 +33,7 @@ static void wm_sys_destroy(wm_sys_t *data);      // Destroy data
 static void wm_sys_stop(wm_sys_t *sys);         // Module stopper
 const char *WM_SYS_LOCATION = "syscollector";   // Location field for event sending
 cJSON *wm_sys_dump(const wm_sys_t *sys);
-int wm_sync_message(const char *data);
+int wm_sync_message(const char *command, size_t command_len);
 pthread_cond_t sys_stop_condition = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool need_shutdown_wait = false;
@@ -48,7 +45,7 @@ const wm_context WM_SYS_CONTEXT = {
     .start = (wm_routine)wm_sys_main,
     .destroy = (void(*)(void *))wm_sys_destroy,
     .dump = (cJSON * (*)(const void *))wm_sys_dump,
-    .sync = (int(*)(const char*))wm_sync_message,
+    .sync = (int(*)(const char*, size_t))wm_sync_message,
     .stop = (void(*)(void *))wm_sys_stop,
     .query = NULL,
 };
@@ -57,18 +54,16 @@ void *syscollector_module = NULL;
 syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
 
-#ifndef CLIENT
-void *router_module_ptr = NULL;
-router_provider_create_func router_provider_create_func_ptr = NULL;
-router_provider_send_fb_func router_provider_send_fb_func_ptr = NULL;
-ROUTER_PROVIDER_HANDLE syscollector_handle = NULL;
-int disable_manager_scan = 1;
-#endif // CLIENT
+// Sync protocol function pointers
+syscollector_init_sync_func syscollector_init_sync_ptr = NULL;
+syscollector_sync_module_func syscollector_sync_module_ptr = NULL;
+syscollector_persist_diff_func syscollector_persist_diff_ptr = NULL;
+syscollector_parse_response_func syscollector_parse_response_ptr = NULL;
 
-unsigned int enable_synchronization = 1; // Database synchronization enabled (default value)
-uint32_t sync_interval = 300;            // Database synchronization interval (default value)
-uint32_t sync_response_timeout = 30;     // Database synchronization response timeout (default value)
-long sync_max_eps = 10;                  // Database synchronization number of events per second (default value)
+unsigned int enable_synchronization = 1;     // Database synchronization enabled (default value)
+uint32_t sync_interval = 300;                // Database synchronization interval (default value)
+uint32_t sync_response_timeout = 30;         // Database synchronization response timeout (default value)
+long sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
 
 long syscollector_max_eps = 50;          // Number of events per second (default value)
 int queue_fd = 0;                        // Output queue file descriptor
@@ -82,11 +77,8 @@ static void wm_sys_send_message(const void* data, const char queue_id) {
     if (!is_shutdown_process_started()) {
         const int eps = 1000000/syscollector_max_eps;
         if (wm_sendmsg_ex(eps, queue_fd, data, WM_SYS_LOCATION, queue_id, &is_shutdown_process_started) < 0) {
-    #ifdef CLIENT
-            mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
-    #else
-            mterror(WM_SYS_LOGTAG, "Unable to send message to '%s' (wazuh-engine might be down). Attempting to reconnect.", DEFAULTQUEUE);
-    #endif
+            mterror(WM_SYS_LOGTAG, "Unable to send message to '%s'", DEFAULTQUEUE);
+
             // Since this method is beign called by multiple threads it's necessary this particular portion of code
             // to be mutually exclusive. When one thread is successfully reconnected, the other ones will make use of it.
             w_mutex_lock(&sys_reconnect_mutex);
@@ -105,27 +97,15 @@ static void wm_sys_send_message(const void* data, const char queue_id) {
 
 static void wm_sys_send_diff_message(const void* data) {
     wm_sys_send_message(data, SYSCOLLECTOR_MQ);
-#ifndef CLIENT
-    if(!disable_manager_scan)
-    {
-        char* msg_to_send = adapt_delta_message(data, "localhost", "000", "127.0.0.1", NULL);
-        if (msg_to_send && router_provider_send_fb_func_ptr) {
-            router_provider_send_fb_func_ptr(syscollector_handle, msg_to_send, syscollector_deltas_SCHEMA);
-        }
-        cJSON_free(msg_to_send);
-    }
-#endif // CLIENT
 }
 
-static void wm_sys_persist_diff_message(const void* data) {
-    if (enable_synchronization) {
+static void wm_sys_persist_diff_message(const char *id, Operation_t operation, const char *index, const void* data) {
+    if (enable_synchronization && syscollector_persist_diff_ptr) {
         const char* msg = (const char*)data;
-
-        mdebug2("Persisting Inventory event: %s", msg);
-
-        // inventory_persist_stateful_event(msg);
+        mtdebug2(WM_SYS_LOGTAG, "Persisting Inventory event: %s", msg);
+        syscollector_persist_diff_ptr(id, operation, index, msg);
     } else {
-        mdebug2("Inventory synchronization is disabled");
+        mtdebug2(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
     }
 }
 
@@ -140,6 +120,14 @@ static void wm_sys_log_config(wm_sys_t *sys)
         }
         cJSON_Delete(config_json);
     }
+}
+
+static int wm_sys_startmq(const char* key, short type, short attempts) {
+    return StartMQ(key, type, attempts);
+}
+
+static int wm_sys_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
+    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
 }
 
 #ifdef WIN32
@@ -165,7 +153,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         pthread_exit(NULL);
     }
 
-    #ifndef WIN32
+#ifndef WIN32
     // Connect to socket
     queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
 
@@ -173,28 +161,18 @@ void* wm_sys_main(wm_sys_t *sys) {
         mterror(WM_SYS_LOGTAG, "Can't connect to queue.");
         pthread_exit(NULL);
     }
-    #endif
+#endif
 
     if (syscollector_module = so_get_module_handle("syscollector"), syscollector_module)
     {
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
 
-#ifndef CLIENT
-        // Load router module only for manager if is enabled
-        disable_manager_scan = getDefine_Int("vulnerability-detection", "disable_scan_manager", 0, 1);
-        if (router_module_ptr = so_get_module_handle("router"), router_module_ptr) {
-                router_provider_create_func_ptr = so_get_function_sym(router_module_ptr, "router_provider_create");
-                router_provider_send_fb_func_ptr = so_get_function_sym(router_module_ptr, "router_provider_send_fb");
-                if (router_provider_create_func_ptr && router_provider_send_fb_func_ptr) {
-                    mtdebug1(WM_SYS_LOGTAG, "Router module loaded.");
-                } else {
-                    mwarn("Failed to load methods from router module.");
-                }
-            } else {
-                mwarn("Failed to load router module.");
-            }
-#endif // CLIENT
+        // Get sync protocol function pointers
+        syscollector_init_sync_ptr = so_get_function_sym(syscollector_module, "syscollector_init_sync");
+        syscollector_sync_module_ptr = so_get_function_sym(syscollector_module, "syscollector_sync_module");
+        syscollector_persist_diff_ptr = so_get_function_sym(syscollector_module, "syscollector_persist_diff");
+        syscollector_parse_response_ptr = so_get_function_sym(syscollector_module, "syscollector_parse_response");
     } else {
 #ifdef __hpux
         mtinfo(WM_SYS_LOGTAG, "Not supported in HP-UX.");
@@ -203,6 +181,7 @@ void* wm_sys_main(wm_sys_t *sys) {
 #endif
         pthread_exit(NULL);
     }
+
     if (syscollector_start_ptr) {
         mtdebug1(WM_SYS_LOGTAG, "Starting Syscollector.");
         w_mutex_lock(&sys_stop_mutex);
@@ -221,31 +200,25 @@ void* wm_sys_main(wm_sys_t *sys) {
         }
 
         wm_sys_log_config(sys);
-#ifndef CLIENT
-        // Router providers initialization
-        if (router_provider_create_func_ptr){
-            if(syscollector_handle = router_provider_create_func_ptr("deltas-syscollector", true), !syscollector_handle) {
-                mdebug2("Failed to create router handle for 'syscollector'.");
-            }
-        }
-#endif // CLIENT
 
+        // Initialize sync protocol if enabled
+        if (enable_synchronization && syscollector_init_sync_ptr && syscollector_sync_module_ptr) {
+            MQ_Functions mq_funcs = {
+                .start = wm_sys_startmq,
+                .send_binary = wm_sys_send_binary_msg
+            };
+            syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
 #ifndef WIN32
-        if (enable_synchronization) {
             // Launch inventory synchronization thread
             w_create_thread(wm_sync_module, NULL);
-        } else {
-            mdebug1("Inventory synchronization is disabled");
-        }
 #else
-        if (enable_synchronization) {
             if (CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL) == NULL) {
-                merror(THREAD_ERROR);
+                mterror(WM_SYS_LOGTAG, THREAD_ERROR);
             }
-        } else {
-            mdebug1("Inventory synchronization is disabled");
-        }
 #endif
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
+        }
 
         syscollector_start_ptr(sys->interval,
                                wm_sys_send_diff_message,
@@ -277,11 +250,6 @@ void* wm_sys_main(wm_sys_t *sys) {
         close(queue_fd);
         queue_fd = 0;
     }
-
-#ifndef CLIENT
-    so_free_library(router_module_ptr);
-    router_module_ptr = NULL;
-#endif // CLIENT
 
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
     w_mutex_lock(&sys_stop_mutex);
@@ -355,12 +323,23 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     return root;
 }
 
-int wm_sync_message(const char *data) {
-    if (enable_synchronization) {
-        // inventory_sync_push_msg(data);
+int wm_sync_message(const char *command, size_t command_len) {
+    if (enable_synchronization && syscollector_parse_response_ptr) {
+        size_t header_len = strlen(SYSCOLECTOR_SYNC_HEADER);
+        const uint8_t *data = (const uint8_t *)(command + header_len);
+        size_t data_len = command_len - header_len;
+
+        bool ret = false;
+        ret = syscollector_parse_response_ptr(data, data_len);
+
+        if (!ret) {
+            mtdebug1(WM_SYS_LOGTAG, "Error syncing module");
+            return -1;
+        }
+
         return 0;
     } else {
-        mdebug1("Inventory synchronization is disabled");
+        mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
         return -1;
     }
 }
@@ -374,11 +353,15 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
     sleep(sync_interval);
 
     while (FOREVER()) {
-        mdebug1("Running inventory synchronization.");
+        mtdebug1(WM_SYS_LOGTAG, "Running inventory synchronization.");
 
-        // inventory_synchronize(sync_response_timeout, sync_max_eps);
+        if (syscollector_sync_module_ptr) {
+            syscollector_sync_module_ptr(MODE_DELTA, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
+        } else {
+            mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
+        }
 
-        mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", sync_interval);
+        mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization finished, waiting for %d seconds before next run.", sync_interval);
         sleep(sync_interval);
     }
 

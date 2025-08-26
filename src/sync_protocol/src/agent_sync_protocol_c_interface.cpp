@@ -22,7 +22,7 @@ struct AgentSyncProtocolWrapper
     /// @param db_path Path to the SQLite database file for this protocol instance.
     /// @param mq_funcs Structure containing the MQ callback functions provided from C.
     AgentSyncProtocolWrapper(const std::string& module, const std::string& db_path, const MQ_Functions& mq_funcs)
-        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, mq_funcs)) {}
+        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, mq_funcs, nullptr)) {}
 };
 
 extern "C" {
@@ -106,7 +106,7 @@ extern "C" {
             if (!handle) return false;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            return wrapper->impl->synchronizeModule(static_cast<Wazuh::SyncSchema::Mode>(mode),
+            return wrapper->impl->synchronizeModule(static_cast<Mode>(mode),
                                                     std::chrono::seconds(sync_timeout),
                                                     retries,
                                                     max_eps);

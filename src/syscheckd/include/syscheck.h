@@ -31,7 +31,7 @@
 #define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
 
 #define FIM_SYNC_PROTOCOL_DB_PATH   "queue/fim/db/fim_sync.db"
-#define SYNC_RETRIES 3
+#define FIM_SYNC_RETRIES 3
 
 #define FIM_FILES_SYNC_INDEX         "wazuh-states-fim-files"
 #ifdef WIN32

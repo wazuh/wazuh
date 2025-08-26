@@ -16,8 +16,10 @@
 #include "timeHelper.h"
 #include <iostream>
 #include <stack>
+#include <chrono>
 
 #include "syscollectorTablesDef.hpp"
+#include "agent_sync_protocol.hpp"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -52,9 +54,32 @@ static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
     {MODIFIED, "modified"},
     {DELETED, "deleted"},
     {INSERTED, "created"},
-    {MAX_ROWS, "max_rows"},
-    {DB_ERROR, "db_error"},
-    {SELECTED, "selected"},
+    // LCOV_EXCL_STOP
+};
+
+static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
+{
+    // LCOV_EXCL_START
+    {MODIFIED, OPERATION_MODIFY},
+    {DELETED, OPERATION_DELETE},
+    {INSERTED, OPERATION_CREATE},
+    // LCOV_EXCL_STOP
+};
+
+static const std::map<std::string, std::string> INDEX_MAP
+{
+    // LCOV_EXCL_START
+    {OS_TABLE, "wazuh-states-inventory-system"},
+    {HW_TABLE, "wazuh-states-inventory-hardware"},
+    {HOTFIXES_TABLE, "wazuh-states-inventory-hotfixes"},
+    {PACKAGES_TABLE, "wazuh-states-inventory-packages"},
+    {PROCESSES_TABLE, "wazuh-states-inventory-processes"},
+    {PORTS_TABLE, "wazuh-states-inventory-ports"},
+    {NET_IFACE_TABLE, "wazuh-states-inventory-interfaces"},
+    {NET_PROTOCOL_TABLE, "wazuh-states-inventory-protocols"},
+    {NET_ADDRESS_TABLE, "wazuh-states-inventory-networks"},
+    {USERS_TABLE, "wazuh-states-inventory-users"},
+    {GROUPS_TABLE, "wazuh-states-inventory-groups"},
     // LCOV_EXCL_STOP
 };
 
@@ -157,10 +182,15 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
 {
     nlohmann::json newData;
 
-    newData = ecsData(result == MODIFIED ? data["new"] : data, table);
+    newData = ecsData(result == MODIFIED && data.contains("new") ? data["new"] : data, table);
 
     const auto statefulToSend{newData.dump()};
-    m_persistDiffFunction(statefulToSend);
+    auto indexIt = INDEX_MAP.find(table);
+
+    if (indexIt != INDEX_MAP.end())
+    {
+        m_persistDiffFunction(calculateHashId(data, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend);
+    }
 
     // Remove checksum from newData to avoid sending it in the diff
     if (newData.contains("checksum"))
@@ -198,7 +228,10 @@ void Syscollector::updateChanges(const std::string& table,
     {
         [this, table](ReturnTypeCallback result, const nlohmann::json & data)
         {
-            notifyChange(result, data, table);
+            if (result == INSERTED || result == MODIFIED || result == DELETED)
+            {
+                notifyChange(result, data, table);
+            }
         }
     };
     DBSyncTxn txn
@@ -256,7 +289,7 @@ std::string Syscollector::getCreateStatement() const
 
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
-                        const std::function<void(const std::string&)> persistDiffFunction,
+                        const std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> persistDiffFunction,
                         const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
@@ -1035,52 +1068,69 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
 
     if (table == OS_TABLE)
     {
-        ret = data["os_name"];
+        ret = data.contains("os_name") ? data["os_name"] : "";
     }
     else if (table == HW_TABLE)
     {
-        ret = data["serial_number"];
+        ret = data.contains("serial_number") ? data["serial_number"] : "";
     }
     else if (table == HOTFIXES_TABLE)
     {
-        ret = data["hotfix_name"];
+        ret = data.contains("hotfix_name") ? data["hotfix_name"] : "";
     }
     else if (table == PACKAGES_TABLE)
     {
-        ret = data["name"].get<std::string>() + ":" + data["version"].get<std::string>() + ":" +
-              data["architecture"].get<std::string>() + ":" + data["type"].get<std::string>() + ":" +
-              data["path"].get<std::string>();
+        if (data.contains("name") && data.contains("version") && data.contains("architecture") &&
+                data.contains("type") && data.contains("path"))
+        {
+            ret = data["name"].get<std::string>() + ":" + data["version"].get<std::string>() + ":" +
+                  data["architecture"].get<std::string>() + ":" + data["type"].get<std::string>() + ":" +
+                  data["path"].get<std::string>();
+        }
     }
     else if (table == PROCESSES_TABLE)
     {
-        ret = data["pid"];
+        ret = data.contains("pid") ? data["pid"] : "";
     }
     else if (table == PORTS_TABLE)
     {
-        ret = std::to_string(data["file_inode"].get<int>()) + ":" + data["network_transport"].get<std::string>() + ":" +
-              data["source_ip"].get<std::string>() + ":" + std::to_string(data["source_port"].get<int>());
+        if (data.contains("file_inode") && data.contains("network_transport") &&
+                data.contains("source_ip") && data.contains("source_port"))
+        {
+            ret = std::to_string(data["file_inode"].get<int>()) + ":" + data["network_transport"].get<std::string>() + ":" +
+                  data["source_ip"].get<std::string>() + ":" + std::to_string(data["source_port"].get<int>());
+        }
     }
     else if (table == NET_IFACE_TABLE)
     {
-        ret = data["interface_name"].get<std::string>() + ":" + data["interface_alias"].get<std::string>() + ":" +
-              data["interface_type"].get<std::string>();
+        if (data.contains("interface_name") && data.contains("interface_alias") && data.contains("interface_type"))
+        {
+            ret = data["interface_name"].get<std::string>() + ":" + data["interface_alias"].get<std::string>() + ":" +
+                  data["interface_type"].get<std::string>();
+        }
     }
     else if (table == NET_PROTOCOL_TABLE)
     {
-        ret = data["interface_name"].get<std::string>() + ":" + data["network_type"].get<std::string>();
+        if (data.contains("interface_name") && data.contains("network_type"))
+        {
+            ret = data["interface_name"].get<std::string>() + ":" + data["network_type"].get<std::string>();
+        }
     }
     else if (table == NET_ADDRESS_TABLE)
     {
-        ret = data["interface_name"].get<std::string>() + ":" + std::to_string(data["network_protocol"].get<int>()) + ":" +
-              data["network_ip"].get<std::string>();
+        if (data.contains("interface_name") && data.contains("network_protocol") && data.contains("network_ip"))
+        {
+            ret = data["interface_name"].get<std::string>() + ":" + std::to_string(data["network_protocol"].get<int>()) + ":" +
+                  data["network_ip"].get<std::string>();
+        }
     }
     else if (table == USERS_TABLE)
     {
-        ret = data["user_name"];
+        ret = data.contains("user_name") ? data["user_name"] : "";
     }
     else if (table == GROUPS_TABLE)
     {
-        ret = data["group_name"];
+        ret = data.contains("group_name") ? data["group_name"] : "";
     }
 
     return ret;
@@ -1205,4 +1255,38 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
             target[destPointer].push_back(value);
         }
     }
+}
+
+// Sync protocol methods implementation
+void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
+{
+    m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, nullptr);
+}
+
+bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_spSyncProtocol)
+    {
+        return m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void Syscollector::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+{
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->persistDifference(id, operation, index, data);
+    }
+}
+
+bool Syscollector::parseResponseBuffer(const uint8_t* data, size_t length)
+{
+    if (m_spSyncProtocol)
+    {
+        return m_spSyncProtocol->parseResponseBuffer(data, length);
+    }
+
+    return false;
 }

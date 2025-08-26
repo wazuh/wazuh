@@ -83,7 +83,7 @@ static int fim_startmq(const char* key, short type, short attempts) {
     return StartMQ(key, type, attempts);
 }
 
-static int fim_send_binary_msg (int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
+static int fim_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
     return SendBinaryMSG(queue, message, message_len, locmsg, loc);
 }
 

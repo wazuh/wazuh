@@ -136,7 +136,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, mockQueue);
 
     bool result = protocol->synchronizeModule(
-                      Wazuh::SyncSchema::Mode::Full,
+                      Mode::FULL,
                       std::chrono::seconds(min_timeout),
                       retries,
                       maxEps
@@ -162,7 +162,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsExceptio
     .WillOnce(::testing::Throw(std::runtime_error("Test exception")));
 
     bool result = protocol->synchronizeModule(
-                      Wazuh::SyncSchema::Mode::Full,
+                      Mode::FULL,
                       std::chrono::seconds(min_timeout),
                       retries,
                       maxEps
@@ -188,7 +188,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleDataToSyncEmpty)
     .WillOnce(Return(std::vector<PersistedData> {}));
 
     bool result = protocol->synchronizeModule(
-                      Wazuh::SyncSchema::Mode::Full,
+                      Mode::FULL,
                       std::chrono::seconds(min_timeout),
                       retries,
                       maxEps
@@ -223,7 +223,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendStartFails)
     .Times(1);
 
     bool result = protocol->synchronizeModule(
-                      Wazuh::SyncSchema::Mode::Full,
+                      Mode::FULL,
                       std::chrono::seconds(min_timeout),
                       retries,
                       maxEps
@@ -261,7 +261,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -318,7 +318,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartAckTimeout)
     .Times(1);
 
     bool result = protocol->synchronizeModule(
-                      Wazuh::SyncSchema::Mode::Full,
+                      Mode::FULL,
                       std::chrono::seconds(min_timeout),
                       retries,
                       maxEps
@@ -365,7 +365,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -434,7 +434,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -494,7 +494,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -574,7 +574,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -654,7 +654,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -756,7 +756,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -845,7 +845,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -906,7 +906,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -987,7 +987,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
     std::thread syncThread([this]()
     {
         bool result = protocol->synchronizeModule(
-                          Wazuh::SyncSchema::Mode::Full,
+                          Mode::FULL,
                           std::chrono::seconds(max_timeout),
                           retries,
                           maxEps
@@ -1141,7 +1141,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
+            Mode::FULL,
             std::chrono::seconds(max_timeout),
             retries,
             maxEps
@@ -1198,7 +1198,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
+            Mode::FULL,
             std::chrono::seconds(max_timeout),
             retries,
             maxEps
@@ -1255,7 +1255,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
+            Mode::FULL,
             std::chrono::seconds(max_timeout),
             retries,
             maxEps
@@ -1344,7 +1344,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
+            Mode::FULL,
             std::chrono::seconds(max_timeout),
             retries,
             maxEps
@@ -1421,7 +1421,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
+            Mode::FULL,
             std::chrono::seconds(max_timeout),
             retries,
             maxEps
@@ -1498,7 +1498,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
+            Mode::FULL,
             std::chrono::seconds(max_timeout),
             retries,
             maxEps
@@ -1613,7 +1613,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
+            Mode::FULL,
             std::chrono::seconds(max_timeout),
             retries,
             maxEps
@@ -1690,7 +1690,7 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
         .WillOnce(Return(testData));
 
         protocol->synchronizeModule(
-            Wazuh::SyncSchema::Mode::Full,
+            Mode::FULL,
             std::chrono::seconds(max_timeout),
             retries,
             maxEps

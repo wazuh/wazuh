@@ -47,7 +47,7 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
     }
 }
 
-bool AgentSyncProtocol::synchronizeModule(Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
     if (!ensureQueueAvailable())
     {
@@ -139,7 +139,7 @@ bool AgentSyncProtocol::ensureQueueAvailable()
     return false;
 }
 
-bool AgentSyncProtocol::sendStartAndWaitAck(Wazuh::SyncSchema::Mode mode,
+bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t dataSize,
                                             const std::chrono::seconds timeout,
                                             unsigned int retries,
@@ -150,7 +150,13 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Wazuh::SyncSchema::Mode mode,
         flatbuffers::FlatBufferBuilder builder;
 
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
-        startBuilder.add_mode(mode);
+
+        // Translate DB mode to Schema mode
+        const auto protocolMode = (mode == Mode::FULL)
+                                  ? Wazuh::SyncSchema::Mode::Full
+                                  : Wazuh::SyncSchema::Mode::Delta;
+
+        startBuilder.add_mode(protocolMode);
         startBuilder.add_size(static_cast<uint64_t>(dataSize));
         auto startOffset = startBuilder.Finish();
 
@@ -230,7 +236,7 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
             dataBuilder.add_index(idxStr);
 
             // Translate DB operation to Schema operation
-            const auto protocolOperation = (item.operation == Operation::DELETE)
+            const auto protocolOperation = (item.operation == Operation::DELETE_)
                                            ? Wazuh::SyncSchema::Operation::Delete
                                            : Wazuh::SyncSchema::Operation::Upsert;
 

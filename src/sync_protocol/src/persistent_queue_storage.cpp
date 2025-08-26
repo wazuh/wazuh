@@ -111,7 +111,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                             ? SyncStatus::PENDING
                             : SyncStatus::SYNCING_UPDATED;
 
-            if (newData.operation == Operation::DELETE)
+            if (newData.operation == Operation::DELETE_)
             {
                 if (oldCreateStatus == CreateStatus::NEW && oldSyncStatus == SyncStatus::PENDING)
                 {
@@ -130,7 +130,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                     Statement updateStmt(m_connection, updateQuery);
                     updateStmt.bind(1, newData.index);
                     updateStmt.bind(2, newData.data);
-                    updateStmt.bind(3, static_cast<int>(Operation::DELETE));
+                    updateStmt.bind(3, static_cast<int>(Operation::DELETE_));
                     updateStmt.bind(4, static_cast<int>(newSyncStatus));
                     updateStmt.bind(5, static_cast<int>(newCreateStatus));
                     updateStmt.bind(6, static_cast<int>(newOperationSyncing));
@@ -256,7 +256,7 @@ void PersistentQueueStorage::removeAllSynced()
         stmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
         stmt.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
         stmt.bind(3, static_cast<int>(Operation::NO_OP));
-        stmt.bind(4, static_cast<int>(Operation::DELETE));
+        stmt.bind(4, static_cast<int>(Operation::DELETE_));
         stmt.step();
 
         const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? WHERE (sync_status = ? OR sync_status = ?);";
@@ -294,7 +294,7 @@ void PersistentQueueStorage::resetAllSyncing()
 
         const std::string queryDelete = "DELETE FROM persistent_queue WHERE operation = ? AND create_status = ?;";
         Statement stmtDelete(m_connection, queryDelete);
-        stmtDelete.bind(1, static_cast<int>(Operation::DELETE));
+        stmtDelete.bind(1, static_cast<int>(Operation::DELETE_));
         stmtDelete.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
         stmtDelete.step();
 
