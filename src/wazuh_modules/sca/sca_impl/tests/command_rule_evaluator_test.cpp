@@ -12,27 +12,28 @@
 
 class CommandRuleEvaluatorTest : public ::testing::Test
 {
-protected:
-    PolicyEvaluationContext m_ctx;
-    std::unique_ptr<MockFileSystemWrapper> m_fsMock;
-    MockFileSystemWrapper* m_rawFsMock = nullptr;
-    std::function<std::optional<CommandRuleEvaluator::ExecResult>(const std::string&)> m_execMock;
+    protected:
+        PolicyEvaluationContext m_ctx;
+        std::unique_ptr<MockFileSystemWrapper> m_fsMock;
+        MockFileSystemWrapper* m_rawFsMock = nullptr;
+        std::function<std::optional<CommandRuleEvaluator::ExecResult>(const std::string&)> m_execMock;
 
-    void SetUp() override
-    {
-        // Set up the logging callback to avoid "Log callback not set" errors
-        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
-            // Mock logging callback that does nothing
-        });
+        void SetUp() override
+        {
+            // Set up the logging callback to avoid "Log callback not set" errors
+            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+            {
+                // Mock logging callback that does nothing
+            });
 
-        m_fsMock = std::make_unique<MockFileSystemWrapper>();
-        m_rawFsMock = m_fsMock.get();
-    }
+            m_fsMock = std::make_unique<MockFileSystemWrapper>();
+            m_rawFsMock = m_fsMock.get();
+        }
 
-    CommandRuleEvaluator CreateEvaluator()
-    {
-        return {m_ctx, std::move(m_fsMock), m_execMock};
-    }
+        CommandRuleEvaluator CreateEvaluator()
+        {
+            return {m_ctx, std::move(m_fsMock), m_execMock};
+        }
 };
 
 TEST_F(CommandRuleEvaluatorTest, EvaluationReturnsFoundWhenCommandGivenButNoPattern)

@@ -16,7 +16,7 @@ SCAPolicyLoader::SCAPolicyLoader(const std::vector<sca::PolicyData>& policies,
                                  std::shared_ptr<IFileSystemWrapper> fileSystemWrapper,
                                  std::shared_ptr<IDBSync> dBSync)
     : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
-                                            : std::make_shared<file_system::FileSystemWrapper>())
+                          : std::make_shared<file_system::FileSystemWrapper>())
     , m_dBSync(std::move(dBSync))
 {
     const auto loadPoliciesPathsFromConfig = [this](const std::vector<sca::PolicyData>& policiesStrPaths)
@@ -34,6 +34,7 @@ SCAPolicyLoader::SCAPolicyLoader(const std::vector<sca::PolicyData>& policies,
                 LoggingHelper::getInstance().log(LOG_WARNING, "Policy file does not exist: " + policy.path);
             }
         }
+
         return returnPolicies;
     };
 
@@ -41,7 +42,7 @@ SCAPolicyLoader::SCAPolicyLoader(const std::vector<sca::PolicyData>& policies,
 }
 
 std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const int commandsTimeout,
-                                 const bool remoteEnabled,const CreateEventsFunc& createEvents) const
+                                                                       const bool remoteEnabled, const CreateEventsFunc& createEvents) const
 {
     std::vector<std::unique_ptr<ISCAPolicy>> policies;
     nlohmann::json policiesAndChecks;
@@ -123,16 +124,21 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
                     UpdateCheckResult(check.second["data"]["new"]);
                 }
             }
+            // LCOV_EXCL_START
             catch (const std::exception& e)
             {
                 LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to update check result: ") + e.what());
             }
+
+            // LCOV_EXCL_STOP
         }
     }
     else
     {
+        // LCOV_EXCL_START
         LoggingHelper::getInstance().log(LOG_ERROR, "No checks found in data");
         return;
+        // LCOV_EXCL_STOP
     }
 
     createEvents(modifiedPoliciesMap, modifiedChecksMap);
@@ -150,49 +156,63 @@ std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(
         return modifiedDataMap;
     }
 
-    const auto callback {[](ReturnTypeCallback result, const nlohmann::json& rowData)
-                         {
-                             if (result != DB_ERROR)
-                             {
-                                 std::string id;
-                                 if (result == MODIFIED && rowData.contains("new") && rowData["new"].is_object())
-                                 {
-                                     if (rowData["new"].contains("id") && rowData["new"]["id"].is_string())
-                                     {
-                                         id = rowData["new"]["id"];
-                                     }
-                                 }
-                                 else if ((result == INSERTED || result == DELETED) && rowData.contains("id") &&
-                                          rowData["id"].is_string())
-                                 {
-                                     id = rowData["id"];
-                                 }
+    // LCOV_EXCL_START
+    const auto callback {[](ReturnTypeCallback result, const nlohmann::json & rowData)
+    {
+        if (result != DB_ERROR)
+        {
+            std::string id;
 
-                                 if (!id.empty())
-                                 {
-                                     modifiedDataMap[id] = nlohmann::json {{"result", result}, {"data", rowData}};
-                                 }
-                                 else
-                                 {
-                                     LoggingHelper::getInstance().log(LOG_ERROR, "Invalid data:  " + rowData.dump());
-                                 }
-                             }
-                             else
-                             {
-                                 LoggingHelper::getInstance().log(LOG_ERROR,
-                                                                  "Failed to parse policy from  " + rowData.dump());
-                             }
-                         }};
+            if (result == MODIFIED && rowData.contains("new") && rowData["new"].is_object())
+            {
+                if (rowData["new"].contains("id") && rowData["new"]["id"].is_string())
+                {
+                    id = rowData["new"]["id"];
+                }
+            }
+            else if ((result == INSERTED || result == DELETED) && rowData.contains("id") &&
+                     rowData["id"].is_string())
+            {
+                id = rowData["id"];
+            }
 
-    DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {tableName}, 0, DBSYNC_QUEUE_SIZE, callback};
+            if (!id.empty())
+            {
+                modifiedDataMap[id] = nlohmann::json {{"result", result}, {"data", rowData}};
+            }
+            else
+            {
+                LoggingHelper::getInstance().log(LOG_ERROR, "Invalid data:  " + rowData.dump());
+            }
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR,
+                                             "Failed to parse policy from  " + rowData.dump());
+        }
+    }};
+    // LCOV_EXCL_STOP
 
-    nlohmann::json input;
-    input["table"] = tableName;
-    input["data"] = NormalizeDataWithChecksum(data, tableName);
-    input["options"]["return_old_data"] = true;
+    try
+    {
+        DBSyncTxn txn {m_dBSync->handle(), nlohmann::json {tableName}, 0, DBSYNC_QUEUE_SIZE, callback};
 
-    txn.syncTxnRow(input);
-    txn.getDeletedRows(callback);
+        if (txn.handle() != nullptr)
+        {
+            nlohmann::json input;
+            input["table"] = tableName;
+            input["data"] = NormalizeDataWithChecksum(data, tableName);
+            input["options"]["return_old_data"] = true;
+
+            txn.syncTxnRow(input);
+            txn.getDeletedRows(callback);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR,
+                                         std::string("Error synchronizing data with DBSync: ") + e.what());
+    }
 
     return modifiedDataMap;
 }
@@ -213,6 +233,7 @@ void SCAPolicyLoader::UpdateCheckResult(const nlohmann::json& check) const
         const auto checksum = sca::calculateChecksum(checkWithChecksum);
         checkWithChecksum["checksum"] = checksum;
     }
+    // LCOV_EXCL_START
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(
@@ -221,9 +242,12 @@ void SCAPolicyLoader::UpdateCheckResult(const nlohmann::json& check) const
         return;
     }
 
+    // LCOV_EXCL_STOP
+
     auto updateResultQuery = SyncRowQuery::builder().table(SCA_CHECK_TABLE_NAME).data(checkWithChecksum).build();
 
-    const auto callback = [](ReturnTypeCallback, const nlohmann::json&) {
+    const auto callback = [](ReturnTypeCallback, const nlohmann::json&)
+    {
     };
 
     m_dBSync->syncRow(updateResultQuery.query(), callback);
@@ -263,11 +287,14 @@ nlohmann::json SCAPolicyLoader::NormalizeDataWithChecksum(nlohmann::json data, c
                 const auto checksum = sca::calculateChecksum(entry);
                 entry["checksum"] = checksum;
             }
+            // LCOV_EXCL_START
             catch (const std::exception& e)
             {
                 LoggingHelper::getInstance().log(
                     LOG_ERROR, "Failed to calculate checksum for check: " + entry.dump() + " - " + e.what());
             }
+
+            // LCOV_EXCL_STOP
         }
     }
 

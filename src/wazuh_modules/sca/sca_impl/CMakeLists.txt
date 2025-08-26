@@ -7,12 +7,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address,leak,undefined")
+endif(FSANITIZE)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_definitions(-DWIN32=1)
 endif()
 
-# find_package(pcre2 CONFIG REQUIRED)
-# find_package(yaml CONFIG REQUIRED)
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 message(STATUS "SRC_FOLDER: ${SRC_FOLDER}")
 link_directories(${SRC_FOLDER})
@@ -60,6 +62,9 @@ find_library(PCRE2_LIB pcre2-8
     HINTS ${SRC_FOLDER}/external/libpcre2/.libs
     NO_DEFAULT_PATH)
 find_library(OPENSSL_LIB ssl
+    HINTS ${SRC_FOLDER}/external/openssl
+    NO_DEFAULT_PATH)
+find_library(OPENSSL_CRYPTO_LIB crypto
     HINTS ${SRC_FOLDER}/external/openssl
     NO_DEFAULT_PATH)
 
@@ -110,18 +115,28 @@ target_compile_definitions(SCAImpl PRIVATE PCRE2_STATIC PCRE2_CODE_UNIT_WIDTH=8)
 
 target_link_libraries(
     SCAImpl
-    PRIVATE ${FILESYSTEM_WRAPPER_LIB}
+    PRIVATE
+            sysinfo
+            ${FILESYSTEM_WRAPPER_LIB}
             ${FILE_IO_LIB}
             ${DBSYNC_LIB}
-            sysinfo
             wazuhext # contains hash_helper, string_helper, time_helper utilities
             cjson
             ${YAML_LIB}
             ${PCRE2_LIB}
             ${OPENSSL_LIB}
+            ${OPENSSL_CRYPTO_LIB}
 )
 
 if(UNIT_TEST)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(SCAImpl PRIVATE -fprofile-arcs -ftest-coverage)
+        target_link_libraries(SCAImpl PRIVATE -fprofile-arcs)
+    else()
+        target_compile_options(SCAImpl PRIVATE --coverage)
+        target_link_libraries(SCAImpl PRIVATE gcov)
+    endif()
+
     enable_testing()
     add_subdirectory(tests)
 endif()

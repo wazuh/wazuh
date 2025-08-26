@@ -13,31 +13,32 @@
 
 class ProcessRuleEvaluatorTest : public ::testing::Test
 {
-protected:
-    PolicyEvaluationContext m_ctx;
-    std::unique_ptr<MockFileSystemWrapper> m_fsMock;
-    MockFileSystemWrapper* m_rawFsMock = nullptr;
-    std::unique_ptr<MockSysInfo> m_sysInfoMock;
-    MockSysInfo* m_rawSysInfoMock = nullptr;
-    std::function<std::vector<std::string>()> m_processesMock;
+    protected:
+        PolicyEvaluationContext m_ctx;
+        std::unique_ptr<MockFileSystemWrapper> m_fsMock;
+        MockFileSystemWrapper* m_rawFsMock = nullptr;
+        std::unique_ptr<MockSysInfo> m_sysInfoMock;
+        MockSysInfo* m_rawSysInfoMock = nullptr;
+        std::function<std::vector<std::string>()> m_processesMock;
 
-    void SetUp() override
-    {
-        // Set up the logging callback to avoid "Log callback not set" errors
-        LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */) {
-            // Mock logging callback that does nothing
-        });
+        void SetUp() override
+        {
+            // Set up the logging callback to avoid "Log callback not set" errors
+            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* /* log */)
+            {
+                // Mock logging callback that does nothing
+            });
 
-        m_fsMock = std::make_unique<MockFileSystemWrapper>();
-        m_rawFsMock = m_fsMock.get();
-        m_sysInfoMock = std::make_unique<MockSysInfo>();
-        m_rawSysInfoMock = m_sysInfoMock.get();
-    }
+            m_fsMock = std::make_unique<MockFileSystemWrapper>();
+            m_rawFsMock = m_fsMock.get();
+            m_sysInfoMock = std::make_unique<MockSysInfo>();
+            m_rawSysInfoMock = m_sysInfoMock.get();
+        }
 
-    ProcessRuleEvaluator CreateEvaluator()
-    {
-        return ProcessRuleEvaluator{m_ctx, std::move(m_fsMock), std::move(m_sysInfoMock), m_processesMock};
-    }
+        ProcessRuleEvaluator CreateEvaluator()
+        {
+            return ProcessRuleEvaluator{m_ctx, std::move(m_fsMock), std::move(m_sysInfoMock), m_processesMock};
+        }
 };
 
 TEST_F(ProcessRuleEvaluatorTest, ProcessFoundReturnsFound)
