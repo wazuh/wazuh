@@ -23,8 +23,8 @@ namespace sca
         const std::string regexType = checkData.value("regex_type", "");
 
         return calculateChecksum(
-            id, policyId, name, description, rationale, remediation, refs, condition, compliance, rules, regexType
-        );
+                   id, policyId, name, description, rationale, remediation, refs, condition, compliance, rules, regexType
+               );
     }
 
     std::string calculateChecksum(const std::string& id,

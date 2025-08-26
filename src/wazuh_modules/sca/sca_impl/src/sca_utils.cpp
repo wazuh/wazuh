@@ -362,6 +362,7 @@ namespace sca
         {
             return RegexEngineType::PCRE2;
         }
+
         return RegexEngineType::Invalid;
     }
 
@@ -371,6 +372,7 @@ namespace sca
         {
             case RegexEngineType::PCRE2:
                 return "pcre2";
+
             case RegexEngineType::Invalid:
             default:
                 return "invalid";
