@@ -260,7 +260,7 @@ static struct column_list const TABLE_BROWSER_EXTENSIONS[BROWSER_EXTENSIONS_FIEL
     { .value = { FIELD_INTEGER, 21, false, false, NULL, "browser_profile_referenced", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[21]},
     { .value = { FIELD_TEXT, 22, false, false, NULL, "package_installed", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[22]},
     { .value = { FIELD_TEXT, 23, false, false, NULL, "file_hash_sha256", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[23]},
-    { .value = { FIELD_TEXT, 24, false, false, NULL, "checksum", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[24]},
+    { .value = { FIELD_TEXT, 24, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_BROWSER_EXTENSIONS[24]},
     { .value = { FIELD_TEXT, 25, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
 };
 
