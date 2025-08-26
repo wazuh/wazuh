@@ -100,7 +100,12 @@ if sys.platform == MACOS:
     cases_path = Path(TEST_CASES_PATH, 'cases_report_changes_and_diff_macos.yaml')
 else:
     cases_path = Path(TEST_CASES_PATH, 'cases_report_changes_and_diff.yaml')
-config_path = Path(CONFIGS_PATH, 'configuration_report_changes_and_diff.yaml')
+
+if sys.platform in (MACOS, WINDOWS):
+    config_path = Path(CONFIGS_PATH, 'configuration_report_changes_and_diff.yaml')
+else:
+    config_path = Path(CONFIGS_PATH, 'configuration_report_changes_and_diff_whodata.yaml')
+
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
