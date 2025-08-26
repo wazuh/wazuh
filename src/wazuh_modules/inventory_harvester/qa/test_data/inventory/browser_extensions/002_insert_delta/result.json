@@ -15,7 +15,6 @@
                 },
                 "package": {
                     "autoupdate": true,
-                    "enabled": true,
                     "from_webstore": true,
                     "name": "UBlock Origin",
                     "persistent": true
@@ -42,7 +41,6 @@
                 },
                 "package": {
                     "autoupdate": false,
-                    "enabled": false,
                     "from_webstore": false,
                     "name": "UBlock Origin",
                     "persistent": false
@@ -79,7 +77,7 @@
                     "autoupdate": true,
                     "build_version": "1.52.2",
                     "description": "Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.",
-                    "enabled": true,
+                    "enabled": "enabled",
                     "from_webstore": true,
                     "id": "cjpalhdlnbpafiamejdnhcphjbkeiagm",
                     "installed": "2024-03-15T08:03:41.000Z",
@@ -132,7 +130,7 @@
                     "autoupdate": false,
                     "build_version": "1.52.2",
                     "description": "Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.",
-                    "enabled": false,
+                    "enabled": "enabled",
                     "from_webstore": false,
                     "id": "cjpalhdlnbpafiamejdnhcphjbkeiagm",
                     "installed": "2024-03-15T08:03:41.000Z",
@@ -175,7 +173,6 @@
                 },
                 "package": {
                     "autoupdate": false,
-                    "enabled": false,
                     "from_webstore": false,
                     "name": "UBlock Origin",
                     "persistent": false

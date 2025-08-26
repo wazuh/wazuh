@@ -1376,7 +1376,7 @@ int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t 
     sqlite3_bind_text(stmt, 14, wb_extension_record->package_reference, -1, NULL);
     sqlite3_bind_text(stmt, 15, wb_extension_record->package_permissions, -1, NULL);
     sqlite3_bind_text(stmt, 16, wb_extension_record->package_type, -1, NULL);
-    sqlite3_bind_int(stmt, 17, wb_extension_record->package_enabled);
+    sqlite3_bind_text(stmt, 17, wb_extension_record->package_enabled, -1, NULL);
     sqlite3_bind_int(stmt, 18, wb_extension_record->package_autoupdate);
     sqlite3_bind_int(stmt, 19, wb_extension_record->package_persistent);
     sqlite3_bind_int(stmt, 20, wb_extension_record->package_from_webstore);
@@ -1666,7 +1666,7 @@ int wdb_syscollector_browser_extensions_save2(wdb_t * wdb, const cJSON * attribu
     const char * package_reference = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_reference"));
     const char * package_permissions = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_permissions"));
     const char * package_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_type"));
-    const bool package_enabled = cJSON_GetObjectItem(attributes, "package_enabled") ? cJSON_GetObjectItem(attributes, "package_enabled")->valueint : false;
+    const char * package_enabled = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_enabled"));
     const bool package_autoupdate = cJSON_GetObjectItem(attributes, "package_autoupdate") ? cJSON_GetObjectItem(attributes, "package_autoupdate")->valueint : false;
     const bool package_persistent = cJSON_GetObjectItem(attributes, "package_persistent") ? cJSON_GetObjectItem(attributes, "package_persistent")->valueint : false;
     const bool package_from_webstore = cJSON_GetObjectItem(attributes, "package_from_webstore") ? cJSON_GetObjectItem(attributes, "package_from_webstore")->valueint : false;

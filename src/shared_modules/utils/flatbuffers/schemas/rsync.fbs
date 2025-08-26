@@ -220,7 +220,7 @@ table syscollector_browser_extensions {
     package_reference:string;
     package_permissions:string;
     package_type:string;
-    package_enabled:bool = null;
+    package_enabled:string;
     package_autoupdate:bool = null;
     package_persistent:bool = null;
     package_from_webstore:bool = null;
