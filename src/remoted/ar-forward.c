@@ -101,9 +101,25 @@ void *AR_Forward(__attribute__((unused)) void *arg)
                     continue;
                 }
                 *tmp_str = '\0';
-                payload_size = strtoll(payload_size_offset, NULL, 10);
+                char *endptr;
+                errno = 0;
+                payload_size = strtoll(payload_size_offset, &endptr, 10);
                 
-                /* Validate payload size */
+                /* Validate strtoll conversion */
+                if (errno == ERANGE) {
+                    mwarn("Payload size value out of range: %s. Dropping message.", payload_size_offset);
+                    continue;
+                }
+                if (errno != 0) {
+                    mwarn("Error converting payload size: %s. Dropping message.", payload_size_offset);
+                    continue;
+                }
+                if (endptr == payload_size_offset || *endptr != '\0') {
+                    mwarn("Invalid payload size format: %s. Dropping message.", payload_size_offset);
+                    continue;
+                }
+                
+                /* Validate payload size range */
                 if (payload_size < 0 || payload_size >= OS_MAXSTR) {
                     mwarn("Invalid payload size: %ld. Must be between 0 and %d. Dropping message.", 
                           payload_size, OS_MAXSTR - 1);
