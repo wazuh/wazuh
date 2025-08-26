@@ -108,7 +108,8 @@
               "type": "keyword"
             },
             "enabled": {
-              "type": "boolean"
+              "ignore_above": 1024,
+              "type": "keyword"
             },
             "from_webstore": {
               "type": "boolean"

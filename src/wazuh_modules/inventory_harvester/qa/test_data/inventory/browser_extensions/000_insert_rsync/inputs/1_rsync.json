@@ -24,7 +24,7 @@
             "package_reference": "",
             "package_permissions": "",
             "package_type": "",
-            "package_enabled": 1,
+            "package_enabled": "",
             "package_autoupdate": 1,
             "package_persistent": 1,
             "package_from_webstore": 1,

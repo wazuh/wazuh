@@ -24,7 +24,7 @@
             "package_reference": null,
             "package_permissions": null,
             "package_type": null,
-            "package_enabled": 0,
+            "package_enabled": null,
             "package_autoupdate": 0,
             "package_persistent": 0,
             "package_from_webstore": 0,

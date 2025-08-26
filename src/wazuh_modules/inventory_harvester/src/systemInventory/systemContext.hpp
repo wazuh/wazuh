@@ -3821,35 +3821,34 @@ public:
         return "";
     }
 
-    bool browserExtensionPackageEnabled() const
+    std::string_view browserExtensionPackageEnabled() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_browser_extensions() &&
-                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_enabled()).has_value())
+                m_delta->data_as_dbsync_browser_extensions()->package_enabled())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_enabled()).value();
+                return m_delta->data_as_dbsync_browser_extensions()->package_enabled()->string_view();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
-                std::optional<bool>(
-                    m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_enabled())
-                    .has_value())
+                m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_enabled())
+
             {
-                return std::optional<bool>(m_syncMsg->data_as_state()
-                                               ->attributes_as_syscollector_browser_extensions()
-                                               ->package_enabled())
-                    .value();
+                return m_syncMsg->data_as_state()
+                    ->attributes_as_syscollector_browser_extensions()
+                    ->package_enabled()
+                    ->string_view();
             }
         }
         else
         {
-            return false;
+            return "";
         }
-        return false;
+        return "";
     }
 
     bool browserExtensionPackageAutoupdate() const
