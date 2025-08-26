@@ -189,7 +189,6 @@ constexpr auto HW_START_CONFIG_STATEMENT
         })"
 };
 
-
 constexpr auto HOTFIXES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_hotfixes(
@@ -941,7 +940,6 @@ constexpr auto USERS_SQL_STATEMENT
 };
 static const std::vector<std::string> USERS_ITEM_ID_FIELDS{"user_name"};
 
-
 constexpr auto GROUPS_START_CONFIG_STATEMENT
 {
     R"({"table":"dbsync_groups",
@@ -1028,6 +1026,120 @@ constexpr auto GROUPS_SQL_STATEMENT
     PRIMARY KEY (group_name)) WITHOUT ROWID;)"
 };
 
+constexpr auto SERVICES_START_CONFIG_STATEMENT
+{
+    R"({"table":"dbsync_services",
+        "first_query":
+            {
+                "column_list":["item_id"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"item_id DESC",
+                "count_opt":1
+            },
+        "last_query":
+            {
+                "column_list":["item_id"],
+                "row_filter":" ",
+                "distinct_opt":false,
+                "order_by_opt":"item_id ASC",
+                "count_opt":1
+            },
+        "component":"syscollector_services",
+        "index":"item_id",
+        "last_event":"last_event",
+        "checksum_field":"checksum",
+        "range_checksum_query_json":
+            {
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["item_id, checksum"],
+                "distinct_opt":false,
+                "order_by_opt":"",
+                "count_opt":100
+            }
+        })"
+};
+
+constexpr auto SERVICES_SYNC_CONFIG_STATEMENT
+{
+    R"(
+    {
+        "decoder_type":"JSON_RANGE",
+        "table":"dbsync_services",
+        "component":"syscollector_services",
+        "index":"item_id",
+        "checksum_field":"checksum",
+        "no_data_query_json": {
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "count_range_query_json": {
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "count_field_name":"count",
+                "column_list":["count(*) AS count "],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "row_data_query_json": {
+                "row_filter":"WHERE item_id ='?'",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        },
+        "range_checksum_query_json": {
+                "row_filter":"WHERE item_id BETWEEN '?' and '?' ORDER BY item_id",
+                "column_list":["*"],
+                "distinct_opt":false,
+                "order_by_opt":""
+        }
+    }
+    )"
+};
+
+constexpr auto SERVICES_SQL_STATEMENT
+{
+    R"(CREATE TABLE dbsync_services (
+        service_id TEXT,
+        service_name TEXT,
+        service_description TEXT,
+        service_type TEXT,
+        service_state TEXT,
+        service_sub_state TEXT,
+        service_enabled TEXT,
+        service_start_type TEXT,
+		service_restart TEXT,
+		service_frequency BIGINT,
+		service_starts_on_mount INTEGER,
+		service_starts_on_path_modified TEXT,
+		service_starts_on_not_empty_directory TEXT,
+		service_inetd_compatibility INTEGER,
+        process_pid BIGINT,
+        process_executable TEXT,
+        process_args TEXT,
+		process_user_name TEXT,
+		process_group_name TEXT,
+		process_working_dir TEXT,
+		process_root_dir TEXT,
+        file_path TEXT,
+        service_address TEXT,
+        log_file_path TEXT,
+        error_log_file_path TEXT,
+        service_exit_code INTEGER,
+        service_win32_exit_code INTEGER,
+        service_following TEXT,
+        service_object_path TEXT,
+        service_target_ephemeral_id BIGINT,
+        service_target_type TEXT,
+        service_target_address TEXT,
+        checksum TEXT,
+        item_id TEXT,
+        PRIMARY KEY (service_id, file_path)) WITHOUT ROWID;)"
+};
+static const std::vector<std::string> SERVICES_ITEM_ID_FIELDS{"service_id", "file_path"};
+
+
 constexpr auto NET_IFACE_TABLE    { "dbsync_network_iface"    };
 constexpr auto NET_PROTOCOL_TABLE { "dbsync_network_protocol" };
 constexpr auto NET_ADDRESS_TABLE  { "dbsync_network_address"  };
@@ -1039,3 +1151,4 @@ constexpr auto OS_TABLE           { "dbsync_osinfo"           };
 constexpr auto HW_TABLE           { "dbsync_hwinfo"           };
 constexpr auto USERS_TABLE        { "dbsync_users"            };
 constexpr auto GROUPS_TABLE       { "dbsync_groups"           };
+constexpr auto SERVICES_TABLE     { "dbsync_services"         };

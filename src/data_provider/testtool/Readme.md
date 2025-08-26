@@ -47,3 +47,4 @@ A brief example could be similar to the following one:
 | `--hotfixes`     | Prints the current Operating System hotfixes information only. Example: `sysinfo_test_tool --hotfixes`                               |
 | `--groups`       | Prints the current Operating System groups information only. Example: `sysinfo_test_tool --groups`                                   |
 | `--users`        | Prints the current Operating System users information only. Example: `sysinfo_test_tool --users`                                     |
+| `--services`     | Prints the current Operating System services information only. Example: `sysinfo_test_tool --services`                               |

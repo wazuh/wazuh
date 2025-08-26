@@ -14,6 +14,7 @@
     HOTFIXES_SCAN: 'yes'
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
+    SERVICES_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     disabled: 'yes'
@@ -29,4 +30,5 @@
     hotfixes_scan: 'yes'
     groups_scan: 'yes'
     users_scan: 'yes'
+    services_scan: 'yes'
     max_eps: 10

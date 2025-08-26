@@ -46,6 +46,7 @@
 #include "user_groups_windows.hpp"
 #include "logged_in_users_win.hpp"
 #include "users_windows.hpp"
+#include "services_windows.hpp"
 
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -1165,6 +1166,56 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_password_warning_days_before_expiration"] = 0;
 
         result.push_back(std::move(userItem));
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getServices() const
+{
+    nlohmann::json result = nlohmann::json::array();
+
+    ServicesProvider servicesProvider;
+    auto collectedServices = servicesProvider.collect();
+
+    for (auto& svc : collectedServices)
+    {
+        nlohmann::json serviceItem{};
+
+        serviceItem["service_id"]                            = svc.value("name",         UNKNOWN_VALUE);
+        serviceItem["service_name"]                          = svc.value("display_name", UNKNOWN_VALUE);
+        serviceItem["service_description"]                   = svc.value("description",  UNKNOWN_VALUE);
+        serviceItem["service_type"]                          = svc.value("service_type", UNKNOWN_VALUE);
+        serviceItem["service_state"]                         = svc.value("status",       UNKNOWN_VALUE);
+        serviceItem["service_sub_state"]                     = UNKNOWN_VALUE;
+        serviceItem["service_enabled"]                       = UNKNOWN_VALUE;
+        serviceItem["service_start_type"]                    = svc.value("start_type",   UNKNOWN_VALUE);
+        serviceItem["service_restart"]                       = UNKNOWN_VALUE;
+        serviceItem["service_frequency"]                     = 0;
+        serviceItem["service_starts_on_mount"]               = 0;
+        serviceItem["service_starts_on_path_modified"]       = UNKNOWN_VALUE;
+        serviceItem["service_starts_on_not_empty_directory"] = UNKNOWN_VALUE;
+        serviceItem["service_inetd_compatibility"]           = 0;
+        serviceItem["process_pid"]                           = svc.value("pid", 0);
+        serviceItem["process_executable"]                    = svc.value("path",         UNKNOWN_VALUE);
+        serviceItem["process_args"]                          = UNKNOWN_VALUE;
+        serviceItem["process_user_name"]                     = svc.value("user_account", UNKNOWN_VALUE);
+        serviceItem["process_group_name"]                    = UNKNOWN_VALUE;
+        serviceItem["process_working_directory"]             = UNKNOWN_VALUE;
+        serviceItem["process_root_directory"]                = UNKNOWN_VALUE;
+        serviceItem["file_path"]                             = UNKNOWN_VALUE;
+        serviceItem["service_address"]                       = svc.value("module_path",  UNKNOWN_VALUE);
+        serviceItem["log_file_path"]                         = UNKNOWN_VALUE;
+        serviceItem["error_log_file_path"]                   = UNKNOWN_VALUE;
+        serviceItem["service_exit_code"]                     = svc.value("service_exit_code", 0);
+        serviceItem["service_win32_exit_code"]               = svc.value("win32_exit_code", 0);
+        serviceItem["service_following"]                     = UNKNOWN_VALUE;
+        serviceItem["service_object_path"]                   = UNKNOWN_VALUE;
+        serviceItem["service_target_ephemeral_id"]           = 0;
+        serviceItem["service_target_type"]                   = UNKNOWN_VALUE;
+        serviceItem["service_target_address"]                = UNKNOWN_VALUE;
+
+        result.push_back(std::move(serviceItem));
     }
 
     return result;

@@ -29,6 +29,8 @@
             value: GROUPS_SCAN
         - users:
             value: USERS_SCAN
+        - services:
+            value: SERVICES_SCAN
         - synchronization:
             elements:
               - max_eps:
