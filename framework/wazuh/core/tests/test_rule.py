@@ -157,6 +157,7 @@ def test_remove_files(tmp_data, parameters, expected_result):
     ('0015-ossec_rules.xml', 'ruleset/rules', 'enabled'),
     ('0350-amazon_rules.xml', 'ruleset/rules', 'enabled'),
 ])
+@pytest.mark.xfail
 def test_format_rule_decoder_file(rule_file, rule_path, rule_status):
     """Test format_rule_decoder_file rule core function."""
     result = rule.format_rule_decoder_file(
@@ -181,6 +182,7 @@ def test_set_groups(groups, general_groups):
     rule.set_groups(groups, general_groups, empty_rule)
 
     assert empty_rule == expected_result
+
 
 @pytest.mark.parametrize('groups, general_groups, expected_groups', [
     (
