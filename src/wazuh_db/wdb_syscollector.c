@@ -1343,9 +1343,9 @@ int wdb_services_save(wdb_t * wdb, const service_record_t * service_record, cons
 int wdb_services_insert(wdb_t * wdb, const service_record_t * service_record, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    if ((NULL == service_record->service_id &&
+    if ((NULL == service_record->service_id ||
         strlen(service_record->service_id) == 0) ||
-        (NULL == service_record->file_path &&
+        (NULL == service_record->file_path ||
         strlen(service_record->file_path) == 0)) {
         return OS_INVALID;
     }
