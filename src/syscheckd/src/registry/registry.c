@@ -24,11 +24,9 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #include "../../../unit_tests/wrappers/windows/winreg_wrappers.h"
-extern int _base_line;
 // Remove static qualifier when unit testing
 #define STATIC
 #else
-static int _base_line = 0;
 #define STATIC static
 #endif
 
@@ -254,7 +252,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddStringToObject(registry_stateless, "tags", event_data->config->tag);
     }
 
-    if (_base_line != 0 && event_data->evt_data->report_event) {
+    if (notify_scan != 0 && event_data->evt_data->report_event) {
         send_syscheck_msg(stateless_event);
     }
 
@@ -454,7 +452,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddStringToObject(registry_stateless, "content_changes", event_data->diff);
     }
 
-    if (_base_line != 0 && event_data->evt_data->report_event) {
+    if (notify_scan != 0 && event_data->evt_data->report_event) {
         send_syscheck_msg(stateless_event);
     }
 
@@ -1266,10 +1264,6 @@ void fim_registry_scan() {
     regval_txn_handler = NULL;
 
     mdebug1(FIM_WINREGISTRY_ENDED);
-
-    if (_base_line == 0) {
-        _base_line = 1;
-    }
 }
 
 #endif

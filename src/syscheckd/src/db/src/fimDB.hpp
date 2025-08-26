@@ -12,7 +12,6 @@
 #ifndef _FIMDB_HPP
 #define _FIMDB_HPP
 #include "dbsync.hpp"
-#include "rsync.hpp"
 #include "stringHelper.h"
 #include <condition_variable>
 #include <mutex>

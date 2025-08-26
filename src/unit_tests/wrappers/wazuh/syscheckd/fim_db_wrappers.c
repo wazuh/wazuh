@@ -141,7 +141,3 @@ void __wrap_fim_db_teardown() {
 void __wrap__imp__dbsync_initialize() {
     function_called();
 }
-
-void __wrap__imp__rsync_initialize() {
-    function_called();
-}

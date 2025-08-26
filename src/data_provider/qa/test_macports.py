@@ -22,7 +22,7 @@ def call_binary(binary_path, parameter):
 def validate_json_output(json_data):
     contains_pkg = False
     for package in json_data['packages']:
-        if package['format'] == "macports":
+        if package['type'] == "macports":
             contains_pkg = True
             break
     if not contains_pkg:

@@ -65,6 +65,7 @@
 
 /* Global config */
 extern syscheck_config syscheck;
+extern int notify_scan;
 extern int sys_debug_level;
 extern int audit_queue_full_reported;
 extern int ebpf_kernel_queue_full_reported;

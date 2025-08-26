@@ -40,10 +40,8 @@ size_t wmcom_dispatch(char * command, char ** output){
         return wm_module_sync_response(command, output);
     } else if (wmcom_sync(command) == 0) {
         /*
-         * syscollector_hwinfo dbsync checksum_fail { ... }
-         * syscollector_osinfo dbsync checksum_fail { ... }
-         * syscollector_ports dbsync checksum_fail { ... }
-         * syscollector_processes dbsync checksum_fail { ... }
+         * syscollector_sync { ... }
+         * sca_sync { ... }
         */
         return 0;
     } else {
@@ -100,7 +98,9 @@ int wmcom_sync(char * buffer) {
 #ifdef WIN32
 void wmcom_send(char * message)
 {
-    wmcom_sync(message);
+    char * response = NULL;
+    wmcom_dispatch(message, &response);
+    os_free(response);
 }
 #else
 

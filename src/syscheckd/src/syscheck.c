@@ -23,6 +23,7 @@
 
 // Global variables
 syscheck_config syscheck;
+int notify_scan = 0;
 int sys_debug_level;
 int audit_queue_full_reported = 0;
 
@@ -113,6 +114,8 @@ void fim_initialize() {
 #ifndef WIN32
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL)
 #endif
+
+    notify_scan = syscheck.notify_first_scan;
 
     MQ_Functions mq_funcs = {
         .start = fim_startmq,
