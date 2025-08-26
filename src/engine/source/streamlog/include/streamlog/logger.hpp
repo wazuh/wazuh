@@ -11,6 +11,7 @@
 #include <unordered_map>
 
 #include <scheduler/ischeduler.hpp>
+#include <store/istore.hpp>
 
 /**
  * @brief Asynchronous, rotating log management module. Handles named, rotating log channels with asynchronous writes.
@@ -21,6 +22,7 @@
  *   - Asynchronous, thread-safe writes into date- and size-rotated files via a dedicated I/O thread.
  *   - Runtime configuration and on-demand rotation.
  *   - Hard-link “latest” pointer to the current log file for each channel.
+ *   - Compression of rotated files asynchronously.
  *
  * ## Concepts
  *
@@ -28,14 +30,16 @@
  *   Clients call `registerLog(name, config)` to declare a log stream,
  *
  * - **RotationConfig**
- *   Defines `basePath`, `pattern`, optional `maxSize`, and `bufferSize`.
+ *   Defines `basePath`, `pattern`, optional `maxSize`, `bufferSize`, and optional compression settings.
  *   E.g.
  *   ```cpp
  *   RotationConfig cfg {
  *     "/var/ossec/logs",         // basePath
  *     "${YYYY}/${MMM}/wazuh-${name}-${DD}.json",
  *     10*1024*1024,              // rotate after 10 MiB
- *     1<<20                      // 1 MiB write buffer
+ *     1<<20,                     // 1 MiB write buffer
+ *     true,                      // compress rotated files
+ *      5                         // compression level (1-9)
  *   };
  *   ```
  *
@@ -163,12 +167,15 @@ private:
     std::unordered_map<std::string, std::shared_ptr<ChannelHandler>> m_channels; ///< Channel names to ChannelHandler
     mutable std::shared_mutex m_channelsMutex;        ///< Mutex to protect access to m_channels
     std::weak_ptr<scheduler::IScheduler> m_scheduler; ///< Scheduler for compressing log writes
+    std::shared_ptr<store::IStore> m_store;           ///< Store for managing last state
 
 public:
-    LogManager(std::weak_ptr<scheduler::IScheduler> scheduler = {})
-        : m_scheduler(scheduler)
+    LogManager(const std::shared_ptr<store::IStore>& store, std::weak_ptr<scheduler::IScheduler> scheduler = {})
+        : m_scheduler(std::move(scheduler))
         , m_channels()
-        , m_channelsMutex() {};
+        , m_channelsMutex()
+        , m_store(store)
+         {};
 
     /**
      * @brief Registers a new log channel with the specified name and rotation configuration.

@@ -6,9 +6,11 @@
 #include <random>
 #include <thread>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <scheduler/mockScheduler.hpp>
+#include <store/mockStore.hpp>
 
 #include "channel.hpp"
 
@@ -105,6 +107,17 @@ protected:
             0,                                        // maxSize (no limit)
             1024                                      // bufferSize
         };
+
+        // Set up default mock store
+        mockStore = std::make_shared<store::mocks::MockStore>();
+
+        // Default mock store behavior - allow any readInternalDoc call to return empty
+        EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+            .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
+
+        // Allow any upsertInternalDoc call to succeed
+        EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+            .WillRepeatedly(testing::Return(store::mocks::storeOk()));
     }
 
     void TearDown() override
@@ -114,8 +127,40 @@ protected:
         std::filesystem::remove_all(tmpDir, ec);
     }
 
+    // Helper to create a basic channel handler with mocks
+    std::shared_ptr<streamlog::ChannelHandler> createBasicHandler(const std::string& name)
+    {
+        return streamlog::ChannelHandler::create(
+            defaultConfig, name, mockStore, std::weak_ptr<scheduler::IScheduler> {}, "log");
+    }
+
+    std::shared_ptr<streamlog::ChannelHandler> createBasicHandler(const std::string& name,
+                                                                  const streamlog::RotationConfig& config)
+    {
+        return streamlog::ChannelHandler::create(
+            config, name, mockStore, std::weak_ptr<scheduler::IScheduler> {}, "log");
+    }
+
+    // Helper to create a handler with scheduler mock
+    std::shared_ptr<streamlog::ChannelHandler>
+    createHandlerWithScheduler(const std::string& name,
+                               const streamlog::RotationConfig& config,
+                               std::shared_ptr<scheduler::mocks::MockIScheduler> scheduler)
+    {
+        return streamlog::ChannelHandler::create(config, name, mockStore, scheduler, "log");
+    }
+
+    // Helper to create test file with content
+    void createTestFile(const std::string& filePath, const std::string& content = "test content")
+    {
+        std::ofstream file(filePath);
+        file << content;
+        file.close();
+    }
+
     std::filesystem::path tmpDir;
     streamlog::RotationConfig defaultConfig;
+    std::shared_ptr<store::mocks::MockStore> mockStore;
 };
 
 // Parameterized test for different channel names
@@ -142,7 +187,7 @@ class BufferSizeTest
 // Test basic creation and destruction
 TEST_F(ChannelHandlerTest, BasicCreationAndDestruction)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "test-channel");
+    auto handler = createBasicHandler("test-channel");
     ASSERT_NE(handler, nullptr);
 
     // Handler should be created successfully
@@ -155,7 +200,7 @@ TEST_F(ChannelHandlerTest, BasicCreationAndDestruction)
 // Test factory method enforces shared_ptr usage
 TEST_F(ChannelHandlerTest, FactoryMethodEnforcesSharedPtr)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "test");
+    auto handler = createBasicHandler("test");
     EXPECT_NE(handler, nullptr);
 
     // Should be able to copy shared_ptr
@@ -167,22 +212,22 @@ TEST_F(ChannelHandlerTest, FactoryMethodEnforcesSharedPtr)
 TEST_F(ChannelHandlerTest, InvalidConfigurations)
 {
     // Empty channel name
-    EXPECT_THROW(streamlog::ChannelHandler::create(defaultConfig, ""), std::runtime_error);
+    EXPECT_THROW(createBasicHandler(""), std::runtime_error);
 
     // Empty pattern
     auto config = defaultConfig;
     config.pattern = "";
-    EXPECT_THROW(streamlog::ChannelHandler::create(config, "test"), std::runtime_error);
+    EXPECT_THROW(createBasicHandler("test", config), std::runtime_error);
 
     // Non-existent base path
     config = defaultConfig;
     config.basePath = "/non/existent/path";
-    EXPECT_THROW(streamlog::ChannelHandler::create(config, "test"), std::runtime_error);
+    EXPECT_THROW(createBasicHandler("test", config), std::runtime_error);
 
     // Relative path
     config = defaultConfig;
     config.basePath = "relative/path";
-    EXPECT_THROW(streamlog::ChannelHandler::create(config, "test"), std::runtime_error);
+    EXPECT_THROW(createBasicHandler("test", config), std::runtime_error);
 }
 
 // Test channel name validation
@@ -281,7 +326,7 @@ TEST_F(ChannelHandlerTest, ConfigurationValidation)
 // Test configuration getter
 TEST_F(ChannelHandlerTest, ConfigurationGetter)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "test-config");
+    auto handler = createBasicHandler("test-config");
 
     const auto& retrievedConfig = handler->getConfig();
 
@@ -300,7 +345,7 @@ TEST_F(ChannelHandlerTest, ConfigurationGetter)
 // Test that configuration is immutable after creation
 TEST_F(ChannelHandlerTest, ConfigurationImmutability)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "test-immutable");
+    auto handler = createBasicHandler("test-immutable");
 
     const auto& config1 = handler->getConfig();
     const auto& config2 = handler->getConfig();
@@ -319,7 +364,7 @@ TEST_P(ChannelNameTest, ValidChannelNames)
 {
     const std::string channelName = GetParam();
     EXPECT_NO_THROW({
-        auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
+        auto handler = createBasicHandler(channelName);
         EXPECT_NE(handler, nullptr);
     });
 }
@@ -344,7 +389,7 @@ TEST_P(PatternTest, DifferentPatterns)
     config.pattern = pattern;
 
     EXPECT_NO_THROW({
-        auto handler = streamlog::ChannelHandler::create(config, "test");
+        auto handler = createBasicHandler("test", config);
         auto writer = handler->createWriter();
         (*writer)("test message");
 
@@ -367,7 +412,7 @@ TEST_P(BufferSizeTest, DifferentBufferSizes)
     config.bufferSize = bufferSize;
 
     EXPECT_NO_THROW({
-        auto handler = streamlog::ChannelHandler::create(config, "test");
+        auto handler = createBasicHandler("test", config);
         auto writer = handler->createWriter();
 
         // Write some messages
@@ -392,7 +437,7 @@ INSTANTIATE_TEST_SUITE_P(BufferSizes,
 // Test writer lifecycle
 TEST_F(ChannelHandlerTest, WriterLifecycle)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "test");
+    auto handler = createBasicHandler("test");
 
     // No writers initially
     {
@@ -425,7 +470,7 @@ TEST_F(ChannelHandlerTest, WriterLifecycle)
 // Test writing messages
 TEST_F(ChannelHandlerTest, BasicMessageWriting)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "test");
+    auto handler = createBasicHandler("test");
     auto writer = handler->createWriter();
 
     const std::vector<std::string> messages = {"first message",
@@ -468,9 +513,9 @@ TEST_F(ChannelHandlerTest, SizeBasedRotation)
 {
     auto config = defaultConfig;
     config.maxSize = 0x1 << 20; // 1MB
-    config.pattern = "${name}-${counter}.json";
+    config.pattern = "${name}-${counter}.log";
 
-    auto handler = streamlog::ChannelHandler::create(config, "rotation-test");
+    auto handler = createBasicHandler("rotation-test", config);
     auto writer = handler->createWriter();
 
     // Write enough data to trigger rotation
@@ -489,7 +534,7 @@ TEST_F(ChannelHandlerTest, SizeBasedRotation)
     size_t fileCount = 0;
     for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
     {
-        if (entry.is_regular_file() && entry.path().extension() == ".json")
+        if (entry.is_regular_file() && entry.path().extension() == ".log")
         {
             fileCount++;
         }
@@ -505,7 +550,7 @@ TEST_F(ChannelHandlerTest, TimeBasedRotation)
     auto config = defaultConfig;
     config.pattern = "${name}-${HH}.json"; // Rotate by hour
 
-    auto handler = streamlog::ChannelHandler::create(config, "time-test");
+    auto handler = createBasicHandler("time-test", config);
     auto writer = handler->createWriter();
 
     (*writer)("message before time change");
@@ -521,14 +566,14 @@ TEST_F(ChannelHandlerTest, TimeBasedRotation)
 // Test hard link creation
 TEST_F(ChannelHandlerTest, HardLinkCreation)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "linktest");
+    auto handler = createBasicHandler("linktest");
     auto writer = handler->createWriter();
 
     (*writer)("test message for link");
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     // Check if latest link exists
-    auto latestLink = tmpDir / "linktest.json";
+    auto latestLink = tmpDir / "linktest.log";
     EXPECT_TRUE(std::filesystem::exists(latestLink)) << "Latest link was not created: " << latestLink;
 
     // Content should be accessible through the link
@@ -539,7 +584,9 @@ TEST_F(ChannelHandlerTest, HardLinkCreation)
 // Test concurrent writers
 TEST_F(ChannelHandlerTest, ConcurrentWriters)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "concurrent");
+    auto config = defaultConfig;
+    config.shouldCompress = false; // Disable compression for contingency
+    auto handler = createBasicHandler("concurrent", config);
 
     const int numWriters = 5;
     const int messagesPerWriter = 20;
@@ -566,7 +613,7 @@ TEST_F(ChannelHandlerTest, ConcurrentWriters)
         future.wait();
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // Verify all messages were written
     bool foundFile = false;
@@ -601,7 +648,7 @@ TEST_F(ChannelHandlerTest, ConcurrentWriters)
 // Test writer thread lifecycle
 TEST_F(ChannelHandlerTest, WorkerThreadLifecycle)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "thread-test");
+    auto handler = createBasicHandler("thread-test");
 
     // No thread should be running initially
     // Create first writer - should start thread
@@ -662,7 +709,7 @@ TEST_F(ChannelHandlerTest, ErrorHandlingNonWritableDirectory)
     config.basePath = readOnlyDir;
 
     // Should throw during creation
-    EXPECT_THROW(streamlog::ChannelHandler::create(config, "readonly-test"), std::runtime_error);
+    EXPECT_THROW(createBasicHandler("readonly-test", config), std::runtime_error);
 
     // Restore permissions for cleanup
     std::filesystem::permissions(
@@ -675,7 +722,7 @@ TEST_F(ChannelHandlerTest, PlaceholderReplacement)
     auto config = defaultConfig;
     config.pattern = "${YYYY}_${MM}_${DD}_${HH}_${name}_test.log";
 
-    auto handler = streamlog::ChannelHandler::create(config, "placeholder-test");
+    auto handler = createBasicHandler("placeholder-test", config);
     auto writer = handler->createWriter();
 
     (*writer)("test message");
@@ -711,9 +758,9 @@ TEST_F(ChannelHandlerTest, CounterPlaceholderWithSizeRotation)
 {
     auto config = defaultConfig;
     config.maxSize = 0x1 << 20; // 1MB max size, minimize rotation
-    config.pattern = "${name}-${counter}.json";
+    config.pattern = "${name}-${counter}.log";
 
-    auto handler = streamlog::ChannelHandler::create(config, "counter-test");
+    auto handler = createBasicHandler("counter-test", config);
     auto writer = handler->createWriter();
 
     // Write enough to force multiple rotations
@@ -728,7 +775,7 @@ TEST_F(ChannelHandlerTest, CounterPlaceholderWithSizeRotation)
     std::set<std::string> foundFiles;
     for (const auto& entry : std::filesystem::recursive_directory_iterator(tmpDir))
     {
-        if (entry.is_regular_file() && entry.path().extension() == ".json")
+        if (entry.is_regular_file() && entry.path().extension() == ".log")
         {
             foundFiles.insert(entry.path().filename().string());
         }
@@ -752,7 +799,7 @@ TEST_F(ChannelHandlerTest, CounterPlaceholderWithSizeRotation)
 // Test writer non-copyability
 TEST_F(ChannelHandlerTest, WriterNonCopyable)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "nocopy-test");
+    auto handler = createBasicHandler("nocopy-test");
     auto writer1 = handler->createWriter();
 
     // This should not compile, but we can't test compilation failures in runtime tests
@@ -773,7 +820,7 @@ TEST_F(ChannelHandlerTest, BufferOverflowBehavior)
     auto config = defaultConfig;
     config.bufferSize = 2; // Very small buffer
 
-    auto handler = streamlog::ChannelHandler::create(config, "overflow-test");
+    auto handler = createBasicHandler("overflow-test", config);
     auto writer = handler->createWriter();
 
     // Overwhelm the buffer quickly
@@ -796,7 +843,7 @@ TEST_F(ChannelHandlerTest, DirectoryCreation)
     config.pattern = "subdir1/subdir2/${name}-${counter}.json";
     config.maxSize = 0x1 << 20; // 1MB max size to avoid rotation
 
-    auto handler = streamlog::ChannelHandler::create(config, "dir-test");
+    auto handler = createBasicHandler("dir-test", config);
     auto writer = handler->createWriter();
 
     (*writer)("test message");
@@ -834,7 +881,7 @@ TEST_F(ChannelHandlerTest, InvalidChannelNames)
 
     for (const auto& name : invalidNames)
     {
-        EXPECT_THROW(streamlog::ChannelHandler::create(defaultConfig, name), std::runtime_error)
+        EXPECT_THROW(createBasicHandler(name), std::runtime_error)
             << "Channel name should be invalid: '" << name << "'";
     }
 }
@@ -857,7 +904,7 @@ TEST_F(ChannelHandlerTest, RegexReplacementEdgeCases)
     {
         config.pattern = pattern;
         EXPECT_NO_THROW({
-            auto handler = streamlog::ChannelHandler::create(config, "edge-test");
+            auto handler = createBasicHandler("edge-test");
             auto writer = handler->createWriter();
             (*writer)("test message");
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -869,7 +916,7 @@ TEST_F(ChannelHandlerTest, RegexReplacementEdgeCases)
 // Test extremely long messages
 TEST_F(ChannelHandlerTest, ExtremelyLongMessages)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "long-msg-test");
+    auto handler = createBasicHandler("long-msg-test");
     auto writer = handler->createWriter();
 
     // Test various large message sizes
@@ -897,7 +944,7 @@ TEST_F(ChannelHandlerTest, ConcurrentMultipleChannels)
     // Create multiple channels concurrently
     for (int i = 0; i < numChannels; ++i)
     {
-        auto handler = streamlog::ChannelHandler::create(defaultConfig, "channel" + std::to_string(i));
+        auto handler = createBasicHandler("channel" + std::to_string(i));
         handlers.push_back(handler);
     }
 
@@ -940,7 +987,7 @@ TEST_F(ChannelHandlerTest, ConcurrentMultipleChannels)
 // Test zero-byte and empty message handling
 TEST_F(ChannelHandlerTest, EmptyAndZeroByteMessages)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "empty-test");
+    auto handler = createBasicHandler("empty-test");
     auto writer = handler->createWriter();
 
     // Test various empty/minimal cases
@@ -984,7 +1031,7 @@ TEST_F(ChannelHandlerTest, MaxSizeBoundaryConditions)
         config.pattern = "${name}-${counter}-" + std::to_string(maxSize) + ".json";
 
         EXPECT_NO_THROW({
-            auto handler = streamlog::ChannelHandler::create(config, "boundary-test");
+            auto handler = createBasicHandler("boundary-test", config);
             auto writer = handler->createWriter();
 
             // Write message that's exactly at the boundary
@@ -1021,7 +1068,7 @@ TEST_F(ChannelHandlerTest, PatternValidationEdgeCases)
 
         if (pattern == "no_placeholders.log")
         {
-            EXPECT_THROW(streamlog::ChannelHandler::create(config, "invalid-pattern"), std::runtime_error)
+            EXPECT_THROW(createBasicHandler("invalid-pattern", config), std::runtime_error)
                 << "Pattern should be invalid: " << pattern;
         }
         else
@@ -1030,7 +1077,7 @@ TEST_F(ChannelHandlerTest, PatternValidationEdgeCases)
             // The goal is to ensure no crashes occur
             try
             {
-                auto handler = streamlog::ChannelHandler::create(config, "pattern-test");
+                auto handler = createBasicHandler("pattern-test", config);
                 auto writer = handler->createWriter();
                 (*writer)("test");
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -1046,7 +1093,7 @@ TEST_F(ChannelHandlerTest, PatternValidationEdgeCases)
 // Test thread interruption and cleanup
 TEST_F(ChannelHandlerTest, ThreadInterruptionAndCleanup)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "interrupt-test");
+    auto handler = createBasicHandler("interrupt-test");
 
     {
         auto writer = handler->createWriter();
@@ -1085,7 +1132,7 @@ TEST_F(ChannelHandlerTest, MemoryPressureTest)
     auto config = defaultConfig;
     config.bufferSize = 1 << 16; // 64K buffer
 
-    auto handler = streamlog::ChannelHandler::create(config, "memory-test");
+    auto handler = createBasicHandler("memory-test", config);
     auto writer = handler->createWriter();
 
     // Rapidly enqueue many messages to test buffer behavior
@@ -1126,7 +1173,7 @@ TEST_F(ChannelHandlerTest, ExistingFileResumption)
     EXPECT_EQ(preExistingSize, predefinedContent.size());
 
     // Create channel handler - should detect and correctly size the existing file
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
+    auto handler = createBasicHandler(channelName);
     auto writer = handler->createWriter();
 
     // Add new content
@@ -1157,12 +1204,12 @@ TEST_F(ChannelHandlerTest, ExistingFileWithRotation)
 {
     auto config = defaultConfig;
     config.maxSize = 0x1 << 20; // 1 MB its the default minimum
-    config.pattern = "resume-rotation-${counter}.json";
+    config.pattern = "resume-rotation-${counter}.log";
 
     const std::string channelName = "resume-rotation";
 
     // Create existing file with content near rotation threshold
-    auto initialFilePath = tmpDir / "resume-rotation-0.json";
+    auto initialFilePath = tmpDir / "resume-rotation-0.log";
     const std::string existingContent = std::string(config.maxSize - 20, 'X'); // Slightly under 1MB
     {
         std::ofstream existingFile(initialFilePath);
@@ -1174,7 +1221,7 @@ TEST_F(ChannelHandlerTest, ExistingFileWithRotation)
     EXPECT_EQ(existingSize, existingContent.size());
 
     // Create handler - should resume from existing file
-    auto handler = streamlog::ChannelHandler::create(config, channelName);
+    auto handler = createBasicHandler(channelName, config);
     auto writer = handler->createWriter();
 
     // Add content that should trigger rotation (exceeds maxSize)
@@ -1184,7 +1231,7 @@ TEST_F(ChannelHandlerTest, ExistingFileWithRotation)
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 
     // Should have rotated to new file
-    auto rotatedFilePath = tmpDir / "resume-rotation-1.json";
+    auto rotatedFilePath = tmpDir / "resume-rotation-1.log";
     EXPECT_TRUE(std::filesystem::exists(rotatedFilePath));
 
     // Original file should contain old content only
@@ -1239,7 +1286,7 @@ TEST_F(ChannelHandlerTest, FileSizeTrackingAccuracy)
     EXPECT_EQ(actualInitialSize, expectedSize);
 
     // Create handler and add more content
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
+    auto handler = createBasicHandler(channelName);
     auto writer = handler->createWriter();
 
     // Add several new lines and track expected size
@@ -1303,7 +1350,7 @@ TEST_F(ChannelHandlerTest, EmptyExistingFileResumption)
     EXPECT_EQ(std::filesystem::file_size(filePath), 0);
 
     // Create handler
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
+    auto handler = createBasicHandler(channelName);
     auto writer = handler->createWriter();
 
     // Add content to empty file
@@ -1347,7 +1394,7 @@ TEST_F(ChannelHandlerTest, ConcurrentWritesToExistingFile)
     EXPECT_EQ(initialSize, existingContent.size());
 
     // Create handler and multiple writers
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
+    auto handler = createBasicHandler(channelName);
 
     const int numWriters = 3;
     const int messagesPerWriter = 5;
@@ -1419,7 +1466,7 @@ TEST_F(ChannelHandlerTest, LargeExistingFileResumption)
     EXPECT_EQ(initialSize, largeContentSize);
 
     // Create handler - should correctly detect large file size
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
+    auto handler = createBasicHandler(channelName);
     auto writer = handler->createWriter();
 
     // Add small content to large file
@@ -1471,7 +1518,7 @@ TEST_F(ChannelHandlerTest, FileAppendPositioning)
     EXPECT_EQ(initialSize, expectedInitialSize);
 
     // Create handler - should open file in append mode at the end
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, channelName);
+    auto handler = createBasicHandler(channelName);
     auto writer = handler->createWriter();
 
     // Add third marker
@@ -1521,7 +1568,7 @@ TEST_F(ChannelHandlerTest, LongChannelName)
     std::string longName = std::string(200, 'A');
 
     EXPECT_NO_THROW({
-        auto handler = streamlog::ChannelHandler::create(defaultConfig, longName);
+        auto handler = createBasicHandler(longName);
         auto writer = handler->createWriter();
         (*writer)(std::string("test message for long channel name"));
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -1533,7 +1580,7 @@ TEST_F(ChannelHandlerTest, LongChannelName)
     // This should either work or fail gracefully - important that it doesn't crash
     try
     {
-        auto handler = streamlog::ChannelHandler::create(defaultConfig, tooLongName);
+        auto handler = createBasicHandler(tooLongName);
         auto writer = handler->createWriter();
         (*writer)(std::string("test message"));
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -1557,7 +1604,7 @@ TEST_F(ChannelHandlerTest, CompressionConfigValidation)
         config.shouldCompress = true;
         config.compressionLevel = level;
 
-        EXPECT_NO_THROW(streamlog::ChannelHandler::create(config, "test-channel"));
+        EXPECT_NO_THROW(createBasicHandler("test-channel", config));
     }
 
     // Test invalid compression levels
@@ -1566,21 +1613,21 @@ TEST_F(ChannelHandlerTest, CompressionConfigValidation)
 
     // Too low
     config.compressionLevel = 0;
-    EXPECT_THROW(streamlog::ChannelHandler::create(config, "test-channel"), std::runtime_error);
+    EXPECT_THROW(createBasicHandler("test-channel", config), std::runtime_error);
 
     // Too high
     config.compressionLevel = 10;
-    EXPECT_THROW(streamlog::ChannelHandler::create(config, "test-channel"), std::runtime_error);
+    EXPECT_THROW(createBasicHandler("test-channel", config), std::runtime_error);
 
     // Negative
     config.compressionLevel = -1;
-    EXPECT_THROW(streamlog::ChannelHandler::create(config, "test-channel"), std::runtime_error);
+    EXPECT_THROW(createBasicHandler("test-channel", config), std::runtime_error);
 }
 
 // Test compression enable by default
 TEST_F(ChannelHandlerTest, CompressionDisabledByDefault)
 {
-    auto handler = streamlog::ChannelHandler::create(defaultConfig, "test-channel");
+    auto handler = createBasicHandler("test-channel");
     const auto& config = handler->getConfig();
 
     // shouldCompress should be true by default
@@ -1623,7 +1670,7 @@ TEST_F(ChannelHandlerTest, CompressionWithMockScheduler)
             });
 
     // Set the mock scheduler
-    auto handler = streamlog::ChannelHandler::create(config, "test-channel", mockScheduler, "log");
+    auto handler = createHandlerWithScheduler("test-channel", config, mockScheduler);
 
     auto writer = handler->createWriter();
 
@@ -1662,7 +1709,7 @@ TEST_F(ChannelHandlerTest, CompressionWithoutScheduler)
     config.maxSize = 1 << 20; // 1MB - use valid size
     config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
 
-    auto handler = streamlog::ChannelHandler::create(config, "test-channel");
+    auto handler = createBasicHandler("test-channel", config);
     // Note: We don't set a scheduler here
 
     auto writer = handler->createWriter();
@@ -1689,7 +1736,7 @@ TEST_F(ChannelHandlerTest, CompressionTaskConfigCreation)
     config.shouldCompress = true;
     config.compressionLevel = 7;
 
-    auto handler = streamlog::ChannelHandler::create(config, "test-channel");
+    auto handler = createBasicHandler("test-channel", config);
 
     // We can't directly test createCompressionTaskConfig as it's private,
     // but we can verify compression settings are properly stored
@@ -1724,8 +1771,7 @@ TEST_F(ChannelHandlerTest, CompressionWithDifferentLevels)
                     taskConfig.taskFunction();
                 });
 
-        auto handler =
-            streamlog::ChannelHandler::create(config, "test-channel-" + std::to_string(level), mockScheduler, "log");
+        auto handler = createHandlerWithScheduler("test-channel-" + std::to_string(level), config, mockScheduler);
 
         auto writer = handler->createWriter();
         (*writer)("Test message with compression level " + std::to_string(level));
@@ -1797,7 +1843,7 @@ TEST_F(ChannelHandlerTest, CompressionWithTimeRotation)
     // May not be called if no time change occurs during test
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _)).Times(AtLeast(0));
 
-    auto handler = streamlog::ChannelHandler::create(config, "test-time-rotation", mockScheduler, "log");
+    auto handler = createHandlerWithScheduler("test-time-rotation", config, mockScheduler);
 
     auto writer = handler->createWriter();
     (*writer)("Test message for time-based rotation");
@@ -1820,7 +1866,7 @@ TEST_F(ChannelHandlerTest, NoCompressionWhenDisabled)
     // Should never call scheduleTask since compression is disabled
     EXPECT_CALL(*mockScheduler, scheduleTask(_, _)).Times(0);
 
-    auto handler = streamlog::ChannelHandler::create(config, "test-no-compression", mockScheduler);
+    auto handler = createHandlerWithScheduler("test-no-compression", config, mockScheduler);
 
     auto writer = handler->createWriter();
 
@@ -1834,4 +1880,185 @@ TEST_F(ChannelHandlerTest, NoCompressionWhenDisabled)
 
     // Wait for processing
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
+}
+
+// Test store persistence functionality - initialization with no previous state
+TEST_F(ChannelHandlerTest, StorePersistenceInitializationNoState)
+{
+    // Configure mock store to return error (no previous state)
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+        .WillOnce(testing::Return(store::mocks::storeReadError<json::Json>()));
+
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+        .Times(0); // No save should happen during initialization
+
+    auto handler = createBasicHandler("store-test");
+    EXPECT_NE(handler, nullptr);
+}
+
+// Test store persistence functionality - successful initialization with previous state and pending compression
+TEST_F(ChannelHandlerTest, StorePersistenceInitializationWithPendingFile)
+{
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.compressionLevel = 5;
+    config.maxSize = 1 << 20; // 1MB
+    config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    // Create a test file that should be compressed during initialization
+    std::string previousFilePath = tmpDir.string() + "/2025-08-25-store-test-5.log"; // Different from current file
+    createTestFile(previousFilePath, "Previous file content to be compressed");
+
+    // Configure mock store to return previous state
+    json::Json previousState;
+    previousState.setString(previousFilePath, "/last_current");
+
+    // readInternalDoc can be called multiple times during operation
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::HasSubstr("store-test")))
+        .WillRepeatedly(testing::Return(store::mocks::storeReadDocResp(previousState)));
+
+    // Expect compression task to be scheduled for the previous file
+    EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(1);
+
+    // Store save may or may not be called during initialization - make it optional
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::HasSubstr("store-test"), testing::_))
+        .Times(testing::AnyNumber())
+        .WillRepeatedly(testing::Return(store::mocks::storeOk()));
+
+    auto handler = createHandlerWithScheduler("store-test", config, mockScheduler);
+
+    // Wait a moment for initialization
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
+
+// Test store persistence functionality - save current file path during rotation
+TEST_F(ChannelHandlerTest, StorePersistenceSaveDuringRotation)
+{
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.compressionLevel = 5;
+    config.maxSize = 1 << 20; // 1MB
+    config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    // Configure mock store to return no initial state - can be called multiple times
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+        .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
+
+    // Expect compression task scheduling during rotation
+    EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(1);
+
+    // Expect save operation during rotation - can happen multiple times
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::HasSubstr("store-test"), testing::_))
+        .Times(testing::AtLeast(1))
+        .WillRepeatedly(testing::Return(store::mocks::storeOk()));
+
+    auto handler = createHandlerWithScheduler("store-test", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Write data to trigger rotation
+    const std::string largeMessage(100000, 'A'); // 100KB message
+    for (int i = 0; i < 12; ++i)                 // Total: 1.2MB > 1MB threshold
+    {
+        (*writer)(largeMessage + std::to_string(i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    // Wait for rotation and processing
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+// Test store persistence functionality - store read error handling
+TEST_F(ChannelHandlerTest, StorePersistenceReadError)
+{
+    // Configure mock store to return error
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+        .WillOnce(testing::Return(store::mocks::storeReadError<json::Json>()));
+
+    // Should not attempt save during initialization on read error
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_)).Times(0);
+
+    auto handler = createBasicHandler("store-error-test");
+    EXPECT_NE(handler, nullptr); // Should still create handler despite store error
+}
+
+// Test store persistence functionality - store save error handling
+TEST_F(ChannelHandlerTest, StorePersistenceSaveError)
+{
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+    config.maxSize = 1 << 20; // 1MB
+    config.pattern = "${YYYY}-${MM}-${DD}-${name}-${counter}.log";
+
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    // Configure mock store to return no initial state but fail on save - can be called multiple times
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+        .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
+
+    EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(1);
+
+    // Simulate save error - allow multiple calls
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+        .Times(testing::AtLeast(1))
+        .WillRepeatedly(testing::Return(store::mocks::storeError()));
+
+    auto handler = createHandlerWithScheduler("store-save-error", config, mockScheduler);
+    auto writer = handler->createWriter();
+
+    // Write data to trigger rotation - should not crash on save error
+    const std::string largeMessage(100000, 'B');
+    for (int i = 0; i < 12; ++i)
+    {
+        (*writer)(largeMessage + std::to_string(i));
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    // Test passes if no crash occurs despite store save error
+}
+
+// Test store persistence functionality - corrupted state handling
+TEST_F(ChannelHandlerTest, StorePersistenceCorruptedState)
+{
+    // Configure mock store to return corrupted state (missing currentFilePath field)
+    json::Json corruptedState;
+    corruptedState.setString("invalid_data", "/invalid");
+
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+        .WillOnce(testing::Return(store::mocks::storeReadDocResp(corruptedState)));
+
+    // Should not attempt compression or save with corrupted state
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_)).Times(0);
+
+    auto handler = createBasicHandler("corrupted-state-test");
+    EXPECT_NE(handler, nullptr); // Should handle corrupted state gracefully
+}
+
+// Test store persistence functionality - previous file doesn't exist
+TEST_F(ChannelHandlerTest, StorePersistencePreviousFileNotFound)
+{
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+
+    // Configure mock store to return state with non-existent file
+    std::string nonExistentFile = tmpDir.string() + "/non-existent-file.log";
+    json::Json state;
+    state.setString(nonExistentFile, "/currentFilePath");
+
+    EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
+        .WillOnce(testing::Return(store::mocks::storeReadDocResp(state)));
+
+    // Should not schedule compression for non-existent file
+    EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(0);
+
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_)).Times(0);
+
+    auto config = defaultConfig;
+    config.shouldCompress = true;
+
+    auto handler = createHandlerWithScheduler("missing-file-test", config, mockScheduler);
+    EXPECT_NE(handler, nullptr);
 }

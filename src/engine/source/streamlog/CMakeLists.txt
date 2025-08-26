@@ -17,6 +17,7 @@ target_link_libraries(streamlogger_streamlogger
     base
     queue
     scheduler::ischeduler
+    store::istore
     PRIVATE
     urlrequest
 )
@@ -39,6 +40,7 @@ target_link_libraries(streamlogger_utest
     GTest::gmock
     streamlogger::streamlogger
     scheduler::mocks
+    store::mocks
 )
 target_include_directories(streamlogger_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(streamlogger_utest)

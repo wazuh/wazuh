@@ -16,9 +16,12 @@
 #include <base/logging.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <scheduler/ischeduler.hpp>
+#include <store/istore.hpp>
 
 namespace streamlog
 {
+
+constexpr const char* STORE_STREAMLOG_BASE_NAME = "streamlog/"; ///< Document base name for storing last state
 
 enum class ChannelState : int
 {
@@ -29,6 +32,10 @@ enum class ChannelState : int
 
 // Forward declaration
 class ChannelHandler;
+
+
+
+
 
 /***********************************************************************************************************************
  * @brief Concrete implementation of WriterEvent for log channels
@@ -99,7 +106,8 @@ private:
     const std::string m_channelName; ///< The name of the log channel.
 
     std::weak_ptr<scheduler::IScheduler> m_scheduler; ///< Scheduler for compressing log writes
-    const std::string m_fileExtension; ///< The file extension for log files.
+    const std::string m_fileExtension;                ///< The file extension for log files.
+    std::shared_ptr<store::IStore> m_store;           ///< Store for managing last state
 
     struct ActiveWriters
     {
@@ -178,11 +186,29 @@ private:
      */
     scheduler::TaskConfig createCompressionTaskConfig(std::filesystem::path filePath) const;
 
+
+    base::Name getStoreBaseName() const
+    {
+        return base::Name(STORE_STREAMLOG_BASE_NAME) + m_channelName + "/0";
+    }
+
+    /**
+     * @brief Get the last file used to write logs from the store
+     * @return The last file path if it exists in the store, std::nullopt
+     */
+    std::optional<std::filesystem::path> getPreviousCurrentFilePathFromStore() const;
+
+    /**
+     * @brief Save the current file used to write logs to the store
+     */
+    void savePreviousCurrentFilePathFromStore() const;
+
     /**
      * @brief Private constructor - use create() instead
      */
     ChannelHandler(RotationConfig config,
                    std::string channelName,
+                   const std::shared_ptr<store::IStore>& store,
                    std::weak_ptr<scheduler::IScheduler> scheduler,
                    std::string_view ext);
 
@@ -205,6 +231,7 @@ public:
      * @brief Factory method to create a ChannelHandler as a shared_ptr
      * @param config The rotation configuration for the log channel
      * @param channelName The name of the log channel
+     * @param store The store for managing the last state
      * @param scheduler Optional scheduler for handling compression tasks
      * @param ext The file extension for log files
      * @return A shared_ptr to the newly created ChannelHandler
@@ -212,6 +239,7 @@ public:
      */
     static std::shared_ptr<ChannelHandler> create(RotationConfig config,
                                                   std::string channelName,
+                                                  const std::shared_ptr<store::IStore>& store,
                                                   std::weak_ptr<scheduler::IScheduler> scheduler = {},
                                                   std::string_view ext = "json");
 
@@ -231,10 +259,7 @@ public:
      * @brief Get the current file path being written to
      * @return The current log file path
      */
-    std::filesystem::path getCurrentFilePath() const
-    {
-        return m_stateData.currentFile;
-    }
+    std::filesystem::path getCurrentFilePath() const { return m_stateData.currentFile; }
 
     /**
      * @brief Gets the number of active writers for this channel

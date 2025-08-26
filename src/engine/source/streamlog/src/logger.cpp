@@ -33,7 +33,7 @@ void LogManager::registerLog(const std::string& name, const RotationConfig& cfg,
     }
 
     // Create a new ChannelHandler instance and register it
-    auto handler = ChannelHandler::create(cfg, name, m_scheduler, ext);
+    auto handler = ChannelHandler::create(cfg, name, m_store, m_scheduler, ext);
     m_channels[name] = std::move(handler);
 
     LOG_DEBUG("Log channel '{}' registered successfully", name);
@@ -77,7 +77,7 @@ void LogManager::updateConfig(const std::string& name, const RotationConfig& cfg
     }
 
     // Replace the existing channel handler with a new one
-    it->second = ChannelHandler::create(validatedConfig, name, m_scheduler, ext);
+    it->second = ChannelHandler::create(validatedConfig, name, m_store, m_scheduler, ext);
 
     LOG_DEBUG("Log channel '{}' updated successfully", name);
 }

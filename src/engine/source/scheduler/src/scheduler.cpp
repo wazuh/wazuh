@@ -138,6 +138,10 @@ std::size_t Scheduler::getThreadCount() const
 
 void Scheduler::workerThread()
 {
+
+    // Set thread name
+    base::process::setThreadName("sched-worker");
+
     while (m_running.load())
     {
         std::shared_ptr<ScheduledTask> task;
