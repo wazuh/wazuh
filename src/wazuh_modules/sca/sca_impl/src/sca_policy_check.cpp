@@ -423,7 +423,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                 if (file.filename().string() == fileName)
                 {
-                    const auto result = TryFunc([&]{ return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx); });
+                    const auto result = TryFunc([&] { return FindContentInFile(m_fileUtils, fileName, content.value(), m_ctx); });
 
                     if (result.has_value())
                     {

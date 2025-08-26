@@ -187,13 +187,13 @@ class RegistryRuleEvaluator : public RuleEvaluator
 
 class RuleEvaluatorFactory
 {
-public:
-    static std::unique_ptr<IRuleEvaluator>
-    CreateEvaluator(const std::string& input,
-                    const int commandsTimeout,
-                    const bool commandsEnabled,
-                    sca::RegexEngineType regexEngine = sca::RegexEngineType::PCRE2,
-                    std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
-                    std::unique_ptr<IFileIOUtils> fileUtils = nullptr,
-                    std::unique_ptr<ISysInfo> sysInfo = nullptr);
+    public:
+        static std::unique_ptr<IRuleEvaluator>
+        CreateEvaluator(const std::string& input,
+                        const int commandsTimeout,
+                        const bool commandsEnabled,
+                        sca::RegexEngineType regexEngine = sca::RegexEngineType::PCRE2,
+                        std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr,
+                        std::unique_ptr<IFileIOUtils> fileUtils = nullptr,
+                        std::unique_ptr<ISysInfo> sysInfo = nullptr);
 };
