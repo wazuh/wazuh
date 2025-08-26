@@ -1,3 +1,14 @@
+/*
+ * Wazuh inventory sync
+ * Copyright (C) 2015, Wazuh Inc.
+ * August 6, 2025.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #ifndef _AGENT_SESSION_HPP
 #define _AGENT_SESSION_HPP
 
@@ -130,6 +141,25 @@ public:
             Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
     }
 
+    /// Deleted copy constructor and assignment operator (C.12 compliant).
+    AgentSessionImpl(const AgentSessionImpl&) = delete;
+    AgentSessionImpl& operator=(const AgentSessionImpl&) = delete;
+
+    /// Deleted move constructor and assignment operator.
+    AgentSessionImpl(AgentSessionImpl&&) = delete;
+    AgentSessionImpl& operator=(AgentSessionImpl&&) = delete;
+
+    ~AgentSessionImpl() = default;
+
+    /**
+     * @brief Handles an incoming data chunk.
+     *
+     * Stores the raw payload and marks the chunk as observed in the GapSet.
+     * Triggers indexing if `handleEnd()` was already called and the session is now complete.
+     *
+     * @param data Parsed flatbuffer metadata (e.g., sequence number).
+     * @param dataRaw Raw binary payload of the chunk.
+     */
     void handleData(Wazuh::SyncSchema::Data const* data, flatbuffers::Vector<uint8_t> const* dataRaw)
     {
         if (data == nullptr)
@@ -162,6 +192,13 @@ public:
         }
     }
 
+    /**
+     * @brief Handles the end-of-transmission signal from the agent.
+     *
+     * If all chunks were received, pushes the final acknowledgment. Otherwise, triggers missing range dispatch.
+     *
+     * @param responseDispatcher Dispatcher used to report missing sequences (if any).
+     */
     void handleEnd(const TResponseDispatcher& responseDispatcher)
     {
         std::lock_guard lock(m_mutex);
@@ -184,6 +221,16 @@ public:
             responseDispatcher.sendEndMissingSeq(
                 m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
         }
+    }
+
+    /**
+     * @brief Checks whether the session has timed out based on last activity.
+     * @param timeout The allowed inactivity duration.
+     * @return true if the session has been idle for longer than the timeout.
+     */
+    bool isAlive(const std::chrono::seconds timeout) const
+    {
+        return m_gapSet->lastUpdate() + timeout >= std::chrono::steady_clock::now();
     }
 };
 

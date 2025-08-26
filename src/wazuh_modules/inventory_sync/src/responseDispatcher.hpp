@@ -74,10 +74,13 @@ public:
             {
                 thread_local std::vector<uint8_t> messageVector;
                 constexpr auto header = "(msg_to_agent) [] N!s ";
-                constexpr auto headerSize = 22;
+                constexpr auto headerLength = 22;
+                constexpr auto agentIdLength = 3;
+                constexpr auto estimatedModuleNameLength = 20;
+                constexpr auto estimatedPayloadLength = 10;
                 messageVector.clear();
-                messageVector.reserve(headerSize + 5 + data.builder.GetSize());
-                messageVector.assign(header, header + headerSize);
+                messageVector.reserve(headerLength + agentIdLength + estimatedModuleNameLength + estimatedPayloadLength + data.builder.GetSize());
+                messageVector.assign(header, header + headerLength);
                 std::ranges::copy(data.agentId, std::back_inserter(messageVector));
                 messageVector.push_back(' ');
                 // Send the payload size
