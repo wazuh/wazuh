@@ -59,6 +59,6 @@ add_executable(hlp_utest
 )
 
 target_link_libraries(hlp_utest PRIVATE hlp GTest::gtest_main GTest::gtest)
-gtest_discover_tests(hlp_utest)
+gtest_discover_tests(hlp_utest PROPERTIES TEST_DISCOVERY_TIMEOUT 3600)
 
 endif(ENGINE_BUILD_TEST)

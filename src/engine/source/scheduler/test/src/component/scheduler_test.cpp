@@ -6,8 +6,8 @@
 
 #include <gtest/gtest.h>
 
-#include <scheduler/scheduler.hpp>
 #include <base/logging.hpp>
+#include <scheduler/scheduler.hpp>
 
 class SchedulerTest : public ::testing::Test
 {
@@ -174,6 +174,7 @@ TEST_F(SchedulerTest, TaskPriority)
 {
     std::vector<int> executionOrder;
     std::mutex orderMutex;
+    std::atomic<int> completedTasks {0};
 
     auto createTask = [&](int taskId, int priority)
     {
@@ -183,25 +184,125 @@ TEST_F(SchedulerTest, TaskPriority)
         config.timeout = 0;
         config.taskFunction = [&, taskId]()
         {
-            std::lock_guard<std::mutex> lock(orderMutex);
-            executionOrder.push_back(taskId);
+            {
+                std::lock_guard<std::mutex> lock(orderMutex);
+                executionOrder.push_back(taskId);
+            }
+            completedTasks.fetch_add(1);
         };
         return config;
     };
 
     scheduler->start();
 
-    // Schedule tasks - now priority affects thread priority, not execution order
-    scheduler->scheduleTask("lowPriorityTask", createTask(1, 1));    // Lower thread priority
-    scheduler->scheduleTask("highPriorityTask", createTask(2, 10));  // Higher thread priority
-    scheduler->scheduleTask("mediumPriorityTask", createTask(3, 5)); // Medium thread priority
+    // Schedule tasks - CPU priority doesn't affect execution order, only nice value
+    scheduler->scheduleTask("lowPriorityTask", createTask(1, 1));
+    scheduler->scheduleTask("highPriorityTask", createTask(2, 10));
+    scheduler->scheduleTask("mediumPriorityTask", createTask(3, 5));
 
     // Wait for all tasks to complete
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    EXPECT_EQ(executionOrder.size(), 3);
-    // Tasks are now ordered by execution time, not priority
-    // Priority now affects the worker thread priority during execution
+    EXPECT_EQ(completedTasks.load(), 3);
+
+    {
+        std::lock_guard<std::mutex> lock(orderMutex);
+        EXPECT_EQ(executionOrder.size(), 3);
+    }
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, TaskExecutionOrder)
+{
+    std::vector<std::string> executionOrder;
+    std::mutex orderMutex;
+    std::atomic<int> completedTasks {0};
+
+    auto createDelayedTask = [&](const std::string& taskName, int delayMs)
+    {
+        scheduler::TaskConfig config;
+        config.interval = 0; // One-time
+        config.CPUPriority = 0;
+        config.timeout = 0;
+        config.taskFunction = [&, taskName]()
+        {
+            {
+                std::lock_guard<std::mutex> lock(orderMutex);
+                executionOrder.push_back(taskName);
+            }
+            completedTasks.fetch_add(1);
+        };
+        return config;
+    };
+
+    scheduler->start();
+
+    // Schedule tasks with different timing
+    scheduler->scheduleTask("immediateTask", createDelayedTask("immediate", 0));
+
+    // Sleep briefly to ensure the immediate task gets queued first
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    scheduler->scheduleTask("laterTask", createDelayedTask("later", 0));
+
+    // Wait for all tasks to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    EXPECT_EQ(completedTasks.load(), 2);
+
+    {
+        std::lock_guard<std::mutex> lock(orderMutex);
+        ASSERT_EQ(executionOrder.size(), 2);
+        // Earlier scheduled tasks should execute first (FIFO for same time)
+        EXPECT_EQ(executionOrder[0], "immediate");
+        EXPECT_EQ(executionOrder[1], "later");
+    }
+
+    scheduler->stop();
+}
+
+TEST_F(SchedulerTest, TaskQueueOrdering)
+{
+    std::vector<std::string> executionOrder;
+    std::mutex orderMutex;
+    std::atomic<int> completedTasks {0};
+
+    auto createRecurringTask = [&](const std::string& taskName, int intervalSeconds)
+    {
+        scheduler::TaskConfig config;
+        config.interval = intervalSeconds; // Recurring task
+        config.CPUPriority = 0;
+        config.timeout = 0;
+        config.taskFunction = [&, taskName]()
+        {
+            {
+                std::lock_guard<std::mutex> lock(orderMutex);
+                executionOrder.push_back(taskName);
+            }
+            completedTasks.fetch_add(1);
+        };
+        return config;
+    };
+
+    scheduler->start();
+
+    // Schedule recurring tasks with different intervals
+    scheduler->scheduleTask("slow", createRecurringTask("slow", 2)); // Every 2 seconds
+    scheduler->scheduleTask("fast", createRecurringTask("fast", 1)); // Every 1 second
+
+    // Wait for multiple executions
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+
+    // Fast task should execute first (shorter interval = earlier next run time)
+    EXPECT_GE(completedTasks.load(), 1);
+
+    {
+        std::lock_guard<std::mutex> lock(orderMutex);
+        if (!executionOrder.empty())
+        {
+            EXPECT_EQ(executionOrder[0], "fast"); // Fast task executes first
+        }
+    }
 
     scheduler->stop();
 }

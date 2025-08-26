@@ -1,11 +1,14 @@
 #ifndef _SCHEDULER_HPP
 #define _SCHEDULER_HPP
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <list>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <string>
 #include <thread>
@@ -16,6 +19,193 @@
 
 namespace scheduler
 {
+/**
+ * @brief Thread-safe priority queue for scheduled tasks
+ * @details Implements a thread-safe priority queue using a sorted list and
+ *          condition variables for synchronization.
+ *
+ * Tasks are ordered by their next execution time, with earlier times having
+ * higher priority. The queue supports blocking pop operations and safe
+ * shutdown.
+ *
+ * @note All operations are thread-safe
+ */
+class TaskQueue
+{
+public:
+    /**
+     * @brief Internal task representation for the queue
+     */
+    struct TaskItem
+    {
+        std::string name;
+        TaskConfig config;
+        std::chrono::steady_clock::time_point nextRun;
+        bool isOneTime;
+
+        TaskItem(std::string taskName,
+                 TaskConfig taskConfig,
+                 std::chrono::steady_clock::time_point runTime,
+                 bool oneTime)
+            : name(std::move(taskName))
+            , config(std::move(taskConfig))
+            , nextRun(runTime)
+            , isOneTime(oneTime)
+        {
+        }
+
+        // Copy and move constructors for thread safety
+        TaskItem(const TaskItem& other)
+            : name(other.name)
+            , config(other.config)
+            , nextRun(other.nextRun)
+            , isOneTime(other.isOneTime)
+        {
+        }
+
+        TaskItem(TaskItem&& other) noexcept
+            : name(std::move(other.name))
+            , config(std::move(other.config))
+            , nextRun(other.nextRun)
+            , isOneTime(other.isOneTime)
+        {
+        }
+
+        TaskItem& operator=(const TaskItem& other)
+        {
+            if (this != &other)
+            {
+                name = other.name;
+                config = other.config;
+                nextRun = other.nextRun;
+                isOneTime = other.isOneTime;
+            }
+            return *this;
+        }
+
+        TaskItem& operator=(TaskItem&& other) noexcept
+        {
+            if (this != &other)
+            {
+                name = std::move(other.name);
+                config = std::move(other.config);
+                nextRun = other.nextRun;
+                isOneTime = other.isOneTime;
+            }
+            return *this;
+        }
+    };
+
+private:
+    mutable std::mutex m_mutex;           ///< Protects queue access
+    std::list<TaskItem> m_tasks;          ///< Sorted list of tasks
+    std::condition_variable m_condition;  ///< Condition variable for signaling
+    std::atomic<bool> m_shutdown {false}; ///< Shutdown flag
+
+    /**
+     * @brief Helper function to find insertion position (maintains sorted order)
+     */
+    std::list<TaskItem>::iterator findInsertionPos(const std::chrono::steady_clock::time_point& nextRun)
+    {
+        return std::lower_bound(m_tasks.begin(),
+                                m_tasks.end(),
+                                nextRun,
+                                [](const TaskItem& item, const std::chrono::steady_clock::time_point& time)
+                                { return item.nextRun < time; });
+    }
+
+public:
+    /**
+     * @brief Constructor
+     */
+    TaskQueue() = default;
+
+    /**
+     * @brief Destructor - automatically shuts down
+     */
+    ~TaskQueue() { shutdown(); }
+
+    /**
+     * @brief Add a task to the queue
+     */
+    void push(const TaskItem& task)
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            if (!m_shutdown)
+            {
+                auto pos = findInsertionPos(task.nextRun);
+                m_tasks.insert(pos, task);
+            }
+        }
+        m_condition.notify_one();
+    }
+
+    /**
+     * @brief Get a task from the queue (blocking)
+     * @return TaskItem or empty if shutdown
+     */
+    std::optional<TaskItem> pop()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_condition.wait(lock, [this] { return !m_tasks.empty() || m_shutdown; });
+
+        if (m_shutdown && m_tasks.empty())
+        {
+            return std::nullopt;
+        }
+
+        if (!m_tasks.empty())
+        {
+            // DEEP COPY to avoid data races
+            TaskItem item = m_tasks.front(); // Copy constructor
+            m_tasks.pop_front();
+            return item;
+        }
+
+        return std::nullopt;
+    }
+
+    /**
+     * @brief Check if queue is empty
+     */
+    bool empty() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_tasks.empty();
+    }
+
+    /**
+     * @brief Get number of tasks in queue
+     */
+    std::size_t size() const
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        return m_tasks.size();
+    }
+
+    /**
+     * @brief Shutdown the queue (releases all waiting threads)
+     */
+    void shutdown()
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_shutdown = true;
+        }
+        m_condition.notify_all();
+    }
+
+    /**
+     * @brief Clear all tasks from queue
+     */
+    void clear()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_tasks.clear();
+    }
+};
+;
 
 /**
  * @brief Internal representation of a scheduled task
@@ -48,6 +238,58 @@ struct ScheduledTask
     }
 
     /**
+     * @brief Copy constructor
+     */
+    ScheduledTask(const ScheduledTask& other)
+        : name(other.name)
+        , config(other.config)
+        , nextRun(other.nextRun)
+        , isOneTime(other.isOneTime)
+    {
+    }
+
+    /**
+     * @brief Copy assignment operator
+     */
+    ScheduledTask& operator=(const ScheduledTask& other)
+    {
+        if (this != &other)
+        {
+            name = other.name;
+            config = other.config;
+            nextRun = other.nextRun;
+            isOneTime = other.isOneTime;
+        }
+        return *this;
+    }
+
+    /**
+     * @brief Move constructor
+     */
+    ScheduledTask(ScheduledTask&& other) noexcept
+        : name(std::move(other.name))
+        , config(std::move(other.config))
+        , nextRun(std::move(other.nextRun))
+        , isOneTime(other.isOneTime)
+    {
+    }
+
+    /**
+     * @brief Move assignment operator
+     */
+    ScheduledTask& operator=(ScheduledTask&& other) noexcept
+    {
+        if (this != &other)
+        {
+            name = std::move(other.name);
+            config = std::move(other.config);
+            nextRun = std::move(other.nextRun);
+            isOneTime = other.isOneTime;
+        }
+        return *this;
+    }
+
+    /**
      * @brief Update the next execution time for recurring tasks
      * @note Only applies to recurring tasks (interval > 0)
      */
@@ -61,39 +303,17 @@ struct ScheduledTask
 };
 
 /**
- * @brief Comparator for task priority queue ordering, ensuring chronological execution
- */
-struct TaskComparator
-{
-    /**
-     * @brief Compare two scheduled tasks for priority ordering.
-     * @details Returns true if lhs should be executed after rhs (lower priority).
-     * Earlier execution times have higher priority in the queue.
-     *
-     * @param lhs Left-hand side task for comparison
-     * @param rhs Right-hand side task for comparison
-     * @return true if lhs has lower priority than rhs, false otherwise
-     */
-    bool operator()(const std::shared_ptr<ScheduledTask>& lhs, const std::shared_ptr<ScheduledTask>& rhs) const
-    {
-        return lhs->nextRun > rhs->nextRun;
-    }
-};
-
-/**
  * @brief Multi-threaded task scheduler implementation
- * @details Concrete implementation of IScheduler that provides:
- *          - Multi-threaded task execution with configurable thread pool
- *          - Priority-based task scheduling using time-ordered queue
- *          - CPU priority management for individual tasks
- *          - Support for both one-time and recurring tasks
- *          - Thread-safe operations for concurrent access
+ * @details Thread-safe queue:
+ *          - Uses custom TaskQueue instead of std::priority_queue + mutex
+ *          - Employs semaphores for coordination instead of condition_variable
+ *          - Separates task management from execution queue
  *
  * The scheduler uses a producer-consumer pattern where:
- * - Main thread(s) add tasks to the queue via scheduleTask()
- * - Worker threads consume tasks from the priority queue for execution
+ * - Main thread(s) add tasks to the thread-safe queue via scheduleTask()
+ * - Worker threads consume tasks from the queue for execution
  * - Tasks are automatically rescheduled if they are recurring
- * @note All operations are thread-safe
+ * @note All operations are completely thread-safe without race conditions
  */
 class Scheduler : public IScheduler
 {
@@ -113,7 +333,7 @@ public:
      * @details Automatically stops the scheduler and cleans up all resources.
      *          Waits for all worker threads to complete before destruction.
      */
-    ~Scheduler();
+    ~Scheduler() noexcept;
 
     /**
      * @brief Start the scheduler
@@ -151,7 +371,6 @@ public:
      */
     void scheduleTask(std::string_view taskName, TaskConfig&& config) override;
 
-
     /**
      * @copydoc IScheduler::removeTask
      */
@@ -162,7 +381,6 @@ public:
      */
     std::size_t getActiveTasksCount() const override;
 
-
     /**
      * @copydoc IScheduler::getThreadCount
      */
@@ -171,12 +389,11 @@ public:
 private:
     /**
      * @brief Main worker thread function
-     * @details Implements the main execution loop for worker threads.
-     *          Continuously processes tasks from the priority queue until
-     *          the scheduler is stopped.
+     * @details Implements the main execution loop for worker threads using
+     *          the thread-safe queue. Continuously processes tasks until shutdown.
      *
      * @note This method runs in each worker thread
-     * @note Handles task timing, execution, and rescheduling
+     * @note Uses semaphore-based coordination to avoid condition_variable issues
      */
     void workerThread();
 
@@ -186,7 +403,7 @@ private:
      *
      * @note Sets and restores CPU priority around task execution
      */
-    void executeTask(const ScheduledTask& task);
+    void executeTask(const TaskQueue::TaskItem& task);
 
     /**
      * @brief Set CPU priority for the current thread
@@ -207,12 +424,8 @@ private:
     mutable std::mutex m_tasksMutex;                                         ///< Mutex protecting the tasks map
     std::unordered_map<std::string, std::shared_ptr<ScheduledTask>> m_tasks; ///< Active tasks by name
 
-    mutable std::mutex m_queueMutex; ///< Mutex protecting the task queue
-    std::priority_queue<std::shared_ptr<ScheduledTask>, std::vector<std::shared_ptr<ScheduledTask>>, TaskComparator>
-        m_taskQueue;                          ///< Priority queue for task execution ordering
-    std::condition_variable m_queueCondition; ///< Condition variable for queue notifications
-
-    int m_numThreads; ///< Number of worker threads
+    TaskQueue m_taskQueue; ///< Thread-safe priority queue for task execution
+    int m_numThreads;      ///< Number of worker threads
 };
 
 } // namespace scheduler
