@@ -52,7 +52,7 @@ struct BrowserExtension final
         bool autoupdate;
         std::string_view build_version;
         std::string_view description;
-        bool enabled;
+        std::string_view enabled;
         bool from_webstore;
         std::string_view id;
         std::string_view installed;

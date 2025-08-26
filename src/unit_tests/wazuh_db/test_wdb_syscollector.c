@@ -3915,7 +3915,7 @@ void test_wdb_browser_extensions_insert_sql_fail(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const bool package_enabled = false;
+    const char * package_enabled = "package_enabled";
     const bool package_autoupdate = true;
     const bool package_persistent = false;
     const bool package_from_webstore = true;
@@ -3974,9 +3974,9 @@ void test_wdb_browser_extensions_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_string(__wrap_sqlite3_bind_text, buffer, package_type);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 17);
-    expect_value(__wrap_sqlite3_bind_int, value, package_enabled);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 17);
+    expect_value(__wrap_sqlite3_bind_text, buffer, package_enabled);
+    will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 18);
     expect_value(__wrap_sqlite3_bind_int, value, package_autoupdate);
     will_return(__wrap_sqlite3_bind_int, 0);
@@ -4041,7 +4041,7 @@ void test_wdb_browser_extensions_save_transaction_fail(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const bool package_enabled = false;
+    const char * package_enabled = "package_enabled";
     const bool package_autoupdate = true;
     const bool package_persistent = false;
     const bool package_from_webstore = true;
@@ -4089,7 +4089,7 @@ void test_wdb_browser_extensions_save_insert_fail(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const bool package_enabled = false;
+    const char * package_enabled = "package_enabled";
     const bool package_autoupdate = true;
     const bool package_persistent = false;
     const bool package_from_webstore = true;
@@ -4138,7 +4138,7 @@ void test_wdb_browser_extensions_save_success(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const bool package_enabled = false;
+    const char * package_enabled = "package_enabled";
     const bool package_autoupdate = true;
     const bool package_persistent = false;
     const bool package_from_webstore = true;
@@ -4200,9 +4200,9 @@ void test_wdb_browser_extensions_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_string(__wrap_sqlite3_bind_text, buffer, package_type);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 17);
-    expect_value(__wrap_sqlite3_bind_int, value, package_enabled);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 17);
+    expect_value(__wrap_sqlite3_bind_text, buffer, package_enabled);
+    will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 18);
     expect_value(__wrap_sqlite3_bind_int, value, package_autoupdate);
     will_return(__wrap_sqlite3_bind_int, 0);

@@ -944,7 +944,7 @@ typedef struct {
     const char * package_reference;
     const char * package_permissions;
     const char * package_type;
-    const bool package_enabled;
+    const char * package_enabled;
     const bool package_autoupdate;
     const bool package_persistent;
     const bool package_from_webstore;
