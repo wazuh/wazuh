@@ -29,7 +29,7 @@ static int mq_send_binary_stub(int, const void* msg, size_t, const char*, char) 
                 Wazuh::SyncSchema::MessageType::StartAck,
                 startAckOffset.Union());
             builder.Finish(message);
-            g_proto->parseResponseBuffer(builder.GetBufferPointer());
+            g_proto->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
             break;
         }
         case Wazuh::SyncSchema::MessageType::End: {
@@ -45,7 +45,7 @@ static int mq_send_binary_stub(int, const void* msg, size_t, const char*, char) 
                 Wazuh::SyncSchema::MessageType::EndAck,
                 endAckOffset.Union());
             builder.Finish(message);
-            g_proto->parseResponseBuffer(builder.GetBufferPointer());
+            g_proto->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
             break;
         }
         default: break;

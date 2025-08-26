@@ -123,14 +123,14 @@ extern "C" {
         }
     }
 
-    bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data)
+    bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length)
     {
         try
         {
             if (!handle || !data) return false;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            return wrapper->impl->parseResponseBuffer(data);
+            return wrapper->impl->parseResponseBuffer(data, length);
         }
         catch (const std::exception& ex)
         {

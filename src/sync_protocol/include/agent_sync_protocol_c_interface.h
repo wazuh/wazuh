@@ -63,8 +63,9 @@ bool asp_sync_module(AgentSyncProtocolHandle* handle,
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.
 /// @param data Pointer to the FlatBuffer-encoded message.
+/// @param length Size of the FlatBuffer message in bytes.
 /// @return true if parsed successfully, false on error.
-bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data);
+bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
 
 #ifdef __cplusplus
 }
