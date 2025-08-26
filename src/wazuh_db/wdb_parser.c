@@ -301,7 +301,7 @@ static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 33, false, false, NULL, "service_target_type", {.text = ""}, true}, .next = &TABLE_SERVICES[33]},
     { .value = { FIELD_TEXT, 34, false, false, NULL, "service_target_address", {.text = ""}, true}, .next = &TABLE_SERVICES[34]},
     { .value = { FIELD_TEXT, 35, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_SERVICES[35]},
-    { .value = { FIELD_TEXT, 36, false, false, NULL, "item_id", {.text = ""}, false}, .next = NULL}
+    { .value = { FIELD_TEXT, 36, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL}
 };
 
 static struct kv_list const TABLE_MAP[] = {
