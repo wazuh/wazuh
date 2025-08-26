@@ -11,10 +11,6 @@
 
 #include "logging_helper.hpp"
 
-// extern "C" {
-// #include <wm_exec.h>
-// }
-
 #include <stack>
 #include <stdexcept>
 
