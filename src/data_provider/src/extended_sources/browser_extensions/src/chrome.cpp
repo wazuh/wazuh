@@ -50,7 +50,10 @@ namespace chrome
 
         for (const auto& item : jsonArray)
         {
-            result += item.get<std::string>() + ", ";
+            if(item.is_string())
+            {
+                result += item.get<std::string>() + ", ";
+            }
         }
 
         if (!result.empty() && result.back() == ' ')
