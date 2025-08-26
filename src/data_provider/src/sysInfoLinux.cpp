@@ -911,6 +911,25 @@ nlohmann::json SysInfo::getBrowserExtensions() const
         {
             nlohmann::json extensionItem{};
 
+            // Convert string fields to int
+            auto stringToInt = [&ext](const std::string & fieldName) -> int
+            {
+                if (ext.contains(fieldName))
+                {
+                    try
+                    {
+                        auto valueStr = ext[fieldName].get<std::string>();
+                        return valueStr.empty() ? 0 : std::stoi(valueStr);
+                    }
+                    catch (const std::exception&)
+                    {
+                        return 0;
+                    }
+                }
+
+                return 0;
+            };
+
             extensionItem["browser_name"]              = ext.value("browser_type",        UNKNOWN_VALUE);
             extensionItem["user_id"]                   = ext.value("uid",                 UNKNOWN_VALUE);
             extensionItem["package_name"]              = ext.value("name",                UNKNOWN_VALUE);
@@ -925,12 +944,12 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_reference"]         = ext.value("update_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = ext.value("permissions",         UNKNOWN_VALUE);
             extensionItem["package_type"]              = UNKNOWN_VALUE;
-            extensionItem["package_enabled"]           = ext.contains("state") ? (ext["state"] == "1") : true;
-            extensionItem["package_autoupdate"]        = false;
-            extensionItem["package_persistent"]        = ext.contains("persistent") ? (ext["persistent"] == "1") : false;
-            extensionItem["package_from_webstore"]     = ext.contains("from_webstore") ? (ext["from_webstore"] == "1") : false;
-            extensionItem["browser_profile_referenced"] = ext.contains("referenced") ? (ext["referenced"] == "1") : false;
-            extensionItem["package_installed"]         = ext.value("install_time",       UNKNOWN_VALUE);
+            extensionItem["package_enabled"]           = ext.value("state",               UNKNOWN_VALUE);
+            extensionItem["package_autoupdate"]        = 0;
+            extensionItem["package_persistent"]        = stringToInt("persistent");
+            extensionItem["package_from_webstore"]     = stringToInt("from_webstore");
+            extensionItem["browser_profile_referenced"] = stringToInt("referenced");
+            extensionItem["package_installed"]         = ext.value("install_timestamp",  UNKNOWN_VALUE);
             extensionItem["file_hash_sha256"]          = ext.value("manifest_hash",      UNKNOWN_VALUE);
 
             result.push_back(std::move(extensionItem));
@@ -958,11 +977,11 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = UNKNOWN_VALUE;
             extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);
-            extensionItem["package_enabled"]           = ext.contains("disabled") ? !ext["disabled"].get<bool>() : true;
-            extensionItem["package_autoupdate"]        = ext.contains("autoupdate") ? ext["autoupdate"].get<bool>() : false;
-            extensionItem["package_persistent"]        = false;
-            extensionItem["package_from_webstore"]     = false;
-            extensionItem["browser_profile_referenced"] = false;
+            extensionItem["package_enabled"]           = (ext.contains("disabled") && !ext["disabled"].get<bool>())? "1" : "0";
+            extensionItem["package_autoupdate"]        = (ext.contains("autoupdate") && ext["autoupdate"].get<bool>())? 1 : 0;
+            extensionItem["package_persistent"]        = 0;
+            extensionItem["package_from_webstore"]     = 0;
+            extensionItem["browser_profile_referenced"] = 0;
             extensionItem["package_installed"]         = UNKNOWN_VALUE;
             extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
 

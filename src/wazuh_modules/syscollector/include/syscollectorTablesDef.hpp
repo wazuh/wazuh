@@ -1229,7 +1229,7 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         package_reference TEXT,
         package_permissions TEXT,
         package_type TEXT,
-        package_enabled INTEGER,
+        package_enabled TEXT,
         package_autoupdate INTEGER,
         package_persistent INTEGER,
         package_from_webstore INTEGER,
