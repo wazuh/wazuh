@@ -30,6 +30,7 @@ The following issue aims to run manual tests for the current release candidate, 
 All test results must have one the following statuses: 
 |                 |                                                                      |
 |-----------------|----------------------------------------------------------------------|
+| :white_circle:  | Doesn't apply.                                                       |
 | :black_circle:  | The test hasn't started yet.                                         |
 | :green_circle:  | All checks passed.                                                   |
 | :red_circle:    | There is at least one failed check.                                  |
