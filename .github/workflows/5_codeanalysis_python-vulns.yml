@@ -63,3 +63,4 @@ jobs:
           ref: refs/heads/${{ matrix.ref }}
           sha: ${{ matrix.sha }}
           sarif_file: ${{ steps.scan.outputs.sarif }}
+          checkout_path: ${{ matrix.ref }}
