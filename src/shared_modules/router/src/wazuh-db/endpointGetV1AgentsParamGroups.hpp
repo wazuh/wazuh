@@ -23,7 +23,7 @@ void logMessage(modules_log_level_t level, const std::string& msg);
  * @brief TEndpointGetV1AgentsParamGroups class.
  *
  */
-template<typename DBConnection = SQLite::Connection, typename DBStatement = SQLite::Statement>
+template<typename DBConnection = SQLite3Wrapper::Connection, typename DBStatement = SQLite3Wrapper::Statement>
 class TEndpointGetV1AgentsParamGroups final
 {
     struct Response final

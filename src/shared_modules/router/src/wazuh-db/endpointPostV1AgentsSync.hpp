@@ -23,7 +23,7 @@ void logMessage(modules_log_level_t level, const std::string& msg);
  * @brief EndpointPostV1AgentsSync class.
  *
  */
-template<typename DBConnection = SQLite::Connection, typename DBStatement = SQLite::Statement>
+template<typename DBConnection = SQLite3Wrapper::Connection, typename DBStatement = SQLite3Wrapper::Statement>
 class TEndpointPostV1AgentsSync final
 {
     template<typename T>

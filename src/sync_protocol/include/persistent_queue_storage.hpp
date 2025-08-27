@@ -62,7 +62,7 @@ class PersistentQueueStorage : public IPersistentQueueStorage
 
     private:
         /// @brief Active SQLite database connection.
-        SQLite::Connection m_connection;
+        SQLite3Wrapper::Connection m_connection;
 
         /// @brief Creates the persistent_queue table if it doesn't already exist.
         void createTableIfNotExists();
@@ -70,5 +70,5 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Opens the database file or creates it if it doesn't exist.
         /// @param dbPath Path to the SQLite file.
         /// @return Initialized SQLite connection.
-        SQLite::Connection createOrOpenDatabase(const std::string& dbPath);
+        SQLite3Wrapper::Connection createOrOpenDatabase(const std::string& dbPath);
 };

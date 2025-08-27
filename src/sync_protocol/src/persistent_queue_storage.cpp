@@ -11,8 +11,6 @@
 #include "logging_helper.hpp"
 #include <filesystem>
 
-using namespace SQLite;
-
 PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath)
     : m_connection(createOrOpenDatabase(dbPath))
 {
@@ -22,16 +20,16 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath)
         m_connection.execute("PRAGMA synchronous = NORMAL;");
         m_connection.execute("PRAGMA journal_mode = WAL;");
     }
-    catch (const Sqlite3Error& ex)
+    catch (const SQLite3Wrapper::Sqlite3Error& ex)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         throw;
     }
 }
 
-Connection PersistentQueueStorage::createOrOpenDatabase(const std::string& dbPath)
+SQLite3Wrapper::Connection PersistentQueueStorage::createOrOpenDatabase(const std::string& dbPath)
 {
-    return Connection(dbPath);
+    return SQLite3Wrapper::Connection(dbPath);
 }
 
 void PersistentQueueStorage::createTableIfNotExists()
@@ -73,7 +71,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
         int oldOperation = -1;
 
         const std::string findQuery = "SELECT operation, sync_status, create_status, operation_syncing FROM persistent_queue WHERE id = ?;";
-        Statement findStmt(m_connection, findQuery);
+        SQLite3Wrapper::Statement findStmt(m_connection, findQuery);
         findStmt.bind(1, newData.id);
 
         if (findStmt.step() == SQLITE_ROW)
@@ -95,7 +93,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
         if (!oldDataFound)
         {
             const std::string insertQuery = "INSERT INTO persistent_queue (id, idx, data, operation, create_status) VALUES (?, ?, ?, ?, ?);";
-            Statement insertStmt(m_connection, insertQuery);
+            SQLite3Wrapper::Statement insertStmt(m_connection, insertQuery);
             insertStmt.bind(1, newData.id);
             insertStmt.bind(2, newData.index);
             insertStmt.bind(3, newData.data);
@@ -116,7 +114,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                 if (oldCreateStatus == CreateStatus::NEW && oldSyncStatus == SyncStatus::PENDING)
                 {
                     const std::string deleteQuery = "DELETE FROM persistent_queue WHERE id = ?;";
-                    Statement deleteStmt(m_connection, deleteQuery);
+                    SQLite3Wrapper::Statement deleteStmt(m_connection, deleteQuery);
                     deleteStmt.bind(1, newData.id);
                     deleteStmt.step();
                 }
@@ -127,7 +125,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                                       : oldCreateStatus;
 
                     const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, sync_status = ?, create_status = ?, operation_syncing = ? WHERE id = ?;";
-                    Statement updateStmt(m_connection, updateQuery);
+                    SQLite3Wrapper::Statement updateStmt(m_connection, updateQuery);
                     updateStmt.bind(1, newData.index);
                     updateStmt.bind(2, newData.data);
                     updateStmt.bind(3, static_cast<int>(Operation::DELETE_));
@@ -145,7 +143,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
                                   : oldCreateStatus;
 
                 const std::string updateQuery = "UPDATE persistent_queue SET idx = ?, data = ?, operation = ?, sync_status = ?, create_status = ?, operation_syncing = ? WHERE id = ?;";
-                Statement updateStmt(m_connection, updateQuery);
+                SQLite3Wrapper::Statement updateStmt(m_connection, updateQuery);
                 updateStmt.bind(1, newData.index);
                 updateStmt.bind(2, newData.data);
                 updateStmt.bind(3, static_cast<int>(newData.operation));
@@ -182,7 +180,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
             "WHERE sync_status = ? "
             "ORDER BY rowid ASC;";
 
-        Statement selectStmt(m_connection, selectQuery);
+        SQLite3Wrapper::Statement selectStmt(m_connection, selectQuery);
         selectStmt.bind(1, static_cast<int>(SyncStatus::PENDING));
 
         while (selectStmt.step() == SQLITE_ROW)
@@ -222,7 +220,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
 
             updateQuery += ");";
 
-            Statement updateStmt(m_connection, updateQuery);
+            SQLite3Wrapper::Statement updateStmt(m_connection, updateQuery);
             updateStmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
 
             for (size_t j = i; j < batch_end; ++j)
@@ -252,7 +250,7 @@ void PersistentQueueStorage::removeAllSynced()
     try
     {
         const std::string query = "DELETE FROM persistent_queue WHERE sync_status = ? OR (create_status = ? AND (operation_syncing = ? OR operation_syncing = ?));";
-        Statement stmt(m_connection, query);
+        SQLite3Wrapper::Statement stmt(m_connection, query);
         stmt.bind(1, static_cast<int>(SyncStatus::SYNCING));
         stmt.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
         stmt.bind(3, static_cast<int>(Operation::NO_OP));
@@ -260,7 +258,7 @@ void PersistentQueueStorage::removeAllSynced()
         stmt.step();
 
         const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, create_status = ?, operation_syncing = ? WHERE (sync_status = ? OR sync_status = ?);";
-        Statement stmtUpdate(m_connection, queryUpdate);
+        SQLite3Wrapper::Statement stmtUpdate(m_connection, queryUpdate);
         stmtUpdate.bind(1, static_cast<int>(SyncStatus::PENDING));
         stmtUpdate.bind(2, static_cast<int>(CreateStatus::EXISTING));
         stmtUpdate.bind(3, static_cast<int>(Operation::NO_OP));
@@ -270,7 +268,7 @@ void PersistentQueueStorage::removeAllSynced()
 
         m_connection.execute("COMMIT;");
     }
-    catch (const Sqlite3Error& ex)
+    catch (const SQLite3Wrapper::Sqlite3Error& ex)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
@@ -285,7 +283,7 @@ void PersistentQueueStorage::resetAllSyncing()
     try
     {
         const std::string queryUpdate = "UPDATE persistent_queue SET sync_status = ?, operation_syncing = ? WHERE sync_status IN (?, ?);";
-        Statement stmtUpdate(m_connection, queryUpdate);
+        SQLite3Wrapper::Statement stmtUpdate(m_connection, queryUpdate);
         stmtUpdate.bind(1, static_cast<int>(SyncStatus::PENDING));
         stmtUpdate.bind(2, static_cast<int>(Operation::NO_OP));
         stmtUpdate.bind(3, static_cast<int>(SyncStatus::SYNCING));
@@ -293,14 +291,14 @@ void PersistentQueueStorage::resetAllSyncing()
         stmtUpdate.step();
 
         const std::string queryDelete = "DELETE FROM persistent_queue WHERE operation = ? AND create_status = ?;";
-        Statement stmtDelete(m_connection, queryDelete);
+        SQLite3Wrapper::Statement stmtDelete(m_connection, queryDelete);
         stmtDelete.bind(1, static_cast<int>(Operation::DELETE_));
         stmtDelete.bind(2, static_cast<int>(CreateStatus::NEW_DELETED));
         stmtDelete.step();
 
         m_connection.execute("COMMIT;");
     }
-    catch (const Sqlite3Error& ex)
+    catch (const SQLite3Wrapper::Sqlite3Error& ex)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
