@@ -100,7 +100,6 @@ class CatalogModule(BaseModule):
             }
         )
 
-
     async def update_resource(self, name: str, format: ResourceFormat, content: str, namespace: str) -> dict:
         """Update an existing resource in the Engine catalog.
 
