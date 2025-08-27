@@ -37,17 +37,20 @@ All test results must have one the following statuses:
 | :yellow_circle: | There is at least one expected fail or skipped test and no failures. |
 
 
-Any failing test must be properly addressed with a new issue, detailing the error and the possible cause.
+For each tester:
+- Create a new message with the test report. This should have a `<details><summary>RESULT - TITLE</details>` for each test.
+
+Test considerations: 
+- Any failing test must be properly addressed with a new issue, detailing the error and the possible cause.
 It must be included in the `Problems` section of the current release candidate issue.
-
-Any expected fail or skipped test must be justified with a reason. 
+- Any expected fail or skipped test must be justified with a reason. 
 All auditors must validate the justification for an expected fail or skipped test.
-
-An extended report of the test results must be attached as a zip, txt or images. 
+- An extended report of the test results must be attached as a zip, txt or images. 
 This report can be used by the auditors to dig deeper into any possible failures and details.
 
-- [ ] **Write your conclusions**
-- [ ] **Update the test template table results changing the circle colors**
+Test summary:
+- [ ] **Write the test conclusions in Conclusions section**
+- [ ] **Update the test template table results changing the circle colors with the test results in the Test section**
 
 ## Test 
 
