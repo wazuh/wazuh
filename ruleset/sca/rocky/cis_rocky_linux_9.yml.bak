@@ -29,6 +29,106 @@ variables:
   $sshd_file: /etc/ssh/sshd_config
 
 checks:
+  # 1.1.1.1 Ensure cramfs kernel module is not available (Automated)
+  - id: 31500
+    title: "Ensure cramfs kernel module is not available."
+    description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    remediation: "Run the following script to disable the cramfs filesystem: #!/usr/bin/env bash { l_mname=\"cramfs\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
+    compliance:
+      - cis: ["1.1.1.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1005"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: any
+    rules:
+      - "c:modprobe -n -v cramfs -> r:install /bin/false|install /bin/true|Module cramfs not found"
+      - "not c:lsmod -> r:cramfs"
+      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+cramfs'
+
+  # 1.1.1.2 Ensure freevxfs kernel module is not available (Automated)
+  - id: 31500
+    title: "Ensure freevxfs kernel module is not available."
+    description: "The freevxfs filesystem type is a free version of the Veritas type filesystem. This is the primary filesystem type for HP-UX operating systems."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    remediation: "Run the following script to disable the freevxfs filesystem: #!/usr/bin/env bash { l_mname=\"freevxfs\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
+    compliance:
+      - cis: ["1.1.1.2"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1005"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: any
+    rules:
+      - "c:modprobe -n -v freevxfs -> r:install /bin/false|install /bin/true|Module freevxfs not found"
+      - "not c:lsmod -> r:freevxfs"
+      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+freevxfs'
+
+  # 1.1.1.3 Ensure hfs kernel module is not available (Automated)
+  - id: 31500
+    title: "Ensure hfs kernel module is not available."
+    description: "The hfs filesystem type is a hierarchical filesystem that allows you to mount Mac OS filesystems."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    remediation: "Run the following script to disable the hfs filesystem: #!/usr/bin/env bash { l_mname=\"hfs\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
+    compliance:
+      - cis: ["1.1.1.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1005"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: any
+    rules:
+      - "c:modprobe -n -v hfs -> r:install /bin/false|install /bin/true|Module hfs not found"
+      - "not c:lsmod -> r:hfs"
+      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+hfs'
+
+  # 1.1.1.4 Ensure hfsplus kernel module is not available (Automated)
+  - id: 31500
+    title: "Ensure hfsplus kernel module is not available."
+    description: "The hfsplus filesystem type is a hierarchical filesystem designed to replace hfs that allows you to mount Mac OS filesystems."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    remediation: "Run the following script to disable the hfsplus filesystem: #!/usr/bin/env bash { l_mname=\"hfsplus\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
+    compliance:
+      - cis: ["1.1.1.4"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1005"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: any
+    rules:
+      - "c:modprobe -n -v hfsplus -> r:install /bin/false|install /bin/true|Module hfsplus not found"
+      - "not c:lsmod -> r:hfsplus"
+      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+hfsplus'
+
+  # 1.1.1.5 Ensure jffs2 kernel module is not available (Automated)
+  - id: 31500
+    title: "Ensure jffs2 kernel module is not available."
+    description: "The jffs2 (journaling flash filesystem 2) filesystem type is a log-structured filesystem used in flash memory devices."
+    rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    remediation: "Run the following script to disable the jffs2 filesystem: #!/usr/bin/env bash { l_mname=\"jffs2\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
+    compliance:
+      - cis: ["1.1.1.5"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1005"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: any
+    rules:
+      - "c:modprobe -n -v jffs2 -> r:install /bin/false|install /bin/true|Module jffs2 not found"
+      - "not c:lsmod -> r:jffs2"
+      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+jffs2'
+
   # 1.1.1.6 Ensure squashfs kernel module is not available (Automated)
   - id: 31500
     title: "Ensure squashfs kernel module is not available."
@@ -4092,7 +4192,6 @@ checks:
   # 7.2.5 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
   # 7.2.6 Ensure no duplicate user names exist. (Automated) - Not Implemented
   # 7.2.7 Ensure no duplicate group names exist. (Automated) - Not Implemented
-  # 6.2.8 Ensure root PATH Integrity. (Automated) - Not Implemented
 
   # 5.4.2.1 Ensure root is the only UID 0 account. (Automated)
   - id: 31666
