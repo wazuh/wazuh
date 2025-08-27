@@ -4513,7 +4513,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_users_valid_msg_modified, test_setup_users_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_groups_valid_msg_modified, test_setup_groups_valid_msg_modified, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_browser_extensions_valid_msg_modified, test_setup_browser_extensions_valid_msg_modified, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_valid_msg_modified, test_setup_services_extensions_valid_msg_modified, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_valid_msg_modified, test_setup_services_valid_msg_modified, test_cleanup),
         /* INSERTED delta tests*/
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_hotfixes_valid_msg_inserted, test_setup_hotfixes_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_packages_valid_msg_inserted, test_setup_packages_valid_msg_inserted, test_cleanup),
@@ -4532,7 +4532,7 @@ int main()
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_users_valid_msg_inserted, test_setup_users_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_groups_valid_msg_inserted, test_setup_groups_valid_msg_inserted, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_dbsync_browser_extensions_valid_msg_inserted, test_setup_browser_extensions_valid_msg_inserted, test_cleanup),
-        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_valid_msg_inserted, test_setup_services_extensions_valid_msg_inserted, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_syscollector_dbsync_services_valid_msg_inserted, test_setup_services_valid_msg_inserted, test_cleanup),
         // Hardware tests
         cmocka_unit_test_setup_teardown(test_syscollector_hardware_valid, test_setup_hardware_valid_msg, test_cleanup),
         cmocka_unit_test_setup_teardown(test_syscollector_hardware_valid_inventory_empty, test_setup_hardware_valid_msg_inventory_empty, test_cleanup),
