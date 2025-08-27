@@ -20,7 +20,7 @@
  * @brief EndpointGetV1AgentsIds class.
  *
  */
-template<typename DBConnection = SQLite::Connection, typename DBStatement = SQLite::Statement>
+template<typename DBConnection = SQLite3Wrapper::Connection, typename DBStatement = SQLite3Wrapper::Statement>
 class TEndpointGetV1AgentsIds final
 {
     struct Response final

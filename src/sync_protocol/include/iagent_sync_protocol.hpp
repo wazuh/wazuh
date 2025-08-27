@@ -34,7 +34,7 @@ class IAgentSyncProtocol
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(Wazuh::SyncSchema::Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
+        virtual bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;

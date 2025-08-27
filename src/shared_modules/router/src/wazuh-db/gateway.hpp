@@ -67,7 +67,7 @@ public:
             throw std::runtime_error("Database connection failed");
         }
 
-        SQLite::Connection connection(db);
+        SQLite3Wrapper::Connection connection(db);
 
         if (method.compare("GET") == 0)
         {

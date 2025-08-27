@@ -525,7 +525,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     while (FOREVER()) {
         mdebug1("Running inventory synchronization.");
 
-        asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, SYNC_RETRIES, syscheck.sync_max_eps);
+        asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
 
         mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
         sleep(syscheck.sync_interval);

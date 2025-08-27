@@ -33,9 +33,15 @@ class PersistentQueueFullParamTest :
     protected:
         std::unique_ptr<PersistentQueueStorage> storage;
 
+        LoggerFunc testLogger;
+
         void SetUp() override
         {
-            storage = std::make_unique<PersistentQueueStorage>(":memory:");
+            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+            {
+            };
+
+            storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger);
         }
 
         void TearDown() override
@@ -117,7 +123,7 @@ QueueScenario
     "Case 3",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE}
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_}
     },
     false, {}, false, false,
     0, Operation::CREATE
@@ -128,18 +134,18 @@ QueueScenario
     "Case 4",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::MODIFY},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE}
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_}
     },
     false, {}, false, false,
-    1, Operation::DELETE
+    1, Operation::DELETE_
 },
 // 5. DELETE
 QueueScenario
 {
     "Case 5",
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_} },
     false, {}, false, false,
-    1, Operation::DELETE
+    1, Operation::DELETE_
 },
 // 6. CREATE + Sync + MODIFY during  sync + sync success -> MODIFY
 QueueScenario
@@ -157,9 +163,9 @@ QueueScenario
     "Case 7",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_} },
     true, false,
-    1, Operation::DELETE
+    1, Operation::DELETE_
 },
 // 8. CREATE + Sync + DELETE during  sync + sync fail -> row deleted
 QueueScenario
@@ -167,9 +173,9 @@ QueueScenario
     "Case 8",
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true,
-    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE} },
+    { PersistedData{0, "id1", "idx", "{}", Operation::DELETE_} },
     false, true,
-    0, Operation::DELETE
+    0, Operation::DELETE_
 },
 // 9. CREATE + Sync + MODIFY during  sync + fail -> MODIFY
 QueueScenario
@@ -186,7 +192,7 @@ QueueScenario
 {
     "Case 10",
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
         PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY}
     },
     false, {}, false, false,
@@ -229,12 +235,12 @@ QueueScenario
     { PersistedData{0, "id1", "idx", "{}", Operation::MODIFY} },
     true,
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
         PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE}
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_}
     },
     false, true,
-    1, Operation::DELETE
+    1, Operation::DELETE_
 },
 // 15. CREATE -> DELETE -> CREATE -> CREATE
 QueueScenario
@@ -242,7 +248,7 @@ QueueScenario
     "Case 15",
     {
         PersistedData{0, "id1", "idx", "{}", Operation::CREATE},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
         PersistedData{0, "id1", "idx2", "{}", Operation::CREATE}
     },
     false, {}, false, false,
@@ -256,7 +262,7 @@ QueueScenario
     true,
     {
         PersistedData{0, "id1", "idx2", "{}", Operation::MODIFY},
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
         PersistedData{0, "id1", "idx3", "{}", Operation::MODIFY}
     },
     true, false,
@@ -269,7 +275,7 @@ QueueScenario
     { PersistedData{0, "id1", "idx", "{}", Operation::CREATE} },
     true,
     {
-        PersistedData{0, "id1", "idx", "{}", Operation::DELETE},
+        PersistedData{0, "id1", "idx", "{}", Operation::DELETE_},
         PersistedData{0, "id1", "idx2", "{}", Operation::CREATE}
     },
     false, true,

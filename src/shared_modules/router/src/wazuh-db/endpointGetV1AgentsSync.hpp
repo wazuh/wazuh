@@ -20,7 +20,7 @@
  * @brief TEndpointGetV1AgentsSync class.
  *
  */
-template<typename DBConnection = SQLite::Connection, typename DBStatement = SQLite::Statement>
+template<typename DBConnection = SQLite3Wrapper::Connection, typename DBStatement = SQLite3Wrapper::Statement>
 class TEndpointGetV1AgentsSync final
 {
     virtual ~TEndpointGetV1AgentsSync() = default; // LCOV_EXCL_LINE

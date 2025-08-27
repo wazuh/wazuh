@@ -15,7 +15,6 @@
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "router.h"
 #include "sym_load.h"
-#include "agent_messages_adapter.h"
 #include "indexed_queue_op.h"
 
 

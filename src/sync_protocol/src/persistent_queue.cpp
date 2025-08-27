@@ -9,20 +9,25 @@
 
 #include "persistent_queue.hpp"
 #include "persistent_queue_storage.hpp"
-#include "logging_helper.hpp"
 
 #include <algorithm>
 
-PersistentQueue::PersistentQueue(const std::string& dbPath, std::shared_ptr<IPersistentQueueStorage> storage)
-    : m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath))
+PersistentQueue::PersistentQueue(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IPersistentQueueStorage> storage)
+    : m_storage(storage ? std::move(storage) : std::make_shared<PersistentQueueStorage>(dbPath, logger)),
+      m_logger(std::move(logger))
 {
+    if (!m_logger)
+    {
+        throw std::invalid_argument("Logger provided to PersistentQueue cannot be null.");
+    }
+
     try
     {
         m_storage->resetAllSyncing();
     }
     catch (const std::exception& ex)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error on DB: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error on DB: ") + ex.what());
         throw;
     }
 }
@@ -43,7 +48,7 @@ void PersistentQueue::submit(const std::string& id,
     }
     catch (const std::exception& ex)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error persisting message: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error persisting message: ") + ex.what());
         throw;
     }
 }
@@ -57,7 +62,7 @@ std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()
     }
     catch (const std::exception& ex)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error obtaining items for sync: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error obtaining items for sync: ") + ex.what());
         throw;
     }
 }
@@ -71,7 +76,7 @@ void PersistentQueue::clearSyncedItems()
     }
     catch (const std::exception& ex)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error clrearing synchronized items: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error clrearing synchronized items: ") + ex.what());
         throw;
     }
 }
@@ -85,7 +90,7 @@ void PersistentQueue::resetSyncingItems()
     }
     catch (const std::exception& ex)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueue: Error resetting items: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error resetting items: ") + ex.what());
         throw;
     }
 }

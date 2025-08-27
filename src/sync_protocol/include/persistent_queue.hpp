@@ -11,6 +11,7 @@
 
 #include "ipersistent_queue.hpp"
 #include "ipersistent_queue_storage.hpp"
+#include "agent_sync_protocol_types.hpp"
 
 #include <string>
 #include <map>
@@ -32,9 +33,10 @@ class PersistentQueue : public IPersistentQueue
     public:
         /// @brief Constructs a PersistentQueue with the given storage backend.
         /// @param dbPath Path to the SQLite database file for this protocol instance.
+        /// @param logger Logger function
         /// @param storage Optional shared pointer to a custom storage backend.
         ///                If null, a default PersistentQueueStorage is used.
-        explicit PersistentQueue(const std::string& dbPath, std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
+        explicit PersistentQueue(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IPersistentQueueStorage> storage = nullptr);
 
         /// @brief Destructor.
         ~PersistentQueue() override;
@@ -65,4 +67,7 @@ class PersistentQueue : public IPersistentQueue
 
         /// @brief Storage backend to persist and restore messages.
         std::shared_ptr<IPersistentQueueStorage> m_storage;
+
+        /// @brief Logger function
+        LoggerFunc m_logger;
 };
