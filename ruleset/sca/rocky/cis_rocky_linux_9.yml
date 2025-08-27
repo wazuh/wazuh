@@ -2487,14 +2487,14 @@ checks:
       - 'c:stat -c "%n %a" /sbin/auditd -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
       - 'c:stat -c "%n %a" /sbin/augenrules -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
-  # 4.1.4.9 Ensure audit tools are owned by root. (Automated)
+  # 6.3.4.9 Ensure audit tools owner is configured (Automated)
   - id: 31598
-    title: "Ensure audit tools are owned by root."
+    title: "Ensure audit tools owner is configured."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
     remediation: "Run the following command to change the owner of the audit tools to the root user: # chown root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules."
     compliance:
-      - cis: ["4.1.4.9"]
+      - cis: ["6.3.4.9"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -2571,14 +2571,14 @@ checks:
     rules:
       - "c:rpm -q rsyslog -> r:^rsyslog-"
 
-  # 4.2.1.2 Ensure rsyslog service is enabled. (Automated)
+  # 6.2.3.2 Ensure rsyslog service is enabled and active (Automated)
   - id: 31601
-    title: "Ensure rsyslog service is enabled."
+    title: "Ensure rsyslog service is enabled and active."
     description: "Once the rsyslog package is installed, ensure that the service is enabled."
     rationale: "If the rsyslog service is not enabled to start on boot, the system will not capture logging events."
     remediation: "Run the following command to enable rsyslog: # systemctl --now enable rsyslog."
     compliance:
-      - cis: ["4.2.1.2"]
+      - cis: ["6.2.3.2"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2617,15 +2617,15 @@ checks:
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*ForwardToSyslog=yes'
 
-  # 4.2.1.4 Ensure rsyslog default file permissions are configured. (Automated)
+  # 6.2.3.4 Ensure rsyslog log file creation mode is configured (Automated)
   - id: 31603
-    title: "Ensure rsyslog default file permissions are configured."
+    title: "Ensure rsyslog log file creation mode is configured."
     description: "RSyslog will create logfiles that do not already exist on the system. This setting controls what permissions will be applied to these newly created files."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     impact: "The systems global umask could override, but only making the file permissions stricter, what is configured in RSyslog with the FileCreateMode directive. RSyslog also has its own $umask directive that can alter the intended file creation mode. In addition, consideration should be given to how FileCreateMode is used. Thus it is critical to ensure that the intended file creation mode is not overridden with less restrictive settings in /etc/rsyslog.conf, /etc/rsyslog.d/*conf files and that FileCreateMode is set before any file is created."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Restart the service: # systemctl restart rsyslog."
     compliance:
-      - cis: ["4.2.1.4"]
+      - cis: ["6.2.3.4"]
       - cis_csc_v8: ["3.3", "8.2"]
       - cis_csc_v7: ["5.1", "6.2", "6.3"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "AU.L2-3.3.1", "MP.L2-3.8.2"]
@@ -2641,8 +2641,6 @@ checks:
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d20|^\$FileCreateMode 0\d00'
-
-  # 4.2.1.5 Ensure logging is configured. (Manual) - Not Implemented
 
   # 6.2.3.6 Ensure rsyslog is configured to send logs to a remote log host. (Manual)
   - id: 31604
@@ -2725,16 +2723,14 @@ checks:
     rules:
       - "c:rpm -q systemd-journal-remote -> r:systemd-journal-remote-"
 
-  # 4.2.2.1.2 Ensure systemd-journal-remote is configured. (Manual) - Not Implemented
-
-  # 4.2.2.1.3 Ensure systemd-journal-remote is enabled. (Manual)
+  # 6.2.2.1.3 Ensure systemd-journal-upload is enabled and active (Automated)
   - id: 31607
-    title: "Ensure systemd-journal-remote is enabled."
-    description: "Journald (via systemd-journal-remote) supports the ability to send log events it gathers to a remote log host or to receive messages from remote hosts, thus enabling centralized log management."
-    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
+    title: "Ensure systemd-journal-upload is enabled and active."
+    description: "Journald systemd-journal-upload supports the ability to send log events it gathers to a remote log host."
+    rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system. Note: This recommendation only applies if journald is the chosen method for client side logging. Do not apply this recommendation if rsyslog is used."
     remediation: "Run the following command to enable systemd-journal-remote: # systemctl --now enable systemd-journal-upload.service."
     compliance:
-      - cis: ["4.2.2.1.3"]
+      - cis: ["6.2.2.1.3"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2750,14 +2746,14 @@ checks:
     rules:
       - "c:systemctl is-enabled systemd-journal-upload.service -> r:^enabled"
 
-  # 4.2.2.1.4 Ensure journald is not configured to receive logs from a remote client. (Automated)
+  # 6.2.2.1.4 Ensure systemd-journal-remote service is not in use (Automated)
   - id: 31608
-    title: "Ensure journald is not configured to receive logs from a remote client."
-    description: "Journald supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts. NOTE: - The same package, systemd-journal-remote, is used for both sending logs to remote hosts and receiving incoming logs. - With regards to receiving logs, there are two services; systemd-journal- remote.socket and systemd-journal-remote.service."
-    rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary."
+    title: "Ensure systemd-journal-remote service is not in use."
+    description: "Journald systemd-journal-remote supports the ability to receive messages from remote hosts, thus acting as a log server. Clients should not receive data from other hosts."
+    rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside it's operational boundary. Note: This recommendation only applies if journald is the chosen method for client side logging. Do not apply this recommendation if rsyslog is used."
     remediation: "Run the following command to disable systemd-journal-remote.socket: # systemctl --now mask systemd-journal-remote.socket."
     compliance:
-      - cis: ["4.2.2.1.4"]
+      - cis: ["6.2.2.1.4"]
       - cis_csc_v8: ["4.8", "8.2"]
       - cis_csc_v7: ["6.2", "6.3", "9.2"]
       - cmmc_v2.0: ["AU.L2-3.3.1", "CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -2774,14 +2770,14 @@ checks:
     rules:
       - "c:systemctl is-enabled systemd-journal-remote.socket -> r:^masked"
 
-  # 4.2.2.2 Ensure journald service is enabled. (Automated)
+  # 6.2.1.1 Ensure journald service is enabled and active (Automated)
   - id: 31609
-    title: "Ensure journald service is enabled."
+    title: "Ensure journald service is enabled and active."
     description: "Ensure that the systemd-journald service is enabled to allow capturing of logging events."
     rationale: "If the systemd-journald service is not enabled to start on boot, the system will not capture logging events."
     remediation: "By default the systemd-journald service does not have an [Install] section and thus cannot be enabled / disabled. It is meant to be referenced as Requires or Wants by other unit files. As such, if the status of systemd-journald is not static, investigate why."
     compliance:
-      - cis: ["4.2.2.2"]
+      - cis: ["6.2.1.1"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2797,14 +2793,14 @@ checks:
     rules:
       - "c:systemctl is-enabled systemd-journald.service -> r:^static"
 
-  # 4.2.2.3 Ensure journald is configured to compress large log files. (Automated)
+  # 6.2.2.3 Ensure journald Compress is configured (Automated)
   - id: 31610
-    title: "Ensure journald is configured to compress large log files."
+    title: "Ensure journald Compress is configured."
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
     rationale: "Uncompressed large files may unexpectedly fill a filesystem leading to resource unavailability. Compressing logs prior to write can prevent sudden, unexpected filesystem impacts."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Compress=yes Restart the service: # systemctl restart systemd-journald.service."
     compliance:
-      - cis: ["4.2.2.3"]
+      - cis: ["6.2.2.3"]
       - cis_csc_v8: ["8.2", "8.3"]
       - cis_csc_v7: ["6.2", "6.3", "6.4"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2821,14 +2817,14 @@ checks:
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*Compress\s*=\s*yes'
 
-  # 4.2.2.4 Ensure journald is configured to write logfiles to persistent disk. (Automated)
+  # 6.2.2.4 Ensure journald Storage is configured (Automated)
   - id: 31611
-    title: "Ensure journald is configured to write logfiles to persistent disk."
+    title: "Ensure journald Storage is configured."
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss due to a reboot."
     rationale: "Writing log data to disk will provide the ability to forensically reconstruct events which may have impacted the operations or security of a system even after a system crash or reboot."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: Storage=persistent Restart the service: # systemctl restart systemd-journald.service."
     compliance:
-      - cis: ["4.2.2.4"]
+      - cis: ["6.2.2.4"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2844,14 +2840,14 @@ checks:
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*Storage=persistent'
 
-  # 4.2.2.5 Ensure journald is not configured to send logs to rsyslog. (Manual)
+  # 6.2.2.2 Ensure journald ForwardToSyslog is disabled (Automated)
   - id: 31612
-    title: "Ensure journald is not configured to send logs to rsyslog."
+    title: "Ensure journald ForwardToSyslog is disabled."
     description: "Data from journald should be kept in the confines of the service and not forwarded on to other services."
     rationale: "IF journald is the method for capturing logs, all logs of the system should be handled by journald and not forwarded to other logging mechanisms. Note: This recommendation only applies if journald is the chosen method for client side logging. Do not apply this recommendation if rsyslog is used."
     remediation: "Edit the /etc/systemd/journald.conf file and ensure that ForwardToSyslog=yes is removed. Restart the service: # systemctl restart systemd-journald.service."
     compliance:
-      - cis: ["4.2.2.5"]
+      - cis: ["6.2.2.2"]
       - cis_csc_v8: ["8.2", "8.9"]
       - cis_csc_v7: ["6.2", "6.3", "6.5"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -2868,11 +2864,6 @@ checks:
     rules:
       - 'not f:/etc/systemd/journald.conf -> r:^\s*ForwardToSyslog'
 
-  # 4.2.2.6 Ensure journald log rotation is configured per site policy. (Manual) - Not Implemented
-  # 4.2.2.7 Ensure journald default file permissions configured. (Manual) - Not Implemented
-  # 4.2.3 Ensure all logfiles have appropriate permissions and ownership. (Automated) - Not Implemented
-  # 4.3 Ensure logrotate is configured. (Manual) - Not Implemented
-
   ###############################################
   # 5 Access, Authentication and Authorization
   ###############################################
@@ -2880,21 +2871,22 @@ checks:
   # 5.1 Configure time-based job schedulers
   ###############################################
 
-  # 5.1.1 Ensure cron daemon is enabled. (Automated)
+  # 2.4.1.1 Ensure cron daemon is enabled and active (Automated)
   - id: 31613
-    title: "Ensure cron daemon is enabled."
+    title: "Ensure cron daemon is enabled and active."
     description: "The cron daemon is used to execute batch jobs on the system."
     rationale: "While there may not be user jobs that need to be run on the system, the system does have maintenance jobs that may include security monitoring that have to run, and cron is used to execute them."
     remediation: "Run the following command to enable cron: # systemctl --now enable crond."
     compliance:
-      - cis: ["5.1.1"]
+      - cis: ["2.4.1.1"]
       - mitre_mitigations: ["M1018"]
       - mitre_tactics: ["TA0005"]
       - mitre_techniques: ["T1562", "T1562.001"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - "c:systemctl is-enabled crond -> r:^enabled"
+      - "c:systemctl is-enabled crond -> r:enabled"
+      - "c:systemctl status crond -> r:active"
 
   # 2.4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 31614
@@ -3040,7 +3032,6 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
-  # 5.1.8 Ensure cron is restricted to authorized users. (Automated) - Not Implemented
   # 2.4.2.1 Ensure at is restricted to authorized users. (Automated) - Not Implemented
 
   ###############################################
@@ -3211,14 +3202,14 @@ checks:
       - 'c:sshd -T -C user=root -> r:^\s*PermitEmptyPasswords\s*no'
       - 'not f:/etc/ssh/sshd_config -> !r:^# && r:PermitEmptyPasswords\s+yes'
 
-  # 5.2.10 Ensure SSH PermitUserEnvironment is disabled. (Automated)
+  # 5.1.21 Ensure sshd PermitUserEnvironment is disabled (Automated)
   - id: 31627
-    title: "Ensure SSH PermitUserEnvironment is disabled."
+    title: "Ensure sshd PermitUserEnvironment is disabled."
     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
     rationale: "Permitting users the ability to set environment variables through the SSH daemon could potentially allow users to bypass security controls (e.g. setting an execution path that has ssh executing trojan'd programs)."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the PermitUserEnvironment parameter as follows: PermitUserEnvironment no Run the following command to comment out any PermitUserEnvironment parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than no # grep -Pi '^\\h*PermitUserEnvironment\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'no' | while read -r l_out; do sed -ri \"/^\\s*PermitUserEnvironment\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.10"]
+      - cis: ["5.1.21"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
@@ -3235,14 +3226,14 @@ checks:
       - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*no'
       - 'not f:/etc/ssh/sshd_config -> !r:^# && r:PermitUserEnvironment\s+yes'
 
-  # 5.2.11 Ensure SSH IgnoreRhosts is enabled. (Automated)
+  # 5.1.13 Ensure sshd IgnoreRhosts is enabled (Automated)
   - id: 31628
-    title: "Ensure SSH IgnoreRhosts is enabled."
+    title: "Ensure sshd IgnoreRhosts is enabled."
     description: "The IgnoreRhosts parameter specifies that .rhosts and .shosts files will not be used in RhostsRSAAuthentication or HostbasedAuthentication."
     rationale: "Setting this parameter forces users to enter a password when authenticating with ssh."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the IgnoreRhosts parameter as follows: IgnoreRhosts yes Run the following command to comment out any IgnoreRhosts parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than yes # grep -Pi '^\\h*IgnoreRhosts\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'yes' | while read -r l_out; do sed -ri \"/^\\s*IgnoreRhosts\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.11"]
+      - cis: ["5.1.13"]
       - mitre_mitigations: ["M1027"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
@@ -3252,14 +3243,17 @@ checks:
       - 'c:sshd -T -C user=root -> r:\s*ignorerhosts\s*yes'
       - 'not f:/etc/ssh/sshd_config -> !r:^# && r:ignorerhosts\s+no'
 
-  # 5.2.12 Ensure SSH X11 forwarding is disabled. (Automated)
+  # 5.1.10 Ensure sshd DisableForwarding is enabled (Automated)
   - id: 31629
-    title: "Ensure SSH X11 forwarding is disabled."
-    description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through the connection to enable remote graphic connections."
-    rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders."
-    remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the X11Forwarding parameter as follows: X11Forwarding no Run the following command to comment out any X11Forwarding parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than no # grep -Pi '^\\h*X11Forwarding\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'no' | while read -r l_out; do sed -ri \"/^\\s*X11Forwarding\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
+    title: "Ensure sshd DisableForwarding is enabled."
+    description: "The DisableForwarding parameter disables all forwarding features, including X11, ssh-agent(1), TCP and StreamLocal. This option overrides all other forwarding-related options and may simplify restricted configurations."
+    rationale: "Disable X11 forwarding unless there is an operational requirement to use X11 applications directly. There is a small risk that the remote X11 servers of users who are logged in via SSH with X11 forwarding could be compromised by other users on the X11 server. Note that even if X11 forwarding is disabled, users can always install their own forwarders. Anyone with root privilege on the the intermediate server can make free use of ssh-agent to authenticate them to other servers leaving port forwarding enabled can expose the organization to security risks and backdoors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
+    impact: "SSH tunnels are widely used in many corporate environments. In some environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications."
+    remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the DisableForwarding parameter as follows: DisableForwarding yes."
+    references:
+      - "https://www.ssh.com/ssh/tunneling/example"
     compliance:
-      - cis: ["5.2.12"]
+      - cis: ["5.1.10"]
       - cis_csc_v8: ["4.8"]
       - cis_csc_v7: ["9.2"]
       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
@@ -3273,44 +3267,17 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: any
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*no'
-      - 'not f:/etc/ssh/sshd_config -> !r:^# && r:x11forwarding\s+yes'
+      - 'c:sshd -T -C user=root -> r:^\s*disableforwarding\s*yes'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:DisableForwarding\s+yes'
 
-  # 5.2.13 Ensure SSH AllowTcpForwarding is disabled. (Automated)
-  - id: 31630
-    title: "Ensure SSH AllowTcpForwarding is disabled."
-    description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
-    rationale: "Leaving port forwarding enabled can expose the organization to security risks and back-doors. SSH connections are protected with strong encryption. This makes their contents invisible to most deployed network monitoring and traffic filtering solutions. This invisibility carries considerable risk potential if it is used for malicious purposes such as data exfiltration. Cybercriminals or malware could exploit SSH to hide their unauthorized communications, or to exfiltrate stolen data from the target network."
-    impact: "SSH tunnels are widely used in many corporate environments that employ mainframe systems as their application backends. In those environments the applications themselves may have very limited native support for security. By utilizing tunneling, compliance with SOX, HIPAA, PCI-DSS, and other standards can be achieved without having to modify the applications."
-    remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the AllowTcpForwarding parameter as follows: AllowTcpForwarding no Run the following command to comment out any AllowTcpForwarding parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than no: # grep -Pi '^\\h*AllowTcpForwarding\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'no' | while read -r l_out; do sed -ri \"/^\\s*AllowTcpForwarding\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
-    references:
-      - "https://www.ssh.com/ssh/tunneling/example"
-    compliance:
-      - cis: ["5.2.13"]
-      - cis_csc_v8: ["4.1"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1042"]
-      - mitre_tactics: ["TA0008"]
-      - mitre_techniques: ["T1048", "T1048.002", "T1572"]
-      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
-      - pci_dss_3.2.1: ["11.5", "2.2"]
-      - pci_dss_4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
-      - soc_2: ["CC7.1", "CC8.1"]
-    condition: any
-    rules:
-      - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
-      - 'not f:/etc/ssh/sshd_config -> !r:^# && r:AllowTcpForwarding\s+yes'
-
-  # 5.2.14 Ensure system-wide crypto policy is not over-ridden. (Automated)
+  # 1.6.2 Ensure system wide crypto policy is not set in sshd configuration (Automated)
   - id: 31631
-    title: "Ensure system-wide crypto policy is not over-ridden."
+    title: "Ensure system wide crypto policy is not set in sshd configuration."
     description: "System-wide Crypto policy can be over-ridden or opted out of for openSSH."
     rationale: "Over-riding or opting out of the system-wide crypto policy could allow for the use of less secure Ciphers, MACs, KexAlgorithms and GSSAPIKexAlgorithm."
     remediation: "Run the following commands: # sed -ri \"s/^\\s*(CRYPTO_POLICY\\s*=.*)$/# \\1/\" /etc/sysconfig/sshd /etc/ssh/sshd_config.d/*.conf # systemctl reload sshd."
     compliance:
-      - cis: ["5.2.14"]
+      - cis: ["1.6.2"]
       - cis_csc_v8: ["3.10"]
       - cis_csc_v7: ["14.4"]
       - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
@@ -3323,14 +3290,14 @@ checks:
     rules:
       - 'not f:/etc/sysconfig/sshd -> r:^\s*CRYPTO_POLICY='
 
-  # 5.2.15 Ensure SSH warning banner is configured. (Automated)
+  # 5.1.8 Ensure sshd Banner is configured (Automated)
   - id: 31632
-    title: "Ensure SSH warning banner is configured."
+    title: "Ensure sshd Banner is configured."
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
     rationale: "Banners are used to warn connecting users of the particular site's policy regarding connection. Presenting a warning message prior to the normal user login may assist the prosecution of trespassers on the computer system."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the Banner parameter as follows: Banner /etc/issue.net."
     compliance:
-      - cis: ["5.2.15"]
+      - cis: ["5.1.8"]
       - mitre_mitigations: ["M1035"]
       - mitre_tactics: ["TA0001", "TA0007"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
@@ -3338,14 +3305,14 @@ checks:
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*Banner\s*/\w+'
 
-  # 5.2.16 Ensure SSH MaxAuthTries is set to 4 or less. (Automated)
+  # 5.1.16 Ensure sshd MaxAuthTries is configured (Automated)
   - id: 31633
-    title: "Ensure SSH MaxAuthTries is set to 4 or less."
+    title: "Ensure sshd MaxAuthTries is set to 4 or less."
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
     rationale: "Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. While the recommended setting is 4, set the number based on site policy."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the MaxAuthTries parameter as follows: MaxAuthTries 4 Run the following command to comment out any MaxAuthTries parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting greater than 4: # grep -Pi '^\\h*maxauthtries\\h+([5-9]|[1-9][0-9]+)' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | while read -r l_out; do sed -ri \"/^\\s*maxauthtries\\s+([5-9]|[1-9][0-9]+)/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.16"]
+      - cis: ["5.1.16"]
       - cis_csc_v8: ["8.5"]
       - cis_csc_v7: ["16.13"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -3361,14 +3328,14 @@ checks:
       - 'c:sshd -T -C user=root -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
       - 'f:/etc/ssh/sshd_config -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
 
-  # 5.2.17 Ensure SSH MaxStartups is configured. (Automated)
+  # 5.1.17 Ensure sshd MaxStartups is configured (Automated)
   - id: 31634
-    title: "Ensure SSH MaxStartups is configured."
+    title: "Ensure sshd MaxStartups is configured."
     description: "The MaxStartups parameter specifies the maximum number of concurrent unauthenticated connections to the SSH daemon."
     rationale: "To protect a system from denial of service due to a large number of pending authentication connection attempts, use the rate limiting function of MaxStartups to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the MaxStartups parameter as follows: MaxStartups 10:30:60 Run the following command to comment out any MaxStartups parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting greater than 10:30:60: # grep -Pi '^\\s*maxstartups\\s+(((1[1-9]|[1-9][0-9][0-9]+):([0-9]+):([0- 9]+))|(([0-9]+):(3[1-9]|[4-9][0-9]|[1-9][0-9][0-9]+):([0-9]+))|(([0-9]+):([0- 9]+):(6[1-9]|[7-9][0-9]|[1-9][0-9][0-9]+)))' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | while read -r l_out; do sed -ri \"/^\\s*MaxStartups\\s+(((1[1-9]|[1-9][0-9][0-9]+):([0-9]+):([0-9]+))|(([0- 9]+):(3[1-9]|[4-9][0-9]|[1-9][0-9][0-9]+):([0-9]+))|(([0-9]+):([0-9]+):(6[1- 9]|[7-9][0-9]|[1-9][0-9][0-9]+)))/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.17"]
+      - cis: ["5.1.17"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
