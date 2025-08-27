@@ -137,7 +137,7 @@ TEST_F(InventoryHarvesterClearAgent, HandleRequest_SystemContextSuccess)
                 publish("{\"id\":\"001\",\"operation\":\"DELETED_BY_QUERY\"}"))
         .Times(1);
 
-    EXPECT_CALL(*context, agentId()).Times(11).WillRepeatedly(Return("001"));
+    EXPECT_CALL(*context, agentId()).Times(12).WillRepeatedly(Return("001"));
 
     clearAgent.handleRequest(context);
 }
