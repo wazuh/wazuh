@@ -82,7 +82,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
 
     for (size_t i = 0; i < dataToSync.size(); ++i)
     {
-        dataToSync[i].seq = i + 1;
+        dataToSync[i].seq = i;
     }
 
     bool success = false;
@@ -464,7 +464,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         m_syncState.startAckReceived = true;
                         m_syncState.cv.notify_all();
 
-                        m_logger(LOG_DEBUG, "Received and accepted for new session: " + std::to_string(static_cast<int>(m_syncState.session)));
+                        m_logger(LOG_DEBUG, "Received and accepted for new session: " + std::to_string(m_syncState.session));
                     }
                     else
                     {
