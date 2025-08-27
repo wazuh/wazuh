@@ -153,52 +153,6 @@ int main(int argc, char **argv)
         merror_exit(CONFIG_ERROR, cfg);
     }
 
-    /* If we have any reports configured, read smtp/emailfrom */
-    if (mond.reports) {
-        OS_XML xml;
-        char *tmpsmtp;
-
-        const char *(xml_smtp[]) = {"ossec_config", "global", "smtp_server", NULL};
-        const char *(xml_from[]) = {"ossec_config", "global", "email_from", NULL};
-        const char *(xml_idsname[]) = {"ossec_config", "global", "email_idsname", NULL};
-
-        if (OS_ReadXML(cfg, &xml) < 0) {
-            merror_exit(CONFIG_ERROR, cfg);
-        }
-
-        tmpsmtp = OS_GetOneContentforElement(&xml, xml_smtp);
-        mond.emailfrom = OS_GetOneContentforElement(&xml, xml_from);
-        mond.emailidsname = OS_GetOneContentforElement(&xml, xml_idsname);
-
-        if (tmpsmtp && mond.emailfrom) {
-            if (tmpsmtp[0] == '/') {
-                os_strdup(tmpsmtp, mond.smtpserver);
-            } else {
-                mond.smtpserver = OS_GetHost(tmpsmtp, 5);
-                if (!mond.smtpserver) {
-                    merror(INVALID_SMTP, tmpsmtp);
-                    if (mond.emailfrom) {
-                        free(mond.emailfrom);
-                    }
-                    mond.emailfrom = NULL;
-                    merror("Invalid SMTP server.  Disabling email reports.");
-                }
-            }
-        } else {
-            if (tmpsmtp) {
-                free(tmpsmtp);
-            }
-            if (mond.emailfrom) {
-                free(mond.emailfrom);
-            }
-
-            mond.emailfrom = NULL;
-            merror("SMTP server or 'email from' missing. Disabling email reports.");
-        }
-
-        OS_ClearXML(&xml);
-    }
-
     // Read the cluster status and the node type from the configuration file
     // Do not monitor agents in client/worker nodes
     switch (w_is_worker()){

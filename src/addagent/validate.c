@@ -566,40 +566,6 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
         }
     }
 
-    /* Only print agentless for non-active only searches */
-    if (!active_only && print_status) {
-        const char *aip = NULL;
-        DIR *dirp;
-        struct dirent *dp = NULL;
-
-        if (!csv_output && !json_output) {
-            printf("\nList of agentless devices:\n");
-        }
-
-        dirp = wopendir(AGENTLESS_ENTRYDIR);
-        if (dirp) {
-            while ((dp = readdir(dirp)) != NULL) {
-                if (strncmp(dp->d_name, ".", 1) == 0) {
-                    continue;
-                }
-
-                aip = strchr(dp->d_name, '@');
-                if (aip) {
-                    aip++;
-                } else {
-                    aip = "<na>";
-                }
-
-                if (csv_output) {
-                    printf("na,%s,%s,agentless,\n", dp->d_name, aip);
-                } else {
-                    printf("   ID: na, Name: %s, IP: %s, agentless\n",
-                           dp->d_name, aip);
-                }
-            }
-            closedir(dirp);
-        }
-    }
 
     fclose(fp);
     if (total) {

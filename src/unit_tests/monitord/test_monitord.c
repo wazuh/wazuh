@@ -411,50 +411,6 @@ void test_getMonitorGlobalOptions_success(void **state) {
     cJSON_Delete(root);
 }
 
-/* Tests getReportsOptions */
-
-void test_getReportsOptions_success(void **state) {
-    cJSON *root = NULL;
-    report_config **reports_array = NULL;
-    report_config *report = NULL;
-    char **email_array = NULL;
-    char *expected_output = "{\"reports\":[{\"title\":\"Title\",\"group\":\"Group\",\"rule\":\"Rule\",\
-\"level\":\"Level\",\"srcip\":\"SourceIP\",\"user\":\"User\",\"showlogs\":\"yes\",\"email_to\":[\"emailto_test\"]}]}";
-    char *result = NULL;
-
-    os_calloc(2, sizeof(report_config*), reports_array);
-    os_calloc(1, sizeof(report_config), report);
-    os_calloc(2, sizeof(char*), email_array);
-
-    reports_array[0] = report;
-    reports_array[1] = NULL;
-    os_strdup("emailto_test", email_array[0]);
-    email_array[1] = NULL;
-
-    // Arbitrary configuration
-    report->title = "Title";
-    report->r_filter.group = "Group";
-    report->r_filter.rule = "Rule";
-    report->r_filter.level = "Level";
-    report->r_filter.srcip = "SourceIP";
-    report->r_filter.user = "User";
-    report->r_filter.show_alerts = 1;
-    report->emailto = email_array;
-    mond.reports = reports_array;
-
-    root = getReportsOptions();
-
-    result = cJSON_PrintUnformatted(root);
-    assert_string_equal(expected_output, result);
-
-    cJSON_Delete(root);
-    os_free(report);
-    os_free(reports_array);
-    os_free(email_array[0]);
-    os_free(email_array);
-    os_free(result);
-}
-
 /* Tests ReadConfig */
 
 void test_MonitordConfig_success(void **state) {
@@ -465,9 +421,6 @@ void test_MonitordConfig_success(void **state) {
 
     will_return_count(__wrap_getDefine_Int, 1, -1);
 
-    expect_value(__wrap_ReadConfig, modules, CREPORTS);
-    expect_string(__wrap_ReadConfig, cfgfile, cfg);
-    will_return(__wrap_ReadConfig, 0);
     expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
     will_return(__wrap_ReadConfig, 0);
@@ -479,9 +432,6 @@ void test_MonitordConfig_success(void **state) {
     assert_int_equal(mond.global.agents_disconnection_alert_time, 0);
 
     assert_null(mond.agents);
-    assert_null(mond.smtpserver);
-    assert_null(mond.emailfrom);
-    assert_null(mond.emailidsname);
 
     assert_int_equal(mond.day_wait, 1);
     assert_int_equal(mond.compress, 1);
@@ -501,7 +451,7 @@ void test_MonitordConfig_fail(void **state) {
 
     will_return_count(__wrap_getDefine_Int, 1, -1);
 
-    expect_value(__wrap_ReadConfig, modules, CREPORTS);
+    expect_value(__wrap_ReadConfig, modules, CGLOBAL);
     expect_string(__wrap_ReadConfig, cfgfile, cfg);
     will_return(__wrap_ReadConfig, -1);
 
@@ -542,8 +492,6 @@ int main()
         cmocka_unit_test_setup_teardown(test_getMonitorInternalOptions_success, setup_monitord, teardown_monitord),
         /* Tests getMonitorGlobalOptions */
         cmocka_unit_test_setup_teardown(test_getMonitorGlobalOptions_success, setup_monitord, teardown_monitord),
-        /* Tests getReportsOptions */
-        cmocka_unit_test_setup_teardown(test_getReportsOptions_success, setup_monitord, teardown_monitord),
         /* Tests MonitordConfig */
         cmocka_unit_test_setup_teardown(test_MonitordConfig_success, setup_monitord, teardown_monitord),
         cmocka_unit_test_setup_teardown(test_MonitordConfig_fail, setup_monitord, teardown_monitord),

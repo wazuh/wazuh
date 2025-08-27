@@ -1,9 +1,0 @@
-<!-- Test:  if_matched_sid attribute without frequency and timeframe -->
-<group name="testing">
-
-    <rule id="100002" level="5">
-    <if_matched_sid>100005</if_matched_sid>
-    <description>example if_matched_sid without existig rule and frequency/timeframe</description>
-    </rule>
-
-</group>
