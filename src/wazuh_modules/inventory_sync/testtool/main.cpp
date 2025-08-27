@@ -102,10 +102,8 @@ int main(int argc, char* argv[])
     // --- 1. Build and Send START message ---
     {
         flatbuffers::FlatBufferBuilder builder;
-        auto module_offset = builder.CreateString(module_name);
         auto start_builder = Wazuh::SyncSchema::StartBuilder(builder);
         start_builder.add_size(num_messages);
-        start_builder.add_module_(module_offset);
         start_builder.add_mode(Wazuh::SyncSchema::Mode_Full);
         auto start_offset = start_builder.Finish();
 

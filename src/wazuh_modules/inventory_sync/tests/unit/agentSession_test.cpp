@@ -40,10 +40,8 @@ protected:
     flatbuffers::Offset<Wazuh::SyncSchema::Start>
     createStartMessage(uint64_t size, const std::string& moduleName, uint64_t /*agentId*/)
     {
-        auto module = builder.CreateString(moduleName);
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_size(size);
-        startBuilder.add_module_(module);
         startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
         return startBuilder.Finish();
     }
