@@ -4261,18 +4261,6 @@ void test_wdb_browser_extensions_save_success(void **state) {
     output = wdb_browser_extensions_save(data, &browser_extension_record, true);
     assert_int_equal(output, 0);
 }
-/* wdb_services_extensions_insert */
-static void test_wdb_services_extensions_insert_sql_fail(void **state) {
-    int ret = OS_INVALID;
-    test_struct_t *data = (test_struct_t *)*state;
-
-    will_return(__wrap_wdb_stmt_cache, -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "at wdb_services_extensions_insert(): cannot cache statement");
-
-    ret = wdb_services_extensions_insert(data->wdb, "scan_id", "scan_time", "service_name", "extension_name", "version", "checksum", false);
-
-    assert_int_equal(ret, OS_INVALID);
-}
 
 /* Test wdb_services_save */
 static void test_wdb_services_save_transaction_fail(void **state) {
@@ -4752,7 +4740,7 @@ static void test_wdb_services_insert_fail_null_file_path(void **state) {
         .item_id = item_id
     };
 
-    // Test should fail in parameter validation before any database operations  
+    // Test should fail in parameter validation before any database operations
     ret = wdb_services_insert(data, &service_record, false);
 
     assert_int_equal(ret, OS_INVALID);
@@ -6931,7 +6919,7 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_services_insert_fail_empty_service_id, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_services_insert_fail_empty_file_path, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_services_insert_sql_fail, test_setup, test_teardown),
-        /* Test wdb_services_extensions_save */
+        /* Test wdb_services_save */
         cmocka_unit_test_setup_teardown(test_wdb_services_save_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_services_save_insert_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_services_save_success, test_setup, test_teardown),
