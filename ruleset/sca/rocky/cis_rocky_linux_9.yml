@@ -1535,6 +1535,8 @@ checks:
       - 'f:/etc/chrony.conf -> r:^\s*\t*server|^\s*\t*pool'
       - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS\.*-u chrony'
 
+  # 2.3.3 Ensure chrony is not run as the root user (Automated) - Not Implemented
+
   # 2.1.19 Ensure xinetd services are not in use (Automated)
   - id: 31668
     title: "Ensure xinetd services are not in use."
@@ -2233,6 +2235,7 @@ checks:
       - "c:nft list ruleset -> r:filter hook output"
 
   # 4.2.1 Ensure firewalld drops unnecessary services and ports. (Manual) - Not Implemented
+  # 4.2.2 Ensure firewalld loopback traffic is configured (Automated) - Not Implemented
   # 4.3.2 Ensure nftables established connections are configured. (Manual) - Not Implemented
 
   # 4.3.3 Ensure nftables default deny firewall policy. (Automated)
@@ -2256,6 +2259,8 @@ checks:
     rules:
       - "c:rpm -q nftables -> r:^nftables-"
       - "c:nft list ruleset -> r:policy drop"
+
+  # 4.3.4 Ensure nftables loopback traffic is configured (Automated) - Not Implemented
 
   ############################################################
   # 4 Logging and Auditing.
@@ -3162,6 +3167,8 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
+  # 2.4.1.8 Ensure crontab is restricted to authorized users (Automated) - Not Implemented
+
   # 2.4.2.1 Ensure at is restricted to authorized users. (Automated) - Not Implemented
 
   ###############################################
@@ -3219,6 +3226,8 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
       - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
+
+  # 5.1.11 Ensure sshd GSSAPIAuthentication is disabled (Automated) - Not Implemented
 
   # 5.1.15 Ensure sshd LogLevel is configured (Automated)
   - id: 31622
