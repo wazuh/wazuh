@@ -136,7 +136,7 @@ The module provides robust **session lifecycle management**:
 
 ## Scalability Features
 
-* **Asynchronous Processing**: Multi-threaded workers handle messages in parallel.
+* **Asynchronous Processing**: Multi-threaded workers handle messages in concurrent way, using a producer-consumer approach.
 * **Bulk Operations**: Efficient batching reduces Indexer overhead.
 * **Memory Protection**: Temporary RocksDB storage prevents memory bloat.
 * **Queue Management**: Configurable worker and Indexer queues enable backpressure control.

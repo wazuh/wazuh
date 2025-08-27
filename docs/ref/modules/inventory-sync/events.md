@@ -1,4 +1,4 @@
-# Events format 
+# Events format
 
 The Inventory Sync module processes flatbuffer-encoded synchronization messages from Wazuh agents. These messages follow a specific protocol for maintaining inventory state consistency between agents and the Wazuh Indexer.
 
