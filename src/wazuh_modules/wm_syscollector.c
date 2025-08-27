@@ -22,6 +22,9 @@
 #define SYS_SYNC_PROTOCOL_DB_PATH "queue/syscollector/db/syscollector_sync.db"
 #define SYS_SYNC_RETRIES 3
 
+// Global flag to stop sync module
+static volatile int sync_module_running = 0;
+
 #ifdef WIN32
 static DWORD WINAPI wm_sys_main(void *arg);         // Module main function. It won't return
 static DWORD WINAPI wm_sync_module(__attribute__((unused)) void * args);
@@ -210,8 +213,10 @@ void* wm_sys_main(wm_sys_t *sys) {
             syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
 #ifndef WIN32
             // Launch inventory synchronization thread
+            sync_module_running = 1;
             w_create_thread(wm_sync_module, NULL);
 #else
+            sync_module_running = 1;
             if (CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL) == NULL) {
                 mterror(WM_SYS_LOGTAG, THREAD_ERROR);
             }
@@ -273,6 +278,9 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t *data) {
     }
 
     data->flags.running = false;
+
+    // Stop sync module
+    sync_module_running = 0;
 
     mtinfo(WM_SYS_LOGTAG, "Stop received for Syscollector.");
     if (syscollector_stop_ptr){
@@ -350,9 +358,11 @@ DWORD WINAPI wm_sync_module(__attribute__((unused)) void * args) {
 void * wm_sync_module(__attribute__((unused)) void * args) {
 #endif
     // Initial wait until syscollector is started
-    sleep(sync_interval);
+    for (int i = 0; i < sync_interval && sync_module_running; i++) {
+        sleep(1);
+    }
 
-    while (FOREVER()) {
+    while (sync_module_running) {
         mtdebug1(WM_SYS_LOGTAG, "Running inventory synchronization.");
 
         if (syscollector_sync_module_ptr) {
@@ -362,7 +372,11 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
         }
 
         mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization finished, waiting for %d seconds before next run.", sync_interval);
-        sleep(sync_interval);
+
+        // Sleep in small intervals to allow responsive stopping
+        for (int i = 0; i < sync_interval && sync_module_running; i++) {
+            sleep(1);
+        }
     }
 
 #ifdef WIN32

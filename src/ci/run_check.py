@@ -523,6 +523,12 @@ def runTestToolForWindows(moduleName, testToolConfig):
     utils.printGreen(msg="[TEST TOOL for Windows: PASSED]")
 
 
+def safe_copy(src, dst):
+    """Copy file if src exists and is different from dst."""
+    if src and os.path.abspath(src) != os.path.abspath(dst):
+        shutil.copyfile(src, dst)
+
+
 def runTests(moduleName):
     """
     Execute library tests.
@@ -559,27 +565,17 @@ def runTests(moduleName):
         for test in tests:
             path = os.path.join(currentDir, test)
             if ".exe" in test:
-                if moduleName == "data_provider" or moduleName == "sync_protocol":
-                    rootPath = os.path.join(utils.moduleDirPathBuild(moduleName),
-                                            "bin")
-                    stdcpp = utils.findFile(name="libstdc++-6.dll",
-                                            path=utils.rootPath())
-                    libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
-                                            path=utils.rootPath())
-                    binstdcpp = os.path.join(rootPath,
-                                             "libstdc++-6.dll")
-                    binlibgcc = os.path.join(rootPath,
-                                             "libgcc_s_dw2-1.dll")
+                rootPath = os.path.join(utils.moduleDirPathBuild(moduleName), "bin")
 
-                    if stdcpp != binstdcpp:
-                        shutil.copyfile(stdcpp, binstdcpp)
+                # Copy MinGW runtime DLLs
+                stdcpp = utils.findFile(name="libstdc++-6.dll", path=utils.rootPath())
+                libgcc = utils.findFile(name="libgcc_s_dw2-1.dll", path=utils.rootPath())
 
-                    if libgcc != binlibgcc:
-                        shutil.copyfile(libgcc, binlibgcc)
+                safe_copy(stdcpp, os.path.join(rootPath, "libstdc++-6.dll"))
+                safe_copy(libgcc, os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
 
-                command = f'WINEPATH="/usr/i686-w64-mingw32/lib;\
-                            {utils.currentPath()}" \
-                            WINEARCH=win64 /usr/bin/wine {path}'
+                command = f'WINEPATH="/usr/i686-w64-mingw32/lib;{utils.currentPath()}" \
+                           WINEARCH=win64 /usr/bin/wine {path}'
             else:
                 command = path
             out = subprocess.run(command,

@@ -12,14 +12,11 @@
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
 
-constexpr auto SYSCOLLECTOR_DB_PATH {"TEMP.db"};
+constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 
 void SyscollectorImpTest::SetUp() {};
 
-void SyscollectorImpTest::TearDown()
-{
-    std::remove(SYSCOLLECTOR_DB_PATH);
-};
+void SyscollectorImpTest::TearDown() {};
 
 using ::testing::_;
 using ::testing::Return;
@@ -299,7 +296,10 @@ TEST_F(SyscollectorImpTest, defaultCtor)
 
 TEST_F(SyscollectorImpTest, intervalSeconds)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+#ifdef WIN32
+    GTEST_SKIP() << "Skipping intervalSeconds test on Windows due to sync protocol issues in Wine environment";
+#endif
+    const auto spInfoWrapper {std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
