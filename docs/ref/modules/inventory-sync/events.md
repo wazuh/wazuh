@@ -64,10 +64,7 @@ A complete synchronization session follows this sequence:
 
 ## Sample Inventory Data
 
-The actual inventory data carried in Data messages is JSON-formatted and follows the Wazuh Common Schema (WCS):
-
-### System Information Example
-
+The actual inventory data carried in Data messages is JSON-formatted and follows the Wazuh Common Schema (WCS).
 
 ## Response Messages
 

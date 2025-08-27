@@ -28,8 +28,9 @@ Initiates a synchronization session with mode and agent information:
 ```flatbuffers
 table Start {
     mode: Mode;
-    agent_id: uint64;
-    module_name: string;
+    size: ulong;
+    module: string;
+    agent_id: ulong;
 }
 
 enum Mode : byte {
@@ -40,8 +41,9 @@ enum Mode : byte {
 
 **Fields:**
 - `mode`: Synchronization type (Full replaces all data, Delta applies changes)
+- `size`: The size of the inventory data being synchronized
+- `module`: Source module generating the inventory data (e.g., "syscollector", "fim")
 - `agent_id`: Unique identifier for the Wazuh agent
-- `module_name`: Source module generating the inventory data (e.g., "syscollector", "fim")
 
 ### Data Message
 
@@ -49,10 +51,11 @@ Contains inventory payload for indexing:
 
 ```flatbuffers
 table Data {
-    session: uint64;
+    seq: ulong;
+    session: ulong;
     operation: Operation;
-    index: string;
     id: string;
+    index: string;
     data: [byte];
 }
 
@@ -63,10 +66,11 @@ enum Operation : byte {
 ```
 
 **Fields:**
+- `seq`: Sequence number for the message
 - `session`: Session identifier linking messages to a synchronization session
 - `operation`: Type of operation (Upsert for insert/update, Delete for removal)
-- `index`: Target Elasticsearch/OpenSearch index name
 - `id`: Unique document identifier within the index
+- `index`: Target Elasticsearch/OpenSearch index name
 - `data`: JSON document payload as byte array
 
 ### End Message
@@ -145,19 +149,12 @@ FlatBuffers provide several performance advantages for inventory synchronization
 ### Creating Start Message
 
 ```cpp
-flatbuffers::FlatBufferBuilder builder;
-
-auto module_name = builder.CreateString("syscollector");
-auto start = Wazuh::SyncSchema::CreateStart(builder, 
-    Wazuh::SyncSchema::Mode_Full, 
-    agent_id, 
-    module_name);
-
-auto message = Wazuh::SyncSchema::CreateMessage(builder, 
-    Wazuh::SyncSchema::MessageType_Start, 
-    start.Union());
-
-builder.Finish(message);
+auto fbBuilder = std::make_shared<flatbuffers::FlatBufferBuilder>();
+auto startAckOffset =
+    Wazuh::SyncSchema::CreateStartAckDirect(*fbBuilder, status, ctx->sessionId, ctx->moduleName.c_str());
+auto messageOffset = Wazuh::SyncSchema::CreateMessage(
+    *fbBuilder, Wazuh::SyncSchema::MessageType_StartAck, startAckOffset.Union());
+fbBuilder->Finish(messageOffset);
 ```
 
 ### Processing Data Message
@@ -165,13 +162,8 @@ builder.Finish(message);
 ```cpp
 auto message = Wazuh::SyncSchema::GetMessage(buffer.data());
 if (message->content_type() == Wazuh::SyncSchema::MessageType_Data) {
-    const auto data = message->content_as_Data();
-    
-    uint64_t session = data->session();
-    auto operation = data->operation();
-    auto index = data->index()->string_view();
-    auto id = data->id()->string_view();
-    auto payload = data->data();
+    const auto seq = message->seq();
+    const auto session = message->session();
     
     // Process inventory data
 }

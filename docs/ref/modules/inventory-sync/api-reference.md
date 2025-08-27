@@ -6,6 +6,4 @@ For querying synchronized inventory data, use the **GET /wazuh-states-*/_search*
 
 ## Indexed Inventory Data
 
-Below are examples of indexed inventory data following the [ECS](https://www.elastic.co/docs/reference/ecs/ecs-field-reference) and Wazuh Common Schema standards:
-
-## System Information
+Below are examples of indexed inventory data following the [ECS](https://www.elastic.co/docs/reference/ecs/ecs-field-reference) and Wazuh Common Schema standards.
