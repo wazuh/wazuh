@@ -710,7 +710,7 @@ nlohmann::json SysInfo::getServices() const
         };
 
         // ECS mapping based on the provided table
-        serviceItem["service_id"]           = svc.value("label",        UNKNOWN_VALUE);
+        serviceItem["service_id"]           = (svc.contains("label") && !svc["label"].get<std::string>().empty()) ? svc["label"] : UNKNOWN_VALUE;
         serviceItem["service_name"]         = svc.value("name",         UNKNOWN_VALUE);
         serviceItem["service_description"]  = UNKNOWN_VALUE;
         serviceItem["service_type"]         = svc.value("process_type", UNKNOWN_VALUE);
@@ -753,7 +753,7 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["process_group_name"]                    = svc.value("groupname",           UNKNOWN_VALUE);
         serviceItem["process_working_directory"]             = svc.value("working_directory",   UNKNOWN_VALUE);
         serviceItem["process_root_directory"]                = svc.value("root_directory",      UNKNOWN_VALUE);
-        serviceItem["file_path"]                             = svc.value("path",                UNKNOWN_VALUE);
+        serviceItem["file_path"]                             = (svc.contains("path") && !svc["path"].get<std::string>().empty()) ? svc["path"] : UNKNOWN_VALUE;
         serviceItem["service_address"]                       = UNKNOWN_VALUE;
         serviceItem["log_file_path"]                         = svc.value("stdout_path",         UNKNOWN_VALUE);
         serviceItem["error_log_file_path"]                   = svc.value("stderr_path",         UNKNOWN_VALUE);
