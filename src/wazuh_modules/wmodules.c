@@ -316,7 +316,8 @@ cJSON *getModulesConfig(void) {
 }
 
 // sync data
-int modulesSync(char* args) {
+int modulesSync(char* args, size_t length) {
+    (void)length;
     int ret = -1;
     wmodule *cur_module = NULL;
     int retry = 0;

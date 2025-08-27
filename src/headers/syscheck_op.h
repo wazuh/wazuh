@@ -310,7 +310,8 @@ void decode_win_acl_json(cJSON *acl_json);
  * @brief Send a one-way message to Syscheck
  *
  * @param message Payload.
+ * @param length Length in bytes of the input message
  */
-void ag_send_syscheck(char * message);
+void ag_send_syscheck(char * message, size_t length);
 
 #endif /* SYSCHECK_OP_H */
