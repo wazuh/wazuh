@@ -85,7 +85,7 @@ const auto expected_dbsync_services
 };
 const auto expected_dbsync_browser_extensions
 {
-    R"({"data":{"browser_name":"chrome","browser_profile_name":"Default","browser_profile_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","browser_profile_referenced":1,"checksum":"606abaac7962daf9842c84f4a15f609575d86bff","file_hash_sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234","item_id":"14ef1f26bc744d98f1e7be9663fe0df1b1e9b573","package_autoupdate":1,"package_build_version":null,"package_description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","package_enabled":1,"package_from_webstore":1,"package_id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","package_installed":"1710489821000","package_name":"uBlock Origin","package_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","package_permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","package_persistent":0,"package_reference":"https://clients2.google.com/service/update2/crx","package_type":"extension","package_vendor":"Raymond Hill","package_version":"1.52.2","user_id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"operation":"INSERTED","type":"dbsync_browser_extensions"})"
+    R"({"data":{"browser_name":"chrome","browser_profile_name":"Default","browser_profile_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","browser_profile_referenced":1,"checksum":"606abaac7962daf9842c84f4a15f609575d86bff","file_hash_sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234","item_id":"14ef1f26bc744d98f1e7be9663fe0df1b1e9b573","package_autoupdate":1,"package_description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","package_enabled":1,"package_from_webstore":1,"package_id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","package_installed":"1710489821000","package_name":"uBlock Origin","package_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","package_permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","package_persistent":0,"package_reference":"https://clients2.google.com/service/update2/crx","package_type":"extension","package_vendor":"Raymond Hill","package_version":"1.52.2","user_id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"operation":"INSERTED","type":"dbsync_browser_extensions"})"
 };
 
 
@@ -293,7 +293,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -337,7 +337,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          1, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          1, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
 
         }
     };
@@ -488,7 +488,7 @@ TEST_F(SyscollectorImpTest, noHardware)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, false, true, true, true, true, true, true, true, true, true, true, true);
+                                          3600, true, false, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -602,7 +602,7 @@ TEST_F(SyscollectorImpTest, noOs)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, false, true, true, true, true, true, true, true, true, true, true);
+                                          3600, true, true, false, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -719,7 +719,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, false, true, true, true, true, true, true, true, true, true);
+                                          3600, true, true, true, false, true, true, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -827,7 +827,7 @@ TEST_F(SyscollectorImpTest, noPackages)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, false, true, true, true, true, true, true, true, true);
+                                          3600, true, true, true, true, false, true, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -940,7 +940,7 @@ TEST_F(SyscollectorImpTest, noPorts)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, false, true, true, true, true, true, true, true);
+                                          5, true, true, true, true, true, false, true, true, true, true, true, true, true, true);
         }
     };
 
@@ -1049,7 +1049,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, false, true, true, true, true, true, true);
+                                          3600, true, true, true, true, true, true, false, true, true, true, true, true, true, true);
         }
     };
 
@@ -1157,7 +1157,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, false, true, true, true, true, true);
+                                          3600, true, true, true, true, true, true, true, false, true, true, true, true, true, true);
         }
     };
 
@@ -1270,7 +1270,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, true, false, true, true, true, true);
+                                          3600, true, true, true, true, true, true, true, true, false, true, true, true, true, true);
         }
     };
 
@@ -1383,7 +1383,7 @@ TEST_F(SyscollectorImpTest, noUsers)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, true, true, true, false, true, true);
+                                          3600, true, true, true, true, true, true, true, true, true, true, false, true, true, true);
         }
     };
 
@@ -1496,7 +1496,7 @@ TEST_F(SyscollectorImpTest, noGroups)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, true, true, false, true, true, true);
+                                          3600, true, true, true, true, true, true, true, true, true, false, true, true, true, true);
         }
     };
 
@@ -1532,7 +1532,7 @@ TEST_F(SyscollectorImpTest, noServices)
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
     EXPECT_CALL(*spInfoWrapper, services()).Times(0);
-    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
 
     CallbackMock wrapper;
     std::function<void(const std::string&)> callbackData
@@ -1581,6 +1581,7 @@ TEST_F(SyscollectorImpTest, noServices)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_hotfixes)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -1593,6 +1594,7 @@ TEST_F(SyscollectorImpTest, noServices)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hotfixes)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_browser_extensions)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -1607,7 +1609,7 @@ TEST_F(SyscollectorImpTest, noServices)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, true, true, true, true, false, true);
+                                          3600, true, true, true, true, true, true, true, true, true, true, true, false, true, true);
         }
     };
 
@@ -1642,7 +1644,7 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
     });
     EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
     EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
-    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
     EXPECT_CALL(*spInfoWrapper, browserExtensions()).Times(0);
 
     CallbackMock wrapper;
@@ -1692,6 +1694,7 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_hotfixes)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_users)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_groups)).Times(1);
+    EXPECT_CALL(wrapperDelta, callbackMock(expected_dbsync_services)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hwinfo)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_osinfo)).Times(1);
@@ -1704,6 +1707,7 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_hotfixes)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_users)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expected_syscollector_groups)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expected_syscollector_services)).Times(1);
 
     EXPECT_CALL(wrapper, callbackMock(integrity_clear)).Times(1);
 
@@ -1718,7 +1722,7 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, true, true, true, true, true, true, true, true, true, true, false, true);
+                                          3600, true, true, true, true, true, true, true, true, true, true, true, true, false, true);
         }
     };
 
@@ -1768,7 +1772,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          60, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          60, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -1878,7 +1882,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          60, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          60, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -1933,7 +1937,7 @@ TEST_F(SyscollectorImpTest, pushMessageInvalid)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          60, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          60, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -1988,7 +1992,7 @@ TEST_F(SyscollectorImpTest, scanInvalidData)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          60, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          60, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
     std::this_thread::sleep_for(std::chrono::seconds{1});
@@ -2121,7 +2125,7 @@ TEST_F(SyscollectorImpTest, portAllEnable)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, false, false, false, false, true, true, false, false, false, false, false, true);
+                                          3600, true, false, false, false, false, true, true, false, false, false, false, false, false, true);
         }
     };
 
@@ -2247,7 +2251,7 @@ TEST_F(SyscollectorImpTest, portAllDisable)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, false, false, false, false, true, false, false, false, false, false, false, true);
+                                          3600, true, false, false, false, false, true, false, false, false, false, false, false, false, true);
         }
     };
 
@@ -2304,7 +2308,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          3600, true, false, false, false, true, false, false, false, false, false, false, false, true);
+                                          3600, true, false, false, false, true, false, false, false, false, false, false, false, false, true);
         }
     };
 
@@ -2433,7 +2437,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
                                           "",
-                                          5, true, true, true, true, true, true, true, true, true, true, true, true, true);
+                                          5, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
         }
     };
 
