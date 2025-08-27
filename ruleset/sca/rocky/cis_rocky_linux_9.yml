@@ -3065,14 +3065,14 @@ checks:
   # 5.1.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
   # 5.1.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
 
-  # 5.2.4 Ensure SSH access is limited. (Automated)
+  # 5.1.7 Ensure sshd access is configured (Automated)
   - id: 31621
-    title: "Ensure SSH access is limited."
+    title: "Ensure sshd access is configured."
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: - AllowUsers: o The AllowUsers variable gives the system administrator the option of allowing specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by only allowing the allowed users to log in from a particular host, the entry can be specified in the form of user@host. - AllowGroups: o The AllowGroups variable gives the system administrator the option of allowing specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable. - DenyUsers: o The DenyUsers variable gives the system administrator the option of denying specific users to ssh into the system. The list consists of space separated user names. Numeric user IDs are not recognized with this variable. If a system administrator wants to restrict user access further by specifically denying a user's access from a particular host, the entry can be specified in the form of user@host. - DenyGroups: o The DenyGroups variable gives the system administrator the option of denying specific groups of users to ssh into the system. The list consists of space separated group names. Numeric group IDs are not recognized with this variable."
     rationale: "Restricting which users can remotely access the system via SSH will help ensure that only authorized users access the system."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set one or more of the parameters as follows: AllowUsers <userlist> -OR- AllowGroups <grouplist> -OR- DenyUsers <userlist> -OR- DenyGroups <grouplist>."
     compliance:
-      - cis: ["5.2.4"]
+      - cis: ["5.1.7"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["4.3"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
@@ -3090,16 +3090,16 @@ checks:
       - 'c:sshd -T -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
       - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
 
-  # 5.2.5 Ensure SSH LogLevel is appropriate. (Automated)
+  # 5.1.15 Ensure sshd LogLevel is configured (Automated)
   - id: 31622
-    title: "Ensure SSH LogLevel is appropriate."
+    title: "Ensure sshd LogLevel is configured."
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     rationale: "SSH provides several logging levels with varying amounts of verbosity. DEBUG is specifically not recommended other than strictly for debugging SSH communications since it provides so much data that it is difficult to identify important security information."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the LogLevel parameter as follows: LogLevel VERBOSE OR LogLevel INFO Run the following command to comment out any LogLevel parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than VERBOSE or INFO: # grep -Pi '^\\h*LogLevel\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi '(VERBOSE|INFO)' | while read -r l_out; do sed -ri \"/^\\s*LogLevel\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     references:
       - "https://www.ssh.com/ssh/sshd_config/"
     compliance:
-      - cis: ["5.2.5"]
+      - cis: ["5.1.15"]
       - cis_csc_v8: ["8.2"]
       - cis_csc_v7: ["6.2", "6.3"]
       - cmmc_v2.0: ["AU.L2-3.3.1"]
@@ -3115,15 +3115,15 @@ checks:
       - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
       - "f:/etc/ssh/sshd_config -> r:loglevel"
 
-  # 5.2.6 Ensure SSH PAM is enabled. (Automated)
+  # 5.1.22 Ensure sshd UsePAM is enabled (Automated)
   - id: 31623
-    title: "Ensure SSH PAM is enabled."
+    title: "Ensure sshd UsePAM is enabled."
     description: "UsePAM Enables the Pluggable Authentication Module interface. If set to 'yes' this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
     rationale: "When usePAM is set to yes, PAM runs through account and session types properly. This is important if you want to restrict access to services based off of IP, time or other factors of the account. Additionally, you can make sure users inherit certain environment variables on login or disallow access to the server."
     impact: "If UsePAM is enabled, you will not be able to run sshd as a non-root user."
     remediation: "Edit or create a file in the directory /etc/ssh/sshd_config.d/ ending in *.conf or the /etc/ssh/sshd_config file and set the parameter as follows: UsePAM yes Run the following command to comment out any UsePAM parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than yes # grep -Pi '^\\h*UsePAM\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'yes' | while read -r l_out; do sed -ri \"/^\\s*UsePAM\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.6"]
+      - cis: ["5.1.22"]
       - mitre_mitigations: ["M1035"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1021", "T1021.004"]
@@ -3133,14 +3133,14 @@ checks:
       - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
       - 'not f:/etc/ssh/sshd_config -> !r:^# && r:UsePAM\s+no'
 
-  # 5.2.7 Ensure SSH root login is disabled. (Automated)
+  # 5.1.20 Ensure sshd PermitRootLogin is disabled (Automated)
   - id: 31624
-    title: "Ensure SSH root login is disabled."
+    title: "Ensure sshd PermitRootLogin is disabled."
     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh. The default is no."
     rationale: "Disallowing root logins over SSH requires system admins to authenticate using their own individual account, then escalating to root via sudo or su. This in turn limits opportunity for non-repudiation and provides a clear audit trail in the event of a security incident."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the PermitRootLogin parameter as follows: PermitRootLogin no Run the following command to comment out any PermitRootLogin parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than no # grep -Pi '^\\h*PermitRootLogin\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'no' | while read -r l_out; do sed -ri \"/^\\s*PermitRootLogin\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.7"]
+      - cis: ["5.1.20"]
       - cis_csc_v8: ["5.4"]
       - cis_csc_v7: ["4.3"]
       - cmmc_v2.0: ["AC.L2-3.1.5", "AC.L2-3.1.6", "AC.L2-3.1.7", "SC.L2-3.13.3"]
@@ -3156,14 +3156,14 @@ checks:
       - 'c:sshd -T -C user=root -> r:^\s*PermitRootLogin\s*no'
       - 'not f:/etc/ssh/sshd_config -> !r:^# && r:PermitRootLogin\s+yes'
 
-  # 5.2.8 Ensure SSH HostbasedAuthentication is disabled. (Automated)
+  # 5.1.12 Ensure sshd HostbasedAuthentication is disabled (Automated)
   - id: 31625
-    title: "Ensure SSH HostbasedAuthentication is disabled."
+    title: "Ensure sshd HostbasedAuthentication is disabled."
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
     rationale: "Even though the .rhosts files are ineffective if support is disabled in /etc/pam.conf, disabling the ability to use .rhosts files in SSH provides an additional layer of protection."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the HostbasedAuthentication parameter as follows: HostbasedAuthentication no Run the following command to comment out any HostbasedAuthentication parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than no: # grep -Pi '^\\h*HostbasedAuthentication\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'no' | while read -r l_out; do sed -ri \"/^\\s*HostbasedAuthentication\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.8"]
+      - cis: ["5.1.12"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["16.3"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
@@ -3179,14 +3179,14 @@ checks:
       - 'c:sshd -T -C user=root -> r:^\s*HostbasedAuthentication\s*\t*no'
       - 'not f:/etc/ssh/sshd_config -> !r:^# && r:HostbasedAuthentication\s+yes'
 
-  # 5.2.9 Ensure SSH PermitEmptyPasswords is disabled. (Automated)
+  # 5.1.19 Ensure sshd PermitEmptyPasswords is disabled (Automated)
   - id: 31626
-    title: "Ensure SSH PermitEmptyPasswords is disabled."
+    title: "Ensure sshd PermitEmptyPasswords is disabled."
     description: "The PermitEmptyPasswords parameter specifies if the SSH server allows login to accounts with empty password strings."
     rationale: "Disallowing remote shell access to accounts that have an empty password reduces the probability of unauthorized access to the system."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the PermitEmptyPasswords parameter as follows: PermitEmptyPasswords no Run the following command to comment out any PermitEmptyPasswords parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting other than no # grep -Pi '^\\h*PermitEmptyPasswords\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | grep -Evi 'no' | while read -r l_out; do sed -ri \"/^\\s*PermitEmptyPasswords\\s+/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.9"]
+      - cis: ["5.1.19"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
@@ -3355,14 +3355,14 @@ checks:
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:(\d+):\d+ compare <= 30'
       - 'f:/etc/ssh/sshd_config -> n:^\s*maxstartups\s+\d+:\d+:(\d+) compare <= 60'
 
-  # 5.2.18 Ensure SSH MaxSessions is set to 10 or less. (Automated)
+  # 5.1.18 Ensure sshd MaxSessions is configured (Automated)
   - id: 31635
-    title: "Ensure SSH MaxSessions is set to 10 or less."
+    title: "Ensure sshd MaxSessions is set to 10 or less."
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
     rationale: "To protect a system from denial of service due to a large number of concurrent sessions, use the rate limiting function of MaxSessions to protect availability of sshd logins and prevent overwhelming the daemon."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the MaxSessions parameter as follows: MaxSessions 10 Run the following command to comment out any MaxSessions parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting greater than 10 # grep -Pi '^\\s*MaxSessions\\s+(1[1-9]|[2-9][0-9]|[1-9][0-9][0-9]+)' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | while read -r l_out; do sed -ri \"/^\\s*MaxSessions\\s+(1[1-9]|[2-9][0-9]|[1-9][0-9][0-9]+)/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.18"]
+      - cis: ["5.1.18"]
       - mitre_tactics: ["TA0040"]
       - mitre_techniques: ["T1499", "T1499.002"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
@@ -3371,14 +3371,14 @@ checks:
       - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
       - 'not f:/etc/ssh/sshd_config -> n:^\s*MaxSessions\s+(\d+) compare > 10'
 
-  # 5.2.19 Ensure SSH LoginGraceTime is set to one minute or less. (Automated)
+  # 5.1.14 Ensure sshd LoginGraceTime is configured (Automated)
   - id: 31636
-    title: "Ensure SSH LoginGraceTime is set to one minute or less."
+    title: "Ensure sshd LoginGraceTime is set to one minute or less."
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
     rationale: "Setting the LoginGraceTime parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. It will also limit the number of concurrent unauthenticated connections While the recommended setting is 60 seconds (1 Minute), set the number based on site policy."
     remediation: "Edit the /etc/ssh/sshd_config file to set the parameter as follows: LoginGraceTime 60 Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the LoginGraceTime parameter as follows: LoginGraceTime 60 -or- LoginGraceTime 1m Run the following command to comment out any LoginGraceTime parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include any setting equal to 0 or greater than 60 seconds: # grep -Pi '^\\s*LoginGraceTime\\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][0- 9]+|[^1]m)' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | while read - r l_out; do sed -ri \"/^\\s*LoginGraceTime\\s+(0|6[1-9]|[7-9][0-9]|[1-9][0-9][0- 9]+|[^1]m)/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     compliance:
-      - cis: ["5.2.19"]
+      - cis: ["5.1.14"]
       - mitre_mitigations: ["M1036"]
       - mitre_tactics: ["TA0006"]
       - mitre_techniques: ["T1110", "T1110.001", "T1110.003", "T1110.004"]
@@ -3387,16 +3387,16 @@ checks:
       - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
       - 'f:/etc/ssh/sshd_config -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
 
-  # 5.2.20 Ensure SSH Idle Timeout Interval is configured. (Automated)
+  # 5.1.9 Ensure sshd ClientAliveInterval and ClientAliveCountMax are configured (Automated)
   - id: 31637
-    title: "Ensure SSH Idle Timeout Interval is configured."
+    title: "Ensure sshd ClientAliveInterval and ClientAliveCountMax are configured."
     description: "NOTE: To clarify, the two settings described below are only meant for idle connections from a protocol perspective and not meant to check if the user is active or not. An idle user does not mean an idle connection. SSH does not, and never had, intentionally the capability to drop idle users. In SSH versions before 8.2p1 there was a bug that caused these values to behave in such a manner that they were abused to disconnect idle users. This bug has been resolved in 8.2p1 and thus may no longer be abused to disconnect idle users. The two options ClientAliveInterval and ClientAliveCountMax control the timeout of SSH sessions. Taken directly from man 5 sshd_config: - ClientAliveInterval Sets a timeout interval in seconds after which if no data has been received from the client, sshd(8) will send a message through the encrypted channel to request a response from the client. The default is 0, indicating that these messages will not be sent to the client. - ClientAliveCountMax Sets the number of client alive messages which may be sent without sshd(8) receiving any messages back from the client. If this threshold is reached while client alive messages are being sent, sshd will disconnect the client, terminating the session. It is important to note that the use of client alive messages is very different from TCPKeepAlive. The client alive messages are sent through the encrypted channel and therefore will not be spoofable. The TCP keepalive option enabled by TCPKeepAlive is spoofable. The client alive mechanism is valuable when the client or server depend on knowing when a connection has become unresponsive. The default value is 3. If ClientAliveInterval is set to 15, and ClientAliveCountMax is left at the default, unresponsive SSH clients will be disconnected after approximately 45 seconds. Setting a zero ClientAliveCountMax disables connection termination."
     rationale: "In order to prevent resource exhaustion, appropriate values should be set for both ClientAliveInterval and ClientAliveCountMax. Specifically, looking at the source code, ClientAliveCountMax must be greater than zero in order to utilize the ability of SSH to drop idle connections. If connections are allowed to stay open indefinitely, this can potentially be used as a DDOS attack or simple resource exhaustion could occur over unreliable networks. The example set here is a 45 second timeout. Consult your site policy for network timeouts and apply as appropriate."
     remediation: "Edit or create a file ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file and set the ClientAliveInterval and ClientAliveCountMax parameters according to site policy. Example: ClientAliveInterval 15 ClientAliveCountMax 3 Edit files ending in *.conf in the /etc/ssh/sshd_config.d/ directory and the /etc/ssh/sshd_config file and remove occurrences of the ClientAliveInterval and ClientAliveCountMax parameters not in accordence with local site policy. Run the following command to comment out any ClientAliveCountMax parameter entries in files ending in *.conf in the /etc/ssh/sshd_config.d/ directory or the /etc/ssh/sshd_config file that include the setting of 0 \"disabled\": # grep -Pi '^\\h*ClientAliveCountMax\\h+0\\b' /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf | while read -r l_out; do sed -ri \"/^\\s*ClientAliveCountMax\\s+0/s/^/# /\" \"$(awk -F: '{print $1}' <<< $l_out)\";done."
     references:
       - "https://man.openbsd.org/sshd_config"
     compliance:
-      - cis: ["5.2.20"]
+      - cis: ["5.1.9"]
       - mitre_mitigations: ["M1026"]
       - mitre_tactics: ["TA0001"]
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
@@ -3571,14 +3571,14 @@ checks:
   # 5.4 Configure authselect
   ###############################################
 
-  # 5.4.1 Ensure custom authselect profile is used. (Manual)
+  # 5.3.2.1 Ensure active authselect profile includes pam modules (Manual)
   - id: 31645
-    title: "Ensure custom authselect profile is used."
+    title: "Ensure active authselect profile includes pam modules."
     description: "A custom profile can be created by copying and customizing one of the default profiles. The default profiles include: sssd, winbind, or the nis. This profile can then be customized to follow site specific requirements. You can select a profile for the authselect utility for a specific host. The profile will be applied to every user logging into the host."
     rationale: "A custom profile is required to customize many of the pam options. When you deploy a profile, the profile is applied to every user logging into the given host."
     remediation: "Run the following command to create a custom authselect profile: # authselect create-profile <custom-profile name> <options> Example: # authselect create-profile custom-profile -b sssd --symlink-meta Run the following command to select a custom authselect profile: # authselect select custom/<CUSTOM PROFILE NAME> {with-<OPTIONS>} Example: # authselect select custom/custom-profile with-sudo with-faillock without-nullok."
     compliance:
-      - cis: ["5.4.1"]
+      - cis: ["5.3.2.1"]
       - cis_csc_v8: ["16.2"]
       - cis_csc_v7: ["16.7"]
       - cmmc_v2.0: ["SI.L1-3.14.1"]
@@ -3590,14 +3590,14 @@ checks:
       - 'c:authselect list -> r:^\w*\s*custom'
       - "f:/etc/authselect/authselect.conf -> r:custom"
 
-  # 5.4.2 Ensure authselect includes with-faillock. (Automated)
+  # 5.3.2.2 Ensure pam_faillock module is enabled (Automated)
   - id: 31646
-    title: "Ensure authselect includes with-faillock."
+    title: "Ensure pam_faillock module is enabled."
     description: "The pam_faillock.so module maintains a list of failed authentication attempts per user during a specified interval and locks the account in case there were more than the configured number of consecutive failed authentications (this is defined by the deny parameter in the faillock configuration). It stores the failure records into per-user files in the tally directory."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     remediation: "Run the following commands to include the with-faillock option to the current authselect profile: # authselect enable-feature with-faillock # authselect apply-changes."
     compliance:
-      - cis: ["5.4.2"]
+      - cis: ["5.3.2.2"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["16.7"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
@@ -3615,14 +3615,14 @@ checks:
   # 5.5 Configure PAM
   ###############################################
 
-  # 5.5.1 Ensure password creation requirements are configured. (Automated)
+  # 5.3.3.2.1 Ensure password number of changed characters is configured (Automated)
   - id: 31647
-    title: "Ensure password creation requirements are configured."
+    title: "Ensure password number of changed characters is configured."
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options. - try_first_pass - retrieve the password from a previous stacked PAM module. If not available, then prompt the user for a password. - retry=3 - Allow 3 tries before sending back a failure. - minlen=14 - password must be 14 characters or more Either of the following can be used to enforce complex passwords: - minclass=4 - provide at least four classes of characters for the new password OR - dcredit=-1 - provide at least one digit - ucredit=-1 - provide at least one uppercase character - ocredit=-1 - provide at least one special character - lcredit=-1 - provide at least one lowercase character The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies."
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
     remediation: "Edit the file /etc/security/pwquality.conf and add or modify the following line for password length to conform to site policy minlen = 14 Edit the file /etc/security/pwquality.conf and add or modify the following line for password complexity to conform to site policy minclass = 4 OR dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 Run the following script to update the system-auth and password-auth files #!/usr/bin/env bash for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+.*enforce_for_r oot\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 enforce_for_root/' \"$file\" fi if grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=([4- 9]|[1-9][0-9]+)\\b.*$' \"$file\"; then sed -ri '/pwquality/s/retry=\\S+/retry=3/' \"$file\" elif ! grep -Pq -- '^\\h*password\\h+requisite\\h+pam_pwquality.so(\\h+[^#\\n\\r]+)?\\h+retry=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+requisite\\s+pam_pwquality.so\\s+)(.*)$/\\1\\2 retry=3/' \"$file\" fi done authselect apply-changes."
     compliance:
-      - cis: ["5.5.1"]
+      - cis: ["5.3.3.2.1"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
@@ -3639,15 +3639,15 @@ checks:
       - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s+\t*=\s+\t*(\d+) compare >= 14'
       - 'f:/etc/security/pwquality.conf -> r:^\s*minclass|^\s*\Scredit'
 
-  # 5.5.2 Ensure lockout for failed password attempts is configured. (Automated)
+  # 5.3.3.1.1 Ensure password failed attempts lockout is configured (Automated)
   - id: 31648
-    title: "Ensure lockout for failed password attempts is configured."
+    title: "Ensure password failed attempts lockout is configured."
     description: "Lock out users after n unsuccessful consecutive login attempts. - deny=<n> - Number of attempts before the account is locked - unlock_time=<n> - Time in seconds before the account is unlocked Note: The maximum configurable value for unlock_time is 604800."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
     impact: "Use of unlock_time=0 may allow an attacker to cause denial of service to legitimate users."
     remediation: "Set password lockouts and unlock times to conform to site policy. deny should be greater than 0 and no greater than 5. unlock_time should be 0 (never), or 900 seconds or greater. Edit /etc/security/faillock.conf and update or add the following lines: deny = 5 unlock_time = 900."
     compliance:
-      - cis: ["5.5.2"]
+      - cis: ["5.3.3.1.1"]
       - cis_csc_v8: ["6.2"]
       - cis_csc_v7: ["16.7"]
       - cmmc_v2.0: ["AC.L1-3.1.1"]
@@ -3665,14 +3665,14 @@ checks:
       - 'f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:deny\s*\t*=\s*\t*(\d+) compare <= 5'
       - 'not f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:unlock_time\s*\t*=\s*\t*(\d+) compare > 0 && n:unlock_time\s*\t*=\s*\t*(\d+) compare < 900'
 
-  # 5.5.3 Ensure password reuse is limited. (Automated)
+  # 5.3.3.3.1 Ensure password history remember is configured (Automated)
   - id: 31649
-    title: "Ensure password reuse is limited."
+    title: "Ensure password history remember is configured."
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords. - remember=<5> - Number of old passwords to remember."
     rationale: "Forcing users not to reuse their past 5 passwords make it less likely that an attacker will be able to guess the password. Note: These change only apply to accounts configured on the local system."
     remediation: "Set remembered password history to conform to site policy. Run the following script to add or modify the pam_pwhistory.so and pam_unix.so lines to include the remember option: #!/usr/bin/env bash { file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/system-auth\" if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\ r]+\\h+)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\ r]+\\h+)?remember=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so\\s+([^# \\n\\r]+\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file elif grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_pwhistory\\.so\\h+([^#\\n\\ r]+\\h+)?.*$' \"$file\"; then sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_pwhistory\\.so/ s/$/ remember=5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/i password required pam_pwhistory.so remember=5 use_authtok' $file fi fi if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h +)?remember=([5-9]|[1-9][0-9]+)\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so\\h+([^#\\n\\r]+\\h +)?remember=\\d+\\b.*$' \"$file\"; then sed -ri 's/^\\s*(password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so\\s+([^#\\n\\r] +\\s+)?)(remember=\\S+\\s*)(\\s+.*)?$/\\1 remember=5 \\5/' $file else sed -ri '/^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix\\.so/ s/$/ remember=5/' $file fi fi authselect apply-changes }."
     compliance:
-      - cis: ["5.5.3"]
+      - cis: ["5.3.3.3.1"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
@@ -3686,14 +3686,14 @@ checks:
       - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+requisite\.+pam_pwhistory\.so\.+ && n:remember=(\d+) compare >= 5'
       - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
 
-  # 5.5.4 Ensure password hashing algorithm is SHA-512 or yescrypt. (Automated)
+  # 5.3.3.4.3 Ensure pam_unix includes a strong password hashing algorithm (Automated)
   - id: 31650
-    title: "Ensure password hashing algorithm is SHA-512 or yescrypt."
+    title: "Ensure pam_unix includes a strong password hashing algorithm."
     description: "A cryptographic hash function converts an arbitrary-length input into a fixed length output. Password hashing performs a one-way transformation of a password, turning the password into another string, called the hashed password."
     rationale: "The SHA-512 algorithm provides stronger hashing than other hashing algorithms used for password hashing with Linux, providing additional protection to the system by increasing the level of effort for an attacker to successfully determine passwords. Note: These changes only apply to accounts configured on the local system."
     remediation: "Set password hashing algorithm to sha512. Edit /etc/libuser.conf and edit of add the following line: crypt_style = sha512 Edit /etc/login.defs and edit or add the following line: ENCRYPT_METHOD SHA512 Run the following script to configure pam_unix.so to use the sha512 hashing algorithm: #!/usr/bin/env bash { for fn in system-auth password-auth; do file=\"/etc/authselect/$(head -1 /etc/authselect/authselect.conf | grep 'custom/')/$fn\" if ! grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so(\\h+[^#\\n\\r]+)? \\h+sha512\\b.*$' \"$file\"; then if grep -Pq -- '^\\h*password\\h+(requisite|required|sufficient)\\h+pam_unix\\.so(\\h+[^#\\n\\r]+)? \\h+(md5|blowfish|bigcrypt|sha256|yescrypt)\\b.*$' \"$file\"; then sed -ri 's/(md5|blowfish|bigcrypt|sha256|yescrypt)/sha512/' \"$file\" else sed -ri 's/(^\\s*password\\s+(requisite|required|sufficient)\\s+pam_unix.so\\s+)(.*)$/\\1s ha512 \\3/' \"$file\" fi fi done authselect apply-changes } Note: This only effects local users and passwords created after updating the files to use sha512. If it is determined that the password algorithm being used is not SHA-512, once it is changed, it is recommended that all user ID's be immediately expired and forced to change their passwords on next login."
     compliance:
-      - cis: ["5.5.4"]
+      - cis: ["5.3.3.4.3"]
       - cis_csc_v8: ["3.11"]
       - cis_csc_v7: ["16.4"]
       - cmmc_v2.0: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
@@ -3720,14 +3720,14 @@ checks:
   # 5.6.1 Set Shadow Password Suite Parameters
   ###############################################
 
-  # 5.6.1.1 Ensure password expiration is 365 days or less. (Automated)
+  # 5.4.1.1 Ensure password expiration is configured (Automated)
   - id: 31651
     title: "Ensure password expiration is 365 days or less."
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
     rationale: "The window of opportunity for an attacker to leverage compromised credentials or successfully compromise credentials via an online brute force attack is limited by the age of the password. Therefore, reducing the maximum age of a password also reduces an attacker's window of opportunity."
     remediation: "Set the PASS_MAX_DAYS parameter to conform to site policy in /etc/login.defs : PASS_MAX_DAYS 365 Modify user parameters for all users with a password set to match: # chage --maxdays 365 <user>."
     compliance:
-      - cis: ["5.6.1.1"]
+      - cis: ["5.4.1.1"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
@@ -3742,14 +3742,14 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
       - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
 
-  # 5.6.1.2 Ensure minimum days between password changes is configured. (Automated)
+  # 5.4.1.2 Ensure minimum password days is configured. (Automated)
   - id: 31652
     title: "Ensure minimum days between password changes is configured."
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 1 or more days."
     rationale: "By restricting the frequency of password changes, an administrator can prevent users from repeatedly changing their password in an attempt to circumvent password reuse controls."
     remediation: "Set the PASS_MIN_DAYS parameter to 1 in /etc/login.defs: PASS_MIN_DAYS 1 Modify user parameters for all users with a password set to match: # chage --mindays 1 <user>."
     compliance:
-      - cis: ["5.6.1.2"]
+      - cis: ["5.4.1.2"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
@@ -3764,14 +3764,14 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS^\s*\t*(\d+) compare >=1'
       - 'f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:(\d+): compare < 1'
 
-  # 5.6.1.3 Ensure password expiration warning days is 7 or more. (Automated)
+  # 5.4.1.3 Ensure password expiration warning days is configured (Automated)
   - id: 31653
     title: "Ensure password expiration warning days is 7 or more."
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
     rationale: "Providing an advance warning that a password will be expiring gives users time to think of a secure password. Users caught unaware may choose a simple password or write it down where it may be discovered."
     remediation: "Set the PASS_WARN_AGE parameter to 7 in /etc/login.defs : PASS_WARN_AGE 7 Modify user parameters for all users with a password set to match: # chage --warndays 7 <user>."
     compliance:
-      - cis: ["5.6.1.3"]
+      - cis: ["5.4.1.3"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
@@ -3789,14 +3789,14 @@ checks:
       - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
       - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
 
-  # 5.6.1.4 Ensure inactive password lock is 30 days or less. (Automated)
+  # 5.4.1.5 Ensure inactive password lock is configured (Automated)
   - id: 31654
     title: "Ensure inactive password lock is 30 days or less."
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
     rationale: "Inactive accounts pose a threat to system security since the users are not logging in to notice failed login attempts or other anomalies."
     remediation: "Run the following command to set the default password inactivity period to 30 days: # useradd -D -f 30 Modify user parameters for all users with a password set to match: # chage --inactive 30 <user>."
     compliance:
-      - cis: ["5.6.1.4"]
+      - cis: ["5.4.1.5"]
       - cis_csc_v8: ["5.2"]
       - cis_csc_v7: ["4.4"]
       - cmmc_v2.0: ["IA.L2-3.5.7"]
@@ -3813,17 +3813,15 @@ checks:
       - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
   # 5.4.1.6 Ensure all users last password change date is in the past. (Automated) - Not Implemented
-  # 5.6.2 Ensure system accounts are secured. (Automated) - Not Implemented
-  # 5.6.3 Ensure default user shell timeout is 900 seconds or less. (Automated) - Not Implemented
 
-  # 5.6.4 Ensure default group for the root account is GID 0. (Automated)
+  # 5.4.2.2 Ensure root is the only GID 0 account (Automated)
   - id: 31655
-    title: "Ensure default group for the root account is GID 0."
+    title: "Ensure root is the only GID 0 account."
     description: "The usermod command can be used to specify which group the root account belongs to. This affects permissions of files that are created by the root account."
     rationale: "Using GID 0 for the root account helps prevent root -owned files from accidentally becoming accessible to non-privileged users."
     remediation: "Run the following command to set the root account default group to GID 0 : # usermod -g 0 root."
     compliance:
-      - cis: ["5.6.4"]
+      - cis: ["5.4.2.2"]
       - cis_csc_v8: ["4.1"]
       - cis_csc_v7: ["5.1"]
       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
@@ -3838,9 +3836,6 @@ checks:
     condition: all
     rules:
       - "f:/etc/passwd -> r:^root:x:0:0"
-
-  # 5.6.5 Ensure default user umask is 027 or more restrictive. (Automated) - Not Implemented
-  # 5.6.6 Ensure root password is set. (Automated) - Not Implemented
 
   ###############################################
   # 6 System Maintenance
@@ -4041,12 +4036,6 @@ checks:
     rules:
       - 'c:stat /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 6.1.9 Ensure no world writable files exist. (Automated) - Not Implemented
-  # 6.1.10 Ensure no unowned files or directories exist. (Automated) - Not Implemented
-  # 6.1.11 Ensure no ungrouped files or directories exist. (Automated) - Not Implemented
-  # 6.1.12 Ensure sticky bit is set on all world-writable directories. (Automated) - Not Implemented
-  # 6.1.13 Audit SUID executables. (Manual) - Not Implemented
-  # 6.1.14 Audit SGID executables. (Manual) - Not Implemented
   # 7.1.14 Audit system file permissions. (Manual) - Not Implemented
 
   ################################################
