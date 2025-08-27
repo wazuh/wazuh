@@ -4092,7 +4092,6 @@ checks:
   # 7.2.5 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
   # 7.2.6 Ensure no duplicate user names exist. (Automated) - Not Implemented
   # 7.2.7 Ensure no duplicate group names exist. (Automated) - Not Implemented
-  # 6.2.8 Ensure root PATH Integrity. (Automated) - Not Implemented
 
   # 5.4.2.1 Ensure root is the only UID 0 account. (Automated)
   - id: 31666
@@ -4108,11 +4107,3 @@ checks:
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
-
-  # 6.2.10 Ensure local interactive user home directories exist. (Automated) - Not Implemented
-  # 6.2.11 Ensure local interactive users own their home directories. (Automated) - Not Implemented
-  # 6.2.12 Ensure local interactive user home directories are mode 750 or more restrictive. (Automated) - Not Implemented
-  # 6.2.13 Ensure no local interactive user has .netrc files. (Automated) - Not Implemented
-  # 6.2.14 Ensure no local interactive user has .forward files. (Automated) - Not Implemented
-  # 6.2.15 Ensure no local interactive user has .rhosts files. (Automated) - Not Implemented
-  # 6.2.16 Ensure local interactive user dot files are not group or world writable. (Automated) - Not Implemented

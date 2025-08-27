@@ -4036,11 +4036,6 @@ checks:
     rules:
       - 'c:stat /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 6.1.9 Ensure no world writable files exist. (Automated) - Not Implemented
-  # 6.1.11 Ensure no ungrouped files or directories exist. (Automated) - Not Implemented
-  # 6.1.12 Ensure sticky bit is set on all world-writable directories. (Automated) - Not Implemented
-  # 6.1.13 Audit SUID executables. (Manual) - Not Implemented
-  # 6.1.14 Audit SGID executables. (Manual) - Not Implemented
   # 7.1.14 Audit system file permissions. (Manual) - Not Implemented
 
   ################################################
@@ -4113,11 +4108,3 @@ checks:
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
-
-  # 6.2.10 Ensure local interactive user home directories exist. (Automated) - Not Implemented
-  # 6.2.11 Ensure local interactive users own their home directories. (Automated) - Not Implemented
-  # 6.2.12 Ensure local interactive user home directories are mode 750 or more restrictive. (Automated) - Not Implemented
-  # 6.2.13 Ensure no local interactive user has .netrc files. (Automated) - Not Implemented
-  # 6.2.14 Ensure no local interactive user has .forward files. (Automated) - Not Implemented
-  # 6.2.15 Ensure no local interactive user has .rhosts files. (Automated) - Not Implemented
-  # 6.2.16 Ensure local interactive user dot files are not group or world writable. (Automated) - Not Implemented
