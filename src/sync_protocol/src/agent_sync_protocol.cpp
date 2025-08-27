@@ -148,12 +148,10 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Wazuh::SyncSchema::Mode mode,
     try
     {
         flatbuffers::FlatBufferBuilder builder;
-        auto moduleStr = builder.CreateString(m_moduleName);
 
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_mode(mode);
         startBuilder.add_size(static_cast<uint64_t>(dataSize));
-        startBuilder.add_module_(moduleStr);
         auto startOffset = startBuilder.Finish();
 
         auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::Start, startOffset.Union());

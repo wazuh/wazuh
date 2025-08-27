@@ -7,14 +7,8 @@
  * and/or modify it under the terms of the GNU General Public
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
- *
- * It is used to:
- * - Track out-of-order or missing `Data` messages.
- * - Efficiently detect session completion.
- * - Generate ranges of missing sequences (used in End message handling).
- *
- * This class is a core part of the agent sync protocol and must be efficient and scalable.
  */
+
 #ifndef _GAP_SET_HPP
 #define _GAP_SET_HPP
 

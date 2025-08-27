@@ -66,7 +66,6 @@ public:
                     {
                         if (!m_isRegistered)
                         {
-                            // LCOV_EXCL_START
                             nlohmann::json jsonMessage;
                             try
                             {
@@ -85,7 +84,6 @@ public:
                             {
                                 std::cerr << "RemoteSubscriber: Invalid result: " << e.what() << std::endl;
                             }
-                            // LCOV_EXCL_STOP
                         }
                         else
                         {

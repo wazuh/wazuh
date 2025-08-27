@@ -1,4 +1,3 @@
-
 /*
  * Wazuh inventory sync
  * Copyright (C) 2015, Wazuh Inc.
@@ -13,13 +12,13 @@
 #ifndef _AGENT_SESSION_HPP
 #define _AGENT_SESSION_HPP
 
-#include "asyncValueDispatcher.hpp"
 #include "context.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "gapSet.hpp"
-#include "loggerHelper.h"
 #include "responseDispatcher.hpp"
 #include "rocksDBWrapper.hpp"
+#include "threadDispatcher.h"
+#include <charconv>
 #include <functional>
 #include <memory>
 #include <string>
@@ -37,8 +36,8 @@ struct Response
     std::shared_ptr<Context> context;
 };
 
-using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
-using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
+using WorkersQueue = Utils::AsyncDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
+using IndexerQueue = Utils::AsyncDispatcher<Response, std::function<void(const Response&)>>;
 
 class AgentSessionException : public std::exception
 {
@@ -78,9 +77,12 @@ class AgentSessionImpl final
     TIndexerQueue& m_indexerQueue;      ///< Response queue for indexing subsystem
     bool m_endReceived = false;         ///< Whether the END message has been received
     std::mutex m_mutex;                 ///< Mutex to guard shared state
+    bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
+                              std::string_view agentId,
+                              std::string_view moduleName,
                               Wazuh::SyncSchema::Start const* data,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
@@ -94,35 +96,49 @@ public:
             throw AgentSessionException("Invalid data");
         }
 
-        if (data->module_() == nullptr)
+        uint64_t agentIdConverted {};
+
+        auto [ptr, ec] = std::from_chars(agentId.data(), agentId.data() + agentId.size(), agentIdConverted);
+
+        if (ec == std::errc::result_out_of_range)
         {
-            throw AgentSessionException("Invalid module");
+            throw AgentSessionException("Agent ID out of range");
         }
 
-        if (data->agent_id() == 0)
+        if (ec == std::errc::invalid_argument)
         {
-            throw AgentSessionException("Invalid id");
+            throw AgentSessionException("Agent ID invalid argument");
+        }
+
+        if (agentIdConverted == 0)
+        {
+            responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentIdConverted, sessionId, moduleName);
+            throw AgentSessionException("Invalid agent ID");
         }
 
         // Create new session.
         if (data->size() == 0)
         {
+            responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentIdConverted, sessionId, moduleName);
             throw AgentSessionException("Invalid size");
         }
+
         m_gapSet = std::make_unique<GapSet>(data->size());
 
-        m_context = std::make_shared<Context>(Context {.mode = data->mode(),
-                                                       .sessionId = sessionId,
-                                                       .agentId = data->agent_id(),
-                                                       .moduleName = data->module_()->str()});
+        m_context =
+            std::make_shared<Context>(Context {.mode = data->mode(),
+                                               .sessionId = sessionId,
+                                               .agentId = agentIdConverted,
+                                               .moduleName = std::string(moduleName.data(), moduleName.size())});
 
         logDebug2(LOGGER_DEFAULT_TAG,
-                  "New session for module '%s' by agent %d. (Session %d)",
+                  "New session for module '%s' by agent %d. (Session %llu)",
                   m_context->moduleName.c_str(),
                   m_context->agentId,
                   m_context->sessionId);
 
-        responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Ok, m_context);
+        responseDispatcher.sendStartAck(
+            Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
     }
 
     /// Deleted copy constructor and assignment operator (C.12 compliant).
@@ -144,7 +160,7 @@ public:
      * @param data Parsed flatbuffer metadata (e.g., sequence number).
      * @param dataRaw Raw binary payload of the chunk.
      */
-    void handleData(Wazuh::SyncSchema::Data const* data, const std::vector<char>& dataRaw)
+    void handleData(Wazuh::SyncSchema::Data const* data, flatbuffers::Vector<uint8_t> const* dataRaw)
     {
         if (data == nullptr)
         {
@@ -156,18 +172,26 @@ public:
         const auto seq = data->seq();
         const auto session = data->session();
 
-        logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%d' for session '%d'", seq, session);
+        logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
-        m_store.put(std::to_string(session) + "_" + std::to_string(seq),
-                    rocksdb::Slice(dataRaw.data(), dataRaw.size()));
+        m_store.put(std::format("{}_{}", session, seq),
+                    rocksdb::Slice(reinterpret_cast<const char*>(dataRaw->data()), dataRaw->size()));
 
         m_gapSet->observe(data->seq());
+
+        logDebug2(LOGGER_DEFAULT_TAG,
+                  "Data received: %s %llu %llu %s",
+                  std::format("{}_{}", session, seq).c_str(),
+                  m_context->sessionId,
+                  m_context->agentId,
+                  m_context->moduleName.c_str());
 
         if (m_endReceived)
         {
             if (m_gapSet->empty())
             {
-                m_indexerQueue.push(Response {ResponseStatus::Ok, m_context});
+                m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+                m_endEnqueued = true;
             }
         }
     }
@@ -179,19 +203,27 @@ public:
      *
      * @param responseDispatcher Dispatcher used to report missing sequences (if any).
      */
-
     void handleEnd(const TResponseDispatcher& responseDispatcher)
     {
         std::lock_guard lock(m_mutex);
         m_endReceived = true;
+
+        if (m_endEnqueued)
+        {
+            logDebug2(LOGGER_DEFAULT_TAG, "End already enqueued for session %llu", m_context->sessionId);
+            return;
+        }
+
         if (m_gapSet->empty())
         {
-            logDebug2(LOGGER_DEFAULT_TAG, "End received and gap set is empty");
-            m_indexerQueue.push(Response {ResponseStatus::Ok, m_context});
+            logDebug2(LOGGER_DEFAULT_TAG, "All sequences received for session %llu", m_context->sessionId);
+            m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
+            m_endEnqueued = true;
         }
         else
         {
-            responseDispatcher.sendEndMissingSeq(m_context->sessionId, m_gapSet->ranges());
+            responseDispatcher.sendEndMissingSeq(
+                m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
         }
     }
 

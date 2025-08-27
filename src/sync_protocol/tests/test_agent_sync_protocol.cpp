@@ -274,12 +274,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleStartFailDueToManager)
 
     // StartAck with ERROR status
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // syncFailed = true
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(module);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -380,12 +378,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendDataMessagesFails)
 
     // StartAck
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(module);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -451,12 +447,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSendEndFails)
 
     // StartAck
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(module);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -513,12 +507,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -535,12 +527,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
 
     // EndAck with ERROR status
     flatbuffers::FlatBufferBuilder endBuilder;
-    auto endModule = endBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // syncFailed = true
     endAckBuilder.add_session(session);
-    endAckBuilder.add_module_(endModule);
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -597,12 +587,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -619,11 +607,9 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesEmpty)
 
     // ReqRet with EMPTY ranges
     flatbuffers::FlatBufferBuilder reqRetBuilder;
-    auto reqRetModule = reqRetBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::ReqRetBuilder reqRetBuilderObj(reqRetBuilder);
     reqRetBuilderObj.add_session(session);
-    reqRetBuilderObj.add_module_(reqRetModule);
     // No seq ranges
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
@@ -681,12 +667,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -704,7 +688,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
     // ReqRet with no valid data ranges
     // Test data seq numbers 1-2, but request ranges 10-15 and 20-25
     flatbuffers::FlatBufferBuilder reqRetBuilder;
-    auto reqRetModule = reqRetBuilder.CreateString("test_module");
 
     std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> seqRanges;
 
@@ -720,7 +703,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndRangesDataEmpty)
 
     Wazuh::SyncSchema::ReqRetBuilder reqRetBuilderObj(reqRetBuilder);
     reqRetBuilderObj.add_session(session);
-    reqRetBuilderObj.add_module_(reqRetModule);
     reqRetBuilderObj.add_seq(seqRangesVector);
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
@@ -787,12 +769,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -809,7 +789,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
 
     // ReqRet with valid ranges 1-2
     flatbuffers::FlatBufferBuilder reqRetBuilder;
-    auto reqRetModule = reqRetBuilder.CreateString("test_module");
 
     std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> seqRanges;
 
@@ -821,7 +800,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
 
     Wazuh::SyncSchema::ReqRetBuilder reqRetBuilderObj(reqRetBuilder);
     reqRetBuilderObj.add_session(session);
-    reqRetBuilderObj.add_module_(reqRetModule);
     reqRetBuilderObj.add_seq(seqRangesVector);
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
@@ -880,12 +858,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndAckTimeout)
 
     // StartAck
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(module);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -943,12 +919,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
 
     // StartAck
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(module);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -965,12 +939,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithNoReqRet)
 
     // EndAck
     flatbuffers::FlatBufferBuilder endBuilder;
-    auto endModule = endBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     endAckBuilder.add_session(session);
-    endAckBuilder.add_module_(endModule);
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1028,12 +1000,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1050,7 +1020,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 
     // ReqRet with valid ranges 1-2
     flatbuffers::FlatBufferBuilder reqRetBuilder;
-    auto reqRetModule = reqRetBuilder.CreateString("test_module");
 
     std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> seqRanges;
 
@@ -1062,7 +1031,6 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 
     Wazuh::SyncSchema::ReqRetBuilder reqRetBuilderObj(reqRetBuilder);
     reqRetBuilderObj.add_session(session);
-    reqRetBuilderObj.add_module_(reqRetModule);
     reqRetBuilderObj.add_seq(seqRangesVector);
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
@@ -1080,12 +1048,10 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessWithReqRet)
 
     // EndAck
     flatbuffers::FlatBufferBuilder endBuilder;
-    auto endModule = endBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     endAckBuilder.add_session(session);
-    endAckBuilder.add_module_(endModule);
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1133,12 +1099,9 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForStartAck)
 
     flatbuffers::FlatBufferBuilder builder;
 
-    auto module = builder.CreateString("test_module");
-
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(module);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -1190,12 +1153,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckError)
 
     // StartAck with ERROR status
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // Status Error
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(module);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -1249,12 +1210,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckOffline)
 
     // StartAck with OFFLINE status
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Offline); // Status Offline
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(module);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -1308,12 +1267,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithStartAckSuccess)
 
     // StartAck
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(module);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -1344,12 +1301,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForEndAck)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(builder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     endAckBuilder.add_session(session);
-    endAckBuilder.add_module_(module);
     auto endAckOffset = endAckBuilder.Finish();
 
     auto message = Wazuh::SyncSchema::CreateMessage(
@@ -1401,12 +1356,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1423,12 +1376,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckError)
 
     // EndAck with ERROR status
     flatbuffers::FlatBufferBuilder endBuilder;
-    auto endModule = endBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Error); // Status Error
     endAckBuilder.add_session(session);
-    endAckBuilder.add_module_(endModule);
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1482,12 +1433,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1504,12 +1453,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckOffline)
 
     // EndAck with OFFLINE status
     flatbuffers::FlatBufferBuilder endBuilder;
-    auto endModule = endBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Offline); // Status Offline
     endAckBuilder.add_session(session);
-    endAckBuilder.add_module_(endModule);
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1563,12 +1510,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1585,12 +1530,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithEndAckSuccess)
 
     // EndAck with OK status
     flatbuffers::FlatBufferBuilder endBuilder;
-    auto endModule = endBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
     endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok); // Status Ok
     endAckBuilder.add_session(session);
-    endAckBuilder.add_module_(endModule);
     auto endAckOffset = endAckBuilder.Finish();
 
     auto endMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1621,7 +1564,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForReqRet)
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, mockQueue);
 
     flatbuffers::FlatBufferBuilder builder;
-    auto module = builder.CreateString("test_module");
 
     // ReqRet message
     std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> seqRanges;
@@ -1631,7 +1573,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWhenNotWaitingForReqRet)
 
     Wazuh::SyncSchema::ReqRetBuilder reqRetBuilder(builder);
     reqRetBuilder.add_session(session);
-    reqRetBuilder.add_module_(module);
     reqRetBuilder.add_seq(seqRangesVector);
     auto reqRetOffset = reqRetBuilder.Finish();
 
@@ -1684,12 +1625,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1706,11 +1645,9 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetAndNoRanges)
 
     // ReqRet with no ranges
     flatbuffers::FlatBufferBuilder reqRetBuilder;
-    auto reqRetModule = reqRetBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::ReqRetBuilder reqRetBuilderObj(reqRetBuilder);
     reqRetBuilderObj.add_session(session);
-    reqRetBuilderObj.add_module_(reqRetModule);
     // No seq field
     auto reqRetOffset = reqRetBuilderObj.Finish();
 
@@ -1765,12 +1702,10 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
 
     // StartAck
     flatbuffers::FlatBufferBuilder startBuilder;
-    auto startModule = startBuilder.CreateString("test_module");
 
     Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
     startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
     startAckBuilder.add_session(session);
-    startAckBuilder.add_module_(startModule);
     auto startAckOffset = startAckBuilder.Finish();
 
     auto startMessage = Wazuh::SyncSchema::CreateMessage(
@@ -1787,7 +1722,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
 
     // ReqRet
     flatbuffers::FlatBufferBuilder reqRetBuilder;
-    auto reqRetModule = reqRetBuilder.CreateString("test_module");
 
     std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> seqRanges;
     auto range1 = Wazuh::SyncSchema::CreatePair(reqRetBuilder, 1, 2);
@@ -1796,7 +1730,6 @@ TEST_F(AgentSyncProtocolTest, ParseResponseBufferWithReqRetSuccess)
 
     Wazuh::SyncSchema::ReqRetBuilder reqRetBuilderObj(reqRetBuilder);
     reqRetBuilderObj.add_session(session);
-    reqRetBuilderObj.add_module_(reqRetModule);
     reqRetBuilderObj.add_seq(seqRangesVector);
     auto reqRetOffset = reqRetBuilderObj.Finish();
 

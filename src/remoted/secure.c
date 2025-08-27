@@ -42,33 +42,18 @@ _Atomic (time_t) current_ts;
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_syscheck_handle = NULL;
+ROUTER_PROVIDER_HANDLE router_sync_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
 
-// Headers for syscollector messages: DBSYNC_MQ + WM_SYS_LOCATION and SYSCOLLECTOR_MQ + WM_SYS_LOCATION
-#define DBSYNC_HEADER "5:"
-#define DBSYNC_HEADER_SIZE 2
-#define SYSCOLLECTOR_HEADER "d:syscollector:"
-#define SYSCOLLECTOR_HEADER_SIZE 15
-#define SYSCHECK_HEADER "8:syscheck:"
-#define SYSCHECK_HEADER_SIZE 11
-
-#define SYSCOLLECTOR_SYNC_HEADER "syscollector:"
-#define SYSCOLLECTOR_SYNC_HEADER_SIZE 13
-#define SYSCHECK_FILE_HEADER "fim_file:"
-#define SYSCHECK_FILE_HEADER_SIZE 9
-#define SYSCHECK_REGISTRY_KEY_HEADER "fim_registry_key:"
-#define SYSCHECK_REGISTRY_KEY_HEADER_SIZE 17
-#define SYSCHECK_REGISTRY_VALUE_HEADER "fim_registry_value:"
-#define SYSCHECK_REGISTRY_VALUE_HEADER_SIZE 19
+// Headers for inventory sync messages
+#define INVENTORY_SYNC_HEADER "s:"
+#define INVENTORY_SYNC_HEADER_SIZE 2
 
 // Router message forwarder
-void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name);
+void router_message_forward(char* msg, size_t msg_length, const char* agent_id, const char* agent_ip, const char* agent_name);
 
 // Message handler thread
 static void * rem_handler_main(void * args);
@@ -256,16 +241,8 @@ void HandleSecure()
     router_initialize(taggedLogFunction);
 
     // Router providers initialization
-    if (router_syscollector_handle = router_provider_create("deltas-syscollector", false), !router_syscollector_handle) {
-        mdebug2("Failed to create router handle for 'syscollector'.");
-    }
-
-    if (router_syscheck_handle = router_provider_create("deltas-syscheck", false), !router_syscheck_handle) {
-        mdebug2("Failed to create router handle for 'syscheck'.");
-    }
-
-    if (router_rsync_handle = router_provider_create("rsync", false), !router_rsync_handle) {
-        mdebug2("Failed to create router handle for 'rsync'.");
+    if (router_sync_handle = router_provider_create("inventory-states", false), !router_sync_handle) {
+        mdebug2("Failed to create router handle for 'inventory synchronization'.");
     }
 
     // Create upsert control message thread
@@ -944,87 +921,83 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     }
 
     // Forwarding events to subscribers
-    router_message_forward(tmp_msg, agentid_str, agent_ip, agent_name);
+    router_message_forward(tmp_msg, msg_length, agentid_str, agent_ip, agent_name);
 
     os_free(agentid_str);
     os_free(agent_ip);
     os_free(agent_name);
 }
 
-void router_message_forward(char* msg, const char* agent_id, const char* agent_ip, const char* agent_name) {
-    // Both syscollector delta and sync messages are sent to the router
-    ROUTER_PROVIDER_HANDLE router_handle = NULL;
-    int message_header_size = 0;
-    int schema_type = -1;
+void router_message_forward(char* msg, size_t msg_length, const char* agent_id, const char* agent_ip, const char* agent_name) {
 
-    if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
-        if (!router_syscollector_handle) {
-            mdebug2("Router handle for 'syscollector' not available.");
-            return;
-        }
-        router_handle = router_syscollector_handle;
-        message_header_size = SYSCOLLECTOR_HEADER_SIZE;
-        schema_type = MT_SYS_DELTAS;
-    } else if(strncmp(msg, DBSYNC_HEADER, DBSYNC_HEADER_SIZE) == 0) {
-        if (!router_rsync_handle) {
-            mdebug2("Router handle for 'rsync' not available.");
-            return;
-        }
+    mdebug2("Forwarding message to router");
 
-        int message_subheader_size = 0;
-
-        if(strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_FILE_HEADER, SYSCHECK_FILE_HEADER_SIZE) == 0) {
-            message_subheader_size = SYSCHECK_FILE_HEADER_SIZE;
-        }
-        else if(strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_REGISTRY_KEY_HEADER, SYSCHECK_REGISTRY_KEY_HEADER_SIZE) == 0) {
-            message_subheader_size = SYSCHECK_REGISTRY_KEY_HEADER_SIZE;
-        }
-        else if(strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_REGISTRY_VALUE_HEADER, SYSCHECK_REGISTRY_VALUE_HEADER_SIZE) == 0) {
-            message_subheader_size = SYSCHECK_REGISTRY_VALUE_HEADER_SIZE;
-        }
-        else if (strncmp(msg+DBSYNC_HEADER_SIZE, SYSCOLLECTOR_SYNC_HEADER, SYSCOLLECTOR_SYNC_HEADER_SIZE) == 0) {
-            message_subheader_size = SYSCOLLECTOR_SYNC_HEADER_SIZE;
-        }
-        else {
-            mdebug2("Syscheck message not recognized %s", msg);
-            return;
-        }
-
-        router_handle = router_rsync_handle;
-        message_header_size = DBSYNC_HEADER_SIZE + message_subheader_size;
-        schema_type = MT_SYNC;
-    } else if(strncmp(msg, SYSCHECK_HEADER, SYSCHECK_HEADER_SIZE) == 0) {
-        if (!router_syscheck_handle) {
-            mdebug2("Router handle for 'syscheck' not available.");
-            return;
-        }
-
-        router_handle = router_syscheck_handle;
-        message_header_size = SYSCHECK_HEADER_SIZE;
-        schema_type = MT_SYSCHECK_DELTAS;
-    }
-    else {
-        mdebug2("%s message not recognized %s", agent_id, msg);
-    }
-
-    if (!router_handle) {
+    // Check if we have the router handle available
+    if (!router_sync_handle) {
+        mdebug2("Router handle for 'inventory synchronization' not available.");
         return;
     }
 
-    char* msg_start = msg + message_header_size;
-    size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
-    if ((msg_size + message_header_size) < OS_MAXSTR) {
-        agent_ctx agent_ctx = {
-            .agent_id = agent_id,
-            .agent_name = agent_name,
-            .agent_ip = agent_ip,
-            .agent_version = (char *)OSHash_Get_ex(agent_data_hash, agent_id)
-        };
-
-        if (router_provider_send_fb_json(router_handle, msg_start, &agent_ctx, schema_type) != 0) {
-            mdebug2("Unable to forward message '%s' for agent '%s'.", msg_start, agent_id);
-        }
+    // Check if message starts with inventory sync header
+    if (strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) != 0) {
+        mdebug2("Message does not have inventory sync header.");
+        return;
     }
+
+    // Validate minimum message length: header + "x:y" (4 chars minimum after header)
+    if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
+        mdebug2("Message too short for expected format.");
+        return;
+    }
+
+    char* msg_start = msg + INVENTORY_SYNC_HEADER_SIZE;
+    size_t remaining_len = msg_length - INVENTORY_SYNC_HEADER_SIZE;
+    
+    // Find colon separator between module and message
+    // Format after header: {module}:{msg}
+    char* colon = (char*)memchr(msg_start, ':', remaining_len);
+    if (!colon || colon == msg_start) {
+        mdebug2("Invalid message format: missing or empty module.");
+        return;
+    }
+    
+    // Calculate module length and validate it's reasonable
+    size_t module_len = colon - msg_start;
+    if (module_len == 0 || module_len > OS_SIZE_64) { // Reasonable module name limit
+        mdebug2("Invalid module length.");
+        return;
+    }
+    
+    // Calculate message payload position
+    char* msg_to_send = colon + 1;
+    size_t payload_offset = msg_to_send - msg;
+    
+    if (payload_offset >= msg_length) {
+        mdebug2("Invalid message format: no payload data.");
+        return;
+    }
+    
+    // Calculate safe message size
+    size_t msg_size = msg_length - payload_offset;
+    
+    // Temporarily null-terminate module name (save original char)
+    char saved_char = *colon;
+    *colon = '\0';
+    
+    struct agent_ctx agent_ctx = {
+        .id = agent_id,
+        .name = agent_name,
+        .ip = agent_ip,
+        .version = (char *)OSHash_Get_ex(agent_data_hash, agent_id),
+        .module = msg_start
+    };
+
+    if (router_provider_send_fb_agent_ctx(router_sync_handle, msg_to_send, msg_size, &agent_ctx) != 0) {
+        mdebug2("Unable to forward message for agent '%s'.", agent_id);
+    }
+    
+    // Restore original character
+    *colon = saved_char;
 }
 
 // Close and remove socket from keystore

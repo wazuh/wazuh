@@ -38,13 +38,10 @@ protected:
     uint64_t agentId = 1;
 
     flatbuffers::Offset<Wazuh::SyncSchema::Start>
-    createStartMessage(uint64_t size, const std::string& moduleName, uint64_t agentId)
+    createStartMessage(uint64_t size, const std::string& moduleName, uint64_t /*agentId*/)
     {
-        auto module = builder.CreateString(moduleName);
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_size(size);
-        startBuilder.add_module_(module);
-        startBuilder.add_agent_id(agentId);
         startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
         return startBuilder.Finish();
     }
@@ -62,16 +59,21 @@ TEST_F(AgentSessionTest, Constructor_Success)
 
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
-    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
 
-    ASSERT_NO_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); });
+    ASSERT_NO_THROW({
+        AgentSessionForTest session(
+            sessionId, "1", "syscollector", start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    });
 }
 
 TEST_F(AgentSessionTest, Constructor_NullData)
 {
     EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, nullptr, mockStore, mockIndexerQueue, mockResponseDispatcher); },
+        {
+            AgentSessionForTest session(
+                sessionId, "1", "syscollector", nullptr, mockStore, mockIndexerQueue, mockResponseDispatcher);
+        },
         AgentSessionException);
 }
 
@@ -81,8 +83,12 @@ TEST_F(AgentSessionTest, Constructor_InvalidSize)
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Error, _, _, _)).Times(1);
     EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); },
+        {
+            AgentSessionForTest session(
+                sessionId, "1", "syscollector", start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+        },
         AgentSessionException);
 }
 
@@ -90,16 +96,18 @@ TEST_F(AgentSessionTest, Constructor_NullModule)
 {
     Wazuh::SyncSchema::StartBuilder startBuilder(builder);
     startBuilder.add_size(10);
-    startBuilder.add_agent_id(1);
     startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
     auto startMsg = startBuilder.Finish();
 
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
-    EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); },
-        AgentSessionException);
+    // Now this should succeed since we use the constructor parameter for moduleName
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
+    EXPECT_NO_THROW({
+        AgentSessionForTest session(
+            sessionId, "1", "syscollector", start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    });
 }
 
 TEST_F(AgentSessionTest, Constructor_InvalidAgentId)
@@ -108,8 +116,12 @@ TEST_F(AgentSessionTest, Constructor_InvalidAgentId)
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Error, _, _, _)).Times(1);
     EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); },
+        {
+            AgentSessionForTest session(
+                sessionId, "0", "syscollector", start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+        },
         AgentSessionException);
 }
 
@@ -119,23 +131,29 @@ TEST_F(AgentSessionTest, HandleData_Success)
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
-    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(
+        sessionId, "1", "syscollector", start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
     flatbuffers::FlatBufferBuilder dataBuilder;
+
+    // Create some test data
+    std::vector<int8_t> testData = {0x01, 0x02, 0x03, 0x04};
+    auto dataVector = dataBuilder.CreateVector(testData);
+
     Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
     dataMsgBuilder.add_session(sessionId);
+    dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
 
     auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::Data>(dataBuilder.GetBufferPointer());
-    std::vector<char> dataRaw(dataBuilder.GetBufferPointer(), dataBuilder.GetBufferPointer() + dataBuilder.GetSize());
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(0);
 
-    session.handleData(data, dataRaw);
+    session.handleData(data, reinterpret_cast<const flatbuffers::Vector<uint8_t>*>(data->data()));
 }
 
 TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndNotReceived)
@@ -144,23 +162,29 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndNotReceived)
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
-    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(
+        sessionId, "1", "syscollector", start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
     flatbuffers::FlatBufferBuilder dataBuilder;
+
+    // Create some test data
+    std::vector<int8_t> testData = {0x01, 0x02, 0x03, 0x04};
+    auto dataVector = dataBuilder.CreateVector(testData);
+
     Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
     dataMsgBuilder.add_session(sessionId);
+    dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
 
     auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::Data>(dataBuilder.GetBufferPointer());
-    std::vector<char> dataRaw(dataBuilder.GetBufferPointer(), dataBuilder.GetBufferPointer() + dataBuilder.GetSize());
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(0); // End not received, should not push
 
-    session.handleData(data, dataRaw);
+    session.handleData(data, reinterpret_cast<const flatbuffers::Vector<uint8_t>*>(data->data()));
 }
 
 TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndReceived)
@@ -169,26 +193,32 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndReceived)
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
-    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(
+        sessionId, "1", "syscollector", start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
-    EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(sessionId, _)).Times(1);
+    EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(_, _, _, _)).Times(1);
     session.handleEnd(mockResponseDispatcher); // Simulate end received first
 
     flatbuffers::FlatBufferBuilder dataBuilder;
+
+    // Create some test data
+    std::vector<int8_t> testData = {0x01, 0x02, 0x03, 0x04};
+    auto dataVector = dataBuilder.CreateVector(testData);
+
     Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
     dataMsgBuilder.add_session(sessionId);
+    dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
 
     auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::Data>(dataBuilder.GetBufferPointer());
-    std::vector<char> dataRaw(dataBuilder.GetBufferPointer(), dataBuilder.GetBufferPointer() + dataBuilder.GetSize());
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
 
-    session.handleData(data, dataRaw);
+    session.handleData(data, reinterpret_cast<const flatbuffers::Vector<uint8_t>*>(data->data()));
 }
 
 TEST_F(AgentSessionTest, HandleEnd_GapSetNotEmpty)
@@ -197,10 +227,11 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetNotEmpty)
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
-    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(
+        sessionId, "1", "syscollector", start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
-    EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(sessionId, _)).Times(1);
+    EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(_, _, _, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(0);
 
     session.handleEnd(mockResponseDispatcher);
@@ -212,24 +243,30 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetEmpty)
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
-    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(
+        sessionId, "1", "syscollector", start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
     flatbuffers::FlatBufferBuilder dataBuilder;
+
+    // Create some test data
+    std::vector<int8_t> testData = {0x01, 0x02, 0x03, 0x04};
+    auto dataVector = dataBuilder.CreateVector(testData);
+
     Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
     dataMsgBuilder.add_session(sessionId);
+    dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
 
     auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::Data>(dataBuilder.GetBufferPointer());
-    std::vector<char> dataRaw(dataBuilder.GetBufferPointer(), dataBuilder.GetBufferPointer() + dataBuilder.GetSize());
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
-    session.handleData(data, dataRaw);
+    session.handleData(data, reinterpret_cast<const flatbuffers::Vector<uint8_t>*>(data->data()));
 
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
-    EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(_, _)).Times(0);
+    EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(_, _, _, _)).Times(0);
 
     session.handleEnd(mockResponseDispatcher);
 }

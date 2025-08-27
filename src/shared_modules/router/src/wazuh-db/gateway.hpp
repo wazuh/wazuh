@@ -121,6 +121,7 @@ public:
             throw std::invalid_argument("Method not implemented");
         }
     }
+    // LCOV_EXCL_STOP
 };
 
 #endif /* _WDB_GATEWAY_HPP */
