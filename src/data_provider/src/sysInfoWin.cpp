@@ -1219,7 +1219,7 @@ nlohmann::json SysInfo::getServices() const
 
         result.push_back(std::move(serviceItem));
     }
-{
+}
 
 nlohmann::json SysInfo::getBrowserExtensions() const
 {
