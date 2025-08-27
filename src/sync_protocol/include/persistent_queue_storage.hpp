@@ -11,6 +11,7 @@
 
 #include "ipersistent_queue_storage.hpp"
 #include "sqlite3Wrapper.hpp"
+#include "agent_sync_protocol_types.hpp"
 
 /// @brief Defines the synchronization status of a persisted message.
 enum class SyncStatus : int
@@ -38,7 +39,8 @@ class PersistentQueueStorage : public IPersistentQueueStorage
     public:
         /// @brief Constructs the storage with the given database path.
         /// @param dbPath Path to the SQLite database file. If empty, DEFAULT_DB_PATH is used.
-        explicit PersistentQueueStorage(const std::string& dbPath);
+        /// @param logger Logger function
+        explicit PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger);
 
         /// @brief Default destructor.
         ~PersistentQueueStorage() override = default;
@@ -63,6 +65,9 @@ class PersistentQueueStorage : public IPersistentQueueStorage
     private:
         /// @brief Active SQLite database connection.
         SQLite3Wrapper::Connection m_connection;
+
+        /// @brief Logger function
+        LoggerFunc m_logger;
 
         /// @brief Creates the persistent_queue table if it doesn't already exist.
         void createTableIfNotExists();

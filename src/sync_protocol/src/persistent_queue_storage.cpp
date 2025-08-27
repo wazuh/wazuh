@@ -11,9 +11,15 @@
 #include "logging_helper.hpp"
 #include <filesystem>
 
-PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath)
-    : m_connection(createOrOpenDatabase(dbPath))
+PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger)
+    : m_connection(createOrOpenDatabase(dbPath)),
+      m_logger(std::move(logger))
 {
+    if (!m_logger)
+    {
+        throw std::invalid_argument("Logger provided to PersistentQueueStorage cannot be null.");
+    }
+
     try
     {
         createTableIfNotExists();
@@ -22,7 +28,7 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath)
     }
     catch (const SQLite3Wrapper::Sqlite3Error& ex)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         throw;
     }
 }
@@ -50,7 +56,7 @@ void PersistentQueueStorage::createTableIfNotExists()
     }
     catch (const std::exception& ex)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         throw;
     }
 }
@@ -159,7 +165,7 @@ void PersistentQueueStorage::submitOrCoalesce(const PersistedData& newData)
     }
     catch (const std::exception& e)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in submitOrCoalesce: ") + e.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in submitOrCoalesce: ") + e.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
@@ -235,7 +241,7 @@ std::vector<PersistedData> PersistentQueueStorage::fetchAndMarkForSync()
     }
     catch (const std::exception& e)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in fetchAndMarkForSync: ") + e.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Transaction failed in fetchAndMarkForSync: ") + e.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
@@ -270,7 +276,7 @@ void PersistentQueueStorage::removeAllSynced()
     }
     catch (const SQLite3Wrapper::Sqlite3Error& ex)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }
@@ -300,7 +306,7 @@ void PersistentQueueStorage::resetAllSyncing()
     }
     catch (const SQLite3Wrapper::Sqlite3Error& ex)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error: ") + ex.what());
         m_connection.execute("ROLLBACK;");
         throw;
     }

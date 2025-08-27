@@ -6,6 +6,7 @@
 #include <chrono>
 
 #include "agent_sync_protocol.hpp"
+#include "agent_sync_protocol_types.hpp"
 #include "agent_sync_protocol_c_interface.h"
 
 static AgentSyncProtocol* g_proto = nullptr;
@@ -51,22 +52,13 @@ static int mq_send_binary_stub(int, const void* msg, size_t, const char*, char) 
 
 int main() {
 
-    // Set logger via asp_create
-    MQ_Functions tmpMq{
-        [](const char*, short, short) { return 0; },
-        [](int, const void*, size_t, const char*, char) { return 0; }
+    LoggerFunc testLogger =
+    [](modules_log_level_t /*level*/, const std::string& msg) {
+        std::cout << "[Test sync_protocol]: " << msg << std::endl;
     };
 
-    auto handle = asp_create(
-        "test_module",
-        ":memory:",
-        &tmpMq,
-        +[](modules_log_level_t, const char* s) { std::cout << s << std::endl; }
-    );
-    asp_destroy(handle);
-
     MQ_Functions mq{&mq_start_stub, &mq_send_binary_stub};
-    AgentSyncProtocol proto{"sync_protocol", ":memory:", mq};
+    AgentSyncProtocol proto{"sync_protocol", ":memory:", mq, testLogger, nullptr};
     g_proto = &proto;
 
     proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}");

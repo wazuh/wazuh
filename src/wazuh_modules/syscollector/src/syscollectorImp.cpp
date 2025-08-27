@@ -20,6 +20,7 @@
 
 #include "syscollectorTablesDef.hpp"
 #include "agent_sync_protocol.hpp"
+#include "logging_helper.h"
 
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
@@ -1260,7 +1261,10 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 // Sync protocol methods implementation
 void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
 {
-    m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, nullptr);
+    auto logger_func = [this](modules_log_level_t level, const std::string& msg) {
+        this->m_logFunction(level, msg);
+    };
+    m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
 }
 
 bool Syscollector::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)

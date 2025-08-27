@@ -33,9 +33,15 @@ class PersistentQueueFullParamTest :
     protected:
         std::unique_ptr<PersistentQueueStorage> storage;
 
+        LoggerFunc testLogger;
+
         void SetUp() override
         {
-            storage = std::make_unique<PersistentQueueStorage>(":memory:");
+            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+            {
+            };
+
+            storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger);
         }
 
         void TearDown() override

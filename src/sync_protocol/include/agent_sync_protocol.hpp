@@ -11,6 +11,7 @@
 #define AGENT_SYNC_PROTOCOL_HPP
 
 #include "agent_sync_protocol_c_interface_types.h"
+#include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
 
 #include <atomic>
@@ -26,8 +27,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param moduleName Name of the module associated with this instance.
         /// @param dbPath Path to the SQLite database file for this protocol instance.
         /// @param mqFuncs Functions used to interact with MQueue.
+        /// @param logger Logger function
         /// @param queue Optional persistent queue to use for message storage and retrieval.
-        explicit AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, std::shared_ptr<IPersistentQueue> queue = nullptr);
+        explicit AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue = nullptr);
 
         /// @copydoc IAgentSyncProtocol::persistDifference
         void persistDifference(const std::string& id,
@@ -54,6 +56,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Persistent message queue used to store and replay differences for synchronization.
         std::shared_ptr<IPersistentQueue> m_persistentQueue;
+
+        /// @brief Logger function
+        LoggerFunc m_logger;
 
         /// @brief Queue
         int m_queue = -1;

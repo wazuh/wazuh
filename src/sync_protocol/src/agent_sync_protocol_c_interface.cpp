@@ -1,7 +1,7 @@
 #include "agent_sync_protocol_c_interface.h"
 #include "agent_sync_protocol.hpp"
+#include "agent_sync_protocol_types.hpp"
 #include "persistent_queue.hpp"
-#include "logging_helper.hpp"
 #include <chrono>
 #include <memory>
 #include <string>
@@ -20,9 +20,10 @@ struct AgentSyncProtocolWrapper
     ///
     /// @param module Name of the module associated with this instance.
     /// @param db_path Path to the SQLite database file for this protocol instance.
+    /// @param logger Logger function
     /// @param mq_funcs Structure containing the MQ callback functions provided from C.
-    AgentSyncProtocolWrapper(const std::string& module, const std::string& db_path, const MQ_Functions& mq_funcs)
-        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, mq_funcs, nullptr)) {}
+    AgentSyncProtocolWrapper(const std::string& module, const std::string& db_path, const MQ_Functions& mq_funcs, LoggerFunc logger)
+        : impl(std::make_unique<AgentSyncProtocol>(module, db_path, mq_funcs, std::move(logger), nullptr)) {}
 };
 
 extern "C" {
@@ -33,23 +34,20 @@ extern "C" {
         {
             if (!mq_funcs || !db_path || !module || !logger) return nullptr;
 
-            LoggingHelper::setLogCallback(
-                [logger](const modules_log_level_t level, const char* msg)
+            LoggerFunc logger_wrapper =
+                [logger](modules_log_level_t level, const std::string & msg)
             {
-                logger(level, msg);
-            }
-            );
+                logger(level, msg.c_str());
+            };
 
-            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, db_path, *mq_funcs));
+            return reinterpret_cast<AgentSyncProtocolHandle*>(new AgentSyncProtocolWrapper(module, db_path, *mq_funcs, logger_wrapper));
         }
         catch (const std::exception& ex)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, std::string("asp_create exception: ") + ex.what());
             return nullptr;
         }
         catch (...)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, "asp_create unknown exception");
             return nullptr;
         }
     }
@@ -62,11 +60,11 @@ extern "C" {
         }
         catch (const std::exception& ex)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, std::string("asp_destroy exception: ") + ex.what());
+            return;
         }
         catch (...)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, "asp_destroy unknown exception");
+            return;
         }
     }
 
@@ -87,11 +85,11 @@ extern "C" {
         }
         catch (const std::exception& ex)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, std::string("asp_persist_diff exception: ") + ex.what());
+            return;
         }
         catch (...)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, "asp_persist_diff unknown exception");
+            return;
         }
     }
 
@@ -113,12 +111,10 @@ extern "C" {
         }
         catch (const std::exception& ex)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, std::string("asp_sync_module exception: ") + ex.what());
             return false;
         }
         catch (...)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, "asp_sync_module unknown exception");
             return false;
         }
     }
@@ -134,12 +130,10 @@ extern "C" {
         }
         catch (const std::exception& ex)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, std::string("asp_parse_response_buffer exception: ") + ex.what());
             return false;
         }
         catch (...)
         {
-            LoggingHelper::getInstance().log(modules_log_level_t::LOG_ERROR, "asp_parse_response_buffer unknown exception");
             return false;
         }
     }
