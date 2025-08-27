@@ -1182,7 +1182,7 @@ nlohmann::json SysInfo::getServices() const
     {
         nlohmann::json serviceItem{};
 
-        serviceItem["service_id"]                            = svc.value("name",         UNKNOWN_VALUE);
+        serviceItem["service_id"]                            = (svc.contains("name") && !svc["name"].get<std::string>().empty()) ? svc["name"] : UNKNOWN_VALUE;
         serviceItem["service_name"]                          = svc.value("display_name", UNKNOWN_VALUE);
         serviceItem["service_description"]                   = svc.value("description",  UNKNOWN_VALUE);
         serviceItem["service_type"]                          = svc.value("service_type", UNKNOWN_VALUE);

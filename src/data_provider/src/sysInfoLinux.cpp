@@ -856,7 +856,7 @@ nlohmann::json SysInfo::getServices() const
         nlohmann::json serviceItem{};
 
         // ECS mapping based on the provided table
-        serviceItem["service_id"]                            = svc.value("id",                UNKNOWN_VALUE);
+        serviceItem["service_id"]                            = (svc.contains("id") && !svc["id"].get<std::string>().empty()) ? svc["id"] : UNKNOWN_VALUE;
         serviceItem["service_name"]                          = UNKNOWN_VALUE;
         serviceItem["service_description"]                   = svc.value("description",       UNKNOWN_VALUE);
         serviceItem["service_type"]                          = UNKNOWN_VALUE;
@@ -877,7 +877,7 @@ nlohmann::json SysInfo::getServices() const
         serviceItem["process_group_name"]                    = UNKNOWN_VALUE;
         serviceItem["process_working_directory"]             = UNKNOWN_VALUE;
         serviceItem["process_root_directory"]                = UNKNOWN_VALUE;
-        serviceItem["file_path"]                             = svc.value("source_path",       UNKNOWN_VALUE);
+        serviceItem["file_path"]                             = (svc.contains("source_path") && !svc["source_path"].get<std::string>().empty()) ? svc["source_path"] : UNKNOWN_VALUE;
         serviceItem["service_address"]                       = UNKNOWN_VALUE;
         serviceItem["log_file_path"]                         = UNKNOWN_VALUE;
         serviceItem["error_log_file_path"]                   = UNKNOWN_VALUE;
