@@ -163,14 +163,14 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
     {
         if (!m_isValidKey(m_ctx.rule))
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Key '{}' does not exist" + m_ctx.rule);
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Key '" + m_ctx.rule + "' does not exist");
             m_lastInvalidReason = "Registry key '" + m_ctx.rule + "' does not exist";
             return RuleResult::Invalid;
         }
     }
     catch (const std::exception& e)
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, std::string("RegistryRuleEvaluator::Evaluate: Exception: {}") + e.what());
+        LoggingHelper::getInstance().log(LOG_DEBUG, std::string("RegistryRuleEvaluator::Evaluate: Exception: ") + e.what());
         m_lastInvalidReason = "Exception accessing registry key '" + m_ctx.rule + "': " + e.what();
         return RuleResult::Invalid;
     }
@@ -186,7 +186,7 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
         // Check that the value exists
         if (!obtainedValue.has_value())
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, "Value '{}' does not exist" + valueName);
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Value '" + valueName + "' does not exist");
             m_lastInvalidReason = "Registry value '" + valueName + "' does not exist in key '" + m_ctx.rule + "'";
             return RuleResult::Invalid;
         }
@@ -203,7 +203,7 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
             if (CheckMatch(key, pattern, isRegex) == RuleResult::Found)
             {
                 result = RuleResult::Found;
-                LoggingHelper::getInstance().log(LOG_DEBUG, "Key '{}' exists" + pattern);
+                LoggingHelper::getInstance().log(LOG_DEBUG, "Key '" + pattern + "' exists");
                 break;
             }
         }
@@ -215,7 +215,7 @@ RuleResult RegistryRuleEvaluator::CheckKeyForContents()
                 if (CheckMatch(value, pattern, isRegex) == RuleResult::Found)
                 {
                     result = RuleResult::Found;
-                    LoggingHelper::getInstance().log(LOG_DEBUG, "Value '{}' exists" + pattern);
+                    LoggingHelper::getInstance().log(LOG_DEBUG, "Value '" + pattern + "' exists");
                     break;
                 }
             }
@@ -243,7 +243,7 @@ RuleResult RegistryRuleEvaluator::CheckKeyExistence()
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Key exists.  Rule {}") + (m_ctx.isNegated ? "failed" : "passed"));
+            LoggingHelper::getInstance().log(LOG_DEBUG, std::string("Key exists.  Rule ") + (m_ctx.isNegated ? "failed" : "passed"));
             result = RuleResult::Found;
         }
     }
