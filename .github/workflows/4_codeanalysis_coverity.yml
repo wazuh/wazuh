@@ -69,8 +69,7 @@ jobs:
       - name: Configure compiler if target is winagent
         if: ${{ inputs.target == 'winagent' }}
         run: |
-          sudo apt-get install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
-          ln -s /usr/bin/true /usr/local/bin/makensis # workaround for mingw32-make
+          sudo apt-get install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
           ${{ steps.coverity.outputs.BIN_PATH }}/cov-configure  --compiler i686-w64-mingw32-gcc --comptype gcc --template
 
       - name: Checkout the repository

@@ -17,7 +17,7 @@ runs:
       shell: bash
       run: |
         if [[ "${{ inputs.target }}" == "winagent" ]]; then
-          sudo apt-get install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
+          sudo apt-get install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
         else
           echo "Skipping mingw installation for this target"
         fi
