@@ -81,19 +81,20 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 ### Inventory Provider union table
 - Provider union table for inventory delta events.
 
-| Table                        | Type                    | Description |
-|------------------------------|-------------------------|-------------|
-| **Provider** (Union)         | dbsync_network_iface    | Network interfaces description. |
-|                              | dbsync_network_protocol | Network protocol configuration for detected interfaces. |
-|                              | dbsync_network_address  | Network address information for detected interfaces. |
-|                              | dbsync_osinfo           | Host operating system. |
-|                              | dbsync_hwinfo           | Hardware information. |
-|                              | dbsync_ports            | Listening ports. |
-|                              | dbsync_packages         | Installed packages. |
-|                              | dbsync_hotfixes         | Installed hotfixes. |
-|                              | dbsync_processes        | Running processes. |
-|                              | dbsync_users            | Operating system users. |
-|                              | dbsync_groups           | Operating system groups. |
+| Table                        | Type                      | Description |
+|------------------------------|---------------------------|-------------|
+| **Provider** (Union)         | dbsync_network_iface      | Network interfaces description. |
+|                              | dbsync_network_protocol   | Network protocol configuration for detected interfaces. |
+|                              | dbsync_network_address    | Network address information for detected interfaces. |
+|                              | dbsync_osinfo             | Host operating system. |
+|                              | dbsync_hwinfo             | Hardware information. |
+|                              | dbsync_ports              | Listening ports. |
+|                              | dbsync_packages           | Installed packages. |
+|                              | dbsync_hotfixes           | Installed hotfixes. |
+|                              | dbsync_processes          | Running processes. |
+|                              | dbsync_users              | Operating system users. |
+|                              | dbsync_groups             | Operating system groups. |
+|                              | dbsync_browser_extensions | Installed web browser extensions. |
 
 ### Inventory providers
 - Provider tables for inventory delta events.
@@ -206,7 +207,65 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 |                              | source             | string    | Source of the package. |
 |                              | format             | string    | Format of the package. |
 |                              | item_id            | string    | Unique identifier for the package entry. |
-
+| **dbsync_users**             | user_name           | string    | User name. |
+|                              | user_full_name      | string    | Full name of the user. |
+|                              | user_home           | string    | Home directory of the user. |
+|                              | user_id             | long      | User ID. |
+|                              | user_uid_signed     | long      | Signed user ID. |
+|                              | user_uuid           | string    | User UUID. |
+|                              | user_groups         | string    | Groups the user belongs to. |
+|                              | user_group_id       | long      | Group ID. |
+|                              | user_group_id_signed| long      | Signed group ID. |
+|                              | user_created        | double    | Account creation time. |
+|                              | user_roles          | string    | User roles. |
+|                              | user_shell          | string    | User shell. |
+|                              | user_type           | string    | Type of user. |
+|                              | user_is_hidden      | bool      | Whether the user is hidden. |
+|                              | user_is_remote      | bool      | Whether the user is remote. |
+|                              | user_last_login     | long      | Last login timestamp. |
+|                              | user_auth_failed_count | long   | Number of failed authentication attempts. |
+|                              | user_auth_failed_timestamp | double | Timestamp of last failed authentication. |
+|                              | user_password_expiration_date | int | Password expiration date. |
+|                              | user_password_hash_algorithm | string | Password hash algorithm. |
+|                              | user_password_inactive_days | int | Inactive days before password expires. |
+|                              | user_password_last_change | double | Last password change timestamp. |
+|                              | user_password_max_days_between_changes | int | Max days between password changes. |
+|                              | user_password_min_days_between_changes | int | Min days between password changes. |
+|                              | user_password_status | string   | Password status. |
+|                              | user_password_warning_days_before_expiration | int | Warning days before password expiration. |
+|                              | process_pid         | long      | Associated process PID. |
+|                              | host_ip             | string    | Host IP address. |
+|                              | login_status        | bool      | Login status. |
+|                              | login_tty           | string    | Login TTY. |
+|                              | login_type          | string    | Login type. |
+| **dbsync_groups**            | group_id            | long      | Group ID. |
+|                              | group_name          | string    | Group name. |
+|                              | group_description   | string    | Group description. |
+|                              | group_id_signed     | long      | Signed group ID. |
+|                              | group_uuid          | string    | Group UUID. |
+|                              | group_is_hidden     | bool      | Whether the group is hidden. |
+|                              | group_users         | string    | Users in the group. |
+| **dbsync_browser_extensions** | browser_name        | string    | Name of the browser. |
+|                              | user_id             | string    | User ID. |
+|                              | package_name        | string    | Extension package name. |
+|                              | package_id          | string    | Extension package ID. |
+|                              | package_version     | string    | Extension version. |
+|                              | package_description | string    | Description of the extension. |
+|                              | package_vendor      | string    | Vendor of the extension. |
+|                              | package_build_version | string  | Build version of the extension. |
+|                              | package_path        | string    | Path to the extension. |
+|                              | browser_profile_name | string   | Browser profile name. |
+|                              | browser_profile_path | string   | Browser profile path. |
+|                              | package_reference   | string    | Reference for the extension. |
+|                              | package_permissions | string    | Permissions required by the extension. |
+|                              | package_type        | string    | Type of the extension. |
+|                              | package_enabled     | bool      | Whether the extension is enabled. |
+|                              | package_autoupdate  | bool      | Whether auto-update is enabled. |
+|                              | package_persistent  | bool      | Whether the extension is persistent. |
+|                              | package_from_webstore | bool    | Whether the extension is from a webstore. |
+|                              | browser_profile_referenced | bool | Whether the profile is referenced. |
+|                              | package_installed   | string    | Installation status. |
+|                              | file_hash_sha256    | string    | SHA-256 hash of the extension file. |
 
 ### SyncMsg table
 - Main table in flatbuffer schema for synchronization events.
@@ -220,14 +279,13 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 ### DataUnion table union
 - DataUnion table union for synchronization events.
 
-| Table                        | Type                    | Description |
-|------------------------------|-------------------------|-------------|
-| **DataUnion** (Union)        | state                   | Network interfaces description. |
-|                              | integrity_check_global  | Network protocol configuration for detected interfaces. |
-|                              | integrity_check_left    | Network address information for detected interfaces. |
-|                              | integrity_check_right   | Host operating system. |
-|                              | integrity_clear         | Hardware information. |
-
+| Table                        | Type                    | Description                                      |
+|------------------------------|-------------------------|--------------------------------------------------|
+| **DataUnion** (Union)        | state                   | State information for synchronization.           |
+|                              | integrity_check_global  | Global integrity check covering all data/files.  |
+|                              | integrity_check_left    | Integrity check for the left data chunk.         |
+|                              | integrity_check_right   | Integrity check for the right data chunk.        |
+|                              | integrity_clear         | Command to clear all integrity data.             |
 
 ### State table
 - State event type for synchronization events.
@@ -247,14 +305,17 @@ For the inventory harvester the data is converted into FlatBuffers and send it t
 | Table                        | Type                            | Description |
 |------------------------------|---------------------------------|-------------|
 | **AttributesUnion**          | syscollector_hotfixes           | Equivalent to dbsync_programs. |
-|                              | syscollector_hwinfo             | Equivalent to dbsync_hwinfo . |
-|                              | syscollector_network_address    | Equivalent to dbsync_network_address . |
-|                              | syscollector_network_iface      | Equivalent to dbsync_iface . |
-|                              | syscollector_network_protocol   | Equivalent to dbsync_protocol . |
-|                              | syscollector_osinfo             | Equivalent to dbsync_osinfo . |
-|                              | syscollector_packages           | Equivalent to dbsync_packages . |
-|                              | syscollector_ports              | Equivalent to dbsync_ports . |
-|                              | syscollector_processes          | Equivalent to dbsync_processes . |
+|                              | syscollector_hwinfo             | Equivalent to dbsync_hwinfo. |
+|                              | syscollector_network_address    | Equivalent to dbsync_network_address. |
+|                              | syscollector_network_iface      | Equivalent to dbsync_iface. |
+|                              | syscollector_network_protocol   | Equivalent to dbsync_protocol. |
+|                              | syscollector_osinfo             | Equivalent to dbsync_osinfo. |
+|                              | syscollector_packages           | Equivalent to dbsync_packages. |
+|                              | syscollector_ports              | Equivalent to dbsync_ports. |
+|                              | syscollector_processes          | Equivalent to dbsync_processes. |
+|                              | syscollector_users              | Equivalent to dbsync_users. |
+|                              | syscollector_groups             | Equivalent to dbsync_groups. |
+|                              | syscollector_browser_extensions | Equivalent to dbsync_browser_extensions. |
 |                              | fim_file                        | File monitoring. |
 |                              | fim_registry_key                | Registry monitoring key. |
 |                              | fim_registry_value              | Registry monitoring value. |

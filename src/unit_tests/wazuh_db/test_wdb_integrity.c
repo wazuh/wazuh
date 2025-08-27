@@ -2167,6 +2167,69 @@ void test_wdbi_report_removed_groups_success_multiple_steps(void **state) {
     wdbi_report_removed(agent_id, component, stmt);
 }
 
+void test_wdbi_report_removed_browser_extensions_success(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS;
+    sqlite3_stmt* stmt = NULL;
+    router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+
+    // Browser name: chrome, User id: 1000, Browser profile name: Default, Package name: Vimium
+    const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteBrowserExtension\","
+                                     "\"data\":{\"item_id\":\"80acc604bea84a3cd727df6de2955b19eaff4968\"}}";
+
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "80acc604bea84a3cd727df6de2955b19eaff4968");
+
+    expect_string(__wrap_router_provider_send, message, expected_message);
+    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message));
+    will_return(__wrap_router_provider_send, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
+void test_wdbi_report_removed_browser_extensions_success_multiple_steps(void **state) {
+    const char* agent_id = "001";
+    wdb_component_t component = WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS;
+    sqlite3_stmt* stmt = NULL;
+    router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+
+    // Browser name: chrome, User id: 1000, Browser profile name: Default, Package name: Vimium
+    const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteBrowserExtension\","
+                                     "\"data\":{\"item_id\":\"80acc604bea84a3cd727df6de2955b19eaff4968\"}}";
+
+    // Browser name: chrome, User id: 1000, Browser profile name: Default, Package name: UBlock
+    const char* expected_message_2 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteBrowserExtension\","
+                                     "\"data\":{\"item_id\":\"62c32520a916beacd0e628e6720c8c519c3e77b7\"}}";
+    // First group
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "80acc604bea84a3cd727df6de2955b19eaff4968");
+
+    expect_string(__wrap_router_provider_send, message, expected_message_1);
+    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message_1));
+    will_return(__wrap_router_provider_send, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_ROW);
+
+    // Second group
+    expect_value(__wrap_sqlite3_column_text, iCol, 0);
+    will_return(__wrap_sqlite3_column_text, "62c32520a916beacd0e628e6720c8c519c3e77b7");
+
+    expect_string(__wrap_router_provider_send, message, expected_message_2);
+    expect_value(__wrap_router_provider_send, message_size, strlen(expected_message_2));
+    will_return(__wrap_router_provider_send, 0);
+
+    will_return(__wrap_sqlite3_step, 0);
+    will_return(__wrap_sqlite3_step, SQLITE_DONE);
+
+    wdbi_report_removed(agent_id, component, stmt);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         //Test wdb_calculate_stmt_checksum
@@ -2283,6 +2346,8 @@ int main(void) {
         cmocka_unit_test(test_wdbi_report_removed_users_success_multiple_steps),
         cmocka_unit_test(test_wdbi_report_removed_groups_success),
         cmocka_unit_test(test_wdbi_report_removed_groups_success_multiple_steps),
+        cmocka_unit_test(test_wdbi_report_removed_browser_extensions_success),
+        cmocka_unit_test(test_wdbi_report_removed_browser_extensions_success_multiple_steps),
         cmocka_unit_test(test_wdbi_report_removed_os_success)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

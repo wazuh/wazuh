@@ -152,6 +152,8 @@ typedef enum wdb_stmt {
     WDB_STMT_USER_INSERT2,
     WDB_STMT_GROUP_INSERT,
     WDB_STMT_GROUP_INSERT2,
+    WDB_STMT_BROWSER_EXTENSION_INSERT,
+    WDB_STMT_BROWSER_EXTENSION_INSERT2,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
     WDB_STMT_SCAN_INFO_UPDATEFS,
@@ -351,6 +353,12 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_BY_PK,
     WDB_STMT_SYSCOLLECTOR_GROUPS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_SELECT_CHECKSUM,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_BY_PK,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_CLEAR,
     WDB_STMT_SYS_HOTFIXES_GET,
     WDB_STMT_SYS_PROGRAMS_GET,
     WDB_STMT_SIZE // This must be the last constant
@@ -408,23 +416,24 @@ typedef struct wdb_config {
 
 /// Enumeration of components supported by the integrity library.
 typedef enum {
-    WDB_FIM,                         ///< File integrity monitoring.
-    WDB_FIM_FILE,                    ///< File integrity monitoring.
-    WDB_FIM_REGISTRY,                ///< Registry integrity monitoring.
-    WDB_FIM_REGISTRY_KEY,            ///< Registry key integrity monitoring.
-    WDB_FIM_REGISTRY_VALUE,          ///< Registry value integrity monitoring.
-    WDB_SYSCOLLECTOR_PROCESSES,      ///< Processes integrity monitoring.
-    WDB_SYSCOLLECTOR_PACKAGES,       ///< Packages integrity monitoring.
-    WDB_SYSCOLLECTOR_HOTFIXES,       ///< Hotfixes integrity monitoring.
-    WDB_SYSCOLLECTOR_PORTS,          ///< Ports integrity monitoring.
-    WDB_SYSCOLLECTOR_NETPROTO,       ///< Net protocols integrity monitoring.
-    WDB_SYSCOLLECTOR_NETADDRESS,     ///< Net addresses integrity monitoring.
-    WDB_SYSCOLLECTOR_NETINFO,        ///< Net info integrity monitoring.
-    WDB_SYSCOLLECTOR_HWINFO,         ///< Hardware info integrity monitoring.
-    WDB_SYSCOLLECTOR_OSINFO,         ///< OS info integrity monitoring.
-    WDB_SYSCOLLECTOR_USERS,          ///< Users info integrity monitoring.
-    WDB_SYSCOLLECTOR_GROUPS,         ///< Groups info integrity monitoring.
-    WDB_GENERIC_COMPONENT,           ///< Miscellaneous component
+    WDB_FIM,                                ///< File integrity monitoring.
+    WDB_FIM_FILE,                           ///< File integrity monitoring.
+    WDB_FIM_REGISTRY,                       ///< Registry integrity monitoring.
+    WDB_FIM_REGISTRY_KEY,                   ///< Registry key integrity monitoring.
+    WDB_FIM_REGISTRY_VALUE,                 ///< Registry value integrity monitoring.
+    WDB_SYSCOLLECTOR_PROCESSES,             ///< Processes integrity monitoring.
+    WDB_SYSCOLLECTOR_PACKAGES,              ///< Packages integrity monitoring.
+    WDB_SYSCOLLECTOR_HOTFIXES,              ///< Hotfixes integrity monitoring.
+    WDB_SYSCOLLECTOR_PORTS,                 ///< Ports integrity monitoring.
+    WDB_SYSCOLLECTOR_NETPROTO,              ///< Net protocols integrity monitoring.
+    WDB_SYSCOLLECTOR_NETADDRESS,            ///< Net addresses integrity monitoring.
+    WDB_SYSCOLLECTOR_NETINFO,               ///< Net info integrity monitoring.
+    WDB_SYSCOLLECTOR_HWINFO,                ///< Hardware info integrity monitoring.
+    WDB_SYSCOLLECTOR_OSINFO,                ///< OS info integrity monitoring.
+    WDB_SYSCOLLECTOR_USERS,                 ///< Users info integrity monitoring.
+    WDB_SYSCOLLECTOR_GROUPS,                ///< Groups info integrity monitoring.
+    WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS,    ///< Browser extensions info integrity monitoring.
+    WDB_GENERIC_COMPONENT,                  ///< Miscellaneous component
 } wdb_component_t;
 
 #include "wdb_pool.h"
@@ -917,6 +926,35 @@ typedef struct {
     const char *checksum;
 } user_record_t;
 
+// Browser extensions parameters struct
+typedef struct {
+    const char *scan_id;
+    const char *scan_time;
+    const char * browser_name;
+    const char * user_id;
+    const char * package_name;
+    const char * package_id;
+    const char * package_version;
+    const char * package_description;
+    const char * package_vendor;
+    const char * package_build_version;
+    const char * package_path;
+    const char * browser_profile_name;
+    const char * browser_profile_path;
+    const char * package_reference;
+    const char * package_permissions;
+    const char * package_type;
+    const char * package_enabled;
+    const bool package_autoupdate;
+    const bool package_persistent;
+    const bool package_from_webstore;
+    const bool browser_profile_referenced;
+    const char * package_installed;
+    const char * file_hash_sha256;
+    const char *checksum;
+    const char *item_id;
+} browser_extension_record_t;
+
 // Save user info into DB.
 int wdb_users_save(wdb_t * wdb, const user_record_t * user_record, const bool replace);
 
@@ -932,6 +970,12 @@ int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, l
 int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
                       const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
                       const char * group_users, const char * checksum, const bool replace);
+
+// Save web browser extensions info into DB.
+int wdb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace);
+
+// Insert web browser extensions info tuple. Return 0 on success or -1 on error.
+int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace);
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
 
