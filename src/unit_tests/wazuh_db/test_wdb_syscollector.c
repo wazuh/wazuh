@@ -4220,7 +4220,7 @@ static void test_wdb_services_save_success(void **state) {
 }
 
 /* wdb_services_insert */
-static void test_wdb_services_insert_fail1(void **state) {
+static void test_wdb_services_insert_fail_null_service_id(void **state) {
     int ret = OS_INVALID;
     wdb_t *data = (wdb_t *)*state;
 
@@ -4302,12 +4302,13 @@ static void test_wdb_services_insert_fail1(void **state) {
         .item_id = item_id
     };
 
-    ret = wdb_services_save(data, &service_record, false);
+    // Test should fail in parameter validation before any database operations
+    ret = wdb_services_insert(data, &service_record, false);
 
     assert_int_equal(ret, OS_INVALID);
 }
 
-static void test_wdb_services_insert_fail2(void **state) {
+static void test_wdb_services_insert_fail_null_file_path(void **state) {
     int ret = OS_INVALID;
     wdb_t *data = (wdb_t *)*state;
 
@@ -4389,7 +4390,184 @@ static void test_wdb_services_insert_fail2(void **state) {
         .item_id = item_id
     };
 
-    ret = wdb_services_save(data, &service_record, false);
+    // Test should fail in parameter validation before any database operations  
+    ret = wdb_services_insert(data, &service_record, false);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_services_insert_fail_empty_service_id(void **state) {
+    int ret = OS_INVALID;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 1;
+
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * service_name = "service_name";
+    const char * service_id = "";  // Empty string
+    const char * service_description = "service_description";
+    const char * service_type = "service_type";
+    const char * service_state = "service_state";
+    const char * service_sub_state = "service_sub_state";
+    const char * service_enabled = "service_enabled";
+    const char * service_start_type = "service_start_type";
+    const char * service_restart = "service_restart";
+    const long long service_frequency = 0;
+    const bool service_starts_on_mount = false;
+    const char * service_starts_on_path_modified = "service_starts_on_path_modified";
+    const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
+    const bool service_inetd_compatibility = false;
+    const long long process_pid = 0;
+    const char * process_executable = "process_executable";
+    const char * process_args = "process_args";
+    const char * process_user_name = "process_user_name";
+    const char * process_group_name = "process_group_name";
+    const char * process_working_directory = "process_working_directory";
+    const char * process_root_directory = "process_root_directory";
+    const char * file_path = "file_path";
+    const char * service_address = "service_address";
+    const char * log_file_path = "log_file_path";
+    const char * error_log_file_path = "error_log_file_path";
+    const int service_exit_code = 0;
+    const int service_win32_exit_code = 0;
+    const char * service_following = "service_following";
+    const char * service_object_path = "service_object_path";
+    const long long service_target_ephemeral_id = 0;
+    const char * service_target_type = "service_target_type";
+    const char * service_target_address = "service_target_address";
+    const char * checksum = "checksum";
+    const char * item_id = "item_id";
+
+    service_record_t service_record = {
+        .scan_id = scan_id,
+        .scan_time = scan_time,
+        .service_name = service_name,
+        .service_id = service_id,
+        .service_description = service_description,
+        .service_type = service_type,
+        .service_state = service_state,
+        .service_sub_state = service_sub_state,
+        .service_enabled = service_enabled,
+        .service_start_type = service_start_type,
+        .service_restart = service_restart,
+        .service_frequency = service_frequency,
+        .service_starts_on_mount = service_starts_on_mount,
+        .service_starts_on_path_modified = service_starts_on_path_modified,
+        .service_starts_on_not_empty_directory = service_starts_on_not_empty_directory,
+        .service_inetd_compatibility = service_inetd_compatibility,
+        .process_pid = process_pid,
+        .process_executable = process_executable,
+        .process_args = process_args,
+        .process_user_name = process_user_name,
+        .process_group_name = process_group_name,
+        .process_working_directory = process_working_directory,
+        .process_root_directory = process_root_directory,
+        .file_path = file_path,
+        .service_address = service_address,
+        .log_file_path = log_file_path,
+        .error_log_file_path = error_log_file_path,
+        .service_exit_code = service_exit_code,
+        .service_win32_exit_code = service_win32_exit_code,
+        .service_following = service_following,
+        .service_object_path = service_object_path,
+        .service_target_ephemeral_id = service_target_ephemeral_id,
+        .service_target_type = service_target_type,
+        .service_target_address = service_target_address,
+        .checksum = checksum,
+        .item_id = item_id
+    };
+
+    // Test should fail in parameter validation before any database operations
+    ret = wdb_services_insert(data, &service_record, false);
+
+    assert_int_equal(ret, OS_INVALID);
+}
+
+static void test_wdb_services_insert_fail_empty_file_path(void **state) {
+    int ret = OS_INVALID;
+    wdb_t *data = (wdb_t *)*state;
+
+    data->transaction = 1;
+
+    const char * scan_id = "scan_id";
+    const char * scan_time = "scan_time";
+    const char * service_name = "service_name";
+    const char * service_id = "service_id";
+    const char * service_description = "service_description";
+    const char * service_type = "service_type";
+    const char * service_state = "service_state";
+    const char * service_sub_state = "service_sub_state";
+    const char * service_enabled = "service_enabled";
+    const char * service_start_type = "service_start_type";
+    const char * service_restart = "service_restart";
+    const long long service_frequency = 0;
+    const bool service_starts_on_mount = false;
+    const char * service_starts_on_path_modified = "service_starts_on_path_modified";
+    const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
+    const bool service_inetd_compatibility = false;
+    const long long process_pid = 0;
+    const char * process_executable = "process_executable";
+    const char * process_args = "process_args";
+    const char * process_user_name = "process_user_name";
+    const char * process_group_name = "process_group_name";
+    const char * process_working_directory = "process_working_directory";
+    const char * process_root_directory = "process_root_directory";
+    const char * file_path = "";  // Empty string
+    const char * service_address = "service_address";
+    const char * log_file_path = "log_file_path";
+    const char * error_log_file_path = "error_log_file_path";
+    const int service_exit_code = 0;
+    const int service_win32_exit_code = 0;
+    const char * service_following = "service_following";
+    const char * service_object_path = "service_object_path";
+    const long long service_target_ephemeral_id = 0;
+    const char * service_target_type = "service_target_type";
+    const char * service_target_address = "service_target_address";
+    const char * checksum = "checksum";
+    const char * item_id = "item_id";
+
+    service_record_t service_record = {
+        .scan_id = scan_id,
+        .scan_time = scan_time,
+        .service_name = service_name,
+        .service_id = service_id,
+        .service_description = service_description,
+        .service_type = service_type,
+        .service_state = service_state,
+        .service_sub_state = service_sub_state,
+        .service_enabled = service_enabled,
+        .service_start_type = service_start_type,
+        .service_restart = service_restart,
+        .service_frequency = service_frequency,
+        .service_starts_on_mount = service_starts_on_mount,
+        .service_starts_on_path_modified = service_starts_on_path_modified,
+        .service_starts_on_not_empty_directory = service_starts_on_not_empty_directory,
+        .service_inetd_compatibility = service_inetd_compatibility,
+        .process_pid = process_pid,
+        .process_executable = process_executable,
+        .process_args = process_args,
+        .process_user_name = process_user_name,
+        .process_group_name = process_group_name,
+        .process_working_directory = process_working_directory,
+        .process_root_directory = process_root_directory,
+        .file_path = file_path,
+        .service_address = service_address,
+        .log_file_path = log_file_path,
+        .error_log_file_path = error_log_file_path,
+        .service_exit_code = service_exit_code,
+        .service_win32_exit_code = service_win32_exit_code,
+        .service_following = service_following,
+        .service_object_path = service_object_path,
+        .service_target_ephemeral_id = service_target_ephemeral_id,
+        .service_target_type = service_target_type,
+        .service_target_address = service_target_address,
+        .checksum = checksum,
+        .item_id = item_id
+    };
+
+    // Test should fail in parameter validation before any database operations
+    ret = wdb_services_insert(data, &service_record, false);
 
     assert_int_equal(ret, OS_INVALID);
 }
@@ -6380,8 +6558,10 @@ int main() {
         cmocka_unit_test_setup_teardown(test_wdb_groups_save_insert_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_groups_save_success, test_setup, test_teardown),
         /* Test wdb_services_insert */
-        cmocka_unit_test_setup_teardown(test_wdb_services_insert_fail1, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_services_insert_fail2, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_insert_fail_null_service_id, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_insert_fail_null_file_path, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_insert_fail_empty_service_id, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_services_insert_fail_empty_file_path, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_services_insert_sql_fail, test_setup, test_teardown),
         /* Test wdb_services_save */
         cmocka_unit_test_setup_teardown(test_wdb_services_save_transaction_fail, test_setup, test_teardown),
