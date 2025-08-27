@@ -22,9 +22,9 @@ The following issue aims to run manual tests for the current release candidate, 
 
 **TL;DR**
    1. The specified tests will be executed in every platform and version mentioned in this issue.
-   1. Include evidence of each test performed.
-   1. Report any problem or bug. Open a new issue for each of them and link them here.
-   1. Justify skipped tests.
+   2. Include evidence of each test performed.
+   3. Report any problem or bug. Open a new issue for each of them and link them here.
+   4. Justify skipped tests.
 
 
 All test results must have one the following statuses: 
