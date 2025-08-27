@@ -31,6 +31,7 @@ add_executable(agent_sync_protocol_tests
 # Include paths
 target_include_directories(agent_sync_protocol_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
     ${CMAKE_CURRENT_BINARY_DIR}/..
 )
 

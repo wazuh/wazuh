@@ -1261,7 +1261,8 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
 // Sync protocol methods implementation
 void Syscollector::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
 {
-    auto logger_func = [this](modules_log_level_t level, const std::string& msg) {
+    auto logger_func = [this](modules_log_level_t level, const std::string & msg)
+    {
         this->m_logFunction(level, msg);
     };
     m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);

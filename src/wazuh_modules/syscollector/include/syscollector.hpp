@@ -22,7 +22,7 @@
 #include "dbsync.hpp"
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
-#include "agent_sync_protocol.hpp"
+#include "iagent_sync_protocol.hpp"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -160,7 +160,7 @@ class EXPORTED Syscollector final
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
-        std::unique_ptr<AgentSyncProtocol>                                       m_spSyncProtocol;
+        std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
 };
 
 
