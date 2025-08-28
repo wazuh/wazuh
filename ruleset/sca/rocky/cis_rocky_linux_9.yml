@@ -2501,6 +2501,7 @@ checks:
     rules:
       - "c:augenrules --check -> r:No change$"
 
+  # 6.3.4.1 Ensure the audit log file directory mode is configured (Automated) - Not Implemented
   # 6.3.4.2 Ensure audit log files mode is configured (Automated) - Not Implemented
   # 6.3.4.3 Ensure only authorized groups are assigned ownership of audit log files. (Automated)
   - id: 31593
@@ -2524,6 +2525,8 @@ checks:
     condition: none
     rules:
       - 'f:/etc/audit/auditd.conf -> r:log_group\s*\t*= && !r:adm|root'
+
+  # 6.3.4.4 Ensure audit log files group owner is configured (Automated) - Not Implemented
 
   # 6.3.4.5 Ensure audit configuration files mode is configured (Automated)
   - id: 31594
@@ -2649,6 +2652,34 @@ checks:
       - 'c:stat -c "%n %U" /sbin/autrace -> r:root$'
       - 'c:stat -c "%n %U" /sbin/auditd -> r:root$'
       - 'c:stat -c "%n %U" /sbin/augenrules -> r:root$'
+
+  # 6.3.4.10 Ensure audit tools group owner is configured (Automated)
+  - id: 31598
+    title: "Ensure audit tools group owner is configured."
+    description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
+    rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
+    remediation: "Run the following command to change group ownership to the groop root: chgrp root /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules"
+    compliance:
+      - cis: ["6.3.4.10"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat -c "%n %G" /sbin/auditctl -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/aureport -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/ausearch -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/autrace -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/auditd -> r:root$'
+      - 'c:stat -c "%n %G" /sbin/augenrules -> r:root$'
 
   # 6.3.4.8 Ensure audit tools mode is configured (Automated)
   - id: 31599
@@ -4323,3 +4354,11 @@ checks:
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
+
+  # 7.1.9 Ensure permissions on /etc/shells are configured (Automated) - Not Implemented
+  # 7.1.10 Ensure permissions on /etc/security/opasswd are configured (Automated) - Not Implemented
+  # 7.1.11 Ensure world writable files and directories are secured (Automated) - Not Implemented
+  # 7.1.12 Ensure no files or directories without an owner and a group exist (Automated) - Not Implemented
+  # 7.1.13 Ensure SUID and SGID files are reviewed (Manual) - Not Implemented
+  # 7.2.8 Ensure local interactive user home directories are configured (Automated) - Not Implemented
+  # 7.2.9 Ensure local interactive user dot files access is configured (Automated) - Not Implemented
