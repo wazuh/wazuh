@@ -210,7 +210,7 @@ class AWSInspector(aws_service.AWSService):
         response = client.list_findings(
             maxResults=100,
             filterCriteria={
-                'firstObservedAt': [{
+                'updatedAt': [{
                     'startInclusive': date_scan.isoformat(),
                     'endInclusive': date_current.isoformat()
                 }]
@@ -223,7 +223,7 @@ class AWSInspector(aws_service.AWSService):
                 maxResults=100,
                 nextToken=response['nextToken'],
                 filterCriteria={
-                    'firstObservedAt': [{
+                    'updatedAt': [{
                         'startInclusive': date_scan.isoformat(),
                         'endInclusive': date_current.isoformat()
                     }]
