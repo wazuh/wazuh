@@ -20,6 +20,7 @@ note over wm_syscollector
     wm_syscollector dynamic libraries deps:
     - libsyscollector
     - libdbsync
+    - libagent_sync_protocol
     - libsysinfo
     - librsync
 end note

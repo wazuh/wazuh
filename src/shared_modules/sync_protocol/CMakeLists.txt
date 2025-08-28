@@ -87,25 +87,15 @@ add_custom_target(generate_flatbuffers ALL DEPENDS ${GENERATED_HEADER})
 add_subdirectory(${FLATBUFFERS_ROOT_DIR} flatbuffers_build EXCLUDE_FROM_ALL)
 
 # -----------------------------------------------------------------------------
-# Build the static library
+# Build the agent_sync_protocol library
 # -----------------------------------------------------------------------------
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_library(agent_sync_protocol SHARED
-    src/agent_sync_protocol.cpp
-    src/persistent_queue.cpp
-    src/persistent_queue_storage.cpp
-    ${GENERATED_HEADER}
-    src/agent_sync_protocol_c_interface.cpp
-  )
-else()
-  add_library(agent_sync_protocol STATIC
-    src/agent_sync_protocol.cpp
-    src/persistent_queue.cpp
-    src/persistent_queue_storage.cpp
-    ${GENERATED_HEADER}
-    src/agent_sync_protocol_c_interface.cpp
-  )
-endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+add_library(agent_sync_protocol SHARED
+  src/agent_sync_protocol.cpp
+  src/persistent_queue.cpp
+  src/persistent_queue_storage.cpp
+  ${GENERATED_HEADER}
+  src/agent_sync_protocol_c_interface.cpp
+)
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
 target_include_directories(agent_sync_protocol
@@ -138,6 +128,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     COMMAND "${DLLTOOL}" -D "libagent_sync_protocol.dll" --def "libagent_sync_protocol.def" --output-delaylib "libagent_sync_protocol.lib"
     COMMAND cp "libagent_sync_protocol.lib" "${CMAKE_BINARY_DIR}/bin/libagent_sync_protocol.lib"
     COMMENT "Creating delayed load library for agent_sync_protocol.")
+elseif(UNIX AND NOT APPLE)
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
+  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
