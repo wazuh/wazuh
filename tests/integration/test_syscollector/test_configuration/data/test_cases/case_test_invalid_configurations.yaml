@@ -687,7 +687,7 @@
     BROWSER_EXTENSIONS_SCAN: ''
     MAX_EPS: 10
   metadata:
-    field: services
+    field: browser_extensions
     attribute: null
 
 - name: invalid_value_browser_extensions
