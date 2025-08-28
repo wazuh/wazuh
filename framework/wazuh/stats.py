@@ -9,18 +9,15 @@ from wazuh.core import common
 from wazuh.core import exception
 from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQueryAgents
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.exception import WazuhException, WazuhResourceNotFound
+from wazuh.core.exception import WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.stats import get_daemons_stats_, get_daemons_stats_socket, hourly_, totals_, weekly_
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
-node_id = get_node().get('node') if cluster_enabled else None
+node_id = get_node().get('node')
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def totals(date: datetime.date) -> AffectedItemsWazuhResult:
     """Retrieve statistical information for the current or specified date.
 
@@ -45,8 +42,7 @@ def totals(date: datetime.date) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def hourly() -> AffectedItemsWazuhResult:
     """Compute hourly averages.
 
@@ -65,8 +61,7 @@ def hourly() -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def weekly() -> AffectedItemsWazuhResult:
     """Compute weekly averages.
 
@@ -194,8 +189,7 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
     """Get statistical information from the specified daemons.
     If the list is empty, the stats from all daemons will be retrieved.
@@ -227,8 +221,7 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def deprecated_get_daemons_stats(filename):
     """Get daemons stats from an input file.
 
