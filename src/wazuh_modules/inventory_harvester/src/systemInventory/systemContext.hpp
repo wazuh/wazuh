@@ -274,32 +274,32 @@ public:
         return "";
     }
 
-    bool groupIsHidden() const
+    int groupIsHidden() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_groups() &&
-                std::optional<bool>(m_delta->data_as_dbsync_groups()->group_is_hidden()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_groups()->group_is_hidden()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_groups()->group_is_hidden()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_groups()->group_is_hidden()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_groups() &&
-                std::optional<bool>(m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_is_hidden())
+                std::optional<int>(m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_is_hidden())
                     .has_value())
             {
-                return std::optional<bool>(
+                return std::optional<int>(
                            m_syncMsg->data_as_state()->attributes_as_syscollector_groups()->group_is_hidden())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
     std::string_view groupUsers() const
@@ -590,33 +590,33 @@ public:
         return -1;
     }
 
-    bool serviceStartsOnMount() const
+    int serviceStartsOnMount() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_services() &&
-                std::optional<bool>(m_delta->data_as_dbsync_services()->service_starts_on_mount()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_services()->service_starts_on_mount()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_services()->service_starts_on_mount()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_services()->service_starts_on_mount()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                std::optional<bool>(
+                std::optional<int>(
                     m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_mount())
                     .has_value())
             {
-                return std::optional<bool>(
+                return std::optional<int>(
                            m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_starts_on_mount())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
     std::string_view serviceStartsOnPathModified() const
@@ -677,34 +677,34 @@ public:
         return "";
     }
 
-    bool serviceInetdCompatibility() const
+    int serviceInetdCompatibility() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_services() &&
-                std::optional<bool>(m_delta->data_as_dbsync_services()->service_inetd_compatibility()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_services()->service_inetd_compatibility()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_services()->service_inetd_compatibility()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_services()->service_inetd_compatibility()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_services() &&
-                std::optional<bool>(
+                std::optional<int>(
                     m_syncMsg->data_as_state()->attributes_as_syscollector_services()->service_inetd_compatibility())
                     .has_value())
             {
-                return std::optional<bool>(m_syncMsg->data_as_state()
-                                               ->attributes_as_syscollector_services()
-                                               ->service_inetd_compatibility())
+                return std::optional<int>(m_syncMsg->data_as_state()
+                                              ->attributes_as_syscollector_services()
+                                              ->service_inetd_compatibility())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
     int64_t serviceProcessPid() const
@@ -1487,60 +1487,60 @@ public:
         return "";
     }
 
-    bool userIsHidden() const
+    int userIsHidden() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_users() &&
-                std::optional<bool>(m_delta->data_as_dbsync_users()->user_is_hidden()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_users()->user_is_hidden()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_users()->user_is_hidden()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_users()->user_is_hidden()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                std::optional<bool>(m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_is_hidden())
+                std::optional<int>(m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_is_hidden())
                     .has_value())
             {
-                return std::optional<bool>(
+                return std::optional<int>(
                            m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_is_hidden())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
-    bool userIsRemote() const
+    int userIsRemote() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_users() &&
-                std::optional<bool>(m_delta->data_as_dbsync_users()->user_is_remote()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_users()->user_is_remote()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_users()->user_is_remote()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_users()->user_is_remote()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                std::optional<bool>(m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_is_remote())
+                std::optional<int>(m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_is_remote())
                     .has_value())
             {
-                return std::optional<bool>(
+                return std::optional<int>(
                            m_syncMsg->data_as_state()->attributes_as_syscollector_users()->user_is_remote())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
     std::string_view userPasswordHashAlgorithm() const
@@ -2039,32 +2039,32 @@ public:
         return m_userAuthFailedTimestampISO8601;
     }
 
-    bool userLoginStatus() const
+    int userLoginStatus() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_users() &&
-                std::optional<bool>(m_delta->data_as_dbsync_users()->login_status()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_users()->login_status()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_users()->login_status()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_users()->login_status()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() && m_syncMsg->data_as_state()->attributes_as_syscollector_users() &&
-                std::optional<bool>(m_syncMsg->data_as_state()->attributes_as_syscollector_users()->login_status())
+                std::optional<int>(m_syncMsg->data_as_state()->attributes_as_syscollector_users()->login_status())
                     .has_value())
             {
-                return std::optional<bool>(
+                return std::optional<int>(
                            m_syncMsg->data_as_state()->attributes_as_syscollector_users()->login_status())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
     std::string_view userLoginType() const
@@ -4723,138 +4723,138 @@ public:
         return "";
     }
 
-    bool browserExtensionPackageEnabled() const
+    int browserExtensionPackageEnabled() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_browser_extensions() &&
-                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_enabled()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_enabled()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_enabled()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_enabled()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
-                std::optional<bool>(
+                std::optional<int>(
                     m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_enabled())
                     .has_value())
             {
-                return std::optional<bool>(m_syncMsg->data_as_state()
-                                               ->attributes_as_syscollector_browser_extensions()
-                                               ->package_enabled())
+                return std::optional<int>(m_syncMsg->data_as_state()
+                                              ->attributes_as_syscollector_browser_extensions()
+                                              ->package_enabled())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
-    bool browserExtensionPackageVisible() const
+    int browserExtensionPackageVisible() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_browser_extensions() &&
-                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_visible()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_visible()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_visible()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_visible()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
-                std::optional<bool>(
+                std::optional<int>(
                     m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_visible())
                     .has_value())
             {
-                return std::optional<bool>(m_syncMsg->data_as_state()
-                                               ->attributes_as_syscollector_browser_extensions()
-                                               ->package_visible())
+                return std::optional<int>(m_syncMsg->data_as_state()
+                                              ->attributes_as_syscollector_browser_extensions()
+                                              ->package_visible())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
-    bool browserExtensionPackageAutoupdate() const
+    int browserExtensionPackageAutoupdate() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_browser_extensions() &&
-                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_autoupdate()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_autoupdate()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_autoupdate()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_autoupdate()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
-                std::optional<bool>(
+                std::optional<int>(
                     m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_autoupdate())
                     .has_value())
             {
-                return std::optional<bool>(m_syncMsg->data_as_state()
-                                               ->attributes_as_syscollector_browser_extensions()
-                                               ->package_autoupdate())
+                return std::optional<int>(m_syncMsg->data_as_state()
+                                              ->attributes_as_syscollector_browser_extensions()
+                                              ->package_autoupdate())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
-    bool browserExtensionPackagePersistent() const
+    int browserExtensionPackagePersistent() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_browser_extensions() &&
-                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_persistent()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_persistent()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_persistent()).value();
+                return std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_persistent()).value();
             }
         }
         else if (m_type == VariantType::SyncMsg)
         {
             if (m_syncMsg->data_as_state() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
-                std::optional<bool>(
+                std::optional<int>(
                     m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions()->package_persistent())
                     .has_value())
             {
-                return std::optional<bool>(m_syncMsg->data_as_state()
-                                               ->attributes_as_syscollector_browser_extensions()
-                                               ->package_persistent())
+                return std::optional<int>(m_syncMsg->data_as_state()
+                                              ->attributes_as_syscollector_browser_extensions()
+                                              ->package_persistent())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
-    bool browserExtensionPackageFromWebstore() const
+    int browserExtensionPackageFromWebstore() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_browser_extensions() &&
-                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_from_webstore()).has_value())
+                std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_from_webstore()).has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->package_from_webstore())
+                return std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->package_from_webstore())
                     .value();
             }
         }
@@ -4862,33 +4862,33 @@ public:
         {
             if (m_syncMsg->data_as_state() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
-                std::optional<bool>(m_syncMsg->data_as_state()
-                                        ->attributes_as_syscollector_browser_extensions()
-                                        ->package_from_webstore())
+                std::optional<int>(m_syncMsg->data_as_state()
+                                       ->attributes_as_syscollector_browser_extensions()
+                                       ->package_from_webstore())
                     .has_value())
             {
-                return std::optional<bool>(m_syncMsg->data_as_state()
-                                               ->attributes_as_syscollector_browser_extensions()
-                                               ->package_from_webstore())
+                return std::optional<int>(m_syncMsg->data_as_state()
+                                              ->attributes_as_syscollector_browser_extensions()
+                                              ->package_from_webstore())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
-    bool browserProfileReferenced() const
+    int browserProfileReferenced() const
     {
         if (m_type == VariantType::Delta)
         {
             if (m_delta->data_as_dbsync_browser_extensions() &&
-                std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->browser_profile_referenced())
+                std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->browser_profile_referenced())
                     .has_value())
             {
-                return std::optional<bool>(m_delta->data_as_dbsync_browser_extensions()->browser_profile_referenced())
+                return std::optional<int>(m_delta->data_as_dbsync_browser_extensions()->browser_profile_referenced())
                     .value();
             }
         }
@@ -4896,22 +4896,22 @@ public:
         {
             if (m_syncMsg->data_as_state() &&
                 m_syncMsg->data_as_state()->attributes_as_syscollector_browser_extensions() &&
-                std::optional<bool>(m_syncMsg->data_as_state()
-                                        ->attributes_as_syscollector_browser_extensions()
-                                        ->browser_profile_referenced())
+                std::optional<int>(m_syncMsg->data_as_state()
+                                       ->attributes_as_syscollector_browser_extensions()
+                                       ->browser_profile_referenced())
                     .has_value())
             {
-                return std::optional<bool>(m_syncMsg->data_as_state()
-                                               ->attributes_as_syscollector_browser_extensions()
-                                               ->browser_profile_referenced())
+                return std::optional<int>(m_syncMsg->data_as_state()
+                                              ->attributes_as_syscollector_browser_extensions()
+                                              ->browser_profile_referenced())
                     .value();
             }
         }
         else
         {
-            return false;
+            return -1;
         }
-        return false;
+        return -1;
     }
 
     std::string_view browserExtensionPackageInstalledRaw() const

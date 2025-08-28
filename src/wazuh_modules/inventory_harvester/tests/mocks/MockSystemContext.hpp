@@ -161,8 +161,8 @@ public:
     MOCK_METHOD(std::string_view, userType, (), (const));
     MOCK_METHOD(std::string_view, userUuid, (), (const));
     MOCK_METHOD(std::string_view, userFullName, (), (const));
-    MOCK_METHOD(bool, userIsHidden, (), (const));
-    MOCK_METHOD(bool, userIsRemote, (), (const));
+    MOCK_METHOD(int, userIsHidden, (), (const));
+    MOCK_METHOD(int, userIsRemote, (), (const));
     MOCK_METHOD(std::string_view, userPasswordHashAlgorithm, (), (const));
     MOCK_METHOD(int, userPasswordMaxDays, (), (const));
     MOCK_METHOD(int, userPasswordMinDays, (), (const));
@@ -177,7 +177,7 @@ public:
     MOCK_METHOD(std::string_view, userGroups, (), (const));
     MOCK_METHOD(int, userAuthFailedCount, (), (const));
     MOCK_METHOD(std::string_view, userAuthFailedTimestamp, (), (const));
-    MOCK_METHOD(bool, userLoginStatus, (), (const));
+    MOCK_METHOD(int, userLoginStatus, (), (const));
     MOCK_METHOD(std::string_view, userLoginType, (), (const));
     MOCK_METHOD(std::string_view, userLoginTty, (), (const));
     MOCK_METHOD(int64_t, userProcessPid, (), (const));
@@ -189,7 +189,7 @@ public:
     MOCK_METHOD(int64_t, groupIdSigned, (), (const));
     MOCK_METHOD(std::string_view, groupDescription, (), (const));
     MOCK_METHOD(std::string_view, groupUuid, (), (const));
-    MOCK_METHOD(bool, groupIsHidden, (), (const));
+    MOCK_METHOD(int, groupIsHidden, (), (const));
     MOCK_METHOD(std::string_view, groupUsers, (), (const));
 
     // Browser extensions
@@ -207,12 +207,12 @@ public:
     MOCK_METHOD(std::string_view, browserExtensionPackageReference, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionPackagePermissions, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionPackageType, (), (const));
-    MOCK_METHOD(bool, browserExtensionPackageEnabled, (), (const));
-    MOCK_METHOD(bool, browserExtensionPackageVisible, (), (const));
-    MOCK_METHOD(bool, browserExtensionPackageAutoupdate, (), (const));
-    MOCK_METHOD(bool, browserExtensionPackagePersistent, (), (const));
-    MOCK_METHOD(bool, browserExtensionPackageFromWebstore, (), (const));
-    MOCK_METHOD(bool, browserProfileReferenced, (), (const));
+    MOCK_METHOD(int, browserExtensionPackageEnabled, (), (const));
+    MOCK_METHOD(int, browserExtensionPackageVisible, (), (const));
+    MOCK_METHOD(int, browserExtensionPackageAutoupdate, (), (const));
+    MOCK_METHOD(int, browserExtensionPackagePersistent, (), (const));
+    MOCK_METHOD(int, browserExtensionPackageFromWebstore, (), (const));
+    MOCK_METHOD(int, browserProfileReferenced, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionPackageInstalled, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionFileHashSha256, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionItemId, (), (const));
@@ -227,10 +227,10 @@ public:
     MOCK_METHOD(std::string_view, serviceStartType, (), (const));
     MOCK_METHOD(std::string_view, serviceRestart, (), (const));
     MOCK_METHOD(int64_t, serviceFrequency, (), (const));
-    MOCK_METHOD(bool, serviceStartsOnMount, (), (const));
+    MOCK_METHOD(int, serviceStartsOnMount, (), (const));
     MOCK_METHOD(std::string_view, serviceStartsOnPathModified, (), (const));
     MOCK_METHOD(std::string_view, serviceStartsOnNotEmptyDirectory, (), (const));
-    MOCK_METHOD(bool, serviceInetdCompatibility, (), (const));
+    MOCK_METHOD(int, serviceInetdCompatibility, (), (const));
     MOCK_METHOD(int64_t, serviceProcessPid, (), (const));
     MOCK_METHOD(std::string_view, serviceProcessExecutable, (), (const));
     MOCK_METHOD(std::string_view, serviceProcessArgs, (), (const));

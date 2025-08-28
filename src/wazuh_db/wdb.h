@@ -915,8 +915,8 @@ typedef struct {
     const char *user_roles;
     const char *user_shell;
     const char *user_type;
-    bool user_is_hidden;
-    bool user_is_remote;
+    int user_is_hidden;
+    int user_is_remote;
     long long user_last_login;
     long long user_auth_failed_count;
     double user_auth_failed_timestamp;
@@ -930,7 +930,7 @@ typedef struct {
     int user_password_warning_days_before_expiration;
     long long process_pid;
     const char *host_ip;
-    bool login_status;
+    int login_status;
     const char *login_type;
     const char *login_tty;
     const char *checksum;
@@ -954,12 +954,12 @@ typedef struct {
     const char * package_reference;
     const char * package_permissions;
     const char * package_type;
-    const bool package_enabled;
-    const bool package_visible;
-    const bool package_autoupdate;
-    const bool package_persistent;
-    const bool package_from_webstore;
-    const bool browser_profile_referenced;
+    int package_enabled;
+    int package_visible;
+    int package_autoupdate;
+    int package_persistent;
+    int package_from_webstore;
+    int browser_profile_referenced;
     const char * package_installed;
     const char * file_hash_sha256;
     const char *checksum;
@@ -979,10 +979,10 @@ typedef struct {
     const char *service_start_type;
     const char *service_restart;
     long long service_frequency;
-    bool service_starts_on_mount;
+    int service_starts_on_mount;
     const char *service_starts_on_path_modified;
     const char *service_starts_on_not_empty_directory;
-    bool service_inetd_compatibility;
+    int service_inetd_compatibility;
     long long process_pid;
     const char *process_executable;
     const char *process_args;
@@ -1013,12 +1013,12 @@ int wdb_users_insert(wdb_t * wdb, const user_record_t * user_record, const bool 
 
 // Save group info into DB.
 int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
-                    const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
+                    const char * group_description, long long group_id_signed, const char * group_uuid, int group_is_hidden,
                     const char * group_users, const char * checksum, const bool replace);
 
 // Insert group info tuple. Return 0 on success or -1 on error.
 int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
-                      const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
+                      const char * group_description, long long group_id_signed, const char * group_uuid, int group_is_hidden,
                       const char * group_users, const char * checksum, const bool replace);
 
 // Save web browser extensions info into DB.

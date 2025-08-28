@@ -79,7 +79,7 @@
                     "autoupdate": true,
                     "build_version": "2.3",
                     "description": "The Hacker's Browser. Vimium provides keyboard shortcuts for navigation and control in the spirit of Vim.",
-                    "enabled": true,
+                    "enabled": false,
                     "visible": true,
                     "from_webstore": true,
                     "id": "5b7ed951031058a7e3e8af81d2dfdd1d",

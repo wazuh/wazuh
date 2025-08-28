@@ -3416,13 +3416,13 @@ void test_wdb_users_save_transaction_fail(void **state) {
         .scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
         .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
         .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
-        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
+        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = 1, .user_is_remote = 0,
         .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
         .user_password_expiration_date = user_password_expiration_date, .user_password_hash_algorithm = "hash",
         .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
         .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
         .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
-        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
+        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = 1, .login_type = "type", .login_tty = "tty",
         .checksum = "checksum"
     };
 
@@ -3459,13 +3459,13 @@ void test_wdb_users_save_insert_fail(void **state) {
         .scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
         .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
         .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
-        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
+        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = 1, .user_is_remote = 0,
         .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
         .user_password_expiration_date = user_password_expiration_date, .user_password_hash_algorithm = "hash",
         .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
         .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
         .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
-        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
+        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = 1, .login_type = "type", .login_tty = "tty",
         .checksum = "checksum"
     };
 
@@ -3544,10 +3544,10 @@ void test_wdb_users_save_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "type");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 16);
-    expect_value(__wrap_sqlite3_bind_int, value, true);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 17);
-    expect_value(__wrap_sqlite3_bind_int, value, false);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 18);
     expect_value(__wrap_sqlite3_bind_int64, value, user_last_login);
@@ -3589,7 +3589,7 @@ void test_wdb_users_save_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "192.168.0.1,192.168.0.2");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 31);
-    expect_value(__wrap_sqlite3_bind_int, value, true);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 32);
     expect_string(__wrap_sqlite3_bind_text, buffer, "type");
@@ -3606,13 +3606,13 @@ void test_wdb_users_save_success(void **state) {
         .scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
         .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
         .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
-        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
+        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = 1, .user_is_remote = 0,
         .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
         .user_password_expiration_date = user_password_expiration_date, .user_password_hash_algorithm = "hash",
         .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
         .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
         .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
-        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
+        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = 1, .login_type = "type", .login_tty = "tty",
         .checksum = "checksum"
     };
 
@@ -3688,10 +3688,10 @@ void test_wdb_users_insert_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "type");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 16);
-    expect_value(__wrap_sqlite3_bind_int, value, true);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 17);
-    expect_value(__wrap_sqlite3_bind_int, value, false);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int64, index, 18);
     expect_value(__wrap_sqlite3_bind_int64, value, user_last_login);
@@ -3733,7 +3733,7 @@ void test_wdb_users_insert_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "192.168.0.1,192.168.0.2");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 31);
-    expect_value(__wrap_sqlite3_bind_int, value, true);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 32);
     expect_string(__wrap_sqlite3_bind_text, buffer, "type");
@@ -3753,13 +3753,13 @@ void test_wdb_users_insert_sql_fail(void **state) {
         .scan_id = "scan_id", .scan_time = "scan_time", .user_name = "name", .user_full_name = "full_name",
         .user_home = "home", .user_id = user_id, .user_uid_signed = user_uid_signed, .user_uuid = "uuid", .user_groups = "group1,group2",
         .user_group_id = user_group_id, .user_group_id_signed = user_group_id_signed, .user_created = user_created,
-        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = true, .user_is_remote = false,
+        .user_roles = "roles", .user_shell = "shell", .user_type = "type", .user_is_hidden = 1, .user_is_remote = 0,
         .user_last_login = user_last_login, .user_auth_failed_count = user_auth_failed_count, .user_auth_failed_timestamp = user_auth_failed_timestamp,
         .user_password_expiration_date = user_password_expiration_date, .user_password_hash_algorithm = "hash",
         .user_password_inactive_days = user_password_inactive_days, .user_password_last_change = user_password_last_change,
         .user_password_max_days_between_changes = user_password_max_days_between_changes, .user_password_min_days_between_changes = user_password_min_days_between_changes,
         .user_password_status = "status", .user_password_warning_days_before_expiration = user_password_warning_days_before_expiration,
-        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = true, .login_type = "type", .login_tty = "tty",
+        .process_pid = process_pid, .host_ip = "192.168.0.1,192.168.0.2", .login_status = 1, .login_type = "type", .login_tty = "tty",
         .checksum = "checksum"
     };
 
@@ -3779,7 +3779,7 @@ void test_wdb_groups_save_transaction_fail(void **state) {
     const long long group_id = 1;
     const long long group_id_signed = -1;
 
-    output = wdb_groups_save(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", true, "users", "checksum", false);
+    output = wdb_groups_save(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", 1, "users", "checksum", false);
     assert_int_equal(output, -1);
 }
 
@@ -3795,7 +3795,7 @@ void test_wdb_groups_save_insert_fail(void **state) {
     const long long group_id = 1;
     const long long group_id_signed = -1;
 
-    output = wdb_groups_save(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", true, "users", "checksum", false);
+    output = wdb_groups_save(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", 1, "users", "checksum", false);
     assert_int_equal(output, -1);
 }
 
@@ -3832,7 +3832,7 @@ void test_wdb_groups_save_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 8);
-    expect_value(__wrap_sqlite3_bind_int, value, true);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 9);
     expect_string(__wrap_sqlite3_bind_text, buffer, "users");
@@ -3842,7 +3842,7 @@ void test_wdb_groups_save_success(void **state) {
     will_return(__wrap_sqlite3_bind_text, 0);
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
-    output = wdb_groups_save(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", true, "users", "checksum", false);
+    output = wdb_groups_save(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", 1, "users", "checksum", false);
     assert_int_equal(output, 0);
 }
 
@@ -3877,7 +3877,7 @@ void test_wdb_groups_insert_sql_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "uuid");
     will_return(__wrap_sqlite3_bind_text, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 8);
-    expect_value(__wrap_sqlite3_bind_int, value, true);
+    expect_value(__wrap_sqlite3_bind_int, value, 1);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 9);
     expect_string(__wrap_sqlite3_bind_text, buffer, "users");
@@ -3890,7 +3890,7 @@ void test_wdb_groups_insert_sql_fail(void **state) {
     will_return(__wrap_sqlite3_errmsg, "ERROR");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR");
 
-    output = wdb_groups_insert(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", true, "users", "checksum", false);
+    output = wdb_groups_insert(data, "scan_id", "scan_time", group_id, "name", "description", group_id_signed, "uuid", 1, "users", "checksum", false);
     assert_int_equal(output, -1);
 }
 
@@ -3915,12 +3915,12 @@ void test_wdb_browser_extensions_insert_sql_fail(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const bool package_enabled = false;
-    const bool package_visible = true;
-    const bool package_autoupdate = true;
-    const bool package_persistent = false;
-    const bool package_from_webstore = true;
-    const bool browser_profile_referenced = false;
+    const int package_enabled = 0;
+    const int package_visible = 1;
+    const int package_autoupdate = 1;
+    const int package_persistent = 0;
+    const int package_from_webstore = 1;
+    const int browser_profile_referenced = 0;
     const char * package_installed = "package_installed";
     const char * file_hash_sha256 = "file_hash_sha256";
     const char * checksum = "checksum";
@@ -4045,12 +4045,12 @@ void test_wdb_browser_extensions_save_transaction_fail(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const bool package_enabled = false;
-    const bool package_visible = true;
-    const bool package_autoupdate = true;
-    const bool package_persistent = false;
-    const bool package_from_webstore = true;
-    const bool browser_profile_referenced = false;
+    const int package_enabled = 0;
+    const int package_visible = 1;
+    const int package_autoupdate = 1;
+    const int package_persistent = 0;
+    const int package_from_webstore = 1;
+    const int browser_profile_referenced = 0;
     const char * package_installed = "package_installed";
     const char * file_hash_sha256 = "file_hash_sha256";
     const char * checksum = "checksum";
@@ -4094,12 +4094,12 @@ void test_wdb_browser_extensions_save_insert_fail(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const bool package_enabled = false;
-    const bool package_visible = true;
-    const bool package_autoupdate = true;
-    const bool package_persistent = false;
-    const bool package_from_webstore = true;
-    const bool browser_profile_referenced = false;
+    const int package_enabled = 0;
+    const int package_visible = 1;
+    const int package_autoupdate = 1;
+    const int package_persistent = 0;
+    const int package_from_webstore = 1;
+    const int browser_profile_referenced = 0;
     const char * package_installed = "package_installed";
     const char * file_hash_sha256 = "file_hash_sha256";
     const char * checksum = "checksum";
@@ -4144,12 +4144,12 @@ void test_wdb_browser_extensions_save_success(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const bool package_enabled = false;
-    const bool package_visible = true;
-    const bool package_autoupdate = true;
-    const bool package_persistent = false;
-    const bool package_from_webstore = true;
-    const bool browser_profile_referenced = false;
+    const int package_enabled = 0;
+    const int package_visible = 1;
+    const int package_autoupdate = 1;
+    const int package_persistent = 0;
+    const int package_from_webstore = 1;
+    const int browser_profile_referenced = 0;
     const char * package_installed = "package_installed";
     const char * file_hash_sha256 = "file_hash_sha256";
     const char * checksum = "checksum";
@@ -4275,10 +4275,10 @@ static void test_wdb_services_save_transaction_fail(void **state) {
     const char * service_start_type = "service_start_type";
     const char * service_restart = "service_restart";
     const long long service_frequency = 0;
-    const bool service_starts_on_mount = false;
+    const int service_starts_on_mount = 0;
     const char * service_starts_on_path_modified = "service_starts_on_path_modified";
     const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
-    const bool service_inetd_compatibility = false;
+    const int service_inetd_compatibility = 0;
     const long long process_pid = 0;
     const char * process_executable = "process_executable";
     const char * process_args = "process_args";
@@ -4365,10 +4365,10 @@ static void test_wdb_services_save_insert_fail(void **state) {
     const char * service_start_type = "service_start_type";
     const char * service_restart = "service_restart";
     const long long service_frequency = 0;
-    const bool service_starts_on_mount = false;
+    const int service_starts_on_mount = 0;
     const char * service_starts_on_path_modified = "service_starts_on_path_modified";
     const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
-    const bool service_inetd_compatibility = false;
+    const int service_inetd_compatibility = 0;
     const long long process_pid = 0;
     const char * process_executable = "process_executable";
     const char * process_args = "process_args";
@@ -4452,10 +4452,10 @@ static void test_wdb_services_save_success(void **state) {
     const char * service_start_type = "service_start_type";
     const char * service_restart = "service_restart";
     const long long service_frequency = 0;
-    const bool service_starts_on_mount = false;
+    const int service_starts_on_mount = 0;
     const char * service_starts_on_path_modified = "service_starts_on_path_modified";
     const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
-    const bool service_inetd_compatibility = false;
+    const int service_inetd_compatibility = 0;
     const long long process_pid = 0;
     const char * process_executable = "process_executable";
     const char * process_args = "process_args";
@@ -4652,10 +4652,10 @@ static void test_wdb_services_insert_fail_null_service_id(void **state) {
     const char * service_start_type = "service_start_type";
     const char * service_restart = "service_restart";
     const long long service_frequency = 0;
-    const bool service_starts_on_mount = false;
+    const int service_starts_on_mount = 0;
     const char * service_starts_on_path_modified = "service_starts_on_path_modified";
     const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
-    const bool service_inetd_compatibility = false;
+    const int service_inetd_compatibility = 0;
     const long long process_pid = 0;
     const char * process_executable = "process_executable";
     const char * process_args = "process_args";
@@ -4740,10 +4740,10 @@ static void test_wdb_services_insert_fail_null_file_path(void **state) {
     const char * service_start_type = "service_start_type";
     const char * service_restart = "service_restart";
     const long long service_frequency = 0;
-    const bool service_starts_on_mount = false;
+    const int service_starts_on_mount = 0;
     const char * service_starts_on_path_modified = "service_starts_on_path_modified";
     const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
-    const bool service_inetd_compatibility = false;
+    const int service_inetd_compatibility = 0;
     const long long process_pid = 0;
     const char * process_executable = "process_executable";
     const char * process_args = "process_args";
@@ -4828,10 +4828,10 @@ static void test_wdb_services_insert_fail_empty_service_id(void **state) {
     const char * service_start_type = "service_start_type";
     const char * service_restart = "service_restart";
     const long long service_frequency = 0;
-    const bool service_starts_on_mount = false;
+    const int service_starts_on_mount = 0;
     const char * service_starts_on_path_modified = "service_starts_on_path_modified";
     const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
-    const bool service_inetd_compatibility = false;
+    const int service_inetd_compatibility = 0;
     const long long process_pid = 0;
     const char * process_executable = "process_executable";
     const char * process_args = "process_args";
@@ -4916,10 +4916,10 @@ static void test_wdb_services_insert_fail_empty_file_path(void **state) {
     const char * service_start_type = "service_start_type";
     const char * service_restart = "service_restart";
     const long long service_frequency = 0;
-    const bool service_starts_on_mount = false;
+    const int service_starts_on_mount = 0;
     const char * service_starts_on_path_modified = "service_starts_on_path_modified";
     const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
-    const bool service_inetd_compatibility = false;
+    const int service_inetd_compatibility = 0;
     const long long process_pid = 0;
     const char * process_executable = "process_executable";
     const char * process_args = "process_args";
@@ -5002,10 +5002,10 @@ static void test_wdb_services_insert_sql_fail(void **state) {
     const char * service_start_type = "service_start_type";
     const char * service_restart = "service_restart";
     const long long service_frequency = 0;
-    const bool service_starts_on_mount = false;
+    const int service_starts_on_mount = 0;
     const char * service_starts_on_path_modified = "service_starts_on_path_modified";
     const char * service_starts_on_not_empty_directory = "service_starts_on_not_empty_directory";
-    const bool service_inetd_compatibility = false;
+    const int service_inetd_compatibility = 0;
     const long long process_pid = 0;
     const char * process_executable = "process_executable";
     const char * process_args = "process_args";

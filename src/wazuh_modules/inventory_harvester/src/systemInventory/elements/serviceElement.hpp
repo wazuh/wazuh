@@ -101,12 +101,18 @@ public:
             element.data.service.frequency = serviceFrequency;
         }
         element.data.service.id = serviceId;
-        element.data.service.inetd_compatibility = data->serviceInetdCompatibility();
+        if (auto serviceInetdCompatibility = data->serviceInetdCompatibility(); serviceInetdCompatibility >= 0)
+        {
+            element.data.service.inetd_compatibility = serviceInetdCompatibility;
+        }
         element.data.service.name = data->serviceName();
         element.data.service.object_path = data->serviceObjectPath();
         element.data.service.restart = data->serviceRestart();
         element.data.service.start_type = data->serviceStartType();
-        element.data.service.starts.on_mount = data->serviceStartsOnMount();
+        if (auto serviceOnMount = data->serviceStartsOnMount(); serviceOnMount >= 0)
+        {
+            element.data.service.starts.on_mount = serviceOnMount;
+        }
         if (auto serviceOnNotEmptyDirectory = data->serviceStartsOnNotEmptyDirectory();
             !serviceOnNotEmptyDirectory.empty() && serviceOnNotEmptyDirectory.compare(" ") != 0)
         {
