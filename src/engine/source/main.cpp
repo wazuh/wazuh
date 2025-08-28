@@ -251,16 +251,17 @@ int main(int argc, char* argv[])
 
         // Set new log level if it is different from the default
         {
-            const auto level =
-                logging::computeEffectiveLevel(opts.debugCount, confManager.get<std::string>(conf::key::LOGGING_LEVEL));
-
             if (standalone)
             {
-                logging::applyLevelStandalone(level);
+                auto verbosity = confManager.get<std::string>(conf::key::STANDALONE_LOGGING_LEVEL);
+                auto level = logging::strToLevel(verbosity);
+                logging::applyLevelStandalone(level, opts.debugCount);
             }
             else
             {
-                logging::applyLevelWazuh(level, libwazuhshared);
+                auto verbosity = confManager.get<int>(conf::key::LOGGING_LEVEL);
+                auto level = logging::verbosityToLevel(verbosity);
+                logging::applyLevelWazuh(level, opts.debugCount, libwazuhshared);
             }
         }
 

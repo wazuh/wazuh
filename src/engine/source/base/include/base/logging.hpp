@@ -244,17 +244,11 @@ extern "C"
 
 constexpr inline const char* default_tag()
 {
-    return "wazuh-engine";
+    return "wazuh-analysisd";
 }
 
 /**
  * @brief Checks whether standalone mode is enabled for the Wazuh engine.
- *
- * Reads the environment variable `WAZUH_ENGINE_STANDALONE_MODE_ENABLED` once
- * and caches the result for subsequent calls. The check is case-insensitive.
- *
- * If the variable is set to the string `"true"`, standalone mode is considered
- * enabled. Any other value (or absence of the variable) disables standalone mode.
  *
  * @return true  If standalone mode is enabled.
  * @return false Otherwise.
@@ -264,15 +258,6 @@ bool standaloneModeEnabled();
 /**
  * @brief Dispatches a fully composed log message to either spdlog (standalone)
  *        or the Wazuh logging callback (integrated mode).
- *
- * In standalone mode, this forwards the message to the default spdlog logger using
- * `spdlog::source_loc` and the `"{}"` format pattern so that the provided text is
- * treated as data (not as a format string). This prevents {fmt} from interpreting
- * any braces present in @p text (e.g., JSON payloads).
- *
- * In Wazuh callback mode, it converts the view to a stable `std::string` buffer and
- * routes the message to the corresponding `Log::Logger::*` function, using `"%s"`
- * so the content is printed literally.
  *
  * @param lvl      spdlog severity level (trace, debug, info, warn, err, critical).
  * @param file     Source file path of the logging call (typically `__FILE__`).
@@ -287,42 +272,39 @@ bool standaloneModeEnabled();
  * @see standaloneModeEnabled(), getDefaultLogger(), log_bridge()
  */
 inline void
-dispatch_log(spdlog::level::level_enum lvl, const char* file, int line, const char* funcName, std::string_view text)
+backend_log(logging::Level lvl, const char* file, int line, const char* funcName, const char* text, size_t len)
 {
     if (standaloneModeEnabled())
     {
-        getDefaultLogger()->log(spdlog::source_loc {file, line, funcName}, lvl, "{}", text);
+        const auto spd = SEVERITY_LEVEL.at(lvl);
+        getDefaultLogger()->log(spdlog::source_loc {file, line, funcName}, spd, "{:.{}s}", text, static_cast<int>(len));
         return;
     }
 
-    std::string s {text};
-    const char* p = s.c_str();
     switch (lvl)
     {
-        case spdlog::level::trace: Log::Logger::debugVerbose(default_tag(), {file, line, funcName}, "%s", p); break;
-        case spdlog::level::debug: Log::Logger::debug(default_tag(), {file, line, funcName}, "%s", p); break;
-        case spdlog::level::info: Log::Logger::info(default_tag(), {file, line, funcName}, "%s", p); break;
-        case spdlog::level::warn: Log::Logger::warning(default_tag(), {file, line, funcName}, "%s", p); break;
-        case spdlog::level::err:
-        case spdlog::level::critical: Log::Logger::error(default_tag(), {file, line, funcName}, "%s", p); break;
-        default: Log::Logger::info(default_tag(), {file, line, funcName}, "%s", p); break;
+        case logging::Level::Trace:
+            Log::Logger::debugVerbose(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            break;
+        case logging::Level::Debug:
+            Log::Logger::debug(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            break;
+        case logging::Level::Info:
+            Log::Logger::info(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            break;
+        case logging::Level::Warn:
+            Log::Logger::warning(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            break;
+        case logging::Level::Err:
+        case logging::Level::Critical:
+            Log::Logger::error(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            break;
+        default: Log::Logger::info(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text); break;
     }
 }
 
 /**
  * @brief Unified logging bridge for formatted and unformatted messages.
- *
- * This function template decides at compile time how to dispatch the message:
- * - **No arguments** (`sizeof...(Args) == 0`): treats `fmtstr` as a literal
- *   (not as a format string) and forwards it to `dispatch_log`. This prevents
- *   {fmt} from interpreting braces `{}` coming from dynamic content (e.g., JSON).
- * - **With arguments**: builds the final message with
- *   `fmt::format(fmtstr, args...)` and then forwards it to `dispatch_log`.
- *
- * This avoids `fmt::format_error("invalid format string")` when the message is
- * already composed or contains literal braces, while preserving compile-time
- * format checking when placeholders are used.
- *
  * @tparam Args Types of the arguments interpolated into the format string.
  *
  * @param lvl      spdlog severity level (trace, debug, info, warn, err, critical).
@@ -332,22 +314,9 @@ dispatch_log(spdlog::level::level_enum lvl, const char* file, int line, const ch
  * @param fmtstr   Format string verified by {fmt} at compile time when arguments are present.
  *                 If no arguments are provided, it is treated as a literal (no reformatting).
  * @param args     Arguments to be formatted into the string (when placeholders exist).
- *
- * @par Examples
- * @code
- * // 1) With placeholders (compile-time checked):
- * log_bridge(spdlog::level::info, __FILE__, __LINE__, SPDLOG_FUNCTION,
- *            "User {} logged in", userName);
- *
- * // 2) Preformatted or brace-containing message, no args:
- * std::string payload = R"({"k":1})"; // contains '{' and '}'
- * log_bridge(spdlog::level::trace, __FILE__, __LINE__, SPDLOG_FUNCTION,
- *            fmt::format("Received request {}", payload));
- * // With no trailing args, it is treated as a literal and will not throw.
- * @endcode
  */
 template<typename... Args>
-inline void log_bridge(spdlog::level::level_enum lvl,
+inline void log_bridge(logging::Level lvl,
                        const char* file,
                        int line,
                        const char* funcName,
@@ -357,27 +326,23 @@ inline void log_bridge(spdlog::level::level_enum lvl,
     if constexpr (sizeof...(Args) == 0)
     {
         fmt::basic_string_view<char> sv = fmtstr;
-        dispatch_log(lvl, file, line, funcName, std::string_view {sv.data(), sv.size()});
+        backend_log(lvl, file, line, funcName, sv.data(), sv.size());
     }
     else
     {
-        auto s = fmt::format(fmtstr, std::forward<Args>(args)...);
-        dispatch_log(lvl, file, line, funcName, s);
+        std::string s = fmt::format(fmtstr, std::forward<Args>(args)...);
+        backend_log(lvl, file, line, funcName, s.c_str(), s.size());
     }
 }
 
-/**
- * @brief Calculates the effective log level to use.
- *
- * Determines the logging level based on the number of `-d` options provided
- * (debugCount) and the configured log level string. If debugCount > 0,
- * it overrides the configuration: one `-d` sets Debug, two or more set Trace.
- *
- * @param debugCount Number of debug flags passed on the CLI (-d occurrences).
- * @param cfgLevelStr Log level string taken from the configuration (e.g., "info", "debug").
- * @return logging::Level The effective logging level.
- */
-logging::Level computeEffectiveLevel(int debugCount, const std::string& cfgLevelStr);
+constexpr logging::Level verbosityToLevel(int v)
+{
+    if (v == 0)
+        return logging::Level::Info; // info+
+    if (v == 1)
+        return logging::Level::Debug; // debug+
+    return logging::Level::Trace;
+}
 
 /**
  * @brief Applies the desired log level in standalone (spdlog) mode.
@@ -386,61 +351,60 @@ logging::Level computeEffectiveLevel(int debugCount, const std::string& cfgLevel
  * and emits a debug message notifying the change.
  *
  * @param target The target log level to apply.
+ * @param debugCount     Number of times the -d flag was specified on the CLI (takes precedence over config).
  */
-void applyLevelStandalone(logging::Level target);
+void applyLevelStandalone(logging::Level target, int debugCount);
 
 /**
- * @brief Applies the desired log level when running in Wazuh callback mode.
+ * @brief Applies the effective log level when running in Wazuh callback mode, honoring CLI -d priority.
  *
- * In callback mode, log levels are switched through the symbol `nowDebug`
- * resolved from libwazuhshared. One call to `nowDebug` enables Debug level;
- * two consecutive calls enable Trace level.
+ * @param target         Target log level when no -d is provided (i.e., when debugCount == 0). Typically
+ *                       obtained from configuration; ignored if debugCount > 0.
+ * @param debugCount     Number of times the -d flag was specified on the CLI (takes precedence over config).
+ * @param libwazuhshared Handle to the opened libwazuhshared shared library. Must be a valid dlopen() handle.
  *
- * @param target The target log level to apply. Only Debug and Trace are supported.
- * @param libwazuhshared Handle to the opened libwazuhshared shared library.
- *                       Must be a valid dlopen() handle.
- *
- * @throw std::runtime_error If the `nowDebug` symbol cannot be resolved.
+ * @throw std::runtime_error If the `nowDebug` symbol cannot be resolved when the effective level is Debug/Trace.
  */
-void applyLevelWazuh(logging::Level target, void* libwazuhshared);
+void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared);
 
 } // namespace logging
 
 // TRACE
 #define LOG_TRACE(msg, ...)                                                                                            \
-    ::logging::log_bridge(spdlog::level::trace, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Trace, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_TRACE_L(functionName, msg, ...)                                                                            \
-    ::logging::log_bridge(spdlog::level::trace, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Trace, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // DEBUG
 #define LOG_DEBUG(msg, ...)                                                                                            \
-    ::logging::log_bridge(spdlog::level::debug, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Debug, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_DEBUG_L(functionName, msg, ...)                                                                            \
-    ::logging::log_bridge(spdlog::level::debug, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Debug, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // INFO
 #define LOG_INFO(msg, ...)                                                                                             \
-    ::logging::log_bridge(spdlog::level::info, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Info, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_INFO_L(functionName, msg, ...)                                                                             \
-    ::logging::log_bridge(spdlog::level::info, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Info, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // WARNING
 #define LOG_WARNING(msg, ...)                                                                                          \
-    ::logging::log_bridge(spdlog::level::warn, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Warn, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_WARNING_L(functionName, msg, ...)                                                                          \
-    ::logging::log_bridge(spdlog::level::warn, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Warn, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // ERROR
 #define LOG_ERROR(msg, ...)                                                                                            \
-    ::logging::log_bridge(spdlog::level::err, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Err, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_ERROR_L(functionName, msg, ...)                                                                            \
-    ::logging::log_bridge(spdlog::level::err, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(logging::Level::Err, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 // CRITICAL
 #define LOG_CRITICAL(msg, ...)                                                                                         \
     ::logging::log_bridge(                                                                                             \
-        spdlog::level::critical, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
+        logging::Level::Critical, __FILE__, __LINE__, SPDLOG_FUNCTION, fmt::runtime(msg), ##__VA_ARGS__)
 #define LOG_CRITICAL_L(functionName, msg, ...)                                                                         \
-    ::logging::log_bridge(spdlog::level::critical, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
+    ::logging::log_bridge(                                                                                             \
+        logging::Level::Critical, __FILE__, __LINE__, (functionName), fmt::runtime(msg), ##__VA_ARGS__)
 
 #endif // _LOGGING_HPP

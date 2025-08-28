@@ -26,7 +26,10 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Register available configuration units with Default Settings
 
     // Logging module
-    addUnit<std::string>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", "info");
+    addUnit<int>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", 0);
+
+    // Standalone Logging module
+    addUnit<std::string>(key::STANDALONE_LOGGING_LEVEL, "WAZUH_STANDALONE_LOG_LEVEL", "info");
 
     // Store module
     addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "engine/store").c_str());

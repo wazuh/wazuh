@@ -173,12 +173,12 @@ extern "C"
     {
         initializeFullLogFunction(
             [callback](const int logLevel,
-                          const std::string& tag,
-                          const std::string& file,
-                          const int line,
-                          const std::string& func,
-                          const std::string& logMessage,
-                          va_list args)
+                       const std::string& tag,
+                       const std::string& file,
+                       const int line,
+                       const std::string& func,
+                       const std::string& logMessage,
+                       va_list args)
             { callback(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
     }
 
@@ -188,48 +188,47 @@ extern "C"
 
 bool standaloneModeEnabled()
 {
-    static int cached = -1;
-    if (cached == -1)
+    static const bool enabled = []()
     {
         const char* env = std::getenv("WAZUH_SKIP_OSSEC_CONF");
-        if (env)
-        {
-            std::string val(env);
-            std::transform(val.begin(), val.end(), val.begin(), ::tolower);
-            cached = (val == "true");
-        }
-        else
-        {
-            cached = 0;
-        }
-    }
-    return cached == 1;
+        if (!env)
+            return false;
+
+        std::string val(env);
+        std::transform(
+            val.begin(), val.end(), val.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+        return val == "true";
+    }();
+
+    return enabled;
 }
 
-logging::Level computeEffectiveLevel(int debugCount, const std::string& cfgLevelStr)
+void applyLevelStandalone(logging::Level target, int debugCount)
 {
-    if (debugCount > 0)
-    {
-        return (debugCount == 1) ? logging::Level::Debug : logging::Level::Trace;
-    }
-    return logging::strToLevel(cfgLevelStr);
-}
+    // -d takes priority over the configuration
+    const logging::Level effective = (debugCount > 1)    ? logging::Level::Trace
+                                     : (debugCount == 1) ? logging::Level::Debug
+                                                         : target; // without -d, use config level (target)
 
-void applyLevelStandalone(logging::Level target)
-{
     const auto current = logging::getLevel();
-    if (current != target)
+    if (current != effective)
     {
-        logging::setLevel(target);
-        LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(target));
+        logging::setLevel(effective);
+        LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(effective));
     }
 }
 
-void applyLevelWazuh(logging::Level target, void* libwazuhshared)
+void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared)
 {
-    if (target != logging::Level::Debug && target != logging::Level::Trace)
+    // -d takes priority over the configuration
+    const logging::Level effective = (debugCount > 1)    ? logging::Level::Trace
+                                     : (debugCount == 1) ? logging::Level::Debug
+                                                         : target; // without -d, use config level (target)
+
+    if (effective != logging::Level::Debug && effective != logging::Level::Trace)
     {
-        return; // Nothing to do for Info/Warn/Err/Critical/Off
+        return; // Info/Warn/Err/Critical
     }
 
     using now_debug_fn_t = void (*)();
@@ -239,9 +238,10 @@ void applyLevelWazuh(logging::Level target, void* libwazuhshared)
         throw std::runtime_error {fmt::format("nowDebug symbol not found: {}", dlerror())};
     }
 
-    const int times = (target == logging::Level::Debug) ? 1 : 2;
+    const int times = (effective == logging::Level::Debug) ? 1 : 2;
     for (int i = 0; i < times; ++i) nowDebug();
-    LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(target));
+
+    LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(effective));
 }
 
 } // namespace logging
