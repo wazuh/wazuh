@@ -1113,8 +1113,9 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
 @patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
 @patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('socket.socket.connect')
-def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set, expected_errors_and_items,
+def test_agent_upgrade_agents(mock_socket, mock_wazuh_socket, mock_wdb, mock_client_keys, agent_set, expected_errors_and_items,
                               result_from_socket, filters, raise_error):
     """Test `upgrade_agents` function from agent module.
 
@@ -1131,6 +1132,9 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
     raise_error : bool
         Boolean variable used to indicate that the
     """
+    mock_wazuh_socket.return_value.receive.return_value = (
+        b'ok {"client": {"server": []}}'
+    )
     with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
         core_upgrade_agents_mock.return_value = result_from_socket
 
