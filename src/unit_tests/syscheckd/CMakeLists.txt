@@ -11,6 +11,7 @@ endif()
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
 list(APPEND rootfiles ${SRC_FOLDER}/shared/fs_op.o)
+list(APPEND rootfiles ${SRC_FOLDER}/shared/store_op.o)
 
 if(${TARGET} STREQUAL "winagent")
   # Exclude winagent file
