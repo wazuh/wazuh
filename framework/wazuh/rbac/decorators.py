@@ -14,6 +14,19 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
+SENSITIVE_SECTIONS = {
+    "active-response", "agentless", "alerts", "auth", "client", "client_buffer",
+    "cluster", "command", "database_output", "email_alerts", "global",
+    "integration", "labels", "localfile", "logging", "remote", "reports",
+    "rootcheck", "ruleset", "sca", "socket", "syscheck", "syslog_output",
+    "vulnerability-detection", "indexer", "aws-s3", "azure-logs", "cis-cat",
+    "docker-listener", "open-scap", "osquery", "syscollector", "gcp-pubsub"
+}
+SENSITIVE_KEY_SUBSTRINGS = (
+    "pass", "password", "secret", "token", "key", "credential", "private"
+)
+MASK_DEFAULT = "*****"
+
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
 
 
@@ -502,4 +515,150 @@ def expose_resources(actions: list = None, resources: list = None, post_proc_fun
 
         return wrapper
 
+    return decorator
+
+
+def _has_update_permissions() -> bool:
+    """Check if current user holds update-config permissions.
+
+    Returns
+    -------
+    bool
+        True if user has 'manager:update_config' or 'cluster:update_config', False otherwise.
+    """
+    perms = rbac.get() or {}
+    for action in ("manager:update_config", "cluster:update_config"):
+        action_map = perms.get(action)
+        if isinstance(action_map, dict) and len(action_map) > 0:
+            return True
+    return False
+
+
+def _is_sensitive_key(key: str) -> bool:
+    """Check if a key name should be considered sensitive.
+
+    Parameters
+    ----------
+    key : str
+        Key name to evaluate.
+
+    Returns
+    -------
+    bool
+        True if the key contains sensitive substrings (e.g., 'pass', 'token', 'key'), False otherwise.
+    """
+    if not isinstance(key, str):
+        return False
+    low = key.lower()
+    return any(substr in low for substr in SENSITIVE_KEY_SUBSTRINGS)
+
+
+def _mask_dict(d: dict, mask_text: str = MASK_DEFAULT) -> None:
+    """Recursively mask sensitive values in a dict in place.
+
+    Parameters
+    ----------
+    d : dict
+        Dictionary to process (modified in place).
+    mask_text : str
+        Replacement text used for masked values.
+    """
+    # First pass: mask standalone sensitive keys at this level
+    for k, v in list(d.items()):
+        if _is_sensitive_key(k):
+            d[k] = mask_text
+        elif isinstance(v, dict):
+            # If this nested dict is itself a sensitive section, mask only inside that subtree
+            if k in SENSITIVE_SECTIONS:
+                _mask_only_sensitive_keys_in_section(v, mask_text)
+            else:
+                _mask_dict(v, mask_text)
+        elif isinstance(v, list):
+            _mask_list(v, mask_text)
+
+
+def _mask_only_sensitive_keys_in_section(section_dict: dict, mask_text: str = MASK_DEFAULT) -> None:
+    """Mask only sensitive-looking keys inside a given section (in place).
+
+    Parameters
+    ----------
+    section_dict : dict
+        Section dictionary to process (modified in place).
+    mask_text : str
+        Replacement text used for masked values.
+    """
+    for k, v in list(section_dict.items()):
+        if _is_sensitive_key(k):
+            section_dict[k] = mask_text
+        elif isinstance(v, dict):
+            _mask_only_sensitive_keys_in_section(v, mask_text)
+        elif isinstance(v, list):
+            _mask_list(v, mask_text)
+
+
+def _mask_list(items: list, mask_text: str = MASK_DEFAULT) -> None:
+    """Traverse a list and mask nested sensitive values (in place).
+
+    Parameters
+    ----------
+    items : list
+        List to process (modified in place).
+    mask_text : str
+        Replacement text used for masked values.
+    """
+    for i, v in enumerate(items):
+        if isinstance(v, dict):
+            _mask_dict(v, mask_text)
+        elif isinstance(v, list):
+            _mask_list(v, mask_text)
+
+
+def _mask_payload(payload, mask_text: str = MASK_DEFAULT) -> None:
+    """Apply masking to any supported payload shape (in place).
+
+    Parameters
+    ----------
+    payload :
+        One of: dict, list, or AffectedItemsWazuhResult. Other types are ignored.
+    mask_text : str
+        Replacement text used for masked values.
+    """
+    if isinstance(payload, AffectedItemsWazuhResult):
+        # mask each affected item (usually dicts with sections at top level)
+        for item in payload.affected_items:
+            _mask_payload(item, mask_text)
+    elif isinstance(payload, dict):
+        _mask_dict(payload, mask_text)
+    elif isinstance(payload, list):
+        _mask_list(payload, mask_text)
+
+
+def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
+    """Decorator to mask sensitive fields in config responses for users without update permissions.
+
+    Parameters
+    ----------
+    mask_text : str
+        Replacement text for sensitive values. Default: '*****'.
+
+    Returns
+    -------
+    callable
+        Decorator that post-processes the target function's return value in place.
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            try:
+                # Only mask if user LACKS update-config permissions
+                if not _has_update_permissions():
+                    _mask_payload(result, mask_text=mask_text)
+            except Exception:
+                # Never break the endpoint if masking fails for any reason
+                pass
+            return result
+        
+        return wrapper
+    
     return decorator
