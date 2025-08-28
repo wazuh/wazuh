@@ -110,7 +110,6 @@ static int teardown_remoted_configuration(void** state)
     test_mode = 0;
     node_name = "";
     router_syscollector_handle = NULL;
-    router_rsync_handle = NULL;
 
     test_agent_info* data = (test_agent_info*)*state;
     free(data->agent_id);

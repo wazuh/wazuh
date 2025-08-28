@@ -1,10 +1,6 @@
 get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/ ABSOLUTE)
 
 list(APPEND schemas
-            syscollector_deltas
-            syscheck_deltas
-            rsync
-            messageBuffer
             inventorySync
             agentInfo
 )
