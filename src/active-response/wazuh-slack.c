@@ -143,7 +143,6 @@ int main (int argc, char **argv) {
 static cJSON *format_output(const cJSON *alert) {
     cJSON *rule_json = NULL;
     cJSON *agent_json = NULL;
-    cJSON *agentless_json = NULL;
     cJSON *location_json = NULL;
     cJSON *full_log_json = NULL;
     cJSON *rule_description_json = NULL;
@@ -153,7 +152,6 @@ static cJSON *format_output(const cJSON *alert) {
     cJSON *fields_list = NULL;
     cJSON *item_objects = NULL;
     cJSON *item_agent = NULL;
-    cJSON *item_agentless = NULL;
     cJSON *item_location = NULL;
     cJSON *item_rule = NULL;
     char temp_line[OS_MAXSTR];
@@ -187,20 +185,6 @@ static cJSON *format_output(const cJSON *alert) {
         cJSON_AddStringToObject(item_agent, "title", "Agent");
         cJSON_AddStringToObject(item_agent, "value", temp_line);
         cJSON_AddItemToArray(fields_list, item_agent);
-    }
-
-    // Detect agentless
-    agentless_json = cJSON_GetObjectItem(alert, "agentless");
-    if (agentless_json && (agentless_json->type == cJSON_Object)) {
-        cJSON *agentless_host_json = NULL;
-        item_agentless = cJSON_CreateObject();
-
-        // Detect Agentless host
-        agentless_host_json = cJSON_GetObjectItem(agentless_json, "host");
-
-        cJSON_AddStringToObject(item_agentless, "title", "Agentless Host");
-        cJSON_AddStringToObject(item_agentless, "value", agentless_host_json != NULL ? agentless_host_json->valuestring : "N/A");
-        cJSON_AddItemToArray(fields_list, item_agentless);
     }
 
     // Detect location

@@ -132,10 +132,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_LOCAL_SOCK  "queue/sockets/wmodules"
 #define REMOTE_LOCAL_SOCK  "queue/sockets/remote"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
-#define MAIL_LOCAL_SOCK "queue/sockets/mail"
-#define LESSD_LOCAL_SOCK "queue/sockets/agentless"
-#define INTG_LOCAL_SOCK "queue/sockets/integrator"
-#define CSYS_LOCAL_SOCK  "queue/sockets/csyslog"
 #define MON_LOCAL_SOCK  "queue/sockets/monitor"
 #define CLUSTER_SOCK "queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "queue/sockets/control"
@@ -258,14 +254,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define AGENT_INFO_FILE ".agent_info"
 #endif
 
-/* Agentless directories */
-#define AGENTLESSDIR        "agentless"
-#define AGENTLESS_ENTRYDIR  "queue/agentless"
-
-/* Integration directory. */
-#define INTEGRATORDIR "integrations"
-
-
 /* Internal definitions files */
 #ifndef WIN32
 #define OSSEC_DEFINES   "etc/internal_options.conf"
@@ -366,10 +354,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* XML global elements */
 #ifndef xml_global
 #define xml_global "global"
-#endif
-
-#ifndef xml_alerts
-#define xml_alerts "alerts"
 #endif
 
 #ifndef xml_rules
