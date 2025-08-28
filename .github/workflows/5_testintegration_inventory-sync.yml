@@ -26,7 +26,7 @@ jobs:
   inventory-sync-integration-tests:
     name: inventory-sync-integration-tests
     runs-on: ubuntu-22.04
-      
+
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
@@ -35,8 +35,46 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           skip_after_successful_duplicate: 'false'
 
-      - name: Wait for deb amd64 Package Build to complete
+      - name: Wait for Package Build workflow to be created
         if: github.event_name == 'pull_request'
+        id: wait-for-workflow-creation
+        run: |
+          echo "[>] Waiting for Package Build workflow to be created..."
+
+          # Maximum wait time: 10 minutes
+          MAX_ATTEMPTS=20
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "[*] Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking for Package Build workflow..."
+
+            # Check if the workflow exists for this PR
+            WORKFLOW_EXISTS=$(gh run list \
+              --commit="${{ github.event.pull_request.head.sha }}" \
+              --json workflowName \
+              --jq '.[] | select(.workflowName == "Package - Build multiple Wazuh Manager Packages") | .workflowName' | head -1)
+
+            if [ -n "$WORKFLOW_EXISTS" ] && [ "$WORKFLOW_EXISTS" != "null" ]; then
+              echo "[+] Package Build workflow found!"
+              echo "workflow-created=true" >> $GITHUB_OUTPUT
+              break
+            fi
+
+            echo "[*] Package Build workflow not found yet, waiting 30 seconds..."
+            sleep 30
+          done
+
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "[-] Timeout: Package Build workflow was not created within expected time"
+            echo "workflow-created=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for deb amd64 Package Build to complete
+        if: github.event_name == 'pull_request' && steps.wait-for-workflow-creation.outputs.workflow-created == 'true'
         uses: lewagon/wait-on-check-action@v1.4.0
         with:
           ref: ${{ github.head_ref || github.ref }}
@@ -60,7 +98,7 @@ jobs:
             flatbuffers-compiler \
             curl \
             wget
-          
+
           # Install GitHub CLI if not present
           if ! command -v gh &> /dev/null; then
             curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
@@ -79,26 +117,26 @@ jobs:
             --commit="${{ github.event.pull_request.head.sha }}" \
             --json databaseId,headSha,displayTitle,workflowName,conclusion \
             --jq '.[] | select(.workflowName == "Package - Build multiple Wazuh Manager Packages") | .databaseId' | head -1)
-          
+
           if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
             echo "[-] No package build run found for this branch"
             echo "[*] Available runs:"
             gh run list --branch="${{ github.head_ref }}" --limit=5 --json displayTitle,status,workflowName
             exit 1
           fi
-          
+
           echo "[+] Found package build run: $RUN_ID"
-          
+
           # Get the list of artifacts from this run and find the amd64 deb package
           ARTIFACT_NAME=$(gh api repos/wazuh/wazuh/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name | contains("amd64") and contains("wazuh-manager") and endswith(".deb")) | .name' | head -1)
-          
+
           if [ -z "$ARTIFACT_NAME" ]; then
             echo "[-] No amd64 deb wazuh-manager artifact found in run $RUN_ID"
             echo "[*] Available artifacts:"
             gh api repos/wazuh/wazuh/actions/runs/$RUN_ID/artifacts --jq '.artifacts[].name'
             exit 1
           fi
-          
+
           echo "[+] Found artifact: $ARTIFACT_NAME"
           echo "run-id=$RUN_ID" >> $GITHUB_OUTPUT
           echo "artifact-name=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
@@ -118,31 +156,31 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           echo "[>] Installing Wazuh manager package (deb amd64)..."
-          
+
           # Find the amd64 .deb package in the downloaded artifacts
           echo "[*] Downloaded packages:"
           find ./packages -type f -name "*.deb" | sort
-          
+
           PACKAGE_FILE=$(find ./packages -name "*amd64*.deb" | head -1)
-          
+
           if [ -z "$PACKAGE_FILE" ]; then
             echo "[-] amd64 .deb package not found. Listing package contents:"
             ls -la ./packages/
             find ./packages -type f | sort
             exit 1
           fi
-          
+
           echo "[+] Found package: $PACKAGE_FILE"
-          
+
           echo "[*] Package file found, proceeding with installation..."
-          
+
           # Install the package
           sudo dpkg -i "$PACKAGE_FILE" || sudo apt-get -f install -y
-          
+
           # Start Wazuh manager
           sudo systemctl start wazuh-manager
           sleep 10
-          
+
           # Verify installation
           if systemctl is-active --quiet wazuh-manager; then
             echo "[+] Wazuh manager installed and running"
@@ -170,7 +208,7 @@ jobs:
           echo "[>] Generating FlatBuffers classes..."
           source venv/bin/activate
           python3 generate_flatbuffers.py
-          
+
           if [ -d "generated" ]; then
             echo "[+] FlatBuffers classes generated successfully"
             echo "[*] Generated files:"
@@ -187,34 +225,34 @@ jobs:
         run: |
           echo "[>] Running inventory sync integration tests..."
           source venv/bin/activate
-          
+
           # List available tests
           echo "[*] Available tests:"
           python3 run_tests.py --list-tests
-          
+
           # Run all tests
           echo "[>] Running all integration tests..."
           TEST_MANAGER="${{ github.event.inputs.test_manager || '127.0.0.1' }}"
-          
+
           python3 run_tests.py --manager "$TEST_MANAGER" --verbose
 
       - name: Cleanup and collect logs
         if: always()
         run: |
           echo "[>] Collecting test results and logs..."
-          
+
           # Stop Wazuh manager if installed from package
           if systemctl is-active --quiet wazuh-manager 2>/dev/null; then
             sudo systemctl stop wazuh-manager
             echo "[+] Stopped wazuh-manager"
           fi
-          
+
           # Collect Wazuh logs if they exist
           if [ -f /var/ossec/logs/ossec.log ]; then
             echo "[*] Wazuh logs (last 50 lines):"
             sudo tail -50 /var/ossec/logs/ossec.log
           fi
-          
+
           echo "[+] Cleanup completed"
 
       - name: Upload test artifacts

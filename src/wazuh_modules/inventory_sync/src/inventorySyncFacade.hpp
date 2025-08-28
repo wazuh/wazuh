@@ -113,7 +113,9 @@ class InventorySyncFacadeImpl final
                 std::shared_lock lock(m_agentSessionsMutex);
                 if (auto it = m_agentSessions.find(data->session()); it == m_agentSessions.end())
                 {
-                    throw InventorySyncException("Session not found");
+                    logDebug2(LOGGER_DEFAULT_TAG,
+                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                              data->session());
                 }
                 else
                 {
@@ -164,7 +166,9 @@ class InventorySyncFacadeImpl final
                 std::shared_lock lock(m_agentSessionsMutex);
                 if (auto it = m_agentSessions.find(end->session()); it == m_agentSessions.end())
                 {
-                    throw InventorySyncException("Session not found");
+                    logDebug2(LOGGER_DEFAULT_TAG,
+                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                              end->session());
                 }
                 else
                 {
