@@ -235,7 +235,7 @@ static struct column_list const TABLE_GROUPS[GROUPS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL}
 };
 
-#define BROWSER_EXTENSIONS_FIELD_COUNT 24
+#define BROWSER_EXTENSIONS_FIELD_COUNT 25
 static struct column_list const TABLE_BROWSER_EXTENSIONS[BROWSER_EXTENSIONS_FIELD_COUNT + 1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS [1]},
     { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [2]},
@@ -253,15 +253,16 @@ static struct column_list const TABLE_BROWSER_EXTENSIONS[BROWSER_EXTENSIONS_FIEL
     { .value = { FIELD_TEXT, 14, false, false, NULL, "package_reference", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[14]},
     { .value = { FIELD_TEXT, 15, false, false, NULL, "package_permissions", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[15]},
     { .value = { FIELD_TEXT, 16, false, false, NULL, "package_type", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[16]},
-    { .value = { FIELD_TEXT, 17, false, false, NULL, "package_enabled", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[17]},
-    { .value = { FIELD_INTEGER, 18, false, false, NULL, "package_autoupdate", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[18]},
-    { .value = { FIELD_INTEGER, 19, false, false, NULL, "package_persistent", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[19]},
-    { .value = { FIELD_INTEGER, 20, false, false, NULL, "package_from_webstore", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[20]},
-    { .value = { FIELD_INTEGER, 21, false, false, NULL, "browser_profile_referenced", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[21]},
-    { .value = { FIELD_TEXT, 22, false, false, NULL, "package_installed", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[22]},
-    { .value = { FIELD_TEXT, 23, false, false, NULL, "file_hash_sha256", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[23]},
-    { .value = { FIELD_TEXT, 24, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_BROWSER_EXTENSIONS[24]},
-    { .value = { FIELD_TEXT, 25, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
+    { .value = { FIELD_INTEGER, 17, false, false, NULL, "package_enabled", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[17]},
+    { .value = { FIELD_INTEGER, 18, false, false, NULL, "package_visible", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[18]},
+    { .value = { FIELD_INTEGER, 19, false, false, NULL, "package_autoupdate", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[19]},
+    { .value = { FIELD_INTEGER, 20, false, false, NULL, "package_persistent", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[20]},
+    { .value = { FIELD_INTEGER, 21, false, false, NULL, "package_from_webstore", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[21]},
+    { .value = { FIELD_INTEGER, 22, false, false, NULL, "browser_profile_referenced", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[22]},
+    { .value = { FIELD_TEXT, 23, false, false, NULL, "package_installed", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[23]},
+    { .value = { FIELD_TEXT, 24, false, false, NULL, "file_hash_sha256", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[24]},
+    { .value = { FIELD_TEXT, 25, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_BROWSER_EXTENSIONS[25]},
+    { .value = { FIELD_TEXT, 26, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
 };
 
 #define SERVICES_FIELD_COUNT 35

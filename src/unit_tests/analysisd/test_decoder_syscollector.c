@@ -589,7 +589,8 @@ int test_setup_browser_extensions_valid_msg_modified(void **state)
                 \"package_reference\":\"https://clients2.google.com/service/update2/crx\", \
                 \"package_permissions\":\"activeTab,storage,tabs,webNavigation\", \
                 \"package_type\":\"extension\", \
-                \"package_enabled\":\"enabled\", \
+                \"package_enabled\":1, \
+                \"package_visible\":1, \
                 \"package_autoupdate\":1, \
                 \"package_persistent\":0, \
                 \"package_from_webstore\":0, \
@@ -1126,7 +1127,8 @@ int test_setup_browser_extensions_valid_msg_inserted(void **state)
                 \"package_reference\":\"https://clients2.google.com/service/update2/crx\", \
                 \"package_permissions\":\"activeTab,storage,tabs,webNavigation\", \
                 \"package_type\":\"extension\", \
-                \"package_enabled\":\"enabled\", \
+                \"package_enabled\":1, \
+                \"package_visible\":1, \
                 \"package_autoupdate\":1, \
                 \"package_persistent\":0, \
                 \"package_from_webstore\":0, \
@@ -2562,7 +2564,8 @@ void test_syscollector_dbsync_browser_extensions_valid_msg_modified(void **state
             "\"package_reference\":\"https://clients2.google.com/service/update2/crx\","
             "\"package_permissions\":\"activeTab,storage,tabs,webNavigation\","
             "\"package_type\":\"extension\","
-            "\"package_enabled\":\"enabled\","
+            "\"package_enabled\":1,"
+            "\"package_visible\":1,"
             "\"package_autoupdate\":1,"
             "\"package_persistent\":0,"
             "\"package_from_webstore\":0,"
@@ -3196,7 +3199,8 @@ void test_syscollector_dbsync_browser_extensions_valid_msg_inserted(void **state
             "\"package_reference\":\"https://clients2.google.com/service/update2/crx\","
             "\"package_permissions\":\"activeTab,storage,tabs,webNavigation\","
             "\"package_type\":\"extension\","
-            "\"package_enabled\":\"enabled\","
+            "\"package_enabled\":1,"
+            "\"package_visible\":1,"
             "\"package_autoupdate\":1,"
             "\"package_persistent\":0,"
             "\"package_from_webstore\":0,"
