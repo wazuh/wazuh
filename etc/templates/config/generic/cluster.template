@@ -2,7 +2,7 @@
     <name>wazuh</name>
     <node_name>node01</node_name>
     <node_type>master</node_type>
-    <key></key>
+    <key>971aac4b720480a78a43e13d0c95fc54</key>
     <port>1516</port>
     <bind_addr>localhost</bind_addr>
     <nodes>
