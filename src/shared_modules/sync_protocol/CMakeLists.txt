@@ -84,6 +84,9 @@ add_custom_target(generate_flatbuffers ALL DEPENDS ${GENERATED_HEADER})
 # -----------------------------------------------------------------------------
 # Build FlatBuffers library (only needed headers/lib, not flatc)
 # -----------------------------------------------------------------------------
+# Disable sample builds to avoid INTERFACE_LIBRARY issues
+set(FLATBUFFERS_BUILD_SAMPLES OFF CACHE BOOL "Build the samples" FORCE)
+set(FLATBUFFERS_BUILD_TESTS OFF CACHE BOOL "Build the unit tests" FORCE)
 add_subdirectory(${FLATBUFFERS_ROOT_DIR} flatbuffers_build EXCLUDE_FROM_ALL)
 
 # -----------------------------------------------------------------------------
