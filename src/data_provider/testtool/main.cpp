@@ -74,10 +74,10 @@ class SysInfoPrinter final
             m_data["services"] = m_sysinfo.services();
         }
 
-        void printBrowserExtensionsInfo()
-        {
-            m_data["browser_extensions"] = m_sysinfo.browserExtensions();
-        }
+        // void printBrowserExtensionsInfo()
+        // {
+        //     m_data["browser_extensions"] = m_sysinfo.browserExtensions();
+        // }
 
         void printData()
         {
@@ -124,7 +124,7 @@ int main(int argc, const char* argv[])
             printer.printUsersInfo();
             printer.printGroupsInfo();
             printer.printServicesInfo();
-            printer.printBrowserExtensionsInfo();
+            // printer.printBrowserExtensionsInfo();
             printer.printData();
             printer.printPackagesInfoCallback();
             printer.printProcessesInfoCallback();
@@ -181,10 +181,10 @@ int main(int argc, const char* argv[])
             {
                 printer.printServicesInfo();
             }
-            else if (cmdLineArgs.browserExtensionsArg())
-            {
-                printer.printBrowserExtensionsInfo();
-            }
+            // else if (cmdLineArgs.browserExtensionsArg())
+            // {
+            //     printer.printBrowserExtensionsInfo();
+            // }
             else
             {
                 throw std::runtime_error

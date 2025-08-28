@@ -26,7 +26,7 @@ constexpr auto PROCESSES_CB_ACTION          { "--processes-cb"};
 constexpr auto PACKAGES_CB_ACTION           { "--packages-cb"};
 constexpr auto GROUPS_ACTION                { "--groups" };
 constexpr auto SERVICES_ACTION              { "--services" };
-constexpr auto BROWSER_EXTENSIONS_ACTION    { "--browser-extensions"};
+// constexpr auto BROWSER_EXTENSIONS_ACTION    { "--browser-extensions"};
 
 class CmdLineActions final
 {
@@ -45,7 +45,7 @@ class CmdLineActions final
             , m_packagesCallback  { PACKAGES_CB_ACTION          == std::string(argv[1]) }
             , m_groups            { GROUPS_ACTION               == std::string(argv[1]) }
             , m_services          { SERVICES_ACTION             == std::string(argv[1]) }
-            , m_browserExtensions { BROWSER_EXTENSIONS_ACTION   == std::string(argv[1]) }
+            // , m_browserExtensions { BROWSER_EXTENSIONS_ACTION   == std::string(argv[1]) }
 
         {}
 
@@ -103,10 +103,10 @@ class CmdLineActions final
         {
             return m_groups;
         };
-        bool browserExtensionsArg() const
-        {
-            return m_browserExtensions;
-        };
+        // bool browserExtensionsArg() const
+        // {
+        //     return m_browserExtensions;
+        // };
 
         bool servicesArg() const
         {
@@ -162,7 +162,7 @@ class CmdLineActions final
         const bool m_packagesCallback;
         const bool m_groups;
         const bool m_services;
-        const bool m_browserExtensions;
+        // const bool m_browserExtensions;
 
 };
 
