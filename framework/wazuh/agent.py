@@ -1222,29 +1222,31 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         non_active_agents = set()
         invalid_config_agents = set()
         for agent in data['items']:
-            # Add non active agents to failed_items
-            if agent['status'] != 'active':
-                result.add_failed_item(id_=agent['id'], error=WazuhError(1707))
-                non_active_agents.add(agent['id'])
+            if agent['id'] != '000':
+                # Add non active agents to failed_items
+                if agent['status'] != 'active':
+                    result.add_failed_item(id_=agent['id'], error=WazuhError(1707))
+                    non_active_agents.add(agent['id'])
 
-            # Add agents with invalid config options to failed_items
-            else:
-                agent_conf = Agent(agent['id']).get_config('agent', 'client', agent['version'])
-                found_invalid_config = False
-                extra_message = ""
-                for server in agent_conf['client']['server']:
-                    if server.get('protocol') == 'udp':
+                # Add agents with invalid config options to failed_items
+                else:
+                    agent_conf = Agent(agent['id']).get_config('agent', 'client', agent['version'])
+                    print(agent_conf)
+                    found_invalid_config = False
+                    extra_message = ""
+                    for server in agent_conf['client']['server']:
+                        if server.get('protocol') == 'udp':
+                            found_invalid_config = True
+                            extra_message += "[protocol: udp]"
+                            break
+                    if agent_conf['client'].get('crypto_method') == 'blowfish':
                         found_invalid_config = True
-                        extra_message += "[protocol: udp]"
-                        break
-                if agent_conf['client'].get('crypto_method') == 'blowfish':
-                    found_invalid_config = True
-                    if extra_message != '':
-                        extra_message += ', '
-                    extra_message += "[crypto_method: blowfish]"
-                if found_invalid_config:
-                    invalid_config_agents.add(agent['id'])
-                    result.add_failed_item(id_=agent['id'], error=WazuhError(1761, extra_message = extra_message))
+                        if extra_message != '':
+                            extra_message += ', '
+                        extra_message += "[crypto_method: blowfish]"
+                    if found_invalid_config:
+                        invalid_config_agents.add(agent['id'])
+                        result.add_failed_item(id_=agent['id'], error=WazuhError(1761, extra_message = extra_message))
 
         # Add non eligible agents to failed_items
         non_eligible_agents = agent_list - not_found_agents - non_active_agents - filtered_agents - invalid_config_agents

@@ -219,8 +219,8 @@ INSERT INTO sys_ports VALUES (1662320195, '2019/03/21 14:18:43', 'tcp', '0.0.0.0
                               'listening', null, null);
 INSERT INTO sys_ports VALUES (1662320195, '2019/03/21 14:18:43', 'tcp', '10.0.2.15', 22, '10.0.2.2', 63954, 0, 0,
                               118343, 'established', null, null);
-INSERT INTO sys_ports VALUES (1662320195, '2019/03/21 14:18:43', 'udp', '127.0.0.53', 53, '0.0.0.0', 0, 0, 0, 277490,
-                              null, null, null);
+INSERT INTO sys_ports VALUES (1662320195, '2019/03/21 14:18:43', 'tcp', '127.0.0.53', 53, '0.0.0.0', 0, 0, 0, 277490,
+                              'listening', null, null);
 INSERT INTO sys_ports VALUES (1662320195, '2019/03/21 14:18:43', 'tcp6', '::', 22, '::', 0, 0, 0, 18664, 'listening',
                               null, null);
 
