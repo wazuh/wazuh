@@ -93,6 +93,10 @@ class InventorySyncFacadeImpl final
         auto agentId = message->id()->string_view();
         auto moduleName = message->module_()->string_view();
 
+        auto agentName = message->name() ? message->name()->string_view() : std::string_view();
+        auto agentIp = message->ip() ? message->ip()->string_view() : std::string_view();
+        auto agentVersion = message->version() ? message->version()->string_view() : std::string_view();
+
         flatbuffers::Verifier verifier(message->data()->data(), message->data()->size());
         if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
         {
@@ -139,6 +143,9 @@ class InventorySyncFacadeImpl final
                                                 sessionId,
                                                 agentId,
                                                 moduleName,
+                                                agentName,
+                                                agentIp,
+                                                agentVersion,
                                                 syncMessage->content_as<Wazuh::SyncSchema::Start>(),
                                                 *m_dataStore,
                                                 *m_indexerQueue,
@@ -192,7 +199,7 @@ public:
                                         const std::string&,
                                         const std::string&,
                                         va_list)>& logFunction,
-               const nlohmann::json& /*configuration*/)
+               const nlohmann::json& configuration)
     {
         std::error_code errorCodeFS;
         std::filesystem::remove_all(INVENTORY_SYNC_PATH, errorCodeFS);
@@ -202,9 +209,9 @@ public:
         }
         m_dataStore = std::make_unique<TRocksDBWrapper>(INVENTORY_SYNC_PATH);
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
-        m_indexerConnector = std::make_unique<TIndexerConnector>(
-            nlohmann::json::parse(R"({"hosts": ["localhost:9200"], "ssl": {"certificate_authorities": []}})"),
-            logFunction);
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Indexer connector configuration: %s", configuration.dump().c_str());
+        m_indexerConnector = std::make_unique<TIndexerConnector>(configuration.at("indexer"), logFunction);
 
         Log::assignLogFunction(logFunction);
 
@@ -293,18 +300,24 @@ public:
                                 throw InventorySyncException("Invalid data message");
                             }
 
+                            thread_local std::string elementId;
+                            elementId.clear();
+                            elementId.append(res.context->agentIdString);
+                            elementId.append("_");
+                            elementId.append(data->id()->string_view());
+
                             if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                             {
                                 logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Upserting data...");
                                 m_indexerConnector->bulkIndex(
-                                    data->id()->string_view(),
+                                    elementId,
                                     data->index()->string_view(),
                                     std::string_view((const char*)data->data()->data(), data->data()->size()));
                             }
                             else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
                             {
                                 logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting data...");
-                                m_indexerConnector->bulkDelete(data->index()->string_view(), data->id()->string_view());
+                                m_indexerConnector->bulkDelete(elementId, data->index()->string_view());
                             }
                             else
                             {

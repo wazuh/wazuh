@@ -83,6 +83,9 @@ public:
     explicit AgentSessionImpl(const uint64_t sessionId,
                               std::string_view agentId,
                               std::string_view moduleName,
+                              std::string_view agentName,
+                              std::string_view agentIp,
+                              std::string_view agentVersion,
                               Wazuh::SyncSchema::Start const* data,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
@@ -129,6 +132,10 @@ public:
             std::make_shared<Context>(Context {.mode = data->mode(),
                                                .sessionId = sessionId,
                                                .agentId = agentIdConverted,
+                                               .agentIdString = std::string(agentId.data(), agentId.size()),
+                                               .agentName = std::string(agentName.data(), agentName.size()),
+                                               .agentIp = std::string(agentIp.data(), agentIp.size()),
+                                               .agentVersion = std::string(agentVersion.data(), agentVersion.size()),
                                                .moduleName = std::string(moduleName.data(), moduleName.size())});
 
         logDebug2(LOGGER_DEFAULT_TAG,

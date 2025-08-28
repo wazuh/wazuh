@@ -41,23 +41,30 @@ extern "C"
 #endif
     void inventory_sync_start(full_log_fnc_t callbackLog, const cJSON* configuration)
     {
-        nlohmann::json configurationNlohmann;
-        if (configuration)
+        try
         {
-            const std::unique_ptr<char, CJsonSmartFree> spJsonBytes {cJSON_Print(configuration)};
-            configurationNlohmann = nlohmann::json::parse(spJsonBytes.get());
-        }
+            nlohmann::json configurationNlohmann;
+            if (configuration)
+            {
+                const std::unique_ptr<char, CJsonSmartFree> spJsonBytes {cJSON_Print(configuration)};
+                configurationNlohmann = nlohmann::json::parse(spJsonBytes.get());
+            }
 
-        InventorySync::instance().start(
-            [callbackLog](const int logLevel,
-                          const std::string& tag,
-                          const std::string& file,
-                          const int line,
-                          const std::string& func,
-                          const std::string& logMessage,
-                          va_list args)
-            { callbackLog(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); },
-            configurationNlohmann);
+            InventorySync::instance().start(
+                [callbackLog](const int logLevel,
+                              const std::string& tag,
+                              const std::string& file,
+                              const int line,
+                              const std::string& func,
+                              const std::string& logMessage,
+                              va_list args)
+                { callbackLog(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); },
+                configurationNlohmann);
+        }
+        catch (const std::exception& e)
+        {
+            logError(LOGGER_DEFAULT_TAG, "Error starting inventory sync: %s", e.what());
+        }
     }
 
     void inventory_sync_stop()
