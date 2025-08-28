@@ -460,17 +460,9 @@ class WazuhException(Exception):
         3007: 'Client.keys file received in master node',
         3009: {'message': 'Error executing distributed API request',
                'remediation': ''},
-        3012: 'Cluster is not running',
-        3013: {'message': 'Cluster is not running, it might be disabled in `WAZUH_HOME/etc/ossec.conf`',
-               'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
-                              f'{DOCU_VERSION}/user-manual/configuring-cluster/index.html)'
-                              ' to get more information about how to configure a cluster'
-               },
         3015: 'Cannot access directory',
         3016: 'Received an error response',
         3018: 'Error sending request',
-        3019: 'Wazuh is running in cluster mode: {EXECUTABLE_NAME} is not available in worker nodes. Please, '
-              'try again in the master node: {MASTER_IP}',
         3020: {'message': 'Timeout sending request',
                'remediation': 'Please, try to make the request again'},
         3021: 'Timeout executing API request',
