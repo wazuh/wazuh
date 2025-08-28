@@ -249,15 +249,13 @@ default_policies:
         effect: allow
 
   cluster_all:
-    description: Provide full access to all cluster/manager related functionalities.
+    description: Provide full access to all cluster related functionalities.
     policies:
       resourceless:
         actions:
           - cluster:status
-          - manager:read
-          - manager:read_api_config
-          - manager:update_config
-          - manager:restart
+          - cluster:update_config
+          - cluster:restart
         resources:
           - '*:*:*'
         effect: allow
@@ -272,13 +270,13 @@ default_policies:
         effect: allow
 
   cluster_read:
-    description: Provide read access to all cluster/manager related functionalities.
+    description: Provide read access to all cluster related functionalities.
     policies:
       resourceless:
         actions:
           - cluster:status
-          - manager:read
-          - manager:read_api_config
+          - cluster:read
+          - cluster:read_api_config
         resources:
           - '*:*:*'
         effect: allow
@@ -286,7 +284,6 @@ default_policies:
         actions:
           - cluster:read_api_config
           - cluster:read
-          - cluster:read_api_config
         resources:
           - node:id:*
         effect: allow
