@@ -12,7 +12,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,10701072,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,525380,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2346320,0.1
-/var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,516264,0.1
+/var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,244796,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,470148,0.1
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,47248,0.1
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904752,0.1
@@ -20,7 +20,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,594996,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,118632,0.1
 /var/ossec/lib/librsync.so,root,wazuh,750,file,-rwxr-x---,404176,0.1
-/var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,14480,0.1
+/var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,12008,0.1
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1
 /var/ossec/etc/localtime,root,wazuh,640,file,-rw-r-----,118,0.1
 /var/ossec/etc/client.keys,root,wazuh,640,file,-rw-r-----,0,0.1
@@ -56,7 +56,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/active-response/bin/default-firewall-drop,root,wazuh,750,file,-rwxr-x---,23624,0.1
 /var/ossec/active-response/bin/wazuh-slack,root,wazuh,750,file,-rwxr-x---,21172,0.1
 /var/ossec/active-response/bin/ip-customblock,root,wazuh,750,file,-rwxr-x---,19744,0.1
-/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,845,0.1
+/var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,691,0.1
 /var/ossec/active-response/bin/pf,root,wazuh,750,file,-rwxr-x---,22256,0.1
 /var/ossec/active-response/bin/npf,root,wazuh,750,file,-rwxr-x---,20380,0.1
 /var/ossec/active-response/bin/disable-account,root,wazuh,750,file,-rwxr-x---,20204,0.1
