@@ -207,7 +207,8 @@ public:
     MOCK_METHOD(std::string_view, browserExtensionPackageReference, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionPackagePermissions, (), (const));
     MOCK_METHOD(std::string_view, browserExtensionPackageType, (), (const));
-    MOCK_METHOD(std::string_view, browserExtensionPackageEnabled, (), (const));
+    MOCK_METHOD(bool, browserExtensionPackageEnabled, (), (const));
+    MOCK_METHOD(bool, browserExtensionPackageVisible, (), (const));
     MOCK_METHOD(bool, browserExtensionPackageAutoupdate, (), (const));
     MOCK_METHOD(bool, browserExtensionPackagePersistent, (), (const));
     MOCK_METHOD(bool, browserExtensionPackageFromWebstore, (), (const));

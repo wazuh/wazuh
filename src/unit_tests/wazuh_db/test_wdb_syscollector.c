@@ -74,24 +74,6 @@ int teardown_wdb(void **state) {
     return 0;
 }
 
-void bind_text(int pos, const char * string, int ret) {
-    expect_value(__wrap_sqlite3_bind_text, pos, pos);
-    expect_string(__wrap_sqlite3_bind_text, buffer, string);
-    will_return(__wrap_sqlite3_bind_text, ret);
-}
-
-void bind_int(int pos, int value, int ret) {
-    expect_value(__wrap_sqlite3_bind_int, index, pos);
-    expect_value(__wrap_sqlite3_bind_int, value, value);
-    will_return(__wrap_sqlite3_bind_int, ret);
-}
-
-void bind_int64(int pos, int value, int ret) {
-    expect_value(__wrap_sqlite3_bind_int64, index, pos);
-    expect_value(__wrap_sqlite3_bind_int64, value, value);
-    will_return(__wrap_sqlite3_bind_int64, ret);
-}
-
 static void wdb_syscollector_processes_save2_fail(void) {
     int i = 0;
 
@@ -3933,7 +3915,8 @@ void test_wdb_browser_extensions_insert_sql_fail(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const char * package_enabled = "package_enabled";
+    const bool package_enabled = false;
+    const bool package_visible = true;
     const bool package_autoupdate = true;
     const bool package_persistent = false;
     const bool package_from_webstore = true;
@@ -3992,31 +3975,34 @@ void test_wdb_browser_extensions_insert_sql_fail(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_string(__wrap_sqlite3_bind_text, buffer, package_type);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 17);
-    expect_value(__wrap_sqlite3_bind_text, buffer, package_enabled);
-    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 17);
+    expect_value(__wrap_sqlite3_bind_int, value, package_enabled);
+    will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 18);
-    expect_value(__wrap_sqlite3_bind_int, value, package_autoupdate);
+    expect_value(__wrap_sqlite3_bind_int, value, package_visible);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 19);
-    expect_value(__wrap_sqlite3_bind_int, value, package_persistent);
+    expect_value(__wrap_sqlite3_bind_int, value, package_autoupdate);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 20);
-    expect_value(__wrap_sqlite3_bind_int, value, package_from_webstore);
+    expect_value(__wrap_sqlite3_bind_int, value, package_persistent);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 21);
+    expect_value(__wrap_sqlite3_bind_int, value, package_from_webstore);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 22);
     expect_value(__wrap_sqlite3_bind_int, value, browser_profile_referenced);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 22);
+    expect_value(__wrap_sqlite3_bind_text, pos, 23);
     expect_string(__wrap_sqlite3_bind_text, buffer, package_installed);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 23);
+    expect_value(__wrap_sqlite3_bind_text, pos, 24);
     expect_string(__wrap_sqlite3_bind_text, buffer, file_hash_sha256);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 24);
+    expect_value(__wrap_sqlite3_bind_text, pos, 25);
     expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 25);
+    expect_value(__wrap_sqlite3_bind_text, pos, 26);
     expect_string(__wrap_sqlite3_bind_text, buffer, item_id);
     will_return(__wrap_sqlite3_bind_text, 0);
 
@@ -4029,7 +4015,7 @@ void test_wdb_browser_extensions_insert_sql_fail(void **state) {
         .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
         .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
-        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_type = package_type, .package_enabled = package_enabled, .package_visible = package_visible, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
         .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
@@ -4059,7 +4045,8 @@ void test_wdb_browser_extensions_save_transaction_fail(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const char * package_enabled = "package_enabled";
+    const bool package_enabled = false;
+    const bool package_visible = true;
     const bool package_autoupdate = true;
     const bool package_persistent = false;
     const bool package_from_webstore = true;
@@ -4078,7 +4065,7 @@ void test_wdb_browser_extensions_save_transaction_fail(void **state) {
         .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
         .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
-        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_type = package_type, .package_enabled = package_enabled, .package_visible = package_visible, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
         .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
@@ -4107,7 +4094,8 @@ void test_wdb_browser_extensions_save_insert_fail(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const char * package_enabled = "package_enabled";
+    const bool package_enabled = false;
+    const bool package_visible = true;
     const bool package_autoupdate = true;
     const bool package_persistent = false;
     const bool package_from_webstore = true;
@@ -4127,7 +4115,7 @@ void test_wdb_browser_extensions_save_insert_fail(void **state) {
         .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
         .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
-        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_type = package_type, .package_enabled = package_enabled, .package_visible = package_visible, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
         .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
@@ -4156,7 +4144,8 @@ void test_wdb_browser_extensions_save_success(void **state) {
     const char * package_reference = "package_reference";
     const char * package_permissions = "package_permissions";
     const char * package_type = "package_type";
-    const char * package_enabled = "package_enabled";
+    const bool package_enabled = false;
+    const bool package_visible = true;
     const bool package_autoupdate = true;
     const bool package_persistent = false;
     const bool package_from_webstore = true;
@@ -4218,31 +4207,34 @@ void test_wdb_browser_extensions_save_success(void **state) {
     expect_value(__wrap_sqlite3_bind_text, pos, 16);
     expect_string(__wrap_sqlite3_bind_text, buffer, package_type);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 17);
-    expect_value(__wrap_sqlite3_bind_text, buffer, package_enabled);
-    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 17);
+    expect_value(__wrap_sqlite3_bind_int, value, package_enabled);
+    will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 18);
-    expect_value(__wrap_sqlite3_bind_int, value, package_autoupdate);
+    expect_value(__wrap_sqlite3_bind_int, value, package_visible);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 19);
-    expect_value(__wrap_sqlite3_bind_int, value, package_persistent);
+    expect_value(__wrap_sqlite3_bind_int, value, package_autoupdate);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 20);
-    expect_value(__wrap_sqlite3_bind_int, value, package_from_webstore);
+    expect_value(__wrap_sqlite3_bind_int, value, package_persistent);
     will_return(__wrap_sqlite3_bind_int, 0);
     expect_value(__wrap_sqlite3_bind_int, index, 21);
+    expect_value(__wrap_sqlite3_bind_int, value, package_from_webstore);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 22);
     expect_value(__wrap_sqlite3_bind_int, value, browser_profile_referenced);
     will_return(__wrap_sqlite3_bind_int, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 22);
+    expect_value(__wrap_sqlite3_bind_text, pos, 23);
     expect_string(__wrap_sqlite3_bind_text, buffer, package_installed);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 23);
+    expect_value(__wrap_sqlite3_bind_text, pos, 24);
     expect_string(__wrap_sqlite3_bind_text, buffer, file_hash_sha256);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 24);
+    expect_value(__wrap_sqlite3_bind_text, pos, 25);
     expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_text, pos, 25);
+    expect_value(__wrap_sqlite3_bind_text, pos, 26);
     expect_string(__wrap_sqlite3_bind_text, buffer, item_id);
     will_return(__wrap_sqlite3_bind_text, 0);
 
@@ -4253,7 +4245,7 @@ void test_wdb_browser_extensions_save_success(void **state) {
         .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
         .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
-        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_type = package_type, .package_enabled = package_enabled, .package_visible = package_visible, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
         .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
@@ -4486,42 +4478,114 @@ static void test_wdb_services_save_success(void **state) {
     const char * item_id = "item_id";
 
     will_return(__wrap_wdb_stmt_cache, 0);
-    bind_text(1, scan_id, 0);
-    bind_text(2, scan_time, 0);
-    bind_text(3, service_id, 0);
-    bind_text(4, service_name, 0);
-    bind_text(5, service_description, 0);
-    bind_text(6, service_type, 0);
-    bind_text(7, service_state, 0);
-    bind_text(8, service_sub_state, 0);
-    bind_text(9, service_enabled, 0);
-    bind_text(10, service_start_type, 0);
-    bind_text(11, service_restart, 0);
-    bind_int64(12, service_frequency, 0);
-    bind_int(13, service_starts_on_mount, 0);
-    bind_text(14, service_starts_on_path_modified, 0);
-    bind_text(15, service_starts_on_not_empty_directory, 0);
-    bind_int(16, service_inetd_compatibility, 0);
-    bind_int64(17, process_pid, 0);
-    bind_text(18, process_executable, 0);
-    bind_text(19, process_args, 0);
-    bind_text(20, process_user_name, 0);
-    bind_text(21, process_group_name, 0);
-    bind_text(22, process_working_directory, 0);
-    bind_text(23, process_root_directory, 0);
-    bind_text(24, file_path, 0);
-    bind_text(25, service_address, 0);
-    bind_text(26, log_file_path, 0);
-    bind_text(27, error_log_file_path, 0);
-    bind_int(28, service_exit_code, 0);
-    bind_int(29, service_win32_exit_code, 0);
-    bind_text(30, service_following, 0);
-    bind_text(31, service_object_path, 0);
-    bind_int64(32, service_target_ephemeral_id, 0);
-    bind_text(33, service_target_type, 0);
-    bind_text(34, service_target_address, 0);
-    bind_text(35, checksum, 0);
-    bind_text(36, item_id, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, scan_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, scan_time);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_description);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_type);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_state);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_sub_state);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_enabled);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_start_type);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_restart);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 12);
+    expect_value(__wrap_sqlite3_bind_int64, value, service_frequency);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 13);
+    expect_value(__wrap_sqlite3_bind_int, value, service_starts_on_mount);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_starts_on_path_modified);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_starts_on_not_empty_directory);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 16);
+    expect_value(__wrap_sqlite3_bind_int, value, service_inetd_compatibility);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 17);
+    expect_value(__wrap_sqlite3_bind_int64, value, process_pid);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 18);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_executable);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 19);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_args);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 20);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_user_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 21);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_group_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 22);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_working_directory);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 23);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_root_directory);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 24);
+    expect_string(__wrap_sqlite3_bind_text, buffer, file_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 25);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_address);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 26);
+    expect_string(__wrap_sqlite3_bind_text, buffer, log_file_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 27);
+    expect_string(__wrap_sqlite3_bind_text, buffer, error_log_file_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 28);
+    expect_value(__wrap_sqlite3_bind_int, value, service_exit_code);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 29);
+    expect_value(__wrap_sqlite3_bind_int, value, service_win32_exit_code);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 30);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_following);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 31);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_object_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 32);
+    expect_value(__wrap_sqlite3_bind_int64, value, service_target_ephemeral_id);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 33);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_target_type);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 34);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_target_address);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 35);
+    expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 36);
+    expect_string(__wrap_sqlite3_bind_text, buffer, item_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_wdb_step, SQLITE_DONE);
 
@@ -4964,42 +5028,114 @@ static void test_wdb_services_insert_sql_fail(void **state) {
     const char * item_id = "item_id";
 
     will_return(__wrap_wdb_stmt_cache, 0);
-    bind_text(1, scan_id, 0);
-    bind_text(2, scan_time, 0);
-    bind_text(3, service_id, 0);
-    bind_text(4, service_name, 0);
-    bind_text(5, service_description, 0);
-    bind_text(6, service_type, 0);
-    bind_text(7, service_state, 0);
-    bind_text(8, service_sub_state, 0);
-    bind_text(9, service_enabled, 0);
-    bind_text(10, service_start_type, 0);
-    bind_text(11, service_restart, 0);
-    bind_int64(12, service_frequency, 0);
-    bind_int(13, service_starts_on_mount, 0);
-    bind_text(14, service_starts_on_path_modified, 0);
-    bind_text(15, service_starts_on_not_empty_directory, 0);
-    bind_int(16, service_inetd_compatibility, 0);
-    bind_int64(17, process_pid, 0);
-    bind_text(18, process_executable, 0);
-    bind_text(19, process_args, 0);
-    bind_text(20, process_user_name, 0);
-    bind_text(21, process_group_name, 0);
-    bind_text(22, process_working_directory, 0);
-    bind_text(23, process_root_directory, 0);
-    bind_text(24, file_path, 0);
-    bind_text(25, service_address, 0);
-    bind_text(26, log_file_path, 0);
-    bind_text(27, error_log_file_path, 0);
-    bind_int(28, service_exit_code, 0);
-    bind_int(29, service_win32_exit_code, 0);
-    bind_text(30, service_following, 0);
-    bind_text(31, service_object_path, 0);
-    bind_int64(32, service_target_ephemeral_id, 0);
-    bind_text(33, service_target_type, 0);
-    bind_text(34, service_target_address, 0);
-    bind_text(35, checksum, 0);
-    bind_text(36, item_id, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, scan_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, scan_time);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 3);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 4);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 5);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_description);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 6);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_type);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 7);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_state);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 8);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_sub_state);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 9);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_enabled);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 10);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_start_type);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 11);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_restart);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 12);
+    expect_value(__wrap_sqlite3_bind_int64, value, service_frequency);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 13);
+    expect_value(__wrap_sqlite3_bind_int, value, service_starts_on_mount);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 14);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_starts_on_path_modified);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 15);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_starts_on_not_empty_directory);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 16);
+    expect_value(__wrap_sqlite3_bind_int, value, service_inetd_compatibility);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 17);
+    expect_value(__wrap_sqlite3_bind_int64, value, process_pid);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 18);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_executable);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 19);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_args);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 20);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_user_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 21);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_group_name);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 22);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_working_directory);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 23);
+    expect_string(__wrap_sqlite3_bind_text, buffer, process_root_directory);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 24);
+    expect_string(__wrap_sqlite3_bind_text, buffer, file_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 25);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_address);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 26);
+    expect_string(__wrap_sqlite3_bind_text, buffer, log_file_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 27);
+    expect_string(__wrap_sqlite3_bind_text, buffer, error_log_file_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 28);
+    expect_value(__wrap_sqlite3_bind_int, value, service_exit_code);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int, index, 29);
+    expect_value(__wrap_sqlite3_bind_int, value, service_win32_exit_code);
+    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 30);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_following);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 31);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_object_path);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 32);
+    expect_value(__wrap_sqlite3_bind_int64, value, service_target_ephemeral_id);
+    will_return(__wrap_sqlite3_bind_int64, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 33);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_target_type);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 34);
+    expect_string(__wrap_sqlite3_bind_text, buffer, service_target_address);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 35);
+    expect_string(__wrap_sqlite3_bind_text, buffer, checksum);
+    will_return(__wrap_sqlite3_bind_text, 0);
+    expect_value(__wrap_sqlite3_bind_text, pos, 36);
+    expect_string(__wrap_sqlite3_bind_text, buffer, item_id);
+    will_return(__wrap_sqlite3_bind_text, 0);
 
     will_return(__wrap_wdb_step, 1);
     will_return(__wrap_sqlite3_errmsg, "ERROR");

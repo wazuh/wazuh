@@ -994,7 +994,8 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_BrowserExtensions)
     EXPECT_CALL(*context, browserExtensionPackageReference()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, browserExtensionPackagePermissions()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, browserExtensionPackageType()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, browserExtensionPackageVisible()).WillOnce(testing::Return(false));
     EXPECT_CALL(*context, browserExtensionPackageAutoupdate()).WillOnce(testing::Return(false));
     EXPECT_CALL(*context, browserExtensionPackagePersistent()).WillOnce(testing::Return(false));
     EXPECT_CALL(*context, browserExtensionPackageFromWebstore()).WillOnce(testing::Return(false));
@@ -1008,7 +1009,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_BrowserExtensions)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_fbdec581b7a6abd68fa838df2ec69f0e8f780eef","operation":"INSERTED","data":{"browser":{"profile":{"referenced":false}},"package":{"autoupdate":false,"from_webstore":false,"name":"UBlock Origin","persistent":false},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_fbdec581b7a6abd68fa838df2ec69f0e8f780eef","operation":"INSERTED","data":{"browser":{"profile":{"referenced":false}},"package":{"autoupdate":false,"enabled":false,"visible":false,"from_webstore":false,"name":"UBlock Origin","persistent":false},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 TEST_F(SystemInventoryUpsertElement, validStrings_BrowserExtensions)
@@ -1041,7 +1042,8 @@ TEST_F(SystemInventoryUpsertElement, validStrings_BrowserExtensions)
     EXPECT_CALL(*context, browserExtensionPackagePermissions())
         .WillOnce(testing::Return("activeTab,storage,tabs,webNavigation"));
     EXPECT_CALL(*context, browserExtensionPackageType()).WillOnce(testing::Return("extension"));
-    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return("enabled"));
+    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackageVisible()).WillOnce(testing::Return(true));
     EXPECT_CALL(*context, browserExtensionPackageAutoupdate()).WillOnce(testing::Return(true));
     EXPECT_CALL(*context, browserExtensionPackagePersistent()).WillOnce(testing::Return(true));
     EXPECT_CALL(*context, browserExtensionPackageFromWebstore()).WillOnce(testing::Return(true));
@@ -1056,7 +1058,7 @@ TEST_F(SystemInventoryUpsertElement, validStrings_BrowserExtensions)
 
     EXPECT_EQ(
         context->m_serializedElement,
-        R"({"id":"001_571fdefef67b73320f74a5f2f5fb69bde4ad9680","operation":"INSERTED","data":{"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":"1.52.2","description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":"enabled","from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":"1710489821000","name":"UBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":["activeTab","storage","tabs","webNavigation"],"persistent":true,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2"},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+        R"({"id":"001_571fdefef67b73320f74a5f2f5fb69bde4ad9680","operation":"INSERTED","data":{"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":"1.52.2","description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":true,"visible":true,"from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":"1710489821000","name":"UBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":["activeTab","storage","tabs","webNavigation"],"persistent":true,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2"},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }
 
 /*

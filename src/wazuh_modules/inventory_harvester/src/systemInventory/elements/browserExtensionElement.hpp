@@ -85,6 +85,7 @@ public:
         element.data.package.build_version = data->browserExtensionPackageBuildVersion();
         element.data.package.description = data->browserExtensionPackageDescription();
         element.data.package.enabled = data->browserExtensionPackageEnabled();
+        element.data.package.visible = data->browserExtensionPackageVisible();
         element.data.package.from_webstore = data->browserExtensionPackageFromWebstore();
         element.data.package.id = data->browserExtensionPackageID();
         element.data.package.installed = data->browserExtensionPackageInstalled();

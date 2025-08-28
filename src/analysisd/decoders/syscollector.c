@@ -290,13 +290,14 @@ static struct deltas_fields_match_list const BROWSER_EXTENSION_FIELDS[] = {
   { .current = { "package_permissions", "browser_extension.package_permissions" }, .next = &BROWSER_EXTENSION_FIELDS[14]},
   { .current = { "package_type", "browser_extension.package_type" }, .next = &BROWSER_EXTENSION_FIELDS[15]},
   { .current = { "package_enabled", "browser_extension.package_enabled" }, .next = &BROWSER_EXTENSION_FIELDS[16]},
-  { .current = { "package_autoupdate", "browser_extension.package_autoupdate" }, .next = &BROWSER_EXTENSION_FIELDS[17]},
-  { .current = { "package_persistent", "browser_extension.package_persistent" }, .next = &BROWSER_EXTENSION_FIELDS[18]},
-  { .current = { "package_from_webstore", "browser_extension.package_from_webstore" }, .next = &BROWSER_EXTENSION_FIELDS[19]},
-  { .current = { "browser_profile_referenced", "browser_extension.browser_profile_referenced" }, .next = &BROWSER_EXTENSION_FIELDS[20]},
-  { .current = { "package_installed", "browser_extension.package_installed" }, .next = &BROWSER_EXTENSION_FIELDS[21]},
-  { .current = { "file_hash_sha256", "browser_extension.file_hash_sha256" }, .next = &BROWSER_EXTENSION_FIELDS[22]},
-  { .current = { "checksum", NULL}, .next = &BROWSER_EXTENSION_FIELDS[23]},
+  { .current = { "package_visible", "browser_extension.package_visible" }, .next = &BROWSER_EXTENSION_FIELDS[17]},
+  { .current = { "package_autoupdate", "browser_extension.package_autoupdate" }, .next = &BROWSER_EXTENSION_FIELDS[18]},
+  { .current = { "package_persistent", "browser_extension.package_persistent" }, .next = &BROWSER_EXTENSION_FIELDS[19]},
+  { .current = { "package_from_webstore", "browser_extension.package_from_webstore" }, .next = &BROWSER_EXTENSION_FIELDS[20]},
+  { .current = { "browser_profile_referenced", "browser_extension.browser_profile_referenced" }, .next = &BROWSER_EXTENSION_FIELDS[21]},
+  { .current = { "package_installed", "browser_extension.package_installed" }, .next = &BROWSER_EXTENSION_FIELDS[22]},
+  { .current = { "file_hash_sha256", "browser_extension.file_hash_sha256" }, .next = &BROWSER_EXTENSION_FIELDS[23]},
+  { .current = { "checksum", NULL}, .next = &BROWSER_EXTENSION_FIELDS[24]},
   { .current = { "item_id", NULL }, .next = NULL}
 };
 

@@ -52,7 +52,8 @@ struct BrowserExtension final
         bool autoupdate;
         std::string_view build_version;
         std::string_view description;
-        std::string_view enabled;
+        bool enabled;
+        bool visible;
         bool from_webstore;
         std::string_view id;
         std::string_view installed;
@@ -68,6 +69,7 @@ struct BrowserExtension final
                     MAKE_FIELD("build_version", &Package::build_version),
                     MAKE_FIELD("description", &Package::description),
                     MAKE_FIELD("enabled", &Package::enabled),
+                    MAKE_FIELD("visible", &Package::visible),
                     MAKE_FIELD("from_webstore", &Package::from_webstore),
                     MAKE_FIELD("id", &Package::id),
                     MAKE_FIELD("installed", &Package::installed),

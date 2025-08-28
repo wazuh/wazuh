@@ -1325,13 +1325,13 @@ int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 }
 
 // Function to save web browser extensions info into the DB. Return 0 on success or -1 on error.
-int wdb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * wb_extension_record, const bool replace) {
+int wdb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace) {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_browser_extensions_save(): cannot begin transaction");
         return -1;
     }
 
-    if (wdb_browser_extensions_insert(wdb, wb_extension_record, replace)) {
+    if (wdb_browser_extensions_insert(wdb, browser_extension_record, replace)) {
         return -1;
     }
 
@@ -1339,17 +1339,17 @@ int wdb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * 
 }
 
 // Insert web browser extensions info tuple. Return 0 on success or -1 on error.
-int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t * wb_extension_record, const bool replace) {
+int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
-    if (NULL == wb_extension_record->browser_name ||
-        strlen(wb_extension_record->browser_name) == 0 ||
-        NULL == wb_extension_record->user_id ||
-        strlen(wb_extension_record->user_id) == 0 ||
-        NULL == wb_extension_record->browser_profile_name ||
-        strlen(wb_extension_record->browser_profile_name) == 0 ||
-        NULL == wb_extension_record->package_name ||
-        strlen(wb_extension_record->package_name) == 0){
+    if (NULL == browser_extension_record->browser_name ||
+        strlen(browser_extension_record->browser_name) == 0 ||
+        NULL == browser_extension_record->user_id ||
+        strlen(browser_extension_record->user_id) == 0 ||
+        NULL == browser_extension_record->browser_profile_name ||
+        strlen(browser_extension_record->browser_profile_name) == 0 ||
+        NULL == browser_extension_record->package_name ||
+        strlen(browser_extension_record->package_name) == 0){
         return OS_INVALID;
     }
 
@@ -1360,31 +1360,32 @@ int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t 
 
     stmt = wdb->stmt[replace ? WDB_STMT_BROWSER_EXTENSION_INSERT2 : WDB_STMT_BROWSER_EXTENSION_INSERT];
 
-    sqlite3_bind_text(stmt, 1, wb_extension_record->scan_id, -1, NULL);
-    sqlite3_bind_text(stmt, 2, wb_extension_record->scan_time, -1, NULL);
-    sqlite3_bind_text(stmt, 3, wb_extension_record->browser_name, -1, NULL);
-    sqlite3_bind_text(stmt, 4, wb_extension_record->user_id, -1, NULL);
-    sqlite3_bind_text(stmt, 5, wb_extension_record->package_name, -1, NULL);
-    sqlite3_bind_text(stmt, 6, wb_extension_record->package_id, -1, NULL);
-    sqlite3_bind_text(stmt, 7, wb_extension_record->package_version, -1, NULL);
-    sqlite3_bind_text(stmt, 8, wb_extension_record->package_description, -1, NULL);
-    sqlite3_bind_text(stmt, 9, wb_extension_record->package_vendor, -1, NULL);
-    sqlite3_bind_text(stmt, 10, wb_extension_record->package_build_version, -1, NULL);
-    sqlite3_bind_text(stmt, 11, wb_extension_record->package_path, -1, NULL);
-    sqlite3_bind_text(stmt, 12, wb_extension_record->browser_profile_name, -1, NULL);
-    sqlite3_bind_text(stmt, 13, wb_extension_record->browser_profile_path, -1, NULL);
-    sqlite3_bind_text(stmt, 14, wb_extension_record->package_reference, -1, NULL);
-    sqlite3_bind_text(stmt, 15, wb_extension_record->package_permissions, -1, NULL);
-    sqlite3_bind_text(stmt, 16, wb_extension_record->package_type, -1, NULL);
-    sqlite3_bind_text(stmt, 17, wb_extension_record->package_enabled, -1, NULL);
-    sqlite3_bind_int(stmt, 18, wb_extension_record->package_autoupdate);
-    sqlite3_bind_int(stmt, 19, wb_extension_record->package_persistent);
-    sqlite3_bind_int(stmt, 20, wb_extension_record->package_from_webstore);
-    sqlite3_bind_int(stmt, 21, wb_extension_record->browser_profile_referenced);
-    sqlite3_bind_text(stmt, 22, wb_extension_record-> package_installed, -1, NULL);
-    sqlite3_bind_text(stmt, 23, wb_extension_record-> file_hash_sha256, -1, NULL);
-    sqlite3_bind_text(stmt, 24, wb_extension_record->checksum, -1, NULL);
-    sqlite3_bind_text(stmt, 25, wb_extension_record->item_id, -1, NULL);
+    sqlite3_bind_text(stmt, 1, browser_extension_record->scan_id, -1, NULL);
+    sqlite3_bind_text(stmt, 2, browser_extension_record->scan_time, -1, NULL);
+    sqlite3_bind_text(stmt, 3, browser_extension_record->browser_name, -1, NULL);
+    sqlite3_bind_text(stmt, 4, browser_extension_record->user_id, -1, NULL);
+    sqlite3_bind_text(stmt, 5, browser_extension_record->package_name, -1, NULL);
+    sqlite3_bind_text(stmt, 6, browser_extension_record->package_id, -1, NULL);
+    sqlite3_bind_text(stmt, 7, browser_extension_record->package_version, -1, NULL);
+    sqlite3_bind_text(stmt, 8, browser_extension_record->package_description, -1, NULL);
+    sqlite3_bind_text(stmt, 9, browser_extension_record->package_vendor, -1, NULL);
+    sqlite3_bind_text(stmt, 10, browser_extension_record->package_build_version, -1, NULL);
+    sqlite3_bind_text(stmt, 11, browser_extension_record->package_path, -1, NULL);
+    sqlite3_bind_text(stmt, 12, browser_extension_record->browser_profile_name, -1, NULL);
+    sqlite3_bind_text(stmt, 13, browser_extension_record->browser_profile_path, -1, NULL);
+    sqlite3_bind_text(stmt, 14, browser_extension_record->package_reference, -1, NULL);
+    sqlite3_bind_text(stmt, 15, browser_extension_record->package_permissions, -1, NULL);
+    sqlite3_bind_text(stmt, 16, browser_extension_record->package_type, -1, NULL);
+    sqlite3_bind_int(stmt, 17, browser_extension_record->package_enabled);
+    sqlite3_bind_int(stmt, 18, browser_extension_record->package_visible);
+    sqlite3_bind_int(stmt, 19, browser_extension_record->package_autoupdate);
+    sqlite3_bind_int(stmt, 20, browser_extension_record->package_persistent);
+    sqlite3_bind_int(stmt, 21, browser_extension_record->package_from_webstore);
+    sqlite3_bind_int(stmt, 22, browser_extension_record->browser_profile_referenced);
+    sqlite3_bind_text(stmt, 23, browser_extension_record->package_installed, -1, NULL);
+    sqlite3_bind_text(stmt, 24, browser_extension_record->file_hash_sha256, -1, NULL);
+    sqlite3_bind_text(stmt, 25, browser_extension_record->checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 26, browser_extension_record->item_id, -1, NULL);
 
     if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
@@ -1763,7 +1764,8 @@ int wdb_syscollector_browser_extensions_save2(wdb_t * wdb, const cJSON * attribu
     const char * package_reference = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_reference"));
     const char * package_permissions = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_permissions"));
     const char * package_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_type"));
-    const char * package_enabled = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_enabled"));
+    const bool package_enabled = cJSON_GetObjectItem(attributes, "package_enabled") ? cJSON_GetObjectItem(attributes, "package_enabled")->valueint : false;
+    const bool package_visible = cJSON_GetObjectItem(attributes, "package_visible") ? cJSON_GetObjectItem(attributes, "package_visible")->valueint : false;
     const bool package_autoupdate = cJSON_GetObjectItem(attributes, "package_autoupdate") ? cJSON_GetObjectItem(attributes, "package_autoupdate")->valueint : false;
     const bool package_persistent = cJSON_GetObjectItem(attributes, "package_persistent") ? cJSON_GetObjectItem(attributes, "package_persistent")->valueint : false;
     const bool package_from_webstore = cJSON_GetObjectItem(attributes, "package_from_webstore") ? cJSON_GetObjectItem(attributes, "package_from_webstore")->valueint : false;
@@ -1773,17 +1775,17 @@ int wdb_syscollector_browser_extensions_save2(wdb_t * wdb, const cJSON * attribu
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     const char * item_id = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "item_id"));
 
-    browser_extension_record_t wb_extension_record = {
+    browser_extension_record_t browser_extension_record = {
         .scan_id = scan_id, .scan_time = scan_time, .browser_name = browser_name, .user_id = user_id, .package_name = package_name,
         .package_id = package_id, .package_version = package_version, .package_description = package_description, .package_vendor = package_vendor,
         .package_build_version = package_build_version, .package_path = package_path, .browser_profile_name = browser_profile_name,
         .browser_profile_path = browser_profile_path, .package_reference = package_reference, .package_permissions = package_permissions,
-        .package_type = package_type, .package_enabled = package_enabled, .package_autoupdate = package_autoupdate,
+        .package_type = package_type, .package_enabled = package_enabled, .package_visible = package_visible, .package_autoupdate = package_autoupdate,
         .package_persistent = package_persistent, .package_from_webstore = package_from_webstore, .browser_profile_referenced = browser_profile_referenced,
         .package_installed = package_installed, .file_hash_sha256 = file_hash_sha256, .checksum = checksum, .item_id = item_id
     };
 
-    return wdb_browser_extensions_save(wdb, &wb_extension_record, TRUE);
+    return wdb_browser_extensions_save(wdb, &browser_extension_record, TRUE);
 }
 
 int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
