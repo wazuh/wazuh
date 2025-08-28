@@ -173,7 +173,7 @@ void fim_realtime_delete_watches(const directory_t *configuration) {
         if (data == NULL) {
             continue;
         }
-        watch_conf = fim_configuration_directory(data);
+        watch_conf = fim_configuration_directory(data, true);
 
         if (configuration == watch_conf) {
             W_Vector_insert(watch_to_delete, hash_node->key);
@@ -299,7 +299,7 @@ int realtime_update_watch(const char *wd, const char *dir) {
         return -1;
     }
 
-    configuration = fim_configuration_directory(dir);
+    configuration = fim_configuration_directory(dir, true);
 
     if (configuration == NULL) {
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
@@ -509,8 +509,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             }
             str_lowercase(final_path);
 
-            directory_t *index = fim_configuration_directory(wdchar);
-            directory_t *file_index = fim_configuration_directory(final_path);
+            directory_t *index = fim_configuration_directory(wdchar, true);
+            directory_t *file_index = fim_configuration_directory(final_path, true);
 
             if (index == file_index) {
                 /* Check the change */

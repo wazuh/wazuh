@@ -705,7 +705,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     snprintf(path, PATH_MAX, "%s", dir_it->symbolic_links);
                     fim_link_check_delete(dir_it);
 
-                    directory_t *config = fim_configuration_directory(path);
+                    directory_t *config = fim_configuration_directory(path, true);
 
                     if (config != NULL) {
                         fim_link_silent_scan(path, config);
