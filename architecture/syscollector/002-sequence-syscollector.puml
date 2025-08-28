@@ -8,7 +8,6 @@ database "<agent-id>.db" as agent.db
 actor "wazuh-manager" as manager
 participant syscollector as sysco
 participant sysinfo as info
-participant rsync
 participant dbsync
 database local.db as ldb
 
@@ -36,27 +35,6 @@ loop every ""interval"" seconds
             manager -> agent.db: update DB
             alt syscollector rules?
             manager -> manager: generate alert
-            end
-        end
-    end
-    group for each [scan enabled]
-        note over manager, sysco
-            rsync synchronization
-        end note
-        loop until DB table is mirrored
-            sysco -> rsync++ : get sync data
-            rsync -> dbsync++ : get DB data
-            dbsync -> ldb
-            rsync <-- dbsync-- : DB data
-            rsync -> rsync : build sync data
-            rsync --> sysco --: sync data
-            sysco ->> manager : send current table hash
-            manager -> agent.db: compare hash
-            manager <- agent.db
-            alt more datailed info needed ?
-                sysco <<- manager : request detailed table hash
-            else
-                sysco <<- manager : sync finished
             end
         end
     end

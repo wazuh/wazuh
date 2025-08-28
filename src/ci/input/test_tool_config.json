@@ -73,15 +73,6 @@
             ]
         }
     ],
-    "shared_modules/rsync":
-    [
-        {
-            "test_tool_name": "rsync_test_tool",
-            "is_smoke_with_configuration": false,
-            "args":
-            []
-        }
-    ],
     "shared_modules/sync_protocol":
     [
         {

@@ -575,14 +575,6 @@
         "type": "file",
         "user": "root"
     },
-    "/var/ossec/lib/librsync.so": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
     "/var/ossec/lib/libfimdb.so": {
         "class": "static",
         "group": "wazuh",
