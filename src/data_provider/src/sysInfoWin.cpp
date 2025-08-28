@@ -49,6 +49,7 @@
 #include "services_windows.hpp"
 #include "chrome.hpp"
 #include "firefox.hpp"
+#include "ie_explorer.hpp"
 
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -1268,7 +1269,17 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_reference"]         = ext.value("update_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = ext.value("permissions",         UNKNOWN_VALUE);
             extensionItem["package_type"]              = UNKNOWN_VALUE;
-            extensionItem["package_enabled"]           = ext.value("state",               UNKNOWN_VALUE);
+            if (ext.contains("state") && !ext["state"].get<std::string>().empty()) {
+                try {
+                    int stateValue = std::stoi(ext["state"].get<std::string>());
+                    extensionItem["package_enabled"] = (stateValue == 1) ? 1 : 0;
+                } catch (const std::exception&) {
+                    extensionItem["package_enabled"] = -1;
+                }
+            } else {
+                extensionItem["package_enabled"] = -1;
+            }
+            extensionItem["package_visible"]           = 0;
             extensionItem["package_autoupdate"]        = 0;
             extensionItem["package_persistent"]        = stringToInt("persistent");
             extensionItem["package_from_webstore"]     = stringToInt("from_webstore");
@@ -1301,8 +1312,43 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = UNKNOWN_VALUE;
             extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);
-            extensionItem["package_enabled"]           = (ext.contains("disabled") && !ext["disabled"].get<bool>()) ? "1" : "0";
+            extensionItem["package_enabled"]           = ext["disabled"].get<bool>() ? 0 : 1;
+            extensionItem["package_visible"]            = ext["visible"].get<bool>() ? 1 : 0;
             extensionItem["package_autoupdate"]        = (ext.contains("autoupdate") && ext["autoupdate"].get<bool>()) ? 1 : 0;
+            extensionItem["package_persistent"]        = 0;
+            extensionItem["package_from_webstore"]     = 0;
+            extensionItem["browser_profile_referenced"] = 0;
+            extensionItem["package_installed"]         = UNKNOWN_VALUE;
+            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
+
+            result.push_back(std::move(extensionItem));
+        }
+
+        // Collect Internet Explorer extensions
+        IEExtensionsProvider ieProvider;
+        auto collectedIEExtensions = ieProvider.collect();
+
+        for (auto& ext : collectedIEExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            extensionItem["browser_name"]              = "ie";
+            extensionItem["user_id"]                   = UNKNOWN_VALUE;
+            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"]                = UNKNOWN_VALUE;
+            extensionItem["package_version"]           = ext.value("version",             UNKNOWN_VALUE);
+            extensionItem["package_description"]       = UNKNOWN_VALUE;
+            extensionItem["package_vendor"]            = UNKNOWN_VALUE;
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["package_reference"]         = ext.value("registry_path",      UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
+            extensionItem["package_type"]              = UNKNOWN_VALUE;
+            extensionItem["package_enabled"]           = 1;
+            extensionItem["package_visible"]           = 0;
+            extensionItem["package_autoupdate"]        = 0;
             extensionItem["package_persistent"]        = 0;
             extensionItem["package_from_webstore"]     = 0;
             extensionItem["browser_profile_referenced"] = 0;
