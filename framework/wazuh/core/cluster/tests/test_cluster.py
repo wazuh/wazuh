@@ -33,13 +33,12 @@ agent_groups = b"default,windows-servers"
 # Valid configurations
 default_cluster_configuration = {
     'cluster': {
-        'disabled': 'yes',
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
         'key': '',
         'port': 1516,
-        'bind_addr': '0.0.0.0',
+        'bind_addr': 'localhost',
         'nodes': ['NODE_IP'],
         'hidden': 'no'
     }
@@ -47,13 +46,12 @@ default_cluster_configuration = {
 
 custom_cluster_configuration = {
     'cluster': {
-        'disabled': 'no',
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
         'key': 'a' * 32,
         'port': 1516,
-        'bind_addr': '0.0.0.0',
+        'bind_addr': 'localhost',
         'nodes': ['172.10.0.100'],
         'hidden': False
     }
@@ -103,11 +101,6 @@ def test_get_node():
         assert get_node["node"] == test_dict["node_name"]
         assert get_node["cluster"] == test_dict["name"]
         assert get_node["type"] == test_dict["node_type"]
-
-
-def test_check_cluster_status():
-    """Check the correct output of the check_cluster_status function."""
-    assert isinstance(cluster.check_cluster_status(), bool)
 
 
 @patch('os.path.getmtime', return_value=45)
