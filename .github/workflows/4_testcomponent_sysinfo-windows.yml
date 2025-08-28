@@ -122,5 +122,29 @@ jobs:
           npm install json path yaml
       - name: Run tests
         run: |
-          cd src/data_provider
-          python -m pytest -vv qa/
+          # Verificar que los archivos están donde esperamos
+          Write-Host "=== Checking file locations ==="
+          Get-ChildItem C:\data_provider\
+          Get-ChildItem C:\shared_libraries\
+
+          # Verificar dependencias del binario
+          Write-Host "=== Testing binary directly ==="
+          Write-Host "Attempting to run sysinfo_test_tool.exe..."
+
+          try {
+              C:\data_provider\sysinfo_test_tool.exe
+              Write-Host "Binary executed successfully"
+          } catch {
+              Write-Host "Binary failed with error: $($_.Exception.Message)"
+              Write-Host "Exit code: $LASTEXITCODE"
+          }
+
+          # Verificar variables de entorno
+          Write-Host "=== Environment check ==="
+          Write-Host "PATH: $env:PATH"
+
+          # Ejecutar pytest desde el directorio original
+          Write-Host "=== Running pytest ==="
+          Set-Location src/data_provider
+          python -m pytest -vv qa/ --tb=long -s
+        shell: powershell
