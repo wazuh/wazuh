@@ -1,3 +1,12 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * All rights reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
 #include "ie_explorer.hpp"
 #include <iostream>
 #include <string>
@@ -143,19 +152,10 @@ std::string IEExtensionsProvider::getSubKeyNameFromHKey(HKEY hKey)
 
 std::string IEExtensionsProvider::HKeyToString(HKEY hKey)
 {
-    if (hKey == HKEY_CLASSES_ROOT) return "HKEY_CLASSES_ROOT";
-
-    if (hKey == HKEY_CURRENT_USER) return "HKEY_CURRENT_USER";
-
-    if (hKey == HKEY_LOCAL_MACHINE) return "HKEY_LOCAL_MACHINE";
-
-    if (hKey == HKEY_USERS) return "HKEY_USERS";
-
-    if (hKey == HKEY_CURRENT_CONFIG) return "HKEY_CURRENT_CONFIG";
-
-    if (hKey == HKEY_PERFORMANCE_DATA) return "HKEY_PERFORMANCE_DATA";
-
-    if (hKey == HKEY_DYN_DATA) return "HKEY_DYN_DATA"; // legacy, 9x
+    if (HKEY_TO_STRING_MAP.find(hKey) != HKEY_TO_STRING_MAP.end())
+    {
+        return HKEY_TO_STRING_MAP.at(hKey);
+    }
 
     return "UNKNOWN_HKEY";
 }
@@ -314,18 +314,24 @@ std::string IEExtensionsProvider::GetFileVersion(const std::string& filePath)
     DWORD size = m_ieExtensionsWrapper->GetFileVersionInfoSizeWWrapper(wFilePath.c_str(), &handle);
 
     if (size == 0)
+    {
         return "No version info";
+    }
 
     std::vector<BYTE> buffer(size);
 
     if (!m_ieExtensionsWrapper->GetFileVersionInfoWWrapper(wFilePath.c_str(), handle, size, buffer.data()))
+    {
         return "Failed to get version info";
+    }
 
     VS_FIXEDFILEINFO* fileInfo = nullptr;
     UINT len = 0;
 
     if (!m_ieExtensionsWrapper->VerQueryValueWWrapper(buffer.data(), L"\\", reinterpret_cast<LPVOID*>(&fileInfo), &len))
+    {
         return "Failed to query version value";
+    }
 
     if (fileInfo)
     {

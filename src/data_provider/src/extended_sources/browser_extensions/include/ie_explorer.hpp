@@ -14,6 +14,7 @@
 #include <windows.h>
 #include "json.hpp"
 #include "ie_extensions_wrapper.hpp"
+#include <map>
 
 /**
  * @brief List of registry keys where Internet Explorer Browser Helper Objects (BHOs) are stored.
@@ -44,6 +45,13 @@ const std::vector<std::string> CLASS_EXECUTABLES_SUBKEYS =
     "LocalServer",      ///< 16-bit legacy local server
     "LocalServer32",    ///< 32-bit local server (common)
     "LocalServer64"     ///< 64-bit local server (rare)
+};
+
+const std::map<HKEY, std::string> HKEY_TO_STRING_MAP =
+{
+    {HKEY_CLASSES_ROOT, "HKEY_CLASSES_ROOT"},
+    {HKEY_LOCAL_MACHINE, "HKEY_LOCAL_MACHINE"},
+    {HKEY_USERS, "HKEY_USERS"},
 };
 
 /**
