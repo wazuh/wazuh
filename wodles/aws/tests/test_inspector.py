@@ -20,7 +20,6 @@ TEST_SERVICES_SCHEMA = 'schema_services_test.sql'
 
 def mock_get_client(*args, **kwargs):
     if kwargs.get('region') in inspector.INSPECTOR_V2_REGIONS:
-        # Inspector v2: list_findings devuelve 'findings' (no usamos batch_get_finding_details)
         mock_client = MagicMock()
         mock_client.list_findings.side_effect = [
             {
