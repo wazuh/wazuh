@@ -217,10 +217,10 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=libwazuhshared.dll ..\libwazuhshared.dll
     File /oname=dbsync.dll ..\shared_modules\dbsync\build\bin\dbsync.dll
     File /oname=rsync.dll ..\shared_modules\rsync\build\bin\rsync.dll
+    File /oname=libagent_sync_protocol.dll ..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll
     File /oname=sysinfo.dll ..\data_provider\build\bin\sysinfo.dll
     File /oname=syscollector.dll ..\wazuh_modules\syscollector\build\bin\syscollector.dll
     File /oname=libfimdb.dll ..\syscheckd/build/bin/libfimdb.dll
-    File /oname=libagent_sync_protocol.dll ..\sync_protocol\build\bin\libagent_sync_protocol.dll
     File /oname=queue\syscollector\norm_config.json ..\wazuh_modules\syscollector\norm_config.json
     File VERSION.json
 

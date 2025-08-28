@@ -113,12 +113,12 @@ SHARED_MODULES=shared_modules/
 WAZUH_MODULES=wazuh_modules/
 DBSYNC=${SHARED_MODULES}dbsync/
 RSYNC=${SHARED_MODULES}rsync/
+SYNC_PROTOCOL=${SHARED_MODULES}sync_protocol/
 SYSCOLLECTOR=wazuh_modules/syscollector/
 ROUTER=shared_modules/router/
 CONTENT_MANAGER=shared_modules/content_manager/
 VULNERABILITY_SCANNER=wazuh_modules/vulnerability_scanner/
 SYSINFO=data_provider/
-SYNC_PROTOCOL=sync_protocol/
 SYSCHECK=syscheckd/
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
@@ -135,7 +135,6 @@ HTTP_REQUEST_BRANCH?=ef2cb3029b4b7649791951268c13baeb1de6085e
 ifeq (${TARGET},winagent)
 CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
 WIN_CMAKE_RULES+=win32/sysinfo
-WIN_CMAKE_RULES+=win32/sync_protocol
 WIN_CMAKE_RULES+=win32/shared_modules
 WIN_RESOURCE_OBJ=-DRESOURCE_OBJ=win32/version-dll.o
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
@@ -417,9 +416,11 @@ SYNC_PROTOCOL_LIB+=-llibagent_sync_protocol
 ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
 	OSSEC_LDFLAGS+=-L${RSYNC}build/bin
+	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/bin
 else
 	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
 	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
+	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/lib
 endif
 
 ifeq (${TARGET},server)
@@ -445,7 +446,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYSCOLLECTOR}include -I${SYSINFO}include -I${SYNC_PROTOCOL}include -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I./shared_modules/
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${RSYNC}include -I${SYNC_PROTOCOL}include -I${SYSCOLLECTOR}include -I${SYSINFO}include -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${VULNERABILITY_SCANNER}include -I./shared_modules/
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -557,13 +558,11 @@ SYSINFO_LIB+=-lsysinfo
 ifeq (${TARGET}, winagent)
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/bin
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
-	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/bin
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/lib
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/bin
 else
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
-	OSSEC_LDFLAGS+=-L${SYNC_PROTOCOL}build/lib
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/lib
 endif
 
@@ -707,7 +706,6 @@ BUILD_AGENT+=active-responses
 BUILD_AGENT+=wazuh-modulesd
 
 BUILD_CMAKE_PROJECTS+=build_sysinfo
-BUILD_CMAKE_PROJECTS+=build_sync_protocol
 BUILD_CMAKE_PROJECTS+=build_shared_modules
 ifeq (${TARGET},server)
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
@@ -773,7 +771,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-WINDOWS_LIBS:=win32/syscollector win32/syscheck win32/sync_protocol
+WINDOWS_LIBS:=win32/syscollector win32/syscheck
 WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe
 WINDOWS_ACTIVE_RESPONSES:=win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
@@ -797,19 +795,15 @@ winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZU
 win32/shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 #### Sysinfo ##
 
 win32/sysinfo: $(WAZUHEXT_LIB) win32/version-dll.o
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
-#### Sync protocol ##
-
-win32/sync_protocol: win32/shared_modules $(EXTERNAL_LIBS_NO_WHOLE)
-	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
 #### Syscollector ##
-win32/syscollector: win32/shared_modules win32/sysinfo win32/sync_protocol win32/version-dll.o
+win32/syscollector: win32/shared_modules win32/sysinfo win32/version-dll.o
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 win32/syscheck: win32/shared_modules $(WAZUHEXT_LIB)
@@ -1726,9 +1720,6 @@ wrappers_wazuh_remoted_o := $(wrappers_wazuh_remoted_c:.c=.o)
 wrappers_wazuh_shared_modules_c := $(wildcard unit_tests/wrappers/wazuh/shared_modules/*.c)
 wrappers_wazuh_shared_modules_o := $(wrappers_wazuh_shared_modules_c:.c=.o)
 
-wrappers_wazuh_sync_protocol_c := $(wildcard unit_tests/wrappers/wazuh/sync_protocol/*.c)
-wrappers_wazuh_sync_protocol_o := $(wrappers_wazuh_sync_protocol_c:.c=.o)
-
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 	OSSEC_CFLAGS+=${CFLAGS_TEST}
 	OSSEC_LDFLAGS+=${CFLAGS_TEST}
@@ -1764,6 +1755,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_logcollector_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_sync_protocol_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_modules_o}
 
 	ifeq (${TARGET},winagent)
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
@@ -1777,10 +1769,6 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 		UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_linux_o}
-	endif
-
-	ifeq (${TARGET},server)
-		UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_modules_o}
 	endif
 endif #TEST
 
@@ -1831,18 +1819,15 @@ config/%.o: config/%.c
 build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
+	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} .. && ${MAKE}
 
 #### Sysinfo ##
 build_sysinfo: $(WAZUHEXT_LIB)
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} .. && ${MAKE}
 
-#### Sync protocol ##
-build_sync_protocol: build_shared_modules $(EXTERNAL_LIBS_NO_WHOLE)
-	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} .. && ${MAKE}
-
 #### Syscollector ##
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
-build_syscollector: build_shared_modules build_sysinfo build_sync_protocol
+build_syscollector: build_shared_modules build_sysinfo
 	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 endif
 
@@ -2637,11 +2622,11 @@ clean-internals: clean-unit-tests
 	rm -f $(WAZUH_LIB)
 	rm -rf $(DBSYNC)build
 	rm -rf $(RSYNC)build
+	rm -rf $(SYNC_PROTOCOL)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/
 	rm -rf $(wildcard $(VULNERABILITY_SCANNER)include/*_generated.h)
 	rm -rf $(SYSINFO)build
-	rm -rf $(SYNC_PROTOCOL)build
 	rm -rf $(SYSCHECK)build
 	rm -rf ${SHARED_MODULES}http-request/build
 	rm -rf build

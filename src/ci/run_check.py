@@ -208,10 +208,10 @@ def runCoverage(moduleName):
                                         "*/CMakeFiles/*.dir")
         includeDir = includeDir.parent
         paths = glob.glob(moduleCMakeFiles)
-    elif moduleName == "syscheckd":
+    elif moduleName == "shared_modules/sync_protocol":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
-    elif moduleName == "sync_protocol":
+    elif moduleName == "syscheckd":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
     else:

@@ -10,15 +10,15 @@ endif(FSANITIZE)
 
 message(STATUS "SRC_FOLDER is: ${SRC_FOLDER}")
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/googletest/include/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/googlemock/include/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/flatbuffers/include/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../shared_modules/utils/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../headers/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/googletest/googletest/include/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/googletest/googlemock/include/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/sqlite/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/flatbuffers/include/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../utils/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../headers/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../)
 
-link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/googletest/lib/)
+link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/googletest/lib/)
 
 # Add the test executable
 add_executable(agent_sync_protocol_tests

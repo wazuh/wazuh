@@ -217,6 +217,9 @@
                     <Component Id="RSYNC_DLL" DiskId="1" Guid="9F23B2D8-609D-43F6-BB90-7C81A5DF5A67">
                         <File Id="RSYNC_DLL" Name="rsync.dll" Source="..\shared_modules\rsync\build\bin\rsync.dll" />
                     </Component>
+                    <Component Id="AGENT_SYNC_PROTOCOL_DLL" DiskId="1" Guid="0B6A98BA-DC42-4DD4-8F60-E18987A36A75">
+                        <File Id="AGENT_SYNC_PROTOCOL_DLL" Name="libagent_sync_protocol.dll" Source="..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll" />
+                    </Component>
                     <Component Id="SYSINFO_DLL" DiskId="1" Guid="1D244B64-E1C3-4BED-A4CF-9C25E3B3BA0F">
                         <File Id="SYSINFO_DLL" Name="sysinfo.dll" Source="..\data_provider\build\bin\sysinfo.dll" />
                     </Component>
@@ -225,9 +228,6 @@
                     </Component>
                     <Component Id="FIMDB_DLL" DiskId="1" Guid="15806BCA-876E-41D7-A82E-623EEEC63C3A">
                         <File Id="FIMDB_DLL" Name="libfimdb.dll" Source="..\syscheckd\build\bin\libfimdb.dll" />
-                    </Component>
-                    <Component Id="AGENT_SYNC_PROTOCOL_DLL" DiskId="1" Guid="0B6A98BA-DC42-4DD4-8F60-E18987A36A75">
-                        <File Id="AGENT_SYNC_PROTOCOL_DLL" Name="libagent_sync_protocol.dll" Source="..\sync_protocol\build\bin\libagent_sync_protocol.dll" />
                     </Component>
 
                     <!-- Mark this file as permanent, so it is not deleted on uninstall. -->

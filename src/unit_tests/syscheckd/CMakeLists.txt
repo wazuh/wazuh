@@ -38,7 +38,7 @@ if(${TARGET} STREQUAL "winagent")
        ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/*.o
        ${SRC_FOLDER}/unit_tests/wrappers/windows/*.o
        ${SRC_FOLDER}/unit_tests/wrappers/windows/libc/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/sync_protocol/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared_modules/*.o
        )
   list(APPEND sysfiles ${test_wrapper_files})
 endif()

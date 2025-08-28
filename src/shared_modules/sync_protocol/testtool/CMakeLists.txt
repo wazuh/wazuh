@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(sync_protocol_test_tool)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../external/flatbuffers/include/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../shared_modules/utils/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../headers/)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/sqlite/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/flatbuffers/include/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../utils/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../headers/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_BINARY_DIR})
@@ -25,7 +25,7 @@ add_executable(sync_protocol_test_tool
 
 target_link_libraries(sync_protocol_test_tool PRIVATE agent_sync_protocol pthread)
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND 
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND
    NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   target_link_libraries(sync_protocol_test_tool PRIVATE dl)
 endif()

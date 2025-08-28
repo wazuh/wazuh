@@ -9,21 +9,6 @@ endif()
 # Try C++17 first, fallback to C++14 if needed
 include(CheckCXXSourceCompiles)
 set(CMAKE_CXX_STANDARD 17)
-
-check_cxx_source_compiles(
-  "
-  #include <optional>
-  int main() {
-      std::optional<int> o;
-      return 0;
-  }
-"
-  HAS_OPTIONAL)
-
-if(NOT HAS_OPTIONAL)
-  set(CMAKE_CXX_STANDARD 14)
-endif()
-
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Compiler flags
@@ -52,7 +37,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # -----------------------------------------------------------------------------
 include(ExternalProject)
 
-set(FLATBUFFERS_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../external/flatbuffers")
+set(FLATBUFFERS_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../external/flatbuffers")
 
 find_program(HOST_C_COMPILER NAMES cc gcc)
 find_program(HOST_CXX_COMPILER NAMES c++ g++)
@@ -82,7 +67,7 @@ set(FLATC_EXECUTABLE ${install_dir}/bin/flatc)
 # Use flatc to generate schema
 # -----------------------------------------------------------------------------
 set(SCHEMA_FILE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../shared_modules/utils/flatbuffers/schemas/inventorySync.fbs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/flatbuffers/schemas/inventorySync.fbs
 )
 set(GENERATED_HEADER ${CMAKE_CURRENT_BINARY_DIR}/inventorySync_generated.h)
 
@@ -129,15 +114,15 @@ target_include_directories(agent_sync_protocol
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_BINARY_DIR}
     ${FLATBUFFERS_ROOT_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../
-    ${CMAKE_CURRENT_SOURCE_DIR}/../shared_modules/utils/
-    ${CMAKE_SOURCE_DIR}/../headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/
+    ${CMAKE_SOURCE_DIR}/../../headers
 )
 
 target_link_libraries(agent_sync_protocol
   PRIVATE
     flatbuffers
-    ${CMAKE_CURRENT_SOURCE_DIR}/../external/sqlite/libsqlite3.a
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/libsqlite3.a
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -160,4 +145,3 @@ if(UNIT_TEST)
 endif()
 
 add_subdirectory(testtool)
-

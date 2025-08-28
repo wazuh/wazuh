@@ -6,7 +6,7 @@ on:
     paths:
       - "src/ci/**"
       - "src/build.py"
-      - "src/sync_protocol/**"
+      - "src/shared_modules/sync_protocol/**"
       - ".github/workflows/5_testcomponent_sync_protocol-rtr.yml"
       - ".github/actions/**"
 
@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [sync_protocol]
+        module: [shared_modules/sync_protocol]
         target: [agent, winagent]
     runs-on: ubuntu-22.04
     steps:
