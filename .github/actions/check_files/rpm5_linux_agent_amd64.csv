@@ -70,7 +70,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/tmp/sca-5.*-*.el5-tmp/sles/11/cis_sles11_linux.yml,root,wazuh,640,file,-rw-r-----,60607,0.1
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,3163,0.1
 /var/ossec/bin/agent-auth,root,root,750,file,-rwxr-x---,255293,0.1
-/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,971932,0.1
+/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,796488,0.1
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,831683,0.1
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,898094,0.1
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,7146,0.1
@@ -80,7 +80,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,189675,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,9471335,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,521864,0.1
-/var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,,
+/var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1147152,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,1781032,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,213624,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2569758,0.1
