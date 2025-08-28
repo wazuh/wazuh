@@ -241,7 +241,7 @@ def validation() -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-@mask_sensitive_config
+@mask_sensitive_config()
 def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
     """Wrapper for get_active_configuration.
 
