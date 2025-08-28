@@ -887,8 +887,8 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = UNKNOWN_VALUE;
             extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);
-            extensionItem["package_enabled"]           = (ext.contains("disabled") && !ext["disabled"].get<bool>())? "1" : "0";
-            extensionItem["package_autoupdate"]        = (ext.contains("autoupdate") && ext["autoupdate"].get<bool>())? 1 : 0;
+            extensionItem["package_enabled"]           = (ext.contains("disabled") && !ext["disabled"].get<bool>()) ? "1" : "0";
+            extensionItem["package_autoupdate"]        = (ext.contains("autoupdate") && ext["autoupdate"].get<bool>()) ? 1 : 0;
             extensionItem["package_persistent"]        = 0;
             extensionItem["package_from_webstore"]     = 0;
             extensionItem["browser_profile_referenced"] = 0;
