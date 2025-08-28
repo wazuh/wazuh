@@ -1203,7 +1203,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
                                         filters=filters)
 
-        with WazuhDBQueryAgents(limit=None, select=["id", "status"], query=q, **rbac_filters) as db_query:
+        with WazuhDBQueryAgents(limit=None, select=["id", "status", "version"], query=q, **rbac_filters) as db_query:
             data = db_query.run()
 
         filtered_agents = set([agent['id'] for agent in data['items']])
@@ -1219,13 +1219,35 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         not_found_agents = agent_list - system_agents
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
-        # Add non active agents to failed_items
-        non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
-        [result.add_failed_item(id_=agent, error=WazuhError(1707)) for agent in non_active_agents]
-        non_active_agents = set(non_active_agents)
+        non_active_agents = set()
+        invalid_config_agents = set()
+        for agent in data['items']:
+            # Add non active agents to failed_items
+            if agent['status'] != 'active':
+                result.add_failed_item(id_=agent['id'], error=WazuhError(1707))
+                non_active_agents.add(agent['id'])
+
+            # Add agents with invalid config options to failed_items
+            else:
+                agent_conf = Agent(agent['id']).get_config('agent', 'client', agent['version'])
+                found_invalid_config = False
+                extra_message = ""
+                for server in agent_conf['client']['server']:
+                    if server.get('protocol') == 'udp':
+                        found_invalid_config = True
+                        extra_message += "[protocol: udp]"
+                        break
+                if agent_conf['client'].get('crypto_method') == 'blowfish':
+                    found_invalid_config = True
+                    if extra_message != '':
+                        extra_message += ', '
+                    extra_message += "[crypto_method: blowfish]"
+                if found_invalid_config:
+                    invalid_config_agents.add(agent['id'])
+                    result.add_failed_item(id_=agent['id'], error=WazuhError(1761, extra_message = extra_message))
 
         # Add non eligible agents to failed_items
-        non_eligible_agents = agent_list - not_found_agents - non_active_agents - filtered_agents
+        non_eligible_agents = agent_list - not_found_agents - non_active_agents - filtered_agents - invalid_config_agents
         [result.add_failed_item(id_=ag, error=WazuhError(
             1731,
             extra_message="some of the requirements are not met -> {}".format(
@@ -1234,7 +1256,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
             )
         )) for ag in non_eligible_agents]
 
-        eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents
+        eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents - invalid_config_agents
 
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
