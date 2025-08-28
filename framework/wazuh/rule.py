@@ -23,8 +23,7 @@ from wazuh.core.utils import process_array, safe_move, \
 from wazuh.core.logtest import validate_dummy_logtest
 from wazuh.rbac.decorators import expose_resources
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
-node_id = get_node().get('node') if cluster_enabled else 'manager'
+node_id = get_node().get('node')
 
 
 def get_rules(rule_ids: list = None, status: str = None, group: str = None, pci_dss: str = None, gpg13: str = None,
