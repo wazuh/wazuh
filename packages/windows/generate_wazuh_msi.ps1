@@ -77,7 +77,7 @@ function BuildWazuhMsi(){
             "..\shared_modules\dbsync\build\bin\dbsync.dll",
             "..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll",
             "..\wazuh_modules\syscollector\build\bin\syscollector.dll",
-            "..\wazuh_modules\syscollector\build\bin\sca.dll",
+            "..\wazuh_modules\sca\build\bin\sca.dll",
             "..\syscheckd\build\bin\libfimdb.dll"
         )
 
