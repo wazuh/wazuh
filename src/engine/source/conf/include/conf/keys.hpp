@@ -6,7 +6,8 @@
 // Define the default key path for each configuration unit
 namespace conf::key
 {
-constexpr std::string_view LOGGING_LEVEL = "analysisd.logging_level";
+constexpr std::string_view STANDALONE_LOGGING_LEVEL = "analysisd.logging_level";
+constexpr std::string_view LOGGING_LEVEL = "analysisd.debug";
 
 constexpr std::string_view STORE_PATH = "analysisd.store_path";
 

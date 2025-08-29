@@ -41,6 +41,7 @@ if(WAZUH_ENGINE_TEST)
 elseif(UNIT_TEST)
   set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
   set(ENGINE_ENABLE_ASAN ON CACHE BOOL "Enable AddressSanitizer for all targets" FORCE)
+  message(WARNING "When compiling with ASAN, you must specify in LD_LIBRARY_PATH the directory where it should look for libwazuhshared.so")
 endif()
 
 

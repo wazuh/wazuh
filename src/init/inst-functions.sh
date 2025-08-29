@@ -1120,7 +1120,7 @@ InstallLocal()
     installEngineStore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
 
-    ${INSTALL} -m 0750 -o root -g 0 alert_forwarder/main.py ${INSTALLDIR}/bin/wazuh-forwarder
+    ${INSTALL} -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} alert_forwarder/main.py ${INSTALLDIR}/bin/wazuh-forwarder
     setForwarderConf
 
     # TODO Deletes old ruleset and stats, rootcheck and SCA?

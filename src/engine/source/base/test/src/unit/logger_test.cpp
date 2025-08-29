@@ -92,6 +92,8 @@ public:
         auto tempFileDescriptor = mkstemp(tempFileName);
         m_tmpPath = tempFileName;
         ASSERT_NE(tempFileDescriptor, -1);
+        // Set the environment variable
+        setenv("WAZUH_SKIP_OSSEC_CONF", "true", 1);
     }
 
     void checkLogFileContent(const std::string& message, bool shouldContain)
@@ -114,6 +116,8 @@ public:
 
     void TearDown() override
     {
+        // Unset the environment variable
+        unsetenv("WAZUH_SKIP_OSSEC_CONF");
         logging::stop();
         std::filesystem::remove(m_tmpPath); // Remove temporary log file
     }
@@ -172,6 +176,8 @@ TEST(LoggerTestLevels, ChengeInRuntime)
     char tempFileName[] = "/tmp/temp_log_XXXXXX";
     auto tempFileDescriptor = mkstemp(tempFileName);
     ASSERT_NE(tempFileDescriptor, -1);
+    // Set the environment variable
+    setenv("WAZUH_SKIP_OSSEC_CONF", "true", 1);
     std::string tmpPath = tempFileName;
 
     ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = tmpPath, .level = logging::Level::Off}));
@@ -229,6 +235,9 @@ TEST(LoggerTestLevels, ChengeInRuntime)
     EXPECT_EQ(fileContent.find("L_DEBUG message"), std::string::npos);
 
     ASSERT_NO_THROW(logging::stop());
+
+    // Unset the environment variable
+    unsetenv("WAZUH_SKIP_OSSEC_CONF");
 
     std::filesystem::remove(tmpPath); // Remove temporary log file
 }
@@ -304,7 +313,12 @@ class LoggerTestLevelsParam
     : public ::testing::TestWithParam<std::tuple<logging::Level, std::vector<std::string>, std::vector<std::string>>>
 {
 public:
-    void TearDown() override { logging::stop(); }
+    void TearDown() override
+    {   
+        // Unset the environment variable
+        unsetenv("WAZUH_SKIP_OSSEC_CONF");
+        logging::stop();
+    }
 };
 
 TEST_P(LoggerTestLevelsParam, LogLevelTest)
@@ -320,6 +334,9 @@ TEST_P(LoggerTestLevelsParam, LogLevelTest)
     {
         testing::internal::CaptureStdout();
     }
+
+    // Set the environment variable
+    setenv("WAZUH_SKIP_OSSEC_CONF", "true", 1);
 
     LOG_TRACE("TRACE message");
     LOG_DEBUG("DEBUG message");
