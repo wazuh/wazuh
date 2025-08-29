@@ -1,7 +1,21 @@
-name: Integration tests for MsGraph on Linux - Tier 0 and 1
+name: Integration tests for GitHub on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+  pull_request:
+    paths:
+        - ".github/workflows/5_testintegration_github-tier-0-1-lin.yml"
+        - "src/config/wmodules-github.c"
+        - "src/wazuh_modules/wm_github.h"
+        - "src/wazuh_modules/wm_github.c"
+        - "src/Makefile"
+        - "tests/integration/conftest.py"
+        - "tests/integration/test_github/**"
 
 jobs:
   build:
@@ -17,12 +31,6 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      # Setup MSGraph Proxy
-      - name: Download m365proxy and config http for msgraph module
-        run: |
-          sed -i 's/https:\/\/%s\/%s/http:\/\/%s\/%s/g' src/wazuh_modules/wm_ms_graph.h
-          curl -L http://packages.wazuh.com/utils/m365proxy/m365proxy.tar.gz | \
-          tar zvx -C /tmp/
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
       # Build wazuh agent for linux.
@@ -51,10 +59,6 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
@@ -78,8 +82,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run msgraph integration tests.
-      - name: Run msgraph integration tests
+      # Run github integration tests.
+      - name: Run github integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_msgraph/
+          sudo python -m pytest --tier 0 --tier 1 test_github/

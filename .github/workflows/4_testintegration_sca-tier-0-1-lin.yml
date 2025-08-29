@@ -2,20 +2,6 @@ name: Integration tests for SCA on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_sca-tier-0-1-lin.yml"
-        - "src/config/wmodules-sca.c"
-        - "src/wazuh_modules/wm_sca.c"
-        - "src/wazuh_modules/wm_sca.h"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_sca/**"
 
 jobs:
   build:

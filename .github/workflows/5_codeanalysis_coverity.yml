@@ -4,6 +4,24 @@ on:
   # Only for register the workflow
   # pull_request:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: ''
+      target:
+        description: 'Target server, agent or winagent'
+        required: true
+        default: 'server'
+        type: choice
+        options:
+          - 'server'
+          - 'agent'
+          - 'winagent'
+      ossec_project:
+        description: 'Use the ossec project'
+        default: false
+        type: boolean
 
 jobs:
   coverity:

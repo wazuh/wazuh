@@ -1,7 +1,12 @@
-name: Integration tests for MsGraph on Linux - Tier 0 and 1
+name: Integration tests for FIM on Linux - Tier 2
 
 on:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
 
 jobs:
   build:
@@ -17,12 +22,6 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      # Setup MSGraph Proxy
-      - name: Download m365proxy and config http for msgraph module
-        run: |
-          sed -i 's/https:\/\/%s\/%s/http:\/\/%s\/%s/g' src/wazuh_modules/wm_ms_graph.h
-          curl -L http://packages.wazuh.com/utils/m365proxy/m365proxy.tar.gz | \
-          tar zvx -C /tmp/
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
       # Build wazuh agent for linux.
@@ -34,8 +33,6 @@ jobs:
       - name: Install wazuh agent for linux
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -51,10 +48,6 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SYSCOLLECTOR="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_ENABLE_SCA="n"' >> ./etc/preloaded-vars.conf
-          echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
@@ -62,6 +55,8 @@ jobs:
           echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_AUTO_START="y"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
@@ -78,8 +73,13 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run msgraph integration tests.
-      - name: Run msgraph integration tests
+      # Install audit required by FIM
+      - name: Install audit
+        run: |
+          sudo apt-get update
+          sudo apt-get install auditd -y
+      # Run fim integration tests.
+      - name: Run fim integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_msgraph/
+          sudo python -m pytest --tier 2 test_fim/
