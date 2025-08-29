@@ -1,0 +1,159 @@
+name: Create Release Suite Issues
+
+permissions:
+  issues: write
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Release version (e.g., 4.7.1)'
+        required: true
+        type: string
+      stage:
+        description: 'Stage (e.g., RC 3, Alpha 1)'
+        required: true
+        type: string
+      main_issue:
+        description: 'Main issue number'
+        required: true
+        type: string
+      prev_ut:
+        description: 'Previous Unit Tests issue number (or blank)'
+        required: false
+        type: string
+        default: ''
+      prev_cov:
+        description: 'Previous Coverity issue number (or blank)'
+        required: false
+        type: string
+        default: ''
+      prev_it:
+        description: 'Previous Integration Tests issue number (or blank)'
+        required: false
+        type: string
+        default: ''
+      prev_wpk:
+        description: 'Previous WPK Tests issue number (or blank)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  create-unit-tests-issue:
+    name: "Create Unit Tests Issue"
+    if: ${{ inputs.prev_ut != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Unit Tests Issue
+        uses: ./.github/actions/4_operational_prerelease_unit_tests_issue
+        with:
+          release: ${{ inputs.release }}
+          stage: ${{ inputs.stage }}
+          main_issue: ${{ inputs.main_issue }}
+          prev_issue: ${{ inputs.prev_ut }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  create-coverity-issue:
+    name: "Create Coverity Analysis Issue"
+    if: ${{ inputs.prev_cov != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Coverity Issue
+        uses: ./.github/actions/4_operational_prerelease_coverity_issue
+        with:
+          release: ${{ inputs.release }}
+          stage: ${{ inputs.stage }}
+          main_issue: ${{ inputs.main_issue }}
+          prev_issue: ${{ inputs.prev_cov }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  create-integration-tests-issue:
+    name: "Create Integration Tests Issue"
+    if: ${{ inputs.prev_it != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Integration Tests Issue
+        uses: ./.github/actions/4_operational_prerelease_agent_integration_tests_issue
+        with:
+          release: ${{ inputs.release }}
+          stage: ${{ inputs.stage }}
+          main_issue: ${{ inputs.main_issue }}
+          prev_issue: ${{ inputs.prev_it }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  create-wpk-tests-issue:
+    name: "Create WPK Tests Issue"
+    if: ${{ inputs.prev_wpk != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create WPK Tests Issue
+        uses: ./.github/actions/4_operational_prerelease_wpk_tests_issue
+        with:
+          release: ${{ inputs.release }}
+          stage: ${{ inputs.stage }}
+          main_issue: ${{ inputs.main_issue }}
+          prev_issue: ${{ inputs.prev_wpk }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  summary:
+    name: "Workflow Summary"
+    needs: [create-unit-tests-issue, create-coverity-issue, create-integration-tests-issue, create-wpk-tests-issue]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## Release Suite Issues Creation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release:** ${{ inputs.release }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Stage:** ${{ inputs.stage }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Main Issue:** #${{ inputs.main_issue }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Issues Created:" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ inputs.prev_ut }}" != "" ]]; then
+            if [[ "${{ needs.create-unit-tests-issue.result }}" == "success" ]]; then
+              echo "- ✅ Unit Tests Issue (Previous: #${{ inputs.prev_ut }})" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- ❌ Unit Tests Issue (Failed)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          if [[ "${{ inputs.prev_cov }}" != "" ]]; then
+            if [[ "${{ needs.create-coverity-issue.result }}" == "success" ]]; then
+              echo "- ✅ Coverity Issue (Previous: #${{ inputs.prev_cov }})" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- ❌ Coverity Issue (Failed)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          if [[ "${{ inputs.prev_it }}" != "" ]]; then
+            if [[ "${{ needs.create-integration-tests-issue.result }}" == "success" ]]; then
+              echo "- ✅ Integration Tests Issue (Previous: #${{ inputs.prev_it }})" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- ❌ Integration Tests Issue (Failed)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+          if [[ "${{ inputs.prev_wpk }}" != "" ]]; then
+            if [[ "${{ needs.create-wpk-tests-issue.result }}" == "success" ]]; then
+              echo "- ✅ WPK Tests Issue (Previous: #${{ inputs.prev_wpk }})" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "- ❌ WPK Tests Issue (Failed)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
