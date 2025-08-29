@@ -216,29 +216,6 @@ update_file_sources() {
         fi
     done
 
-    # Update wazuh-installer.nsi
-    local nsi_file="$DIR_SRC/win32/wazuh-installer.nsi"
-    if [[ -n "$new_version" ]]; then
-        local current_nsi_version
-        current_nsi_version=$(grep -E '^!define VERSION' "$nsi_file" \
-            | sed -E 's/^!define VERSION\s+"([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')
-
-        if [[ "$current_nsi_version" != "$new_version" ]]; then
-            sed -i -E "s|(^!define VERSION\s+\")[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" "$nsi_file"
-            sed -i -E "s|(^VIProductVersion\s+\")[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}.0\2|" "$nsi_file"
-            log_action "Modified $nsi_file with new version: $new_version"
-        fi
-    fi
-    if [[ -n "$new_stage" ]]; then
-        local current_nsi_stage
-        current_nsi_stage=$(grep -E '^!define REVISION' "$nsi_file" \
-            | sed -E 's/^!define REVISION\s+"([^"]+)".*/\1/')
-
-        if [[ "$current_nsi_stage" != "$new_stage" ]]; then
-            sed -i -E "s|(^!define REVISION\s+\")[^\"]+(\")|\1${new_stage}\2|" "$nsi_file"
-            log_action "Modified $nsi_file with new stage: $new_stage"
-        fi
-    fi
 
     # Update wazuh-installer.wxs
     if [[ -n "$new_version" ]]; then
