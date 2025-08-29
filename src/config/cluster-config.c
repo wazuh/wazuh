@@ -56,7 +56,6 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
     Config = (_Config *)d1;
     int i;
     int j;
-    int disable_cluster_info = 0;
 
     Config->hide_cluster_info = 0;
 
@@ -98,13 +97,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
         } else if (!strcmp(node[i]->element, socket_timeout)) {
         } else if (!strcmp(node[i]->element, connection_timeout)) {
         } else if (!strcmp(node[i]->element, disabled)) {
-            if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
-                merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", node[i]->content);
-                return OS_INVALID;
-            }
-            if (strcmp(node[i]->content, "yes") == 0) {
-                disable_cluster_info = 1;
-            }
+            mwarn("Detected a deprecated configuration for cluster. Disabled option is not longer available.");
         } else if (!strcmp(node[i]->element, hidden)) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->hide_cluster_info = 1;
@@ -175,17 +168,12 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     OS_ClearNode(child);
                     return OS_INVALID;
                 }
-
             }
-    } else {
-        merror(XML_INVELEM, node[i]->element);
-        return OS_INVALID;
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return OS_INVALID;
+        }
     }
-
-
-    if (disable_cluster_info)
-        Config->hide_cluster_info = 1;
-
-    }
+        
     return 0;
 }

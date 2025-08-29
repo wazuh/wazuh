@@ -235,8 +235,7 @@ class ARJsonMessage(ARMessageBuilder):
         """
         self.validate_command(command)
 
-        cluster_enabled = not read_cluster_config()['disabled']
-        node_name = get_node().get('node') if cluster_enabled else None
+        node_name = get_node().get('node')
 
         msg_queue = json.dumps(
             create_wazuh_socket_message(origin={'name': node_name, 'module': common.origin_module.get()},
