@@ -12,7 +12,7 @@ class Constants:
         DEFAULT_API_TIMEOUT (int): Default timeout (in microseconds) configured on the server
                                    for API requests.
     """
-    SOCKET_PATH: str = '/var/ossec/queue/sockets/engine-api'
+    SOCKET_PATH: str = '/var/ossec/queue/sockets/analysis'
     DEFAULT_POLICY: str = 'policy/wazuh/0'
     DEFAULT_SESSION: str = 'default'
     DEFAULT_NS: str = 'user'

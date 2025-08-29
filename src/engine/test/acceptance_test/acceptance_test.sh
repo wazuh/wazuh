@@ -20,17 +20,17 @@ BT_OUTPUT=/var/ossec/logs/alerts/alerts-ECS.json
 TEST_NAME="engine-bench-${ORCHESTRATOR_THREADS}-threads-${RANDOM}"
 
 # check engine is running
-if pgrep -x "wazuh-engine" > /dev/null; then
-    echo "Wazuh-engine will be restarted."
-    pkill -f /var/ossec/bin/wazuh-engine
+if pgrep -x "wazuh-analysisd" > /dev/null; then
+    echo "wazuh-analysisd will be restarted."
+    pkill -f /var/ossec/bin/wazuh-analysisd
     sleep 1
 fi
 
-WAZUH_ORCHESTRATOR_THREADS="${ORCHESTRATOR_THREADS}" /var/ossec/bin/wazuh-engine &
+WAZUH_ORCHESTRATOR_THREADS="${ORCHESTRATOR_THREADS}" /var/ossec/bin/wazuh-analysisd &
 
 sleep 5
 
-python3 ./utils/monitor.py -s $STATS_MONITOR_POLL_TIME_SECS -b wazuh-engine -n $TEST_NAME &
+python3 ./utils/monitor.py -s $STATS_MONITOR_POLL_TIME_SECS -b wazuh-analysisd -n $TEST_NAME &
 
 MONITOR_PID=$!
 

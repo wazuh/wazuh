@@ -83,7 +83,7 @@ TEST(AddUnit, duplicateOrEmpty)
 TEST(AddUnit, addBeforeLoad)
 {
     conf::OptionMap configMap;
-    configMap["engine.example"] = "true";
+    configMap["analysisd.example"] = "true";
     auto mockFileLoader = conf::mocks::createMockFileLoader(configMap);
     conf::Conf conf(mockFileLoader);
 
@@ -103,7 +103,7 @@ TEST(AddUnit, addBeforeLoad)
 TEST(LoadTest, Multiload)
 {
     conf::OptionMap configMap;
-    configMap["engine.example"] = "true";
+    configMap["analysisd.example"] = "true";
     auto mockFileLoader = conf::mocks::createMockFileLoader(configMap);
     conf::Conf conf(mockFileLoader);
 

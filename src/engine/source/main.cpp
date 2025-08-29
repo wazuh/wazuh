@@ -573,8 +573,22 @@ int main(int argc, char* argv[])
 
         /* Create PID file */
         {
-            const auto pidError = base::process::createPID(
-                confManager.get<std::string>(conf::key::PID_FILE_PATH), "wazuh-engine", getpid());
+            // Get executable file name
+            std::string exePath {};
+            {
+                try
+                {
+                    exePath = std::filesystem::read_symlink("/proc/self/exe").filename().string();
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_DEBUG("Could not get executable name: {}", e.what());
+                    exePath = "wazuh-analysisd";
+                }
+            }
+
+            const auto pidError =
+                base::process::createPID(confManager.get<std::string>(conf::key::PID_FILE_PATH), exePath, getpid());
             if (base::isError(pidError))
             {
                 throw std::runtime_error(
