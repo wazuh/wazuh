@@ -23,12 +23,10 @@ class SCAEventHandler
 {
     public:
         /// @brief Constructor
-        /// @param agentUUID The UUID of the agent
         /// @param dBSync A shared pointer to a DBSync interface used for retrieving state info.
         /// @param pushStatelessMessage Callback function used to push stateless messages to the message queue.
         /// @param pushStatefulMessage Callback function used to push stateful messages to the message queue.
-        SCAEventHandler(std::string agentUUID,
-                        std::shared_ptr<IDBSync> dBSync = nullptr,
+        SCAEventHandler(std::shared_ptr<IDBSync> dBSync = nullptr,
                         std::function<int(const std::string&)> pushStatelessMessage = nullptr,
                         std::function<int(const std::string&)> pushStatefulMessage = nullptr);
 
@@ -90,7 +88,7 @@ class SCAEventHandler
 
         /// @brief Calculates a unique hash ID for an event.
         ///
-        /// The hash is based on the agent UUID, policy ID, and check ID.
+        /// The hash is based on the policy ID and check ID.
         ///
         /// @param data JSON containing the check and policy identifiers.
         /// @return SHA1 hash string.
@@ -139,9 +137,6 @@ class SCAEventHandler
         std::function<int(const std::string&)> m_pushStatefulMessage;
 
     private:
-        /// @brief The agent's UUID.
-        std::string m_agentUUID;
-
         /// @brief Pointer to the IDBSync object for database synchronization.
         std::shared_ptr<IDBSync> m_dBSync;
 };

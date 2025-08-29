@@ -19,11 +19,9 @@ class SecurityConfigurationAssessment
     public:
         /// @brief Constructor
         /// @param dbPath Path to the database file
-        /// @param agentUUID Agent UUID
         /// @param dbSync Pointer to IDBSync for database synchronization
         /// @param fileSystemWrapper File system wrapper for file operations
         SecurityConfigurationAssessment(std::string dbPath,
-                                        std::string agentUUID,
                                         std::shared_ptr<IDBSync> dbSync = nullptr,
                                         std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
 
@@ -79,9 +77,6 @@ class SecurityConfigurationAssessment
 
         /// @brief SCA module name
         std::string m_name = "SCA";
-
-        /// @brief Agent UUID
-        std::string m_agentUUID {""};
 
         /// @brief Pointer to IDBSync
         std::shared_ptr<IDBSync> m_dBSync;

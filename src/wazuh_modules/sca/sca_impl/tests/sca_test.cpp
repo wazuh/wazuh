@@ -30,11 +30,7 @@ class ScaTest : public ::testing::Test
             });
 
             m_mockDBSync = std::make_shared<MockDBSync>();
-            m_sca = std::make_shared<SecurityConfigurationAssessment>(
-                        "test_path",
-                        "agent-uuid",
-                        m_mockDBSync
-                    );
+            m_sca = std::make_shared<SecurityConfigurationAssessment>("test_path", m_mockDBSync);
         }
 
         std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
@@ -257,10 +253,7 @@ TEST_F(ScaTest, RunExecutesPoliciesWhenEnabled)
 
 TEST_F(ScaTest, GetCreateStatement)
 {
-    auto sca = std::make_shared<SecurityConfigurationAssessment>(
-                   "test_path",
-                   "agent-uuid",
-                   nullptr // null dbSync makes us hit GetCreateStatement()
-               );
+    // null dbSync makes us hit GetCreateStatement()
+    auto sca = std::make_shared<SecurityConfigurationAssessment>("test_path", nullptr);
     SUCCEED();
 }

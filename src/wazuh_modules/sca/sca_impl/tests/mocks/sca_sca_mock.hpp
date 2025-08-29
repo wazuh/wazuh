@@ -9,10 +9,8 @@ class SCAMock : public SecurityConfigurationAssessment
 {
     public:
         SCAMock(std::shared_ptr<IDBSync> dBSync = nullptr, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr)
-            : SecurityConfigurationAssessment("db_path"
-                                              , "agent_uuid"
-                                              , dBSync
-            , fileSystemWrapper) {}
+            : SecurityConfigurationAssessment("db_path", dBSync, fileSystemWrapper)
+        {}
 
         std::vector<std::unique_ptr<ISCAPolicy>>& GetPolicies()
         {

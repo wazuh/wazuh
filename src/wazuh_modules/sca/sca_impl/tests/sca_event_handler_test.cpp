@@ -666,7 +666,7 @@ TEST_F(SCAEventHandlerTest, ReportPoliciesDelta_EmptyInput)
         return 0;
     };
 
-    SCAEventHandler realHandler("test-uuid", mockDBSync, mockPushStateless, mockPushStateful);
+    SCAEventHandler realHandler(mockDBSync, mockPushStateless, mockPushStateful);
 
     std::unordered_map<std::string, nlohmann::json> emptyPolicies;
     std::unordered_map<std::string, nlohmann::json> emptyChecks;

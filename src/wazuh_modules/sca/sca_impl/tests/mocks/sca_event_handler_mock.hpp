@@ -15,7 +15,7 @@ namespace sca_event_handler
             SCAEventHandlerMock(const std::shared_ptr<MockDBSync>& mockDB,
                                 std::function<int(const std::string&)> pushStatelessMessage = nullptr,
                                 std::function<int(const std::string&)> pushStatefulMessage = nullptr)
-                : SCAEventHandler("agent-uuid", mockDB, pushStatelessMessage, pushStatefulMessage)
+                : SCAEventHandler(mockDB, pushStatelessMessage, pushStatefulMessage)
                 , mockDBSync(mockDB)
             {
             }
