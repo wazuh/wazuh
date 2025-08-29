@@ -6,7 +6,7 @@
         - disabled:
             value: DISABLED
         - interval:
-            value: INVERVAL_SCAN
+            value: INTERVAL_SCAN
         - scan_on_start:
             value: START_ON_START
         - hardware:
@@ -31,6 +31,8 @@
             value: USERS_SCAN
         - services:
             value: SERVICES_SCAN
+        - browser_extensions:
+            value: BROWSER_EXTENSIONS_SCAN
 
     - section: syscheck
       elements:

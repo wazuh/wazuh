@@ -12,10 +12,10 @@
     <users>no</users>
     <groups>no</groups>
     <services>no</services>
+    <browser_extensions>no</browser_extensions>
 
     <!-- Database synchronization settings -->
     <synchronization>
       <max_eps>10</max_eps>
     </synchronization>
   </wodle>
-

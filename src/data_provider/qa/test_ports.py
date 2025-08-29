@@ -17,7 +17,7 @@ def call_binary(binary_path):
     Returns:
         _type_: the standard output of the binary execution.
     """
-    command =  f"{binary_path}" if platform.system() == "Windows" else f"sudo {binary_path}"
+    command =  f"{binary_path} --ports" if platform.system() == "Windows" else f"sudo {binary_path} --ports"
     result = subprocess.run(command, capture_output=True, check=False, text=True, shell=True)
     if result.returncode != 0 or result.stderr:
         print(result.stdout)

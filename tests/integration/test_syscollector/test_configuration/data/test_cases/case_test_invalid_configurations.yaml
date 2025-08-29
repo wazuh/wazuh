@@ -2,7 +2,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: ''
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -15,6 +15,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: disabled
@@ -24,7 +25,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: ''
+    INTERVAL_SCAN: ''
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -37,6 +38,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: interval
@@ -46,7 +48,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: ''
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -59,6 +61,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: scan_on_start
@@ -68,7 +71,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: ''
     OS_SCAN: 'yes'
@@ -81,6 +84,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: hardware
@@ -90,7 +94,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: ''
@@ -103,6 +107,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: os
@@ -112,7 +117,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -125,6 +130,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: network
@@ -134,7 +140,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -147,6 +153,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: packages
@@ -156,7 +163,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -169,6 +176,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: ports
@@ -178,7 +186,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -191,6 +199,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: null
@@ -200,7 +209,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -213,6 +222,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: processes
@@ -222,7 +232,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: invalid
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -235,6 +245,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: disabled
@@ -244,7 +255,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: invalid
+    INTERVAL_SCAN: invalid
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -257,6 +268,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: interval
@@ -266,7 +278,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: invalid
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -279,6 +291,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: scan_on_start
@@ -288,7 +301,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: invalid
     OS_SCAN: 'yes'
@@ -301,6 +314,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: hardware
@@ -310,7 +324,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: invalid
@@ -323,6 +337,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: os
@@ -332,7 +347,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -345,6 +360,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: network
@@ -354,7 +370,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -367,6 +383,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: packages
@@ -376,7 +393,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -389,6 +406,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: ports
@@ -398,7 +416,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -411,6 +429,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: null
@@ -420,7 +439,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -433,6 +452,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: processes
@@ -442,7 +462,7 @@
   description: Verify that the module starts and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -455,6 +475,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: -1
   metadata:
     field: max_eps
@@ -464,7 +485,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -477,6 +498,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: hotfixes
@@ -486,7 +508,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -499,6 +521,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: hotfixes
@@ -508,7 +531,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -518,9 +541,11 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
     USERS_SCAN: ''
     GROUPS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: users
@@ -530,7 +555,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -540,9 +565,11 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'yes'
     HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
     USERS_SCAN: invalid
     GROUPS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: users
@@ -552,7 +579,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -565,6 +592,7 @@
     GROUPS_SCAN: ''
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: groups
@@ -574,7 +602,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -587,6 +615,7 @@
     GROUPS_SCAN: invalid
     USERS_SCAN: 'yes'
     SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: groups
@@ -596,7 +625,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -609,6 +638,7 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: ''
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: services
@@ -618,7 +648,7 @@
   description: Verify that the module doesn't start and an error is displayed
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 1h
+    INTERVAL_SCAN: 1h
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -631,7 +661,54 @@
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
     SERVICES_SCAN: invalid
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     field: services
+    attribute: null
+
+- name: empty_value_browser_extensions
+  description: Verify that the module doesn't start and an error is displayed
+  configuration_parameters:
+    DISABLED: 'no'
+    INTERVAL_SCAN: 1h
+    START_ON_START: 'yes'
+    HARDWARE_SCAN: 'yes'
+    OS_SCAN: 'yes'
+    NETWORK_SCAN: 'yes'
+    PACKAGES_SCAN: 'yes'
+    PORTS_SCAN: 'yes'
+    ALL_PORTS: 'no'
+    PROCESSES_SCAN: 'yes'
+    HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
+    SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: ''
+    MAX_EPS: 10
+  metadata:
+    field: browser_extensions
+    attribute: null
+
+- name: invalid_value_browser_extensions
+  description: Verify that the module doesn't start and an error is displayed
+  configuration_parameters:
+    DISABLED: 'no'
+    INTERVAL_SCAN: 1h
+    START_ON_START: 'yes'
+    HARDWARE_SCAN: 'yes'
+    OS_SCAN: 'yes'
+    NETWORK_SCAN: 'yes'
+    PACKAGES_SCAN: 'yes'
+    PORTS_SCAN: 'yes'
+    ALL_PORTS: 'no'
+    PROCESSES_SCAN: 'yes'
+    HOTFIXES_SCAN: 'yes'
+    GROUPS_SCAN: 'yes'
+    USERS_SCAN: 'yes'
+    SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: invalid
+    MAX_EPS: 10
+  metadata:
+    field: browser_extensions
     attribute: null
