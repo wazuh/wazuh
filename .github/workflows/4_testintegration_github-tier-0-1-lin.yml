@@ -2,20 +2,6 @@ name: Integration tests for GitHub on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_github-tier-0-1-lin.yml"
-        - "src/config/wmodules-github.c"
-        - "src/wazuh_modules/wm_github.h"
-        - "src/wazuh_modules/wm_github.c"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_github/**"
 
 jobs:
   build:

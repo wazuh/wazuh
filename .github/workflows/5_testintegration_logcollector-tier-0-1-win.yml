@@ -2,6 +2,20 @@ name: Integration tests for logcollector on Windows - Tier 0 and 1
 
 on:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+  pull_request:
+    paths:
+        - ".github/workflows/5_testintegration_logcollector-tier-0-1-win.yml"
+        - "src/config/localfile-config.c"
+        - "src/config/localfile-config.h"
+        - "src/logcollector/**"
+        - "src/Makefile"
+        - "tests/integration/conftest.py"
+        - "tests/integration/test_logcollector/**"
 
 jobs:
   # Build the winagent on linux.
