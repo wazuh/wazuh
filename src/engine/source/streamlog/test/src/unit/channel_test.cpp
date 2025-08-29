@@ -1885,12 +1885,15 @@ TEST_F(ChannelHandlerTest, NoCompressionWhenDisabled)
 // Test store persistence functionality - initialization with no previous state
 TEST_F(ChannelHandlerTest, StorePersistenceInitializationNoState)
 {
-    // Configure mock store to return error (no previous state)
+    // Configure mock store to return error (no previous state), readInternalDoc can be called multiple times
     EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
-        .WillOnce(testing::Return(store::mocks::storeReadError<json::Json>()));
+        .Times(2)
+        .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
 
+    // Try Save the new state
     EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
-        .Times(0); // No save should happen during initialization
+        .Times(1)
+        .WillOnce(testing::Return(store::mocks::storeOk()));
 
     auto handler = createBasicHandler("store-test");
     EXPECT_NE(handler, nullptr);
@@ -1974,12 +1977,16 @@ TEST_F(ChannelHandlerTest, StorePersistenceSaveDuringRotation)
 // Test store persistence functionality - store read error handling
 TEST_F(ChannelHandlerTest, StorePersistenceReadError)
 {
-    // Configure mock store to return error
+    // Configure mock store to return error, simulating read failure
+    // Fail to read last state and fail to read the second time as well
     EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
-        .WillOnce(testing::Return(store::mocks::storeReadError<json::Json>()));
+        .Times(2)
+        .WillRepeatedly(testing::Return(store::mocks::storeReadError<json::Json>()));
 
-    // Should not attempt save during initialization on read error
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_)).Times(0);
+    // Save the new state
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+        .Times(1)
+        .WillOnce(testing::Return(store::mocks::storeOk()));
 
     auto handler = createBasicHandler("store-error-test");
     EXPECT_NE(handler, nullptr); // Should still create handler despite store error
@@ -2029,10 +2036,17 @@ TEST_F(ChannelHandlerTest, StorePersistenceCorruptedState)
     corruptedState.setString("invalid_data", "/invalid");
 
     EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
-        .WillOnce(testing::Return(store::mocks::storeReadDocResp(corruptedState)));
+        .Times(2) // Can be called multiple times
+        .WillRepeatedly(testing::Return(store::mocks::storeReadDocResp(corruptedState)));
 
-    // Should not attempt compression or save with corrupted state
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_)).Times(0);
+    //  save the new state
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+        .Times(1)
+        .WillOnce(testing::Return(store::mocks::storeOk()));
+
+    // Should not attempt compression due to corrupted state
+    auto mockScheduler = std::make_shared<scheduler::mocks::MockIScheduler>();
+    EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(0);
 
     auto handler = createBasicHandler("corrupted-state-test");
     EXPECT_NE(handler, nullptr); // Should handle corrupted state gracefully
@@ -2048,13 +2062,18 @@ TEST_F(ChannelHandlerTest, StorePersistencePreviousFileNotFound)
     json::Json state;
     state.setString(nonExistentFile, "/currentFilePath");
 
+    // Expect call 2 times, 1 for try recover last state and 1 for save the current state
     EXPECT_CALL(*mockStore, readInternalDoc(testing::_))
-        .WillOnce(testing::Return(store::mocks::storeReadDocResp(state)));
+        .Times(2)
+        .WillRepeatedly(testing::Return(store::mocks::storeReadDocResp(state)));
 
     // Should not schedule compression for non-existent file
     EXPECT_CALL(*mockScheduler, scheduleTask(testing::_, testing::_)).Times(0);
 
-    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_)).Times(0);
+    // Should save current state without attempting compression
+    EXPECT_CALL(*mockStore, upsertInternalDoc(testing::_, testing::_))
+        .Times(1)
+        .WillOnce(testing::Return(store::mocks::storeOk()));
 
     auto config = defaultConfig;
     config.shouldCompress = true;

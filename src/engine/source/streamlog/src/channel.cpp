@@ -855,8 +855,8 @@ void ChannelHandler::clearPreviousCurrentFilePathFromStore() const
                       base::getError(state).message);
             state = json::Json();
         }
-        const auto jState = base::getResponse(state);
-        jState.remove(STORE_POSFIX_PATH_TO_CURRENT);
+        auto jState = base::getResponse(state);
+        jState.erase(STORE_POSFIX_PATH_TO_CURRENT);
 
         // Save the updated document back to the store
         const auto res = m_store->upsertInternalDoc(getStoreBaseName(), jState);
