@@ -1058,7 +1058,7 @@ checks:
      condition: all
      rules:
       - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*set superusers="
-      - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*password_pbkdf2\\s*\\t*\\w+"
+      - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*password_pbkdf2\\s*\\t*[\\w@-]+"
 
   # 1.4.2 Ensure access to bootloader config is configured. (Automated)
    - id: 35541
@@ -1348,10 +1348,14 @@ checks:
      condition: all
      rules:
 <<<<<<< HEAD
+<<<<<<< HEAD
       - 'd:/etc/dconf/db/gdm.d -> r:. -> r:^[org/gnome/login-screen]'
 =======
       - 'd:/etc/dconf/db/gdm.d -> r:. -> r:^\[org/gnome/login-screen\]'
 >>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
+=======
+      - 'd:/etc/dconf/db/gdm.d -> r:. -> r:^\[org/gnome/login-screen\]'
+>>>>>>> a4856543f4 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
       - 'd:/etc/dconf/db/gdm.d -> r:. -> r:^disable-user-list\s*\t*=\s*\t*true'
 
   # 1.7.4 Ensure GDM screen locks when the user is idle. (Automated) - Not Implemented
@@ -1405,10 +1409,14 @@ checks:
      condition: all
      rules:
 <<<<<<< HEAD
+<<<<<<< HEAD
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^[org/gnome/desktop/media-handling]'
 =======
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^\[org/gnome/desktop/media-handling\]'
 >>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
+=======
+      - 'd:/etc/dconf/db/local.d -> r:. -> r:^\[org/gnome/desktop/media-handling\]'
+>>>>>>> a4856543f4 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^automount\s*\t*=\s*\t*false'
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^automount-open\s*\t*=\s*\t*false'
 
@@ -1452,10 +1460,14 @@ checks:
      condition: all
      rules:
 <<<<<<< HEAD
+<<<<<<< HEAD
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^[org/gnome/desktop/media-handling]'
 =======
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^\[org/gnome/desktop/media-handling\]'
 >>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
+=======
+      - 'd:/etc/dconf/db/local.d -> r:. -> r:^\[org/gnome/desktop/media-handling\]'
+>>>>>>> a4856543f4 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^autorun-never\s*\t*=\s*\t*true'
 
   # 1.7.9 Ensure GDM autorun-never is not overridden. (Automated)
@@ -2003,10 +2015,14 @@ checks:
      condition: all
      rules:
 <<<<<<< HEAD
+<<<<<<< HEAD
       - 'not c:ss -lntu -> r::25\s|:465\s|:587\s && r:\s+127\.0\.0\.\d+:|\s+[::1]:'
 =======
       - 'not c:ss -lntu -> r::25\s|:465\s|:587\s && r:\s+127\.0\.0\.\d+:|\s+\[::1\]:'
 >>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
+=======
+      - 'not c:ss -lntu -> r::25\s|:465\s|:587\s && r:\s+127\.0\.0\.\d+:|\s+\[::1\]:'
+>>>>>>> a4856543f4 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
 
   # 2.1.22 Ensure only approved services are listening on a network interface. (Manual) - Not Implemented
 
@@ -3151,7 +3167,7 @@ checks:
        - soc_2: ["CC6.6"]
      condition: all
      rules:
-      - 'c:nft list tables -> r:\w+'
+      - 'c:nft list tables -> r:[\w@-]+'
 
   # 4.3.5 Ensure nftables base chains exist. (Automated)
    - id: 35629
@@ -3478,9 +3494,9 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_rsa_key -> r:^Access: \(0\d00/-[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0\d00/-[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0\d00/-[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.3 Ensure permissions on SSH public host key files are configured. (Automated)
    - id: 35642
@@ -3504,9 +3520,9 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_rsa_key.pub -> r:^Access: \(0\d\d\d/-[\w@-][\w@-][\w@-][\w@-]--[\w@-]--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0\d\d\d/-[\w@-][\w@-][\w@-][\w@-]--[\w@-]--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0\d\d\d/-[\w@-][\w@-][\w@-][\w@-]--[\w@-]--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.4 Ensure sshd access is configured. (Automated)
    - id: 35643
@@ -3530,9 +3546,15 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: any
      rules:
+<<<<<<< HEAD
       - 'c:sshd -T -> r:^\s*\t*Allowusers\s*\t*\w+|^\s*\t*Denyusers\s*\t*\w+|^\s*\t*Allowgroups\s*\t*\w+|^\s*\t*Denygroups\s*\t*\w+'
       - 'f:/etc/ssh/sshd_config -> r:^\s*\t*Allowusers\s*\t*\w+|^\s*\t*Denyusers\s*\t*\w+|^\s*\t*Allowgroups\s*\t*\w+|^\s*\t*Denygroups\s*\t*\w+'
       - 'd:/etc/ssh/sshd_config.d -> r:.* -> r:^\s*\t*Allowusers\s*\t*\w+|^\s*\t*Denyusers\s*\t*\w+|^\s*\t*Allowgroups\s*\t*\w+|^\s*\t*Denygroups\s*\t*\w+'
+=======
+      - 'c:sshd -T -> r:^\s*\t*Allowusers\s*\t*[\w@-]+|^\s*\t*Denyusers\s*\t*[\w@-]+|^\s*\t*Allowgroups\s*\t*[\w@-]+|^\s*\t*Denygroups\s*\t*[\w@-]+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*\t*Allowusers\s*\t*[\w@-]+|^\s*\t*Denyusers\s*\t*[\w@-]+|^\s*\t*Allowgroups\s*\t*[\w@-]+|^\s*\t*Denygroups\s*\t*[\w@-]+'
+      - 'd:/etc/ssh/sshd_config.d -> r:.* -> r:^\s*\t*Allowusers\s*\t*[\w@-]+|^\s*\t*Denyusers\s*\t*[\w@-]+|^\s*\t*Allowgroups\s*\t*[\w@-]+|^\s*\t*Denygroups\s*\t*[\w@-]+'
+>>>>>>> a4856543f4 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
 
   # 5.1.5 Ensure sshd Banner is configured. (Automated)
    - id: 35644
@@ -4141,16 +4163,22 @@ checks:
      condition: all
      rules:
 <<<<<<< HEAD
+<<<<<<< HEAD
       - 'f:/etc/pam.d/common-account -> r:^account\s*\t*[success=1 new_authtok_reqd=done default=ignore] && r:pam_unix\.so'
       - 'f:/etc/pam.d/common-session -> r:^session\s*\t*required && r:pam_unix\.so'
       - "f:/etc/pam.d/common-auth -> r:^auth && r:[success=2|[success=3 && r:default=ignore] && r:pam_unix\\.so"
       - "f:/etc/pam.d/common-password -> r:^password && r:[success=1|[success=2 && r:default=ignore] && r:pam_unix\\.so"
 =======
+=======
+>>>>>>> a4856543f4 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
       - 'f:/etc/pam.d/common-account -> r:^account\s*\t*\[success=1 new_authtok_reqd=done default=ignore\] && r:pam_unix\.so'
       - 'f:/etc/pam.d/common-session -> r:^session\s*\t*required && r:pam_unix\.so'
       - "f:/etc/pam.d/common-auth -> r:^auth && r:\\[success=2|\\[success=3 && r:default=ignore\\] && r:pam_unix\\.so"
       - "f:/etc/pam.d/common-password -> r:^password && r:\\[success=1|\\[success=2 && r:default=ignore\\] && r:pam_unix\\.so"
+<<<<<<< HEAD
 >>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
+=======
+>>>>>>> a4856543f4 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
 
   # 5.3.2.2 Ensure pam_faillock module is enabled. (Automated)
    - id: 35673
@@ -4176,10 +4204,14 @@ checks:
      rules:
       - 'f:/etc/pam.d/common-auth -> r:^auth\s*\t*requisite && r:pam_faillock\.so'
 <<<<<<< HEAD
+<<<<<<< HEAD
       - 'f:/etc/pam.d/common-auth -> r:^auth\s*\t*[default=die] && r:pam_faillock\.so'
 =======
       - 'f:/etc/pam.d/common-auth -> r:^auth\s*\t*\[default=die\] && r:pam_faillock\.so'
 >>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
+=======
+      - 'f:/etc/pam.d/common-auth -> r:^auth\s*\t*\[default=die\] && r:pam_faillock\.so'
+>>>>>>> a4856543f4 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
       - 'f:/etc/pam.d/common-account -> r:^account\s*\t*required && r:pam_faillock\.so'
 
   # 5.3.2.3 Ensure pam_pwquality module is enabled. (Automated)
@@ -4652,7 +4684,7 @@ checks:
      rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
-      - 'not f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:\d*:(\d+) compare > 365'
+      - 'not f:/etc/shadow -> !r:^[\w@-]+:\p: && n:^[\w@-]+:\S*:\d*:\d*:(\d+) compare > 365'
 
   # 5.4.1.2 Ensure minimum password days is configured. (Manual)
    - id: 35695
@@ -4762,7 +4794,7 @@ checks:
        - mitre_techniques: ["T1548"]
      condition: all
      rules:
-      - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
+      - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^[\w@-]+:[\w@-]+:0:'
 
   # 5.4.2.2 Ensure root is the only GID 0 account. (Automated)
    - id: 35700
@@ -4786,7 +4818,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:\d+:0:'
+      - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^[\w@-]+:[\w@-]+:\d+:0:'
 
   # 5.4.2.3 Ensure group root is the only GID 0 group. (Automated)
    - id: 35701
@@ -4810,7 +4842,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'not f:/etc/group -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
+      - 'not f:/etc/group -> !r:^# && !r:^root: && r:^[\w@-]+:[\w@-]+:0:'
 
   # 5.4.2.4 Ensure root account access is controlled. (Automated)
    - id: 35702
@@ -5029,10 +5061,10 @@ checks:
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
      condition: all
      rules:
-      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^URL\s*\t*=\s*\t*\w+'
-      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^ServerKeyFile\s*\t*=\s*\t*/\w+'
-      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^ServerCertificateFile\s*\t*=\s*\t*/\w+'
-      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^TrustedCertificateFile\s*\t*=\s*\t*/\w+'
+      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^URL\s*\t*=\s*\t*[\w@-]+'
+      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^ServerKeyFile\s*\t*=\s*\t*/[\w@-]+'
+      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^ServerCertificateFile\s*\t*=\s*\t*/[\w@-]+'
+      - 'c:cat /etc/systemd/journal-upload.conf /etc/systemd/journal-upload.conf.d/*.conf -> r:^TrustedCertificateFile\s*\t*=\s*\t*/[\w@-]+'
 
   # 6.1.2.1.3 Ensure systemd-journal-upload is enabled and active. (Automated)
    - id: 35711
@@ -5331,7 +5363,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: none
      rules:
-      - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
+      - 'c:find /var/log -type f -ls -> r:-[\w@-][\w@-][\w@-][\w@-]w[\w@-][\w@-][\w@-][\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-]x[\w@-][\w@-][\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-][\w@-][\w@-]w[\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-][\w@-]r[\w@-][\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-][\w@-][\w@-][\w@-]x'
 
   # 6.2.1.1 Ensure auditd packages are installed. (Automated)
    - id: 35723
@@ -6189,7 +6221,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:\w+ && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:[\w@-]+ && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
   # 6.2.4.9 Ensure audit tools owner is configured. (Automated)
    - id: 35756
@@ -6579,7 +6611,7 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - 'not f:/etc/passwd -> !r:^\w+:x:'
+      - 'not f:/etc/passwd -> !r:^[\w@-]+:x:'
 
   # 7.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
    - id: 35772
@@ -6600,7 +6632,7 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - 'not f:/etc/shadow -> !r:^# && r:^\w+::'
+      - 'not f:/etc/shadow -> !r:^# && r:^[\w@-]+::'
 
   # 7.2.3 Ensure all groups in /etc/passwd exist in /etc/group. (Automated)
    - id: 35773
@@ -6622,7 +6654,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\d+:$'
+      - 'f:/etc/group -> !r:^# && r:shadow:[\w@-]*:\d+:$'
 
   # 7.2.4 Ensure shadow group is empty. (Automated)
    - id: 35774
@@ -6646,7 +6678,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'f:/etc/group -> !r:^# && r:^shadow:\w*:\d+:$'
+      - 'f:/etc/group -> !r:^# && r:^shadow:[\w@-]*:\d+:$'
 
   # 7.2.5 Ensure no duplicate UIDs exist. (Automated)
    - id: 35775

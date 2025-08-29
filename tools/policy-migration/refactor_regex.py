@@ -444,20 +444,297 @@ def _detect_line_quote_char(line: str) -> Optional[str]:
     return None
 
 
+def _payload_needs_w_expansion(payload: str, quote_char: Optional[str]) -> bool:
+    """Return True if payload contains a \w token (accounting for line quotes) that is not already expanded.
+    - For double-quoted lines: look for \\w
+    - For single-quoted or unquoted lines: look for \w
+    - Inside a character class: needs expansion unless immediately followed by '@-'
+    """
+    i = 0
+    n = len(payload)
+    inside_class = False
+
+    def is_unescaped_bracket(idx: int) -> bool:
+        # True if bracket at idx is not preceded by an odd number of backslashes
+        cnt = 0
+        k = idx - 1
+        while k >= 0 and payload[k] == '\\':
+            cnt += 1
+            k -= 1
+        return (cnt % 2) == 0
+
+    while i < n:
+        ch = payload[i]
+        if ch == '[' and is_unescaped_bracket(i):
+            inside_class = True
+            i += 1
+            continue
+        if ch == ']' and is_unescaped_bracket(i):
+            inside_class = False
+            i += 1
+            continue
+        is_double = (quote_char == '"')
+        # Determine token start based on quote type
+        if not is_double and ch == '\\' and i + 1 < n and payload[i + 1] == 'w':
+            if inside_class:
+                # If already expanded, next two chars should be '@-'
+                if i + 3 <= n and payload[i + 2:i + 4] == '@-':
+                    i += 2
+                    continue
+                return True
+            else:
+                return True
+        if is_double and ch == '\\' and i + 2 < n and payload[i + 1] == '\\' and payload[i + 2] == 'w':
+            if inside_class:
+                if i + 4 <= n and payload[i + 3:i + 5] == '@-':
+                    i += 3
+                    continue
+                return True
+            else:
+                return True
+        i += 1
+    return False
+
+
+def _has_w_in_rn_tokens(text: str, quote_char: Optional[str]) -> bool:
+    """Return True if any r:/n:/!r:/!n: payload contains a \w token needing expansion,
+    considering the line's quote style.
+    """
+    i = 0
+    s = text
+    n = len(s)
+
+    def read_until_boundary(k: int) -> Tuple[str, int]:
+        j = k
+        while j < n and not (s.startswith(' && ', j) or s.startswith(' compare ', j)):
+            j += 1
+        return s[k:j], j
+
+    while i < n:
+        if i + 2 < n and s[i] == '!' and s[i + 1] in ('r', 'n') and s[i + 2] == ':':
+            i += 3
+            payload, i = read_until_boundary(i)
+            if _payload_needs_w_expansion(payload, quote_char):
+                return True
+            continue
+        if i + 1 < n and s[i] in ('r', 'n') and s[i + 1] == ':':
+            i += 2
+            payload, i = read_until_boundary(i)
+            if _payload_needs_w_expansion(payload, quote_char):
+                return True
+            continue
+        i += 1
+    return False
+
+
+def left_to_right_expand_word_chars(pattern: str, quote_char: Optional[str]) -> str:
+    """Expand \w accounting for line quote style.
+    - Double-quoted: outside class -> [\\w@-], inside class -> \\w@-
+    - Single-quoted or unquoted: outside class -> [\w@-], inside class -> \w@-
+    Skips expansion inside a class if already followed by '@-'.
+    """
+    out: List[str] = []
+    i = 0
+    n = len(pattern)
+    inside_class = False
+
+    def is_unescaped_bracket(idx: int) -> bool:
+        cnt = 0
+        k = idx - 1
+        while k >= 0 and pattern[k] == '\\':
+            cnt += 1
+            k -= 1
+        return (cnt % 2) == 0
+
+    while i < n:
+        ch = pattern[i]
+        if ch == '[' and is_unescaped_bracket(i):
+            inside_class = True
+            out.append(ch)
+            i += 1
+            continue
+        if ch == ']' and is_unescaped_bracket(i):
+            inside_class = False
+            out.append(ch)
+            i += 1
+            continue
+        is_double = (quote_char == '"')
+        if not is_double and ch == '\\' and i + 1 < n and pattern[i + 1] == 'w':
+            if inside_class:
+                if i + 3 <= n and pattern[i + 2:i + 4] == '@-':
+                    out.append(pattern[i:i+2])
+                    i += 2
+                else:
+                    out.append('\\w@-')
+                    i += 2
+            else:
+                out.append('[\\w@-]')
+                i += 2
+            continue
+        if is_double and ch == '\\' and i + 2 < n and pattern[i + 1] == '\\' and pattern[i + 2] == 'w':
+            if inside_class:
+                if i + 4 <= n and pattern[i + 3:i + 5] == '@-':
+                    out.append(pattern[i:i+3])
+                    i += 3
+                else:
+                    out.append('\\\\w@-')
+                    i += 3
+            else:
+                out.append('[\\\\w@-]')
+                i += 3
+            continue
+        out.append(ch)
+        i += 1
+    return ''.join(out)
+
+
+def swap_in_rn_tokens_words(text: str, quote_char: Optional[str]) -> Tuple[str, bool]:
+    """Expand \\w tokens only within r:/n:/!r:/!n: payloads.
+    Token ends at ' && ' or ' compare '. Returns (updated_text, changed_flag).
+    """
+    i = 0
+    s = text
+    out: List[str] = []
+    n = len(s)
+
+    def read_until_boundary(k: int) -> Tuple[str, int]:
+        j = k
+        while j < n and not (s.startswith(' && ', j) or s.startswith(' compare ', j)):
+            j += 1
+        return s[k:j], j
+
+    while i < n:
+        if i + 2 < n and s[i] == '!' and s[i + 1] in ('r', 'n') and s[i + 2] == ':':
+            out.append(s[i:i+3])
+            i += 3
+            payload, next_i = read_until_boundary(i)
+            new_payload = left_to_right_expand_word_chars(payload, quote_char)
+            out.append(new_payload)
+            i = next_i
+            continue
+        if i + 1 < n and s[i] in ('r', 'n') and s[i + 1] == ':':
+            out.append(s[i:i+2])
+            i += 2
+            payload, next_i = read_until_boundary(i)
+            new_payload = left_to_right_expand_word_chars(payload, quote_char)
+            out.append(new_payload)
+            i = next_i
+            continue
+        out.append(s[i])
+        i += 1
+
+    updated = ''.join(out)
+    return updated, (updated != text)
+
+
+def find_ids_with_w_tokens(yml_lines: List[str]) -> Set[str]:
+    """Scan YAML and return IDs whose rules contain \\w tokens needing expansion inside r:/n:/!r:/!n:."""
+    ids_with_issue: Set[str] = set()
+
+    current_id: str = ''
+    in_rules = False
+    rules_indent_len = None
+
+    id_line_re = re.compile(r'^(\s*)-\s+id:\s+(\d+)\s*$')
+    rules_key_re = re.compile(r'^(\s*)rules:\s*$')
+    list_item_re = re.compile(r'^(\s*)-\s')
+
+    for line in yml_lines:
+        m_id = id_line_re.match(line)
+        if m_id:
+            current_id = m_id.group(2)
+            in_rules = False
+            rules_indent_len = None
+            continue
+
+        m_rules = rules_key_re.match(line)
+        if m_rules:
+            in_rules = True
+            rules_indent_len = len(m_rules.group(1))
+            continue
+
+        if in_rules:
+            leading_spaces = len(line) - len(line.lstrip(' '))
+            if leading_spaces <= (rules_indent_len or 0) or id_line_re.match(line):
+                in_rules = False
+                rules_indent_len = None
+                continue
+            if list_item_re.match(line):
+                quote_char = _detect_line_quote_char(line)
+                # Extract tokens and check payloads
+                if _has_w_in_rn_tokens(line, quote_char):
+                    if current_id:
+                        ids_with_issue.add(current_id)
+
+    return ids_with_issue
+
+
+def update_yaml_rules_words(yml_lines: List[str], ids: Set[str]) -> Tuple[List[str], int]:
+    """Under matching IDs, expand \\w to [\\w@-] (or \\w@- inside classes) within r:/n:/!r:/!n: tokens.
+    Returns (updated_lines, edited_rule_count).
+    """
+    new_lines: List[str] = []
+    edited_count: int = 0
+
+    in_target_check = False
+    in_rules = False
+    rules_indent_len = None
+
+    id_line_re = re.compile(r'^(\s*)-\s+id:\s+(\d+)\s*$')
+    rules_key_re = re.compile(r'^(\s*)rules:\s*$')
+    list_item_re = re.compile(r'^(\s*)-\s')
+
+    for line in yml_lines:
+        m_id = id_line_re.match(line)
+        if m_id:
+            in_target_check = m_id.group(2) in ids
+            in_rules = False
+            rules_indent_len = None
+            new_lines.append(line)
+            continue
+
+        if in_target_check:
+            m_rules = rules_key_re.match(line)
+            if m_rules:
+                in_rules = True
+                rules_indent_len = len(m_rules.group(1))
+                new_lines.append(line)
+                continue
+
+            if in_rules:
+                leading_spaces = len(line) - len(line.lstrip(' '))
+                if leading_spaces <= (rules_indent_len or 0) or re.match(r'^(\s*)-\s+id:\s+(\d+)\s*$', line):
+                    in_rules = False
+                    rules_indent_len = None
+                else:
+                    if list_item_re.match(line):
+                        quote_char = _detect_line_quote_char(line)
+                        transformed, changed = swap_in_rn_tokens_words(line, quote_char)
+                        if changed:
+                            edited_count += 1
+                        new_lines.append(transformed)
+                        continue
+
+        new_lines.append(line)
+
+    return new_lines, edited_count
+
+
 def main() -> None:
-    # CLI: python refactor_regex.py <policy.yml> (--dots | --brackets)
+    # CLI: python refactor_regex.py <policy.yml> (--dots | --brackets | --words)
     if len(sys.argv) < 3:
-        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets)')
+        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words)')
         sys.exit(1)
 
     dots_mode = any(arg == '--dots' for arg in sys.argv[1:])
     brackets_mode = any(arg == '--brackets' for arg in sys.argv[1:])
+    words_mode = any(arg == '--words' for arg in sys.argv[1:])
     non_flag_args = [a for a in sys.argv[1:] if not a.startswith('-')]
 
-    modes_selected = int(dots_mode) + int(brackets_mode)
+    modes_selected = int(dots_mode) + int(brackets_mode) + int(words_mode)
     if not non_flag_args or modes_selected != 1:
         # Either no file provided, or not exactly one mode provided
-        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets)')
+        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words)')
         sys.exit(1)
 
     policy_yml = non_flag_args[0]
@@ -468,6 +745,37 @@ def main() -> None:
     except FileNotFoundError:
         print(f"Error: File '{policy_yml}' not found.")
         sys.exit(1)
+
+    if words_mode:
+        # Stage 1: Detect IDs with \\w tokens needing expansion
+        ids = find_ids_with_w_tokens(yml_lines)
+        if not ids:
+            print('No IDs found with \\w tokens needing expansion in r:/n:/!r:/!n:. Nothing to change.')
+            return
+
+        print(f"Detected IDs with \\w tokens: {', '.join(sorted(ids))}")
+
+        # Confirm before applying changes
+        try:
+            answer = input('Proceed to expand \\w to [\\w@-]? [y/N]: ').strip().lower()
+        except EOFError:
+            answer = ''
+        if answer not in ('y', 'yes'):
+            print('Aborted. No changes applied.')
+            return
+
+        # Stage 2: Apply changes
+        updated_lines, edited_count = update_yaml_rules_words(yml_lines, ids)
+
+        if updated_lines == yml_lines:
+            print('No changes made. Matching IDs may have no expandable \\w tokens.')
+            return
+
+        with open(policy_yml, 'w', encoding='utf-8', newline='') as f:
+            f.writelines(updated_lines)
+
+        print(f"Updated '{policy_yml}' for IDs: {', '.join(sorted(ids))}. Edited rules: {edited_count}.")
+        return
 
     if brackets_mode:
         # Stage 1: Detect IDs with unescaped '[' or ']' inside r:/n:/!r:/!n: token payloads
