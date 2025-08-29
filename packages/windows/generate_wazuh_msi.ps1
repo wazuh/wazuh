@@ -75,7 +75,6 @@ function BuildWazuhMsi(){
             ".\*.dll",
             "..\data_provider\build\bin\sysinfo.dll",
             "..\shared_modules\dbsync\build\bin\dbsync.dll",
-            "..\shared_modules\rsync\build\bin\rsync.dll",
             "..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll",
             "..\wazuh_modules\syscollector\build\bin\syscollector.dll",
             "..\syscheckd\build\bin\libfimdb.dll"
@@ -112,7 +111,6 @@ function ExtractDebugSymbols(){
 	#plus a few more individual libraries
 	$exeFiles +=  Get-ChildItem -Filter "data_provider\build\bin\sysinfo.dll"
 	$exeFiles +=  Get-ChildItem -Filter "shared_modules\dbsync\build\bin\dbsync.dll"
-	$exeFiles +=  Get-ChildItem -Filter "shared_modules\rsync\build\bin\rsync.dll"
     $exeFiles +=  Get-ChildItem -Filter "shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll"
 	$exeFiles +=  Get-ChildItem -Filter "wazuh_modules\syscollector\build\bin\syscollector.dll"
 	$exeFiles +=  Get-ChildItem -Filter "syscheckd\build\bin\libfimdb.dll"

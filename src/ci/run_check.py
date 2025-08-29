@@ -495,8 +495,6 @@ def runTestToolForWindows(moduleName, testToolConfig):
 
     libgcc = utils.findFile(name="libgcc_s_dw2-1.dll",
                             path=utils.rootPath())
-    rsync = utils.findFile(name="rsync.dll",
-                            path=utils.rootPath())
     dbsync = utils.findFile(name="dbsync.dll",
                             path=utils.rootPath())
     agent_sync_protocol = utils.findFile(name="libagent_sync_protocol.dll",
@@ -505,8 +503,6 @@ def runTestToolForWindows(moduleName, testToolConfig):
                             path=utils.rootPath())
     shutil.copyfile(libgcc,
                     os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
-    shutil.copyfile(rsync,
-                    os.path.join(rootPath, "rsync.dll"))
     shutil.copyfile(dbsync,
                     os.path.join(rootPath, "dbsync.dll"))
     shutil.copyfile(agent_sync_protocol,

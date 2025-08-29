@@ -20,7 +20,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2034120,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,574920,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,97024,0.1
-/var/ossec/lib/librsync.so,root,wazuh,750,file,-rwxr-x---,385688,0.1
 /var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,12008,0.1
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1
 /var/ossec/etc/localtime,root,wazuh,640,file,-rw-r-----,118,0.1

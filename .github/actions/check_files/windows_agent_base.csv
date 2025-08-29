@@ -16,7 +16,6 @@ C:\Program Files (x86)\ossec-agent\local_internal_options.conf,,,666,file,-rw-rw
 C:\Program Files (x86)\ossec-agent\manage_agents.exe,,,777,file,-rwxrwxrwx,,
 C:\Program Files (x86)\ossec-agent\ossec.conf,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\profile-10.template,,,666,file,-rw-rw-rw-,,
-C:\Program Files (x86)\ossec-agent\rsync.dll,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\syscollector.dll,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\sysinfo.dll,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\libagent_sync_protocol.dll,,,666,file,-rw-rw-rw-,,
