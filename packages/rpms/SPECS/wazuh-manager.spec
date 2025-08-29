@@ -349,6 +349,14 @@ if [ $1 = 1 ]; then
   chown wazuh:wazuh %{_localstatedir}/logs/active-responses.log
   chmod 0660 %{_localstatedir}/logs/active-responses.log
 
+  touch %{_localstatedir}/logs/ossec.log
+  chown wazuh:wazuh %{_localstatedir}/logs/ossec.log
+  chmod 0660 %{_localstatedir}/logs/ossec.log
+
+  touch %{_localstatedir}/logs/ossec.json
+  chown wazuh:wazuh %{_localstatedir}/logs/ossec.json
+  chmod 0660 %{_localstatedir}/logs/ossec.json
+
   # Add default local_files to ossec.conf
   %{_localstatedir}/packages_files/manager_installation_scripts/add_localfiles.sh %{_localstatedir} >> %{_localstatedir}/etc/ossec.conf
 fi
@@ -653,7 +661,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_upgrade
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-analysisd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-forwarder
+%attr(750, wazuh, wazuh) %{_localstatedir}/bin/wazuh-forwarder
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-execd

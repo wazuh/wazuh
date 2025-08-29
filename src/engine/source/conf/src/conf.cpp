@@ -7,22 +7,6 @@
 
 #include <conf/keys.hpp>
 
-namespace
-{
-std::string getExecutablePath()
-{
-    char path[PATH_MAX];
-    ssize_t count = readlink("/proc/self/exe", path, PATH_MAX);
-    if (count != -1)
-    {
-        path[count] = '\0';
-        std::string pathStr(path);
-        return pathStr.substr(0, pathStr.find_last_of('/'));
-    }
-    return {};
-}
-} // namespace
-
 namespace conf
 {
 
@@ -42,7 +26,10 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Register available configuration units with Default Settings
 
     // Logging module
-    addUnit<std::string>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", "info");
+    addUnit<int>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", 0);
+
+    // Standalone Logging module
+    addUnit<std::string>(key::STANDALONE_LOGGING_LEVEL, "WAZUH_STANDALONE_LOG_LEVEL", "info");
 
     // Store module
     addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "engine/store").c_str());
@@ -89,7 +76,9 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<int>(key::SERVER_EVENT_THREADS, "WAZUH_SERVER_EVENT_THREADS", 1);
 
     // Event server - enriched (http)
-    addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET, "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET", (wazuhRoot / "queue/sockets/queue-http.sock").c_str());
+    addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET,
+                         "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",
+                         (wazuhRoot / "queue/sockets/queue-http.sock").c_str());
 
     // TZDB module
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", (wazuhRoot / "queue/tzdb").c_str());

@@ -6,6 +6,18 @@
 #include <base/logging.hpp>
 #include <conf/fileLoader.hpp>
 
+static std::filesystem::path mkTempFile(const char* prefix)
+{
+    std::filesystem::path p = std::filesystem::temp_directory_path() /
+                              (std::string(prefix) + "XXXXXX");
+    std::string s = p.string();
+    std::vector<char> buf(s.begin(), s.end());
+    buf.push_back('\0');
+    int fd = mkstemp(buf.data());
+    close(fd);
+    return std::filesystem::path(buf.data());
+}
+
 // Test fixture for parameterized FileLoader tests
 class FileLoaderParamTest : public ::testing::TestWithParam<std::tuple<std::string, std::string, conf::OptionMap>>
 {
@@ -16,8 +28,8 @@ protected:
     void SetUp() override
     {
         logging::testInit();
-        internalPath = std::filesystem::temp_directory_path() / "internal_options.conf";
-        localPath = std::filesystem::temp_directory_path() / "local_internal_options.conf";
+        internalPath = mkTempFile("internal_");
+        localPath    = mkTempFile("local_");
 
         const auto& [internalContent, localContent, _] = GetParam();
         writeToFile(internalPath, internalContent);
