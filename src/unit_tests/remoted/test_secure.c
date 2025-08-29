@@ -109,7 +109,6 @@ static int teardown_remoted_configuration(void** state)
 {
     test_mode = 0;
     node_name = "";
-    router_syscollector_handle = NULL;
 
     test_agent_info* data = (test_agent_info*)*state;
     free(data->agent_id);
@@ -1217,7 +1216,8 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 12!");
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -1312,7 +1312,8 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized AAA");
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -1866,7 +1867,8 @@ void test_HandleSecureMessage_close_same_sock(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 12!");
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -1939,7 +1941,8 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized AAA");
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
