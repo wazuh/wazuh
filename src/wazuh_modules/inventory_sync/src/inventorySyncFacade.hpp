@@ -40,12 +40,6 @@ constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
 using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
 using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
 
-void* operator new(size_t size)
-{
-    printf("InventorySyncFacade::operator new: Allocating %zu bytes\n", size);
-    return malloc(size);
-}
-
 class InventorySyncException : public std::exception
 {
 public:
