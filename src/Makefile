@@ -1747,7 +1747,6 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_remoted_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_logcollector_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_sync_protocol_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_modules_o}
 
 	ifeq (${TARGET},winagent)
