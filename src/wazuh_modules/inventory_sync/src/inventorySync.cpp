@@ -15,14 +15,12 @@
 
 namespace Log
 {
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 };
 
 void InventorySync::start(
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction,
     const nlohmann::json& configuration) const
 {
@@ -50,16 +48,15 @@ extern "C"
                 configurationNlohmann = nlohmann::json::parse(spJsonBytes.get());
             }
 
-            InventorySync::instance().start(
-                [callbackLog](const int logLevel,
-                              const std::string& tag,
-                              const std::string& file,
-                              const int line,
-                              const std::string& func,
-                              const std::string& logMessage,
-                              va_list args)
-                { callbackLog(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); },
-                configurationNlohmann);
+            InventorySync::instance().start([callbackLog](const int logLevel,
+                                                          const char* tag,
+                                                          const char* file,
+                                                          const int line,
+                                                          const char* func,
+                                                          const char* logMessage,
+                                                          va_list args)
+                                            { callbackLog(logLevel, tag, file, line, func, logMessage, args); },
+                                            configurationNlohmann);
         }
         catch (const std::exception& e)
         {

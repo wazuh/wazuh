@@ -17,8 +17,7 @@
 
 namespace Log
 {
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 };
 // LCOV_EXCL_START
@@ -30,13 +29,8 @@ private:
 
 public:
     Impl(const nlohmann::json& config,
-         const std::function<void(const int,
-                                  const std::string&,
-                                  const std::string&,
-                                  const int,
-                                  const std::string&,
-                                  const std::string&,
-                                  va_list)>& logFunction)
+         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+             logFunction)
         : m_impl(config, logFunction)
     {
     }
@@ -74,8 +68,7 @@ public:
 
 IndexerConnectorSync::IndexerConnectorSync(
     const nlohmann::json& config,
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction)
     : m_impl(std::make_unique<Impl>(config, logFunction))
 {

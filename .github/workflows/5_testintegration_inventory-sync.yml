@@ -35,6 +35,11 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           skip_after_successful_duplicate: 'false'
 
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
       - name: Wait for Package Build workflow to be created
         if: github.event_name == 'pull_request'
         id: wait-for-workflow-creation
@@ -82,11 +87,6 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 30
           allowed-conclusions: success
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Install system dependencies
         run: |

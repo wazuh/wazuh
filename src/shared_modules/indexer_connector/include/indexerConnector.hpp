@@ -43,14 +43,10 @@ public:
      * @param config Indexer configuration, including database_path and servers.
      * @param logFunction Callback function to be called when trying to log a message.
      */
-    explicit IndexerConnectorSync(const nlohmann::json& config,
-                                  const std::function<void(const int,
-                                                           const std::string&,
-                                                           const std::string&,
-                                                           const int,
-                                                           const std::string&,
-                                                           const std::string&,
-                                                           va_list)>& logFunction = {});
+    explicit IndexerConnectorSync(
+        const nlohmann::json& config,
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction = {});
 
     ~IndexerConnectorSync();
 
@@ -141,14 +137,10 @@ public:
      * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
      */
-    explicit IndexerConnectorAsync(const nlohmann::json& config,
-                                   const std::function<void(const int,
-                                                            const std::string&,
-                                                            const std::string&,
-                                                            const int,
-                                                            const std::string&,
-                                                            const std::string&,
-                                                            va_list)>& logFunction = {});
+    explicit IndexerConnectorAsync(
+        const nlohmann::json& config,
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction = {});
 
     ~IndexerConnectorAsync();
 

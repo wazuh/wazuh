@@ -131,8 +131,7 @@ class InventorySyncFacadeImpl final
                 if (!m_indexerConnector->isAvailable())
                 {
                     logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: No available server");
-                    m_responseDispatcher->sendStartAck(
-                        Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
+                    m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
                 }
                 else
                 {
@@ -206,14 +205,10 @@ public:
      * @param logFunction Log function.
      * @param configuration Facade configuration.
      */
-    void start(const std::function<void(const int,
-                                        const std::string&,
-                                        const std::string&,
-                                        const int,
-                                        const std::string&,
-                                        const std::string&,
-                                        va_list)>& logFunction,
-               const nlohmann::json& configuration)
+    void
+    start(const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+              logFunction,
+          const nlohmann::json& configuration)
     {
         std::error_code errorCodeFS;
         std::filesystem::remove_all(INVENTORY_SYNC_PATH, errorCodeFS);

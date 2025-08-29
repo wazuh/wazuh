@@ -43,7 +43,6 @@ constexpr auto MINIMAL_ELEMENTS_PER_BULK {1};
 // {"index":{"_index":"<index>","id":"<id>"}}
 constexpr auto FORMATTED_LENGTH {20 + 8 + 2 + 2 + 1};
 
-
 class IndexerResponse final
 {
 public:
@@ -103,17 +102,13 @@ class IndexerConnectorAsyncImpl final
 public:
     ~IndexerConnectorAsyncImpl() = default;
 
-    explicit IndexerConnectorAsyncImpl(const nlohmann::json& config,
-                                       const std::function<void(const int,
-                                                                const std::string&,
-                                                                const std::string&,
-                                                                const int,
-                                                                const std::string&,
-                                                                const std::string&,
-                                                                va_list)>& logFunction,
-                                       THttpRequest* httpRequest = nullptr,
-                                       std::unique_ptr<TSelector> selector = nullptr,
-                                       std::string queueId = "")
+    explicit IndexerConnectorAsyncImpl(
+        const nlohmann::json& config,
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction,
+        THttpRequest* httpRequest = nullptr,
+        std::unique_ptr<TSelector> selector = nullptr,
+        std::string queueId = "")
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_queueId(std::move(queueId))
     {

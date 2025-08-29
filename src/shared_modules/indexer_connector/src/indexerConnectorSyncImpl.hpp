@@ -357,16 +357,12 @@ public:
         }
     }
 
-    explicit IndexerConnectorSyncImpl(const nlohmann::json& config,
-                                      const std::function<void(const int,
-                                                               const std::string&,
-                                                               const std::string&,
-                                                               const int,
-                                                               const std::string&,
-                                                               const std::string&,
-                                                               va_list)>& logFunction,
-                                      THttpRequest* httpRequest = nullptr,
-                                      std::unique_ptr<TSelector> selector = nullptr)
+    explicit IndexerConnectorSyncImpl(
+        const nlohmann::json& config,
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction,
+        THttpRequest* httpRequest = nullptr,
+        std::unique_ptr<TSelector> selector = nullptr)
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
         if (logFunction)
