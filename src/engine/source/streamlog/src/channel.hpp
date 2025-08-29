@@ -33,10 +33,6 @@ enum class ChannelState : int
 // Forward declaration
 class ChannelHandler;
 
-
-
-
-
 /***********************************************************************************************************************
  * @brief Concrete implementation of WriterEvent for log channels
  **********************************************************************************************************************/
@@ -76,7 +72,7 @@ public:
     {
         if (m_channelState->load(std::memory_order_relaxed) == ChannelState::Running)
         {
-            // TODO Handle error and print message for changing the buffer size, maybe trypush con &&
+            // TODO Handle error and print message for changing the buffer size, maybe trypush with &&
             m_queue->push(std::move(message));
             return true; // Indicate that the message was accepted for processing
         }
@@ -186,11 +182,7 @@ private:
      */
     scheduler::TaskConfig createCompressionTaskConfig(std::filesystem::path filePath) const;
 
-
-    base::Name getStoreBaseName() const
-    {
-        return base::Name(STORE_STREAMLOG_BASE_NAME) + m_channelName + "/0";
-    }
+    base::Name getStoreBaseName() const { return base::Name(STORE_STREAMLOG_BASE_NAME) + m_channelName + "/0"; }
 
     /**
      * @brief Get the last file used to write logs from the store
@@ -202,6 +194,11 @@ private:
      * @brief Save the current file used to write logs to the store
      */
     void savePreviousCurrentFilePathFromStore() const;
+
+    /**
+     * @brief Clear the last file used to write logs from the store, avoid compression of old files
+     */
+    void clearPreviousCurrentFilePathFromStore() const;
 
     /**
      * @brief Private constructor - use create() instead

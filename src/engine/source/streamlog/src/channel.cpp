@@ -9,7 +9,6 @@ namespace streamlog
 
 constexpr const char* STORE_POSFIX_PATH_TO_CURRENT = "/last_current"; ///< JSON path to the last current file path
 
-
 /**
  * @brief Replaces placeholders in the log pattern with actual values based on the provided time point and channel
  * configuration.
@@ -136,8 +135,7 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
         {
             case RotationRequirement::Size: return m_stateData.counter + 1; // Increment counter for size-based rotation
             case RotationRequirement::Time: return 0;                       // Reset counter for time-based rotation
-            default: std::logic_error("Invalid rotation type for counter update");
-                return 0; // Fallback
+            default: std::logic_error("Invalid rotation type for counter update"); return 0; // Fallback
         }
     }();
 
@@ -194,7 +192,8 @@ void ChannelHandler::rotateFile(RotationRequirement rotationType)
         }
         else
         {
-            LOG_WARNING("Scheduler is no longer available; cannot schedule compression for channel '{}'", m_channelName);
+            LOG_WARNING("Scheduler is no longer available; cannot schedule compression for channel '{}'",
+                        m_channelName);
         }
     }
     LOG_INFO("Rotated the channel '{}' to new file: {}", m_channelName, m_stateData.currentFile.string());
@@ -285,7 +284,11 @@ void ChannelHandler::workerThreadFunc()
             if (const auto rType = needsRotation(message.size()); rType != RotationRequirement::No)
             {
                 rotateFile(rType);
-                savePreviousCurrentFilePathFromStore();
+                if (m_config.shouldCompress)
+                {
+                    // Save the current file path to the store for future compression in next start
+                    savePreviousCurrentFilePathFromStore();
+                }
             }
             if (m_stateData.channelState->load(std::memory_order_relaxed) != ChannelState::Running)
             {
@@ -518,7 +521,8 @@ ChannelHandler::ChannelHandler(RotationConfig config,
 
             // Increment counter until we find a non-existing file, considering compression if enabled
             m_stateData.counter = 0;
-            while (std::filesystem::exists(candidate) || (compressionCandidate && std::filesystem::exists(*compressionCandidate)))
+            while (std::filesystem::exists(candidate)
+                   || (compressionCandidate && std::filesystem::exists(*compressionCandidate)))
             {
                 m_stateData.counter++;
                 candidate = m_config.basePath / replacePlaceholders(now);
@@ -539,7 +543,7 @@ ChannelHandler::ChannelHandler(RotationConfig config,
                 }
             }
 
-            // Corner case: if the .json does not exist but the .gz does, we increment the counter again,
+            // Corner case: if the .json|.log does not exist but the .gz does, we increment the counter again,
             // so the new file will not overwrite the compressed one
             // This only happens if an external process deleted the .json but not the .gz
             if (compressionCandidate && std::filesystem::exists(*compressionCandidate))
@@ -581,7 +585,8 @@ ChannelHandler::ChannelHandler(RotationConfig config,
     LOG_DEBUG("ChannelHandler '{}' initialized. Worker thread will start on first writer creation.", m_channelName);
 
     // Check for previous current file in the store, to schedule compression if needed
-    if (m_config.shouldCompress) {
+    if (m_config.shouldCompress)
+    {
         if (auto previousFilePath = getPreviousCurrentFilePathFromStore(); previousFilePath)
         {
             // If the previous current file is different from the current one, schedule compression
@@ -591,10 +596,12 @@ ChannelHandler::ChannelHandler(RotationConfig config,
                 {
                     if (auto schedulerPtr = m_scheduler.lock())
                     {
-                        const auto taskName = "CompressLog-" + m_channelName + "-" + previousFilePath->filename().string();
+                        const auto taskName =
+                            "CompressLog-" + m_channelName + "-" + previousFilePath->filename().string();
                         auto config = createCompressionTaskConfig(*previousFilePath);
                         schedulerPtr->scheduleTask(taskName, std::move(config));
-                        LOG_DEBUG("Scheduled compression for previous log file from store: {}", previousFilePath->string());
+                        LOG_DEBUG("Scheduled compression for previous log file from store: {}",
+                                  previousFilePath->string());
                     }
                     else
                     {
@@ -604,10 +611,18 @@ ChannelHandler::ChannelHandler(RotationConfig config,
                 }
                 else
                 {
-                    LOG_DEBUG("Previous current file from store does not exist on disk: {}", previousFilePath->string());
+                    LOG_DEBUG("Previous current file from store does not exist on disk: {}",
+                              previousFilePath->string());
                 }
             }
         }
+        // Save the current file path to the store
+        savePreviousCurrentFilePathFromStore();
+    }
+    else
+    {
+        // Clear any previous current file path from the store to avoid compressing old files
+        clearPreviousCurrentFilePathFromStore();
     }
 }
 
@@ -676,9 +691,7 @@ std::shared_ptr<ChannelWriter> ChannelHandler::createWriter()
 
     auto writer = std::make_shared<ChannelWriter>(m_stateData.queue, m_stateData.channelState, weak_from_this());
 
-    LOG_DEBUG("Created ChannelWriter for channel '{}'. Active writers: {}",
-              m_channelName,
-              m_activeWriters.count);
+    LOG_DEBUG("Created ChannelWriter for channel '{}'. Active writers: {}", m_channelName, m_activeWriters.count);
 
     return writer;
 }
@@ -736,9 +749,8 @@ scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(std::filesyste
         .interval = 0, // One-time task
         .CPUPriority = 0,
         .timeout = 0,
-        .taskFunction = [filePath, compressionLevel = m_config.compressionLevel]() {
-            compressLogFile(filePath, compressionLevel);
-        },
+        .taskFunction = [filePath, compressionLevel = m_config.compressionLevel]()
+        { compressLogFile(filePath, compressionLevel); },
     };
 }
 
@@ -754,7 +766,7 @@ std::optional<std::filesystem::path> ChannelHandler::getPreviousCurrentFilePathF
     {
         // Get the last state document from the store
         const auto state = m_store->readInternalDoc(getStoreBaseName());
-        if(base::isError(state))
+        if (base::isError(state))
         {
             // Missing document is not an error, just means no previous state, fist time run
             LOG_DEBUG("Failed to read last state for channel '{}' from store: {}",
@@ -781,7 +793,8 @@ std::optional<std::filesystem::path> ChannelHandler::getPreviousCurrentFilePathF
     return std::nullopt;
 }
 
-void ChannelHandler::savePreviousCurrentFilePathFromStore() const {
+void ChannelHandler::savePreviousCurrentFilePathFromStore() const
+{
     if (!m_store)
     {
         LOG_ERROR("Store is not available for channel '{}'", m_channelName);
@@ -793,7 +806,7 @@ void ChannelHandler::savePreviousCurrentFilePathFromStore() const {
         // Get the last state document from the store
         auto state = m_store->readInternalDoc(getStoreBaseName());
 
-        if(base::isError(state))
+        if (base::isError(state))
         {
             // Missing document is not an error, just means no previous state, fist time run
             LOG_DEBUG("Failed to read last state for channel '{}' from store: {}. Creating new state.",
@@ -810,12 +823,52 @@ void ChannelHandler::savePreviousCurrentFilePathFromStore() const {
         const auto res = m_store->upsertInternalDoc(getStoreBaseName(), jState);
         if (base::isError(res))
         {
-            LOG_WARNING("Failed to save last state for channel '{}' to store: {}", m_channelName, base::getError(res).message);
+            LOG_WARNING(
+                "Failed to save last state for channel '{}' to store: {}", m_channelName, base::getError(res).message);
         }
     }
     catch (const std::exception& e)
     {
         LOG_WARNING("Failed to save last state for channel '{}': {}", m_channelName, e.what());
+    }
+}
+
+void ChannelHandler::clearPreviousCurrentFilePathFromStore() const
+{
+    if (!m_store)
+    {
+        LOG_ERROR("Store is not available for channel '{}'", m_channelName);
+        return;
+    }
+
+    try
+    {
+        // Remove the document from the store
+        // Get the last state document from the store
+        auto state = m_store->readInternalDoc(getStoreBaseName());
+
+        if (base::isError(state))
+        {
+            // Missing document is not an error, just means no previous state, fist time run
+            LOG_DEBUG("Failed to read last state for channel '{}' from store: {}. Creating new state.",
+                      m_channelName,
+                      base::getError(state).message);
+            state = json::Json();
+        }
+        const auto jState = base::getResponse(state);
+        jState.remove(STORE_POSFIX_PATH_TO_CURRENT);
+
+        // Save the updated document back to the store
+        const auto res = m_store->upsertInternalDoc(getStoreBaseName(), jState);
+        if (base::isError(res))
+        {
+            LOG_WARNING(
+                "Failed to clear last state for channel '{}' in store: {}", m_channelName, base::getError(res).message);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("Failed to clear last state for channel '{}': {}", m_channelName, e.what());
     }
 }
 

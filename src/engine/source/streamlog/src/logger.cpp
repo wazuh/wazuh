@@ -21,7 +21,7 @@ void LogManager::registerLog(const std::string& name, const RotationConfig& cfg,
     std::unique_lock lock(m_channelsMutex);
 
     // Validate extension
-    if (ext.empty() || ext.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") != std::string::npos)
+    if (ext.empty() || !std::all_of(ext.begin(), ext.end(), ::isalnum))
     {
         throw std::runtime_error("Invalid file extension: " + std::string(ext));
     }
@@ -49,7 +49,7 @@ void LogManager::registerLog(const std::string& name, const RotationConfig& cfg,
 void LogManager::updateConfig(const std::string& name, const RotationConfig& cfg, std::string_view ext)
 {
     // Check extension
-    if (ext.empty() || ext.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") != std::string::npos)
+    if (ext.empty() || !std::all_of(ext.begin(), ext.end(), ::isalnum))
     {
         throw std::runtime_error("Invalid file extension: " + std::string(ext));
     }
@@ -68,12 +68,13 @@ void LogManager::updateConfig(const std::string& name, const RotationConfig& cfg
     ChannelHandler::validateAndNormalizeConfig(validatedConfig);
     ChannelHandler::validateChannelName(name);
 
-     // check if the channel is in use by a writer
+    // check if the channel is in use by a writer
     if (it->second->getActiveWritersCount() > 0)
     {
         // This warning should be returned to the user
-        throw std::runtime_error("Cannot update log channel '" + name + "' - it has active writers. "
-                                 "The update will take effect once all writers are destroyed.");
+        throw std::runtime_error("Cannot update log channel '" + name
+                                 + "' - it has active writers. "
+                                   "The update will take effect once all writers are destroyed.");
     }
 
     // Replace the existing channel handler with a new one
@@ -179,6 +180,5 @@ LogManager::~LogManager()
 {
     LOG_DEBUG("LogManager destroyed");
 }
-
 
 } // namespace streamlog
