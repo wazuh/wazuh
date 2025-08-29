@@ -15,7 +15,7 @@ from wazuh.core.manager import status, get_api_conf, get_update_information_temp
     get_logs_summary, validate_ossec_conf, OSSEC_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
-from wazuh.rbac.decorators import expose_resources
+from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else 'manager'
@@ -241,6 +241,7 @@ def validation() -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@mask_sensitive_config()
 def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
     """Wrapper for get_active_configuration.
 
@@ -276,6 +277,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
+@mask_sensitive_config()
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Wrapper for get_ossec_conf.
