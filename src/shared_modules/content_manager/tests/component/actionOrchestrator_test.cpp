@@ -10,12 +10,14 @@
  */
 
 #include "actionOrchestrator_test.hpp"
-#include "actionOrchestrator.hpp"
-#include "stringHelper.h"
+
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "actionOrchestrator.hpp"
+#include "stringHelper.h"
 
 namespace Log
 {
