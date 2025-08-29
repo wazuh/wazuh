@@ -1640,21 +1640,21 @@ nested delimiters or escape sequences.
 ### Behavior
 
 - Extracts key-value pairs from input strings based on specified delimiter and separator.
-  - Keys are linked to values by the `separator` character.
-  - Each key-value pair is split from others, given the `delimiter` character.
+  - Keys are linked to values by the `separator` token (may be multi‑character).
+  - Each key-value pair is split from others, given the `delimiter` token (may be multi‑character).
   - All the characters contained between the `quote` characters will be considered part of a single value,
-    even the `separator` and `delimiting` characters
-- Customizable delimiters and separator characters.
-- It does not require a end token.
+    even the `separator` and `delimiter` tokens
+- Customizable delimiters and separator tokens.
+- It does not require an end token.
 
 ### Signature
 
 ```yaml
-<field/kv/sep_char/delim_char/quote_char/esc_char>
+<field/kv/sep_token/delim_token/quote_char/esc_char>
 ```
 
-- `sep_char`: Character that separates keys from their corresponding values.
-- `delim_char`: Character that delimits one key-value pair from another.
+- `sep_token`: Token that separates keys from their corresponding values.
+- `delim_token`: Token that delimits one key-value pair from another.
 - `quote_char`: Character used for quoting complex values that may contain delimiters or separators as literal content.
 - `esc_char`: Character used to escape the quote characters within values, allowing them to be included as part of the data.
 
@@ -1715,6 +1715,32 @@ Output after parse
 }
 ```
 
+### Example: Multi-character separator and delimiter
+
+**Parser configuration**
+
+```yaml
+parse|input:
+- <outField/kv/::=/ || /"/\\>
+```
+
+Input event
+```json
+{
+  "input": "k1::=v1 || k2::=v2"
+}
+```
+
+Output after parse
+```json
+{
+  "input": "k1::=v1 || k2::=v2",
+  "outField": {
+    "k1": "v1",
+    "k2": "v2"
+  }
+}
+```
 
 ## URI
 
