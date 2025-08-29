@@ -20,8 +20,7 @@ struct Context final
 {
     Wazuh::SyncSchema::Mode mode;
     uint64_t sessionId;
-    uint64_t agentId;
-    std::string agentIdString;
+    std::string agentId;
     std::string agentName;
     std::string agentIp;
     std::string agentVersion;

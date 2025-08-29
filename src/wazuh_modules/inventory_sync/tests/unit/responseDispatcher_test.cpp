@@ -34,7 +34,7 @@ TEST_F(ResponseDispatcherTest, SendStartAck)
     auto* mockQueue = new StrictMock<MockResponseQueue>();
     ResponseDispatcherForTest dispatcher(mockQueue);
 
-    uint64_t agentId = 1;
+    std::string agentId = "001";
     uint64_t sessionId = 12345;
     std::string moduleName = "syscollector";
 
@@ -60,7 +60,7 @@ TEST_F(ResponseDispatcherTest, SendEndAck)
     auto* mockQueue = new StrictMock<MockResponseQueue>();
     ResponseDispatcherForTest dispatcher(mockQueue);
 
-    uint64_t agentId = 2;
+    std::string agentId = "002";
     uint64_t sessionId = 54321;
     std::string moduleName = "another_module";
 
@@ -108,5 +108,5 @@ TEST_F(ResponseDispatcherTest, SendEndMissingSeq)
                 EXPECT_EQ(receivedRanges->Get(1)->end(), 10);
             }));
 
-    dispatcher.sendEndMissingSeq(1, sessionId, "test_module", ranges);
+    dispatcher.sendEndMissingSeq("001", sessionId, "test_module", ranges);
 }

@@ -951,7 +951,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
 
     char* msg_start = msg + INVENTORY_SYNC_HEADER_SIZE;
     size_t remaining_len = msg_length - INVENTORY_SYNC_HEADER_SIZE;
-    
+
     // Find colon separator between module and message
     // Format after header: {module}:{msg}
     char* colon = (char*)memchr(msg_start, ':', remaining_len);
@@ -959,30 +959,30 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
         mdebug2("Invalid message format: missing or empty module.");
         return;
     }
-    
+
     // Calculate module length and validate it's reasonable
     size_t module_len = colon - msg_start;
     if (module_len == 0 || module_len > OS_SIZE_64) { // Reasonable module name limit
         mdebug2("Invalid module length.");
         return;
     }
-    
+
     // Calculate message payload position
     char* msg_to_send = colon + 1;
     size_t payload_offset = msg_to_send - msg;
-    
+
     if (payload_offset >= msg_length) {
         mdebug2("Invalid message format: no payload data.");
         return;
     }
-    
+
     // Calculate safe message size
     size_t msg_size = msg_length - payload_offset;
-    
+
     // Temporarily null-terminate module name (save original char)
     char saved_char = *colon;
     *colon = '\0';
-    
+
     struct agent_ctx agent_ctx = {
         .id = agent_id,
         .name = agent_name,
@@ -994,7 +994,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
     if (router_provider_send_fb_agent_ctx(router_sync_handle, msg_to_send, msg_size, &agent_ctx) != 0) {
         mdebug2("Unable to forward message for agent '%s'.", agent_id);
     }
-    
+
     // Restore original character
     *colon = saved_char;
 }

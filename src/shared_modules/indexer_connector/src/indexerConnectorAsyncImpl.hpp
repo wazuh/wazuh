@@ -428,4 +428,9 @@ public:
 
         m_dispatcher->push(bulkData);
     }
+
+    bool isAvailable() const
+    {
+        return m_selector->isAvailable();
+    }
 };

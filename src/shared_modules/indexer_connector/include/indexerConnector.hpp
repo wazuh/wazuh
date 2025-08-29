@@ -114,6 +114,13 @@ public:
      * @param callback Callback to be called when the indexer is flushed.
      */
     void registerNotify(std::function<void()> callback);
+
+    /**
+     * @brief Check have a server available.
+     *
+     * @return true if have a server available, false otherwise.
+     */
+    bool isAvailable() const;
 };
 
 /**
@@ -161,6 +168,13 @@ public:
      * @param data Data.
      */
     void index(std::string_view index, std::string_view data);
+
+    /**
+     * @brief Check have a server available.
+     *
+     * @return true if have a server available, false otherwise.
+     */
+    bool isAvailable() const;
 };
 
 class IndexerConnectorException : public std::exception

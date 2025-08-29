@@ -65,6 +65,11 @@ public:
     {
         m_impl.registerNotify(std::move(callback));
     }
+
+    bool isAvailable() const
+    {
+        return m_impl.isAvailable();
+    }
 };
 
 IndexerConnectorSync::IndexerConnectorSync(
@@ -101,6 +106,11 @@ void IndexerConnectorSync::bulkIndex(std::string_view id, std::string_view index
 void IndexerConnectorSync::registerNotify(std::function<void()> callback)
 {
     m_impl->registerNotify(std::move(callback));
+}
+
+bool IndexerConnectorSync::isAvailable() const
+{
+    return m_impl->isAvailable();
 }
 
 // LCOV_EXCL_STOP

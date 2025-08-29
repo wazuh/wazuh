@@ -128,31 +128,41 @@ class InventorySyncFacadeImpl final
             }
             else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
             {
-                // Generate random number for session ID.
-                std::random_device rd;
-                std::mt19937 gen(rd());
-                std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
-                const auto sessionId = dis(gen);
+                if (!m_indexerConnector->isAvailable())
                 {
-                    std::unique_lock lock(m_agentSessionsMutex);
-                    // Check if session already exists.
-                    if (m_agentSessions.contains(sessionId))
-                    {
-                        throw InventorySyncException("Session already exists");
-                    }
+                    logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: No available server");
+                    m_responseDispatcher->sendStartAck(
+                        Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
+                }
+                else
+                {
 
-                    m_agentSessions.try_emplace(sessionId,
-                                                sessionId,
-                                                agentId,
-                                                moduleName,
-                                                agentName,
-                                                agentIp,
-                                                agentVersion,
-                                                syncMessage->content_as<Wazuh::SyncSchema::Start>(),
-                                                *m_dataStore,
-                                                *m_indexerQueue,
-                                                *m_responseDispatcher);
-                    logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Session created %llu", sessionId);
+                    // Generate random number for session ID.
+                    std::random_device rd;
+                    std::mt19937 gen(rd());
+                    std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
+                    const auto sessionId = dis(gen);
+                    {
+                        std::unique_lock lock(m_agentSessionsMutex);
+                        // Check if session already exists.
+                        if (m_agentSessions.contains(sessionId))
+                        {
+                            throw InventorySyncException("Session already exists");
+                        }
+
+                        m_agentSessions.try_emplace(sessionId,
+                                                    sessionId,
+                                                    agentId,
+                                                    moduleName,
+                                                    agentName,
+                                                    agentIp,
+                                                    agentVersion,
+                                                    syncMessage->content_as<Wazuh::SyncSchema::Start>(),
+                                                    *m_dataStore,
+                                                    *m_indexerQueue,
+                                                    *m_responseDispatcher);
+                        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Session created %llu", sessionId);
+                    }
                 }
             }
             else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
@@ -281,8 +291,7 @@ public:
                     if (res.context->mode == Wazuh::SyncSchema::Mode_Full)
                     {
                         logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting by query...");
-                        m_indexerConnector->deleteByQuery(res.context->moduleName,
-                                                          std::to_string(res.context->agentId));
+                        m_indexerConnector->deleteByQuery(res.context->moduleName, res.context->agentId);
                     }
 
                     const auto prefix = std::format("{}_", res.context->sessionId);
@@ -306,17 +315,25 @@ public:
 
                             thread_local std::string elementId;
                             elementId.clear();
-                            elementId.append(res.context->agentIdString);
+                            elementId.append(res.context->agentId);
                             elementId.append("_");
                             elementId.append(data->id()->string_view());
 
                             if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                             {
                                 logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Upserting data...");
-                                m_indexerConnector->bulkIndex(
-                                    elementId,
-                                    data->index()->string_view(),
-                                    std::string_view((const char*)data->data()->data(), data->data()->size()));
+                                thread_local std::string dataString;
+                                dataString.clear();
+                                dataString.append(R"({"agent":{"id":")");
+                                dataString.append(res.context->agentId);
+                                dataString.append(R"(","name":")");
+                                dataString.append(res.context->agentName);
+                                dataString.append(R"(", "version":")");
+                                dataString.append(res.context->agentVersion);
+                                dataString.append(R"("},)");
+                                dataString.append(
+                                    std::string_view((const char*)data->data()->data() + 1, data->data()->size() - 1));
+                                m_indexerConnector->bulkIndex(elementId, data->index()->string_view(), dataString);
                             }
                             else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
                             {

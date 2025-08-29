@@ -68,6 +68,28 @@ public:
         }
         return retValue;
     }
+
+    /**
+     * @brief Check have a server available.
+     *
+     * @return true if have a server available, false otherwise.
+     */
+    bool isAvailable()
+    {
+        std::string_view initialValue {RoundRobinSelector<std::string>::getNext()};
+        auto server {initialValue};
+
+        while (!m_monitoring->isAvailable(server))
+        {
+            server = RoundRobinSelector<std::string>::getNext();
+            if (server.compare(initialValue) == 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 };
 
 #endif // _SERVER_SELECTOR_HPP

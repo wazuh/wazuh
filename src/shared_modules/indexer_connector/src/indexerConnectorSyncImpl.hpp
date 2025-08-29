@@ -531,4 +531,9 @@ public:
     {
         m_notify.push_back(std::move(callback));
     }
+
+    bool isAvailable() const
+    {
+        return m_selector->isAvailable();
+    }
 };

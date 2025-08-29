@@ -43,6 +43,11 @@ public:
     {
         m_impl.bulkIndex(std::string_view(), index, data);
     }
+
+    bool isAvailable() const
+    {
+        return m_impl.isAvailable();
+    }
 };
 
 IndexerConnectorAsync::IndexerConnectorAsync(
@@ -64,6 +69,11 @@ void IndexerConnectorAsync::index(std::string_view id, std::string_view index, s
 void IndexerConnectorAsync::index(std::string_view index, std::string_view data)
 {
     m_impl->index(std::string_view(), index, data);
+}
+
+bool IndexerConnectorAsync::isAvailable() const
+{
+    return m_impl->isAvailable();
 }
 
 // LCOV_EXCL_STOP

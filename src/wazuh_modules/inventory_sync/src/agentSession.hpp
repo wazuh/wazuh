@@ -18,9 +18,10 @@
 #include "responseDispatcher.hpp"
 #include "rocksDBWrapper.hpp"
 #include "threadDispatcher.h"
-#include <charconv>
+#include <cctype>
 #include <functional>
 #include <memory>
+#include <ranges>
 #include <string>
 #include <utility>
 
@@ -99,30 +100,16 @@ public:
             throw AgentSessionException("Invalid data");
         }
 
-        uint64_t agentIdConverted {};
-
-        auto [ptr, ec] = std::from_chars(agentId.data(), agentId.data() + agentId.size(), agentIdConverted);
-
-        if (ec == std::errc::result_out_of_range)
+        auto agentIdString = std::string(agentId.data(), agentId.size());
+        if (agentIdString.length() < 3)
         {
-            throw AgentSessionException("Agent ID out of range");
-        }
-
-        if (ec == std::errc::invalid_argument)
-        {
-            throw AgentSessionException("Agent ID invalid argument");
-        }
-
-        if (agentIdConverted == 0)
-        {
-            responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentIdConverted, sessionId, moduleName);
-            throw AgentSessionException("Invalid agent ID");
+            agentIdString.insert(0, 3 - agentIdString.length(), '0');
         }
 
         // Create new session.
         if (data->size() == 0)
         {
-            responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentIdConverted, sessionId, moduleName);
+            responseDispatcher.sendStartAck(Wazuh::SyncSchema::Status_Error, agentId, sessionId, moduleName);
             throw AgentSessionException("Invalid size");
         }
 
@@ -131,17 +118,16 @@ public:
         m_context =
             std::make_shared<Context>(Context {.mode = data->mode(),
                                                .sessionId = sessionId,
-                                               .agentId = agentIdConverted,
-                                               .agentIdString = std::string(agentId.data(), agentId.size()),
+                                               .agentId = std::move(agentIdString),
                                                .agentName = std::string(agentName.data(), agentName.size()),
                                                .agentIp = std::string(agentIp.data(), agentIp.size()),
                                                .agentVersion = std::string(agentVersion.data(), agentVersion.size()),
                                                .moduleName = std::string(moduleName.data(), moduleName.size())});
 
         logDebug2(LOGGER_DEFAULT_TAG,
-                  "New session for module '%s' by agent %d. (Session %llu)",
+                  "New session for module '%s' by agent '%s'. (Session %llu)",
                   m_context->moduleName.c_str(),
-                  m_context->agentId,
+                  m_context->agentId.c_str(),
                   m_context->sessionId);
 
         responseDispatcher.sendStartAck(

@@ -103,18 +103,13 @@ public:
     }
 
     void sendStartAck(const Wazuh::SyncSchema::Status status,
-                      const uint64_t agentId,
+                      std::string_view agentId,
                       const uint64_t sessionId,
                       std::string_view moduleName) const
     {
         ResponseMessage responseMessage;
         responseMessage.builder.Clear();
-
-        responseMessage.agentId = std::to_string(agentId);
-        if (responseMessage.agentId.length() < 3)
-        {
-            responseMessage.agentId.insert(0, 3 - responseMessage.agentId.length(), '0');
-        }
+        responseMessage.agentId = agentId;
         responseMessage.moduleName = moduleName;
         auto startAckOffset = Wazuh::SyncSchema::CreateStartAck(responseMessage.builder, status, sessionId);
 
@@ -126,17 +121,13 @@ public:
     }
 
     void sendEndAck(const Wazuh::SyncSchema::Status status,
-                    const uint64_t agentId,
+                    std::string_view agentId,
                     const uint64_t sessionId,
                     std::string_view moduleName) const
     {
         ResponseMessage responseMessage;
         responseMessage.builder.Clear();
-        responseMessage.agentId = std::to_string(agentId);
-        if (responseMessage.agentId.length() < 3)
-        {
-            responseMessage.agentId.insert(0, 3 - responseMessage.agentId.length(), '0');
-        }
+        responseMessage.agentId = agentId;
         responseMessage.moduleName = moduleName;
         auto startAckOffset = Wazuh::SyncSchema::CreateEndAck(responseMessage.builder, status, sessionId);
 
@@ -147,18 +138,14 @@ public:
         m_responseDispatcher->push(std::move(responseMessage));
     }
 
-    void sendEndMissingSeq(const uint64_t agentId,
+    void sendEndMissingSeq(const std::string_view agentId,
                            const uint64_t sessionId,
                            std::string_view moduleName,
                            const std::vector<std::pair<uint64_t, uint64_t>>& ranges) const
     {
         ResponseMessage responseMessage;
         responseMessage.builder.Clear();
-        responseMessage.agentId = std::to_string(agentId);
-        if (responseMessage.agentId.length() < 3)
-        {
-            responseMessage.agentId.insert(0, 3 - responseMessage.agentId.length(), '0');
-        }
+        responseMessage.agentId = agentId;
         responseMessage.moduleName = moduleName;
         std::vector<flatbuffers::Offset<Wazuh::SyncSchema::Pair>> convertedRanges;
         for (const auto& [first, second] : ranges)
