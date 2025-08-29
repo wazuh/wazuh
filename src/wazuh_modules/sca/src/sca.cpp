@@ -184,7 +184,7 @@ void SCA::destroy()
     m_sca.reset();
 }
 
-void SCA::push(const std::string& data)
+void SCA::push(const std::string&)
 {
 }
 

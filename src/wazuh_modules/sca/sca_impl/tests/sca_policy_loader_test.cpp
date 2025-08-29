@@ -20,7 +20,7 @@ class ScaPolicyLoaderTest : public ::testing::Test
         void SetUp() override
         {
             // Set up the logging callback to avoid "Log callback not set" errors
-            LoggingHelper::setLogCallback([](const modules_log_level_t /* level */, const char* log)
+            LoggingHelper::setLogCallback([](const modules_log_level_t, const char*)
             {
                 // noop
             });
@@ -90,7 +90,7 @@ TEST_F(ScaPolicyLoaderTest, LoadPoliciesSomePolicies)
 
     EXPECT_CALL(*m_rawFsMock, exists(::testing::_))
     .Times(::testing::AnyNumber())
-    .WillRepeatedly([](const std::filesystem::path & p)
+    .WillRepeatedly([](const std::filesystem::path&)
     {
         return true;
     });
@@ -427,7 +427,7 @@ TEST_F(ScaPolicyLoaderTest, UpdateCheckResult_ValidCheck)
     };
 
     EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
-    .WillOnce([](const nlohmann::json & query,
+    .WillOnce([](const nlohmann::json&,
                  const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
     {
         callback(INSERTED, nlohmann::json::object());
