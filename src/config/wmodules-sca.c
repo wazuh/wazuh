@@ -16,6 +16,7 @@ static const char *XML_ENABLED = "enabled";
 static const char *XML_SCAN_ON_START= "scan_on_start";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
+static const char *XML_SKIP_NFS = "skip_nfs";
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
@@ -309,6 +310,10 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                 }
             }
             OS_ClearNode(children);
+        }
+        else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
+        {
+            mwarn("Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.");
         }
         else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing
