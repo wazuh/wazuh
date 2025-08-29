@@ -68,13 +68,13 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/tmp/sca-5.*-*-tmp/sles/11/sca.files,root,wazuh,640,file,-rw-r-----,28,0.1
 /var/ossec/tmp/sca-5.*-*-tmp/sles/11/cis_sles11_linux.yml,root,wazuh,640,file,-rw-r-----,60607,0.1
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,3199,0.1
-/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,744272,0.1
-/var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,604192,0.1
-/var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,661864,0.1
+/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,749136,0.1
+/var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,591616,0.1
+/var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,653320,0.1
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,7146,0.1
 /var/ossec/bin/manage_agents,root,root,750,file,-rwxr-x---,205080,0.1
-/var/ossec/bin/wazuh-modulesd,root,root,750,file,-rwxr-x---,579552,0.1
-/var/ossec/bin/wazuh-agentd,root,root,750,file,-rwxr-x---,637208,0.1
+/var/ossec/bin/wazuh-modulesd,root,root,750,file,-rwxr-x---,564896,0.1
+/var/ossec/bin/wazuh-agentd,root,root,750,file,-rwxr-x---,624632,0.1
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,156152,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,10539864,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,484376,0.1
@@ -86,7 +86,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904720,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2009608,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,554376,0.1
-/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,9541568,0.1
+/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,446544,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,93104,0.1
 /var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,12008,0.1
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1
