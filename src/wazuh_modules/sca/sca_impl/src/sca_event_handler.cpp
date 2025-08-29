@@ -33,10 +33,10 @@ SCAEventHandler::SCAEventHandler(std::string agentUUID,
                                  std::shared_ptr<IDBSync> dBSync,
                                  std::function<int(const std::string&)> pushStatelessMessage,
                                  std::function<int(const std::string&)> pushStatefulMessage)
-    : m_agentUUID(std::move(agentUUID))
-    , m_dBSync(std::move(dBSync))
-    , m_pushStatelessMessage(std::move(pushStatelessMessage))
-    , m_pushStatefulMessage(std::move(pushStatefulMessage)) {};
+    : m_pushStatelessMessage(std::move(pushStatelessMessage))
+    , m_pushStatefulMessage(std::move(pushStatefulMessage))
+    , m_agentUUID(std::move(agentUUID))
+    , m_dBSync(std::move(dBSync)) {};
 
 void SCAEventHandler::ReportPoliciesDelta(
     const std::unordered_map<std::string, nlohmann::json>& modifiedPoliciesMap,

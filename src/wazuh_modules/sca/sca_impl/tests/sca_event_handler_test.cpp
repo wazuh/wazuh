@@ -790,7 +790,7 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_ValidInput)
     const std::string checkResult = "passed";
 
     EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
-    .WillOnce([checkResult](const nlohmann::json & query, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    .WillOnce([checkResult](const nlohmann::json&, const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
     {
         nlohmann::json returnData =
         {
