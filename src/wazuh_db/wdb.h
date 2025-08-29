@@ -152,8 +152,6 @@ typedef enum wdb_stmt {
     WDB_STMT_USER_INSERT2,
     WDB_STMT_GROUP_INSERT,
     WDB_STMT_GROUP_INSERT2,
-    WDB_STMT_CISCAT_INSERT,
-    WDB_STMT_CISCAT_DEL,
     WDB_STMT_SCAN_INFO_UPDATEFS,
     WDB_STMT_SCAN_INFO_UPDATEFE,
     WDB_STMT_SCAN_INFO_UPDATESS,
@@ -926,15 +924,6 @@ int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
 
-// Save CIS-CAT scan results.
-int wdb_ciscat_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, const char * profile, int pass, int fail, int error, int notchecked, int unknown, int score);
-
-// Insert CIS-CAT results tuple. Return 0 on success or -1 on error.
-int wdb_ciscat_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * benchmark, const char * profile, int pass, int fail, int error, int notchecked, int unknown, int score);
-
-// Delete old information from the 'ciscat_results' table
-int wdb_ciscat_del(wdb_t * wdb, const char * scan_id);
-
 wdb_t * wdb_init(const char * id);
 
 void wdb_destroy(wdb_t * wdb);
@@ -1130,8 +1119,6 @@ int wdb_parse_hotfixes(wdb_t * wdb, char * input, char * output);
 int wdb_parse_ports(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_processes(wdb_t * wdb, char * input, char * output);
-
-int wdb_parse_ciscat(wdb_t * wdb, char * input, char * output);
 
 int wdb_parse_sca(wdb_t * wdb, char * input, char * output);
 

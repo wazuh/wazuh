@@ -16,11 +16,11 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.rbac.decorators
         from api.controllers.experimental_controller import (
             check_experimental_feature_value, clear_rootcheck_database,
-            clear_syscheck_database, get_cis_cat_results, get_hardware_info,
+            clear_syscheck_database, get_hardware_info,
             get_hotfixes_info, get_network_address_info,
             get_network_interface_info, get_network_protocol_info, get_os_info,
             get_packages_info, get_ports_info, get_processes_info)
-        from wazuh import ciscat, rootcheck, syscheck, syscollector
+        from wazuh import rootcheck, syscheck, syscollector
         from wazuh.tests.util import RBAC_bypasser
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
@@ -81,47 +81,6 @@ async def test_clear_syscheck_database(mock_exc, mock_dapi, mock_remove, mock_df
                                       wait_for_complete=False,
                                       logger=ANY,
                                       broadcasting=mock_alist == '*',
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                      )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["experimental_controller"], indirect=True)
-@patch('api.configuration.api_conf')
-@patch('api.controllers.experimental_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.experimental_controller.remove_nones_to_dict')
-@patch('api.controllers.experimental_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.experimental_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_cis_cat_results(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
-    """Verify 'get_cis_cat_results' endpoint is working as expected."""
-    result = await get_cis_cat_results()
-    f_kwargs = {'agent_list': '*',
-                'offset': 0,
-                'limit': None,
-                'select': None,
-                'sort': None,
-                'search': None,
-                'filters': {
-                    'benchmark': None,
-                    'profile': None,
-                    'fail': None,
-                    'error': None,
-                    'notchecked': None,
-                    'unknown': None,
-                    'score': None,
-                    'pass': mock_request.query_params.get('pass', None)
-                    }
-                }
-    mock_dapi.assert_called_once_with(f=ciscat.get_ciscat_results,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='distributed_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      broadcasting=True,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
