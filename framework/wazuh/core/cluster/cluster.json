@@ -66,6 +66,28 @@
             "description": "user CDB lists"
         },
 
+        "etc/ruleset/assets/": {
+            "permissions": "0o660",
+            "source": "master",
+            "files": ["all"],
+            "recursive": true,
+            "restart": true,
+            "remove_subdirs_if_empty": false,
+            "extra_valid": false,
+            "description": "user assets"
+        },
+
+        "etc/ruleset/kvdb/": {
+            "permissions": "0o660",
+            "source": "master",
+            "files": ["all"],
+            "recursive": true,
+            "restart": true,
+            "remove_subdirs_if_empty": false,
+            "extra_valid": false,
+            "description": "user kvdb"
+        },
+
         "excluded_files": [
             "ar.conf",
             "ossec.conf"
