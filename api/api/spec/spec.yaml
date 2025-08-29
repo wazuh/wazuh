@@ -3885,6 +3885,7 @@ components:
           type: string
         uuid:
           type: string
+          nullable: true
 
     WazuhManagerConfiguration:
       type: object

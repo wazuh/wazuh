@@ -52,7 +52,6 @@ class Wazuh:
         self.openssl_support = 'N/A'
         self.tz_offset = None
         self.tz_name = None
-        self.uuid = get_installation_uid()
 
         self._initialize()
 
@@ -72,7 +71,6 @@ class Wazuh:
                 'openssl_support': self.openssl_support,
                 'tz_offset': self.tz_offset,
                 'tz_name': self.tz_name,
-                'uuid' : self.uuid                
                 }
 
     def _initialize(self):
