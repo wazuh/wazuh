@@ -534,23 +534,45 @@ def _has_update_permissions() -> bool:
     return False
 
 
-def _is_sensitive_key(key: str) -> bool:
-    """Check if a key name should be considered sensitive.
+def _is_sensitive_key(key: str, value=None, mask_paths: bool = False) -> bool:
+    """Check if a key/value pair should be considered sensitive.
 
     Parameters
     ----------
     key : str
         Key name to evaluate.
+    value : any, optional
+        Value associated with the key. Used to refine masking heuristics.
+    mask_paths : bool
+        If True, also mask values that look like file paths. Default: False.
 
     Returns
     -------
     bool
-        True if the key contains sensitive substrings (e.g., 'pass', 'token', 'key'), False otherwise.
+        True if the key/value pair should be masked, False otherwise.
     """
     if not isinstance(key, str):
         return False
     low = key.lower()
-    return any(substr in low for substr in SENSITIVE_KEY_SUBSTRINGS)
+    if not any(substr in low for substr in SENSITIVE_KEY_SUBSTRINGS):
+        return False
+
+    # No masking for nested structures (handled recursively)
+    if isinstance(value, (dict, list)) or value is None:
+        return False
+
+    if isinstance(value, (int, float)):
+        return False
+
+    if isinstance(value, str) and value.lower() in {'yes', 'no', 'true', 'false'}:
+        return False
+
+    # Skip path-like strings unless explicitly requested
+    if isinstance(value, str) and not mask_paths:
+        if '/' in value or '\\' in value or '.' in value:
+            return False
+
+    return True
 
 
 def _mask_dict(d: dict, mask_text: str = MASK_DEFAULT) -> None:
@@ -563,18 +585,17 @@ def _mask_dict(d: dict, mask_text: str = MASK_DEFAULT) -> None:
     mask_text : str
         Replacement text used for masked values.
     """
-    # First pass: mask standalone sensitive keys at this level
     for k, v in list(d.items()):
-        if _is_sensitive_key(k):
-            d[k] = mask_text
-        elif isinstance(v, dict):
-            # If this nested dict is itself a sensitive section, mask only inside that subtree
-            if k in SENSITIVE_SECTIONS:
+        if isinstance(v, dict):
+            if k in SENSITIVE_SECTIONS or _is_sensitive_key(k, v):
                 _mask_only_sensitive_keys_in_section(v, mask_text)
             else:
                 _mask_dict(v, mask_text)
         elif isinstance(v, list):
             _mask_list(v, mask_text)
+        else:
+            if _is_sensitive_key(k, v):
+                d[k] = mask_text
 
 
 def _mask_only_sensitive_keys_in_section(section_dict: dict, mask_text: str = MASK_DEFAULT) -> None:
@@ -588,12 +609,13 @@ def _mask_only_sensitive_keys_in_section(section_dict: dict, mask_text: str = MA
         Replacement text used for masked values.
     """
     for k, v in list(section_dict.items()):
-        if _is_sensitive_key(k):
-            section_dict[k] = mask_text
-        elif isinstance(v, dict):
+        if isinstance(v, dict):
             _mask_only_sensitive_keys_in_section(v, mask_text)
         elif isinstance(v, list):
             _mask_list(v, mask_text)
+        else:
+            if _is_sensitive_key(k, v):
+                section_dict[k] = mask_text
 
 
 def _mask_list(items: list, mask_text: str = MASK_DEFAULT) -> None:
