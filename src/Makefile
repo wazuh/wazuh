@@ -2209,7 +2209,7 @@ rootcheck_o_cmd := $(filter-out rootcheck/config.o, ${rootcheck_o})
 rootcheck/%.o: rootcheck/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"rootcheck\" -c $^ -o $@
 
-librootcheck.a: ${rootcheck_o_lib}
+librootcheck.a: ${rootcheck_o_lib} ${shared_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
