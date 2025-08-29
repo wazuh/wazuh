@@ -277,7 +277,7 @@ def test_syscollector_invalid_configurations(test_configuration, test_metadata, 
     '''
     field = test_metadata['field']
     attribute = test_metadata['attribute']
-    non_critical_fields = ('max_eps',)
+    non_critical_fields = ('max_eps')
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     # Skip test if the field is hotfixes and the platform is not Windows.
