@@ -37,8 +37,14 @@ constexpr auto INVENTORY_SYNC_PATH {"inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
 
-using WorkersQueue = Utils::AsyncDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
-using IndexerQueue = Utils::AsyncDispatcher<Response, std::function<void(const Response&)>>;
+using WorkersQueue = Utils::AsyncValueDispatcher<std::vector<char>, std::function<void(const std::vector<char>&)>>;
+using IndexerQueue = Utils::AsyncValueDispatcher<Response, std::function<void(const Response&)>>;
+
+void* operator new(size_t size)
+{
+    printf("InventorySyncFacade::operator new: Allocating %zu bytes\n", size);
+    return malloc(size);
+}
 
 class InventorySyncException : public std::exception
 {
@@ -255,9 +261,9 @@ public:
             [queue = m_workersQueue.get()](const std::vector<char>& message)
             {
                 logDebug2(LOGGER_DEFAULT_TAG,
-                          "InventorySyncFacade::start: Received message from router: %s",
-                          std::string(message.begin(), message.end()).c_str());
-                queue->push(message);
+                          "InventorySyncFacade::start: Received message from router");
+                // TODO: Temporal allocation, we need to use move semantics in router module.
+                queue->push(std::move(const_cast<std::vector<char>&>(message)));
             });
 
         const auto preIndexerAction = []()

@@ -109,10 +109,12 @@ class TMonitoring final
         };
 
         // Get the health of the server.
-        m_httpRequest->get(
-            RequestParameters {.url = HttpURL(serverAddress + "/_cat/health"), .secureCommunication = authentication},
-            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-            ConfigurationParameters {.timeout = HEALTH_CHECK_TIMEOUT_MS});
+        thread_local std::string url;
+        url = serverAddress + "/_cat/health";
+
+        m_httpRequest->get(RequestParameters {.url = HttpURL(url), .secureCommunication = authentication},
+                           PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                           ConfigurationParameters {.timeout = HEALTH_CHECK_TIMEOUT_MS});
     }
 
     /**
