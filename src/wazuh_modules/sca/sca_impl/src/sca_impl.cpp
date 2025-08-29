@@ -46,11 +46,9 @@ constexpr auto CHECK_SQL_STATEMENT
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(
     std::string dbPath,
-    std::string agentUUID,
     std::shared_ptr<IDBSync> dbSync,
     std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
-    : m_agentUUID(std::move(agentUUID))
-    , m_dBSync(dbSync ? std::move(dbSync)
+    : m_dBSync(dbSync ? std::move(dbSync)
                : std::make_shared<DBSync>(
                    HostType::AGENT,
                    DbEngineType::SQLITE3,
@@ -60,7 +58,7 @@ SecurityConfigurationAssessment::SecurityConfigurationAssessment(
     , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
                           : std::make_shared<file_system::FileSystemWrapper>())
 {
-    std::cout << "SecurityConfigurationAssessment initialized with agent UUID: " << m_agentUUID << std::endl;
+    LoggingHelper::getInstance().log(LOG_INFO, "SCA initialized.");
 }
 
 void SecurityConfigurationAssessment::Run()
@@ -94,7 +92,6 @@ void SecurityConfigurationAssessment::Run()
                     [this](const CheckResult & checkResult)
                 {
                     const SCAEventHandler eventHandler(
-                        m_agentUUID,
                         m_dBSync,
                         m_pushStatelessMessage,
                         m_pushStatefulMessage
@@ -127,7 +124,7 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
         return policyLoader.LoadPolicies(commandsTimeout, remoteEnabled,
                                          [this](auto policyData, auto checksData)
         {
-            const SCAEventHandler eventHandler(m_agentUUID, m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
+            const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
             eventHandler.ReportPoliciesDelta(policyData, checksData);
         });
     }

@@ -99,7 +99,7 @@ void SCA::init(const std::function<void(const modules_log_level_t, const std::st
 
     if (!m_sca)
     {
-        m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH, "agent-uuid-placeholder");
+        m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
 
         auto persistStatefulMessage = [](const std::string & message) -> int
         {

@@ -29,13 +29,11 @@ static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP
     {INSERTED, "created"},
 };
 
-SCAEventHandler::SCAEventHandler(std::string agentUUID,
-                                 std::shared_ptr<IDBSync> dBSync,
+SCAEventHandler::SCAEventHandler(std::shared_ptr<IDBSync> dBSync,
                                  std::function<int(const std::string&)> pushStatelessMessage,
                                  std::function<int(const std::string&)> pushStatefulMessage)
     : m_pushStatelessMessage(std::move(pushStatelessMessage))
     , m_pushStatefulMessage(std::move(pushStatefulMessage))
-    , m_agentUUID(std::move(agentUUID))
     , m_dBSync(std::move(dBSync)) {};
 
 void SCAEventHandler::ReportPoliciesDelta(
@@ -489,8 +487,7 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
 
 std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
 {
-    const std::string baseId =
-        m_agentUUID + ":" + data["policy"]["id"].get<std::string>() + ":" + data["check"]["id"].get<std::string>();
+    const std::string baseId = data["policy"]["id"].get<std::string>() + ":" + data["check"]["id"].get<std::string>();
 
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(baseId.c_str(), baseId.size());
