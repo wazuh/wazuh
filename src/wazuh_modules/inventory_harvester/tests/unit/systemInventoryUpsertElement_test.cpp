@@ -690,8 +690,8 @@ TEST_F(SystemInventoryUpsertElement, validNegativeUserIdGroupId_Users)
     EXPECT_CALL(*context, userType()).WillOnce(testing::Return("userType"));
     EXPECT_CALL(*context, userUuid()).WillOnce(testing::Return("userUuid"));
     EXPECT_CALL(*context, userFullName()).WillOnce(testing::Return("userFullName"));
-    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(1));
     EXPECT_CALL(*context, userPasswordHashAlgorithm()).WillOnce(testing::Return("userHash"));
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(99999));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(0));
@@ -739,8 +739,8 @@ TEST_F(SystemInventoryUpsertElement, validNegativeCounterValues_Users)
     EXPECT_CALL(*context, userType()).WillOnce(testing::Return("userType"));
     EXPECT_CALL(*context, userUuid()).WillOnce(testing::Return("userUuid"));
     EXPECT_CALL(*context, userFullName()).WillOnce(testing::Return("userFullName"));
-    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(1));
     EXPECT_CALL(*context, userPasswordHashAlgorithm()).WillOnce(testing::Return("userHash"));
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(-1));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(-1));
@@ -789,8 +789,8 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Users)
     EXPECT_CALL(*context, userType()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, userUuid()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, userFullName()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(1));
     EXPECT_CALL(*context, userPasswordHashAlgorithm()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(99999));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(0));
@@ -860,8 +860,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Groups)
     EXPECT_CALL(*context, groupIdSigned()).WillOnce(testing::Return(-80));
     EXPECT_CALL(*context, groupDescription()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, groupUuid()).WillOnce(testing::Return(""));
-    // To be consistent with sqlite database, the null value is treated as false.
-    EXPECT_CALL(*context, groupIsHidden()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, groupIsHidden()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, groupUsers()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Groups));
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
@@ -885,8 +884,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStringsSingleUser_Groups)
     EXPECT_CALL(*context, groupIdSigned()).WillOnce(testing::Return(-80));
     EXPECT_CALL(*context, groupDescription()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, groupUuid()).WillOnce(testing::Return(""));
-    // To be consistent with sqlite database, the null value is treated as false.
-    EXPECT_CALL(*context, groupIsHidden()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, groupIsHidden()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, groupUsers()).WillOnce(testing::Return("user1"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Groups));
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
@@ -942,4 +940,301 @@ TEST_F(SystemInventoryUpsertElement, negativeGroupID_Groups)
     EXPECT_EQ(
         context->m_serializedElement,
         R"({"id":"001_sudo","operation":"INSERTED","data":{"group":{"name":"sudo","id_signed":-80,"is_hidden":true,"users":["user1","user2","user3"]},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
+/*
+ * Test cases for SystemInventoryUpsertElement browser extensions scenario
+ * These tests check the behavior of the UpsertSystemElement class when handling requests.
+ */
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_BrowserExtensions)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyItemId_BrowserExtensions)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, browserExtensionItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validEmptyStrings_BrowserExtensions)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, browserName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionUserID()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageName()).WillOnce(testing::Return("UBlock Origin"));
+    EXPECT_CALL(*context, browserExtensionPackageID()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageVersion()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageDescription()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageVendor()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageBuildVersion()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackagePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserProfileName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserProfilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageReference()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackagePermissions()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserExtensionPackageVisible()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserExtensionPackageAutoupdate()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserExtensionPackagePersistent()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserExtensionPackageFromWebstore()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserProfileReferenced()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserExtensionPackageInstalled()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionFileHashSha256()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, browserExtensionItemId())
+        .WillOnce(testing::Return("fbdec581b7a6abd68fa838df2ec69f0e8f780eef"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_fbdec581b7a6abd68fa838df2ec69f0e8f780eef","operation":"INSERTED","data":{"browser":{"profile":{"referenced":false}},"package":{"autoupdate":false,"enabled":false,"visible":false,"from_webstore":false,"name":"UBlock Origin","persistent":false},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validStrings_BrowserExtensions)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, browserName()).WillOnce(testing::Return("chrome"));
+    EXPECT_CALL(*context, browserExtensionUserID())
+        .WillOnce(testing::Return("S-1-5-21-1234567890-987654321-1122334455-1001"));
+    EXPECT_CALL(*context, browserExtensionPackageName()).WillOnce(testing::Return("UBlock Origin"));
+    EXPECT_CALL(*context, browserExtensionPackageID()).WillOnce(testing::Return("cjpalhdlnbpafiamejdnhcphjbkeiagm"));
+    EXPECT_CALL(*context, browserExtensionPackageVersion()).WillOnce(testing::Return("1.52.2"));
+    EXPECT_CALL(*context, browserExtensionPackageDescription())
+        .WillOnce(testing::Return("Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory."));
+    EXPECT_CALL(*context, browserExtensionPackageVendor()).WillOnce(testing::Return("Raymond Hill"));
+    EXPECT_CALL(*context, browserExtensionPackageBuildVersion()).WillOnce(testing::Return("1.52.2"));
+    EXPECT_CALL(*context, browserExtensionPackagePath())
+        .WillOnce(testing::Return("C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User "
+                                  "Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0"));
+    EXPECT_CALL(*context, browserProfileName()).WillOnce(testing::Return("Default"));
+    EXPECT_CALL(*context, browserProfilePath())
+        .WillOnce(testing::Return("C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default"));
+    EXPECT_CALL(*context, browserExtensionPackageReference())
+        .WillOnce(testing::Return("https://clients2.google.com/service/update2/crx"));
+    EXPECT_CALL(*context, browserExtensionPackagePermissions())
+        .WillOnce(testing::Return("activeTab,storage,tabs,webNavigation"));
+    EXPECT_CALL(*context, browserExtensionPackageType()).WillOnce(testing::Return("extension"));
+    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackageVisible()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackageAutoupdate()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackagePersistent()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackageFromWebstore()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserProfileReferenced()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, browserExtensionPackageInstalled()).WillOnce(testing::Return("1710489821000"));
+    EXPECT_CALL(*context, browserExtensionFileHashSha256())
+        .WillOnce(testing::Return("a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"));
+    EXPECT_CALL(*context, browserExtensionItemId())
+        .WillOnce(testing::Return("571fdefef67b73320f74a5f2f5fb69bde4ad9680"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::BrowserExtensions));
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_571fdefef67b73320f74a5f2f5fb69bde4ad9680","operation":"INSERTED","data":{"browser":{"name":"chrome","profile":{"name":"Default","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","referenced":true}},"file":{"hash":{"sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"}},"package":{"autoupdate":true,"build_version":"1.52.2","description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","enabled":true,"visible":true,"from_webstore":true,"id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","installed":"1710489821000","name":"UBlock Origin","path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","permissions":["activeTab","storage","tabs","webNavigation"],"persistent":true,"reference":"https://clients2.google.com/service/update2/crx","type":"extension","vendor":"Raymond Hill","version":"1.52.2"},"user":{"id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
+/*
+ * Test cases for SystemInventoryUpsertElement services scenario
+ * These tests check the behavior of the SystemInventoryUpsertElement class when handling requests.
+ */
+TEST_F(SystemInventoryUpsertElement, emptyAgentID_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, emptyServiceId_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    // Unusual case where the item_id is empty.
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_ANY_THROW(upsertElement->handleRequest(context));
+}
+
+TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return("apache2"));
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceSubState()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceEnabled()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceRestart()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceFrequency()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceStartsOnPathModified()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceStartsOnNotEmptyDirectory()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(1));
+    EXPECT_CALL(*context, serviceProcessPid()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceProcessExecutable()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessArgs()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessUserName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessGroupName()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessWorkingDir()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceProcessRootDir()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceAddress()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceLogFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceErrorLogFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceExitCode()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceWin32ExitCode()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceFollowing()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceObjectPath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceTargetEphemeralId()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, serviceTargetType()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceTargetAddress()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return("itemId"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_itemId","operation":"INSERTED","data":{"process":{"pid":0},"service":{"exit_code":0,"frequency":0,"id":"apache2","inetd_compatibility":true,"starts":{"on_mount":false},"target":{"ephemeral_id":"0"},"win32_exit_code":0},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validNegativeValues_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return("wazuh-agent"));
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("Wazuh Agent"));
+    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return("Monitors system activity"));
+    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return("type"));
+    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return("running"));
+    EXPECT_CALL(*context, serviceSubState()).WillOnce(testing::Return("subState"));
+    EXPECT_CALL(*context, serviceEnabled()).WillOnce(testing::Return("enabled"));
+    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return("startType"));
+    EXPECT_CALL(*context, serviceRestart()).WillOnce(testing::Return("restart"));
+    EXPECT_CALL(*context, serviceFrequency()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(1));
+    EXPECT_CALL(*context, serviceStartsOnPathModified()).WillOnce(testing::Return("one,two,three"));
+    EXPECT_CALL(*context, serviceStartsOnNotEmptyDirectory()).WillOnce(testing::Return("one,two,three"));
+    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(1));
+    EXPECT_CALL(*context, serviceProcessPid()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceProcessExecutable()).WillOnce(testing::Return("/usr/bin/wazuh-agent"));
+    EXPECT_CALL(*context, serviceProcessArgs()).WillOnce(testing::Return("arg1,arg2,arg3"));
+    EXPECT_CALL(*context, serviceProcessUserName()).WillOnce(testing::Return("root"));
+    EXPECT_CALL(*context, serviceProcessGroupName()).WillOnce(testing::Return("groupName"));
+    EXPECT_CALL(*context, serviceProcessWorkingDir()).WillOnce(testing::Return("/home/"));
+    EXPECT_CALL(*context, serviceProcessRootDir()).WillOnce(testing::Return("/root/"));
+    EXPECT_CALL(*context, serviceFilePath()).WillOnce(testing::Return("sourcePath"));
+    EXPECT_CALL(*context, serviceAddress()).WillOnce(testing::Return("/lib/systemd/system/wazuh-agent.service"));
+    EXPECT_CALL(*context, serviceLogFilePath()).WillOnce(testing::Return("/var/log/"));
+    EXPECT_CALL(*context, serviceErrorLogFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceExitCode()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceWin32ExitCode()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceFollowing()).WillOnce(testing::Return("following"));
+    EXPECT_CALL(*context, serviceObjectPath()).WillOnce(testing::Return("objectPath"));
+    EXPECT_CALL(*context, serviceTargetEphemeralId()).WillOnce(testing::Return(-1));
+    EXPECT_CALL(*context, serviceTargetType()).WillOnce(testing::Return("jobType"));
+    EXPECT_CALL(*context, serviceTargetAddress()).WillOnce(testing::Return("jobPath"));
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return("itemId"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_itemId","operation":"INSERTED","data":{"file":{"path":"sourcePath"},"process":{"args":["arg1","arg2","arg3"],"executable":"/usr/bin/wazuh-agent","group":{"name":"groupName"},"root_directory":"/root/","user":{"name":"root"},"working_directory":"/home/"},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","following":"following","id":"wazuh-agent","inetd_compatibility":true,"name":"Wazuh Agent","object_path":"objectPath","restart":"restart","start_type":"startType","starts":{"on_mount":true,"on_not_empty_directory":["one","two","three"],"on_path_modified":["one","two","three"]},"state":"running","sub_state":"subState","target":{"address":"jobPath","type":"jobType"},"type":"type"},"log":{"file":{"path":"/var/log/"}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
+}
+
+TEST_F(SystemInventoryUpsertElement, validCompleteData_Services)
+{
+    auto context = std::make_shared<MockSystemContext>();
+    auto upsertElement = std::make_shared<UpsertSystemElement<MockSystemContext>>();
+
+    EXPECT_CALL(*context, agentId()).WillOnce(testing::Return("001"));
+    EXPECT_CALL(*context, agentName()).WillOnce(testing::Return("agentName"));
+    EXPECT_CALL(*context, agentIp()).WillOnce(testing::Return("192.168.0.1"));
+    EXPECT_CALL(*context, agentVersion()).WillOnce(testing::Return("agentVersion"));
+    EXPECT_CALL(*context, serviceId()).WillOnce(testing::Return("wazuh-agent"));
+    EXPECT_CALL(*context, serviceName()).WillOnce(testing::Return("Wazuh Agent"));
+    EXPECT_CALL(*context, serviceDescription()).WillOnce(testing::Return("Monitors system activity"));
+    EXPECT_CALL(*context, serviceType()).WillOnce(testing::Return("type"));
+    EXPECT_CALL(*context, serviceState()).WillOnce(testing::Return("running"));
+    EXPECT_CALL(*context, serviceSubState()).WillOnce(testing::Return("subState"));
+    EXPECT_CALL(*context, serviceEnabled()).WillOnce(testing::Return("enabled"));
+    EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return("startType"));
+    EXPECT_CALL(*context, serviceRestart()).WillOnce(testing::Return("restart"));
+    EXPECT_CALL(*context, serviceFrequency()).WillOnce(testing::Return(1000));
+    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, serviceStartsOnPathModified()).WillOnce(testing::Return("one,two,three"));
+    EXPECT_CALL(*context, serviceStartsOnNotEmptyDirectory()).WillOnce(testing::Return("one,two,three"));
+    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, serviceProcessPid()).WillOnce(testing::Return(1234));
+    EXPECT_CALL(*context, serviceProcessExecutable()).WillOnce(testing::Return("/usr/bin/wazuh-agent"));
+    EXPECT_CALL(*context, serviceProcessArgs()).WillOnce(testing::Return("arg1,arg2,arg3"));
+    EXPECT_CALL(*context, serviceProcessUserName()).WillOnce(testing::Return("root"));
+    EXPECT_CALL(*context, serviceProcessGroupName()).WillOnce(testing::Return("groupName"));
+    EXPECT_CALL(*context, serviceProcessWorkingDir()).WillOnce(testing::Return("/home/"));
+    EXPECT_CALL(*context, serviceProcessRootDir()).WillOnce(testing::Return("/root/"));
+    EXPECT_CALL(*context, serviceFilePath()).WillOnce(testing::Return("sourcePath"));
+    EXPECT_CALL(*context, serviceAddress()).WillOnce(testing::Return("/lib/systemd/system/wazuh-agent.service"));
+    EXPECT_CALL(*context, serviceLogFilePath()).WillOnce(testing::Return("/var/log/"));
+    EXPECT_CALL(*context, serviceErrorLogFilePath()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceExitCode()).WillOnce(testing::Return(1066));
+    EXPECT_CALL(*context, serviceWin32ExitCode()).WillOnce(testing::Return(1066));
+    EXPECT_CALL(*context, serviceFollowing()).WillOnce(testing::Return("following"));
+    EXPECT_CALL(*context, serviceObjectPath()).WillOnce(testing::Return("objectPath"));
+    EXPECT_CALL(*context, serviceTargetEphemeralId()).WillOnce(testing::Return(10));
+    EXPECT_CALL(*context, serviceTargetType()).WillOnce(testing::Return("jobType"));
+    EXPECT_CALL(*context, serviceTargetAddress()).WillOnce(testing::Return("jobPath"));
+    EXPECT_CALL(*context, serviceItemId()).WillOnce(testing::Return("itemId"));
+    EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Services));
+
+    EXPECT_NO_THROW(upsertElement->handleRequest(context));
+
+    EXPECT_EQ(
+        context->m_serializedElement,
+        R"({"id":"001_itemId","operation":"INSERTED","data":{"file":{"path":"sourcePath"},"process":{"args":["arg1","arg2","arg3"],"executable":"/usr/bin/wazuh-agent","group":{"name":"groupName"},"pid":1234,"root_directory":"/root/","user":{"name":"root"},"working_directory":"/home/"},"service":{"address":"/lib/systemd/system/wazuh-agent.service","description":"Monitors system activity","enabled":"enabled","exit_code":1066,"following":"following","frequency":1000,"id":"wazuh-agent","inetd_compatibility":true,"name":"Wazuh Agent","object_path":"objectPath","restart":"restart","start_type":"startType","starts":{"on_mount":true,"on_not_empty_directory":["one","two","three"],"on_path_modified":["one","two","three"]},"state":"running","sub_state":"subState","target":{"address":"jobPath","ephemeral_id":"10","type":"jobType"},"type":"type","win32_exit_code":1066},"log":{"file":{"path":"/var/log/"}},"agent":{"id":"001","name":"agentName","host":{"ip":"192.168.0.1"},"version":"agentVersion"},"wazuh":{"cluster":{"name":"clusterName"},"schema":{"version":"1.0"}}}})");
 }

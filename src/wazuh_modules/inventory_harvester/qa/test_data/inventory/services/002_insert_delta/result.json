@@ -1,0 +1,406 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-services-cluster01",
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "process": {
+                    "pid": 0
+                },
+                "service": {
+                    "exit_code": 0,
+                    "frequency": 0,
+                    "id": "wazuh-agent",
+                    "inetd_compatibility": true,
+                    "starts": {
+                        "on_mount": true
+                    },
+                    "target": {
+                        "ephemeral_id": "0"
+                    },
+                    "win32_exit_code": 0
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "process": {
+                    "pid": 0
+                },
+                "service": {
+                    "exit_code": 0,
+                    "frequency": 0,
+                    "id": "wazuh-agent",
+                    "inetd_compatibility": false,
+                    "starts": {
+                        "on_mount": false
+                    },
+                    "target": {
+                        "ephemeral_id": "0"
+                    },
+                    "win32_exit_code": 0
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "005",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "error": {
+                    "log": {
+                        "file": {
+                            "path": "/root/log/"
+                        }
+                    }
+                },
+                "file": {
+                    "path": "sourcePath"
+                },
+                "log": {
+                    "file": {
+                        "path": "/var/log/"
+                    }
+                },
+                "process": {
+                    "args": [
+                        "arg1",
+                        "arg2",
+                        "arg3"
+                    ],
+                    "executable": "/usr/bin/wazuh-agent",
+                    "group": {
+                        "name": "group"
+                    },
+                    "pid": 1234,
+                    "root_directory": "/",
+                    "working_directory": "/home/dir"
+                },
+                "service": {
+                    "address": "/lib/systemd/system/wazuh-agent.service",
+                    "description": "Monitors system activity",
+                    "enabled": "enabled",
+                    "exit_code": 1000,
+                    "following": "following",
+                    "frequency": 1000,
+                    "id": "wazuh-agent",
+                    "inetd_compatibility": true,
+                    "name": "Wazuh Agent",
+                    "object_path": "objectPath",
+                    "restart": "serviceRestart",
+                    "start_type": "auto",
+                    "starts": {
+                        "on_mount": true,
+                        "on_not_empty_directory": [
+                            "one",
+                            "two",
+                            "three"
+                        ],
+                        "on_path_modified": [
+                            "one",
+                            "two",
+                            "three"
+                        ]
+                    },
+                    "state": "running",
+                    "sub_state": "subState",
+                    "target": {
+                        "address": "jobPath",
+                        "ephemeral_id": "1000",
+                        "type": "jobType"
+                    },
+                    "type": "type",
+                    "win32_exit_code": 1000
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "006",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "error": {
+                    "log": {
+                        "file": {
+                            "path": "/root/log/"
+                        }
+                    }
+                },
+                "file": {
+                    "path": "sourcePath"
+                },
+                "log": {
+                    "file": {
+                        "path": "/var/log/"
+                    }
+                },
+                "process": {
+                    "args": [
+                        "arg1",
+                        "arg2",
+                        "arg3"
+                    ],
+                    "executable": "/usr/bin/wazuh-agent",
+                    "group": {
+                        "name": "group"
+                    },
+                    "pid": 0,
+                    "root_directory": "/",
+                    "working_directory": "/home/dir"
+                },
+                "service": {
+                    "address": "/lib/systemd/system/wazuh-agent.service",
+                    "description": "Monitors system activity",
+                    "enabled": "enabled",
+                    "exit_code": 0,
+                    "following": "following",
+                    "frequency": 0,
+                    "id": "wazuh-agent",
+                    "inetd_compatibility": true,
+                    "name": "Wazuh Agent",
+                    "object_path": "objectPath",
+                    "restart": "serviceRestart",
+                    "start_type": "auto",
+                    "starts": {
+                        "on_mount": true,
+                        "on_not_empty_directory": [
+                            "one",
+                            "two",
+                            "three"
+                        ],
+                        "on_path_modified": [
+                            "one",
+                            "two",
+                            "three"
+                        ]
+                    },
+                    "state": "running",
+                    "sub_state": "subState",
+                    "target": {
+                        "address": "jobPath",
+                        "ephemeral_id": "0",
+                        "type": "jobType"
+                    },
+                    "type": "type",
+                    "win32_exit_code": 0
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "007",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "error": {
+                    "log": {
+                        "file": {
+                            "path": "/root/log/"
+                        }
+                    }
+                },
+                "file": {
+                    "path": "sourcePath"
+                },
+                "log": {
+                    "file": {
+                        "path": "/var/log/"
+                    }
+                },
+                "process": {
+                    "args": [
+                        "arg1",
+                        "arg2",
+                        "arg3"
+                    ],
+                    "executable": "/usr/bin/wazuh-agent",
+                    "group": {
+                        "name": "group"
+                    },
+                    "root_directory": "/",
+                    "working_directory": "/home/dir"
+                },
+                "service": {
+                    "address": "/lib/systemd/system/wazuh-agent.service",
+                    "description": "Monitors system activity",
+                    "enabled": "enabled",
+                    "following": "following",
+                    "id": "wazuh-agent",
+                    "inetd_compatibility": true,
+                    "name": "Wazuh Agent",
+                    "object_path": "objectPath",
+                    "restart": "serviceRestart",
+                    "start_type": "auto",
+                    "starts": {
+                        "on_mount": true,
+                        "on_not_empty_directory": [
+                            "one",
+                            "two",
+                            "three"
+                        ],
+                        "on_path_modified": [
+                            "one",
+                            "two",
+                            "three"
+                        ]
+                    },
+                    "state": "running",
+                    "sub_state": "subState",
+                    "target": {
+                        "address": "jobPath",
+                        "type": "jobType"
+                    },
+                    "type": "type"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "008",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "error": {
+                    "log": {
+                        "file": {
+                            "path": "/root/log/"
+                        }
+                    }
+                },
+                "file": {
+                    "path": "sourcePath"
+                },
+                "log": {
+                    "file": {
+                        "path": "/var/log/"
+                    }
+                },
+                "process": {
+                    "args": [
+                        "arg1",
+                        "arg2",
+                        "arg3"
+                    ],
+                    "executable": "/usr/bin/wazuh-agent",
+                    "group": {
+                        "name": "group"
+                    },
+                    "root_directory": "/",
+                    "working_directory": "/home/dir"
+                },
+                "service": {
+                    "address": "/lib/systemd/system/wazuh-agent.service",
+                    "description": "Monitors system activity",
+                    "enabled": "enabled",
+                    "following": "following",
+                    "id": "wazuh-agent",
+                    "inetd_compatibility": false,
+                    "name": "Wazuh Agent",
+                    "object_path": "objectPath",
+                    "restart": "serviceRestart",
+                    "start_type": "auto",
+                    "starts": {
+                        "on_mount": false,
+                        "on_not_empty_directory": [
+                            "one",
+                            "two",
+                            "three"
+                        ],
+                        "on_path_modified": [
+                            "one",
+                            "two",
+                            "three"
+                        ]
+                    },
+                    "state": "running",
+                    "sub_state": "subState",
+                    "target": {
+                        "address": "jobPath",
+                        "ephemeral_id": "0",
+                        "type": "jobType"
+                    },
+                    "type": "type"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "009",
+                    "name": "centos9",
+                    "version": "v4.10.1"
+                },
+                "log": {},
+                "process": {},
+                "service": {
+                    "inetd_compatibility": false,
+                    "starts": {
+                        "on_mount": false
+                    },
+                    "target": {
+                        "ephemeral_id": "0"
+                    }
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]

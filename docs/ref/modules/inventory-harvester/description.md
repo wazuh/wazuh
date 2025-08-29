@@ -805,3 +805,97 @@ The following sections present representative examples of the supported modules 
   }
 }
 ```
+
+### Browser extensions
+
+```json
+{
+  "agent": {
+      "id": "002",
+      "name": "centos9",
+      "version": "v4.14.0"
+  },
+  "browser": {
+      "name": "chrome",
+      "profile": {
+          "name": "Default",
+          "path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default",
+          "referenced": true
+      }
+  },
+  "file": {
+      "hash": {
+          "sha256": "a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"
+      }
+  },
+  "package": {
+      "autoupdate": true,
+      "build_version": "1.52.2",
+      "description": "Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.",
+      "enabled": true,
+      "from_webstore": true,
+      "id": "cjpalhdlnbpafiamejdnhcphjbkeiagm",
+      "installed": "2024-03-15T08:03:41.000Z",
+      "name": "UBlock Origin",
+      "path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0",
+      "permissions": "[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]",
+      "persistent": true,
+      "reference": "https://clients2.google.com/service/update2/crx",
+      "type": "extension",
+      "vendor": "Raymond Hill",
+      "version": "1.52.2"
+  },
+  "user": {
+      "id": "S-1-5-21-1234567890-987654321-1122334455-1001"
+  },
+  "wazuh": {
+      "cluster": {
+          "name": "cluster01"
+      },
+      "schema": {
+          "version": "1.0"
+      }
+  }
+}
+```
+
+### Services
+
+```json
+{
+  "agent": {
+    "id": "001",
+    "name": "centos9",
+    "version": "v4.14.0"
+  },
+  "file": {
+    "path": "/usr/sbin/sshd"
+  },
+  "process": {
+    "executable": "/usr/sbin/sshd",
+    "pid": 1234
+  },
+  "service": {
+    "description": "OpenSSH server daemon",
+    "enabled": "enabled",
+    "exit_code": 0,
+    "id": "sshd",
+    "name": "OpenSSH Daemon",
+    "start_type": "enabled",
+    "state": "running",
+    "sub_state": "running",
+    "type": "simple"
+  },
+  "user": {
+    "name": "root"
+  },
+  "wazuh": {
+    "cluster": {
+      "name": "cluster01"
+    },
+    "schema": {
+      "version": "1.0"
+    }
+  }
+}
+```

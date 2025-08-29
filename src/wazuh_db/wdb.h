@@ -152,6 +152,11 @@ typedef enum wdb_stmt {
     WDB_STMT_USER_INSERT2,
     WDB_STMT_GROUP_INSERT,
     WDB_STMT_GROUP_INSERT2,
+    WDB_STMT_BROWSER_EXTENSION_INSERT,
+    WDB_STMT_BROWSER_EXTENSION_INSERT2,
+    WDB_STMT_SERVICE_INSERT,
+    WDB_STMT_SERVICE_INSERT2,
+    WDB_STMT_SERVICE_DEL,
     WDB_STMT_CISCAT_INSERT,
     WDB_STMT_CISCAT_DEL,
     WDB_STMT_SCAN_INFO_UPDATEFS,
@@ -351,6 +356,18 @@ typedef enum wdb_stmt {
     WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_RANGE,
     WDB_STMT_SYSCOLLECTOR_GROUPS_DELETE_BY_PK,
     WDB_STMT_SYSCOLLECTOR_GROUPS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_SELECT_CHECKSUM,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_DELETE_BY_PK,
+    WDB_STMT_SYSCOLLECTOR_BROWSER_EXTENSIONS_CLEAR,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_SELECT_CHECKSUM,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_SELECT_CHECKSUM_RANGE,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_DELETE_AROUND,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_DELETE_RANGE,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_DELETE_BY_PK,
+    WDB_STMT_SYSCOLLECTOR_SERVICES_CLEAR,
     WDB_STMT_SYS_HOTFIXES_GET,
     WDB_STMT_SYS_PROGRAMS_GET,
     WDB_STMT_SIZE // This must be the last constant
@@ -408,23 +425,25 @@ typedef struct wdb_config {
 
 /// Enumeration of components supported by the integrity library.
 typedef enum {
-    WDB_FIM,                         ///< File integrity monitoring.
-    WDB_FIM_FILE,                    ///< File integrity monitoring.
-    WDB_FIM_REGISTRY,                ///< Registry integrity monitoring.
-    WDB_FIM_REGISTRY_KEY,            ///< Registry key integrity monitoring.
-    WDB_FIM_REGISTRY_VALUE,          ///< Registry value integrity monitoring.
-    WDB_SYSCOLLECTOR_PROCESSES,      ///< Processes integrity monitoring.
-    WDB_SYSCOLLECTOR_PACKAGES,       ///< Packages integrity monitoring.
-    WDB_SYSCOLLECTOR_HOTFIXES,       ///< Hotfixes integrity monitoring.
-    WDB_SYSCOLLECTOR_PORTS,          ///< Ports integrity monitoring.
-    WDB_SYSCOLLECTOR_NETPROTO,       ///< Net protocols integrity monitoring.
-    WDB_SYSCOLLECTOR_NETADDRESS,     ///< Net addresses integrity monitoring.
-    WDB_SYSCOLLECTOR_NETINFO,        ///< Net info integrity monitoring.
-    WDB_SYSCOLLECTOR_HWINFO,         ///< Hardware info integrity monitoring.
-    WDB_SYSCOLLECTOR_OSINFO,         ///< OS info integrity monitoring.
-    WDB_SYSCOLLECTOR_USERS,          ///< Users info integrity monitoring.
-    WDB_SYSCOLLECTOR_GROUPS,         ///< Groups info integrity monitoring.
-    WDB_GENERIC_COMPONENT,           ///< Miscellaneous component
+    WDB_FIM,                                ///< File integrity monitoring.
+    WDB_FIM_FILE,                           ///< File integrity monitoring.
+    WDB_FIM_REGISTRY,                       ///< Registry integrity monitoring.
+    WDB_FIM_REGISTRY_KEY,                   ///< Registry key integrity monitoring.
+    WDB_FIM_REGISTRY_VALUE,                 ///< Registry value integrity monitoring.
+    WDB_SYSCOLLECTOR_PROCESSES,             ///< Processes integrity monitoring.
+    WDB_SYSCOLLECTOR_PACKAGES,              ///< Packages integrity monitoring.
+    WDB_SYSCOLLECTOR_HOTFIXES,              ///< Hotfixes integrity monitoring.
+    WDB_SYSCOLLECTOR_PORTS,                 ///< Ports integrity monitoring.
+    WDB_SYSCOLLECTOR_NETPROTO,              ///< Net protocols integrity monitoring.
+    WDB_SYSCOLLECTOR_NETADDRESS,            ///< Net addresses integrity monitoring.
+    WDB_SYSCOLLECTOR_NETINFO,               ///< Net info integrity monitoring.
+    WDB_SYSCOLLECTOR_HWINFO,                ///< Hardware info integrity monitoring.
+    WDB_SYSCOLLECTOR_OSINFO,                ///< OS info integrity monitoring.
+    WDB_SYSCOLLECTOR_USERS,                 ///< Users info integrity monitoring.
+    WDB_SYSCOLLECTOR_GROUPS,                ///< Groups info integrity monitoring.
+    WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS,    ///< Browser extensions info integrity monitoring.
+    WDB_SYSCOLLECTOR_SERVICES,              ///< Services info integrity monitoring.
+    WDB_GENERIC_COMPONENT,                  ///< Miscellaneous component
 } wdb_component_t;
 
 #include "wdb_pool.h"
@@ -896,8 +915,8 @@ typedef struct {
     const char *user_roles;
     const char *user_shell;
     const char *user_type;
-    bool user_is_hidden;
-    bool user_is_remote;
+    int user_is_hidden;
+    int user_is_remote;
     long long user_last_login;
     long long user_auth_failed_count;
     double user_auth_failed_timestamp;
@@ -911,11 +930,80 @@ typedef struct {
     int user_password_warning_days_before_expiration;
     long long process_pid;
     const char *host_ip;
-    bool login_status;
+    int login_status;
     const char *login_type;
     const char *login_tty;
     const char *checksum;
 } user_record_t;
+
+// Browser extensions parameters struct
+typedef struct {
+    const char *scan_id;
+    const char *scan_time;
+    const char * browser_name;
+    const char * user_id;
+    const char * package_name;
+    const char * package_id;
+    const char * package_version;
+    const char * package_description;
+    const char * package_vendor;
+    const char * package_build_version;
+    const char * package_path;
+    const char * browser_profile_name;
+    const char * browser_profile_path;
+    const char * package_reference;
+    const char * package_permissions;
+    const char * package_type;
+    int package_enabled;
+    int package_visible;
+    int package_autoupdate;
+    int package_persistent;
+    int package_from_webstore;
+    int browser_profile_referenced;
+    const char * package_installed;
+    const char * file_hash_sha256;
+    const char *checksum;
+    const char *item_id;
+} browser_extension_record_t;
+
+typedef struct {
+    const char *scan_id;
+    const char *scan_time;
+    const char *service_id;
+    const char *service_name;
+    const char *service_description;
+    const char *service_type;
+    const char *service_state;
+    const char *service_sub_state;
+    const char *service_enabled;
+    const char *service_start_type;
+    const char *service_restart;
+    long long service_frequency;
+    int service_starts_on_mount;
+    const char *service_starts_on_path_modified;
+    const char *service_starts_on_not_empty_directory;
+    int service_inetd_compatibility;
+    long long process_pid;
+    const char *process_executable;
+    const char *process_args;
+    const char *process_user_name;
+    const char *process_group_name;
+    const char *process_working_directory;
+    const char *process_root_directory;
+    const char *file_path;
+    const char *service_address;
+    const char *log_file_path;
+    const char *error_log_file_path;
+    int service_exit_code;
+    int service_win32_exit_code;
+    const char *service_following;
+    const char *service_object_path;
+    long long service_target_ephemeral_id;
+    const char *service_target_type;
+    const char *service_target_address;
+    const char *checksum;
+    const char *item_id;
+} service_record_t;
 
 // Save user info into DB.
 int wdb_users_save(wdb_t * wdb, const user_record_t * user_record, const bool replace);
@@ -925,13 +1013,25 @@ int wdb_users_insert(wdb_t * wdb, const user_record_t * user_record, const bool 
 
 // Save group info into DB.
 int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
-                    const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
+                    const char * group_description, long long group_id_signed, const char * group_uuid, int group_is_hidden,
                     const char * group_users, const char * checksum, const bool replace);
 
 // Insert group info tuple. Return 0 on success or -1 on error.
 int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
-                      const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
+                      const char * group_description, long long group_id_signed, const char * group_uuid, int group_is_hidden,
                       const char * group_users, const char * checksum, const bool replace);
+
+// Save web browser extensions info into DB.
+int wdb_browser_extensions_save(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace);
+
+// Insert web browser extensions info tuple. Return 0 on success or -1 on error.
+int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t * browser_extension_record, const bool replace);
+
+// Save service info into DB.
+int wdb_services_save(wdb_t * wdb, const service_record_t * service_record, const bool replace);
+
+// Insert service info tuple. Return 0 on success or -1 on error.
+int wdb_services_insert(wdb_t * wdb, const service_record_t * service_record, const bool replace);
 
 int wdb_syscollector_save2(wdb_t * wdb, wdb_component_t component, const char * payload);
 

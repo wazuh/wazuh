@@ -1,0 +1,39 @@
+{
+    "agent_info": {
+        "agent_id": "007",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.14.0"
+    },
+    "data_type": "state",
+    "data": {
+        "attributes_type": "syscollector_browser_extensions",
+        "attributes": {
+            "scan_time": " ",
+            "browser_name": " ",
+            "user_id": " ",
+            "package_name": "UBlock Origin",
+            "package_id": " ",
+            "package_version": " ",
+            "package_description": " ",
+            "package_vendor": " ",
+            "package_build_version": " ",
+            "package_path": " ",
+            "browser_profile_name": " ",
+            "browser_profile_path": " ",
+            "package_reference": " ",
+            "package_permissions": " ",
+            "package_type": " ",
+            "package_enabled": null,
+            "package_visible": null,
+            "package_autoupdate": null,
+            "package_persistent": null,
+            "package_from_webstore": null,
+            "browser_profile_referenced": null,
+            "package_installed": " ",
+            "file_hash_sha256": " ",
+            "checksum": " ",
+            "item_id": "fbdec581b7a6abd68fa838df2ec69f0e8f780eef"
+        }
+    }
+}

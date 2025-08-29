@@ -1,0 +1,49 @@
+{
+    "agent_info": {
+        "agent_id": "007",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.10.1"
+    },
+    "data_type": "state",
+    "data": {
+        "attributes_type": "syscollector_services",
+        "attributes": {
+            "scan_time": "2025/03/28 17:14:48",
+            "service_id": "wazuh-agent",
+            "service_name": "Wazuh Agent",
+            "service_description": "Monitors system activity",
+            "service_type": "type",
+            "service_state": "running",
+            "service_sub_state": "subState",
+            "service_enabled": "enabled",
+            "service_start_type": "auto",
+            "service_restart": "serviceRestart",
+            "service_frequency": -1,
+            "service_starts_on_mount": 1,
+            "service_starts_on_path_modified": "one,two,three",
+            "service_starts_on_not_empty_directory": "one,two,three",
+            "service_inetd_compatibility": 1,
+            "process_pid": -1,
+            "process_executable": "/usr/bin/wazuh-agent",
+            "process_args": "arg1,arg2,arg3",
+            "user_name": "root",
+            "process_group_name": "group",
+            "process_working_directory": "/home/dir",
+            "process_root_directory": "/",
+            "file_path": "sourcePath",
+            "service_address": "/lib/systemd/system/wazuh-agent.service",
+            "log_file_path": "/var/log/",
+            "error_log_file_path": "/root/log/",
+            "service_exit_code": -1,
+            "service_win32_exit_code": -1,
+            "service_following": "following",
+            "service_object_path": "objectPath",
+            "service_target_ephemeral_id": -1,
+            "service_target_type": "jobType",
+            "service_target_address": "jobPath",
+            "checksum": "daa615e783788aec35ae17eeed912ace3910f209",
+            "item_id": "cced25cebdc8af9754617e3f42b16720fd7697f6"
+        }
+    }
+}

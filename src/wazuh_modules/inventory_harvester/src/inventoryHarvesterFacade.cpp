@@ -95,7 +95,9 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              data->data_as_state()->attributes_as_syscollector_network_iface() ||
                              data->data_as_state()->attributes_as_syscollector_network_address() ||
                              data->data_as_state()->attributes_as_syscollector_users() ||
-                             data->data_as_state()->attributes_as_syscollector_groups())
+                             data->data_as_state()->attributes_as_syscollector_groups() ||
+                             data->data_as_state()->attributes_as_syscollector_browser_extensions() ||
+                             data->data_as_state()->attributes_as_syscollector_services())
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -124,7 +126,9 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              attributesType.compare("syscollector_network_iface") == 0 ||
                              attributesType.compare("syscollector_network_address") == 0 ||
                              attributesType.compare("syscollector_users") == 0 ||
-                             attributesType.compare("syscollector_groups") == 0)
+                             attributesType.compare("syscollector_groups") == 0 ||
+                             attributesType.compare("syscollector_browser_extensions") == 0 ||
+                             attributesType.compare("syscollector_services") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -153,7 +157,9 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                              attributesType.compare("syscollector_network_iface") == 0 ||
                              attributesType.compare("syscollector_network_address") == 0 ||
                              attributesType.compare("syscollector_users") == 0 ||
-                             attributesType.compare("syscollector_groups") == 0)
+                             attributesType.compare("syscollector_groups") == 0 ||
+                             attributesType.compare("syscollector_browser_extensions") == 0 ||
+                             attributesType.compare("syscollector_services") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }

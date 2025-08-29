@@ -273,6 +273,76 @@ static struct deltas_fields_match_list const GROUP_FIELDS[] = {
   { .current = { "checksum", NULL }, .next = NULL}
 };
 
+static struct deltas_fields_match_list const BROWSER_EXTENSION_FIELDS[] = {
+  { .current = { "scan_time", NULL }, .next = &BROWSER_EXTENSION_FIELDS[1]},
+  { .current = { "browser_name", "browser_extension.browser_name" }, .next = &BROWSER_EXTENSION_FIELDS[2]},
+  { .current = { "user_id", "browser_extension.user_id" }, .next = &BROWSER_EXTENSION_FIELDS[3]},
+  { .current = { "package_name", "browser_extension.package_name" }, .next = &BROWSER_EXTENSION_FIELDS[4]},
+  { .current = { "package_id", "browser_extension.package_id" }, .next = &BROWSER_EXTENSION_FIELDS[5]},
+  { .current = { "package_version", "browser_extension.package_version" }, .next = &BROWSER_EXTENSION_FIELDS[6]},
+  { .current = { "package_description", "browser_extension.package_description" }, .next = &BROWSER_EXTENSION_FIELDS[7]},
+  { .current = { "package_vendor", "browser_extension.package_vendor" }, .next = &BROWSER_EXTENSION_FIELDS[8]},
+  { .current = { "package_build_version", "browser_extension.package_build_version" }, .next = &BROWSER_EXTENSION_FIELDS[9]},
+  { .current = { "package_path", "browser_extension.package_path" }, .next = &BROWSER_EXTENSION_FIELDS[10]},
+  { .current = { "browser_profile_name", "browser_extension.browser_profile_name" }, .next = &BROWSER_EXTENSION_FIELDS[11]},
+  { .current = { "browser_profile_path", "browser_extension.browser_profile_path" }, .next = &BROWSER_EXTENSION_FIELDS[12]},
+  { .current = { "package_reference", "browser_extension.package_reference" }, .next = &BROWSER_EXTENSION_FIELDS[13]},
+  { .current = { "package_permissions", "browser_extension.package_permissions" }, .next = &BROWSER_EXTENSION_FIELDS[14]},
+  { .current = { "package_type", "browser_extension.package_type" }, .next = &BROWSER_EXTENSION_FIELDS[15]},
+  { .current = { "package_enabled", "browser_extension.package_enabled" }, .next = &BROWSER_EXTENSION_FIELDS[16]},
+  { .current = { "package_visible", "browser_extension.package_visible" }, .next = &BROWSER_EXTENSION_FIELDS[17]},
+  { .current = { "package_autoupdate", "browser_extension.package_autoupdate" }, .next = &BROWSER_EXTENSION_FIELDS[18]},
+  { .current = { "package_persistent", "browser_extension.package_persistent" }, .next = &BROWSER_EXTENSION_FIELDS[19]},
+  { .current = { "package_from_webstore", "browser_extension.package_from_webstore" }, .next = &BROWSER_EXTENSION_FIELDS[20]},
+  { .current = { "browser_profile_referenced", "browser_extension.browser_profile_referenced" }, .next = &BROWSER_EXTENSION_FIELDS[21]},
+  { .current = { "package_installed", "browser_extension.package_installed" }, .next = &BROWSER_EXTENSION_FIELDS[22]},
+  { .current = { "file_hash_sha256", "browser_extension.file_hash_sha256" }, .next = &BROWSER_EXTENSION_FIELDS[23]},
+  { .current = { "checksum", NULL}, .next = &BROWSER_EXTENSION_FIELDS[24]},
+  { .current = { "item_id", NULL }, .next = NULL}
+};
+
+/*
+ * Services fields mapping
+ * This mapping aligns syscollector/services DB sync fields to event keys (ECS-aligned where applicable).
+ */
+static struct deltas_fields_match_list const SERVICE_FIELDS[] = {
+    { .current = { "scan_time", NULL }, .next = &SERVICE_FIELDS[1]},
+    { .current = { "service_id", "service.service_id" }, .next = &SERVICE_FIELDS[2]},
+    { .current = { "service_name", "service.service_name" }, .next = &SERVICE_FIELDS[3]},
+    { .current = { "service_description", "service.service_description" }, .next = &SERVICE_FIELDS[4]},
+    { .current = { "service_type", "service.service_type" }, .next = &SERVICE_FIELDS[5]},
+    { .current = { "service_state", "service.service_state" }, .next = &SERVICE_FIELDS[6]},
+    { .current = { "service_sub_state", "service.service_sub_state" }, .next = &SERVICE_FIELDS[7]},
+    { .current = { "service_enabled", "service.service_enabled" }, .next = &SERVICE_FIELDS[8]},
+    { .current = { "service_start_type", "service.service_start_type" }, .next = &SERVICE_FIELDS[9]},
+    { .current = { "service_restart", "service.service_restart" }, .next = &SERVICE_FIELDS[10]},
+    { .current = { "service_frequency", "service.service_frequency" }, .next = &SERVICE_FIELDS[11]},
+    { .current = { "service_starts_on_mount", "service.service_starts_on_mount" }, .next = &SERVICE_FIELDS[12]},
+    { .current = { "service_starts_on_path_modified", "service.service_starts_on_path_modified" }, .next = &SERVICE_FIELDS[13]},
+    { .current = { "service_starts_on_not_empty_directory", "service.service_starts_on_not_empty_directory" }, .next = &SERVICE_FIELDS[14]},
+    { .current = { "service_inetd_compatibility", "service.service_inetd_compatibility" }, .next = &SERVICE_FIELDS[15]},
+    { .current = { "process_pid", "service.process_pid" }, .next = &SERVICE_FIELDS[16]},
+    { .current = { "process_executable", "service.process_executable" }, .next = &SERVICE_FIELDS[17]},
+    { .current = { "process_args", "service.process_args" }, .next = &SERVICE_FIELDS[18]},
+    { .current = { "process_user_name", "service.process_user_name" }, .next = &SERVICE_FIELDS[19]},
+    { .current = { "process_group_name", "service.process_group_name" }, .next = &SERVICE_FIELDS[20]},
+    { .current = { "process_working_directory", "service.process_working_directory" }, .next = &SERVICE_FIELDS[21]},
+    { .current = { "process_root_directory", "service.process_root_directory" }, .next = &SERVICE_FIELDS[22]},
+    { .current = { "file_path", "service.file_path" }, .next = &SERVICE_FIELDS[23]},
+    { .current = { "service_address", "service.service_address" }, .next = &SERVICE_FIELDS[24]},
+    { .current = { "log_file_path", "service.log_file_path" }, .next = &SERVICE_FIELDS[25]},
+    { .current = { "error_log_file_path", "service.error_log_file_path" }, .next = &SERVICE_FIELDS[26]},
+    { .current = { "service_exit_code", "service.service_exit_code" }, .next = &SERVICE_FIELDS[27]},
+    { .current = { "service_win32_exit_code", "service.service_win32_exit_code" }, .next = &SERVICE_FIELDS[28]},
+    { .current = { "service_following", "service.service_following" }, .next = &SERVICE_FIELDS[29]},
+    { .current = { "service_object_path", "service.service_object_path" }, .next = &SERVICE_FIELDS[30]},
+    { .current = { "service_target_ephemeral_id", "service.service_target_ephemeral_id" }, .next = &SERVICE_FIELDS[31]},
+    { .current = { "service_target_type", "service.service_target_type" }, .next = &SERVICE_FIELDS[32]},
+    { .current = { "service_target_address", "service.service_target_address" }, .next = &SERVICE_FIELDS[33]},
+    { .current = { "checksum", NULL }, .next = &SERVICE_FIELDS[34]},
+    { .current = { "item_id", NULL }, .next = NULL}
+};
+
 void SyscollectorInit(){
 
     os_calloc(1, sizeof(OSDecoderInfo), sysc_decoder);
@@ -2075,6 +2145,10 @@ static const struct deltas_fields_match_list * get_field_list(const char *type) 
         ret_val = USER_FIELDS;
     } else if(strcmp(type, "groups") == 0) {
         ret_val = GROUP_FIELDS;
+    } else if(strcmp(type, "browser_extensions") == 0) {
+        ret_val = BROWSER_EXTENSION_FIELDS;
+    } else if(strcmp(type, "services") == 0) {
+        ret_val = SERVICE_FIELDS;
     } else {
         /* This could be a new type of synchronization that is not yet implemented or corrupted data. */
         merror(INVALID_TYPE, type);
@@ -2154,6 +2228,10 @@ static const struct delta_values_mapping_list * get_mapping_list(const char *typ
     } else if(strcmp(type, "users") == 0) {
         ret_val = NULL;
     } else if(strcmp(type, "groups") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "browser_extensions") == 0) {
+        ret_val = NULL;
+    } else if(strcmp(type, "services") == 0) {
         ret_val = NULL;
     } else {
         merror(INVALID_TYPE, type);

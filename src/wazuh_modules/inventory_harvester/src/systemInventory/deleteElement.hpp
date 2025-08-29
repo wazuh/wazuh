@@ -13,6 +13,7 @@
 #define _DELETE_SYSTEM_ELEMENT_HPP
 
 #include "chainOfResponsability.hpp"
+#include "elements/browserExtensionElement.hpp"
 #include "elements/groupElement.hpp"
 #include "elements/hotfixElement.hpp"
 #include "elements/hwElement.hpp"
@@ -23,6 +24,7 @@
 #include "elements/packageElement.hpp"
 #include "elements/portElement.hpp"
 #include "elements/processElement.hpp"
+#include "elements/serviceElement.hpp"
 #include "elements/userElement.hpp"
 #include "loggerHelper.h"
 
@@ -89,6 +91,14 @@ public:
         else if (originTable == TContext::OriginTable::Groups)
         {
             data->m_serializedElement = serializeToJSON(GroupElement<TContext>::deleteElement(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::BrowserExtensions)
+        {
+            data->m_serializedElement = serializeToJSON(BrowserExtensionElement<TContext>::deleteElement(data.get()));
+        }
+        else if (originTable == TContext::OriginTable::Services)
+        {
+            data->m_serializedElement = serializeToJSON(ServiceElement<TContext>::deleteElement(data.get()));
         }
         else
         {

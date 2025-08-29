@@ -331,6 +331,18 @@ void w_inc_agent_syscollector_groups() {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
+void w_inc_agent_syscollector_browser_extensions() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_browser_extensions_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_agent_syscollector_services() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_services_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
 void w_inc_agent_syscollector_times(struct timeval time, int type) {
 
     w_mutex_lock(&db_state_t_mutex);
@@ -366,8 +378,14 @@ void w_inc_agent_syscollector_times(struct timeval time, int type) {
     case WDB_SYSCOLLECTOR_GROUPS:
         timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_groups_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_groups_time);
         break;
+    case WDB_SYSCOLLECTOR_SERVICES:
+        timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_services_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_services_time);
+        break;
     case WDB_SYSCOLLECTOR_USERS:
         timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_users_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_users_time);
+        break;
+    case WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS:
+        timeradd(&wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_browser_extensions_time, &time, &wdb_state.queries_breakdown.agent_breakdown.syscollector.syscollector_browser_extensions_time);
         break;
     default:
         break;
@@ -1136,6 +1154,10 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_packages", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_queries);
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_ports", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_queries);
     cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_processes", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_users", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_users_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_groups", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_groups_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_browser_extensions", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_browser_extensions_queries);
+    cJSON_AddNumberToObject(_agent_tables_syscollector, "syscollector_services", wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_services_queries);
 
     cJSON *_agent_tables_syscollector_deprecated = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_tables_syscollector, "deprecated", _agent_tables_syscollector_deprecated);
@@ -1327,6 +1349,10 @@ cJSON* wdb_create_state_json() {
     cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_packages", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_packages_time));
     cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_ports", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_ports_time));
     cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_processes", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_processes_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_groups", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_groups_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_users", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_users_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_browser_extensions", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_browser_extensions_time));
+    cJSON_AddNumberToObject(_agent_tables_syscollector_t, "syscollector_services", timeval_to_milis(wdb_state_cpy.queries_breakdown.agent_breakdown.syscollector.syscollector_services_time));
 
     cJSON *_agent_tables_syscollector_deprecated_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_agent_tables_syscollector_t, "deprecated", _agent_tables_syscollector_deprecated_t);
