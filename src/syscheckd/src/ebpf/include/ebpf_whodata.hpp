@@ -27,7 +27,7 @@ public:
     }
 
     // Function pointer types for required C functions
-    using fim_configuration_directory_t = directory_t*(*)(const char*);
+    using fim_configuration_directory_t = directory_t*(*)(const char*, bool);
     using get_user_t = char* (*)(int);
     using get_group_t = char* (*)(int);
     using fim_whodata_event_t = void (*)(whodata_evt*);

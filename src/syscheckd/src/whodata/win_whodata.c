@@ -789,7 +789,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 }
 
                 w_rwlock_rdlock(&syscheck.directories_lock);
-                configuration = fim_configuration_directory(w_evt->path);
+                configuration = fim_configuration_directory(w_evt->path, true);
                 if (configuration == NULL) {
                     if (!(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                         // Discard the file or directory if its monitoring has not been activated
@@ -900,7 +900,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 // Check if is a valid directory
                 w_rwlock_rdlock(&syscheck.directories_lock);
-                if (fim_configuration_directory(w_evt->path) == NULL) {
+                if (fim_configuration_directory(w_evt->path, false) == NULL) {
                     mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, w_evt->path);
                     w_evt->scan_directory = 2;
                     w_rwlock_unlock(&syscheck.directories_lock);
