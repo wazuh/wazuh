@@ -173,7 +173,7 @@ After completing the installation, you must run the setupEnvironment.py that bui
 ```bash
 cd ./wazuh/src/engine
 python3 test/setupEnvironment.py -e /tmp/environment
-engine-helper-test -e /tmp/environment init -b build/main --mmdb test/helper_tests/mmdb/ --conf test/helper_tests/configuration_files/general.conf
+engine-helper-test -e /tmp/environment init --mmdb test/helper_tests/mmdb/ --conf test/helper_tests/configuration_files/config.env
 engine-helper-test -e /tmp/environment validate --input-dir test/helper_tests/helpers_description/
 engine-helper-test -e /tmp/environment generate-tests --input-dir test/helper_tests/helpers_description/ -o /tmp/helper_tests
 engine-helper-test -e /tmp/environment run --input-dir /tmp/helper_tests
