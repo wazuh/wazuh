@@ -1,7 +1,12 @@
-name: Integration tests for logcollector on Windows - Tier 0 and 1
+name: Integration tests for FIM on Windows - Tier 2
 
 on:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
 
 jobs:
   # Build the winagent on linux.
@@ -84,8 +89,9 @@ jobs:
           git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
           rm qa-integration-framework/ -r -force
-      # Run logcollector integration tests.
-      - name: Run logcollector integration tests
+      # Run fim integration tests.
+      - name: Run fim integration tests
         run: |
+          NET START wazuh
           cd C:\wazuh\tests\integration
-          python -m pytest --tier 0 --tier 1 test_logcollector\
+          python -m pytest --tier 2 test_fim\

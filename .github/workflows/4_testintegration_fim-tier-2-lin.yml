@@ -2,11 +2,6 @@ name: Integration tests for FIM on Linux - Tier 2
 
 on:
   workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
 
 jobs:
   build:

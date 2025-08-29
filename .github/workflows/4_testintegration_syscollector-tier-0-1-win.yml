@@ -2,20 +2,6 @@ name: Integration tests for Syscollector on Windows - Tier 0 and 1
 
 on:
   workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_syscollector-tier-0-1-win.yml"
-        - "src/config/wmodules-syscollector.c"
-        - "src/wazuh_modules/syscollector/**"
-        - "src/win32/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_syscollector/**"
 
 jobs:
   # Build the winagent on linux.

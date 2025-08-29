@@ -2,6 +2,20 @@ name: Integration tests for FIM on MacOS - Tier 0 and 1
 
 on:
   workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+  pull_request:
+    paths:
+        - ".github/workflows/5_testintegration_fim-tier-0-1-macos.yml"
+        - "src/config/syscheck-config.c"
+        - "src/config/syscheck-config.h"
+        - "src/syscheckd/**"
+        - "src/Makefile"
+        - "tests/integration/conftest.py"
+        - "tests/integration/test_fim/**"
 
 jobs:
   build:

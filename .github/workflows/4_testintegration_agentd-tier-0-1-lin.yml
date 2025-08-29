@@ -2,21 +2,6 @@ name: Integration tests for Agentd on Linux - Tier 0 and 1
 
 on:
   workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_agentd-tier-0-1-lin.yml"
-        - "src/client-agent/**"
-        - "src/config/buffer-config.c"
-        - "src/config/client-config.c"
-        - "src/config/client-config.h"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_agentd/**"
 
 jobs:
   build:

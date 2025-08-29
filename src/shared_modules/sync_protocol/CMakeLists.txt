@@ -98,6 +98,7 @@ add_library(agent_sync_protocol SHARED
   src/persistent_queue_storage.cpp
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ}
 )
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
