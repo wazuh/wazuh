@@ -180,7 +180,7 @@ def test_ossec_log_summary(mock_exists, mock_active_logging_format):
 
         # Assert data match what was expected and type of the result.
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-        assert result.render()['data']['total_affected_items'] == 5
+        assert result.render()['data']['total_affected_items'] == len(expected_result.keys())
         assert all(all(value == expected_result[key] for key, value in item.items())
                    for item in result.render()['data']['affected_items'])
 
