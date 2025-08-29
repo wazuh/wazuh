@@ -273,6 +273,15 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
+    // Add state modified_at field for stateful event only
+    cJSON* state = cJSON_CreateObject();
+    if (state != NULL) {
+        char modified_at_time[32];
+        get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+        cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+        cJSON_AddItemToObject(stateful_event, "state", state);
+    }
+
     char id_source_string[OS_MAXSTR] = {0};
     snprintf(id_source_string, OS_MAXSTR - 1, "%d:%s", arch, path);
 
@@ -471,6 +480,15 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
             mdebug1("Couldn't find checksum for '%s", path);
             goto end; // LCOV_EXCL_LINE
         }
+    }
+
+    // Add state modified_at field for stateful event only
+    cJSON* state = cJSON_CreateObject();
+    if (state != NULL) {
+        char modified_at_time[32];
+        get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+        cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+        cJSON_AddItemToObject(stateful_event, "state", state);
     }
 
     char id_source_string[OS_MAXSTR] = {0};

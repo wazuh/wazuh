@@ -210,6 +210,15 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
+    // Add state modified_at field for stateful event only
+    cJSON* state = cJSON_CreateObject();
+    if (state != NULL) {
+        char modified_at_time[32];
+        get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+        cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+        cJSON_AddItemToObject(stateful_event, "state", state);
+    }
+
     char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
     OS_SHA1_Str(path, -1, file_path_sha1);
 
