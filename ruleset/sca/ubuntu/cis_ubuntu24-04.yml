@@ -1328,7 +1328,7 @@ checks:
        - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1087", "T1087.001", "T1087.002"]
      condition: all
      rules:
-      - "f:/etc/gdm3/greeter.dconf-defaults -> r:^[org/gnome/login-screen]"
+      - "f:/etc/gdm3/greeter.dconf-defaults -> r:^\\[org/gnome/login-screen\\]"
       - "f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-enable=true"
       - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-text=.+'
 
@@ -1347,7 +1347,11 @@ checks:
        - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1087", "T1087.001", "T1087.002"]
      condition: all
      rules:
+<<<<<<< HEAD
       - 'd:/etc/dconf/db/gdm.d -> r:. -> r:^[org/gnome/login-screen]'
+=======
+      - 'd:/etc/dconf/db/gdm.d -> r:. -> r:^\[org/gnome/login-screen\]'
+>>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
       - 'd:/etc/dconf/db/gdm.d -> r:. -> r:^disable-user-list\s*\t*=\s*\t*true'
 
   # 1.7.4 Ensure GDM screen locks when the user is idle. (Automated) - Not Implemented
@@ -1400,7 +1404,11 @@ checks:
        - mitre_techniques: ["T1091"]
      condition: all
      rules:
+<<<<<<< HEAD
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^[org/gnome/desktop/media-handling]'
+=======
+      - 'd:/etc/dconf/db/local.d -> r:. -> r:^\[org/gnome/desktop/media-handling\]'
+>>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^automount\s*\t*=\s*\t*false'
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^automount-open\s*\t*=\s*\t*false'
 
@@ -1443,7 +1451,11 @@ checks:
        - mitre_techniques: ["T1091"]
      condition: all
      rules:
+<<<<<<< HEAD
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^[org/gnome/desktop/media-handling]'
+=======
+      - 'd:/etc/dconf/db/local.d -> r:. -> r:^\[org/gnome/desktop/media-handling\]'
+>>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
       - 'd:/etc/dconf/db/local.d -> r:. -> r:^autorun-never\s*\t*=\s*\t*true'
 
   # 1.7.9 Ensure GDM autorun-never is not overridden. (Automated)
@@ -1990,7 +2002,11 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
+<<<<<<< HEAD
       - 'not c:ss -lntu -> r::25\s|:465\s|:587\s && r:\s+127\.0\.0\.\d+:|\s+[::1]:'
+=======
+      - 'not c:ss -lntu -> r::25\s|:465\s|:587\s && r:\s+127\.0\.0\.\d+:|\s+\[::1\]:'
+>>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
 
   # 2.1.22 Ensure only approved services are listening on a network interface. (Manual) - Not Implemented
 
@@ -4124,10 +4140,17 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
+<<<<<<< HEAD
       - 'f:/etc/pam.d/common-account -> r:^account\s*\t*[success=1 new_authtok_reqd=done default=ignore] && r:pam_unix\.so'
       - 'f:/etc/pam.d/common-session -> r:^session\s*\t*required && r:pam_unix\.so'
       - "f:/etc/pam.d/common-auth -> r:^auth && r:[success=2|[success=3 && r:default=ignore] && r:pam_unix\\.so"
       - "f:/etc/pam.d/common-password -> r:^password && r:[success=1|[success=2 && r:default=ignore] && r:pam_unix\\.so"
+=======
+      - 'f:/etc/pam.d/common-account -> r:^account\s*\t*\[success=1 new_authtok_reqd=done default=ignore\] && r:pam_unix\.so'
+      - 'f:/etc/pam.d/common-session -> r:^session\s*\t*required && r:pam_unix\.so'
+      - "f:/etc/pam.d/common-auth -> r:^auth && r:\\[success=2|\\[success=3 && r:default=ignore\\] && r:pam_unix\\.so"
+      - "f:/etc/pam.d/common-password -> r:^password && r:\\[success=1|\\[success=2 && r:default=ignore\\] && r:pam_unix\\.so"
+>>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
 
   # 5.3.2.2 Ensure pam_faillock module is enabled. (Automated)
    - id: 35673
@@ -4152,7 +4175,11 @@ checks:
      condition: all
      rules:
       - 'f:/etc/pam.d/common-auth -> r:^auth\s*\t*requisite && r:pam_faillock\.so'
+<<<<<<< HEAD
       - 'f:/etc/pam.d/common-auth -> r:^auth\s*\t*[default=die] && r:pam_faillock\.so'
+=======
+      - 'f:/etc/pam.d/common-auth -> r:^auth\s*\t*\[default=die\] && r:pam_faillock\.so'
+>>>>>>> 55c0a1f687 (fix(cis_ubuntu24-04.yml): Added tool refactor_regex.py to fix literal and wildcard dot behaviour, tested in cis_ubuntu24-04.yml)
       - 'f:/etc/pam.d/common-account -> r:^account\s*\t*required && r:pam_faillock\.so'
 
   # 5.3.2.3 Ensure pam_pwquality module is enabled. (Automated)
