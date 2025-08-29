@@ -254,8 +254,7 @@ public:
             // coverity[copy_constructor_call]
             [queue = m_workersQueue.get()](const std::vector<char>& message)
             {
-                logDebug2(LOGGER_DEFAULT_TAG,
-                          "InventorySyncFacade::start: Received message from router");
+                logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Received message from router");
                 // TODO: Temporal allocation, we need to use move semantics in router module.
                 queue->push(std::move(const_cast<std::vector<char>&>(message)));
             });
