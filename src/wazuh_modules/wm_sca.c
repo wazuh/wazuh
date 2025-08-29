@@ -81,7 +81,7 @@ sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
 sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
 
 // Logging callback function for SCA module
-static void sca_log_callback(const modules_log_level_t level, const char* log, const char* tag) {
+static void sca_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag) {
     switch(level) {
         case LOG_DEBUG:
             mdebug1("%s", log);
