@@ -13,6 +13,7 @@
 #define _BERKELEY_DB_WRAPPER_H
 
 #include "iberkeleyDbWrapper.h"
+#include <stdexcept>
 
 struct BerkeleyRpmDbDeleter final
 {

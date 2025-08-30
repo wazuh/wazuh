@@ -14,6 +14,8 @@ add_executable(sysInfoPackages_unit_test
     ${sysinfo_UNIT_TEST_SRC})
 
 target_link_libraries(sysInfoPackages_unit_test
+    FilesystemWrapper
+    FileIO
     debug gtestd
     debug gmockd
     debug gtest_maind

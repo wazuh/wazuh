@@ -89,9 +89,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         sca->enabled = 1;
         sca->scan_on_start = 1;
         sched_scan_init(&(sca->scan_config));
-        sca->skip_nfs = 1;
-        sca->alert_msg = NULL;
-        sca->queue = -1;
         sca->policies = NULL;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
@@ -179,11 +176,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         closedir(ruleset_dir);
     } else {
         minfo("Could not open the default SCA ruleset folder '%s': %s", ruleset_path, strerror(open_dir_errno));
-    }
-
-    if(!sca->alert_msg) {
-        /* We store up to 255 alerts */
-        os_calloc(256, sizeof(char *), sca->alert_msg);
     }
 
     if (!nodes) {
@@ -321,14 +313,7 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         }
         else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
         {
-            int skip_nfs = eval_bool(nodes[i]->content);
-
-            if(skip_nfs == OS_INVALID){
-                merror("Invalid content for tag '%s'", XML_SKIP_NFS);
-                return OS_INVALID;
-            }
-
-            sca->skip_nfs = skip_nfs;
+            mwarn("Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.");
         }
         else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing

@@ -1,9 +1,0 @@
-- name: SCA disabled
-  description: Set enabled to no value
-  configuration_parameters:
-    ENABLED: 'no'
-    INTERVAL: 100
-    POLICY_FILE: cis_centos8_osregex.yaml
-  metadata:
-    enabled: false
-    policy_file: cis_centos8_osregex.yaml

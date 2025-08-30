@@ -12,8 +12,11 @@
 #ifndef _PACKAGES_PYPI_HPP
 #define _PACKAGES_PYPI_HPP
 
-#include "fileIO.hpp"
-#include "fileSystem.hpp"
+#include <ifilesystem_wrapper.hpp>
+#include <filesystem_wrapper.hpp>
+
+#include <file_io_utils.hpp>
+#include <ifile_io_utils.hpp>
 #include "stdFileSystemHelper.hpp"
 #include "json.hpp"
 #include "sharedDefs.h"
@@ -25,9 +28,10 @@
 
 const static std::map<std::string, std::string> FILE_MAPPING_PYPI {{"egg-info", "PKG-INFO"}, {"dist-info", "METADATA"}};
 
-template<typename TFileSystem = RealFileSystem, typename TFileIO = FileIO>
-class PYPI final : public TFileSystem, public TFileIO
+class PYPI final
 {
+        std::unique_ptr<IFileIOUtils> m_fileIOUtils;
+        std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
         std::unordered_set<std::string> m_pathsToExclude;
 
         void parseMetadata(const std::filesystem::path& path, std::function<void(nlohmann::json&)>& callback)
@@ -54,8 +58,8 @@ class PYPI final : public TFileSystem, public TFileIO
             packageInfo["installed"] = UNKNOWN_VALUE;
             // The multiarch field won't have a default value
 
-            TFileIO::readLineByLine(path,
-                                    [&packageInfo](const std::string & line) -> bool
+            m_fileIOUtils->readLineByLine(path,
+                                          [&packageInfo](const std::string & line) -> bool
             {
                 const auto it {
                     std::find_if(PYPI_FIELDS.begin(),
@@ -96,11 +100,11 @@ class PYPI final : public TFileSystem, public TFileIO
                     {
                         std::filesystem::path correctPath;
 
-                        if (TFileSystem::is_regular_file(path))
+                        if (m_fileSystemWrapper->is_regular_file(path))
                         {
                             correctPath = path;
                         }
-                        else if (TFileSystem::is_directory(path))
+                        else if (m_fileSystemWrapper->is_directory(path))
                         {
                             correctPath = path / value;
                         }
@@ -127,9 +131,9 @@ class PYPI final : public TFileSystem, public TFileIO
                 try
                 {
                     // Exist and is a directory
-                    if (TFileSystem::exists(expandedPath) && TFileSystem::is_directory(expandedPath))
+                    if (m_fileSystemWrapper->exists(expandedPath) && m_fileSystemWrapper->is_directory(expandedPath))
                     {
-                        for (const std::filesystem::path& path : TFileSystem::directory_iterator(expandedPath))
+                        for (const std::filesystem::path& path : m_fileSystemWrapper->list_directory(expandedPath))
                         {
                             findCorrectPath(path, callback);
                         }
@@ -143,6 +147,15 @@ class PYPI final : public TFileSystem, public TFileIO
         }
 
     public:
+        PYPI(std::unique_ptr<IFileIOUtils> fileIOUtils = nullptr,
+             std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr)
+            : m_fileIOUtils(fileIOUtils ? std::move(fileIOUtils) : std::make_unique<file_io::FileIOUtils>())
+            , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper)
+                                  : std::make_unique<file_system::FileSystemWrapper>())
+        {
+        }
+        ~PYPI() = default;
+
         void getPackages(const std::set<std::string>& osRootFolders,
                          std::function<void(nlohmann::json&)> callback,
                          const std::unordered_set<std::string>& excludePaths = {})

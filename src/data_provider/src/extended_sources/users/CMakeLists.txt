@@ -13,6 +13,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/windows)
 else()
   include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix)
+  include_directories(${CMAKE_SOURCE_DIR}/../shared_modules/file_helper/filesystem/include)
+  if (NOT SRC_FOLDER)
+    get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+  endif()
+  link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
+  link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../wrappers/unix/linux)
@@ -44,6 +50,7 @@ else()
 endif()
 
 add_library(users STATIC ${SRC_FILES})
+target_link_libraries(users FilesystemWrapper)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(users
