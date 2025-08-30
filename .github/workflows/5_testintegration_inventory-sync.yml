@@ -40,53 +40,87 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Wait for Package Build workflow to be created
-        if: github.event_name == 'pull_request'
-        id: wait-for-workflow-creation
+      - name: Wait for specific deb amd64 check to be created
+        if: github.event_name == 'pull_request' && steps.wait-for-workflow-creation.outputs.workflow-created == 'true'
+        id: wait-for-specific-check
         run: |
-          echo "[>] Waiting for Package Build workflow to be created..."
+          echo "[>] Waiting for specific check 'Build Wazuh Manager (deb, amd64) / Build deb wazuh-manager on amd64' to be created..."
 
-          # Maximum wait time: 10 minutes
-          MAX_ATTEMPTS=20
+          # Maximum wait time: 5 minutes
+          MAX_ATTEMPTS=10
           ATTEMPT=0
+          CHECK_NAME="Build Wazuh Manager (deb, amd64) / Build deb wazuh-manager on amd64"
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             ATTEMPT=$((ATTEMPT + 1))
-            echo "[*] Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking for Package Build workflow..."
+            echo "[*] Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking for specific check '$CHECK_NAME'..."
 
-            # Check if the workflow exists for this PR
-            WORKFLOW_EXISTS=$(gh run list \
-              --commit="${{ github.event.pull_request.head.sha }}" \
-              --json workflowName \
-              --jq '.[] | select(.workflowName == "Package - Build multiple Wazuh Manager Packages") | .workflowName' | head -1)
+            # Check if the specific check exists for this PR
+            CHECK_EXISTS=$(gh api repos/wazuh/wazuh/commits/${{ github.event.pull_request.head.sha }}/check-runs \
+              --jq ".check_runs[] | select(.name == \"$CHECK_NAME\") | .name" | head -1)
 
-            if [ -n "$WORKFLOW_EXISTS" ] && [ "$WORKFLOW_EXISTS" != "null" ]; then
-              echo "[+] Package Build workflow found!"
-              echo "workflow-created=true" >> $GITHUB_OUTPUT
+            if [ -n "$CHECK_EXISTS" ] && [ "$CHECK_EXISTS" != "null" ]; then
+              echo "[+] Specific check '$CHECK_NAME' found!"
+              echo "check-created=true" >> $GITHUB_OUTPUT
               break
             fi
 
-            echo "[*] Package Build workflow not found yet, waiting 30 seconds..."
+            echo "[*] Specific check '$CHECK_NAME' not found yet, waiting 30 seconds..."
             sleep 30
           done
 
           if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
-            echo "[-] Timeout: Package Build workflow was not created within expected time"
-            echo "workflow-created=false" >> $GITHUB_OUTPUT
+            echo "[-] Timeout: Specific check '$CHECK_NAME' was not created within expected time"
+            echo "check-created=false" >> $GITHUB_OUTPUT
             exit 1
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Wait for deb amd64 Package Build to complete
-        if: github.event_name == 'pull_request' && steps.wait-for-workflow-creation.outputs.workflow-created == 'true'
-        uses: lewagon/wait-on-check-action@v1.4.0
-        with:
-          ref: ${{ github.head_ref || github.ref }}
-          check-name: 'Build Wazuh Manager (deb, amd64) / Build deb wazuh-manager on amd64'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-          allowed-conclusions: success
+        if: github.event_name == 'pull_request' && steps.wait-for-workflow-creation.outputs.workflow-created == 'true' && steps.wait-for-specific-check.outputs.check-created == 'true'
+        id: wait-for-check-completion
+        run: |
+          echo "[>] Waiting for check 'Build Wazuh Manager (deb, amd64) / Build deb wazuh-manager on amd64' to complete..."
+
+          # Maximum wait time: 30 minutes
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+          CHECK_NAME="Build Wazuh Manager (deb, amd64) / Build deb wazuh-manager on amd64"
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "[*] Attempt $ATTEMPT/$MAX_ATTEMPTS: Checking status of '$CHECK_NAME'..."
+
+            # Check the status of the specific check
+            CHECK_STATUS=$(gh api repos/wazuh/wazuh/commits/${{ github.event.pull_request.head.sha }}/check-runs \
+              --jq ".check_runs[] | select(.name == \"$CHECK_NAME\") | .conclusion" | head -1)
+
+            if [ "$CHECK_STATUS" = "success" ]; then
+              echo "[+] Check '$CHECK_NAME' completed successfully!"
+              echo "check-completed=true" >> $GITHUB_OUTPUT
+              break
+            elif [ "$CHECK_STATUS" = "failure" ] || [ "$CHECK_STATUS" = "cancelled" ]; then
+              echo "[-] Check '$CHECK_NAME' failed with status: $CHECK_STATUS"
+              echo "check-completed=false" >> $GITHUB_OUTPUT
+              exit 1
+            elif [ "$CHECK_STATUS" = "null" ]; then
+              echo "[*] Check '$CHECK_NAME' is still running..."
+            else
+              echo "[*] Check '$CHECK_NAME' status: $CHECK_STATUS"
+            fi
+
+            echo "[*] Waiting 30 seconds before next check..."
+            sleep 30
+          done
+
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "[-] Timeout: Check '$CHECK_NAME' did not complete within expected time"
+            echo "check-completed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install system dependencies
         run: |
@@ -108,7 +142,7 @@ jobs:
           fi
 
       - name: Get Package Build Run ID and Artifact
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.wait-for-check-completion.outputs.check-completed == 'true'
         id: get-run-info
         run: |
           # Find the successful run of "Package - Build multiple Wazuh Manager Packages" for this specific commit
@@ -144,7 +178,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Wazuh manager package (deb amd64)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.wait-for-check-completion.outputs.check-completed == 'true'
         uses: actions/download-artifact@v4
         with:
           name: ${{ steps.get-run-info.outputs.artifact-name }}
@@ -153,7 +187,7 @@ jobs:
           run-id: ${{ steps.get-run-info.outputs.run-id }}
 
       - name: Install Wazuh manager package
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && steps.wait-for-check-completion.outputs.check-completed == 'true'
         run: |
           echo "[>] Installing Wazuh manager package (deb amd64)..."
 
@@ -176,6 +210,9 @@ jobs:
 
           # Install the package
           sudo dpkg -i "$PACKAGE_FILE" || sudo apt-get -f install -y
+
+          # Replace https://0.0.0.0:9200 with http://0.0.0.0:9200 in /var/ossec/etc/ossec.conf
+          sed -i 's/https:\/\/0\.0\.0\.0:9200/http:\/\/0\.0\.0\.0:9200/g' /var/ossec/etc/ossec.conf
 
           # Start Wazuh manager
           sudo systemctl start wazuh-manager
@@ -251,6 +288,13 @@ jobs:
           if [ -f /var/ossec/logs/ossec.log ]; then
             echo "[*] Wazuh logs (last 50 lines):"
             sudo tail -50 /var/ossec/logs/ossec.log
+
+            # Copy ossec.log to workspace for artifact upload
+            sudo cp /var/ossec/logs/ossec.log ./ossec.log
+            sudo chown $USER:$USER ./ossec.log
+            echo "[+] Copied ossec.log to workspace"
+          else
+            echo "[-] ossec.log not found at /var/ossec/logs/ossec.log"
           fi
 
           echo "[+] Cleanup completed"
@@ -263,5 +307,15 @@ jobs:
           path: |
             src/wazuh_modules/inventory_sync/qa/generated/
             src/wazuh_modules/inventory_sync/qa/wazuh_agents.json
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload Wazuh logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh-logs
+          path: |
+            ossec.log
           retention-days: 7
           if-no-files-found: warn
