@@ -5,23 +5,27 @@
 auto constexpr NAME = "kvmapParser";
 static const std::string TARGET = "/TargetField";
 
-INSTANTIATE_TEST_SUITE_P(KvBuild,
-                         HlpBuildTest,
-                         ::testing::Values(BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "2"}}),
-                                           BuildT(SUCCESS, getKVParser, {NAME, TARGET, {}, {"0", "1", "2", "4"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "2", "4", "5"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"00", "1", "2", "4"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "11", "2", "4"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "22", "4"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "2", "44"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"", "1", "2", "4"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "", "2", "4"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "", "4"}}),
-                                           BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "2", ""}}),
-                                           BuildT(SUCCESS, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}})));
+INSTANTIATE_TEST_SUITE_P(
+    KvBuild,
+    HlpBuildTest,
+    ::testing::Values(BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "2"}}),
+                      BuildT(SUCCESS, getKVParser, {NAME, TARGET, {}, {"0", "1", "2", "4"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "2", "4", "5"}}),
+                      BuildT(SUCCESS, getKVParser, {NAME, TARGET, {}, {"00", "1", "2", "4"}}),
+                      BuildT(SUCCESS, getKVParser, {NAME, TARGET, {}, {"0", "11", "2", "4"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "22", "4"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "2", "44"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"", "1", "2", "4"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "", "2", "4"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "", "4"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"0", "1", "2", ""}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"=", "=", "\"", "\\"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {"::=", "::=", "\"", "\\"}}),
+                      BuildT(FAILURE, getKVParser, {NAME, TARGET, {}, {" || ", " || ", "\"", "\\"}}),
+                      BuildT(SUCCESS, getKVParser, {NAME, TARGET, {}, {"=", " ", "'", "\\"}})));
 
 INSTANTIATE_TEST_SUITE_P(
     KvParse,
@@ -250,4 +254,118 @@ INSTANTIATE_TEST_SUITE_P(
                              TARGET.substr(1))),
                61,
                getKVParser,
-               {NAME, TARGET, {}, {"=", ",", "'", "'"}})));
+               {NAME, TARGET, {}, {"=", ",", "'", "'"}}),
+
+        ParseT(SUCCESS,
+               R"(k1::=v1 k2::=v2)",
+               j(fmt::format(R"({{"{}":{{"k1":"v1","k2":"v2"}}}})", TARGET.substr(1))),
+               15,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " ", "\"", "\\"}}),
+
+        // Single-character separator ("=") with multi-character delimiter (" || "); parses k1=v1 and k2=v2.
+        ParseT(SUCCESS,
+               R"(k1=v1 || k2=v2)",
+               j(fmt::format(R"({{"{}":{{"k1":"v1","k2":"v2"}}}})", TARGET.substr(1))),
+               14,
+               getKVParser,
+               {NAME, TARGET, {}, {"=", " || ", "\"", "\\"}}),
+
+        // Both tokens multi-character: sep="::=", delim=" || "; two pairs parsed correctly.
+        ParseT(SUCCESS,
+               R"(k1::=v1 || k2::=v2)",
+               j(fmt::format(R"({{"{}":{{"k1":"v1","k2":"v2"}}}})", TARGET.substr(1))),
+               18,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // Escaped delimiter inside the value (\ || ) must not split; k1's value is "v\ || x".
+        ParseT(SUCCESS,
+               R"(k1::=v\ || x || k2::=v2)",
+               j(fmt::format(R"({{"{}":{{"k1":"v || x","k2":"v2"}}}})", TARGET.substr(1))),
+               23,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // Escaped separator inside the value (\::=) must not split key/value; a's value is "x\::=y".
+        ParseT(SUCCESS,
+               R"(a::=x\::=y || b::=q)",
+               j(fmt::format(R"({{"{}":{{"a":"x::=y","b":"q"}}}})", TARGET.substr(1))),
+               19,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // Delimiter inside a quoted value ("x || y") must not split; only outer quotes are stripped.
+        ParseT(SUCCESS,
+               R"(a::="x || y" || b::=c)",
+               j(fmt::format(R"({{"{}":{{"a":"x || y","b":"c"}}}})", TARGET.substr(1))),
+               21,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // Separator inside a quoted value ("p::=q") must not split; only outer quotes are stripped.
+        ParseT(SUCCESS,
+               R"(a::="p::=q" || b::=c)",
+               j(fmt::format(R"({{"{}":{{"a":"p::=q","b":"c"}}}})", TARGET.substr(1))),
+               20,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // quote==esc case (double-quote escaping): "x""y" becomes x"y; works with multi-character tokens.
+        ParseT(SUCCESS,
+               R"("a""b"::="x""y" || c::=d)",
+               j(fmt::format(R"({{"{}":{{"a\"\"b":"x\"y","c":"d"}}}})", TARGET.substr(1))),
+               24,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\""}}),
+
+        // Quoted key containing spaces and the delimiter text; should parse as a single key.
+        ParseT(SUCCESS,
+               R"("k 1 || k"::=v1 || k2::=v2)",
+               j(fmt::format(R"({{"{}":{{"k 1 || k":"v1","k2":"v2"}}}})", TARGET.substr(1))),
+               26,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // Quoted key containing the separator text; must not split on "::=" inside quotes.
+        ParseT(SUCCESS,
+               R"("a::=b"::=v || c::=d)",
+               j(fmt::format(R"({{"{}":{{"a::=b":"v","c":"d"}}}})", TARGET.substr(1))),
+               20,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // Key with an escaped quote inside the quoted key; inner quote should be preserved.
+        ParseT(SUCCESS,
+               R"("k\"1"::=v || b::=c)",
+               j(fmt::format(R"({{"{}":{{"k\\\"1":"v","b":"c"}}}})", TARGET.substr(1))), // <= note the double backslash
+               19,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // Value with an escaped quote inside quotes; inner quote should be preserved.
+        ParseT(SUCCESS,
+               R"(a::="x\"y" || b::=c)",
+               j(fmt::format(R"({{"{}":{{"a":"x\"y","b":"c"}}}})", TARGET.substr(1))),
+               19,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}}),
+
+        // quote==esc (double-quote escaping) in the key: "a""b" stays as two quotes in the key.
+        // "a""b" -> a"b ; "x""y" -> x"y
+        ParseT(SUCCESS,
+               R"("a""b"::="x""y" || c::=d)",
+               j(fmt::format(R"({{"{}":{{"a\"\"b":"x\"y","c":"d"}}}})", TARGET.substr(1))), // <= two \" inside the key
+               24,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\""}}),
+
+        // Empty quoted value should be treated as null (with multi-character tokens).
+        ParseT(SUCCESS,
+               R"(a::="" || b::=c)",
+               j(fmt::format(R"({{"{}":{{"a":null,"b":"c"}}}})", TARGET.substr(1))),
+               15,
+               getKVParser,
+               {NAME, TARGET, {}, {"::=", " || ", "\"", "\\"}})
+
+            ));

@@ -23,7 +23,8 @@ Mapper getMapper(const json::Json& doc, std::string_view targetField)
     };
 }
 
-SemParser getSemParser(const std::string& targetField, char delim, char sep, char quote, char esc)
+SemParser
+getSemParser(const std::string& targetField, const std::string& delim, const std::string& sep, char quote, char esc)
 {
     return [=](std::string_view input)
     {
@@ -31,7 +32,7 @@ SemParser getSemParser(const std::string& targetField, char delim, char sep, cha
         size_t start = 0;
 
         // Search for target respecting quotes and escapes
-        auto findNext = [&](std::string_view text, size_t pos, char target) -> size_t
+        auto findNext = [&](std::string_view text, size_t pos, const std::string& target) -> size_t
         {
             bool inQuotes = false;
             for (size_t i = pos; i < text.size(); ++i)
@@ -52,7 +53,7 @@ SemParser getSemParser(const std::string& targetField, char delim, char sep, cha
                         inQuotes = !inQuotes;
                     }
                 }
-                else if (text[i] == target && !inQuotes && !isEscaped)
+                else if (text.compare(i, target.size(), target) == 0 && !inQuotes && !isEscaped)
                 {
                     return i;
                 }
@@ -82,8 +83,20 @@ SemParser getSemParser(const std::string& targetField, char delim, char sep, cha
             bool hasEscape = false;
             for (size_t i = 0; i + 1 < rawValue.size(); ++i)
             {
-                char c = rawValue[i], n = rawValue[i + 1];
-                if (c == esc && (n == quote || n == sep || n == delim || n == esc))
+                if (rawValue[i] != esc)
+                {
+                    continue;
+                }
+
+                const size_t j = i + 1;
+
+                const bool nextIsQuote = (rawValue[j] == quote);
+                const bool nextIsEsc = (rawValue[j] == esc);
+                const bool nextIsSep = (j + sep.size() <= rawValue.size() && rawValue.compare(j, sep.size(), sep) == 0);
+                const bool nextIsDelim =
+                    (j + delim.size() <= rawValue.size() && rawValue.compare(j, delim.size(), delim) == 0);
+
+                if (nextIsQuote || nextIsEsc || nextIsSep || nextIsDelim)
                 {
                     hasEscape = true;
                     break;
@@ -101,7 +114,7 @@ SemParser getSemParser(const std::string& targetField, char delim, char sep, cha
                 break;
 
             std::string_view key = input.substr(start, sepPos - start);
-            size_t valStart = sepPos + 1;
+            size_t valStart = sepPos + sep.size();
 
             // The end of the value is sought
             size_t delimPos = findNext(input, valStart, delim);
@@ -114,14 +127,14 @@ SemParser getSemParser(const std::string& targetField, char delim, char sep, cha
             {
                 break;
             }
-            start = delimPos + 1;
+            start = delimPos + delim.size();
         }
 
         return targetField.empty() ? noMapper() : getMapper(doc, targetField);
     };
 }
 
-syntax::Parser getSynParser(char delim, char sep, char quote, char esc)
+syntax::Parser getSynParser(const std::string& delim, const std::string& sep, char quote, char esc)
 {
     return [=](std::string_view input) -> syntax::Result
     {
@@ -135,7 +148,7 @@ syntax::Parser getSynParser(char delim, char sep, char quote, char esc)
         bool inQuotes = false;
 
         // Search for target respecting quotes and escapes
-        auto findNext = [&](std::string_view text, size_t start, char target) -> size_t
+        auto findNext = [&](std::string_view text, size_t start, const std::string& target) -> size_t
         {
             for (size_t i = start; i < text.size(); ++i)
             {
@@ -155,7 +168,7 @@ syntax::Parser getSynParser(char delim, char sep, char quote, char esc)
                         inQuotes = !inQuotes;
                     }
                 }
-                else if (text[i] == target && !inQuotes && !isEscaped)
+                else if (text.compare(i, target.size(), target) == 0 && !inQuotes && !isEscaped)
                 {
                     return i;
                 }
@@ -180,7 +193,7 @@ syntax::Parser getSynParser(char delim, char sep, char quote, char esc)
             }
 
             key = text.substr(pos, sepPos - pos);
-            pos = sepPos + 1;
+            pos = sepPos + sep.size();
 
             if (delimPos == std::string_view::npos)
             {
@@ -195,7 +208,7 @@ syntax::Parser getSynParser(char delim, char sep, char quote, char esc)
             else
             {
                 value = text.substr(pos, delimPos - pos);
-                pos = delimPos + 1;
+                pos = delimPos + delim.size();
             }
 
             return true;
@@ -229,16 +242,19 @@ Parser getKVParser(const Params& params)
                                              "character and escape character"));
     }
 
-    for (const auto& opt : params.options)
+    const std::string sep = params.options[0];   // separator between key and value
+    const std::string delim = params.options[1]; // delimiter between key-value pairs
+
+    if (sep.empty() || delim.empty())
     {
-        if (opt.size() != 1)
-        {
-            throw std::runtime_error("KV parser: separator, delimiter, quote and escape must be single characters");
-        }
+        throw std::runtime_error("KV parser: separator and delimiter must be non-empty");
     }
 
-    const char sep = params.options[0][0];   // separator between key and value
-    const char delim = params.options[1][0]; // delimiter between key-value pairs
+    if (params.options[2].size() != 1 || params.options[3].size() != 1)
+    {
+        throw std::runtime_error("KV parser: quote and escape must be single characters");
+    }
+
     const char quote = params.options[2][0]; // quote character
     const char esc = params.options[3][0];   // escape character
 
