@@ -212,7 +212,7 @@ jobs:
           sudo dpkg -i "$PACKAGE_FILE" || sudo apt-get -f install -y
 
           # Replace https://0.0.0.0:9200 with http://0.0.0.0:9200 in /var/ossec/etc/ossec.conf
-          sed -i 's/https:\/\/0\.0\.0\.0:9200/http:\/\/0\.0\.0\.0:9200/g' /var/ossec/etc/ossec.conf
+          sudo sed -i 's/https:\/\/0\.0\.0\.0:9200/http:\/\/0\.0\.0\.0:9200/g' /var/ossec/etc/ossec.conf
 
           # Start Wazuh manager
           sudo systemctl start wazuh-manager
