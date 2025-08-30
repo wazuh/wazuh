@@ -8,7 +8,7 @@ from os.path import exists
 from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
-from wazuh.core.cluster.utils import manager_restart, read_cluster_config
+from wazuh.core.cluster.utils import manager_restart, read_cluster_config, running_in_master_node
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_update_information_template, get_ossec_logs, \
@@ -334,6 +334,10 @@ def get_basic_info() -> AffectedItemsWazuhResult:
 
     try:
         result.affected_items.append(Wazuh().to_dict())
+        if running_in_master_node():
+            result.affected_items[0]['uuid'] = common.get_installation_uid()
+        else:
+            result.affected_items[0]['uuid'] = None
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
