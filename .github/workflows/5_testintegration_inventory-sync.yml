@@ -147,7 +147,7 @@ jobs:
         run: |
           # Find the successful run of "Package - Build multiple Wazuh Manager Packages" for this specific commit
           # This ensures we get the package built for the exact commit of this PR
-          RUN_ID=$(gh run list \
+          RUN_ID=$(gh run list -L 200 \
             --commit="${{ github.event.pull_request.head.sha }}" \
             --json databaseId,headSha,displayTitle,workflowName,conclusion \
             --jq '.[] | select(.workflowName == "Package - Build multiple Wazuh Manager Packages") | .databaseId' | head -1)
