@@ -41,7 +41,7 @@ jobs:
           submodules: recursive
 
       - name: Wait for specific deb amd64 check to be created
-        if: github.event_name == 'pull_request' && steps.wait-for-workflow-creation.outputs.workflow-created == 'true'
+        if: github.event_name == 'pull_request'
         id: wait-for-specific-check
         run: |
           echo "[>] Waiting for specific check 'Build Wazuh Manager (deb, amd64) / Build deb wazuh-manager on amd64' to be created..."
@@ -78,7 +78,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Wait for deb amd64 Package Build to complete
-        if: github.event_name == 'pull_request' && steps.wait-for-workflow-creation.outputs.workflow-created == 'true' && steps.wait-for-specific-check.outputs.check-created == 'true'
+        if: github.event_name == 'pull_request' && steps.wait-for-specific-check.outputs.check-created == 'true'
         id: wait-for-check-completion
         run: |
           echo "[>] Waiting for check 'Build Wazuh Manager (deb, amd64) / Build deb wazuh-manager on amd64' to complete..."
