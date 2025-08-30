@@ -212,7 +212,20 @@ jobs:
           sudo dpkg -i "$PACKAGE_FILE" || sudo apt-get -f install -y
 
           # Replace https://0.0.0.0:9200 with http://0.0.0.0:9200 in /var/ossec/etc/ossec.conf
-          sudo sed -i 's/https:\/\/0\.0\.0\.0:9200/http:\/\/0\.0\.0\.0:9200/g' /var/ossec/etc/ossec.conf
+          sudo sed -i 's/https:\/\/0\.0\.0\.0:9200/localhost:9200/g' /var/ossec/etc/ossec.conf
+
+          # Remove SSL certificate lines from ossec.conf
+          echo "[>] Removing SSL certificate lines from ossec.conf..."
+          sudo sed -i '/<certificate>\/etc\/filebeat\/certs\/filebeat.pem<\/certificate>/d' /var/ossec/etc/ossec.conf
+          sudo sed -i '/<key>\/etc\/filebeat\/certs\/filebeat-key.pem<\/key>/d' /var/ossec/etc/ossec.conf
+          sudo sed -i '/<ca>\/etc\/filebeat\/certs\/root-ca.pem<\/ca>/d' /var/ossec/etc/ossec.conf
+          echo "[+] SSL certificate lines removed from ossec.conf"
+
+          # Print ossec.conf content for verification
+          echo "[>] Current ossec.conf content:"
+          echo "=========================================="
+          sudo cat /var/ossec/etc/ossec.conf
+          echo "=========================================="
 
           # Start Wazuh manager
           sudo systemctl start wazuh-manager
@@ -284,6 +297,23 @@ jobs:
             echo "[+] Stopped wazuh-manager"
           fi
 
+          # Debug: Check Wazuh installation and directories
+          echo "[*] Debugging Wazuh installation..."
+          echo "[*] Checking if /var/ossec exists:"
+          ls -la /var/ossec/ 2>/dev/null || echo "[-] /var/ossec directory not found"
+          
+          echo "[*] Checking if /var/ossec/logs exists:"
+          ls -la /var/ossec/logs/ 2>/dev/null || echo "[-] /var/ossec/logs directory not found"
+          
+          echo "[*] Checking all files in /var/ossec/logs/ (if exists):"
+          sudo find /var/ossec/logs/ -type f -name "*.log" 2>/dev/null || echo "[-] No log files found"
+          
+          echo "[*] Checking Wazuh service status:"
+          sudo systemctl status wazuh-manager --no-pager --lines=10 || echo "[-] Could not get service status"
+          
+          echo "[*] Checking if Wazuh was actually installed:"
+          dpkg -l | grep wazuh || echo "[-] No Wazuh packages found"
+
           # Collect Wazuh logs if they exist
           if [ -f /var/ossec/logs/ossec.log ]; then
             echo "[*] Wazuh logs (last 50 lines):"
@@ -295,6 +325,19 @@ jobs:
             echo "[+] Copied ossec.log to workspace"
           else
             echo "[-] ossec.log not found at /var/ossec/logs/ossec.log"
+            
+            # Try to find any log files that might exist
+            echo "[*] Searching for any log files in the system:"
+            sudo find /var/log -name "*wazuh*" -o -name "*ossec*" 2>/dev/null | head -10 || echo "[-] No Wazuh/OSSEC logs found in /var/log"
+            
+            # Check if logs might be in a different location
+            echo "[*] Checking common log locations:"
+            for log_path in "/var/log/wazuh" "/var/log/ossec" "/opt/wazuh/logs" "/usr/local/ossec/logs"; do
+              if [ -d "$log_path" ]; then
+                echo "[+] Found log directory: $log_path"
+                ls -la "$log_path"/
+              fi
+            done
           fi
 
           echo "[+] Cleanup completed"
