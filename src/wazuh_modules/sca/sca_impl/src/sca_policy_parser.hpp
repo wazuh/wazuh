@@ -1,10 +1,10 @@
 #pragma once
 
 #include <isca_policy.hpp>
-
-#include <iyaml_document.hpp>
 #include <json.hpp>
 
+#include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -24,6 +24,9 @@ struct StringLengthGreater
 /// comparator that prioritizes longer strings and, if equal in length, sorts the strings alphabetically.
 using PolicyVariables = std::map<std::string, std::string, StringLengthGreater>;
 
+/// @brief Function type for YAML to JSON conversion.
+using YamlToJsonFunc = std::function<nlohmann::json(const std::string&)>;
+
 /// @brief Parses and processes SCA policy files defined in YAML format.
 ///
 /// This class is responsible for reading an SCA policy YAML file,
@@ -35,8 +38,10 @@ class PolicyParser
     public:
         /// @brief Constructs a PolicyParser and loads the YAML file.
         /// @param filename Path to the YAML policy file.
-        /// @param yamlDocument Optional pointer to an already loaded YAML document.
-        explicit PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, std::unique_ptr<IYamlDocument> yamlDocument = nullptr);
+        /// @param commandsTimeout Timeout for command execution.
+        /// @param commandsEnabled Flag indicating whether commands are enabled.
+        /// @param yamlToJsonFunc Function to convert YAML files to JSON strings.
+        explicit PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, YamlToJsonFunc yamlToJsonFunc);
 
         /// @brief Parses the loaded policy file and extracts a SCAPolicy object.
         ///
@@ -48,12 +53,15 @@ class PolicyParser
         std::unique_ptr<ISCAPolicy> ParsePolicy(nlohmann::json& policiesAndChecks);
 
     private:
-        /// @brief Recursively replaces variables in the YAML node with their values.
-        /// @param currentNode The YamlDocument to process.
-        void ReplaceVariablesInNode(YamlNode& currentNode);
+        /// @brief Replaces variables in the JSON document with their values.
+        /// @param jsonNode The JSON object to process.
+        void ReplaceVariablesInJson(nlohmann::json& jsonNode);
 
-        /// @brief Document loaded from the YAML file.
-        std::unique_ptr<IYamlDocument> m_yamlDocument;
+        /// @brief Document loaded and converted from the YAML file.
+        nlohmann::json m_jsonDocument;
+
+        /// @brief Path to the original YAML file.
+        std::filesystem::path m_filename;
 
         /// @brief Timeout for commands execution
         int m_commandsTimeout;
@@ -63,4 +71,7 @@ class PolicyParser
 
         /// @brief Map of variables found in the YAML file, used for substitution.
         PolicyVariables m_variablesMap;
+
+        /// @brief Function to convert YAML files to JSON strings.
+        YamlToJsonFunc m_yamlToJsonFunc;
 };

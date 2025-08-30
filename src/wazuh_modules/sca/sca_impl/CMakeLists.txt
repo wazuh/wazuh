@@ -20,7 +20,6 @@ message(STATUS "SRC_FOLDER: ${SRC_FOLDER}")
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/libpcre2/.libs/)
-link_directories(${SRC_FOLDER}/external/libyaml/src/.libs/)
 link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
@@ -32,7 +31,6 @@ include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/external/cJSON/)
 include_directories(${SRC_FOLDER}/external/libpcre2/include)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
-include_directories(${SRC_FOLDER}/external/libyaml/include)
 include_directories(${SRC_FOLDER}/external/openssl/include/) # needed for hash_helper
 include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/wazuh_modules/)
@@ -54,9 +52,6 @@ find_library(FILE_IO_LIB FileIO
     NO_DEFAULT_PATH)
 find_library(DBSYNC_LIB dbsync
     HINTS ${SRC_FOLDER}/shared_modules/dbsync/build/lib
-    NO_DEFAULT_PATH)
-find_library(YAML_LIB yaml
-    HINTS ${SRC_FOLDER}/external/libyaml/src/.libs
     NO_DEFAULT_PATH)
 find_library(PCRE2_LIB pcre2-8
     HINTS ${SRC_FOLDER}/external/libpcre2/.libs
@@ -81,10 +76,6 @@ if(NOT DBSYNC_LIB)
     set(DBSYNC_LIB dbsync)
     message(STATUS "dbsync library not found, using target name")
 endif()
-if(NOT YAML_LIB)
-    set(YAML_LIB yaml)
-    message(STATUS "yaml library not found, using target name")
-endif()
 if(NOT PCRE2_LIB)
     set(PCRE2_LIB pcre2-8)
     message(STATUS "pcre2-8 library not found, using target name")
@@ -93,8 +84,6 @@ endif()
 add_library(
     SCAImpl STATIC
     src/sca_impl.cpp
-    src/yaml_document.cpp
-    src/yaml_node.cpp
     src/sca_policy.cpp
     src/sca_policy_check.cpp
     src/sca_policy_loader.cpp
@@ -122,7 +111,6 @@ target_link_libraries(
             ${DBSYNC_LIB}
             wazuhext # contains hash_helper, string_helper, time_helper utilities
             cjson
-            ${YAML_LIB}
             ${PCRE2_LIB}
             ${OPENSSL_LIB}
             ${OPENSSL_CRYPTO_LIB}

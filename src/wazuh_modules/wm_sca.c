@@ -24,6 +24,7 @@
 #include "logging_helper.h"
 
 #include "sca/include/sca.h"
+#include "yaml2json.h"
 
 // SCA message queue variables
 static int g_sca_queue = -1;
@@ -35,6 +36,7 @@ static atomic_int_t g_n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 static int wm_sca_send_stateless(const char* message);
 static int wm_sca_persist_stateful(const char* message);
 static bool wm_sca_is_shutting_down(void);
+static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path);
 
 #undef minfo
 #undef mwarn
@@ -79,6 +81,7 @@ sca_stop_func sca_stop_ptr = NULL;
 sca_sync_message_func sca_sync_message_ptr = NULL;
 sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
 sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
+sca_set_yaml_to_cjson_func_func sca_set_yaml_to_cjson_func_ptr = NULL;
 
 // Logging callback function for SCA module
 static void sca_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag) {
@@ -123,6 +126,7 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_sync_message_ptr = so_get_function_sym(sca_module, "sca_sync_message");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
         sca_set_push_functions_ptr = so_get_function_sym(sca_module, "sca_set_push_functions");
+        sca_set_yaml_to_cjson_func_ptr = so_get_function_sym(sca_module, "sca_set_yaml_to_cjson_func");
 
         // Set the wm_exec function pointer in the SCA module
         if (sca_set_wm_exec_ptr) {
@@ -132,6 +136,11 @@ void * wm_sca_main(wm_sca_t * data) {
         // Set the push functions for message handling
         if (sca_set_push_functions_ptr) {
             sca_set_push_functions_ptr(wm_sca_send_stateless, wm_sca_persist_stateful);
+        }
+
+        // Set the yaml to cjson function
+        if (sca_set_yaml_to_cjson_func_ptr) {
+            sca_set_yaml_to_cjson_func_ptr(wm_sca_yaml_to_cjson);
         }
     } else {
         merror("Can't get SCA module handle.");
@@ -254,4 +263,31 @@ static int wm_sca_persist_stateful(const char* message) {
 
 static bool wm_sca_is_shutting_down(void) {
     return (bool)g_shutting_down;
+}
+
+static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path)
+{
+    yaml_document_t document;
+    cJSON* json_object = NULL;
+
+    memset(&document, 0, sizeof(document));
+
+    if (yaml_parse_file(yaml_path, &document) == 0)
+    {
+        json_object = yaml2json(&document, 1);
+
+        if (!json_object)
+        {
+            mwarn("Failed to convert YAML document to JSON for file: %s", yaml_path);
+        }
+
+        yaml_document_delete(&document);
+
+    }
+    else
+    {
+        mwarn("Failed to parse YAML file: %s", yaml_path);
+    }
+
+    return json_object;
 }
