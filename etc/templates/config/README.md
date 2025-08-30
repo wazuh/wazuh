@@ -18,8 +18,6 @@
 
         rootcheck.template
 
-        wodle-openscap.template
-
         wodle-syscollector.template
 
         syscheck.template
@@ -60,8 +58,6 @@
         logging.template
 
         rootcheck.template
-
-        wodle-openscap.template
 
         wodle-syscollector.template
 

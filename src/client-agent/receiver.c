@@ -43,47 +43,40 @@ int receive_msg()
 
     /* Read until no more messages are available */
     while (1) {
-        if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
-            /* Only one read per call */
-            if (reads++) {
+
+        /* Only one read per call */
+        if (reads++) {
+            break;
+        }
+
+        recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
+
+        // Manager disconnected or error
+
+        if (recv_b <= 0) {
+            switch (recv_b) {
+            case OS_SOCKTERR:
+                merror("Corrupt payload (exceeding size) received.");
                 break;
-            }
 
-            recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
-
-            // Manager disconnected or error
-
-            if (recv_b <= 0) {
-                switch (recv_b) {
-                case OS_SOCKTERR:
-                    merror("Corrupt payload (exceeding size) received.");
-                    break;
-
-                case -1:
+            case -1:
 #ifndef WIN32
-                    if (errno == ENOTCONN) {
-                        mdebug1("Manager disconnected (ENOTCONN).");
-                    } else {
-                        merror("Connection socket: %s (%d)", strerror(errno), errno);
-                    }
-#else
-                    merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-#endif
-                    break;
-
-                case 0:
-                    mdebug1("Manager disconnected.");
+                if (errno == ENOTCONN) {
+                    mdebug1("Manager disconnected (ENOTCONN).");
+                } else {
+                    merror("Connection socket: %s (%d)", strerror(errno), errno);
                 }
-
-                // -1 means that the agent must reconnect
-                return -1;
-            }
-        } else {
-            recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
-
-            if (recv_b <= 0) {
+#else
+                merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+#endif
                 break;
+
+            case 0:
+                mdebug1("Manager disconnected.");
             }
+
+            // -1 means that the agent must reconnect
+            return -1;
         }
 
         buffer[recv_b] = '\0';

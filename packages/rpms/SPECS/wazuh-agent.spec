@@ -86,9 +86,7 @@ echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_ACTIVE_RESPONSE="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_SYSCHECK="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_ROOTCHECK="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_SYSCOLLECTOR="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_CISCAT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_AGENT_SERVER_IP="MANAGER_IP"' >> ./etc/preloaded-vars.conf
 echo 'USER_CA_STORE="/path/to/my_cert.pem"' >> ./etc/preloaded-vars.conf
@@ -657,7 +655,6 @@ rm -fr %{buildroot}
 %attr(660, root, wazuh) %config(noreplace) %{_localstatedir}/etc/ossec.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/wpk_root.pem
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
-%attr(660, root, wazuh) %config(missingok,noreplace) %{_localstatedir}/etc/shared/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/lib
 %attr(750, root, wazuh) %{_localstatedir}/lib/*
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/logs

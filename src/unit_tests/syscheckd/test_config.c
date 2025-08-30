@@ -123,7 +123,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.skip_fs.dev, 1);
     assert_int_equal(syscheck.skip_fs.sys, 1);
     assert_int_equal(syscheck.skip_fs.proc, 1);
-    assert_int_equal(syscheck.scan_on_start, 1);
     assert_int_equal(syscheck.time, 43200);
     assert_non_null(syscheck.ignore);
     assert_non_null(syscheck.ignore_regex);
@@ -145,8 +144,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_int_equal(syscheck.allow_remote_prefilter_cmd, true);
-    assert_non_null(syscheck.prefilter_cmd);    // It should be a valid binary absolute path
     assert_int_equal(syscheck.sync_interval, 600);
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.disk_quota_enabled, true);
@@ -198,7 +195,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.skip_fs.dev, 0);
     assert_int_equal(syscheck.skip_fs.sys, 0);
     assert_int_equal(syscheck.skip_fs.proc, 0);
-    assert_int_equal(syscheck.scan_on_start, 0);
     assert_int_equal(syscheck.time, 43200);
     assert_null(syscheck.ignore);
     assert_null(syscheck.ignore_regex);
@@ -213,8 +209,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 0);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_int_equal(syscheck.allow_remote_prefilter_cmd, false);
-    assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 600);
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.disk_quota_enabled, true);
@@ -250,7 +244,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.skip_fs.dev, 1);
     assert_int_equal(syscheck.skip_fs.sys, 1);
     assert_int_equal(syscheck.skip_fs.proc, 1);
-    assert_int_equal(syscheck.scan_on_start, 1);
     assert_int_equal(syscheck.time, 43200);
     assert_null(syscheck.ignore);
     assert_null(syscheck.ignore_regex);
@@ -263,11 +256,14 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 0);
+#ifndef TEST_WINAGENT
+    assert_int_equal(syscheck.whodata_provider, EBPF_PROVIDER);
+#else
+    assert_int_equal(syscheck.whodata_provider, AUDIT_PROVIDER);
+#endif
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_int_equal(syscheck.allow_remote_prefilter_cmd, false);
-    assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 300);
     assert_int_equal(syscheck.max_eps, 50);
     assert_int_equal(syscheck.disk_quota_enabled, true);
@@ -302,9 +298,9 @@ void test_getSyscheckConfig(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #if defined(TEST_SERVER) || defined(TEST_AGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 21);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
     #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 29);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 26);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -340,8 +336,6 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_sys), "yes");
     cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
-    cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
-    assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
 
@@ -393,15 +387,6 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(whodata_provider), "audit");
 #endif
 
-    cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
-    assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "yes");
-    cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
-#ifndef TEST_WINAGENT
-    assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "/bin/ls");
-#else
-    assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "c:\\windows\\system32\\cmd.exe");
-#endif
-
     cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
     cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(synchronization_enabled), "yes");
@@ -439,9 +424,9 @@ void test_getSyscheckConfig_no_audit(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 15);
     #else
-    assert_int_equal(cJSON_GetArraySize(sys_items), 21);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 19);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -477,8 +462,6 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_sys), "no");
     cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "no");
-    cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
-    assert_string_equal(cJSON_GetStringValue(scan_on_start), "no");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
 #ifndef TEST_WINAGENT
@@ -513,11 +496,6 @@ void test_getSyscheckConfig_no_audit(void **state)
     cJSON *win_registry_ignore_regex = cJSON_GetObjectItem(sys_items, "key_ignore_sregex");
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore_regex), 1);
 #endif
-
-    cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
-    assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
-    cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
-    assert_null(prefilter_cmd);
 
     cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
     cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
@@ -565,7 +543,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 16);
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
@@ -606,14 +584,10 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_sys), "yes");
     cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
-    cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
-    assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
     cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
     cJSON *registry = cJSON_GetObjectItem(sys_items, "registry");
     assert_int_equal(cJSON_GetArraySize(registry), 0);
-    cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
-    assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
     cJSON *max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
     assert_int_equal(max_eps->valueint, 50);
     cJSON *notify_first_scan = cJSON_GetObjectItem(sys_items, "notify_first_scan");
@@ -894,13 +868,72 @@ void test_fim_adjust_path_convert_system32 (void **state) {
     free(path);
 }
 
+void test_Read_Syscheck_Config_default_provider(void **state)
+{
+    (void) state;
+    int ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    test_mode = 0;
+    ret = Read_Syscheck_Config("test_syscheck_default_provider.conf");
+    test_mode = 1;
+
+    assert_int_equal(ret, 0);
+    assert_int_equal(syscheck.enable_whodata, 1);
+#ifndef TEST_WINAGENT
+    assert_int_equal(syscheck.whodata_provider, EBPF_PROVIDER);
+#else
+    assert_int_equal(syscheck.whodata_provider, AUDIT_PROVIDER);
+#endif
+    assert_int_equal(syscheck.restart_audit, 1);
+    assert_int_equal(syscheck.audit_healthcheck, 1);
+}
+
+void test_getSyscheckConfig_default_provider(void **state)
+{
+    (void) state;
+    cJSON * ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+
+    Read_Syscheck_Config("test_syscheck_default_provider.conf");
+    ret = getSyscheckConfig();
+    *state = ret;
+
+    assert_non_null(ret);
+    cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
+    assert_non_null(sys_items);
+
+#ifndef TEST_WINAGENT
+    cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
+    assert_non_null(sys_whodata);
+    cJSON *whodata_provider = cJSON_GetObjectItem(sys_whodata, "provider");
+    assert_string_equal(cJSON_GetStringValue(whodata_provider), "ebpf");
+#endif
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_success, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_undefined, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_default_provider, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckConfig_default_provider, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_directories, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckInternalOptions, setup_read_config, restart_syscheck),
