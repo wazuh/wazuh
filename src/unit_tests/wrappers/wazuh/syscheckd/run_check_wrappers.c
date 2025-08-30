@@ -24,7 +24,10 @@ void __wrap_send_syscheck_msg(__attribute__((unused)) char *msg) {
     return;
 }
 
-void __wrap_persist_syscheck_msg(__attribute__((unused)) char *msg) {
+void __wrap_persist_syscheck_msg(__attribute__((unused))const char *id,
+                                 __attribute__((unused))int operation,
+                                 __attribute__((unused))const char *index,
+                                 __attribute__((unused))char *msg) {
     function_called();
     return;
 }

@@ -1,6 +1,7 @@
 name: Windows binaries' details
 
 on:
+  workflow_dispatch:
 
 jobs:
   build:

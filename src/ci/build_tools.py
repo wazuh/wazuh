@@ -17,10 +17,10 @@ from ci import utils
 DELETE_FOLDER_DIC = {
     'wazuh_modules/syscollector':   ['build', 'smokeTests/output'],
     'shared_modules/dbsync':        ['build', 'smokeTests/output'],
-    'shared_modules/rsync':         ['build', 'smokeTests/output'],
+    'shared_modules/sync_protocol': ['build', 'smokeTests/output', 'coverage_report'],
     'data_provider':                ['build', 'smokeTests/output'],
     'syscheckd':                    ['build', 'src/db/smokeTests/output',
-                                     'coverage_report'],
+                                     'coverage_report']
 }
 
 

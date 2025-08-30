@@ -33,8 +33,6 @@ jobs:
           ctest -V
           cd ../../shared_modules/dbsync/build
           ctest -V
-          cd ../../rsync/build
-          ctest -V
           cd ../../../wazuh_modules/syscollector/build
           ctest -V
   build-sonoma:
@@ -61,8 +59,6 @@ jobs:
           cd src/data_provider/build
           ctest -V
           cd ../../shared_modules/dbsync/build
-          ctest -V
-          cd ../../rsync/build
           ctest -V
           cd ../../../wazuh_modules/syscollector/build
           ctest -V

@@ -1,6 +1,7 @@
 name: macOS compilation test
 
 on:
+  workflow_dispatch:
 
 jobs:
   build-ventura:

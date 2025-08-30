@@ -1,0 +1,15 @@
+{
+    "description": "Basic inventory sync flow test: start",
+    "messages": [
+      {
+        "type": "start",
+        "data": {
+          "mode": 0,
+          "size": 0
+        },
+        "description": "Start synchronization session",
+        "delay": 0.5,
+        "expect_session_response": true
+      }
+    ]
+  }

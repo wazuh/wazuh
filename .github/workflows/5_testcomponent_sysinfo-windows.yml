@@ -52,12 +52,6 @@ jobs:
         with:
           name: dbsync
           path: src/shared_modules/dbsync/build/bin
-      # Upload build artifacts for rsync.
-      - name: Upload Artifact rsync
-        uses: actions/upload-artifact@v4
-        with:
-          name: rsync
-          path: src/shared_modules/rsync/build/bin
       # Upload build artifacts for syscollector.
       - name: Upload Artifact syscollector
         uses: actions/upload-artifact@v4
@@ -85,11 +79,6 @@ jobs:
         with:
           name: dbsync
           path: C:\dbsync\
-      - name: Download Artifact rsync
-        uses: actions/download-artifact@v4
-        with:
-          name: rsync
-          path: C:\rsync\
       - name: Download Artifact syscollector
         uses: actions/download-artifact@v4
         with:
@@ -100,21 +89,15 @@ jobs:
         with:
           name: shared_libraries
           path: C:\shared_libraries\
-      # Copy dbsync, rsync and sysinfo libraries into syscollector.
-      - name: Copy libraries into syscollector (dbsync, rsync and sysinfo)
+      # Copy dbsync and sysinfo libraries into syscollector.
+      - name: Copy libraries into syscollector (dbsync and sysinfo)
         run: |
           copy C:\dbsync\*.dll C:\syscollector\
-          copy C:\rsync\*.dll C:\syscollector\
           copy C:\data_provider\*.dll C:\syscollector\
-      # Copy dbsync library into rsync.
-      - name: Copy libraries into rsync (dbsync)
-        run: |
-          copy C:\dbsync\*.dll C:\rsync\
       - name: Copy shared libraries
         run: |
           copy C:\shared_libraries\* C:\data_provider\
           copy C:\shared_libraries\* C:\dbsync\
-          copy C:\shared_libraries\* C:\rsync\
           copy C:\shared_libraries\* C:\syscollector\
       - name: Install dependencies
         run: |

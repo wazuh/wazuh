@@ -164,7 +164,7 @@ main() {
     declare -A components=( \
         [data_provider]=data_provider \
         [dbsync]=shared_modules/dbsync \
-        [rsync]=shared_modules/rsync \
+        [sync_protocol]=shared_modules/sync_protocol \
         [syscollector]=wazuh_modules/syscollector\
         [fim]=syscheckd\
     )
@@ -172,7 +172,7 @@ main() {
     declare -A titles=( \
         [data_provider]="Data provider" \
         [dbsync]="DBsync" \
-        [rsync]="Rsync" \
+        [sync_protocol]="SyncProtocol" \
         [syscollector]="Syscollector" \
         [fim]="File integrity monitoring" \
     )

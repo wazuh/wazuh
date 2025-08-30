@@ -4,9 +4,11 @@ project(syscollectorimp_unit_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
-
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
 
 file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
     "*.cpp")
@@ -26,6 +28,13 @@ add_executable(syscollectorimp_unit_test
     ${SYSCOLLECTOR_IMP_SRC}
     ${DBSYNC_IMP_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_custom_command(TARGET syscollectorimp_unit_test POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SRC_FOLDER}/shared_modules/sync_protocol/build/bin/libagent_sync_protocol.dll"
+        "$<TARGET_FILE_DIR:syscollectorimp_unit_test>/libagent_sync_protocol.dll"
+        COMMENT "Copying libagent_sync_protocol.dll to test directory"
+    )
+
     target_link_libraries(syscollectorimp_unit_test
         debug gtestd
         debug gmockd
@@ -42,6 +51,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         ws2_32
         ssl
         crypt32
+        agent_sync_protocol
         -static-libgcc -static-libstdc++
     )
 else()
@@ -59,6 +69,7 @@ else()
         cjson
         crypto
         dl
+        agent_sync_protocol
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

@@ -105,6 +105,10 @@ void test_fim_initialize(void **state)
                                syscheck_conf->file_entry_limit,
                                0);
 #endif
+
+    expect_string(__wrap_asp_create, module, "fim");
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
     fim_initialize();
 }
 
@@ -184,6 +188,9 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     will_return(__wrap_rootcheck_init, 1);
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
+    expect_string(__wrap_asp_create, module, "fim");
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -213,6 +220,9 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
+    expect_string(__wrap_asp_create, module, "fim");
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
     expect_function_call(__wrap_start_daemon);
@@ -241,6 +251,9 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
+
+    expect_string(__wrap_asp_create, module, "fim");
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
@@ -307,6 +320,10 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6004): No diff for file: 'Diff'");
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
+
+    expect_string(__wrap_asp_create, module, "fim");
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
@@ -354,6 +371,9 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'whodata'.");
 
     expect_wrapper_fim_db_init(0, 100000, 100000);
+    expect_string(__wrap_asp_create, module, "fim");
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);

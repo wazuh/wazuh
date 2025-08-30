@@ -12,14 +12,12 @@
 #include "contentModuleFacade.hpp"
 namespace Log
 {
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 };
 
 void ContentModuleFacade::start(
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction)
 {
     Log::assignLogFunction(logFunction);

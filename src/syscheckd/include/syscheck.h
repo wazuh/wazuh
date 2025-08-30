@@ -12,6 +12,7 @@
 #define SYSCHECK_H
 
 #include "../../config/syscheck-config.h"
+#include "agent_sync_protocol_c_interface_types.h"
 #include "commonDefs.h"
 #include "syscheck_op.h"
 #include <cJSON.h>
@@ -28,6 +29,21 @@
 #define AUDIT_HEALTHCHECK_DIR       "tmp"
 #define AUDIT_HEALTHCHECK_KEY       "wazuh_hc"
 #define AUDIT_HEALTHCHECK_FILE      "tmp/audit_hc"
+
+#define FIM_SYNC_PROTOCOL_DB_PATH   "queue/fim/db/fim_sync.db"
+#define FIM_SYNC_RETRIES 3
+
+#define FIM_FILES_SYNC_INDEX         "wazuh-states-fim-files"
+#ifdef WIN32
+#define FIM_REGISTRY_KEYS_SYNC_INDEX   "wazuh-states-fim-registry-keys"
+#define FIM_REGISTRY_VALUES_SYNC_INDEX "wazuh-states-fim-registry-values"
+#endif
+
+// The length of a SHA-1 hash in its hexadecimal string representation.
+#define FILE_PATH_SHA1_SIZE (SHA_DIGEST_LENGTH * 2)
+
+// The required buffer size to store a hexadecimal SHA-1 hash string, including its null terminator.
+#define FILE_PATH_SHA1_BUFFER_SIZE (FILE_PATH_SHA1_SIZE + 1)
 
 #ifdef WIN32
 #define FIM_REGULAR   _S_IFREG
@@ -292,9 +308,12 @@ void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
 /**
  * @brief Persist a message related to syscheck change/addition/deletion
  *
- * @param msg The message to be persisted
+ * @param id The unique identifier for the event (e.g., hash of the file path).
+ * @param operation The type of operation.
+ * @param index The index for the event.
+ * @param _msg The message to be persisted
  */
-void persist_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
+void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg) __attribute__((nonnull));
 
 /**
  * @brief Send a log message
@@ -569,10 +588,11 @@ void* syscom_main(void* arg);
  * @brief Dispatches messages from API directed to syscheck module
  *
  * @param [in] command The input command sent from the API
+ * @param [in] command_len Length in bytes of the input command
  * @param [out] output The output buffer to be filled (answer for the API)
  * @return The size of the output buffer
  */
-size_t syscom_dispatch(char* command, char** output);
+size_t syscom_dispatch(char* command, size_t command_len, char** output);
 
 /**
  * @brief

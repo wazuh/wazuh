@@ -24,6 +24,7 @@
 #include "../rootcheck/rootcheck.h"
 #include "file/file.h"
 #include "ebpf/include/ebpf_whodata.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 unsigned int files_read = 0;
@@ -112,13 +113,13 @@ void send_syscheck_msg(const cJSON *_msg) {
 }
 
 // Persist a syscheck message
-void persist_syscheck_msg(const cJSON* _msg) {
+void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg) {
     if (syscheck.enable_synchronization) {
         char* msg = cJSON_PrintUnformatted(_msg);
 
         mdebug2(FIM_PERSIST, msg);
 
-        // fim_persist_stateful_event(msg);
+        asp_persist_diff(syscheck.sync_handle, id, operation, index, msg);
 
         os_free(msg);
     } else {
@@ -524,7 +525,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     while (FOREVER()) {
         mdebug1("Running inventory synchronization.");
 
-        // fim_synchronize(syscheck.sync_response_timeout, syscheck.sync_max_eps);
+        asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
 
         mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
         sleep(syscheck.sync_interval);

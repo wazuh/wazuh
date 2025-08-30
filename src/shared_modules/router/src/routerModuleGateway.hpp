@@ -52,6 +52,7 @@ public:
             throw std::runtime_error("Module not implemented");
         }
     }
+    // LCOV_EXCL_STOP
 };
 
 #endif /* _ROUTER_MODULE_GATEWAY_HPP */

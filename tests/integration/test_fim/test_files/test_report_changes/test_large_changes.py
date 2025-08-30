@@ -111,7 +111,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: 2}
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_large_changes(test_configuration, test_metadata, configure_local_internal_options,
-                        truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, daemons_handler, detect_end_scan):
+                        truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, clean_fim_sync_db, daemons_handler, detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon detects the character limit in the file changes is reached
                  showing the 'More changes' tag in the 'content_changes' field of the generated events. For this

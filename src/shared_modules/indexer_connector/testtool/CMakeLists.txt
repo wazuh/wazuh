@@ -19,4 +19,3 @@ add_executable(indexer_connector_tool
     )
 
 target_link_libraries(indexer_connector_tool indexer_connector urlrequest)
-

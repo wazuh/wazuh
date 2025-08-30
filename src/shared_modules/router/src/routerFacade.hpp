@@ -135,6 +135,7 @@ private:
     std::unordered_map<std::string, std::shared_ptr<RemoteProvider>> m_remoteProviders {};
     std::mutex m_remoteSubscribersMutex {};
     std::mutex m_remoteProvidersMutex {};
+    std::mutex m_initializationMutex {};
 };
 
 #endif /* _ROUTER_FACADE_HPP */

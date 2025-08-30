@@ -96,7 +96,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: '2'}
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_diff_size_limit(test_configuration, test_metadata, configure_local_internal_options,
-                                    truncate_monitored_files, set_wazuh_configuration, daemons_handler):
+                                    truncate_monitored_files, set_wazuh_configuration, clean_fim_sync_db, daemons_handler):
     '''
     description: Check if the 'wazuh-syscheckd' daemon limits the size of 'diff' information to generate from
                  the value set in the 'diff_size_limit' attribute when the global 'file_size' tag is different.

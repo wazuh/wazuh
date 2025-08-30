@@ -9,10 +9,12 @@
  * Foundation.
  */
 
+#include "router.h"
+#include "flatbuffers/include/agentInfo_generated.h"
 #include "logging_helper.h"
 #include <functional>
 #include <string>
-static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION;
+static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION = nullptr;
 
 void logMessage(const modules_log_level_t level, const std::string& msg)
 {
@@ -30,10 +32,7 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
 #include "routerModuleGateway.hpp"
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
-#include "schemaAdapter.hpp"
-#include "shared_modules/utils/flatbuffers/include/rsync_schema.h"
-#include "shared_modules/utils/flatbuffers/include/syscheck_deltas_schema.h"
-#include "shared_modules/utils/flatbuffers/include/syscollector_deltas_schema.h"
+#include "shared_modules/utils/flatbuffers/include/inventorySync_schema.h"
 #include <filesystem>
 #include <malloc.h>
 #include <utility>
@@ -41,28 +40,19 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
 std::map<ROUTER_PROVIDER_HANDLE, std::shared_ptr<RouterProvider>> PROVIDERS;
 std::shared_mutex PROVIDERS_MUTEX;
 
-std::map<msg_type, flatbuffers::Parser> initSchemaParsers()
+flatbuffers::Parser initSchemaParsers()
 {
-    std::map<msg_type, flatbuffers::Parser> SCHEMA_PARSERS;
-    std::map<msg_type, const char*> SCHEMA_MAP = {
-        {MT_SYS_DELTAS, syscollector_deltas_SCHEMA},
-        {MT_SYNC, rsync_SCHEMA},
-        {MT_SYSCHECK_DELTAS, syscheck_deltas_SCHEMA},
-    };
+    flatbuffers::Parser parser;
+    parser.opts.skip_unexpected_fields_in_json = true;
+    parser.opts.zero_on_float_to_int =
+        true; // Avoids issues with float to int conversion, custom option made for Wazuh.
 
-    for (const auto& [type, schema] : SCHEMA_MAP)
+    if (!parser.Parse(inventorySync_SCHEMA))
     {
-        SCHEMA_PARSERS[type] = flatbuffers::Parser();
-        SCHEMA_PARSERS[type].opts.skip_unexpected_fields_in_json = true;
-        SCHEMA_PARSERS[type].opts.zero_on_float_to_int =
-            true; // Avoids issues with float to int conversion, custom option made for Wazuh.
-
-        if (!SCHEMA_PARSERS[type].Parse(schema))
-        {
-            throw std::runtime_error("Error parsing schema, " + std::string(SCHEMA_PARSERS[type].error_));
-        }
+        throw std::runtime_error("Error parsing schema, " + std::string(parser.error_));
     }
-    return SCHEMA_PARSERS;
+
+    return parser;
 }
 
 /**
@@ -77,12 +67,9 @@ struct ServerInstance final
 
 std::map<std::string, std::shared_ptr<ServerInstance>> G_HTTPINSTANCES;
 
-void RouterModule::initialize(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction)
+void RouterModule::initialize(std::function<void(const modules_log_level_t, const std::string&)> logFunction)
 {
-    if (!GS_LOG_FUNCTION)
-    {
-        GS_LOG_FUNCTION = logFunction;
-    }
+    GS_LOG_FUNCTION = std::move(logFunction);
 }
 
 void RouterModule::start()
@@ -196,8 +183,14 @@ extern "C"
         int retVal = 0;
         try
         {
-            RouterModule::initialize([callbackLog](const modules_log_level_t level, const std::string& msg)
-                                     { callbackLog(level, msg.c_str(), ":router"); });
+            RouterModule::initialize(
+                [callbackLog](const modules_log_level_t level, const std::string& msg)
+                {
+                    if (callbackLog)
+                    {
+                        callbackLog(level, msg.c_str(), ":router");
+                    }
+                });
             logMessage(modules_log_level_t::LOG_DEBUG, "Router initialized successfully.");
         }
         catch (...)
@@ -299,6 +292,11 @@ extern "C"
             }
             else
             {
+                if (schema == nullptr)
+                {
+                    throw std::runtime_error("Error sending message to provider. Schema is empty");
+                }
+
                 flatbuffers::Parser parser;
                 parser.opts.skip_unexpected_fields_in_json = true;
                 parser.opts.zero_on_float_to_int =
@@ -328,55 +326,6 @@ extern "C"
         return retVal;
     }
 
-    int router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle,
-                                     const char* message,
-                                     const agent_ctx* agent_ctx,
-                                     const msg_type schema)
-    {
-        int retVal = -1;
-        try
-        {
-            if (!message)
-            {
-                throw std::runtime_error("Error sending message to provider. Message is empty");
-            }
-            else
-            {
-                static thread_local auto parserMap = initSchemaParsers();
-                static thread_local std::string buffer;
-
-                auto& parser = parserMap.at(schema);
-                parser.builder_.Clear();
-
-                buffer.clear();
-
-                SchemaAdapter::adaptJsonMessage(message, schema, agent_ctx, buffer);
-
-                if (buffer.empty())
-                {
-                    return 0;
-                }
-
-                if (!parser.Parse(buffer.c_str()))
-                {
-                    logMessage(modules_log_level_t::LOG_ERROR, "JSON message: " + buffer);
-                    throw std::runtime_error("Error parsing message, " + std::string(parser.error_));
-                }
-
-                std::vector<char> data(parser.builder_.GetBufferPointer(),
-                                       parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
-                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-                PROVIDERS.at(handle)->send(data);
-                retVal = 0;
-            }
-        }
-        catch (const std::exception& e)
-        {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
-        }
-        return retVal;
-    }
-
     void router_provider_destroy(ROUTER_PROVIDER_HANDLE handle)
     {
         std::unique_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
@@ -385,6 +334,56 @@ extern "C"
         {
             PROVIDERS.erase(it);
         }
+    }
+
+    int router_provider_send_fb_agent_ctx(ROUTER_PROVIDER_HANDLE handle,
+                                          const char* message,
+                                          const size_t message_size,
+                                          const agent_ctx* agent_ctx)
+    {
+        int retVal = -1;
+        try
+        {
+            if (!message)
+            {
+                throw std::runtime_error("Error sending message to provider. Message is empty");
+            }
+
+            if (!agent_ctx)
+            {
+                throw std::runtime_error("Error sending message to provider. Agent context is empty");
+            }
+
+            logMessage(modules_log_level_t::LOG_DEBUG,
+                       "Sending message to provider: " + std::string(message, message_size));
+            // Build agent info message
+            flatbuffers::FlatBufferBuilder builder;
+            std::vector<uint8_t> messageVector(message, message + message_size);
+            auto agentInfo = Wazuh::Sync::CreateAgentInfoDirect(builder,
+                                                                agent_ctx->id,
+                                                                agent_ctx->name,
+                                                                agent_ctx->ip,
+                                                                agent_ctx->version,
+                                                                agent_ctx->module,
+                                                                &messageVector);
+            builder.Finish(agentInfo);
+
+            if (builder.GetSize() == 0)
+            {
+                throw std::runtime_error("Error building message to provider. Message is empty");
+            }
+
+            std::vector<char> data(builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize());
+
+            std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
+            PROVIDERS.at(handle)->send(data);
+            retVal = 0;
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
+        }
+        return retVal;
     }
 
     void router_register_api_endpoint(const char* module,
@@ -414,6 +413,7 @@ extern "C"
 
         if (methodStr.compare("GET") == 0)
         {
+            // LCOV_EXCL_START
             logMessage(modules_log_level_t::LOG_INFO, "Registering GET endpoint: " + endpointStr);
             instance->server->Get(
                 endpoint,
@@ -430,9 +430,11 @@ extern "C"
                                "GET: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
                 });
+            // LCOV_EXCL_STOP
         }
         else if (methodStr.compare("POST") == 0)
         {
+            // LCOV_EXCL_START
             logMessage(modules_log_level_t::LOG_INFO, "Registering POST endpoint: " + endpointStr);
             instance->server->Post(
                 endpoint,
@@ -447,6 +449,7 @@ extern "C"
                                "POST: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
                 });
+            // LCOV_EXCL_STOP
         }
         else
         {
@@ -480,6 +483,7 @@ extern "C"
                 std::filesystem::path path {SOCKETPATH + socketPathStr};
                 std::filesystem::create_directories(path.parent_path());
                 instance->server->set_address_family(AF_UNIX);
+                // LCOV_EXCL_START
                 instance->server->set_exception_handler(
                     [](const auto& req, auto& res, std::exception_ptr ep)
                     {
@@ -498,14 +502,12 @@ extern "C"
                         }
                         res.status = 500;
                     });
-                instance->running = instance->server->listen(path.c_str(), true);
+                // LCOV_EXCL_STOP
 
-                if (instance->running == false)
-                {
-                    logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to listen on socket");
-                    return;
-                }
+                // Bind to socket and listen
+                instance->server->bind_to_port(path.c_str(), true);
 
+                // Set socket permissions
                 if (chmod(path.c_str(), 0660) == 0)
                 {
                     logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE, "API socket permissions set to 0660");
@@ -515,9 +517,18 @@ extern "C"
                     logMessage(modules_log_level_t::LOG_ERROR,
                                "Error setting API socket permissions: " + std::string(strerror(errno)));
                 }
+
+                // Listen
+                instance->running = instance->server->listen_after_bind();
+                if (instance->running == false)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to listen on socket");
+                    return;
+                }
             });
-        // Spin lock until server is ready
-        while (!instance->server->is_running() && instance->running)
+
+        // Spin lock until server is ready or thread finishes
+        while (!instance->server->is_running() && instance->serverThread.joinable())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
