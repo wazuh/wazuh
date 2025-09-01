@@ -20,11 +20,11 @@ relationships:
         - ciscat_read
         - decoders_all
         - lists_all
-        - rootcheck_all
+        - rootcheck_read
         - rules_all
         - mitre_read
         - sca_read
-        - syscheck_all
+        - syscheck_read
         - syscollector_read
         - logtest_all
         - task_status
