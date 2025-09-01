@@ -35,7 +35,6 @@ default_api_configuration = {
     "host": ["0.0.0.0", "::"],
     "port": 55000,
     "drop_privileges": True,
-    "experimental_features": False,
     "max_upload_size": 10485760,
     "authentication_pool_size": 2,
     "intervals": {

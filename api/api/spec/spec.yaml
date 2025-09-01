@@ -3712,10 +3712,6 @@ components:
               description: "Browsers will only expose the response to frontend JavaScript code if this is enabled"
               type: boolean
               default: false
-        experimental_features:
-          description: "Enable features under development"
-          type: boolean
-          default: false
         authentication_pool_size:
           description: "Number of processes dedicated to processing authentication requests"
           type: integer
@@ -5838,8 +5834,6 @@ tags:
     description: "Decoders management"
   - name: Events
     description: "Ingestion endpoints"
-  - name: Experimental
-    description: "Not ready for production endpoints. Use with caution"
   - name: Groups
     description: "Group of agents and centralized configurations"
   - name: Lists
@@ -8669,7 +8663,6 @@ paths:
                         host: 0.0.0.0
                         port: 55000
                         drop_privileges: true
-                        experimental_features: false
                         max_upload_size: 10485760
                         authentication_pool_size: 2
                         intervals:
@@ -8716,7 +8709,6 @@ paths:
                         host: 0.0.0.0
                         port: 55000
                         drop_privileges: true
-                        experimental_features: false
                         max_upload_size: 10485760
                         authentication_pool_size: 2
                         intervals:
@@ -8763,7 +8755,6 @@ paths:
                         host: 0.0.0.0
                         port: 55000
                         drop_privileges: true
-                        experimental_features: false
                         max_upload_size: 10485760
                         authentication_pool_size: 2
                         intervals:
@@ -11472,7 +11463,6 @@ paths:
                         host: 0.0.0.0
                         port: 55000
                         drop_privileges: true
-                        experimental_features: false
                         max_upload_size: 10485760
                         authentication_pool_size: 2
                         intervals:

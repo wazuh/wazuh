@@ -31,6 +31,3 @@ access:
 
 # Drop privileges (Run as wazuh user)
 drop_privileges: yes
-
-# Enable features under development
-experimental_features: yes
