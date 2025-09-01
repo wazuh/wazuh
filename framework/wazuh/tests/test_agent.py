@@ -1055,7 +1055,7 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
     assert result.total_failed_items == 0
 
 
-@pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error', [
+@pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error, agent_conf', [
     (
             {'000', '001', '002', '003', '004', '999'},
             {'1703': {'000'}, '1701': {'999'}, '1822': {'002'}, '1707': {'003', '004'}},
@@ -1067,14 +1067,16 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
                       ],
              'message': 'Success'},
             None,
-            False
+            False,
+            {"client": {"server": []}}
     ),
     (
             {'000', '001', '002'},
             {'1703': {'000'}, '1731': {'001', '002'}},
             {},
             {'os.version': 'unknown_version'},
-            False
+            False,
+            {"client": {"server": []}}
     ),
     (
             {'001', '006'},
@@ -1083,7 +1085,8 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
              'data': [{'error': 0, 'message': 'Success', 'agent': 6, 'task_id': 1}],
              'message': 'Success'},
             {'group': 'group-1'},
-            False
+            False,
+            {"client": {"server": []}}
     ),
     (
             {'001'},
@@ -1095,7 +1098,8 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
                       ],
              'message': 'Error'},
             None,
-            True
+            True,
+            {"client": {"server": []}}
     ),
     (
             {'001'},
@@ -1107,7 +1111,16 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
                       ],
              'message': 'Error'},
             None,
-            True
+            True,
+            {"client": {"server": []}}
+    ),
+    (
+            {'001'},
+            {'1761': {'001'}},
+            {},
+            None,
+            False,
+            {"client": {"server": [{"protocol": "udp"}], "crypto_method": "blowfish"}}
     )
 ])
 @patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
@@ -1116,7 +1129,7 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
 @patch('wazuh.core.wazuh_socket.WazuhSocket')
 @patch('socket.socket.connect')
 def test_agent_upgrade_agents(mock_socket, mock_wazuh_socket, mock_wdb, mock_client_keys, agent_set, expected_errors_and_items,
-                              result_from_socket, filters, raise_error):
+                              result_from_socket, filters, raise_error, agent_conf):
     """Test `upgrade_agents` function from agent module.
 
     Parameters
@@ -1131,12 +1144,14 @@ def test_agent_upgrade_agents(mock_socket, mock_wazuh_socket, mock_wdb, mock_cli
         Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
     raise_error : bool
         Boolean variable used to indicate that the
+    agent_conf : dict
+        Dictionary containing the configuration used by the agents.
     """
-
     with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
         core_upgrade_agents_mock.return_value = result_from_socket
-        # Mock an empty agent config for upgrade_agent's call to Agent.get_config():
-        mock_wazuh_socket.return_value.receive.return_value = (b'ok {"client": {"server": []}}')
+        # Mock an agent config for upgrade_agent's call to Agent.get_config():
+        socket_response = f'ok {dumps(agent_conf)}'.encode('utf-8')
+        mock_wazuh_socket.return_value.receive.return_value = socket_response
 
         if raise_error:
             # Upgrade expecting a Wazuh Exception
