@@ -12226,7 +12226,7 @@ normalize:
 
 ```
 
-field: parse_key_value(input_field, sep_char, delim_char, quote_char, esc_char, [...])
+field: parse_key_value(input_field, sep_token, delim_token, quote_char, esc_char, [...])
 ```
 
 ## Arguments
@@ -12234,8 +12234,8 @@ field: parse_key_value(input_field, sep_char, delim_char, quote_char, esc_char, 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
 | input_field | string | reference | Any string |
-| sep_char | string | value | Any string |
-| delim_char | string | value | Any string |
+| sep_token | string | value | Any string |
+| delim_token | string | value | Any string |
 | quote_char | string | value | Any string |
 | esc_char | string | value | Any string |
 
@@ -12251,11 +12251,11 @@ field: parse_key_value(input_field, sep_char, delim_char, quote_char, esc_char, 
 
 This parser can be used to extract key-value pairs from a keys-values list.
 If the parser succeeds, each value will be stored on a field named as its corresponding key.
-Keys are linked to values by the “separator” character.
-Each key-value pair is split from others, given the “delimiting” character.
+Keys are linked to values by the “separator” token (may be multi-character).
+Each key-value pair is split from others, given the “delimiting” token (may be multi-character).
 Additionally, the user must define a “quoting” and “escaping” character.
 All the characters contained between the “quoting” characters will be considered part of  a single value
-even the “separator” and “delimiting” characters. If the quoting is not correctly balanced, the parser will fail.
+even the “separator” and “delimiting” tokens. If the quoting is not correctly balanced, the parser will fail.
 The “escaping” character is used to escape the “quoting” characters that are intended to be used as literal characters.
 This helper function is typically used in the map stage.
 Checks whether an input fits a keys-values list format and, if it does, such pairs of keys and values are stored as new fields of the event.
@@ -12276,7 +12276,7 @@ Success key value parse
 ```yaml
 normalize:
   - map:
-      - target_field: parse_key_value($input_field, '=', ' ', '\\', "'")
+      - target_field: parse_key_value($input_field, '=', ' ', "'", '\\')
 ```
 
 #### Input Event
@@ -12312,7 +12312,7 @@ Failure key value parse
 ```yaml
 normalize:
   - map:
-      - target_field: parse_key_value($input_field, '=', ' ', '\\', "'")
+      - target_field: parse_key_value($input_field, '=', ' ', "'", '\\')
 ```
 
 #### Input Event
@@ -12329,6 +12329,143 @@ normalize:
 ```json
 {
   "input_field": "key1:value1",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 3
+
+Success with multi-char delimiter and single-char separator
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_key_value($input_field, '=', ' || ', "'", '\\')
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "k1=v1 || k2=v2",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "k1=v1 || k2=v2",
+  "target_field": {
+    "k1": "v1",
+    "k2": "v2"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+Success with single-char delimiter and multi-char separator
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_key_value($input_field, '::=', ',', "'", '\\')
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "a::=x,b::=y",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "a::=x,b::=y",
+  "target_field": {
+    "a": "x",
+    "b": "y"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Success multi-character tokens
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_key_value($input_field, '::=', ' || ', '"', '\\')
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "k1::=v1 || k2::=v2",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "k1::=v1 || k2::=v2",
+  "target_field": {
+    "k1": "v1",
+    "k2": "v2"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+Failure when separator and delimiter are the same
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_key_value($input_field, '=', '=', "'", '\\')
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "a=b=c",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "a=b=c",
   "target_field": "any_value"
 }
 ```
