@@ -9,8 +9,11 @@
  * Foundation.
  */
 #include <cstdio>
+
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
+
+#include <mock_sysinfo.hpp>
 
 constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 
@@ -20,24 +23,6 @@ void SyscollectorImpTest::TearDown() {};
 
 using ::testing::_;
 using ::testing::Return;
-
-class SysInfoWrapper: public ISysInfo
-{
-    public:
-        SysInfoWrapper() = default;
-        ~SysInfoWrapper() = default;
-        MOCK_METHOD(nlohmann::json, hardware, (), (override));
-        MOCK_METHOD(nlohmann::json, packages, (), (override));
-        MOCK_METHOD(void, packages, (std::function<void(nlohmann::json&)>), (override));
-        MOCK_METHOD(nlohmann::json, os, (), (override));
-        MOCK_METHOD(nlohmann::json, networks, (), (override));
-        MOCK_METHOD(nlohmann::json, processes, (), (override));
-        MOCK_METHOD(void, processes, (std::function<void(nlohmann::json&)>), (override));
-        MOCK_METHOD(nlohmann::json, ports, (), (override));
-        MOCK_METHOD(nlohmann::json, hotfixes, (), (override));
-        MOCK_METHOD(nlohmann::json, groups, (), (override));
-        MOCK_METHOD(nlohmann::json, users, (), (override));
-};
 
 class CallbackMock
 {
@@ -137,7 +122,7 @@ static const auto expectedPersistUser
 
 TEST_F(SyscollectorImpTest, defaultCtor)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -306,7 +291,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
 #ifdef WIN32
     GTEST_SKIP() << "Skipping intervalSeconds test on Windows due to sync protocol issues in Wine environment";
 #endif
-    const auto spInfoWrapper {std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -358,7 +343,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
 
 TEST_F(SyscollectorImpTest, noScanOnStart)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
     EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
@@ -395,7 +380,7 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
 
 TEST_F(SyscollectorImpTest, noHardware)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
@@ -555,7 +540,7 @@ TEST_F(SyscollectorImpTest, noHardware)
 
 TEST_F(SyscollectorImpTest, noOs)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -714,7 +699,7 @@ TEST_F(SyscollectorImpTest, noOs)
 
 TEST_F(SyscollectorImpTest, noNetwork)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -849,7 +834,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
 
 TEST_F(SyscollectorImpTest, noPackages)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -1006,7 +991,7 @@ TEST_F(SyscollectorImpTest, noPackages)
 
 TEST_F(SyscollectorImpTest, noPorts)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -1165,7 +1150,7 @@ TEST_F(SyscollectorImpTest, noPorts)
 
 TEST_F(SyscollectorImpTest, noPortsAll)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -1337,7 +1322,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
 
 TEST_F(SyscollectorImpTest, noProcesses)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -1494,7 +1479,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
 
 TEST_F(SyscollectorImpTest, noHotfixes)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -1654,7 +1639,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
 
 TEST_F(SyscollectorImpTest, noUsers)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -1815,7 +1800,7 @@ TEST_F(SyscollectorImpTest, noUsers)
 
 TEST_F(SyscollectorImpTest, noGroups)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -1975,7 +1960,7 @@ TEST_F(SyscollectorImpTest, noGroups)
 
 TEST_F(SyscollectorImpTest, portAllEnable)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"(
     [
         {
@@ -2154,7 +2139,7 @@ TEST_F(SyscollectorImpTest, portAllEnable)
 
 TEST_F(SyscollectorImpTest, portAllDisable)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(R"(
     [
         {
@@ -2321,7 +2306,7 @@ TEST_F(SyscollectorImpTest, portAllDisable)
 
 TEST_F(SyscollectorImpTest, PackagesDuplicated)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
 
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
@@ -2399,7 +2384,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
 
 TEST_F(SyscollectorImpTest, sanitizeJsonValues)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":" Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":" Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz ", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(

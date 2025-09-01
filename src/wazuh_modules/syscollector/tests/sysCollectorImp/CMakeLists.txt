@@ -6,6 +6,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+
+include_directories(${SRC_FOLDER}/data_provider/tests/mocks/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
 include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
