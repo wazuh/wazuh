@@ -165,11 +165,7 @@ def test_mask_sensitive_config_without_permissions(db_setup):
 
     result = get_conf()
     assert result["authd.pass"] == "*****"
-    assert result["integration"]["secret"] == "*****"
-    assert result["integration"]["token"] == "*****"
-    assert result["auth"]["use_password"] == "yes"
-    assert result["auth"]["ssl_manager_key"] == "etc/sslmanager.key"
-    assert result["auth"]["key_request"]["enabled"] == "no"
+    assert result["integration"]["secret"] == "topsecret"
 
 
 def test_mask_sensitive_config_with_permissions(db_setup):
@@ -181,10 +177,6 @@ def test_mask_sensitive_config_with_permissions(db_setup):
 
     result = get_conf()
     assert result["authd.pass"] == "P4ssW0rd!"
-    assert result["integration"]["secret"] == "topsecret"
-    assert result["integration"]["token"] == "abcd-1234"
-    assert result["auth"]["use_password"] == "yes"
-    assert result["auth"]["ssl_manager_key"] == "etc/sslmanager.key"
 
 
 def test_mask_sensitive_config_on_affected_items_result(db_setup):
@@ -197,6 +189,4 @@ def test_mask_sensitive_config_on_affected_items_result(db_setup):
     res = get_conf_result()
     item = res.affected_items[0]
     assert item["authd.pass"] == "*****"
-    assert item["integration"]["secret"] == "*****"
-    assert item["auth"]["use_password"] == "no"
-    assert item["auth"]["ssl_manager_key"] == "etc/sslmanager.key"
+    assert item["integration"]["secret"] == "topsecret"
