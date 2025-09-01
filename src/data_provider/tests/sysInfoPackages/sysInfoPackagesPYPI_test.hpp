@@ -19,7 +19,7 @@
 #include <filesystem>
 #include <ifile_io_utils.hpp>
 #include <ifilesystem_wrapper.hpp>
-#include "../../../shared_modules/file_helper/filesystem/tests/mocks/mock_filesystem_wrapper.hpp"
+#include <mock_filesystem_wrapper.hpp>
 
 class MockFileIO : public IFileIOUtils
 {
