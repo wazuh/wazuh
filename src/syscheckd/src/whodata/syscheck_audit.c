@@ -25,6 +25,8 @@
 #define AUDIT_CONF_LINK             "af_wazuh.conf"
 #define BUF_SIZE OS_MAXSTR
 #define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
+#define VERCODE(M,m,p)  ((((unsigned)(M) & 0xFF) << 16) | (((unsigned)(m) & 0xFF) << 8) | ((unsigned)(p) & 0xFF))
+
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -34,10 +36,12 @@ pthread_cond_t audit_thread_started;
 
 unsigned int count_reload_retries;
 
-static const char *const AUDISP_OLD_CONFIGURATION = "active = yes\ndirection = out\npath = builtin_af_unix\n"
-                                                "type = builtin\nargs = 0640 %s\nformat = string\n";
-static const char *const AUDISP_CONFIGURATION = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
-                                                "type = always\nargs = 0640 %s\nformat = binary\n";
+static const char *const AUDISP_CONFIGURATION_0 = "active = yes\ndirection = out\npath = builtin_af_unix\n"
+                                                  "type = builtin\nargs = 0640 %s\nformat = string\n";
+static const char *const AUDISP_CONFIGURATION_1 = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
+                                                  "type = always\nargs = 0640 %s\nformat = string\n";
+static const char *const AUDISP_CONFIGURATION_2 = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
+                                                  "type = always\nargs = 0640 %s string\nformat = binary\n";
 
 w_queue_t * audit_queue;
 
@@ -59,6 +63,24 @@ typedef struct _audit_data_s {
  * @param [out] audit_data Struct that saves the audit socket to read the events from and the audit mode.
  */
 static void *audit_main(audit_data_t *audit_data);
+
+int get_audit_version_code(unsigned *out_code) {
+    if (!out_code) return -1;
+
+    FILE *p = popen("auditctl -v 2>/dev/null", "r");
+    if (!p) return -1;
+
+    int M = -1, m = -1, pch = -1;
+    // Expect exact format "auditctl version X.Y.Z"
+    int n = fscanf(p, "auditctl version %d.%d.%d", &M, &m, &pch);
+    pclose(p);
+
+    if (n != 3) return -1;
+    if ((unsigned)M > 255 || (unsigned)m > 255 || (unsigned)pch > 255) return -1;
+
+    *out_code = VERCODE(M, m, pch);
+    return 0;
+}
 
 int check_auditd_enabled(void) {
     PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
@@ -112,26 +134,33 @@ int configure_audisp(const char *audisp_path, const char *abs_path_socket, const
         return -1;
     }
 
-    fwrite(audisp_config, sizeof(char), strlen(audisp_config), fp);
+    if (fwrite(audisp_config, sizeof(char), strlen(audisp_config), fp) < strlen(audisp_config)) {
+        merror(FWRITE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        fclose(fp);
+        return -1;
+    }
 
     if (fclose(fp)) {
         merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
     }
 
-    if (symlink(buffer, audisp_path) < 0) {
+    if (link(buffer, audisp_path) < 0) {
         switch (errno) {
         case EEXIST:
             if (unlink(audisp_path) < 0) {
                 merror(UNLINK_ERROR, audisp_path, errno, strerror(errno));
                 return -1;
             }
-
-            if (symlink(buffer, audisp_path) == 0) {
+            if (link(buffer, audisp_path) == 0) {
                 break;
             }
 
-        // Fallthrough
+        case EXDEV:
+            merror("Hard link across filesystems not allowed: '%s' -> '%s' (%d) %s",
+                   buffer, audisp_path, errno, strerror(errno));
+            return -1;
+
         default:
             merror(LINK_ERROR, audisp_path, AUDIT_CONF_FILE, errno, strerror(errno));
             return -1;
@@ -159,11 +188,28 @@ int set_auditd_config(void) {
     char audisp_config[256] = {0};
 
     if (IsDir(PLUGINS_DIR_AUDIT) == 0) {
+        unsigned vcode;
+
         strcpy(plugin_dir, PLUGINS_DIR_AUDIT);
-        strcpy(audisp_config, AUDISP_CONFIGURATION);
+        if (get_audit_version_code(&vcode) != 0) {
+            mdebug2("Could not get audit version code. Using default configuration.");
+            strcpy(audisp_config, AUDISP_CONFIGURATION_2);
+        }
+
+        if (vcode < VERCODE(3, 1, 1)) {
+            strcpy(audisp_config, AUDISP_CONFIGURATION_0);
+        } else if (vcode < VERCODE(3, 1, 3)) {
+            strcpy(audisp_config, AUDISP_CONFIGURATION_1);
+        } else if (vcode < VERCODE(3, 1, 5)) {
+            strcpy(audisp_config, AUDISP_CONFIGURATION_2);
+        } else if (vcode < VERCODE(4, 0, 3)) {
+            strcpy(audisp_config, AUDISP_CONFIGURATION_1);
+        } else {
+            strcpy(audisp_config, AUDISP_CONFIGURATION_2);
+        }
     } else if (IsDir(PLUGINS_OLD_DIR_AUDISP) == 0) {
         strcpy(plugin_dir, PLUGINS_OLD_DIR_AUDISP);
-        strcpy(audisp_config, AUDISP_OLD_CONFIGURATION);
+        strcpy(audisp_config, AUDISP_CONFIGURATION_0);
     } else {
         return 0;
     }
