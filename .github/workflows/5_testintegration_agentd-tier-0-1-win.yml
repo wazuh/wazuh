@@ -105,3 +105,10 @@ jobs:
         run: |
           cd C:\wazuh\tests\integration
           python -m pytest --tier 0 --tier 1 test_agentd\
+      # Upload ossec.log as artifact after test execution
+      - name: Upload ossec.log
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ossec-log-agentd-win
+          path: "C:\\Program Files (x86)\\ossec-agent\\ossec.log"
