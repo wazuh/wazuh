@@ -1239,9 +1239,9 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         file_hash_sha256 TEXT,
         checksum TEXT,
         item_id TEXT,
-        PRIMARY KEY (browser_name,user_id,browser_profile_name,package_name)) WITHOUT ROWID;)"
+        PRIMARY KEY (browser_name,user_id,browser_profile_name,package_name,package_version)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> BROWSER_EXTENSIONS_ITEM_ID_FIELDS{"browser_name", "user_id", "browser_profile_name", "package_name"};
+static const std::vector<std::string> BROWSER_EXTENSIONS_ITEM_ID_FIELDS{"browser_name", "user_id", "browser_profile_name", "package_name", "package_version"};
 
 
 constexpr auto NET_IFACE_TABLE              { "dbsync_network_iface"        };

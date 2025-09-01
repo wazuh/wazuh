@@ -811,7 +811,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = ext.value("version",             UNKNOWN_VALUE);
+            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("author",              UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
@@ -862,7 +862,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = ext.value("version",             UNKNOWN_VALUE);
+            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("copyright",           UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = ext.value("bundle_version",      UNKNOWN_VALUE);
@@ -896,7 +896,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = ext.value("version",             UNKNOWN_VALUE);
+            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
