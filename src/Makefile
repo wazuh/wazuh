@@ -574,7 +574,6 @@ endif
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
 	SYSCOLLECTOR_LIB+=-lsyscollector
 endif
-SCA_LIB+=-lsca
 
 
 ####################
