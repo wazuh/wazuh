@@ -5509,8 +5509,6 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
     will_return(__wrap_OSHash_Get, w_evt);
 
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6319): No configuration found for (file):'c:\\a\\path'");
-    expect_string(__wrap__mdebug2, formatted_msg,
         "(6243): The 'c:\\a\\path' directory has been discarded because it is not being monitored in whodata mode.");
 
     result = whodata_callback(action, NULL, event);
