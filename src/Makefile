@@ -126,7 +126,6 @@ MINGW_HOST=unknown
 USE_MSGPACK_OPT=yes
 DISABLE_JEMALLOC?=no
 DISABLE_SYSC?=no
-DISABLE_CISCAT?=no
 IMAGE_TRUST_CHECKS?=1
 CA_NAME?=DigiCert Assured ID Root CA
 HTTP_REQUEST_BRANCH?=ef2cb3029b4b7649791951268c13baeb1de6085e
@@ -364,10 +363,6 @@ endif
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	DEFINES+=-DENABLE_SYSC
-endif
-
-ifeq (,$(filter ${DISABLE_CISCAT},YES yes y Y 1))
-	DEFINES+=-DENABLE_CISCAT
 endif
 
 
@@ -623,7 +618,6 @@ help: failtarget
 	@echo "   make DISABLE_JEMALLOC=yes    						Not to build the JEMalloc library. Allowed values are 1, yes, YES, y, and Y, otherwise, the flag is ignored"
 	@echo "   make OFLAGS=-Ox              						Overrides optimization level"
 	@echo "   make DISABLE_SYSC=yes        						Not to build the Syscollector module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
-	@echo "   make DISABLE_CISCAT=yes      						Not to build the CIS-CAT module (for unsupported systems). Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make OPTIMIZE_CPYTHON=yes    						Enable this flag to optimize the python interpreter build, which is performed when used PYTHON_SOURCE. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make PYTHON_SOURCE=yes       						Used along the deps target. Downloads the sources needed to build the python interpreter. Allowed values are 1, yes, YES, y and Y, otherwise, the flag is ignored"
 	@echo "   make IMAGE_TRUST_CHECKS=1     					This flag controls the dll and exe files signature verification mechanism. Allowed values are 0 (disabled), 1 (warning only) and 2 (full enforce). The default value is 1."
@@ -660,7 +654,6 @@ settings:
 	@echo "    USE_SELINUX:        ${USE_SELINUX}"
 	@echo "    USE_AUDIT:          ${USE_AUDIT}"
 	@echo "    DISABLE_SYSC:       ${DISABLE_SYSC}"
-	@echo "    DISABLE_CISCAT:     ${DISABLE_CISCAT}"
 	@echo "    IMAGE_TRUST_CHECKS: ${IMAGE_TRUST_CHECKS}"
 	@echo "    CA_NAME:            ${CA_NAME}"
 	@echo "Mysql settings:"
@@ -692,7 +685,6 @@ BUILD_SERVER+=wazuh-db
 BUILD_SERVER+=wazuh-keystore
 
 BUILD_AGENT+=wazuh-agentd
-BUILD_AGENT+=agent-auth
 BUILD_AGENT+=wazuh-logcollector
 BUILD_AGENT+=wazuh-syscheckd
 BUILD_AGENT+=wazuh-execd
@@ -767,7 +759,7 @@ $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
 WINDOWS_LIBS:=win32/syscollector win32/syscheck
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe
+WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe
 WINDOWS_ACTIVE_RESPONSES:=win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
 ifeq (${MAKECMDGOALS},winagent)
@@ -1887,12 +1879,6 @@ crypto_aes_o := $(crypto_aes_c:.c=.o)
 os_crypto/aes/%.o: os_crypto/aes/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-crypto_md5_sha1_c := os_crypto/md5_sha1/md5_sha1_op.c
-crypto_md5_sha1_o := $(crypto_md5_sha1_c:.c=.o)
-
-os_crypto/md5_sha1/%.o: os_crypto/md5_sha1/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
 crypto_md5_sha1_sha256_c := os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.c
 crypto_md5_sha1_sha256_o := $(crypto_md5_sha1_sha256_c:.c=.o)
 
@@ -1918,17 +1904,16 @@ os_crypto/signature/%.o: os_crypto/signature/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
 
 
-crypto_o := ${crypto_blowfish_o} \
-					 ${crypto_md5_o} \
-					 ${crypto_sha1_o} \
-					 ${crypto_shared_o} \
-					 ${crypto_md5_sha1_o} \
-					 ${crypto_md5_sha1_sha256_o} \
-					 ${crypto_sha256_o} \
-					 ${crypto_sha512_o} \
-					 ${crypto_aes_o} \
-					 ${crypto_hmac_o} \
-					 ${crypto_signature_o}
+crypto_o :=	${crypto_blowfish_o} \
+			${crypto_md5_o} \
+			${crypto_sha1_o} \
+			${crypto_shared_o} \
+			${crypto_md5_sha1_sha256_o} \
+			${crypto_sha256_o} \
+			${crypto_sha512_o} \
+			${crypto_aes_o} \
+			${crypto_hmac_o} \
+			${crypto_signature_o}
 
 #### libwazuh #########
 
@@ -2227,9 +2212,6 @@ os_auth_o := $(os_auth_c:.c=.o)
 os_auth/%.o: os_auth/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -I./os_auth -DARGV0=\"wazuh-authd\" -c $^ -o $@
 
-agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
 	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
@@ -2424,9 +2406,6 @@ win32/version-app.o: win32/version.rc
 win32/ui_resource.o: win32/ui/win32ui.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
-win32/auth_resource.o: win32/agent-auth.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
 win32/wazuh_agent_resource.o: win32/wazuh-agent.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
@@ -2484,14 +2463,8 @@ win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
 win32/ui_resource.o: win32/ui/win32ui.rc
 	${OSSEC_WINDRES} -i $< -o $@
 
-win32/auth_resource.o: win32/agent-auth.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
 win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_rk.o ${win32_ui_o}
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
-
-win32/agent-auth.exe: win32/auth_resource.o win32/version-app.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o addagent/validate.o
-	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
 win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o active-response/active_responses.o active-response/restart-wazuh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o shared/utf8_winapi_wrapper.o shared/utf8_op.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -lmpr -o $@

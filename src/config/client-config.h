@@ -21,7 +21,6 @@ typedef struct agent_flags_t {
 typedef struct agent_server {
     char * rip;
     int port;
-    int protocol;
     uint32_t network_interface;
     int max_retries; ///< Maximum number of connection retries.
     int retry_interval; ///< Time interval between connection attempts.
@@ -38,13 +37,11 @@ typedef struct _agent {
     int server_count; ///< Holds the total amount of servers
     int notify_time;
     int max_time_reconnect_try;
-    long force_reconnect_interval;
     int main_ip_update_interval;
     char *profile;
     volatile int buffer;
     int buflength;
     int events_persec;
-    int crypto_method;
     int package_uninstallation;
     wlabel_t *labels; /* null-ended label set */
     agent_flags_t flags;

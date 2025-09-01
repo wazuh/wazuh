@@ -7,5 +7,3 @@
                     value: '127.0.0.1'
                 - port:
                     value: '1514'
-                - protocol:
-                    value: 'PROTOCOL'

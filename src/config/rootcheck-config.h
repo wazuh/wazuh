@@ -20,14 +20,8 @@
 typedef struct _rkconfig {
     const char *workdir;
     char *basedir;
-    char *rootkit_files;
-    char *rootkit_trojans;
-    char **unixaudit;
     char **ignore;
     OSMatch **ignore_sregex;
-    char *winaudit;
-    char *winmalware;
-    char *winapps;
     char **alert_msg;
 
     FILE *fp;
@@ -44,21 +38,10 @@ typedef struct _rkconfig {
 
     struct _checks {
         short rc_dev;
-        short rc_files;
         short rc_if;
         short rc_pids;
         short rc_ports;
         short rc_sys;
-        short rc_trojans;
-
-#ifdef WIN32
-        short rc_winaudit;
-        short rc_winmalware;
-        short rc_winapps;
-#else
-        short rc_unixaudit;
-#endif
-
     } checks;
 
 } rkconfig;
