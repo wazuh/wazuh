@@ -47,16 +47,40 @@ bool FirefoxAddonsProvider::isValidFirefoxProfile(const std::string& profilePath
     return Utils::existsRegular(Utils::joinPaths(profilePath, FIREFOX_ADDONS_FILE));
 }
 
+bool FirefoxAddonsProvider::isValidPath(const std::string& path)
+{
+    if (path.empty() ||
+            path.find("..") != std::string::npos ||
+            path.find("//") != std::string::npos ||
+            path.length() > MAX_PATH_LENGTH)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 FirefoxAddons FirefoxAddonsProvider::getAddons()
 {
     FirefoxAddons firefoxAddons;
     const std::string homePath = m_firefoxAddonsWrapper->getHomePath();
 
+    if (!isValidPath(homePath))
+    {
+        return firefoxAddons;
+    }
+
     for (auto userHome : Utils::enumerateDir(homePath))
     {
+        // Ignore ".", ".." and hidden directories
+        if (Utils::startsWith(userHome, "."))
+        {
+            continue;
+        }
+
         userHome = Utils::joinPaths(homePath, userHome);
 
-        if (!Utils::existsDir(userHome))
+        if (!Utils::existsDir(userHome) || !isValidPath(userHome))
         {
             continue;
         }
@@ -67,7 +91,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
         {
             const std::string firefoxInstallationPath = Utils::joinPaths(userHome, path);
 
-            if (!Utils::existsDir(firefoxInstallationPath))
+            if (!Utils::existsDir(firefoxInstallationPath) || !isValidPath(firefoxInstallationPath))
             {
                 continue;
             }
@@ -76,7 +100,7 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
             {
                 entity = Utils::joinPaths(firefoxInstallationPath, entity);
 
-                if (!Utils::existsDir(entity))
+                if (!Utils::existsDir(entity) || !isValidPath(entity))
                 {
                     continue;
                 }
@@ -93,6 +117,12 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
                 }
 
                 std::string extensionsFilePath = Utils::joinPaths(entity, FIREFOX_ADDONS_FILE);
+
+                if (!isValidPath(extensionsFilePath))
+                {
+                    continue;
+                }
+
                 std::ifstream extensionsFile(extensionsFilePath);
 
                 if (!extensionsFile.is_open())

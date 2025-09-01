@@ -35,6 +35,7 @@ const std::vector<std::string> FIREFOX_PATHS =
 #endif
 
 #define FIREFOX_ADDONS_FILE "extensions.json"
+#define MAX_PATH_LENGTH 4096
 
 const std::map<std::string, std::string> FIREFOX_ADDON_KEYS =
 {
@@ -112,6 +113,13 @@ class FirefoxAddonsProvider
          * @return true if valid, false otherwise.
          */
         bool isValidFirefoxProfile(const std::string& profilePath);
+
+        /**
+         * @brief Validates path security to prevent directory traversal attacks.
+         * @param path Path to validate.
+         * @return true if path is safe, false otherwise.
+         */
+        bool isValidPath(const std::string& path);
 
         /**
          * @brief Retrieves the list of Firefox addons from available profiles.

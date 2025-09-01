@@ -369,6 +369,19 @@ IEExtensionsProvider::IEExtensionsProvider(std::shared_ptr<IIEExtensionsWrapper>
 
 IEExtensionsProvider::IEExtensionsProvider() : m_ieExtensionsWrapper(std::make_shared<IEExtensionsWrapper>()) {}
 
+bool IEExtensionsProvider::isValidPath(const std::string& path)
+{
+    if (path.empty() ||
+            path.find("..") != std::string::npos ||
+            path.find("//") != std::string::npos ||
+            path.length() > MAX_PATH_LENGTH)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 nlohmann::json IEExtensionsProvider::collect()
 {
     nlohmann::json jExtensions = nlohmann::json::array();
@@ -380,6 +393,12 @@ nlohmann::json IEExtensionsProvider::collect()
 
         for (const auto& exec : executables)
         {
+            // Validate executable path for security
+            if (!isValidPath(exec))
+            {
+                continue;
+            }
+
             nlohmann::json jExtension;
             jExtension["name"] = getExecutableName(registryPath);
             jExtension["path"] = exec;

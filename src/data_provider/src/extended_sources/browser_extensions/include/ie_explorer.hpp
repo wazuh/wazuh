@@ -60,6 +60,11 @@ const std::map<HKEY, std::string> HKEY_TO_STRING_MAP =
 const std::string SEPARATOR = "\\";
 
 /**
+ * @brief Maximum allowed path length for security validation.
+ */
+#define MAX_PATH_LENGTH 4096
+
+/**
  * @class IEExtensionsProvider
  * @brief Provides functionality to enumerate Internet Explorer extensions
  *        (such as Browser Helper Objects and URL search hooks) from the Windows Registry.
@@ -200,6 +205,13 @@ class IEExtensionsProvider
          * @return Executable file name.
          */
         std::string getExecutableName(const std::string& registryPath);
+
+        /**
+         * @brief Validates path security to prevent directory traversal attacks.
+         * @param path Path to validate.
+         * @return true if path is safe, false otherwise.
+         */
+        bool isValidPath(const std::string& path);
 
         /**
          * @brief Wrapper used for accessing the Windows Registry.

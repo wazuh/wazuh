@@ -28,6 +28,19 @@ SafariExtensionsProvider::SafariExtensionsProvider(
 SafariExtensionsProvider::SafariExtensionsProvider() :
     m_browserExtensionsWrapper(std::make_shared<BrowserExtensionsWrapper>()) {}
 
+bool SafariExtensionsProvider::isValidPath(const std::string& path)
+{
+    if (path.empty() ||
+            path.find("..") != std::string::npos ||
+            path.find("//") != std::string::npos ||
+            path.length() > MAX_PATH_LENGTH)
+    {
+        return false;
+    }
+
+    return true;
+}
+
 nlohmann::json SafariExtensionsProvider::toJson(const BrowserExtensionsData& extensions)
 {
     nlohmann::json results = nlohmann::json::array();
@@ -55,10 +68,11 @@ nlohmann::json SafariExtensionsProvider::collect()
     // Check if applicationsPathString exists
     const std::string applicationsPathString = m_browserExtensionsWrapper->getApplicationsPath();
 
-    if (!Utils::existsDir(applicationsPathString))
+    if (!Utils::existsDir(applicationsPathString) || !isValidPath(applicationsPathString))
     {
         // TODO: Improve error handling
-        // std::cerr << "Path does not exist: " << applicationsPathString << std::endl;
+        // std::cerr << "Path does not exist or is invalid: " << applicationsPathString << std::endl;
+        return toJson(BrowserExtensionsData());
     }
 
     BrowserExtensionsData browserExtensions;
@@ -67,6 +81,12 @@ nlohmann::json SafariExtensionsProvider::collect()
     for (auto& appPath : Utils::enumerateDir(applicationsPathString))
     {
         appPath = applicationsPathString + "/" + appPath;
+
+        // Validate app path for security
+        if (!isValidPath(appPath))
+        {
+            continue;
+        }
 
         // For each app directory, exclude the ones in EXTENSIONS_APP_DIRS_TO_EXCLUDE
         std::string appName = "/" + Utils::getFilename(appPath);
@@ -80,7 +100,7 @@ nlohmann::json SafariExtensionsProvider::collect()
         {
             auto appPluginsPath = appPath + "/" + APP_PLUGINS_PATH;
 
-            if (!Utils::existsDir(appPluginsPath))
+            if (!Utils::existsDir(appPluginsPath) || !isValidPath(appPluginsPath))
             {
                 continue;
             }
@@ -89,6 +109,11 @@ nlohmann::json SafariExtensionsProvider::collect()
             {
                 element = appPluginsPath + element;
 
+                if (!isValidPath(element))
+                {
+                    continue;
+                }
+
                 if (Utils::getFileExtension(element) != ".appex")
                 {
                     continue;
@@ -96,7 +121,7 @@ nlohmann::json SafariExtensionsProvider::collect()
 
                 auto appPluginPlistPath = element + "/" + APP_PLUGIN_PLIST_PATH;
 
-                if (!Utils::existsRegular(appPluginPlistPath))
+                if (!Utils::existsRegular(appPluginPlistPath) || !isValidPath(appPluginPlistPath))
                 {
                     continue;
                 }

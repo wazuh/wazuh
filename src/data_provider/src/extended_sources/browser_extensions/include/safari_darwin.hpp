@@ -17,6 +17,7 @@
 #define APP_PLUGINS_PATH "Contents/PlugIns/"
 #define APP_PLUGIN_PLIST_PATH "Contents/Info.plist"
 #define SAFARI_FILTER_STRING "com.apple.Safari"
+#define MAX_PATH_LENGTH 4096
 
 struct BrowserExtensionData
 {
@@ -82,5 +83,11 @@ class SafariExtensionsProvider
         /// The method ensures that the data is structured correctly and includes all necessary fields for
         /// representing browser extensions in a JSON format.
         nlohmann::json toJson(const BrowserExtensionsData& extensions);
+
+        /// @brief Validates path security to prevent directory traversal attacks.
+        /// @param path Path to validate.
+        /// @return true if path is safe, false otherwise.
+        bool isValidPath(const std::string& path);
+
         std::shared_ptr<IBrowserExtensionsWrapper> m_browserExtensionsWrapper;
 };
