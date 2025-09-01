@@ -184,11 +184,12 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
     if test_metadata['ENROLL'] == 'yes':
         # Start RemotedSimulator for successfully enrollment
         remoted_server = RemotedSimulator(protocol = 'tcp')
-        remoted_server.start()
-        wait_connect()
-
-        # Shutdown RemotedSimulator
-        remoted_server.destroy()
+        try:
+            remoted_server.start()
+            wait_connect()
+        finally:
+            # Shutdown RemotedSimulator
+            remoted_server.destroy()
 
     # Wait for server rollback
     wait_server_rollback()
