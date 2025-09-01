@@ -28,7 +28,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *oslocalfile = "localfile";                      /* Agent Config  */
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
-    const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osbuffer = "client_buffer";                     /* Agent Buffer Config  */
     const char *oscommand = "command";                          /* ? Config      */
     const char *osactive_response = "active-response";          /* Agent Config  */
@@ -47,6 +46,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *task_manager = "task-manager";                  /* Task Manager Module */
     const char *wazuh_db = "wdb";                               /* Wazuh-DB Daemon */
 #ifndef WIN32
+    const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osauthd = "auth";                               /* Authd Config */
 #ifndef CLIENT
     const char *key_polling = "agent-key-polling";              /* Deprecated Agent Key Polling module */
@@ -74,7 +74,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossyscheck) == 0) {
-            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
+            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
             if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {

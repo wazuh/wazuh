@@ -1,6 +1,4 @@
 full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_error
-C:\Program Files (x86)\ossec-agent\agent-auth.exe,,,777,file,-rwxrwxrwx,,
-C:\Program Files (x86)\ossec-agent\agent-auth.exe.manifest,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\client.keys,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\dbsync.dll,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\help.txt,,,666,file,-rw-rw-rw-,,
@@ -30,9 +28,4 @@ C:\Program Files (x86)\ossec-agent\active-response\bin\restart-wazuh.exe,,,777,f
 C:\Program Files (x86)\ossec-agent\active-response\bin\route-null.exe,,,777,file,-rwxrwxrwx,,
 C:\Program Files (x86)\ossec-agent\queue\syscollector\norm_config.json,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\ruleset\sca\cis_win10_enterprise.yml,,,666,file,-rw-rw-rw-,,
-C:\Program Files (x86)\ossec-agent\shared\rootkit_files.txt,,,666,file,-rw-rw-rw-,,
-C:\Program Files (x86)\ossec-agent\shared\rootkit_trojans.txt,,,666,file,-rw-rw-rw-,,
-C:\Program Files (x86)\ossec-agent\shared\win_applications_rcl.txt,,,666,file,-rw-rw-rw-,,
-C:\Program Files (x86)\ossec-agent\shared\win_audit_rcl.txt,,,666,file,-rw-rw-rw-,,
-C:\Program Files (x86)\ossec-agent\shared\win_malware_rcl.txt,,,666,file,-rw-rw-rw-,,
 C:\Program Files (x86)\ossec-agent\VERSION.json,,,666,file,-rw-rw-rw-,,

@@ -112,12 +112,6 @@ DWORD WINAPI w_rootcheck_thread(__attribute__((unused)) void * args);
 void * w_rootcheck_thread(__attribute__((unused)) void * args);
 #endif
 /*** Plugins prototypes ***/
-void check_rc_files(const char *basedir, FILE *fp);
-void check_rc_trojans(const char *basedir, FILE *fp);
-void check_rc_unixaudit(FILE *fp, OSList *p_list);
-void check_rc_winaudit(FILE *fp, OSList *p_list);
-void check_rc_winmalware(FILE *fp, OSList *p_list);
-void check_rc_winapps(FILE *fp, OSList *p_list);
 void check_rc_dev(const char *basedir);
 void check_rc_sys(const char *basedir);
 void check_rc_pids(void);

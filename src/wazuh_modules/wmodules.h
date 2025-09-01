@@ -62,13 +62,10 @@ typedef enum crypto_type {
 
 // Inclusion of modules
 
-#include "wm_oscap.h"
 #include "wm_database.h"
 #include "wm_syscollector.h"
 #include "wm_command.h"
-#include "wm_ciscat.h"
 #include "wm_aws.h"
-#include "wm_osquery_monitor.h"
 #include "wm_download.h"
 #include "wm_azure.h"
 #include "wm_docker.h"
@@ -88,7 +85,7 @@ typedef enum crypto_type {
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.
-extern int wm_max_eps;          // Maximum events per second sent by OpenScap Wazuh Module
+extern int wm_max_eps;          // Maximum events per second sent by Wazuh Module
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
 extern int wm_debug_level;
 

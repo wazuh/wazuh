@@ -68,13 +68,11 @@ char SERVER_ENC_ACK[] = {0x23,0x41,0x45,0x53,0x3a,0x4c,0x63,0x7a,0xef,0x9e,0x16,
 char SERVER_NULL_ACK[] = {0x00};
 char SERVER_WRONG_ACK[] = {0x01,0x02,0x03,0x00};
 
-void add_server_config(char* address, int protocol) {
+void add_server_config(char* address) {
     os_realloc(agt->server, sizeof(agent_server) * (agt->rip_id + 2), agt->server);
     os_strdup(address, agt->server[agt->rip_id].rip);
     agt->server[agt->rip_id].port = 1514;
-    agt->server[agt->rip_id].protocol = 0;
     memset(agt->server + agt->rip_id + 1, 0, sizeof(agent_server));
-    agt->server[agt->rip_id].protocol = protocol;
     agt->rip_id++;
     agt->server_count++;
 }
@@ -115,14 +113,13 @@ static int setup_test(void **state) {
     agt->buflength = 5000;
     agt->events_persec = 500;
     agt->flags.auto_restart = 1;
-    agt->crypto_method = W_METH_AES;
     /* Connected sock */
     agt->sock = -1;
     /* Server */
-    add_server_config("127.0.0.1", IPPROTO_UDP);
-    add_server_config("127.0.0.2", IPPROTO_TCP);
-    add_server_config("VALID_HOSTNAME/127.0.0.3", IPPROTO_UDP);
-    add_server_config("INVALID_HOSTNAME/", IPPROTO_UDP);
+    add_server_config("127.0.0.1");
+    add_server_config("127.0.0.2");
+    add_server_config("VALID_HOSTNAME/127.0.0.3");
+    add_server_config("INVALID_HOSTNAME/");
 
     expect_value(__wrap_w_calloc_expression_t, type, EXP_TYPE_PCRE2);
     will_return(__wrap_w_expression_compile, 1);
@@ -131,7 +128,7 @@ static int setup_test(void **state) {
     /* Keys */
     keys_init(&keys);
     OS_AddKey(&keys, "001", "agent0", "any", "6958b43cb096e036f872d65d6a4dc01b3c828f64a204c04", 0);
-    os_set_agent_crypto_method(&keys,agt->crypto_method);
+    os_set_agent_crypto_method(&keys, W_METH_AES);
 
     _s_verify_counter = 0;
 
@@ -153,11 +150,14 @@ static int teardown_test(void **state) {
 static void test_connect_server(void **state) {
     bool connected = false;
     expect_any(__wrap__minfo, formatted_msg);
-    /* Connect to first server (UDP)*/
+    /* Connect to first server (TCP)*/
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 11);
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 11);
 
     expect_any_count(__wrap__minfo, formatted_msg, 2);
 
@@ -185,9 +185,12 @@ static void test_connect_server(void **state) {
     assert_int_equal(agt->sock, 12);
     assert_true(connected);
 
-    /* Connect to third server (UDP), valid host name*/
+    /* Connect to third server (TCP), valid host name*/
     will_return(__wrap_getDefine_Int, 5);
-    will_return(__wrap_OS_ConnectUDP, 13);
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 13);
     expect_value(__wrap_OS_CloseSocket, sock, 12);
     will_return(__wrap_OS_CloseSocket, 0);
 
@@ -198,7 +201,7 @@ static void test_connect_server(void **state) {
     assert_int_equal(agt->sock, 13);
     assert_true(connected);
 
-    /* Connect to fourth server (UDP), invalid host name*/
+    /* Connect to fourth server (TCP), invalid host name*/
     will_return(__wrap_getDefine_Int, 5);
     expect_value(__wrap_OS_CloseSocket, sock, 13);
     will_return(__wrap_OS_CloseSocket, 0);
@@ -209,11 +212,14 @@ static void test_connect_server(void **state) {
     connected = connect_server(3, true);
     assert_false(connected);
 
-    /* Connect to first server (UDP), simulate connection error*/
+    /* Connect to first server (TCP), simulate connection error*/
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, -1);
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, -1);
     connected = connect_server(0, true);
     assert_false(connected);
 
@@ -224,17 +230,19 @@ static void test_connect_server(void **state) {
 static void test_agent_handshake_to_server(void **state) {
     bool handshaked = false;
 
-    /* Handshake with first server (UDP) */
+    /* Handshake with first server (TCP) */
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 21);
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_recv, SERVER_ENC_ACK);
-    #else
-    will_return(wrap_recv, SERVER_ENC_ACK);
-    #endif
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 21);
     will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
@@ -302,7 +310,10 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, -1);
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, -1);
     expect_value(__wrap_OS_CloseSocket, sock, 23);
     will_return(__wrap_OS_CloseSocket, 0);
 
@@ -316,7 +327,10 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 23);
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 23);
     will_return(__wrap_wnet_select, 0);
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
 
@@ -329,15 +343,17 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 24);
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 24);
     expect_value(__wrap_OS_CloseSocket, sock, 23);
     will_return(__wrap_OS_CloseSocket, 0);
-#ifndef TEST_WINAGENT
-    will_return(__wrap_recv, SERVER_WRONG_ACK);
-#else
-    will_return(wrap_recv, SERVER_WRONG_ACK);
-#endif
     will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_WRONG_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_WRONG_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
@@ -352,17 +368,19 @@ static void test_agent_handshake_to_server(void **state) {
 static void test_agent_handshake_to_server_invalid_version(void **state) {
     bool handshaked = false;
 
-    /* Handshake with first server (UDP) */
+    /* Handshake with first server (TCP) */
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 21);
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_recv, SERVER_ENC_ACK);
-    #else
-    will_return(wrap_recv, SERVER_ENC_ACK);
-    #endif
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 21);
     will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-err {\"message\": \"Agent version must be lower or equal to manager version\"}");
@@ -379,17 +397,19 @@ static void test_agent_handshake_to_server_invalid_version(void **state) {
 static void test_agent_handshake_to_server_error_getting_msg1(void **state) {
     bool handshaked = false;
 
-    /* Handshake with first server (UDP) */
+    /* Handshake with first server (TCP) */
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 21);
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_recv, SERVER_ENC_ACK);
-    #else
-    will_return(wrap_recv, SERVER_ENC_ACK);
-    #endif
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 21);
     will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-err \"message\": \"Agent version must be lower or equal to manager version\"}");
@@ -406,17 +426,19 @@ static void test_agent_handshake_to_server_error_getting_msg1(void **state) {
 static void test_agent_handshake_to_server_error_getting_msg2(void **state) {
     bool handshaked = false;
 
-    /* Handshake with first server (UDP) */
+    /* Handshake with first server (TCP) */
     will_return(__wrap_getDefine_Int, 5);
     expect_string(__wrap_OS_GetHost, host, agt->server[0].rip);
     will_return(__wrap_OS_GetHost, strdup("127.0.0.1"));
-    will_return(__wrap_OS_ConnectUDP, 21);
-    #ifndef TEST_WINAGENT
-    will_return(__wrap_recv, SERVER_ENC_ACK);
-    #else
-    will_return(wrap_recv, SERVER_ENC_ACK);
-    #endif
+    expect_any(__wrap_OS_ConnectTCP, _port);
+    expect_any(__wrap_OS_ConnectTCP, _ip);
+    expect_any(__wrap_OS_ConnectTCP, ipv6);
+    will_return(__wrap_OS_ConnectTCP, 21);
     will_return(__wrap_wnet_select, 1);
+    expect_any(__wrap_OS_RecvSecureTCP, sock);
+    expect_any(__wrap_OS_RecvSecureTCP, size);
+    will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
+    will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v4.5.0\"}");
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-err {\"key\": \"Agent version must be lower or equal to manager version\"}");
