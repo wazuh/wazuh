@@ -2881,108 +2881,6 @@ components:
                 received_breakdown:
                   type: object
                   properties:
-                    agent:
-                      type: integer
-                      format: int32
-                      description: "Number of agent queries through WazuhDB socket"
-                    agent_breakdown:
-                      type: object
-                      properties:
-                        db:
-                          type: object
-                          description: "Number of queries per operation"
-                          properties:
-                            begin:
-                              type: integer
-                              format: int32
-                            close:
-                              type: integer
-                              format: int32
-                            commit:
-                              type: integer
-                              format: int32
-                            remove:
-                              type: integer
-                              format: int32
-                            sql:
-                              type: integer
-                              format: int32
-                        tables:
-                          type: object
-                          description: "Number of queries per table"
-                          properties:
-                            ciscat:
-                              type: object
-                              properties:
-                                ciscat:
-                                  type: integer
-                                  format: int32
-                            sync:
-                              type: object
-                              properties:
-                                dbsync:
-                                  type: integer
-                                  format: int32
-                            syscollector:
-                              type: object
-                              properties:
-                                syscollector_hotfixes:
-                                  type: integer
-                                  format: int32
-                                syscollector_hwinfo:
-                                  type: integer
-                                  format: int32
-                                syscollector_network_address:
-                                  type: integer
-                                  format: int32
-                                syscollector_network_iface:
-                                  type: integer
-                                  format: int32
-                                syscollector_network_protocol:
-                                  type: integer
-                                  format: int32
-                                syscollector_osinfo:
-                                  type: integer
-                                  format: int32
-                                syscollector_packages:
-                                  type: integer
-                                  format: int32
-                                syscollector_ports:
-                                  type: integer
-                                  format: int32
-                                syscollector_processes:
-                                  type: integer
-                                  format: int32
-                                deprecated:
-                                  type: object
-                                  properties:
-                                    hardware:
-                                      type: integer
-                                      format: int32
-                                    hotfix:
-                                      type: integer
-                                      format: int32
-                                    netaddr:
-                                      type: integer
-                                      format: int32
-                                    netinfo:
-                                      type: integer
-                                      format: int32
-                                    netproto:
-                                      type: integer
-                                      format: int32
-                                    osinfo:
-                                      type: integer
-                                      format: int32
-                                    package:
-                                      type: integer
-                                      format: int32
-                                    port:
-                                      type: integer
-                                      format: int32
-                                    process:
-                                      type: integer
-                                      format: int32
                     global:
                       type: integer
                       format: int32
@@ -3094,20 +2992,6 @@ components:
                                 get-labels:
                                   type: integer
                                   format: int32
-                    mitre:
-                      type: integer
-                      format: int32
-                      description: "Number of mitre queries through WazuhDB socket"
-                    mitre_breakdown:
-                      type: object
-                      properties:
-                        db:
-                          type: object
-                          description: "Number of queries per operation"
-                          properties:
-                            sql:
-                              type: integer
-                              format: int32
                     task:
                       type: integer
                       format: int32
@@ -3153,20 +3037,6 @@ components:
                                 upgrade_update_status:
                                   type: integer
                                   format: int32
-                    wazuhdb:
-                      type: integer
-                      format: int32
-                      description: "Number of wazuhdb queries through WazuhDB socket"
-                    wazuhdb_breakdown:
-                      type: object
-                      properties:
-                        db:
-                          type: object
-                          description: "Number of queries per operation"
-                          properties:
-                            remove:
-                              type: integer
-                              format: int32
             time:
               type: object
               properties:
@@ -3177,48 +3047,6 @@ components:
                 execution_breakdown:
                   type: object
                   properties:
-                    agent:
-                      type: integer
-                      format: int32
-                      description: "Time taken by all agent queries (milliseconds)"
-                    agent_breakdown:
-                      type: object
-                      properties:
-                        db:
-                          type: object
-                          description: "Time taken by all queries per operation (milliseconds)"
-                          properties:
-                            begin:
-                              type: integer
-                              format: int32
-                            close:
-                              type: integer
-                              format: int32
-                            commit:
-                              type: integer
-                              format: int32
-                            remove:
-                              type: integer
-                              format: int32
-                            sql:
-                              type: integer
-                              format: int32
-                        tables:
-                          type: object
-                          description: "Time taken by all queries per table (milliseconds)"
-                          properties:
-                            ciscat:
-                              type: object
-                              properties:
-                                ciscat:
-                                  type: integer
-                                  format: int32
-                            sync:
-                              type: object
-                              properties:
-                                dbsync:
-                                  type: integer
-                                  format: int32
                     global:
                       type: integer
                       format: int32
@@ -3330,20 +3158,6 @@ components:
                                 get-labels:
                                   type: integer
                                   format: int32
-                    mitre:
-                      type: integer
-                      format: int32
-                      description: "Time taken by all mitre queries (milliseconds)"
-                    mitre_breakdown:
-                      type: object
-                      properties:
-                        db:
-                          type: object
-                          description: "Time taken by all queries per operation (milliseconds)"
-                          properties:
-                            sql:
-                              type: integer
-                              format: int32
                     task:
                       type: integer
                       format: int32
@@ -3389,20 +3203,6 @@ components:
                                 upgrade_update_status:
                                   type: integer
                                   format: int32
-                    wazuhdb:
-                      type: integer
-                      format: int32
-                      description: "Time taken by all wazuhdb queries (milliseconds)"
-                    wazuhdb_breakdown:
-                      type: object
-                      properties:
-                        db:
-                          type: object
-                          description: "Time taken by all queries per operation (milliseconds)"
-                          properties:
-                            remove:
-                              type: integer
-                              format: int32
 
     WazuhDaemonsStatus:
       type: object
@@ -5768,12 +5568,6 @@ components:
       schema:
         type: string
         format: alphanumeric
-    dhcp:
-      in: query
-      name: dhcp
-      description: "Filter by network dhcp (enabled or disabled)"
-      schema:
-          $ref: '#/components/schemas/DHCPStatus'
     os.name:
       in: query
       name: os.name
