@@ -17745,7 +17745,7 @@ paths:
       tags:
         - Syscollector
       summary: "Get agent browser extensions"
-      operationId: api.controllers.syscollector_controller.get_browser_extensions
+      operationId: api.controllers.syscollector_controller.get_browser_extensions_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
@@ -17825,7 +17825,7 @@ paths:
       tags:
         - Syscollector
       summary: "Get agent services"
-      operationId: api.controllers.syscollector_controller.get_services
+      operationId: api.controllers.syscollector_controller.get_services_info
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/syscollector:read'
       parameters:
