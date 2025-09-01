@@ -5527,13 +5527,6 @@ components:
                 sha256:
                   type: string
                   description: "SHA256 of manifest.json file"
-        item:
-          type: object
-          description: "Browser extension item information"
-          properties:
-            id:
-              type: string
-              description: "Item ID"
         package:
           type: object
           description: "Package information"
@@ -5553,6 +5546,9 @@ components:
             autoupdate:
               type: boolean
               description: "If the addon uses background updates"
+            visible:
+              type: boolean
+              description: "If the extension is visible"
             build_version:
               type: string
               description: "Bundle SDK used to compile the extension"
@@ -17780,15 +17776,13 @@ paths:
                   affected_items:
                     - browser:
                         name: "Google Chrome"
-                        profile: 
+                        profile:
                           name: "Default"
                           path: "/Users/user/Library/Application Support/Google/Chrome/Default"
                           referenced: false
                       file:
                         hash:
                           sha256: "077252650e9f983e2f31b271c00e9050f7324756"
-                      item:
-                        id: 0
                       package:
                         id: 0
                         name: "Example Extension"
@@ -17872,7 +17866,7 @@ paths:
                           start_type: "automatic"
                           restart: "on-failure"
                           frequency: "daily"
-                          starts: 
+                          starts:
                             on_mount: true
                             on_path_modified: yes
                             on_not_empty_directory: yes
