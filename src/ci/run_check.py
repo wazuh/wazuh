@@ -713,6 +713,7 @@ def runValgrind(moduleName):
     build_tools.makeTarget(targetName="agent",
                            tests=True,
                            debug=True,
+                           fsanitize=False,
                            valgrind=True)
 
     tests = []
