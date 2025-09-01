@@ -140,25 +140,26 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 300, accumulations = 4)
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retries was not sent'
 
-    # Start Authd simulador
-    authd_server = AuthdSimulator()
-    authd_server.start()
+    try:
+        # Start Authd simulador
+        authd_server = AuthdSimulator()
+        authd_server.start()
 
-    # Wait succesfull enrollment
-    wait_enrollment()
+        # Wait succesfull enrollment
+        wait_enrollment()
 
-    # Start Remoted simulador
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-    remoted_server.start()
+        # Start Remoted simulador
+        remoted_server = RemotedSimulator(protocol=test_metadata['PROTOCOL'])
+        remoted_server.start()
 
-    # Wait until Agent is notifying Manager
-    wait_keepalive()
+        # Wait until Agent is notifying Manager
+        wait_keepalive()
 
-    # Check if no Wazuh module stopped due to Agentd Initialization
-    check_module_stop()
+        # Check if no Wazuh module stopped due to Agentd Initialization
+        check_module_stop()
+    finally:
+        # Reset simulator
+        authd_server.destroy()
 
-    # Reset simulator
-    authd_server.destroy()
-
-    # Reset simulator
-    remoted_server.destroy()
+        # Reset simulator
+        remoted_server.destroy()
