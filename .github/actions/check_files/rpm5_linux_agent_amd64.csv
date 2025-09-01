@@ -69,7 +69,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/tmp/sca-5.*-*.el5-tmp/sles/11/sca.files,root,wazuh,640,file,-rw-r-----,28,0.1
 /var/ossec/tmp/sca-5.*-*.el5-tmp/sles/11/cis_sles11_linux.yml,root,wazuh,640,file,-rw-r-----,60607,0.1
 /var/ossec/var/selinux/wazuh.pp,root,wazuh,640,file,-rw-r-----,3163,0.1
-/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,840576,0.1
+/var/ossec/bin/wazuh-syscheckd,root,root,750,file,-rwxr-x---,742656,0.1
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,722595,0.1
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,789201,0.1
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,7146,0.1
