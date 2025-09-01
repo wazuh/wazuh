@@ -3875,6 +3875,9 @@ checks:
     rules:
       - 'f:/etc/security/pwquality.conf -> n:^\s*maxrepeat\s+\t*=\s+\t*(\d+) compare > 0 && compare > 0 && n:^\s*maxrepeat\s+\t*=\s+\t*(\d+) compare <= 3'
 
+  # 5.3.3.2.6 Ensure password dictionary check is enabled (Automated) - Not Implemented
+  # 5.3.3.2.7 Ensure password quality is enforced for the root user (Automated) - Not Implemented
+
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured (Automated)
   - id: 31648
     title: "Ensure password failed attempts lockout is configured."
@@ -3947,6 +3950,11 @@ checks:
       - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+requisite\.+pam_pwhistory\.so\.+ && n:remember=(\d+) compare >= 5'
       - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
 
+  # 5.3.3.3.2 Ensure password history is enforced for the root user (Automated) - Not Implemented
+  # 5.3.3.3.3 Ensure pam_pwhistory includes use_authtok (Automated) - Not Implemented
+  # 5.3.3.4.1 Ensure pam_unix does not include nullok (Automated) - Not Implemented
+  # 5.3.3.4.2 Ensure pam_unix does not include remember (Automated) - Not Implemented
+
   # 5.3.3.4.3 Ensure pam_unix includes a strong password hashing algorithm (Automated)
   - id: 31650
     title: "Ensure pam_unix includes a strong password hashing algorithm."
@@ -3973,6 +3981,8 @@ checks:
       - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD SHA512'
       - 'f:/etc/pam.d/password-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
       - 'f:/etc/pam.d/system-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
+
+  # 5.3.3.4.4 Ensure pam_unix includes use_authtok (Automated) - Not Implemented
 
   ###############################################
   # 5.6 User Accounts and Environment
@@ -4098,6 +4108,16 @@ checks:
     rules:
       - "f:/etc/passwd -> r:^root:x:0:0"
 
+  # 5.4.2.3 Ensure group root is the only GID 0 group (Automated) - Not Implemented
+  # 5.4.2.4 Ensure root account access is controlled (Automated) - Not Implemented
+  # 5.4.2.5 Ensure root path integrity (Automated) - Not Implemented
+  # 5.4.2.6 Ensure root user umask is configured (Automated) - Not Implemented
+  # 5.4.2.7 Ensure system accounts do not have a valid login shell (Automated) - Not Implemented
+  # 5.4.2.8 Ensure accounts without a valid login shell are locked (Automated) - Not Implemented
+
+  # 5.4.3.1 Ensure nologin is not listed in /etc/shells (Automated) - Not Implemented
+  # 5.4.3.2 Ensure default user shell timeout is configured (Automated) - Not Implemented
+  # 5.4.3.3 Ensure default user umask is configured (Automated) - Not Implemented
   ###############################################
   # 6 System Maintenance
   ###############################################
