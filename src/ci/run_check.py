@@ -563,9 +563,7 @@ def runTests(moduleName):
     utils.printHeader(moduleName=moduleName,
                       headerKey="tests")
     tests = []
-    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test\
-                      |.*interface_test|.*integration_test.exe\
-                      |.*interface_test.exe")
+    reg = re.compile(r".*(?:unit_test|integration_test|interface_test|_test|_tests)(?:\.exe)?$")
     currentDir = utils.moduleDirPathBuild(moduleName=moduleName)
 
     if not moduleName == "shared_modules/utils":
@@ -718,9 +716,7 @@ def runValgrind(moduleName):
                            valgrind=True)
 
     tests = []
-    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test\
-                     |.*interface_test|.*integration_test.exe\
-                     |.*interface_test.exe")
+    reg = re.compile(r".*(?:unit_test|integration_test|interface_test|_test|_tests)(?:\.exe)?$")
     currentDir = ""
     if moduleName == "shared_modules/utils":
         currentDir = os.path.join(utils.moduleDirPath(moduleName=moduleName),
