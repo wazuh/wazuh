@@ -14,17 +14,8 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
-SENSITIVE_SECTIONS = {
-    "active-response", "agentless", "alerts", "auth", "client", "client_buffer",
-    "cluster", "command", "database_output", "email_alerts", "global",
-    "integration", "labels", "localfile", "logging", "remote", "reports",
-    "rootcheck", "ruleset", "sca", "socket", "syscheck", "syslog_output",
-    "vulnerability-detection", "indexer", "aws-s3", "azure-logs", "cis-cat",
-    "docker-listener", "open-scap", "osquery", "syscollector", "gcp-pubsub"
-}
-SENSITIVE_KEY_SUBSTRINGS = (
-    "pass", "password", "secret", "token", "key", "credential", "private"
-)
+SENSITIVE_FIELD_PATHS = ("authd.pass",)
+
 MASK_DEFAULT = "*****"
 
 integer_resources = ['user:id', 'role:id', 'rule:id', 'policy:id']
@@ -534,105 +525,35 @@ def _has_update_permissions() -> bool:
     return False
 
 
-def _is_sensitive_key(key: str, value=None, mask_paths: bool = False) -> bool:
-    """Check if a key/value pair should be considered sensitive.
+def _mask_paths_in_object(obj, dotted_path: str, mask_text: str):
+    """Mask a value at a dotted path inside dict/list.
 
     Parameters
     ----------
-    key : str
-        Key name to evaluate.
-    value : any, optional
-        Value associated with the key. Used to refine masking heuristics.
-    mask_paths : bool
-        If True, also mask values that look like file paths. Default: False.
-
-    Returns
-    -------
-    bool
-        True if the key/value pair should be masked, False otherwise.
-    """
-    if not isinstance(key, str):
-        return False
-    low = key.lower()
-    if not any(substr in low for substr in SENSITIVE_KEY_SUBSTRINGS):
-        return False
-
-    # No masking for nested structures (handled recursively)
-    if isinstance(value, (dict, list)) or value is None:
-        return False
-
-    if isinstance(value, (int, float)):
-        return False
-
-    if isinstance(value, str) and value.lower() in {'yes', 'no', 'true', 'false'}:
-        return False
-
-    # Skip path-like strings unless explicitly requested
-    if isinstance(value, str) and not mask_paths:
-        if '/' in value or '\\' in value or '.' in value:
-            return False
-
-    return True
-
-
-def _mask_dict(d: dict, mask_text: str = MASK_DEFAULT) -> None:
-    """Recursively mask sensitive values in a dict in place.
-
-    Parameters
-    ----------
-    d : dict
-        Dictionary to process (modified in place).
+    obj : dict | list
+        Object to process.
+    dotted_path : str
+        Path in dotted notation (e.g. "authd.pass").
     mask_text : str
-        Replacement text used for masked values.
+        Replacement text.
     """
-    for k, v in list(d.items()):
-        if isinstance(v, dict):
-            if k in SENSITIVE_SECTIONS or _is_sensitive_key(k, v):
-                _mask_only_sensitive_keys_in_section(v, mask_text)
-            else:
-                _mask_dict(v, mask_text)
-        elif isinstance(v, list):
-            _mask_list(v, mask_text)
-        else:
-            if _is_sensitive_key(k, v):
-                d[k] = mask_text
+    if isinstance(obj, dict) and dotted_path in obj:
+        obj[dotted_path] = mask_text
+        return
+    elif isinstance(obj, list):
+        for el in obj:
+            _mask_paths_in_object(el, dotted_path, mask_text)
+        return
+    elif not isinstance(obj, dict):
+        return
 
-
-def _mask_only_sensitive_keys_in_section(section_dict: dict, mask_text: str = MASK_DEFAULT) -> None:
-    """Mask only sensitive-looking keys inside a given section (in place).
-
-    Parameters
-    ----------
-    section_dict : dict
-        Section dictionary to process (modified in place).
-    mask_text : str
-        Replacement text used for masked values.
-    """
-    for k, v in list(section_dict.items()):
-        if isinstance(v, dict):
-            _mask_only_sensitive_keys_in_section(v, mask_text)
-        elif isinstance(v, list):
-            _mask_list(v, mask_text)
-        else:
-            if _is_sensitive_key(k, v):
-                section_dict[k] = mask_text
-
-
-def _mask_list(items: list, mask_text: str = MASK_DEFAULT) -> None:
-    """Traverse a list and mask nested sensitive values (in place).
-
-    Parameters
-    ----------
-    items : list
-        List to process (modified in place).
-    mask_text : str
-        Replacement text used for masked values.
-    """
-    for i, v in enumerate(items):
-        if isinstance(v, dict):
-            _mask_dict(v, mask_text)
-        elif isinstance(v, list):
-            _mask_list(v, mask_text)
+    head, *tail = dotted_path.split('.', 1)
+    if head not in obj:
+        return
+    elif not tail:
+        obj[head] = mask_text
+    else:
+        _mask_paths_in_object(obj[head], tail[0], mask_text)
 
 
 def _mask_payload(payload, mask_text: str = MASK_DEFAULT) -> None:
@@ -646,13 +567,16 @@ def _mask_payload(payload, mask_text: str = MASK_DEFAULT) -> None:
         Replacement text used for masked values.
     """
     if isinstance(payload, AffectedItemsWazuhResult):
-        # mask each affected item (usually dicts with sections at top level)
         for item in payload.affected_items:
             _mask_payload(item, mask_text)
-    elif isinstance(payload, dict):
-        _mask_dict(payload, mask_text)
+        return
+
+    if isinstance(payload, dict):
+        for path in SENSITIVE_FIELD_PATHS:
+            _mask_paths_in_object(payload, path, mask_text)
     elif isinstance(payload, list):
-        _mask_list(payload, mask_text)
+        for el in payload:
+            _mask_payload(el, mask_text)
 
 
 def mask_sensitive_config(mask_text: str = MASK_DEFAULT):
