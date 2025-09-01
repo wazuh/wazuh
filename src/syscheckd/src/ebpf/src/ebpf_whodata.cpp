@@ -63,7 +63,7 @@ int handle_event(void* ctx, void* data, size_t data_sz) {
         return 0;
     }
 
-    directory_t* config = confFn(e->filename);
+    directory_t* config = confFn(e->filename, false);
     if (config && (config->options & WHODATA_ACTIVE)) {
         auto event = std::make_unique<dynamic_file_event>(dynamic_file_event{
             .filename    = std::string(e->filename),
@@ -324,7 +324,7 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
 extern "C" {
 #endif
 
-void fimebpf_initialize(directory_t *(*fim_conf)(const char *),
+void fimebpf_initialize(directory_t *(*fim_conf)(const char *, bool),
                         char *(*getUser)(int),
                         char *(*getGroup)(int),
                         void (*fimWhodataEvent)(whodata_evt *),

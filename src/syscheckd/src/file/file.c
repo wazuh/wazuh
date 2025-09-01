@@ -73,7 +73,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (txn_context->config == NULL) {
-        txn_context->config = fim_configuration_directory(path);
+        txn_context->config = fim_configuration_directory(path, true);
         if (txn_context->config == NULL) {
             goto end;
         }
@@ -238,7 +238,7 @@ void fim_db_remove_validated_path(void * data, void * ctx)
     char *path = (char *)data;
     struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
 
-    directory_t *validated_configuration = fim_configuration_directory(path);
+    directory_t *validated_configuration = fim_configuration_directory(path, true);
 
     if (validated_configuration == ctx_data->config)
     {
@@ -246,7 +246,7 @@ void fim_db_remove_validated_path(void * data, void * ctx)
     }
 }
 
-directory_t *fim_configuration_directory(const char *key) {
+directory_t *fim_configuration_directory(const char *key, bool notify_not_found) {
     char full_path[OS_SIZE_4096 + 1] = {'\0'};
     char full_entry[OS_SIZE_4096 + 1] = {'\0'};
     directory_t *dir_it = NULL;
@@ -286,7 +286,7 @@ directory_t *fim_configuration_directory(const char *key) {
         os_free(real_path);
     }
 
-    if (dir == NULL) {
+    if (dir == NULL && notify_not_found) {
         mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", key);
     }
 
@@ -600,7 +600,7 @@ void fim_checker(const char *path,
     }
 #endif
 
-    configuration = fim_configuration_directory(path);
+    configuration = fim_configuration_directory(path, true);
     if (configuration == NULL) {
         return;
     }
@@ -811,7 +811,7 @@ void fim_file(const char *path,
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     directory_t *configuration = NULL;
 
-    configuration = fim_configuration_directory(pathname);
+    configuration = fim_configuration_directory(pathname, true);
     if (NULL == configuration) {
         return;
     }

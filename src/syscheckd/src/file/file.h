@@ -27,9 +27,10 @@ typedef struct callback_ctx
  * @brief Search the position of the path in directories array
  *
  * @param key Path to seek in the directories array
+ * @param notify_not_found If true, a debug message is logged when the path is not found
  * @return Returns a pointer to the configuration associated with the provided path, NULL if the path is not found
  */
-directory_t* fim_configuration_directory(const char* key);
+directory_t* fim_configuration_directory(const char* key, bool notify_not_found);
 
 /**
  * @brief Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value

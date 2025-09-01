@@ -981,7 +981,7 @@ static void test_fim_check_depth_failure_null_directory(void **state) {
 static void test_fim_configuration_directory_no_path(void **state) {
     directory_t *ret;
 
-    ret = fim_configuration_directory(NULL);
+    ret = fim_configuration_directory(NULL, true);
 
     assert_null(ret);
 }
@@ -999,7 +999,7 @@ static void test_fim_configuration_directory_file(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    ret = fim_configuration_directory(path);
+    ret = fim_configuration_directory(path, true);
 
     assert_non_null(ret);
     assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
@@ -1021,7 +1021,7 @@ static void test_fim_configuration_directory_file(void **state) {
 
     str_lowercase(path);
 
-    ret = fim_configuration_directory(path);
+    ret = fim_configuration_directory(path, true);
 
     assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
 }
@@ -1047,7 +1047,29 @@ static void test_fim_configuration_directory_not_found(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/invalid'");
 
-    ret = fim_configuration_directory(path);
+    ret = fim_configuration_directory(path, true);
+
+    assert_null(ret);
+}
+
+static void test_fim_configuration_directory_not_found_not_debug(void **state) {
+    const char *path = "/invalid";
+    directory_t *ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
+
+    ret = fim_configuration_directory(path, false);
 
     assert_null(ret);
 }
@@ -3866,6 +3888,7 @@ int main(void) {
         cmocka_unit_test(test_fim_configuration_directory_no_path),
         cmocka_unit_test(test_fim_configuration_directory_file),
         cmocka_unit_test(test_fim_configuration_directory_not_found),
+        cmocka_unit_test(test_fim_configuration_directory_not_found_not_debug),
 
         /* init_fim_data_entry */
         cmocka_unit_test(test_init_fim_data_entry),

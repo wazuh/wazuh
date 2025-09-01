@@ -68,8 +68,8 @@ fimebpf::fim_whodata_event_t MockFimebpf::mock_fim_whodata_event = nullptr;
 fimebpf::loggingFunction_t MockFimebpf::mock_loggingFunction = nullptr;
 fimebpf::abspath_t MockFimebpf::mock_abspath = nullptr;
 
-directory_t* mock_fim_conf_failure([[maybe_unused]] const char* config_path) { return nullptr; }
-directory_t* mock_fim_conf_success([[maybe_unused]] const char* config_path) {
+directory_t* mock_fim_conf_failure([[maybe_unused]] const char* config_path, [[maybe_unused]] bool notify_not_found) { return nullptr; }
+directory_t* mock_fim_conf_success([[maybe_unused]] const char* config_path, [[maybe_unused]] bool notify_not_found) {
     static directory_t mockDirectory;
     mockDirectory.options = WHODATA_ACTIVE;
     return &mockDirectory;
