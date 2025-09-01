@@ -1231,7 +1231,6 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                 # Add agents with invalid config options to failed_items
                 else:
                     agent_conf = Agent(agent['id']).get_config('agent', 'client', agent['version'])
-                    print(agent_conf)
                     found_invalid_config = False
                     extra_message = ""
                     for server in agent_conf['client']['server']:
