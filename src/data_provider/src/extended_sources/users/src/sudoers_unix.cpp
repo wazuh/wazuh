@@ -169,7 +169,6 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             catch (const std::filesystem::filesystem_error&)
             {
                 // Directory doesn't exist or cannot be accessed, skip it
-                // std::cout << "Could not list includedir: " << ruleDetails << std::endl;
                 continue;
             }
 
