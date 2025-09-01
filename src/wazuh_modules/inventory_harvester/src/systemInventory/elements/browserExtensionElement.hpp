@@ -47,7 +47,9 @@ public:
         auto userId = data->browserExtensionUserID();
         auto browserProfileName = data->browserProfileName();
         auto packageName = data->browserExtensionPackageName();
-        if (browserName.empty() && userId.empty() && browserProfileName.empty() && packageName.empty())
+        auto packageVersion = data->browserExtensionPackageVersion();
+        if (browserName.empty() && userId.empty() && browserProfileName.empty() && packageName.empty() &&
+            packageVersion.empty())
         {
             throw std::runtime_error("BrowserExtensionElement::build: PK fields are empty.");
         }
@@ -118,7 +120,7 @@ public:
         element.data.package.reference = data->browserExtensionPackageReference();
         element.data.package.type = data->browserExtensionPackageType();
         element.data.package.vendor = data->browserExtensionPackageVendor();
-        element.data.package.version = data->browserExtensionPackageVersion();
+        element.data.package.version = packageVersion;
 
         // User
         element.data.user.id = userId;

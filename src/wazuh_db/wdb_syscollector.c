@@ -1349,7 +1349,9 @@ int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t 
         NULL == browser_extension_record->browser_profile_name ||
         strlen(browser_extension_record->browser_profile_name) == 0 ||
         NULL == browser_extension_record->package_name ||
-        strlen(browser_extension_record->package_name) == 0){
+        strlen(browser_extension_record->package_name) == 0 ||
+        NULL == browser_extension_record->package_version ||
+        strlen(browser_extension_record->package_version) == 0) {
         return OS_INVALID;
     }
 

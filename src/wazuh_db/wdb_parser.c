@@ -243,7 +243,7 @@ static struct column_list const TABLE_BROWSER_EXTENSIONS[BROWSER_EXTENSIONS_FIEL
     { .value = { FIELD_TEXT, 4, false, true, NULL, "user_id", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [4]},
     { .value = { FIELD_TEXT, 5, false, true, NULL, "package_name", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [5]},
     { .value = { FIELD_TEXT, 6, false, false, NULL, "package_id", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [6]},
-    { .value = { FIELD_TEXT, 7, false, false, NULL, "package_version", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [7]},
+    { .value = { FIELD_TEXT, 7, false, true, NULL, "package_version", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [7]},
     { .value = { FIELD_TEXT, 8, false, false, NULL, "package_description", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [8]},
     { .value = { FIELD_TEXT, 9, false, false, NULL, "package_vendor", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [9]},
     { .value = { FIELD_TEXT, 10, false, false, NULL, "package_build_version", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[10]},
