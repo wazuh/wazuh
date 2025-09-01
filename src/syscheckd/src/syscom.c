@@ -14,6 +14,7 @@
 #include "../os_net/os_net.h"
 #include "../wazuh_modules/wmodules.h"
 #include "db/include/db.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
@@ -74,7 +75,7 @@ error:
     return strlen(*output);
 }
 
-size_t syscom_dispatch(char * command, char ** output){
+size_t syscom_dispatch(char * command, size_t command_len, char ** output){
     assert(command != NULL);
     assert(output != NULL);
 
@@ -109,7 +110,19 @@ size_t syscom_dispatch(char * command, char ** output){
         }
     } else if (strncmp(command, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
         if (syscheck.enable_synchronization) {
-            // fim_sync_push_msg(command);
+            size_t header_len = strlen(FIM_SYNC_HEADER);
+            const uint8_t *data = (const uint8_t *)(command + header_len);
+            size_t data_len = command_len - header_len;
+
+            bool ret = false;
+            ret = asp_parse_response_buffer(syscheck.sync_handle, data, data_len);
+
+            if (!ret) {
+                mdebug1("WMCOM Error syncing module");
+                os_strdup("err Error syncing module", *output);
+                return strlen(*output);
+            }
+
             return 0;
         } else {
             mdebug1("FIM synchronization is disabled");
@@ -187,7 +200,7 @@ void * syscom_main(__attribute__((unused)) void * arg) {
             break;
 
         default:
-            length = syscom_dispatch(buffer, &response);
+            length = syscom_dispatch(buffer, length, &response);
 
             if (length > 0) {
                 OS_SendSecureTCP(peer, length, response);

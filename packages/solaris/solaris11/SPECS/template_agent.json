@@ -391,7 +391,7 @@
         "type": "file",
         "user": "root"
     },
-    "/var/ossec/lib/librsync.so": {
+    "/var/ossec/lib/libagent_sync_protocol.so": {
         "class": "static",
         "group": "wazuh",
         "mode": "0750",

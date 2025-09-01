@@ -18,8 +18,8 @@ Everyone knows the importance of having detailed system information from our env
 The System Inventory feature interacts with different modules to split responsibilities and optimize internal dependencies:
 - Data Provider: Module in charge of gathering system information based on OSes. This involves information about current running processes, packages/programs installed, ports being used, network adapters and OS general information.
 - DBSync: This module has one single main responsibility: Database management. It manages all database related operations like insertion, update, selection and deletion. This allows Wazuh to centralize and unify database management to make it more robust and to avoid possible misleading data.
-- RSync: It is in charge of database synchronization between Wazuh agents DBs and Wazuh  manager DBs (each agent DB). RSync implements a unified and generic communication algorithm used to maintain Wazuh agents and Wazuh manager datasets consistency.
-- Syscollector: Module in charge of getting system information from Data Provider module and updating the local agent database (through dbsync module). Once this is done, the rsync module calculates the information to synchronize with the Wazuh manager.
+- SyncProtocol: It is in charge of database synchronization between Wazuh agents DBs and Wazuh indexer. It implements a unified and generic communication protocol used to maintain Wazuh agents and Wazuh indexer datasets consistency.
+- Syscollector: Module in charge of getting system information from Data Provider module and updating the local agent database (through dbsync module). Once this is done, the syncProtocol module send the information to the Wazuh indexer.
 
 
 ## Sequence diagrams

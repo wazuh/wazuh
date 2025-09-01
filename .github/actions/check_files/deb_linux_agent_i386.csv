@@ -10,6 +10,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,215664,0.1
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,10701072,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,525380,0.1
+/var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1142112,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2346320,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,244796,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,470148,0.1
@@ -18,7 +19,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2123404,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,594996,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,118632,0.1
-/var/ossec/lib/librsync.so,root,wazuh,750,file,-rwxr-x---,404176,0.1
 /var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,12008,0.1
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1
 /var/ossec/etc/localtime,root,wazuh,640,file,-rw-r-----,118,0.1

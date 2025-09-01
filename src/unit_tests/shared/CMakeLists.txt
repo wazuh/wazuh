@@ -39,9 +39,6 @@ else()
                                     -Wl,--wrap=utf8_CreateFile -Wl,--wrap=utf8_stat64 ${DEBUG_OP_WRAPPERS}")
 endif()
 
-list(APPEND shared_tests_names "test_integrity_op")
-list(APPEND shared_tests_flags " ")
-
 list(APPEND shared_tests_names "test_rbtree_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck ${DEBUG_OP_WRAPPERS}")
@@ -123,7 +120,7 @@ set(INDEXED_QUEUE_OP_FLAGS "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_u
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${INDEXED_QUEUE_OP_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags "${INDEXED_QUEUE_OP_FLAGS}")
 endif()

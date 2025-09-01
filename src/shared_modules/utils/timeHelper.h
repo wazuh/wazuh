@@ -131,7 +131,7 @@ namespace Utils
             return "1970/01/01 00:00:00";
         }
 
-        ss << std::put_time(localTime, "%FT%T");
+        ss << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
 
         // Get milliseconds from the current time
         auto milliseconds =
@@ -164,7 +164,7 @@ namespace Utils
             return "";
         }
 
-        output << std::put_time(localTime, "%FT%T");
+        output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
 
         // Get milliseconds from the current time
         auto milliseconds =
@@ -207,7 +207,7 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%FT%T");
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
             // Get milliseconds from the current time
             auto milliseconds =
                 std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
@@ -228,7 +228,7 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%FT%T");
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
             if (std::abs(timestamp - static_cast<int>(timestamp)) < 1e-9)
             {
                 // Get milliseconds from the current time
@@ -261,7 +261,7 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%FT%T");
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
             // Get milliseconds from the current time
             auto milliseconds =
                 std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
@@ -291,7 +291,7 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%FT%T");
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
             // Get milliseconds from the current time
             auto milliseconds =
                 std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;

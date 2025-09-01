@@ -101,8 +101,8 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
-    // Inventory harvester
-    if ((module = wm_inventory_harvester_read()))
+    // Inventory sync
+    if ((module = wm_inventory_sync_read()))
         wm_add(module);
 
 #endif
@@ -316,7 +316,7 @@ cJSON *getModulesConfig(void) {
 }
 
 // sync data
-int modulesSync(char* args) {
+int modulesSync(char* args, size_t length) {
     int ret = -1;
     wmodule *cur_module = NULL;
     int retry = 0;
@@ -331,7 +331,7 @@ int modulesSync(char* args) {
             if (strstr(args, cur_module->context->name)) {
                 ret = 0;
                 if (strstr(args, "_sync ") && cur_module->context->sync != NULL) {
-                    ret = cur_module->context->sync(args);
+                    ret = cur_module->context->sync(args, length);
                 }
                 break;
             }

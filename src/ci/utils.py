@@ -39,7 +39,8 @@ HEADER_DIR = {
     'wintesttool':         "=============== Running TEST TOOL for Windows ====="
 }
 MODULE_LIST = ['wazuh_modules/syscollector', 'shared_modules/dbsync',
-               'shared_modules/rsync', 'data_provider', 'syscheckd']
+               'shared_modules/sync_protocol',
+               'data_provider', 'syscheckd']
 MODULE_LIST_STR = '|'.join(MODULE_LIST)
 TARGET_LIST = ['agent', 'server', 'winagent']
 
@@ -173,6 +174,9 @@ def getFoldersToAStyle(moduleName):
     foldersToScan = ""
     if str(moduleName) == "shared_modules/utils":
         foldersToScan = "'{0}/*.h' '{0}/*.cpp' '{0}/*.hpp'".format(moduleName)
+    elif str(moduleName) == "shared_modules/sync_protocol":
+        foldersToScan = "\"{0}/include/*.hpp\" \"{0}/src/*.cpp\""\
+                        .format(moduleName)
     elif str(moduleName) == "syscheckd":
         foldersToScan = "\"{0}/src/db/src/*.hpp\" \"{0}/src/db/src/*.cpp\""\
                         .format(moduleName)

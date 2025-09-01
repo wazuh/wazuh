@@ -23,7 +23,7 @@ constexpr auto DB_DEFAULT_PATH {"temp.db"};
 constexpr auto DB_MEMORY {":memory:"};
 constexpr auto DB_PERMISSIONS {0640};
 
-namespace SQLite
+namespace SQLite3Wrapper
 {
     enum class ExceptionType : std::int8_t
     {

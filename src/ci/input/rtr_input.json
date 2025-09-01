@@ -9,7 +9,7 @@
             "flags": "-r"
         },
         {
-            "name": "shared_modules/rsync",
+            "name": "shared_modules/sync_protocol",
             "flags": "-r"
         },
         {

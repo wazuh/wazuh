@@ -102,7 +102,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: 2}
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_report_when_deleted_directories(test_configuration, test_metadata, configure_local_internal_options,
-                        truncate_monitored_files, set_wazuh_configuration, create_paths_files, daemons_handler, detect_end_scan):
+                        truncate_monitored_files, set_wazuh_configuration, create_paths_files, clean_fim_sync_db, daemons_handler, detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon deletes the 'diff' folder created in the 'queue/diff/local'
                  directory when removing a monitored folder and the 'report_changes' option is enabled.

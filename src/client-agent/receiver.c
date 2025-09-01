@@ -130,14 +130,15 @@ int receive_msg()
             /* Syscheck */
             else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0
                      || strncmp(tmp_msg, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
-                ag_send_syscheck(tmp_msg);
+                ag_send_syscheck(tmp_msg, msg_length);
                 continue;
             }
 
             /* Syscollector */
             else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0
-                     || strncmp(tmp_msg, SYSCOLECTOR_SYNC_HEADER, strlen(SYSCOLECTOR_SYNC_HEADER)) == 0) {
-                wmcom_send(tmp_msg);
+                     || strncmp(tmp_msg, SYSCOLECTOR_SYNC_HEADER, strlen(SYSCOLECTOR_SYNC_HEADER)) == 0
+                     || strncmp(tmp_msg, SCA_SYNC_HEADER, strlen(SCA_SYNC_HEADER)) == 0) {
+                wmcom_send(tmp_msg, msg_length);
                 continue;
             }
 

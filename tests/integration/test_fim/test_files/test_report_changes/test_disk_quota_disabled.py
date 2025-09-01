@@ -104,7 +104,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: '2'}
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_disk_quota_disabled(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                             set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler, detect_end_scan):
+                             set_wazuh_configuration, folder_to_monitor, file_to_monitor, clean_fim_sync_db, daemons_handler, detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon limits the size of the folder where the data used
                  to perform the 'diff' operations is stored when the 'disk_quota' option is disabled.

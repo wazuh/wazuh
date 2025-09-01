@@ -12,14 +12,11 @@
 #include "syscollectorImp_test.h"
 #include "syscollector.hpp"
 
-constexpr auto SYSCOLLECTOR_DB_PATH {"TEMP.db"};
+constexpr auto SYSCOLLECTOR_DB_PATH {":memory:"};
 
 void SyscollectorImpTest::SetUp() {};
 
-void SyscollectorImpTest::TearDown()
-{
-    std::remove(SYSCOLLECTOR_DB_PATH);
-};
+void SyscollectorImpTest::TearDown() {};
 
 using ::testing::_;
 using ::testing::Return;
@@ -50,7 +47,20 @@ class CallbackMock
         MOCK_METHOD(void, callbackMock, (const std::string&), ());
 };
 
+class CallbackMockPersist
+{
+    public:
+        CallbackMockPersist() = default;
+        ~CallbackMockPersist() = default;
+        MOCK_METHOD(void, callbackMock, (const std::string&, Operation_t, const std::string&, const std::string&), ());
+};
+
 void reportFunction(const std::string& /*payload*/)
+{
+    // std::cout << payload << std::endl;
+}
+
+void persistFunction(const std::string&, Operation_t, const std::string&, const std::string& /*payload*/)
 {
     // std::cout << payload << std::endl;
 }
@@ -169,12 +179,19 @@ TEST_F(SyscollectorImpTest, defaultCtor)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -246,19 +263,19 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult24)).Times(1);
 
     // All modules enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -286,7 +303,10 @@ TEST_F(SyscollectorImpTest, defaultCtor)
 
 TEST_F(SyscollectorImpTest, intervalSeconds)
 {
-    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+#ifdef WIN32
+    GTEST_SKIP() << "Skipping intervalSeconds test on Windows due to sync protocol issues in Wine environment";
+#endif
+    const auto spInfoWrapper {std::make_shared<SysInfoWrapper>()};
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
@@ -317,7 +337,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
         {
             Syscollector::instance().init(spInfoWrapper,
                                           reportFunction,
-                                          reportFunction,
+                                          persistFunction,
                                           logFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
@@ -355,7 +375,7 @@ TEST_F(SyscollectorImpTest, noScanOnStart)
         {
             Syscollector::instance().init(spInfoWrapper,
                                           reportFunction,
-                                          reportFunction,
+                                          persistFunction,
                                           logFunction,
                                           SYSCOLLECTOR_DB_PATH,
                                           "",
@@ -416,12 +436,19 @@ TEST_F(SyscollectorImpTest, noHardware)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -488,18 +515,18 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     // All modules except Hardware (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -569,12 +596,19 @@ TEST_F(SyscollectorImpTest, noOs)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -641,18 +675,18 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     // All modules except OS (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -721,12 +755,19 @@ TEST_F(SyscollectorImpTest, noNetwork)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -773,14 +814,14 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult26)).Times(1);
 
     // All modules except Network (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -847,12 +888,19 @@ TEST_F(SyscollectorImpTest, noPackages)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -919,18 +967,18 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     // All modules except Packages (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -999,12 +1047,19 @@ TEST_F(SyscollectorImpTest, noPorts)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1071,18 +1126,18 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     // All modules except Ports (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -1152,12 +1207,19 @@ TEST_F(SyscollectorImpTest, noPortsAll)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1234,20 +1296,20 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     // All modules except PortsAll
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPortsUdp)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPortsUdp)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -1314,12 +1376,19 @@ TEST_F(SyscollectorImpTest, noProcesses)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1386,18 +1455,18 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     // All modules except Processes (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -1467,12 +1536,19 @@ TEST_F(SyscollectorImpTest, noHotfixes)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1539,18 +1615,18 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult23)).Times(1);
 
     // All modules except Hotfixes (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -1621,12 +1697,19 @@ TEST_F(SyscollectorImpTest, noUsers)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1693,18 +1776,18 @@ TEST_F(SyscollectorImpTest, noUsers)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult23)).Times(1);
 
     // All modules except Users (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
 
     std::thread t
     {
@@ -1774,12 +1857,19 @@ TEST_F(SyscollectorImpTest, noGroups)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1846,18 +1936,18 @@ TEST_F(SyscollectorImpTest, noGroups)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult25)).Times(1);
 
     // All modules except Groups (disabled in this test)
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {
@@ -1971,12 +2061,19 @@ TEST_F(SyscollectorImpTest, portAllEnable)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -2026,10 +2123,10 @@ TEST_F(SyscollectorImpTest, portAllEnable)
     };
 
     // Only ports enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts1)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts2)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts3)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts1)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts2)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts3)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts4)).Times(1);
 
     std::thread t
     {
@@ -2143,12 +2240,19 @@ TEST_F(SyscollectorImpTest, portAllDisable)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -2187,9 +2291,9 @@ TEST_F(SyscollectorImpTest, portAllDisable)
     };
 
     // Only ports enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts1)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts2)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts3)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts1)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts2)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts3)).Times(1);
 
     std::thread t
     {
@@ -2243,12 +2347,19 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -2260,7 +2371,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
 
     // Only packages enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
 
     std::thread t
     {
@@ -2331,12 +2442,19 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
         }
     };
 
-    CallbackMock wrapperPersist;
-    std::function<void(const std::string&)> callbackDataPersist
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&)> callbackDataPersist
     {
-        [&wrapperPersist](const std::string & data)
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -2408,19 +2526,19 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult24)).Times(1);
 
     // All modules enabled in this test
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHW)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistOS)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetIface)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv4)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetProtoIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistNetAddrIPv6)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPorts)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistProcess)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistPackage)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistHotfix)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistGroup)).Times(1);
-    EXPECT_CALL(wrapperPersist, callbackMock(expectedPersistUser)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHW)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistOS)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetIface)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv4)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetProtoIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistNetAddrIPv6)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPorts)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistProcess)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistPackage)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistHotfix)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistGroup)).Times(1);
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::_, expectedPersistUser)).Times(1);
 
     std::thread t
     {

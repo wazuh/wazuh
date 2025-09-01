@@ -11,8 +11,7 @@ static std::mt19937 ENG(RD());
 
 namespace Log
 {
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 }; // namespace Log
 
@@ -162,13 +161,8 @@ int main(const int argc, const char* argv[])
                 logFile.flush();
             });
 
-        if (!cmdArgParser.getAgentIdSyncEvent().empty())
+        if (cmdArgParser.getAgentIdSyncEvent().empty())
         {
-            indexerConnector.sync(cmdArgParser.getAgentIdSyncEvent());
-        }
-        else
-        {
-
             // Read events file.
             // If the events file path is empty, then the events are generated
             // automatically.
