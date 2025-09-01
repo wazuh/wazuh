@@ -80,6 +80,7 @@ daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
 # Tests
 @pytest.mark.tier(level=0)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+@pytest.mark.skip(reason="Experimental endpoints were implicitly deprecated due to local databases removal.")
 def test_experimental_features(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
                                daemons_handler, wait_for_api_start):
     """
