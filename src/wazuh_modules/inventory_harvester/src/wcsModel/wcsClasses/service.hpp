@@ -61,7 +61,7 @@ struct Service final
     {
         struct Starts final
         {
-            bool on_mount;
+            bool on_mount = false;
             std::vector<std::string_view> on_not_empty_directory;
             std::vector<std::string_view> on_path_modified;
 
@@ -88,7 +88,7 @@ struct Service final
         std::string_view following;                         // service.following (Custom)
         std::int64_t frequency = DEFAULT_INT_VALUE;         // service.frequency (Custom)
         std::string_view id;                                // service.id (ECS)
-        bool inetd_compatibility;                           // service.inetd_compatibility (Custom)
+        bool inetd_compatibility = false;                   // service.inetd_compatibility (Custom)
         std::string_view name;                              // service.name (ECS)
         std::string_view object_path;                       // service.object_path (Custom)
         std::string_view restart;                           // service.restart (Custom)

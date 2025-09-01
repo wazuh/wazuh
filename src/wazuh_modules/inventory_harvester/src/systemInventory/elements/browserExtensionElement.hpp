@@ -75,18 +75,33 @@ public:
         element.data.browser.name = browserName;
         element.data.browser.profile.name = browserProfileName;
         element.data.browser.profile.path = data->browserProfilePath();
-        element.data.browser.profile.referenced = data->browserProfileReferenced();
+        if (auto browserProfileReferenced = data->browserProfileReferenced(); browserProfileReferenced >= 0)
+        {
+            element.data.browser.profile.referenced = browserProfileReferenced;
+        }
 
         // File
         element.data.file.hash.sha256 = data->browserExtensionFileHashSha256();
 
         // Package
-        element.data.package.autoupdate = data->browserExtensionPackageAutoupdate();
+        if (auto packageAutoupdate = data->browserExtensionPackageAutoupdate(); packageAutoupdate >= 0)
+        {
+            element.data.package.autoupdate = packageAutoupdate;
+        }
         element.data.package.build_version = data->browserExtensionPackageBuildVersion();
         element.data.package.description = data->browserExtensionPackageDescription();
-        element.data.package.enabled = data->browserExtensionPackageEnabled();
-        element.data.package.visible = data->browserExtensionPackageVisible();
-        element.data.package.from_webstore = data->browserExtensionPackageFromWebstore();
+        if (auto packageEnabled = data->browserExtensionPackageEnabled(); packageEnabled >= 0)
+        {
+            element.data.package.enabled = packageEnabled;
+        }
+        if (auto packageVisible = data->browserExtensionPackageVisible(); packageVisible >= 0)
+        {
+            element.data.package.visible = packageVisible;
+        }
+        if (auto packageFromWebstore = data->browserExtensionPackageFromWebstore(); packageFromWebstore >= 0)
+        {
+            element.data.package.from_webstore = packageFromWebstore;
+        }
         element.data.package.id = data->browserExtensionPackageID();
         element.data.package.installed = data->browserExtensionPackageInstalled();
         element.data.package.name = packageName;
@@ -96,7 +111,10 @@ public:
         {
             element.data.package.permissions = Utils::splitView(packagePermissions, ',');
         }
-        element.data.package.persistent = data->browserExtensionPackagePersistent();
+        if (auto packagePersistent = data->browserExtensionPackagePersistent(); packagePersistent >= 0)
+        {
+            element.data.package.persistent = packagePersistent;
+        }
         element.data.package.reference = data->browserExtensionPackageReference();
         element.data.package.type = data->browserExtensionPackageType();
         element.data.package.vendor = data->browserExtensionPackageVendor();

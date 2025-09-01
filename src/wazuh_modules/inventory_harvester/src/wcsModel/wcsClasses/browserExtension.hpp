@@ -22,7 +22,7 @@ struct BrowserExtension final
     {
         std::string_view name;
         std::string_view path;
-        bool referenced;
+        bool referenced = false;
         REFLECTABLE(MAKE_FIELD("name", &Profile::name),
                     MAKE_FIELD("path", &Profile::path),
                     MAKE_FIELD("referenced", &Profile::referenced));
@@ -49,18 +49,18 @@ struct BrowserExtension final
 
     struct Package final
     {
-        bool autoupdate;
+        bool autoupdate = false;
         std::string_view build_version;
         std::string_view description;
-        bool enabled;
-        bool visible;
-        bool from_webstore;
+        bool enabled = false;
+        bool visible = false;
+        bool from_webstore = false;
         std::string_view id;
         std::string_view installed;
         std::string_view name;
         std::string_view path;
         std::vector<std::string_view> permissions;
-        bool persistent;
+        bool persistent = false;
         std::string_view reference;
         std::string_view type;
         std::string_view vendor;

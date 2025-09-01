@@ -690,8 +690,8 @@ TEST_F(SystemInventoryUpsertElement, validNegativeUserIdGroupId_Users)
     EXPECT_CALL(*context, userType()).WillOnce(testing::Return("userType"));
     EXPECT_CALL(*context, userUuid()).WillOnce(testing::Return("userUuid"));
     EXPECT_CALL(*context, userFullName()).WillOnce(testing::Return("userFullName"));
-    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(1));
     EXPECT_CALL(*context, userPasswordHashAlgorithm()).WillOnce(testing::Return("userHash"));
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(99999));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(0));
@@ -739,8 +739,8 @@ TEST_F(SystemInventoryUpsertElement, validNegativeCounterValues_Users)
     EXPECT_CALL(*context, userType()).WillOnce(testing::Return("userType"));
     EXPECT_CALL(*context, userUuid()).WillOnce(testing::Return("userUuid"));
     EXPECT_CALL(*context, userFullName()).WillOnce(testing::Return("userFullName"));
-    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(1));
     EXPECT_CALL(*context, userPasswordHashAlgorithm()).WillOnce(testing::Return("userHash"));
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(-1));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(-1));
@@ -789,8 +789,8 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Users)
     EXPECT_CALL(*context, userType()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, userUuid()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, userFullName()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, userIsHidden()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, userIsRemote()).WillOnce(testing::Return(1));
     EXPECT_CALL(*context, userPasswordHashAlgorithm()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, userPasswordMaxDays()).WillOnce(testing::Return(99999));
     EXPECT_CALL(*context, userPasswordMinDays()).WillOnce(testing::Return(0));
@@ -860,8 +860,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Groups)
     EXPECT_CALL(*context, groupIdSigned()).WillOnce(testing::Return(-80));
     EXPECT_CALL(*context, groupDescription()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, groupUuid()).WillOnce(testing::Return(""));
-    // To be consistent with sqlite database, the null value is treated as false.
-    EXPECT_CALL(*context, groupIsHidden()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, groupIsHidden()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, groupUsers()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Groups));
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
@@ -885,8 +884,7 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStringsSingleUser_Groups)
     EXPECT_CALL(*context, groupIdSigned()).WillOnce(testing::Return(-80));
     EXPECT_CALL(*context, groupDescription()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, groupUuid()).WillOnce(testing::Return(""));
-    // To be consistent with sqlite database, the null value is treated as false.
-    EXPECT_CALL(*context, groupIsHidden()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, groupIsHidden()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, groupUsers()).WillOnce(testing::Return("user1"));
     EXPECT_CALL(*context, originTable()).WillOnce(testing::Return(MockSystemContext::OriginTable::Groups));
     EXPECT_NO_THROW(upsertElement->handleRequest(context));
@@ -994,12 +992,12 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_BrowserExtensions)
     EXPECT_CALL(*context, browserExtensionPackageReference()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, browserExtensionPackagePermissions()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, browserExtensionPackageType()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, browserExtensionPackageVisible()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, browserExtensionPackageAutoupdate()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, browserExtensionPackagePersistent()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, browserExtensionPackageFromWebstore()).WillOnce(testing::Return(false));
-    EXPECT_CALL(*context, browserProfileReferenced()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, browserExtensionPackageEnabled()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserExtensionPackageVisible()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserExtensionPackageAutoupdate()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserExtensionPackagePersistent()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserExtensionPackageFromWebstore()).WillOnce(testing::Return(0));
+    EXPECT_CALL(*context, browserProfileReferenced()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, browserExtensionPackageInstalled()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, browserExtensionFileHashSha256()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, browserExtensionItemId())
@@ -1108,10 +1106,10 @@ TEST_F(SystemInventoryUpsertElement, validEmptyStrings_Services)
     EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, serviceRestart()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, serviceFrequency()).WillOnce(testing::Return(0));
-    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(false));
+    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, serviceStartsOnPathModified()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, serviceStartsOnNotEmptyDirectory()).WillOnce(testing::Return(""));
-    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(""));
+    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(1));
     EXPECT_CALL(*context, serviceProcessPid()).WillOnce(testing::Return(0));
     EXPECT_CALL(*context, serviceProcessExecutable()).WillOnce(testing::Return(""));
     EXPECT_CALL(*context, serviceProcessArgs()).WillOnce(testing::Return(""));
@@ -1159,10 +1157,10 @@ TEST_F(SystemInventoryUpsertElement, validNegativeValues_Services)
     EXPECT_CALL(*context, serviceStartType()).WillOnce(testing::Return("startType"));
     EXPECT_CALL(*context, serviceRestart()).WillOnce(testing::Return("restart"));
     EXPECT_CALL(*context, serviceFrequency()).WillOnce(testing::Return(-1));
-    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, serviceStartsOnMount()).WillOnce(testing::Return(1));
     EXPECT_CALL(*context, serviceStartsOnPathModified()).WillOnce(testing::Return("one,two,three"));
     EXPECT_CALL(*context, serviceStartsOnNotEmptyDirectory()).WillOnce(testing::Return("one,two,three"));
-    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(true));
+    EXPECT_CALL(*context, serviceInetdCompatibility()).WillOnce(testing::Return(1));
     EXPECT_CALL(*context, serviceProcessPid()).WillOnce(testing::Return(-1));
     EXPECT_CALL(*context, serviceProcessExecutable()).WillOnce(testing::Return("/usr/bin/wazuh-agent"));
     EXPECT_CALL(*context, serviceProcessArgs()).WillOnce(testing::Return("arg1,arg2,arg3"));

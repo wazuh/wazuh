@@ -1268,7 +1268,7 @@ int wdb_users_insert(wdb_t * wdb, const user_record_t * user_record, const bool 
 
 // Function to save groups info into the DB. Return 0 on success or -1 on error.
 int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
-                    const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
+                    const char * group_description, long long group_id_signed, const char * group_uuid, int group_is_hidden,
                     const char * group_users, const char * checksum, const bool replace)
 {
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -1286,7 +1286,7 @@ int wdb_groups_save(wdb_t * wdb, const char * scan_id, const char * scan_time, l
 
 // Insert group info tuple. Return 0 on success or -1 on error.
 int wdb_groups_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, long long group_id, const char * group_name,
-                      const char * group_description, long long group_id_signed, const char * group_uuid, const bool group_is_hidden,
+                      const char * group_description, long long group_id_signed, const char * group_uuid, int group_is_hidden,
                       const char * group_users, const char * checksum, const bool replace){
     sqlite3_stmt *stmt = NULL;
 
@@ -1693,8 +1693,8 @@ int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
     const char * user_roles = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_roles"));
     const char * user_shell = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_shell"));
     const char * user_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "user_type"));
-    const bool user_is_hidden = cJSON_GetObjectItem(attributes, "user_is_hidden") ? cJSON_GetObjectItem(attributes, "user_is_hidden")->valueint : false;
-    const bool user_is_remote = cJSON_GetObjectItem(attributes, "user_is_remote") ? cJSON_GetObjectItem(attributes, "user_is_remote")->valueint : false;
+    const int user_is_hidden = cJSON_GetObjectItem(attributes, "user_is_hidden") ? cJSON_GetObjectItem(attributes, "user_is_hidden")->valueint : -1;
+    const int user_is_remote = cJSON_GetObjectItem(attributes, "user_is_remote") ? cJSON_GetObjectItem(attributes, "user_is_remote")->valueint : -1;
     const long long user_last_login = cJSON_GetObjectItem(attributes, "user_last_login") ? cJSON_GetObjectItem(attributes, "user_last_login")->valuedouble : 0;
     const long long user_auth_failed_count = cJSON_GetObjectItem(attributes, "user_auth_failed_count") ? cJSON_GetObjectItem(attributes, "user_auth_failed_count") ->valuedouble : -1;
     const double user_auth_failed_timestamp = cJSON_GetObjectItem(attributes, "user_auth_failed_timestamp") ? cJSON_GetObjectItem(attributes, "user_auth_failed_timestamp") ->valuedouble : 0.0;
@@ -1708,7 +1708,7 @@ int wdb_syscollector_users_save2(wdb_t * wdb, const cJSON * attributes)
     const int user_password_warning_days_before_expiration = cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration") ? cJSON_GetObjectItem(attributes, "user_password_warning_days_before_expiration")->valueint : -1;
     const long long process_pid = cJSON_GetObjectItem(attributes, "process_pid") ? cJSON_GetObjectItem(attributes, "process_pid")->valuedouble : -1;
     const char * host_ip = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "host_ip"));
-    const bool login_status = cJSON_GetObjectItem(attributes, "login_status") ? cJSON_GetObjectItem(attributes, "login_status")->valueint : false;
+    const int login_status = cJSON_GetObjectItem(attributes, "login_status") ? cJSON_GetObjectItem(attributes, "login_status")->valueint : -1;
     const char * login_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "login_type"));
     const char * login_tty = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "login_tty"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
@@ -1739,7 +1739,7 @@ int wdb_syscollector_groups_save2(wdb_t * wdb, const cJSON * attributes)
     const char * group_description = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_description"));
     const long long group_id_signed = cJSON_GetObjectItem(attributes, "group_id_signed") ? cJSON_GetObjectItem(attributes, "group_id_signed")->valuedouble : 0;
     const char * group_uuid = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_uuid"));
-    const bool group_is_hidden = cJSON_GetObjectItem(attributes, "group_is_hidden") ? cJSON_GetObjectItem(attributes, "group_is_hidden")->valueint : false;
+    const int group_is_hidden = cJSON_GetObjectItem(attributes, "group_is_hidden") ? cJSON_GetObjectItem(attributes, "group_is_hidden")->valueint : -1;
     const char * group_users = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "group_users"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
     return wdb_groups_save(wdb, scan_id, scan_time, group_id, group_name, group_description, group_id_signed, group_uuid, group_is_hidden,
@@ -1764,12 +1764,12 @@ int wdb_syscollector_browser_extensions_save2(wdb_t * wdb, const cJSON * attribu
     const char * package_reference = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_reference"));
     const char * package_permissions = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_permissions"));
     const char * package_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_type"));
-    const bool package_enabled = cJSON_GetObjectItem(attributes, "package_enabled") ? cJSON_GetObjectItem(attributes, "package_enabled")->valueint : false;
-    const bool package_visible = cJSON_GetObjectItem(attributes, "package_visible") ? cJSON_GetObjectItem(attributes, "package_visible")->valueint : false;
-    const bool package_autoupdate = cJSON_GetObjectItem(attributes, "package_autoupdate") ? cJSON_GetObjectItem(attributes, "package_autoupdate")->valueint : false;
-    const bool package_persistent = cJSON_GetObjectItem(attributes, "package_persistent") ? cJSON_GetObjectItem(attributes, "package_persistent")->valueint : false;
-    const bool package_from_webstore = cJSON_GetObjectItem(attributes, "package_from_webstore") ? cJSON_GetObjectItem(attributes, "package_from_webstore")->valueint : false;
-    const bool browser_profile_referenced = cJSON_GetObjectItem(attributes, "browser_profile_referenced") ? cJSON_GetObjectItem(attributes, "browser_profile_referenced")->valueint : false;
+    const int package_enabled = cJSON_GetObjectItem(attributes, "package_enabled") ? cJSON_GetObjectItem(attributes, "package_enabled")->valueint : -1;
+    const int package_visible = cJSON_GetObjectItem(attributes, "package_visible") ? cJSON_GetObjectItem(attributes, "package_visible")->valueint : -1;
+    const int package_autoupdate = cJSON_GetObjectItem(attributes, "package_autoupdate") ? cJSON_GetObjectItem(attributes, "package_autoupdate")->valueint : -1;
+    const int package_persistent = cJSON_GetObjectItem(attributes, "package_persistent") ? cJSON_GetObjectItem(attributes, "package_persistent")->valueint : -1;
+    const int package_from_webstore = cJSON_GetObjectItem(attributes, "package_from_webstore") ? cJSON_GetObjectItem(attributes, "package_from_webstore")->valueint : -1;
+    const int browser_profile_referenced = cJSON_GetObjectItem(attributes, "browser_profile_referenced") ? cJSON_GetObjectItem(attributes, "browser_profile_referenced")->valueint : -1;
     const char * package_installed = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "package_installed"));
     const char * file_hash_sha256 = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "file_hash_sha256"));
     const char * checksum = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "checksum"));
@@ -1802,10 +1802,10 @@ int wdb_syscollector_services_save2(wdb_t * wdb, const cJSON * attributes)
     const char * service_start_type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_start_type"));
     const char * service_restart = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_restart"));
     const long long service_frequency = cJSON_GetObjectItem(attributes, "service_frequency") ? cJSON_GetObjectItem(attributes, "service_frequency")->valuedouble : -1;
-    const bool service_starts_on_mount = cJSON_GetObjectItem(attributes, "service_starts_on_mount") ? cJSON_GetObjectItem(attributes, "service_starts_on_mount")->valueint : false;
+    const int service_starts_on_mount = cJSON_GetObjectItem(attributes, "service_starts_on_mount") ? cJSON_GetObjectItem(attributes, "service_starts_on_mount")->valueint : -1;
     const char * service_starts_on_path_modified = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_starts_on_path_modified"));
     const char * service_starts_on_not_empty_directory = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "service_starts_on_not_empty_directory"));
-    const bool service_inetd_compatibility = cJSON_GetObjectItem(attributes, "service_inetd_compatibility") ? cJSON_GetObjectItem(attributes, "service_inetd_compatibility")->valueint : false;
+    const int service_inetd_compatibility = cJSON_GetObjectItem(attributes, "service_inetd_compatibility") ? cJSON_GetObjectItem(attributes, "service_inetd_compatibility")->valueint : -1;
     const long long process_pid = cJSON_GetObjectItem(attributes, "process_pid") ? cJSON_GetObjectItem(attributes, "process_pid")->valuedouble : -1;
     const char * process_executable = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_executable"));
     const char * process_args = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "process_args"));

@@ -11,7 +11,7 @@
         "group_description": "group description",
         "group_id": 580,
         "group_id_signed": -580,
-        "group_is_hidden": true,
+        "group_is_hidden": 1,
         "group_name": "docker",
         "group_users": "user1:user2",
         "group_uuid": "S-1-5-32-585",
