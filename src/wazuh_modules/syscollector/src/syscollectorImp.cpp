@@ -193,10 +193,15 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
         m_persistDiffFunction(calculateHashId(data, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend);
     }
 
-    // Remove checksum from newData to avoid sending it in the diff
+    // Remove checksum and state from newData to avoid sending them in the diff
     if (newData.contains("checksum"))
     {
         newData.erase("checksum");
+    }
+
+    if (newData.contains("state"))
+    {
+        newData.erase("state");
     }
 
     if (m_notify)
@@ -399,6 +404,11 @@ nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::stri
     if (createFields)
     {
         setJsonField(ret, data, "/checksum/hash/sha1", "checksum", std::nullopt, true);
+
+        // Add state modified_at field for stateful events only
+        nlohmann::json state;
+        state["modified_at"] = Utils::getCurrentISO8601();
+        ret["state"] = state;
     }
 
     return ret;

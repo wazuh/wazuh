@@ -184,7 +184,14 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -434,7 +441,14 @@ TEST_F(SyscollectorImpTest, noHardware)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -587,7 +601,14 @@ TEST_F(SyscollectorImpTest, noOs)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -739,7 +760,14 @@ TEST_F(SyscollectorImpTest, noNetwork)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -865,7 +893,14 @@ TEST_F(SyscollectorImpTest, noPackages)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1017,7 +1052,14 @@ TEST_F(SyscollectorImpTest, noPorts)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1170,7 +1212,14 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1332,7 +1381,14 @@ TEST_F(SyscollectorImpTest, noProcesses)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1485,7 +1541,14 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1639,7 +1702,14 @@ TEST_F(SyscollectorImpTest, noUsers)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1792,7 +1862,14 @@ TEST_F(SyscollectorImpTest, noGroups)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -1989,7 +2066,14 @@ TEST_F(SyscollectorImpTest, portAllEnable)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -2161,7 +2245,14 @@ TEST_F(SyscollectorImpTest, portAllDisable)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -2261,7 +2352,14 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
@@ -2349,7 +2447,14 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     {
         [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data)
         {
-            wrapperPersist.callbackMock(id, operation, index, data);
+            auto persist = nlohmann::json::parse(data);
+
+            if (persist.contains("state"))
+            {
+                persist.erase("state");
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, persist.dump());
         }
     };
 
