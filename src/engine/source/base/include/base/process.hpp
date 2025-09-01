@@ -101,6 +101,27 @@ OptError createPID(const std::string& path, const std::string& name, int pid)
     return std::nullopt;
 }
 
+/**
+ * @brief Thread-safe wrapper for retrieving user account information by username.
+ *
+ * This function provides a simplified interface to getpwnam_r() by handling the
+ * result parameter internally and setting errno appropriately on failure.
+ *
+ * @param name The username to look up in the password database
+ * @param pwd Pointer to a passwd structure to store the result
+ * @param buf Buffer to store string fields of the passwd structure
+ * @param buflen Size of the buffer in bytes
+ *
+ * @return Pointer to the passwd structure on success, NULL on failure.
+ *         On failure, errno is set to indicate the error condition.
+ *
+ * @note The caller must provide a sufficiently large buffer to store all
+ *       string fields. If the buffer is too small, the function will fail
+ *       and errno will be set to ERANGE.
+ *
+ * @warning This function modifies errno on failure. Check errno to determine
+ *          the specific error condition when NULL is returned.
+ */
 struct passwd* getpwnam(const char* name, struct passwd* pwd, char* buf, size_t buflen)
 {
     struct passwd* result = NULL;
@@ -114,6 +135,24 @@ struct passwd* getpwnam(const char* name, struct passwd* pwd, char* buf, size_t 
     return result;
 }
 
+/**
+ * @brief Thread-safe wrapper for retrieving group information by name.
+ *
+ * This function provides a simplified interface to getgrnam_r() by handling
+ * the result pointer internally and setting errno appropriately on failure.
+ *
+ * @param name The name of the group to look up
+ * @param grp Pointer to a group structure to store the result
+ * @param buf Buffer to store string data referenced by the group structure
+ * @param buflen Size of the buffer in bytes
+ *
+ * @return Pointer to the group structure on success, NULL on failure.
+ *         On failure, errno is set to indicate the error.
+ *
+ * @note This function is thread-safe and reentrant.
+ * @note The caller must provide a sufficiently large buffer to hold all
+ *       string data associated with the group entry.
+ */
 struct group* getgrnam(const char* name, struct group* grp, char* buf, int buflen)
 {
     struct group* result = NULL;
@@ -222,6 +261,17 @@ gid_t privSepGetGroup(const std::string& groupname)
     throw std::runtime_error("Exceeded maximum buffer size looking up group '" + groupname + "'");
 }
 
+/**
+ * @brief Sets the user ID for privilege separation.
+ *
+ * This function changes the effective user ID of the calling process to the
+ * specified user ID. This is typically used for privilege separation to drop
+ * elevated privileges and run with reduced permissions for security purposes.
+ *
+ * @param uid The user ID to set for the current process
+ * @return OS_SUCCESS if the user ID was successfully set, OS_INVALID if the
+ *         setuid() system call failed
+ */
 int privSepSetUser(uid_t uid)
 {
     if (setuid(uid) < 0)
@@ -232,6 +282,21 @@ int privSepSetUser(uid_t uid)
     return (OS_SUCCESS);
 }
 
+/**
+ * @brief Sets the group ID and supplementary groups for privilege separation.
+ *
+ * This function performs privilege separation by setting the process group ID
+ * and clearing supplementary groups, leaving only the specified group.
+ *
+ * @param gid The group ID to set for the current process
+ *
+ * @return OS_SUCCESS on successful group ID change, OS_INVALID on failure
+ *
+ * @note This function first clears all supplementary groups by calling setgroups()
+ *       with a single group, then sets the effective group ID using setgid().
+ * @note This operation typically requires appropriate privileges (e.g., running as root).
+ * @warning Calling this function will drop supplementary group memberships.
+ */
 int privSepSetGroup(gid_t gid)
 {
     if (setgroups(1, &gid) == -1)
@@ -247,6 +312,18 @@ int privSepSetGroup(gid_t gid)
     return (OS_SUCCESS);
 }
 
+/**
+ * @brief Gets the Wazuh installation home directory path.
+ *
+ * This function determines the Wazuh home directory by reading the current
+ * executable's path from /proc/self/exe and deriving the installation root.
+ * It assumes the executable is located in the "bin" subdirectory of the
+ * Wazuh installation (e.g., /var/ossec/bin/executable).
+ *
+ * @return std::string The path to the Wazuh home directory (e.g., "/var/ossec").
+ *                     Returns an empty string if the executable path cannot be determined.
+ *
+ */
 std::string getWazuhHome()
 {
     char path[PATH_MAX];
@@ -261,8 +338,8 @@ std::string getWazuhHome()
 
         // Remove the "/bin" suffix if it exists -> /var/ossec
         const std::string binSuffix = "/bin";
-        if (dir.size() >= binSuffix.size() &&
-            dir.compare(dir.size() - binSuffix.size(), binSuffix.size(), binSuffix) == 0)
+        if (dir.size() >= binSuffix.size()
+            && dir.compare(dir.size() - binSuffix.size(), binSuffix.size(), binSuffix) == 0)
         {
             dir = dir.substr(0, dir.size() - binSuffix.size());
         }
@@ -271,6 +348,27 @@ std::string getWazuhHome()
     }
 
     return {};
+}
+
+/**
+ * @brief Sets the name of the current thread.
+ *
+ * This function assigns a name to the calling thread,
+ * On Linux, the thread name is limited to 15 characters; if the provided name is longer, it will be truncated.
+ * If the input name is empty, the function does nothing.
+ *
+ * @param name The desired name for the thread.
+ */
+void setThreadName(const std::string& name)
+{
+    if (name.empty())
+    {
+        return; // No name to set
+    }
+
+    // Limit thread name to 15 characters (Linux limit)
+    std::string threadName = name.substr(0, 15);
+    pthread_setname_np(pthread_self(), threadName.c_str());
 }
 
 } // namespace base::process
