@@ -71,7 +71,7 @@ def send_msg_to_wdb(msg, raw=False):
     (
             ['version'],
             [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.8.2', 'count': 2},
-             {'version': 'Wazuh v3.6.2', 'count': 1}, {'version': 'N/A', 'count': 2}]
+             {'version': 'Wazuh v3.7.0', 'count': 1}, {'version': 'N/A', 'count': 2}]
     ),
     (
             ['os.platform', 'os.major'],
@@ -423,7 +423,7 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
     (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'ip': '172.17.0.202'}, None, 1731, ['001']),
     (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'name': 'agent-6'}, None, 1731, ['006']),
     (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'node_name': 'random'}, None, 1731, []),
-    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'version': 'Wazuh v3.6.2'}, None, 1731, ['002']),
+    (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'version': 'Wazuh v3.7.0'}, None, 1731, ['002']),
     (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'manager': 'master'}, None, 1731,
      ['001', '002', '005', '006', '007', '008', '009']),
     (full_agent_list[1:], {'status': 'all', 'older_than': '1s', 'os.name': 'ubuntu'}, None, 1731,
@@ -1132,11 +1132,11 @@ def test_agent_upgrade_agents(mock_socket, mock_wazuh_socket, mock_wdb, mock_cli
     raise_error : bool
         Boolean variable used to indicate that the
     """
-    mock_wazuh_socket.return_value.receive.return_value = (
-        b'ok {"client": {"server": []}}'
-    )
+
     with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
         core_upgrade_agents_mock.return_value = result_from_socket
+        # Mock an empty agent config for upgrade_agent's call to Agent.get_config():
+        mock_wazuh_socket.return_value.receive.return_value = (b'ok {"client": {"server": []}}')
 
         if raise_error:
             # Upgrade expecting a Wazuh Exception
