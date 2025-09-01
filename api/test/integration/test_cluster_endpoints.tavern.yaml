@@ -1486,6 +1486,7 @@ stages:
               openssl_support: !anystr
               tz_offset: !anystr
               tz_name: !anystr
+              uuid: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
