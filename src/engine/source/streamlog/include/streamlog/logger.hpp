@@ -233,6 +233,31 @@ public:
      */
     void destroyChannel(const std::string& name);
 
+    /**
+     * @brief Creates and validates the base directory path for a log channel.
+     *
+     * This method creates a subdirectory within the configured base path using the provided
+     * channel name. It performs validation on both the channel name and configuration,
+     * ensures the target path doesn't conflict with existing files, and creates the
+     * necessary directory structure.
+     *
+     * @param channelName The name of the log channel to create a directory for
+     * @param config The rotation configuration containing the base path and other settings
+     *
+     * @return Reference to the modified RotationConfig with updated base path
+     *
+     * @throws std::runtime_error If the channel name is invalid, configuration is invalid,
+     *                           the target path exists but is not a directory, or
+     *                           directory creation fails
+     *
+     * @note The method modifies the basePath field in the provided config to point to
+     *       the newly created subdirectory (basePath/channelName)
+     */
+    static RotationConfig& isolatedBasePath(const std::string& channelName, RotationConfig& config);
+
+    /**
+     * @brief Destructor
+     */
     ~LogManager();
 };
 

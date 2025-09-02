@@ -41,7 +41,6 @@ void Scheduler::start()
         m_workers.emplace_back(&Scheduler::workerThread, this);
     }
 
-    LOG_INFO("Scheduler started");
 }
 
 void Scheduler::stop()
@@ -74,8 +73,6 @@ void Scheduler::stop()
         std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
         m_tasks.clear();
     }
-
-    LOG_INFO("Scheduler stopped");
 }
 
 bool Scheduler::isRunning() const

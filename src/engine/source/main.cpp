@@ -27,6 +27,8 @@
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
+#include <scheduler/scheduler.hpp>
+#include <streamlog/logger.hpp>
 #include <httpsrv/server.hpp>
 #include <udgramsrv/udsrv.hpp>
 // TODO: Until the indexer connector is unified with the rest of wazuh-manager
@@ -112,6 +114,7 @@ int main(int argc, char* argv[])
 
     if (standalone)
     {
+        // Standalone logging
         if (opts.testConfig)
         {
             return EXIT_SUCCESS;
@@ -125,6 +128,7 @@ int main(int argc, char* argv[])
     }
     else
     {
+        // Use wazuh-shared logging
         libwazuhshared = dlopen("libwazuhshared.so", RTLD_NOW | RTLD_GLOBAL);
         if (!libwazuhshared)
         {
@@ -214,6 +218,8 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
+    std::shared_ptr<scheduler::Scheduler> scheduler;
+    std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<api::policy::IPolicy> policyManager;
     // std::shared_ptr<IIndexerConnector> iConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
@@ -231,21 +237,21 @@ int main(int argc, char* argv[])
             const auto uid = base::process::privSepGetUser(user);
             const auto gid = base::process::privSepGetGroup(group);
 
-            if (uid == static_cast<uid_t>(-1) || gid == static_cast<gid_t>(-1))
+            if (uid == base::process::INVALID_UID || gid == base::process::INVALID_GID)
             {
-                throw std::runtime_error {fmt::format(base::process::USER_ERROR, user, group, strerror(errno), errno)};
+                throw std::runtime_error {fmt::format("Invalid user '{}' or group '{}'", user, group, strerror(errno), errno)};
             }
 
             /* Privilege separation only if we got valid IDs */
-            if (base::process::privSepSetGroup(gid) < 0)
+            if (base::process::privSepSetGroup(gid))
             {
-                throw std::runtime_error {fmt::format(base::process::SETGID_ERROR, group, errno, strerror(errno))};
+                throw std::runtime_error {fmt::format("Unable to switch to group '{}' due to [({})-({})].", group, errno, strerror(errno))};
             }
 
             /* Changing user only if we got a valid UID */
-            if (base::process::privSepSetUser(uid) < 0)
+            if (base::process::privSepSetUser(uid))
             {
-                throw std::runtime_error {fmt::format(base::process::SETUID_ERROR, user, errno, strerror(errno))};
+                throw std::runtime_error {fmt::format("Unable to switch to user '{}' due to [({})-({})].", user, errno, strerror(errno))};
             }
         }
 
@@ -453,6 +459,52 @@ int main(int argc, char* argv[])
         }
         */
 
+        // Scheduler
+        {
+            scheduler = std::make_shared<scheduler::Scheduler>();
+            scheduler->start();
+            LOG_INFO("Scheduler initialized and started.");
+            exitHandler.add(
+                [scheduler, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                {
+                    scheduler->stop();
+                    LOG_INFO_L(functionName.c_str(), "Scheduler stopped.");
+                });
+        }
+
+        // Stream log for alerts an archive
+        {
+
+            streamLogger = std::make_shared<streamlog::LogManager>(store, scheduler);
+            LOG_INFO("Stream logger initialized.");
+
+            auto regChannel =
+                [&](const std::string& name, const std::string& pattern, size_t maxSize, size_t bufferSize)
+            {
+                streamlog::RotationConfig conf = {
+                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                    .pattern = pattern,
+                    .maxSize = maxSize,
+                    .bufferSize = bufferSize,
+                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+
+                streamLogger->isolatedBasePath(name, conf);
+                streamLogger->registerLog(name, conf, "json");
+                LOG_DEBUG("Stream logger channel '{}' registered.", name);
+            };
+
+            regChannel("alerts",
+                       confManager.get<std::string>(conf::key::STREAMLOG_ALERTS_PATTERN),
+                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_MAX_SIZE),
+                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_BUFFER_SIZE));
+
+            regChannel("archives",
+                       confManager.get<std::string>(conf::key::STREAMLOG_ARCHIVES_PATTERN),
+                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_MAX_SIZE),
+                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_BUFFER_SIZE));
+        }
+
         // Builder and registry
         {
             builder::BuilderDeps builderDeps;
@@ -654,6 +706,12 @@ int main(int argc, char* argv[])
     {
         const auto msg = utils::getExceptionStack(e);
         LOG_ERROR("An error occurred while initializing the modules: {}.", msg);
+        exitHandler.execute();
+        exit(EXIT_FAILURE);
+    }
+    catch (...)
+    {
+        LOG_ERROR("An unknown error occurred while initializing the modules.");
         exitHandler.execute();
         exit(EXIT_FAILURE);
     }

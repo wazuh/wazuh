@@ -8,6 +8,8 @@ namespace streamlog
 {
 
 constexpr const char* STORE_POSFIX_PATH_TO_CURRENT = "/last_current"; ///< JSON path to the last current file path
+constexpr const char* MONTHS[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+constexpr size_t MONTHS_COUNT = sizeof(MONTHS) / sizeof(MONTHS[0]);
 
 /**
  * @brief Replaces placeholders in the log pattern with actual values based on the provided time point and channel
@@ -18,6 +20,7 @@ constexpr const char* STORE_POSFIX_PATH_TO_CURRENT = "/last_current"; ///< JSON 
  * - `${YYYY}`: 4-digit year (e.g., 2024)
  * - `${YY}`: 2-digit year (e.g., 24)
  * - `${MM}`: 2-digit month (01-12)
+ * - `${MMM}`: 3-letter month abbreviation (Jan, Feb, etc.)
  * - `${DD}`: 2-digit day of the month (01-31)
  * - `${HH}`: 2-digit hour (00-23)
  * - `${name}`: Channel name (`m_channelName`)
@@ -48,6 +51,11 @@ std::string ChannelHandler::replacePlaceholders(const std::chrono::system_clock:
         result, std::regex(R"(\$\{DD\})"), (tm.tm_mday < 10 ? "0" : "") + std::to_string(tm.tm_mday));
     result = std::regex_replace(
         result, std::regex(R"(\$\{HH\})"), (tm.tm_hour < 10 ? "0" : "") + std::to_string(tm.tm_hour));
+
+    if (tm.tm_mon >= 0 && static_cast<size_t>(tm.tm_mon) < MONTHS_COUNT)
+    {
+        result = std::regex_replace(result, std::regex(R"(\$\{MMM\})"), MONTHS[tm.tm_mon]);
+    }
 
     // Replace channel name
     result = std::regex_replace(result, std::regex(R"(\$\{name\})"), m_channelName);
@@ -817,7 +825,7 @@ void ChannelHandler::savePreviousCurrentFilePathFromStore() const
 
         // Update the path
         auto jState = base::getResponse(state);
-        jState.setString(STORE_POSFIX_PATH_TO_CURRENT, m_stateData.currentFile.string());
+        jState.setString(m_stateData.currentFile.string(), STORE_POSFIX_PATH_TO_CURRENT);
 
         // Save the updated document back to the store
         const auto res = m_store->upsertInternalDoc(getStoreBaseName(), jState);
