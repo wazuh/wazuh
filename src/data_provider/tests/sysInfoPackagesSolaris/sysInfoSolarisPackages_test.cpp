@@ -72,5 +72,5 @@ TEST_F(SysInfoSolarisPackagesTest, Test_Success_Data)
     EXPECT_EQ("", packages.at("priority").get_ref<const std::string&>());
     EXPECT_EQ(0, packages.at("size").get<const int>());
     EXPECT_EQ("Oracle corporation", packages.at("vendor").get_ref<const std::string&>());
-    EXPECT_EQ("2022/01/13 14:48:58", packages.at("installed").get_ref<const std::string&>());
+    EXPECT_EQ("2022-01-13T14:48:58.000Z", packages.at("installed").get_ref<const std::string&>());
 }

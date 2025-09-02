@@ -359,7 +359,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformation)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ(PKG_NAME, jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["installed"]);
+    EXPECT_EQ("1970-01-01T00:00:00.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ(PKG_GROUP, jsPackageInfo["category"]);
     EXPECT_EQ(PKG_VERSION, jsPackageInfo["version"]);
     EXPECT_EQ(PKG_ARCH, jsPackageInfo["architecture"]);
@@ -427,7 +427,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parsePacmanInformationNull)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("", jsPackageInfo["name"]);
     EXPECT_EQ(0, jsPackageInfo["size"]);
-    EXPECT_EQ("1970/01/01 00:00:00", jsPackageInfo["installed"]);
+    EXPECT_EQ("1970-01-01T00:00:00.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["category"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["version"]);
     EXPECT_EQ(UNKNOWN_VALUE, jsPackageInfo["architecture"]);
@@ -586,7 +586,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseSnapCorrectMapping)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("gnome-3-38-2004", jsPackageInfo["name"]);
     EXPECT_EQ(4111222333, jsPackageInfo["size"]);
-    EXPECT_EQ("2022/11/23 20:33:59", jsPackageInfo["installed"]);
+    EXPECT_EQ("2022-11-23T20:33:59.000Z", jsPackageInfo["installed"]);
     EXPECT_EQ(" ", jsPackageInfo["category"]);
     EXPECT_EQ("0+git.6f39565", jsPackageInfo["version"]);
     EXPECT_EQ(" ", jsPackageInfo["architecture"]);

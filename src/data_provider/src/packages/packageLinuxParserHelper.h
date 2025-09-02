@@ -249,7 +249,7 @@ namespace PackageLinuxHelper
         ret["path"]             = "/snap/" + name;
         ret["version"]          = version;
         ret["vendor"]           = vendor;
-        ret["installed"]        = install_time;
+        ret["installed"]        = install_time == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::timestampToISO8601(install_time);
         ret["description"]      = description;
         ret["size"]             = size;
         ret["source"]           = "snapcraft";

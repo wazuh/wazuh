@@ -28,6 +28,8 @@
 #include "stringHelper.h"
 #include "registryHelper.h"
 #include "defs.h"
+#include "sharedDefs.h"
+#include "timeHelper.h"
 #include "osinfo/sysOsInfoWin.h"
 #include "windowsHelper.h"
 #include "encodingWindowsHelper.h"
@@ -394,16 +396,16 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                 {
                     try
                     {
-                        install_time = Utils::normalizeTimestamp(value, packageReg.keyModificationDate());
+                        install_time = Utils::timestampToISO8601(Utils::normalizeTimestamp(value, packageReg.keyModificationDate()));
                     }
                     catch (const std::exception& e)
                     {
-                        install_time = packageReg.keyModificationDate();
+                        install_time = Utils::timestampToISO8601(packageReg.keyModificationDate());
                     }
                 }
                 else
                 {
-                    install_time = packageReg.keyModificationDate();
+                    install_time = Utils::timestampToISO8601(packageReg.keyModificationDate());
                 }
 
                 if (packageReg.string("InstallLocation", value))

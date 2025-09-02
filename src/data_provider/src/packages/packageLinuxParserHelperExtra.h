@@ -43,7 +43,7 @@ namespace PackageLinuxHelper
 
         packageInfo["name"]         = alpmWrapper(alpm_pkg_get_name(pArchPkg));
         packageInfo["size"]         = alpm_pkg_get_isize(pArchPkg);
-        packageInfo["installed"]    = Utils::getTimestamp(static_cast<time_t>(alpm_pkg_get_installdate(pArchPkg)));
+        packageInfo["installed"]    = Utils::timestampToISO8601(Utils::getTimestamp(static_cast<time_t>(alpm_pkg_get_installdate(pArchPkg))));
 
         for (auto group{alpm_pkg_get_groups(pArchPkg)}; group; group = alpm_list_next(group))
         {
