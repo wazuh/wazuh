@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(syscollectorimp_unit_test)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
+if(FSANITIZE)
+set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address,leak,undefined")
+endif()
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
