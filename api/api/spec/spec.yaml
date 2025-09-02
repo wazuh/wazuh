@@ -1186,7 +1186,7 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/SyscollectorUser'
-    
+
     AllItemsResponseSyscollectorGroups:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1199,7 +1199,7 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/SyscollectorGroup'
-              
+
     AllItemsResponseSyscollectorBrowserExtensions:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -5504,29 +5504,22 @@ components:
             name:
               type: string
               description: "Browser name"
-            profile:
-              type: object
-              description: "Browser profile information"
-              properties:
-                name:
-                  type: string
-                  description: "Profile name"
-                path:
-                  type: string
-                  description: "File system path to the profile"
-                referenced:
-                  type: boolean
-                  description: "Profile referenced by preferences"
-        file:
+            profile_name:
+              type: string
+              description: "Browser profile name"
+            profile_path:
+              type: string
+              description: "File system path to the profile"
+            profile_referenced:
+              type: boolean
+              description: "Profile referenced by preferences"
+        file_hash:
           type: object
           description: "manifest.json file information"
           properties:
-            hash:
-              type: object
-              properties:
-                sha256:
-                  type: string
-                  description: "SHA256 of manifest.json file"
+            sha256:
+              type: string
+              description: "SHA256 of manifest.json file"
         package:
           type: object
           description: "Package information"
@@ -5625,26 +5618,22 @@ components:
               type: integer
               format: int64
               description: "Run frequency in seconds"
-            starts:
-              type: object
-              description: "Service start conditions"
-              properties:
-                on_mount:
-                  type: boolean
-                  description: "Whether it launches every time a filesystem is mounted"
-                on_path_modified:
-                  type: string
-                  description: "Start on path modification"
-                on_not_empty_directory:
-                  type: string
-                  description: "Start on not empty directory"
+            starts_on_mount:
+              type: boolean
+              description: "Whether the service launches every time a filesystem is mounted"
+            starts_on_path_modified:
+              type: string
+              description: "Whether the service starts on path modification"
+            starts_on_not_empty_directory:
+              type: string
+              description: "Whether the service starts on not empty directory"
             inetd_compatibility:
               type: boolean
               description: "Whether to run job as if launched from inetd"
             exit_code:
-                type: integer
-                format: int32
-                description: "Service-specific exit code on failure"
+              type: integer
+              format: int32
+              description: "Service-specific exit code on failure"
             win32_exit_code:
               type: integer
               format: int32
@@ -5655,19 +5644,16 @@ components:
             object_path:
               type: string
               description: "D-Bus object path of the service"
-            target:
-              type: object
-              properties:
-                ephemeral_id:
-                  type: integer
-                  format: int64
-                  description: "Job ID assigned"
-                type:
-                  type: string
-                  description: "Type of systemd job"
-                address:
-                  type: string
-                  description: "Path to job object"
+            target_ephemeral_id:
+              type: integer
+              format: int64
+              description: "Job ID assigned"
+            target_type:
+              type: string
+              description: "Type of systemd job"
+            target_address:
+              type: string
+              description: "Path to job object"
             address:
               type: string
               description: "Path to the service"
@@ -5685,18 +5671,12 @@ components:
             args:
               type: string
               description: "Command line arguments for the service/job."
-            user:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: "User account running the service"
-            group:
-              type: object
-              properties:
-                name:
-                  type: string
-                  description: "Group account running the service"
+            user_name:
+              type: string
+              description: "User account running the service"
+            group_name:
+              type: string
+              description: "Group account running the service"
             working_directory:
               type: string
               description: "Working directory of the service"
@@ -5709,27 +5689,18 @@ components:
             path:
               type: string
               description: "Path to the service unit file"
-        log:
+        log_file:
           type: object
           properties:
-            file:
-              type: object
-              properties:
-                path:
-                  type: string
-                  description: "Redirect stdout to a file/pipe"
-        error:
+            path:
+              type: string
+              description: "Redirect stdout to a file/pipe"
+        error_log_file:
           type: object
           properties:
-            log:
-              type: object
-              properties:
-                file:
-                  type: object
-                  properties:
-                    path:
-                      type: string
-                      description: "Redirect stderr to a file/pipe"
+            path:
+              type: string
+              description: "Redirect stderr to a file/pipe"
         checksum:
           type: string
           description: "Service checksum"
@@ -17776,13 +17747,11 @@ paths:
                   affected_items:
                     - browser:
                         name: "Google Chrome"
-                        profile:
-                          name: "Default"
-                          path: "/Users/user/Library/Application Support/Google/Chrome/Default"
-                          referenced: false
-                      file:
-                        hash:
-                          sha256: "077252650e9f983e2f31b271c00e9050f7324756"
+                        profile_name: "Default"
+                        profile_path: "/Users/user/Library/Application Support/Google/Chrome/Default"
+                        profile_referenced: false
+                      file_hash:
+                        sha256: "077252650e9f983e2f31b271c00e9050f7324756"
                       package:
                         id: 0
                         name: "Example Extension"
@@ -17841,7 +17810,7 @@ paths:
         - $ref: '#/components/parameters/distinct'
       responses:
         '200':
-          description: "Return an agent's browser extensions results"
+          description: "Return an agent's services results"
           content:
             application/json:
               schema:
@@ -17855,50 +17824,42 @@ paths:
                 data:
                   affected_items:
                     - service:
-                        properties:
-                          id: "001"
-                          name: "My Service"
-                          description: "A description of my service"
-                          type: "simple"
-                          state: "running"
-                          sub_state: "active"
-                          enabled: true
-                          start_type: "automatic"
-                          restart: "on-failure"
-                          frequency: "daily"
-                          starts:
-                            on_mount: true
-                            on_path_modified: yes
-                            on_not_empty_directory: yes
-                          inetd_compatibility: true
-                          exit_code: 0
-                          win32_exit_code: 0
-                          following: ""
-                          object_path: ""
-                          target:
-                            ephemeral_id: 2139129
-                            type: ""
-                            address: ""
-                          address: ""
+                        id: "001"
+                        name: "My Service"
+                        description: "A description of my service"
+                        type: "simple"
+                        state: "running"
+                        sub_state: "active"
+                        enabled: true
+                        start_type: "automatic"
+                        restart: "on-failure"
+                        frequency: "daily"
+                        starts_on_mount: true
+                        starts_on_path_modified: yes
+                        starts_on_not_empty_directory: yes
+                        inetd_compatibility: true
+                        exit_code: 0
+                        win32_exit_code: 0
+                        following: ""
+                        object_path: ""
+                        target_ephemeral_id: 2139129
+                        target_type: ""
+                        target_address: ""
+                        address: ""
                       process:
                         pid: 9128392
                         executable: /usr/bin/my_service
                         args: ["--config", "/etc/my_service/config.yaml"]
-                        user:
-                          name: my_user
-                        group:
-                          name: my_group
+                        user_name: my_user
+                        group_name: my_group
                         working_directory: /var/lib/my_service
                         root_directory: /
                       file:
-                          path: ""
-                      log:
-                        file:
-                          path: "/var/log/my_service.log"
-                      error:
-                        log:
-                          file:
-                            path: ""
+                        path: ""
+                      log_file:
+                        path: "/var/log/my_service.log"
+                      error_log_file:
+                        path: ""
                       scan:
                         id: 0
                         time: "2025-07-16T07:52:59+00:00"
