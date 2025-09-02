@@ -25,8 +25,6 @@
 #define AUDIT_CONF_LINK             "af_wazuh.conf"
 #define BUF_SIZE OS_MAXSTR
 #define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
-#define VERCODE(M,m,p)  ((((unsigned)(M) & 0xFF) << 16) | (((unsigned)(m) & 0xFF) << 8) | ((unsigned)(p) & 0xFF))
-
 
 // Global variables
 pthread_mutex_t audit_mutex;
@@ -70,12 +68,11 @@ int get_audit_version_code(unsigned *out_code) {
     FILE *p = popen("auditctl -v 2>/dev/null", "r");
     if (!p) return -1;
 
-    int M = -1, m = -1, pch = -1;
-    // Expect exact format "auditctl version X.Y.Z"
+    int M = 0, m = 0, pch = 0;
     int n = fscanf(p, "auditctl version %d.%d.%d", &M, &m, &pch);
     pclose(p);
 
-    if (n != 3) return -1;
+    if (n < 1) return -1;
     if ((unsigned)M > 255 || (unsigned)m > 255 || (unsigned)pch > 255) return -1;
 
     *out_code = VERCODE(M, m, pch);
@@ -156,13 +153,9 @@ int configure_audisp(const char *audisp_path, const char *abs_path_socket, const
                 break;
             }
 
-        case EXDEV:
-            merror("Hard link across filesystems not allowed: '%s' -> '%s' (%d) %s",
-                   buffer, audisp_path, errno, strerror(errno));
-            return -1;
-
+        // Fallthrough
         default:
-            merror(LINK_ERROR, audisp_path, AUDIT_CONF_FILE, errno, strerror(errno));
+            merror(LINK_ERROR, buffer, audisp_path, errno, strerror(errno));
             return -1;
         }
     }
@@ -194,18 +187,24 @@ int set_auditd_config(void) {
         if (get_audit_version_code(&vcode) != 0) {
             mdebug2("Could not get audit version code. Using default configuration.");
             strcpy(audisp_config, AUDISP_CONFIGURATION_2);
-        }
-
-        if (vcode < VERCODE(3, 1, 1)) {
-            strcpy(audisp_config, AUDISP_CONFIGURATION_0);
-        } else if (vcode < VERCODE(3, 1, 3)) {
-            strcpy(audisp_config, AUDISP_CONFIGURATION_1);
-        } else if (vcode < VERCODE(3, 1, 5)) {
-            strcpy(audisp_config, AUDISP_CONFIGURATION_2);
-        } else if (vcode < VERCODE(4, 0, 3)) {
-            strcpy(audisp_config, AUDISP_CONFIGURATION_1);
         } else {
-            strcpy(audisp_config, AUDISP_CONFIGURATION_2);
+            mdebug2("Audit version detected: %u.%u.%u", (vcode >> 16) & 0xFF, (vcode >> 8) & 0xFF, vcode & 0xFF);
+            if (vcode < VERCODE(3, 1, 1)) {
+                // Before audit version 3.1.1 old code worked with builtin_af_unix
+                strcpy(audisp_config, AUDISP_CONFIGURATION_0);
+            } else if (vcode < VERCODE(3, 1, 5)) {
+                // Audit version 3.1.1 include the changes for audispd af_unix plugin to a standalone program
+                strcpy(audisp_config, AUDISP_CONFIGURATION_1);
+            } else if (vcode < VERCODE(4, 0, 0)) {
+                // Audit version 3.1.5 include the changes to propagate event format to the audisp-af_unix plugin
+                strcpy(audisp_config, AUDISP_CONFIGURATION_2);
+            } else if (vcode < VERCODE(4, 0, 3)) {
+                // From audit version 4.0.0 to 4.0.2 format changes are not included
+                strcpy(audisp_config, AUDISP_CONFIGURATION_1);
+            } else {
+                // From audit version 4.0.3 format changes are included
+                strcpy(audisp_config, AUDISP_CONFIGURATION_2);
+            }
         }
     } else if (IsDir(PLUGINS_OLD_DIR_AUDISP) == 0) {
         strcpy(plugin_dir, PLUGINS_OLD_DIR_AUDISP);
