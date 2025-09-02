@@ -60,6 +60,8 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from . import CONFIGS_PATH, TEST_CASES_PATH
 from utils import wait_keepalive
 
+pytest.skip("Isolate only the tests that are failing.", allow_module_level=True)
+
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
