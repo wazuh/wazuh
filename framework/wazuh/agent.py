@@ -1206,7 +1206,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         with WazuhDBQueryAgents(limit=None, select=["id", "status", "version"], query=q, **rbac_filters) as db_query:
             data = db_query.run()
 
-        filtered_agents = set([agent['id'] for agent in data['items']])
+        included_agents = set([agent['id'] for agent in data['items']])
         agent_list = set(agent_list)
 
         try:
@@ -1218,6 +1218,16 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         # Add non existent agents to failed_items
         not_found_agents = agent_list - system_agents
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
+
+        # Add agents that don´t pass the filters to failed_items
+        excluded_agents = agent_list - included_agents - not_found_agents
+        [result.add_failed_item(id_=ag, error=WazuhError(
+            1731,
+            extra_message="some of the requirements are not met -> {}".format(
+                ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
+                (f', q: {q}' if q else '')
+            )
+        )) for ag in excluded_agents]
 
         non_active_agents = set()
         invalid_config_agents = set()
@@ -1247,17 +1257,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                         invalid_config_agents.add(agent['id'])
                         result.add_failed_item(id_=agent['id'], error=WazuhError(1761, extra_message = extra_message))
 
-        # Add non eligible agents to failed_items
-        non_eligible_agents = agent_list - not_found_agents - non_active_agents - filtered_agents - invalid_config_agents
-        [result.add_failed_item(id_=ag, error=WazuhError(
-            1731,
-            extra_message="some of the requirements are not met -> {}".format(
-                ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
-                (f', q: {q}' if q else '')
-            )
-        )) for ag in non_eligible_agents]
-
-        eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents - invalid_config_agents
+        eligible_agents = agent_list - not_found_agents - non_active_agents - excluded_agents - invalid_config_agents
 
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]
