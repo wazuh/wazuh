@@ -7,6 +7,9 @@ import os
 import subprocess
 import pytest
 import sys
+import tempfile
+import shutil
+from datetime import datetime
 from typing import List
 
 from wazuh_testing import session_parameters
@@ -282,9 +285,34 @@ def truncate_monitored_files_implementation() -> None:
 
     yield
 
+    runner_temp_dir = os.environ.get('RUNNER_TEMP')
+    if runner_temp_dir and os.path.isdir(runner_temp_dir):
+        temp_dir = runner_temp_dir
+        logger.debug(f"Using GitHub Actions runner temp directory: {temp_dir}")
+    else:
+        temp_dir = tempfile.gettempdir()
+        logger.debug(f"Using default system temp directory: {temp_dir}")
+
     for log_file in log_files:
-        if os.path.isfile(os.path.join(ROOT_PREFIX, log_file)):
-            file.truncate_file(log_file)
+        full_path = os.path.join(ROOT_PREFIX, log_file)
+        if os.path.isfile(full_path):
+            # Create temp directory for storing log files before truncation
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_filename = os.path.basename(log_file).replace('/', '_').replace('\\', '_')
+            temp_log_path = os.path.join(temp_dir, f"wazuh_test_log_{log_filename}_{timestamp}")
+
+            try:
+                # Copy the log file to temp directory before truncating
+                shutil.copy2(full_path, temp_log_path)
+                logger.debug(f"Copied log file {full_path} to {temp_log_path}")
+
+                # Now truncate the original file
+                file.truncate_file(log_file)
+                logger.debug(f"Truncated {log_file}")
+            except Exception as e:
+                logger.warning(f"Failed to copy log file {full_path} to temp: {str(e)}")
+                # Still try to truncate even if copy fails
+                file.truncate_file(log_file)
 
 
 @pytest.fixture()
