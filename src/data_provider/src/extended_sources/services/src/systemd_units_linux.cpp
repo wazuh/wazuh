@@ -161,19 +161,19 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
             {
                 if (query.columnName == "fragment_path")
                 {
-                    unit.fragmentPath = value;
+                    unit.fragmentPath = std::move(value);
                 }
                 else if (query.columnName == "source_path")
                 {
-                    unit.sourcePath = value;
+                    unit.sourcePath = std::move(value);
                 }
                 else if (query.columnName == "user")
                 {
-                    unit.user = value;
+                    unit.user = std::move(value);
                 }
                 else if (query.columnName == "unit_file_state")
                 {
-                    unit.unitFileState = value;
+                    unit.unitFileState = std::move(value);
                 }
             }
         }

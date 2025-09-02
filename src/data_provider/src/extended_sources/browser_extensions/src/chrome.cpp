@@ -409,7 +409,7 @@ namespace chrome
 
                     extension.profile = profileName;
                     extension.profile_path = profilePath;
-                    extension.path = extensionPath;
+                    extension.path = std::move(extensionPath);
                     extension.referenced = std::to_string(1);
 
                     getCommonSettings(extension, manifestPath);
@@ -576,7 +576,7 @@ namespace chrome
 
                     extension.profile = profileName;
                     extension.profile_path = profilePath;
-                    extension.path = subSubDir;
+                    extension.path = std::move(subSubDir);
                     extension.referenced = "0";
                     extension.install_timestamp = "0";
 
