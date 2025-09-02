@@ -12,6 +12,7 @@
 
 #include <scheduler/ischeduler.hpp>
 #include <store/istore.hpp>
+#include <streamlog/ilogger.hpp>
 
 /**
  * @brief Asynchronous, rotating log management module. Handles named, rotating log channels with asynchronous writes.
@@ -117,22 +118,6 @@
 namespace streamlog
 {
 
-/**
- * @brief Abstract base class for writer event handlers.
- *
- * WriterEvent defines an interface for handling log messages.
- * Derived classes must implement the function call operator to process messages.
- */
-class WriterEvent
-{
-public:
-    virtual ~WriterEvent() = default;
-    /**
-     * @brief Handles a log message, return true if the message was successfully handled, false otherwise.
-     */
-    virtual bool operator()(std::string&& message) = 0;
-};
-
 class ChannelHandler; // Forward declaration of ChannelHandler
 
 /**
@@ -160,7 +145,7 @@ struct RotationConfig
  * It handles the asynchronous writing of log entries to files, ensuring thread safety and
  * efficient I/O operations.
  */
-class LogManager
+class LogManager : public ILogManager
 {
 
 private:
@@ -220,7 +205,7 @@ public:
      * the log channel asynchronously.
      * @throws std::runtime_error if the log channel does not exist.
      */
-    [[nodiscard]] std::shared_ptr<WriterEvent> getWriter(const std::string& name);
+    [[nodiscard]] std::shared_ptr<WriterEvent> getWriter(const std::string& name) override;
 
     /**
      * @brief Gets the current configuration of a log channel.

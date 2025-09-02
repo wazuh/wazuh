@@ -3,6 +3,12 @@ set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
+# INTERFACE
+add_library(streamlogger_istreamlogger INTERFACE)
+target_include_directories(streamlogger_istreamlogger INTERFACE ${IFACE_DIR})
+target_link_libraries(streamlogger_istreamlogger INTERFACE base queue scheduler::ischeduler store::istore)
+add_library(streamlogger::istreamlogger ALIAS streamlogger_istreamlogger)
+
 # Implementation
 add_library(streamlogger_streamlogger STATIC
     ${SRC_DIR}/logger.cpp
@@ -17,6 +23,7 @@ target_link_libraries(streamlogger_streamlogger
     base
     queue
     scheduler::ischeduler
+    streamlogger::istreamlogger
     store::istore
     PRIVATE
     urlrequest
