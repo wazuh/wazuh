@@ -19,6 +19,7 @@ from wazuh.core import cluster as metadata, common, exception, utils, analysis
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.cluster.dapi import dapi
+from wazuh.core.exception import WazuhException
 from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
@@ -626,6 +627,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         self.agent_info_sync_status['date_start'] = start_time
 
                         agents_sync = await agent_info.retrieve_agents_information()
+                        if agents_sync is None:
+                            raise WazuhException(code=2017)
+
                         sync_sum = len(agents_sync.get('syncreq', [])) + \
                             len(agents_sync.get('syncreq_keepalive', [])) + \
                             len(agents_sync.get('syncreq_status', []))

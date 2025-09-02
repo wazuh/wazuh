@@ -849,6 +849,37 @@ async def test_worker_handler_sync_agent_info_ko(SyncWazuhdb_mock, AsyncWazuhDBC
 
     assert logger._error == ["Error synchronizing agent info: object MagicMock can't be used in 'await' expression"]
 
+@pytest.mark.asyncio
+@patch('asyncio.sleep', side_effect=Exception())
+@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
+@patch('wazuh.core.cluster.common.SyncWazuhdb')
+async def test_worker_handler_sync_agent_info_ko_none_returned(SyncWazuhdb_mock, AsyncWazuhDBConnection_mock, sleep_mock, event_loop):
+    """Test that an error is logged if retrieve_agents_information returns None (WazuhException 2017 is raised)."""
+
+    class LoggerMock:
+        def __init__(self):
+            self._error = []
+
+        def error(self, msg):
+            self._error.append(msg)
+
+        def info(self, mg):
+            pass
+
+    logger = LoggerMock()
+    w_handler = get_worker_handler(event_loop)
+    w_handler.connected = True
+    w_handler.task_loggers['Agent-info sync'] = logger
+
+    SyncWazuhdb_mock.return_value.request_permission = AsyncMock(return_value=True)
+    SyncWazuhdb_mock.return_value.retrieve_agents_information = AsyncMock(return_value=None)
+
+    try:
+        await w_handler.sync_agent_info()
+    except Exception:
+        pass
+
+    assert any("Error synchronizing agent info:" in msg and "2017" in msg for msg in logger._error)
 
 @pytest.mark.asyncio
 @freeze_time('1970-01-01')
