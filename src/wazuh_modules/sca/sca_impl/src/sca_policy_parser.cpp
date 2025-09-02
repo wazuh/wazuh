@@ -121,6 +121,42 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
             }
 
             LoggingHelper::getInstance().log(LOG_DEBUG, "Requirements parsed.");
+
+            if (!requirements.rules.empty() || !requirements.condition.empty())
+            {
+                nlohmann::json requirementsOutput;
+
+                if (requirementsNode.contains("title") && requirementsNode["title"].is_string())
+                {
+                    requirementsOutput["title"] = requirementsNode["title"];
+                }
+
+                if (!requirements.condition.empty())
+                {
+                    requirementsOutput["condition"] = requirements.condition;
+                }
+
+                if (requirementsNode.contains("rules") && requirementsNode["rules"].is_array())
+                {
+                    requirementsOutput["rules"] = nlohmann::json::array();
+
+                    for (const auto& rule : requirementsNode["rules"])
+                    {
+                        if (rule.is_string())
+                        {
+                            // Only include rules that were successfully parsed
+                            const std::string ruleStr = rule.get<std::string>();
+
+                            if (RuleEvaluatorFactory::CreateEvaluator(ruleStr, m_commandsTimeout, m_commandsEnabled))
+                            {
+                                requirementsOutput["rules"].push_back(ruleStr);
+                            }
+                        }
+                    }
+                }
+
+                policiesAndChecks["requirements"] = requirementsOutput;
+            }
         }
         catch (const std::exception& e)
         {
@@ -147,6 +183,11 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                     {
                         check.id = std::to_string(checkNode["id"].get<int>());
                     }
+                    else
+                    {
+                        // Log what type we actually got to help debug
+                        LoggingHelper::getInstance().log(LOG_WARNING, "Check ID is not a string or number, unexpected type found");
+                    }
                 }
 
                 if (checkNode.contains("condition") && checkNode["condition"].is_string())
@@ -158,6 +199,12 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 // Create a copy of the check node for output with valid rules only
                 nlohmann::json checkWithValidRules = checkNode;
                 checkWithValidRules["rules"] = nlohmann::json::array();
+
+                // Ensure the output JSON always has a string ID
+                if (check.id.has_value())
+                {
+                    checkWithValidRules["id"] = check.id.value();
+                }
 
                 if (checkNode.contains("rules") && checkNode["rules"].is_array())
                 {
