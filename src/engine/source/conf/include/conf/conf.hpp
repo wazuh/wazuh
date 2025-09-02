@@ -45,7 +45,7 @@ std::string toStr(const U& value)
         return value;
     }
 
-    if constexpr (std::is_same_v<U, int> || std::is_same_v<U, int64_t>)
+    if constexpr (std::is_same_v<U, int> || std::is_same_v<U, int64_t> || std::is_same_v<U, size_t>)
     {
         return fmt::format("{}", value);
     }
@@ -101,10 +101,6 @@ public:
     template<typename T>
     void addUnit(std::string_view key, std::string_view env, const T& defaultValue)
     {
-        if (!m_fileConfig.empty())
-        {
-            throw std::logic_error("The configuration is already loaded.");
-        }
 
         if (key.empty())
         {
@@ -254,6 +250,37 @@ public:
                             fmt::format("Invalid configuration type for key '{}'. Value out of range for int64: '{}'.",
                                         key,
                                         rawValue));
+                    }
+                }
+                else if constexpr (std::is_same_v<T, size_t>)
+                {
+                    if (!base::utils::string::isNumber(rawValue))
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Invalid configuration type for key '{}'. Expected unsigned integer, got '{}'.", key, rawValue));
+                    }
+
+                    std::size_t pos = 0;
+                    try
+                    {
+                        size_t value = std::stoull(rawValue, &pos);
+                        if (pos != rawValue.size())
+                        {
+                            throw std::runtime_error(
+                                fmt::format("Extra characters after size_t: '{}'", rawValue.substr(pos)));
+                        }
+                        LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, value);
+                        return value;
+                    }
+                    catch (const std::invalid_argument& e)
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Invalid configuration type for key '{}'. Could not parse '{}'.", key, rawValue));
+                    }
+                    catch (const std::out_of_range& e)
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Invalid configuration type for key '{}'. Value out of range for size_t: '{}'.", key, rawValue));
                     }
                 }
                 else if constexpr (std::is_same_v<T, std::vector<std::string>>)
