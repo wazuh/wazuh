@@ -183,14 +183,16 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
 {
     nlohmann::json newData;
 
-    newData = ecsData(result == MODIFIED && data.contains("new") ? data["new"] : data, table);
+    nlohmann::json aux = result == MODIFIED && data.contains("new") ? data["new"] : data;
+
+    newData = ecsData(aux, table);
 
     const auto statefulToSend{newData.dump()};
     auto indexIt = INDEX_MAP.find(table);
 
     if (indexIt != INDEX_MAP.end())
     {
-        m_persistDiffFunction(calculateHashId(data, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend);
+        m_persistDiffFunction(calculateHashId(aux, table), OPERATION_STATES_MAP.at(result), indexIt->second, statefulToSend);
     }
 
     // Remove checksum and state from newData to avoid sending them in the diff
@@ -1079,69 +1081,69 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
 
     if (table == OS_TABLE)
     {
-        ret = data.contains("os_name") ? data["os_name"] : "";
+        ret = data.contains("os_name") ? data["os_name"].get<std::string>() : "";
     }
     else if (table == HW_TABLE)
     {
-        ret = data.contains("serial_number") ? data["serial_number"] : "";
+        ret = data.contains("serial_number") ? data["serial_number"].get<std::string>() : "";
     }
     else if (table == HOTFIXES_TABLE)
     {
-        ret = data.contains("hotfix_name") ? data["hotfix_name"] : "";
+        ret = data.contains("hotfix_name") ? data["hotfix_name"].get<std::string>() : "";
     }
     else if (table == PACKAGES_TABLE)
     {
-        if (data.contains("name") && data.contains("version") && data.contains("architecture") &&
-                data.contains("type") && data.contains("path"))
-        {
-            ret = data["name"].get<std::string>() + ":" + data["version"].get<std::string>() + ":" +
-                  data["architecture"].get<std::string>() + ":" + data["type"].get<std::string>() + ":" +
-                  data["path"].get<std::string>();
-        }
+        std::string name = data.contains("name") ? data["name"].get<std::string>() : "";
+        std::string version = data.contains("version") ? data["version"].get<std::string>() : "";
+        std::string architecture = data.contains("architecture") ? data["architecture"].get<std::string>() : "";
+        std::string type = data.contains("type") ? data["type"].get<std::string>() : "";
+        std::string path = data.contains("path") ? data["path"].get<std::string>() : "";
+
+        ret = name + ":" + version + ":" + architecture + ":" + type + ":" + path;
     }
     else if (table == PROCESSES_TABLE)
     {
-        ret = data.contains("pid") ? data["pid"] : "";
+        ret = data.contains("pid") ? data["pid"].get<std::string>() : "";
     }
     else if (table == PORTS_TABLE)
     {
-        if (data.contains("file_inode") && data.contains("network_transport") &&
-                data.contains("source_ip") && data.contains("source_port"))
-        {
-            ret = std::to_string(data["file_inode"].get<int>()) + ":" + data["network_transport"].get<std::string>() + ":" +
-                  data["source_ip"].get<std::string>() + ":" + std::to_string(data["source_port"].get<int>());
-        }
+        std::string file_inode = data.contains("file_inode") ? std::to_string(data["file_inode"].get<int>()) : "0";
+        std::string transport = data.contains("network_transport") ? data["network_transport"].get<std::string>() : "";
+        std::string source_ip = data.contains("source_ip") ? data["source_ip"].get<std::string>() : "";
+        std::string source_port = data.contains("source_port") ? std::to_string(data["source_port"].get<int>()) : "0";
+
+        ret = file_inode + ":" + transport + ":" + source_ip + ":" + source_port;
     }
     else if (table == NET_IFACE_TABLE)
     {
-        if (data.contains("interface_name") && data.contains("interface_alias") && data.contains("interface_type"))
-        {
-            ret = data["interface_name"].get<std::string>() + ":" + data["interface_alias"].get<std::string>() + ":" +
-                  data["interface_type"].get<std::string>();
-        }
+        std::string iface_name = data.contains("interface_name") ? data["interface_name"].get<std::string>() : "";
+        std::string iface_alias = data.contains("interface_alias") ? data["interface_alias"].get<std::string>() : "";
+        std::string iface_type = data.contains("interface_type") ? data["interface_type"].get<std::string>() : "";
+
+        ret = iface_name + ":" + iface_alias + ":" + iface_type;
     }
     else if (table == NET_PROTOCOL_TABLE)
     {
-        if (data.contains("interface_name") && data.contains("network_type"))
-        {
-            ret = data["interface_name"].get<std::string>() + ":" + data["network_type"].get<std::string>();
-        }
+        std::string iface_name = data.contains("interface_name") ? data["interface_name"].get<std::string>() : "";
+        std::string net_type = data.contains("network_type") ? data["network_type"].get<std::string>() : "";
+
+        ret = iface_name + ":" + net_type;
     }
     else if (table == NET_ADDRESS_TABLE)
     {
-        if (data.contains("interface_name") && data.contains("network_protocol") && data.contains("network_ip"))
-        {
-            ret = data["interface_name"].get<std::string>() + ":" + std::to_string(data["network_protocol"].get<int>()) + ":" +
-                  data["network_ip"].get<std::string>();
-        }
+        std::string iface_name = data.contains("interface_name") ? data["interface_name"].get<std::string>() : "";
+        std::string net_protocol = data.contains("network_protocol") ? std::to_string(data["network_protocol"].get<int>()) : "0";
+        std::string net_ip = data.contains("network_ip") ? data["network_ip"].get<std::string>() : "";
+
+        ret = iface_name + ":" + net_protocol + ":" + net_ip;
     }
     else if (table == USERS_TABLE)
     {
-        ret = data.contains("user_name") ? data["user_name"] : "";
+        ret = data.contains("user_name") ? data["user_name"].get<std::string>() : "";
     }
     else if (table == GROUPS_TABLE)
     {
-        ret = data.contains("group_name") ? data["group_name"] : "";
+        ret = data.contains("group_name") ? data["group_name"].get<std::string>() : "";
     }
 
     return ret;
