@@ -580,20 +580,6 @@ stages:
             total: 0
 
 ---
-test_name: GET /ciscat/{agent_id}/results
-
-stages:
-  - name: Try to get ciscat results for agent 001
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/ciscat/001/results"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /cluster/local/info
 
 stages:
@@ -1079,32 +1065,6 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *empty_response
-
----
-test_name: GET /experimental/ciscat/results
-
-stages:
-  - name: Try to get agents ciscat results (experimental) (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
-  - name: Try to get agent 001 ciscat results (experimental) (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/experimental/ciscat/results"
-      params:
-        agents_list: '001'
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
 
 ---
 test_name: DELETE /groups

@@ -69,7 +69,6 @@ api_config_schema = {
         "port": {"type": "number"},
         "use_only_authd": {"type": "boolean"},  # Deprecated. To be removed on later versions
         "drop_privileges": {"type": "boolean"},
-        "experimental_features": {"type": "boolean"},
         "max_upload_size": {"type": "integer", "minimum": 0},
         "authentication_pool_size": {"type": "integer", "minimum": 1, "maximum": 50},
         "intervals": {

@@ -206,15 +206,6 @@ x-rbac-catalog:
         actions: ['group:delete']
         resources: ['group:id:*']
         effect: "allow"
-    'ciscat:read':
-      description: "Access CIS-CAT results for agents"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: ['ciscat:read']
-        resources: ['agent:id:001', 'agent:id:003', 'agent:group:default']
-        effect: "deny"
     'cluster:read':
       description: "Read Wazuh's cluster nodes configuration"
       resources:
@@ -1028,19 +1019,6 @@ components:
               items:
                 $ref: '#/components/schemas/GroupFiles'
 
-    AllItemsResponseCiscatResult:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CiscatResults'
-
     AllItemsResponseClusterNodes:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1606,10 +1584,6 @@ components:
                                     type: integer
                                     format: int32
                                     description: "Events coming from Azure module (this agent)"
-                                  ciscat:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from CIS-CAT module (this agent)"
                                   command:
                                     type: integer
                                     format: int32
@@ -1768,44 +1742,6 @@ components:
       example:
         filename: agent.conf
         hash: ab73af41699f13fdd81903b5f23d8d00
-
-    ## CisCat models
-    CiscatResults:
-      type: object
-      properties:
-        benchmark:
-          type: string
-          description: "CIS-CAT benchmark where the profile is defined"
-        error:
-          type: integer
-          format: int32
-          description: "Number of checks that CIS-CAT was not able to run"
-        fail:
-          type: integer
-          format: int32
-          description: "Number of failed checks. If this number is higher than 0 the host will probably have a
-          vulnerability"
-        notchecked:
-          type: integer
-          format: int32
-          description: "Number of not passed checks"
-        pass:
-          type: integer
-          format: int32
-          description: "Number of passed checks"
-        profile:
-          type: string
-          description: "CIS-CAT profile scanned"
-        scan:
-          $ref: '#/components/schemas/ScanIdTime'
-        score:
-          type: integer
-          format: int32
-          description: "Percentage of passed checks"
-        unknown:
-          type: integer
-          format: int32
-          description: "Number of checks which status CIS-CAT was not able to determine"
 
     ## Cluster models
     ClusterNodeBasic:
@@ -2464,10 +2400,6 @@ components:
                               type: integer
                               format: int32
                               description: "Events coming from Azure module"
-                            ciscat:
-                              type: integer
-                              format: int32
-                              description: "Events coming from CIS-CAT module"
                             command:
                               type: integer
                               format: int32
@@ -2573,10 +2505,6 @@ components:
                               type: integer
                               format: int32
                               description: "Events discarded from Azure module because the queue was full"
-                            ciscat:
-                              type: integer
-                              format: int32
-                              description: "Events discarded from CIS-CAT module because the queue was full"
                             command:
                               type: integer
                               format: int32
@@ -3311,8 +3239,6 @@ components:
           type: object
         azure-logs:
           type: object
-        cis-cat:
-          type: object
         docker-listener:
           type: object
         open-scap:
@@ -3687,8 +3613,6 @@ components:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:azure-logs:
             $ref: '#/components/schemas/LogSummary'
-          wazuh-modulesd:ciscat:
-            $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:control:
             $ref: '#/components/schemas/LogSummary'
           wazuh-modulesd:command:
@@ -3788,10 +3712,6 @@ components:
               description: "Browsers will only expose the response to frontend JavaScript code if this is enabled"
               type: boolean
               default: false
-        experimental_features:
-          description: "Enable features under development"
-          type: boolean
-          default: false
         authentication_pool_size:
           description: "Number of processes dedicated to processing authentication requests"
           type: integer
@@ -5908,16 +5828,12 @@ tags:
     description: "Agents Active Response"
   - name: Agents
     description: "Agents management related operations"
-  - name: Ciscat
-    description: "Retrieve information from CIS-CAT scans"
   - name: Cluster
     description: "Wazuh cluster and nodes management"
   - name: Decoders
     description: "Decoders management"
   - name: Events
     description: "Ingestion endpoints"
-  - name: Experimental
-    description: "Not ready for production endpoints. Use with caution"
   - name: Groups
     description: "Group of agents and centralized configurations"
   - name: Lists
@@ -6677,7 +6593,6 @@ paths:
                                   modules_breakdown:
                                     aws: 0
                                     azure: 0
-                                    ciscat: 0
                                     command: 0
                                     docker: 0
                                     gcp: 0
@@ -8353,75 +8268,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /ciscat/{agent_id}/results:
-    get:
-      tags:
-        - Ciscat
-      summary: "Get results"
-      description: "Return the agent's ciscat results info"
-      operationId: api.controllers.ciscat_controller.get_agents_ciscat_results
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/ciscat:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_id'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/benchmark'
-        - $ref: '#/components/parameters/profile'
-        - $ref: '#/components/parameters/pass'
-        - $ref: '#/components/parameters/fail'
-        - $ref: '#/components/parameters/error'
-        - $ref: '#/components/parameters/notchecked'
-        - $ref: '#/components/parameters/unknown'
-        - $ref: '#/components/parameters/score'
-        - $ref: '#/components/parameters/query'
-      responses:
-        '200':
-          description: "List of agents or error description"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseCiscatResult'
-              example:
-                data:
-                  affected_items:
-                    - benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
-                      error: 0
-                      fail: 82
-                      notchecked: 36
-                      pass: 102
-                      profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
-                      scan:
-                        id: 23487414
-                        time: '2019-10-24T14:30:20.768Z'
-                      score: 55
-                      unknown: 0
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: 'All CISCAT results were returned'
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /cluster/local/info:
     get:
       tags:
@@ -8817,7 +8663,6 @@ paths:
                         host: 0.0.0.0
                         port: 55000
                         drop_privileges: true
-                        experimental_features: false
                         max_upload_size: 10485760
                         authentication_pool_size: 2
                         intervals:
@@ -8864,7 +8709,6 @@ paths:
                         host: 0.0.0.0
                         port: 55000
                         drop_privileges: true
-                        experimental_features: false
                         max_upload_size: 10485760
                         authentication_pool_size: 2
                         intervals:
@@ -8911,7 +8755,6 @@ paths:
                         host: 0.0.0.0
                         port: 55000
                         drop_privileges: true
-                        experimental_features: false
                         max_upload_size: 10485760
                         authentication_pool_size: 2
                         intervals:
@@ -9140,13 +8983,6 @@ paths:
                         rootkit_trojans:
                           - etc/rootcheck/rootkit_trojans.txt
                         skip_nfs: yes
-                      cis-cat:
-                        disabled: yes
-                        timeout: 1800
-                        interval: 1d
-                        scan-on-start: yes
-                        java_path: wodles/java
-                        ciscat_path: wodles/ciscat
                       syscollector:
                         disabled: no
                         interval: "1h"
@@ -10811,13 +10647,7 @@ paths:
                           - 127.0.0.53
                       alerts:
                         log_alert_level: "3"
-                      cis-cat:
-                        disabled: yes
-                        timeout: 1800
-                        interval: 1d
-                        scan-on-start: yes
-                        java_path: wodles/java
-                        ciscat_path: wodles/ciscat
+                        email_alert_level: "12"
                       command:
                         - name: disable-account
                           executable: disable-account.sh
@@ -11633,7 +11463,6 @@ paths:
                         host: 0.0.0.0
                         port: 55000
                         drop_privileges: true
-                        experimental_features: false
                         max_upload_size: 10485760
                         authentication_pool_size: 2
                         intervals:
@@ -13525,99 +13354,6 @@ paths:
           $ref: '#/components/responses/WrongContentTypeResponse'
         '413':
           $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /experimental/ciscat/results:
-    get:
-      tags:
-        - Experimental
-      summary: "Get agents CIS-CAT results"
-      description: "Return CIS-CAT results for all agents or a list of them"
-      operationId: api.controllers.experimental_controller.get_cis_cat_results
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/ciscat:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/benchmark'
-        - $ref: '#/components/parameters/profile'
-        - $ref: '#/components/parameters/pass'
-        - $ref: '#/components/parameters/fail'
-        - $ref: '#/components/parameters/error'
-        - $ref: '#/components/parameters/notchecked'
-        - $ref: '#/components/parameters/unknown'
-        - $ref: '#/components/parameters/score'
-      responses:
-        '200':
-          description: "Return a list of CIS-CAT results"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseCiscatResult'
-              example:
-                data:
-                  affected_items:
-                    - agent_id: '001'
-                      benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
-                      error: 0
-                      fail: 82
-                      notchecked: 36
-                      pass: 102
-                      profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
-                      scan:
-                        id: 1422619291
-                        time: '2019-12-03T08:38:35.230Z'
-                      score: 55
-                      unknown: 0
-                    - agent_id: '002'
-                      benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
-                      error: 0
-                      fail: 82
-                      notchecked: 36
-                      pass: 102
-                      profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
-                      scan:
-                        id: 1794774880
-                        time: '2019-12-03T08:38:27.743Z'
-                      score: 55
-                      unknown: 0
-                    - agent_id: '003'
-                      benchmark: CIS Ubuntu Linux 16.04 LTS Benchmark
-                      error: 0
-                      fail: 82
-                      notchecked: 36
-                      pass: 102
-                      profile: xccdf_org.cisecurity.benchmarks_profile_Level_2_-_Server
-                      scan:
-                        id: 622382213
-                        time: '2019-12-03T08:39:02.569Z'
-                      score: 55
-                      unknown: 0
-                  failed_items: []
-                  total_affected_items: 3
-                  total_failed_items: 0
-                message: 'All CISCAT results were returned'
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

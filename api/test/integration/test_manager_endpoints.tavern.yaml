@@ -72,7 +72,6 @@ marks:
      vals:
        - alerts
        - auth
-       - cis-cat
        - cluster
        - command
        - global
@@ -142,7 +141,6 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
@@ -918,7 +916,6 @@ stages:
                   block_time: !anyint
                   max_request_per_minute: !anyint
                 drop_privileges: !anybool
-                experimental_features: !anybool
                 authentication_pool_size: !anyint
                 upload_configuration:
                   remote_commands:
