@@ -166,12 +166,12 @@
                 ]
             },
             {
-                "name": "cdb_list_controller.py",
-                "tag": "cdb",
+                "name": "ciscat_controller.py",
+                "tag": "ciscat",
                 "tests": [
-                    "test_cdb_list_endpoints.tavern.yaml",
-                    "test_rbac_black_cdb_list_endpoints.tavern.yaml",
-                    "test_rbac_white_cdb_list_endpoints.tavern.yaml"
+                    "test_ciscat_endpoints.tavern.yaml",
+                    "test_rbac_black_ciscat_endpoints.tavern.yaml",
+                    "test_rbac_white_ciscat_endpoints.tavern.yaml"
                 ]
             },
             {

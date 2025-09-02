@@ -59,7 +59,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/framework/wazuh/__main__.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/active_response.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/agent.py,root,wazuh,640,file,-rw-r-----,,
-/var/ossec/framework/wazuh/cdb_list.py,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/framework/wazuh/ciscat.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/cluster.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/core/cluster/__init__.py,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/framework/wazuh/core/cluster/client.py,root,wazuh,640,file,-rw-r-----,,
