@@ -17,3 +17,4 @@ target_link_libraries(file_io_unit_test PRIVATE FileIO
     optimized gmock_main
 )
 add_test(NAME FileIO COMMAND file_io_unit_test)
+set_tests_properties(FileIO PROPERTIES LABELS file_helper_utest)
