@@ -1479,13 +1479,15 @@ bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index) {
     bool dst_has_filters = logr[dst_index].journal_log->filters != NULL
                            && logr[dst_index].journal_log->filters[0] != NULL;
 
-    // Disable filter is already disabled or if any don't have filters
-    if (!src_has_filters || !dst_has_filters) {
-        logr[dst_index].journal_log->disable_filters = true;
+    // Only disable filters if BOTH blocks have no filters
+    // If at least one has filters, we use the union of non-empty filters
+    bool should_disable_filters = (!src_has_filters && !dst_has_filters);
+    logr[dst_index].journal_log->disable_filters = should_disable_filters;
+    if (should_disable_filters) {
         mwarn(LOGCOLLECTOR_JOURNAL_CONFG_DISABLE_FILTER);
     }
 
-    // Move the filters from the src_index to the dst_index
+    // Move the filters from the src_index to the dst_index if source has filters
     if (src_has_filters) {
         w_journal_add_filter_to_list(&(logr[dst_index].journal_log->filters), logr[src_index].journal_log->filters[0]);
         logr[src_index].journal_log->filters[0] = NULL; // Prevent the filter from being freed
