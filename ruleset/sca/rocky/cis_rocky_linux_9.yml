@@ -2405,8 +2405,8 @@ checks:
   # 4.1.2 Ensure a single firewall configuration utility is in use. (Automated)
   - id: 31580
     title: "Ensure a single firewall configuration utility is in use."
-    description: "FirewallD - Is a firewall service daemon that provides a dynamic customizable host-based firewall with a D-Bus interface. Being dynamic, it enables creating, changing, and deleting the rules without the necessity to restart the firewall daemon each time the rules are changed NFTables - Includes the nft utility for configuration of the nftables subsystem of the Linux kernel Note: firewalld with nftables backend does not support passing custom nftables rules to firewalld, using the --direct option."
-    rationale: "In order to configure firewall rules for nftables, a firewall utility needs to be installed and active of the system. The use of more than one firewall utility may produce unexpected results."
+    description: "In Linux security, employing a single, effective firewall configuration utility is crucial. Firewalls act as digital gatekeepers by filtering network traffic based on rules. Proper firewall configurations ensure that only legitimate traffic gets processed, reducing the systems exposure to potential threats. The choice between FirewallD and NFTables depends on organizational specific needs: FirewallD - Is a firewall service daemon that provides a dynamic customizable host-based firewall with a D-Bus interface. Being dynamic, it enables creating, changing, and deleting the rules without the necessity to restart the firewall daemon each time the rules are changed. NFTables - Includes the nft utility for configuration of the nftables subsystem of the Linux kernel."
+    rationale: "Proper configuration of a single firewall utility minimizes cyber threats and protects services and data, while avoiding vulnerabilities like open ports or exposed services. Standardizing on a single tool simplifies management, reduces errors, and fortifies security across Linux systems."
     remediation: "Run the following script to ensure that a single firewall utility is in use on the system: #!/usr/bin/env bash { l_output=\"\" l_output2=\"\" l_fwd_status=\"\" l_nft_status=\"\" l_fwutil_status=\"\" # Determine FirewallD utility Status rpm -q firewalld > /dev/null 2>&1 && l_fwd_status=\"$(systemctl is-enabled firewalld.service):$(systemctl is-active firewalld.service)\" # Determine NFTables utility Status rpm -q nftables > /dev/null 2>&1 && l_nft_status=\"$(systemctl is-enabled nftables.service):$(systemctl is-active nftables.service)\" l_fwutil_status=\"$l_fwd_status:$l_nft_status\" case $l_fwutil_status in enabled:active:masked:inactive|enabled:active:disabled:inactive) echo -e \"\\n - FirewallD utility is in use, enabled and active\\n - NFTables utility is correctly disabled or masked and inactive\\n - no remediation required\" ;; masked:inactive:enabled:active|disabled:inactive:enabled:active) echo -e \"\\n - NFTables utility is in use, enabled and active\\n - FirewallD utility is correctly disabled or masked and inactive\\n - no remediation required\" ;; enabled:active:enabled:active) echo -e \"\\n - Both FirewallD and NFTables utilities are enabled and active\\n - stopping and masking NFTables utility\" systemctl stop nftables && systemctl --now mask nftables ;; enabled:*:enabled:*) echo -e \"\\n - Both FirewallD and NFTables utilities are enabled\\n - remediating\" if [ \"$(awk -F: '{print $2}' <<< \"$l_fwutil_status\")\" = \"active\" ] && [ \"$(awk -F: '{print $4}' <<< \"$l_fwutil_status\")\" = \"inactive\" ]; then echo \" - masking NFTables utility\" systemctl stop nftables && systemctl --now mask nftables elif [ \"$(awk -F: '{print $4}' <<< \"$l_fwutil_status\")\" = \"active\" ] && [ \"$(awk -F: '{print $2}' <<< \"$l_fwutil_status\")\" = \"inactive\" ]; then echo \" - masking FirewallD utility\" systemctl stop firewalld && systemctl --now mask firewalld fi ;; *:active:*:active) echo -e \"\\n - Both FirewallD and NFTables utilities are active\\n - remediating\" if [ \"$(awk -F: '{print $1}' <<< \"$l_fwutil_status\")\" = \"enabled\" ] && [ \"$(awk -F: '{print $3}' <<< \"$l_fwutil_status\")\" != \"enabled\" ]; then echo \" - stopping and masking NFTables utility\" systemctl stop nftables && systemctl --now mask nftables elif [ \"$(awk -F: '{print $3}' <<< \"$l_fwutil_status\")\" = \"enabled\" ] && [ \"$(awk -F: '{print $1}' <<< \"$l_fwutil_status\")\" != \"enabled\" ]; then echo \" - stopping and masking FirewallD utility\" systemctl stop firewalld && systemctl --now mask firewalld fi ;; :enabled:active) echo -e \"\\n - NFTables utility is in use, enabled, and active\\n - FirewallD package is not installed\\n - no remediation required\" ;; :) echo -e \"\\n - Neither FirewallD or NFTables is installed.\\n - remediating\\n - installing NFTables\" dnf -q install nftables ;; *:*:) echo -e \"\\n - NFTables package is not installed on the system\\n - remediating\\n - installing NFTables\" dnf -q install nftables ;; *) echo -e \"\\n - Unable to determine firewall state\" ;; esac }."
     references:
       - "https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9/html-"
@@ -2472,8 +2472,8 @@ checks:
   - id: 31583
     title: "Ensure nftables default deny firewall policy."
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
-    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue traversing the network stack. It is easier to explicitly permit acceptable usage than to deny unacceptable usage. Note: Changing firewall settings while connected over the network can result in being locked out of the system."
-    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
+    rationale: "There are two policies: accept (Default) and drop. If the policy is set to accept, the firewall will accept any packet that is not configured to be denied and the packet will continue traversing the network stack. It is easier to explicitly permit acceptable usage than to deny unacceptable usage."
+    impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop"
     remediation: "If NFTables utility is in use on your system: Run the following command for the base chains with the input, forward, and output hooks to implement a default DROP policy: # nft chain <table family> <table name> <chain name> { policy drop \\; } Example: # nft chain inet filter input { policy drop \\; } # nft chain inet filter forward { policy drop \\; }."
     compliance:
       - cis: ["4.3.3"]
@@ -2499,8 +2499,8 @@ checks:
   # 5.1.1 Ensure permissions on /etc/ssh/sshd_config are configured. (Automated)
   - id: 31620
     title: "Ensure permissions on /etc/ssh/sshd_config are configured."
-    description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
-    rationale: "The /etc/ssh/sshd_config file needs to be protected from unauthorized changes by non-privileged users."
+    description: "The file /etc/ssh/sshd_config, and files ending in .conf in the /etc/ssh/sshd_config.d directory, contain configuration specifications for sshd."
+    rationale: "configuration specifications for sshd need to be protected from unauthorized changes by non-privileged users."
     remediation: "Run the following commands to set ownership and permissions on /etc/ssh/sshd_config: # chown root:root /etc/ssh/sshd_config # chmod u-x,go-rwx /etc/ssh/sshd_config."
     compliance:
       - cis: ["5.1.1"]
@@ -2519,6 +2519,9 @@ checks:
     condition: all
     rules:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
+      - "not c:find /etc/ssh/sshd_config.d -type f -name '*.conf' -perm /u+x,go+rwx -exec stat -L {} \\; -> r:^.*File:"
+      - "not c:find /etc/ssh/sshd_config.d -type f -name '*.conf' ! -user root -exec stat -L {} \\; -> r:^.*File:"
+      - "not c:find /etc/ssh/sshd_config.d -type f -name '*.conf' ! -group root -exec stat -L {} \\; -> r:^.*File:"
 
   # 5.1.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
   # 5.1.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
@@ -2899,8 +2902,8 @@ checks:
   # 5.2.3 Ensure sudo log file exists. (Automated)
   - id: 31640
     title: "Ensure sudo log file exists."
-    description: "sudo can use a custom log file."
-    rationale: "A sudo log file simplifies auditing of sudo commands."
+    description: "The Defaults logfile entry sets the path to the sudo log file. Setting a path turns on logging to a file; negating this option turns it off. By default, sudo logs via syslog."
+    rationale: "Defining a dedicated log file for sudo simplifies auditing of sudo commands and creation of auditd rules for sudo."
     impact: "WARNING: Editing the sudo configuration incorrectly can cause sudo to stop functioning. Always use visudo to modify sudo configuration files. Creation of additional log files can cause disk space exhaustion if not correctly managed. You should configure logrotate to manage the sudo log in accordance with your local policy."
     remediation: 'Edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo or visudo -f <PATH TO FILE> and add the following line: Defaults logfile="<PATH TO CUSTOM LOG FILE>" Example Defaults logfile="/var/log/sudo.log".'
     compliance:
@@ -2926,7 +2929,7 @@ checks:
     title: "Ensure users must provide password for escalation."
     description: "The operating system must be configured so that users must provide a password for privilege escalation."
     rationale: "Without re-authentication, users may access resources or perform tasks for which they do not have authorization. When operating systems provide the capability to escalate a functional capability, it is critical the user re-authenticate."
-    impact: "This will prevent automated processes from being able to elevate privileges. To include Ansible and AWS builds."
+    impact: "This will prevent automated processes from being able to elevate privileges."
     remediation: "Based on the outcome of the audit procedure, use visudo -f <PATH TO FILE> to edit the relevant sudoers file. Remove any line with occurrences of NOPASSWD tags in the file."
     compliance:
       - cis: ["5.2.4"]
@@ -3394,8 +3397,8 @@ checks:
   - id: 31666
     title: "Ensure root is the only UID 0 account."
     description: "Any account with UID 0 has superuser privileges on the system."
-    rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in Item 5.6 Ensure access to the su command is restricted."
-    remediation: "Remove any users other than root with UID 0 or assign them a new UID if appropriate."
+    rationale: "This access must be limited to only the default root account and only from the system console. Administrative access must be through an unprivileged account using an approved mechanism as noted in the Recommendation 'Ensure access to the su command is restricted'."
+    remediation: "Run the following command to change the root account UID to 0: # usermod -u 0 root"
     compliance:
       - cis: ["5.4.2.1"]
       - mitre_mitigations: ["M1026"]
@@ -3450,7 +3453,7 @@ checks:
   # 6.1.1 Ensure AIDE is installed. (Automated)
   - id: 31530
     title: "Ensure AIDE is installed."
-    description: "Advanced Intrusion Detection Environment (AIDE) is a intrusion detection tool that uses predefined rules to check the integrity of files and directories in the Linux operating system. AIDE has its own database to check the integrity of files and directories. AIDE takes a snapshot of files and directories including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
+    description: "Advanced Intrusion Detection Environment (AIDE) is a intrusion detection tool that uses predefined rules to check the integrity of files and directories in the Linux operating system. AIDE has its own database to check the integrity of files and directories. aide takes a snapshot of files and directories including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
     rationale: "By monitoring the filesystem state compromised files can be detected to prevent or limit the exposure of accidental or malicious misconfigurations or modified binaries."
     remediation: "Run the following command to install AIDE: # dnf install aide Configure AIDE as appropriate for your environment. Consult the AIDE documentation for options. Initialize AIDE: Run the following commands: # aide --init # mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz."
     references:
