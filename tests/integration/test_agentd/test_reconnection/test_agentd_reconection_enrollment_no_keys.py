@@ -58,7 +58,7 @@ from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_keepalive, wait_enrollment, wait_enrollment_try
+from utils import wait_connect, wait_enrollment, wait_enrollment_try
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
@@ -72,7 +72,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -128,42 +128,44 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         - ssl
         - keys
     '''
-    # Prepare test
-    authd_server = AuthdSimulator()
-    authd_server.start()
 
-    # Wait until Agent asks keys for the first time
-    wait_enrollment()
+    try:
+        # Prepare test
+        authd_server = AuthdSimulator()
+        authd_server.start()
 
-    # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-    remoted_server.start()
+        # Wait until Agent asks keys for the first time
+        wait_enrollment()
 
-    # Wait until Agent is notifying Manager
-    wait_keepalive()
+        # Start RemotedSimulator
+        remoted_server = RemotedSimulator(protocol=test_metadata['PROTOCOL'])
+        remoted_server.start()
 
-    # Reset simulator
-    remoted_server.destroy()
+        # Wait until Agent is connected
+        wait_connect()
 
-    # Start rejecting Agent
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'], mode = 'WRONG_KEY')
-    remoted_server.start()
+        # Reset simulator
+        remoted_server.destroy()
 
-    # Wait until Agent asks a new key to enrollment
-    wait_enrollment_try()
+        # Start rejecting Agent
+        remoted_server = RemotedSimulator(protocol=test_metadata['PROTOCOL'], mode='WRONG_KEY')
+        remoted_server.start()
 
-    # Reset simulator
-    remoted_server.destroy()
+        # Wait until Agent asks a new key to enrollment
+        wait_enrollment_try()
 
-    # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-    remoted_server.start()
+        # Reset simulator
+        remoted_server.destroy()
 
-    # Wait until Agent is notifying Manager
-    wait_keepalive()
+        # Start RemotedSimulator
+        remoted_server = RemotedSimulator(protocol=test_metadata['PROTOCOL'])
+        remoted_server.start()
 
-    # Reset simulator
-    authd_server.destroy()
+        # Wait until Agent is connected
+        wait_connect()
+    finally:
+        # Reset simulator
+        authd_server.destroy()
 
-    # Reset simulator
-    remoted_server.destroy()
+        # Reset simulator
+        remoted_server.destroy()

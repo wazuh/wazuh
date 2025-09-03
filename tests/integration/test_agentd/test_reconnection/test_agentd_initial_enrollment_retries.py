@@ -62,7 +62,8 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.utils import callbacks
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_keepalive, wait_enrollment, check_module_stop
+from utils import wait_connect, wait_enrollment, check_module_stop
+
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
@@ -75,7 +76,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -129,7 +130,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     expected_output:
         - r'Requesting a key'
         - r'Valid key received'
-        - r'Sending keep alive'
+        - r'Connected to the server'
 
     tags:
         - simulator
@@ -152,8 +153,8 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
         remoted_server = RemotedSimulator(protocol=test_metadata['PROTOCOL'])
         remoted_server.start()
 
-        # Wait until Agent is notifying Manager
-        wait_keepalive()
+        # Wait until Agent is connected
+        wait_connect()
 
         # Check if no Wazuh module stopped due to Agentd Initialization
         check_module_stop()
