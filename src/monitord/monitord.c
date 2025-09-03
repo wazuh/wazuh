@@ -87,8 +87,6 @@ void Monitord()
 
         if(check_logs_time_trigger()){
             monitor_logs(!CHECK_LOGS_SIZE, path, path_json);
-            /* Generating reports */
-            manage_files(mond_time_control.today, mond_time_control.thismonth, mond_time_control.thisyear);
             monitor_update_date();
 
         } else{
