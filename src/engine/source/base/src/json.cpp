@@ -477,6 +477,29 @@ std::optional<std::vector<std::string>> Json::getFields() const
     return retval;
 }
 
+std::optional<std::vector<std::string>> Json::getFields(std::string_view path) const
+{
+    const auto pp = rapidjson::Pointer(path.data());
+    if (!pp.IsValid())
+    {
+        throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+    }
+
+    const rapidjson::Value* val = pp.Get(m_document);
+    if (val == nullptr || !val->IsObject())
+    {
+        return std::nullopt;
+    }
+
+    std::vector<std::string> out;
+    out.reserve(val->MemberCount());
+    for (auto it = val->MemberBegin(); it != val->MemberEnd(); ++it)
+    {
+        out.emplace_back(it->name.GetString(), it->name.GetStringLength());
+    }
+    return out;
+}
+
 std::string Json::prettyStr() const
 {
     rapidjson::StringBuffer buffer;
