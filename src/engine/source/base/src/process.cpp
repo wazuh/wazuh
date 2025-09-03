@@ -226,28 +226,7 @@ int privSepSetGroup(gid_t gid)
 
 std::string getWazuhHome()
 {
-    char path[PATH_MAX];
-    ssize_t count = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    if (count != -1)
-    {
-        path[count] = '\0';
-        std::string exePath(path);
-
-        // Executable folder -> /var/ossec/bin
-        std::string dir = exePath.substr(0, exePath.find_last_of('/'));
-
-        // Remove the "/bin" suffix if it exists -> /var/ossec
-        const std::string binSuffix = "/bin";
-        if (dir.size() >= binSuffix.size()
-            && dir.compare(dir.size() - binSuffix.size(), binSuffix.size(), binSuffix) == 0)
-        {
-            dir = dir.substr(0, dir.size() - binSuffix.size());
-        }
-
-        return dir;
-    }
-
-    return {};
+    return std::filesystem::path("/var/ossec").string();
 }
 
 void setThreadName(const std::string& name)

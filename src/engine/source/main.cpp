@@ -476,6 +476,13 @@ int main(int argc, char* argv[])
         {
 
             streamLogger = std::make_shared<streamlog::LogManager>(store, scheduler);
+            exitHandler.add(
+                [streamLogger, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                {
+                    streamLogger->cleanup();
+                    LOG_INFO_L(functionName.c_str(), "Stream logger cleaned up.");
+                });
+
             LOG_INFO("Stream logger initialized.");
 
             auto regChannel =
@@ -702,6 +709,8 @@ int main(int argc, char* argv[])
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
+        g_engineLocalServer.reset();
+        LOG_INFO("Engine local server stopped.");
     }
     catch (const std::exception& e)
     {

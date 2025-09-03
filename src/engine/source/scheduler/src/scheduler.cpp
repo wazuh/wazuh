@@ -45,11 +45,12 @@ void Scheduler::start()
 
 void Scheduler::stop()
 {
-    LOG_DEBUG("Stopping scheduler...");
     if (!m_running.load())
     {
         return;
     }
+
+    LOG_DEBUG("Stopping scheduler...");
 
     m_running.store(false);
 

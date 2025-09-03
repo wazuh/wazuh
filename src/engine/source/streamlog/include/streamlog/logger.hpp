@@ -256,9 +256,16 @@ public:
     static RotationConfig& isolatedBasePath(const std::string& channelName, RotationConfig& config);
 
     /**
+     * @brief Clean up the logger, releasing all resources.
+     * 
+     * @warning After calling this method, the LogManager instance should not be used again.
+     */
+    void cleanup();
+
+    /**
      * @brief Destructor
      */
-    ~LogManager();
+    ~LogManager() = default;
 };
 
 } // namespace streamlog

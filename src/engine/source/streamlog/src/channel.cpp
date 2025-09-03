@@ -307,7 +307,7 @@ void ChannelHandler::workerThreadFunc()
         }
     }
 
-    LOG_INFO("Stopping writer thread for channel: {}", m_channelName);
+    LOG_DEBUG("Stopping writer thread for channel: {}", m_channelName);
 }
 
 void ChannelHandler::stopWorkerThread()

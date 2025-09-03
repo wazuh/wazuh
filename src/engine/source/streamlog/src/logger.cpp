@@ -201,9 +201,9 @@ RotationConfig& LogManager::isolatedBasePath(const std::string& channelName, Rot
     return config;
 }
 
-LogManager::~LogManager()
+void LogManager::cleanup()
 {
-    LOG_DEBUG("LogManager destroyed");
+    std::unique_lock lock(m_channelsMutex);
+    m_channels.clear();
 }
-
 } // namespace streamlog

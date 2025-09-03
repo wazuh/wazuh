@@ -10,7 +10,7 @@
 namespace builder::builders
 {
 
-base::Expression FileOutputBuilder(const json::Json& definition,
+base::Expression fileOutputBuilder(const json::Json& definition,
                                    const std::shared_ptr<const IBuildCtx>& buildCtx,
                                    std::shared_ptr<streamlog::ILogManager> logManager)
 {
@@ -32,6 +32,7 @@ base::Expression FileOutputBuilder(const json::Json& definition,
         throw std::runtime_error(fmt::format(
             "Stage '{}' only supports the 'alerts' channel, got '{}'", syntax::asset::FILE_OUTPUT_KEY, channelName));
     }
+    auto writer = logManager->getWriter(channelName);
 
     const auto name = fmt::format("write.output({})", "alerts-file");
     const auto successTrace = fmt::format("{} -> Success", name);
@@ -39,7 +40,7 @@ base::Expression FileOutputBuilder(const json::Json& definition,
 
     return base::Term<base::EngineOp>::create(
         name,
-        [writer = logManager->getWriter(channelName), successTrace, failureTrace, runState = buildCtx->runState()](
+        [writer, successTrace, failureTrace, runState = buildCtx->runState()](
             base::Event event) -> base::result::Result<base::Event>
         {
             if ((*writer)(event->str()))
@@ -58,7 +59,7 @@ StageBuilder getFileOutputBuilder(const std::shared_ptr<streamlog::ILogManager>&
     return
         [logManager](const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx) -> base::Expression
     {
-        return FileOutputBuilder(definition, buildCtx, logManager);
+        return fileOutputBuilder(definition, buildCtx, logManager);
     };
 }
 

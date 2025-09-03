@@ -17,13 +17,12 @@ class MockWriterEvent : public ::streamlog::WriterEvent
 {
 public:
    // Mocking the operator()
-    MOCK_METHOD1(CallOperator, bool(std::string&& message));
+    MOCK_METHOD(bool, CallOperator, (const std::string& message), ());
 
    bool operator()(std::string&& message) override
    {
-       return CallOperator(std::string(message));
+       return CallOperator(message);
    }
-
 };
 
 } // namespace streamlog::mocks
