@@ -513,6 +513,7 @@ int main(int argc, char* argv[])
             builderDeps.kvdbScopeName = "builder";
             builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
+            builderDeps.logManager = streamLogger;
             // builderDeps.iConnector = iConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
