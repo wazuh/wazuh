@@ -38,7 +38,7 @@ checks:
   ###############################################
 
   # 1.1.1.1 Ensure cramfs kernel module is not available (Automated)
-  - id: 31500
+  - id: 31667
     title: "Ensure cramfs kernel module is not available."
     description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
@@ -58,7 +58,7 @@ checks:
       - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+cramfs'
 
   # 1.1.1.2 Ensure freevxfs kernel module is not available (Automated)
-  - id: 31500
+  - id: 31668
     title: "Ensure freevxfs kernel module is not available."
     description: "The freevxfs filesystem type is a free version of the Veritas type filesystem. This is the primary filesystem type for HP-UX operating systems."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
@@ -78,7 +78,7 @@ checks:
       - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+freevxfs'
 
   # 1.1.1.3 Ensure hfs kernel module is not available (Automated)
-  - id: 31500
+  - id: 31669
     title: "Ensure hfs kernel module is not available."
     description: "The hfs filesystem type is a hierarchical filesystem that allows you to mount Mac OS filesystems."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
@@ -98,7 +98,7 @@ checks:
       - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+hfs'
 
   # 1.1.1.4 Ensure hfsplus kernel module is not available (Automated)
-  - id: 31500
+  - id: 31670
     title: "Ensure hfsplus kernel module is not available."
     description: "The hfsplus filesystem type is a hierarchical filesystem designed to replace hfs that allows you to mount Mac OS filesystems."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
@@ -118,7 +118,7 @@ checks:
       - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+hfsplus'
 
   # 1.1.1.5 Ensure jffs2 kernel module is not available (Automated)
-  - id: 31500
+  - id: 31671
     title: "Ensure jffs2 kernel module is not available."
     description: "The jffs2 (journaling flash filesystem 2) filesystem type is a log-structured filesystem used in flash memory devices."
     rationale: "Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
@@ -212,6 +212,13 @@ checks:
 
   # 1.1.1.9 Ensure unused filesystems kernel modules are not available (Manual) - Not Implemented
 
+  ###############################################
+  # 1.1.2 Configure Filesystem Partitions
+  ###############################################
+  ###############################################
+  # 1.1.2.1 Configure /tmp
+  ###############################################
+
   # 1.1.2.1.1 Ensure /tmp is a separate partition. (Automated)
   - id: 31502
     title: "Ensure /tmp is a separate partition."
@@ -293,112 +300,6 @@ checks:
     description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
     rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
     impact: "Setting the noexec option on /tmp may prevent installation and/or updating of some 3rd party software."
-    remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
-    compliance:
-      - cis: ["1.1.2.1.4"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1204", "T1204.002"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
-    rules:
-      - "c:findmnt -kn /tmp -> r:noexec"
-
-  ###############################################
-  # 1.1.2 Configure Filesystem Partitions
-  ###############################################
-  ###############################################
-  # 1.1.2.1 Configure /tmp
-  ###############################################
-
-  # 1.1.2.1.1 Ensure /tmp is a separate partition. (Automated)
-  - id: 31502
-    title: "Ensure /tmp is a separate partition."
-    description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
-    rationale: "Making /tmp its own file system allows an administrator to set additional mount options such as the noexec option on the mount, making /tmp useless for an attacker to install executable code. It would also prevent an attacker from establishing a hard link to a system setuid program and wait for it to be updated. Once the program was updated, the hard link would be broken and the attacker would have his own copy of the program. If the program happened to have a security vulnerability, the attacker could continue to exploit the known flaw. Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. This can be accomplished by either mounting tmpfs to /tmp, or creating a separate partition for /tmp."
-    impact: "By design files saved to /tmp should have no expectation of surviving a reboot of the system. tmpfs is ram based and all files stored to tmpfs will be lost when the system is rebooted. If files need to be persistent through a reboot, they should be saved to /var/tmp not /tmp. Running out of /tmp space is a problem regardless of what kind of filesystem lies under it, but in a configuration where /tmp is not a separate file system it will essentially have the whole disk available, as the default installation only creates a single / partition. On the other hand, a RAM-based /tmp (as with tmpfs) will almost certainly be much smaller, which can lead to applications filling up the filesystem much more easily. Another alternative is to create a dedicated partition for /tmp from a separate volume or disk. One of the downsides of a disk-based dedicated partition is that it will be slower than tmpfs which is RAM-based."
-    remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options: tmpfs /tmp 0 tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 Example of using a volume or disk with specific mount options. The source location of the volume or disk will vary depending on your environment. <device> /tmp <fstype> defaults,nodev,nosuid,noexec 0 0."
-    references:
-      - "https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/"
-      - "https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html"
-    compliance:
-      - cis: ["1.1.2.1.1"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1499", "T1499.001"]
-      - nist_sp_800-53: ["CM-7"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
-    rules:
-      - 'c:findmnt -kn /tmp -> r:^/tmp\s'
-      - "c:systemctl is-enabled tmp.mount -> r:enabled|static|generated"
-
-  # 1.1.2.1.2 Ensure nodev option set on /tmp partition. (Automated)
-  - id: 31503
-    title: "Ensure nodev option set on /tmp partition."
-    description: "The nodev mount option specifies that the filesystem cannot contain special devices."
-    rationale: "Since the /tmp filesystem is not intended to support devices, set this option to ensure that users cannot create a block or character special devices in /tmp."
-    remediation: "Edit the /etc/fstab file and add nodev to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
-    compliance:
-      - cis: ["1.1.2.1.2"]
-      - cis_csc_v8: ["4.8"]
-      - cis_csc_v7: ["9.2"]
-      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-      - iso_27001-2013: ["A.13.1.3"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1200"]
-      - nist_sp_800-53: ["CM-7"]
-      - pci_dss_3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-      - pci_dss_4.0: ["1.2.5", "2.2.4", "6.4.1"]
-      - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
-    rules:
-      - "c:findmnt -kn /tmp -> r:nodev"
-
-  # 1.1.2.1.3 Ensure nosuid option set on /tmp partition. (Automated)
-  - id: 31505
-    title: "Ensure nosuid option set on /tmp partition."
-    description: "The nosuid mount option specifies that the filesystem cannot contain setuid files."
-    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot create setuid files in /tmp."
-    remediation: "Edit the /etc/fstab file and add nosuid to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
-    compliance:
-      - cis: ["1.1.2.1.3"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1548", "T1548.001"]
-      - nist_sp_800-53: ["AC-3", "MP-2"]
-      - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition: all
-    rules:
-      - "c:findmnt -kn /tmp -> r:nosuid"
-
-  # 1.1.2.1.4 Ensure noexec option set on /tmp partition. (Automated)
-  - id: 31504
-    title: "Ensure noexec option set on /tmp partition."
-    description: "The noexec mount option specifies that the filesystem cannot contain executable binaries."
-    rationale: "Since the /tmp filesystem is only intended for temporary file storage, set this option to ensure that users cannot run executable binaries from /tmp."
     remediation: "Edit the /etc/fstab file and add noexec to the fourth field (mounting options) for the /tmp partition. Example: <device> /tmp <fstype> defaults,rw,nosuid,nodev,noexec,relatime 0 0 Run the following command to remount /tmp with the configured options: # mount -o remount /tmp."
     compliance:
       - cis: ["1.1.2.1.4"]
@@ -1522,7 +1423,7 @@ checks:
   ###############################################
 
   # 2.1.1 Ensure autofs services are not in use (Automated)
-  - id: 31500
+  - id: 31672
     title: "Ensure autofs services are not in usee."
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
@@ -1717,7 +1618,7 @@ checks:
       - "c:systemctl is-enabled nfs-server -> r:masked|No such file or directory"
 
   # 2.1.10 Ensure nis server services are not in use (Automated)
-  - id: 31500
+  - id: 31673
     title: "Ensure nis server services are not in use."
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
@@ -1922,7 +1823,7 @@ checks:
       - "c:rpm -q httpd -> r:^package httpd is not installed"
 
   # 2.1.19 Ensure xinetd services are not in use (Automated)
-  - id: 31500
+  - id: 31674
     title: "Ensure xinetd services are not in use."
     description: "The eXtended InterNET Daemon (xinetd) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
     rationale: "If there are no xinetd services required, it is recommended that the package be removed to reduce the attack surface are of the system."
@@ -2034,7 +1935,7 @@ checks:
       - "c:rpm -q openldap-clients -> r:^package openldap-clients is not installed"
 
   # 2.2.3 Ensure nis client is not installed (Automated)
-  - id: 31500
+  - id: 31675
     title: "Ensure nis client is not installed."
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
@@ -3080,7 +2981,7 @@ checks:
   ###############################################
 
   # 5.3.3.1.1 Ensure password failed attempts lockout is configured (Automated)
-  - id: 31648
+  - id: 31676
     title: "Ensure password failed attempts lockout is configured."
     description: "The deny=<n> option will deny access if the number of consecutive authentication failures for this user during the recent interval exceeds ."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
@@ -3135,7 +3036,7 @@ checks:
   ###############################################
 
   # 5.3.3.2.1 Ensure password number of changed characters is configured (Automated)
-  - id: 31647
+  - id: 31677
     title: "Ensure password number of changed characters is configured."
     description: "The pwquality difok option sets the number of characters in a password that must not be present in the old password."
     rationale: "Use of a complex password helps to increase the time and resources required to compromise the password. Password complexity, or strength, is a measure of the effectiveness of a password in resisting attempts at guessing and brute-force attacks. Password complexity is one factor of several that determines how long it takes to crack a password. The more complex the password, the greater the number of possible combinations that need to be tested before the password is compromised."
@@ -3177,7 +3078,7 @@ checks:
       - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s+\t*=\s+\t*(\d+) compare >= 14'
 
   # 5.3.3.2.3 Ensure password complexity is configured (Manual)
-  - id: 31647
+  - id: 31678
     title: "Ensure password complexity is configured."
     description: "Password complexity can be set through: minclass - The minimum number of classes of characters required in a new password. (digits, uppercase, lowercase, others). e.g. minclass = 4 requires digits, uppercase, lower case, and special characters. dcredit - The maximum credit for having digits in the new password. If less than 0 it is the minimum number of digits in the new password. e.g. dcredit = -1 requires at least one digit ucredit - The maximum credit for having uppercase characters in the new password. If less than 0 it is the minimum number of uppercase characters in the new password. e.g. ucredit = -1 requires at least one uppercase character ocredit - The maximum credit for having other characters in the new password. If less than 0 it is the minimum number of other characters in the new password. e.g. ocredit = -1 requires at least one special character lcredit - The maximum credit for having lowercase characters in the new password. If less than 0 it is the minimum number of lowercase characters in the new password. e.g. lcredit = -1 requires at least one lowercase character"
     rationale: "Strong passwords protect systems from being hacked through brute force methods."
@@ -3198,7 +3099,7 @@ checks:
       - 'f:/etc/security/pwquality.conf -> n:^\s*minclass\s+\t*=\s+\t*(\d+) compare >= 4'
 
   # 5.3.3.2.4 Ensure password same consecutive characters is configured (Automated)
-  - id: 31647
+  - id: 31679
     title: "Ensure password same consecutive characters is configured."
     description: "The pwquality maxrepeat option sets the maximum number of allowed same consecutive characters in a new password."
     rationale: "Use of a complex password helps to increase the time and resources required to compromise the password. Password complexity, or strength, is a measure of the effectiveness of a password in resisting attempts at guessing and brute-force attacks. Password complexity is one factor of several that determines how long it takes to crack a password. The more complex the password, the greater the number of possible combinations that need to be tested before the password is compromised."
@@ -4259,7 +4160,7 @@ checks:
       - 'c:stat -c "%n %U" /sbin/augenrules -> r:root$'
 
   # 6.3.4.10 Ensure audit tools group owner is configured (Automated)
-  - id: 31598
+  - id: 31599
     title: "Ensure audit tools group owner is configured."
     description: "Audit tools include, but are not limited to, vendor-provided and open source audit tools needed to successfully view and manipulate audit information system activity and records. Audit tools include custom queries and report generators."
     rationale: "Protecting audit information includes identifying and protecting the tools used to view and manipulate log data. Protecting audit tools is necessary to prevent unauthorized operation on audit information."
