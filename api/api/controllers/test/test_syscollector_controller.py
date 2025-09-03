@@ -435,14 +435,12 @@ async def test_get_group_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 async def test_get_browser_extensions_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_browser_extensions_info' endpoint is working as expected."""
     result = await get_browser_extensions_info(agent_id='001')
-    filters = {}
     f_kwargs = {'agent_list': ['001'],
                 'offset': 0,
                 'limit': None,
                 'select': None,
                 'sort': None,
                 'search': None,
-                'filters': filters,
                 'element_type': 'browser_extensions',
                 'q': None,
                 'distinct': False
@@ -469,14 +467,12 @@ async def test_get_browser_extensions_info(mock_exc, mock_dapi, mock_remove, moc
 async def test_get_services_info(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_services_info' endpoint is working as expected."""
     result = await get_services_info(agent_id='001')
-    filters = {}
     f_kwargs = {'agent_list': ['001'],
                 'offset': 0,
                 'limit': None,
                 'select': None,
                 'sort': None,
                 'search': None,
-                'filters': filters,
                 'element_type': 'services',
                 'q': None,
                 'distinct': False

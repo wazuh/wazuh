@@ -751,7 +751,7 @@ async def get_group_info(agent_id: str, pretty: bool = False, wait_for_complete:
 async def get_browser_extensions_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                           offset: int = 0, limit: int = None, sort: str = None, search: str = None, select: str = None,
                           q: str = None, distinct: bool = False) -> ConnexionResponse:
-    """Get info about an agent's browser extensions.
+    """Get information about an agent's browser extensions.
 
     Parameters
     ----------
@@ -782,15 +782,13 @@ async def get_browser_extensions_info(agent_id: str, pretty: bool = False, wait_
     ConnexionResponse
         API response.
     """
-    filters = {}
     f_kwargs = {'agent_list': [agent_id],
                 'offset': offset,
                 'limit': limit,
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'filters': filters,
-                'element_type': 'browser_extensions',
+                'element_type': syscollector.Type.BROWSER_EXTENSIONS.value,
                 'q': q,
                 'distinct': distinct}
 
@@ -809,7 +807,7 @@ async def get_browser_extensions_info(agent_id: str, pretty: bool = False, wait_
 async def get_services_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                           offset: int = 0, limit: int = None, sort: str = None, search: str = None, select: str = None,
                           q: str = None, distinct: bool = False) -> ConnexionResponse:
-    """Get info about an agent's services.
+    """Get information about an agent's services.
 
     Parameters
     ----------
@@ -840,15 +838,13 @@ async def get_services_info(agent_id: str, pretty: bool = False, wait_for_comple
     ConnexionResponse
         API response.
     """
-    filters = {}
     f_kwargs = {'agent_list': [agent_id],
                 'offset': offset,
                 'limit': limit,
                 'select': select,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
-                'filters': filters,
-                'element_type': 'services',
+                'element_type': syscollector.Type.SERVICES.value,
                 'q': q,
                 'distinct': distinct}
 
