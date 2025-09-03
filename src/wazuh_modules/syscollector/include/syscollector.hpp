@@ -130,8 +130,8 @@ class EXPORTED Syscollector final
                           const nlohmann::json& source,
                           const std::string& keyPath,
                           const std::string& jsonKey,
-                          const std::optional<std::string>& defaultValue,
-                          bool createFields);
+                          bool createFields,
+                          bool is_boolean = false);
         void setJsonFieldArray(nlohmann::json& target,
                                const nlohmann::json& source,
                                const std::string& destPath,

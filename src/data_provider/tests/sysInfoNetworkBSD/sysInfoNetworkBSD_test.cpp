@@ -36,7 +36,7 @@ class SysInfoNetworkBSDWrapperMock: public INetworkInterfaceWrapper
         MOCK_METHOD(std::string, metrics, (), (const override));
         MOCK_METHOD(std::string, metricsV6, (), (const override));
         MOCK_METHOD(std::string, gateway, (), (const override));
-        MOCK_METHOD(std::string, dhcp, (), (const override));
+        MOCK_METHOD(uint32_t, dhcp, (), (const override));
         MOCK_METHOD(uint32_t, mtu, (), (const override));
         MOCK_METHOD(LinkStats, stats, (), (const override));
         MOCK_METHOD(std::string, type, (), (const override));
@@ -63,7 +63,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET)
     EXPECT_CALL(*mock, netmask()).Times(1).WillOnce(Return("255.255.255.0"));
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return("192.168.0.255"));
     EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(" "));
-    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(" "));
+    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(0));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
 
     for (auto& element : ifaddr.at("IPv4"))
@@ -71,7 +71,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET)
         EXPECT_EQ("192.168.0.1", element.at("network_ip").get_ref<const std::string&>());
         EXPECT_EQ("255.255.255.0", element.at("network_netmask").get_ref<const std::string&>());
         EXPECT_EQ("192.168.0.255", element.at("network_broadcast").get_ref<const std::string&>());
-        EXPECT_EQ(" ", element.at("network_dhcp").get_ref<const std::string&>());
+        EXPECT_EQ(0, element.at("network_dhcp").get<uint32_t>());
         EXPECT_EQ(" ", element.at("network_metric").get_ref<const std::string&>());
     }
 }
@@ -94,7 +94,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
     EXPECT_CALL(*mock, netmaskV6()).Times(1).WillOnce(Return("2001:db8:abcd:0012:ffff:ffff:ffff:ffff"));
     EXPECT_CALL(*mock, broadcastV6()).Times(1).WillOnce(Return("2001:db8:85a3:8d3:1319:8a2e:370:0000"));
     EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return(" "));
-    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(" "));
+    EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(0));
     EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildNetworkData(ifaddr));
 
     for (auto& element : ifaddr.at("IPv6"))
@@ -102,7 +102,7 @@ TEST_F(SysInfoNetworkBSDTest, Test_AF_INET6)
         EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:7348", element.at("network_ip").get_ref<const std::string&>());
         EXPECT_EQ("2001:db8:abcd:0012:ffff:ffff:ffff:ffff", element.at("network_netmask").get_ref<const std::string&>());
         EXPECT_EQ("2001:db8:85a3:8d3:1319:8a2e:370:0000", element.at("network_broadcast").get_ref<const std::string&>());
-        EXPECT_EQ(" ", element.at("network_dhcp").get_ref<const std::string&>());
+        EXPECT_EQ(0, element.at("network_dhcp").get<uint32_t>());
         EXPECT_EQ(" ", element.at("network_metric").get_ref<const std::string&>());
     }
 }

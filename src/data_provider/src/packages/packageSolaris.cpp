@@ -10,6 +10,8 @@
  */
 
 #include "packageSolaris.h"
+#include "sharedDefs.h"
+#include "timeHelper.h"
 
 std::shared_ptr<IPackage> FactorySolarisPackage::create(const std::shared_ptr<IPackageWrapper>& pkgWrapper)
 {
@@ -33,6 +35,7 @@ void SolarisPackageImpl::buildPackageData(nlohmann::json& package)
     package["priority"] = m_packageWrapper->priority();
     package["size"] = m_packageWrapper->size();
     package["vendor"] = m_packageWrapper->vendor();
-    package["installed"] = m_packageWrapper->install_time();
+    auto installed = m_packageWrapper->install_time();
+    package["installed"] = installed == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::timestampToISO8601(installed);
     // The multiarch field won't have a default value
 }

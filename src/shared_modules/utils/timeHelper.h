@@ -19,6 +19,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <regex>
 #if __cplusplus >= 201703L
 #include <charconv>
 #include <string_view>
@@ -145,6 +146,13 @@ namespace Utils
 
     static std::string timestampToISO8601(const std::string& timestamp)
     {
+        // Accepts: YYYY-MM-DDTHH:MM:SS(.mmm)?Z
+        static const std::regex iso8601_regex(R"(^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$")");
+        if (std::regex_match(timestamp, iso8601_regex))
+        {
+            return timestamp;
+        }
+
         std::tm tm {};
         std::istringstream ss(timestamp);
         ss >> std::get_time(&tm, "%Y/%m/%d %H:%M:%S");

@@ -168,9 +168,9 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
             return "";
         }
 
-        std::string dhcp() const override
+        uint32_t dhcp() const override
         {
-            return "unknown";
+            return 0;
         }
 
         uint32_t mtu() const override

@@ -245,9 +245,9 @@ class NetworkSolarisInterface final : public INetworkInterfaceWrapper
             return metric;
         }
 
-        std::string dhcp() const override
+        uint32_t dhcp() const override
         {
-            return m_interfaceFlags & IFF_DHCPRUNNING ? "enabled" : "disabled";
+            return m_interfaceFlags & IFF_DHCPRUNNING ? 1 : 0;
         }
 
         uint32_t mtu() const override

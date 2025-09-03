@@ -112,15 +112,15 @@ static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
     { std::make_pair(ARPHRD_IEEE802_TR, ARPHRD_IEEE802154_PHY), "wireless"          },
 };
 
-static const std::map<std::string, std::string> DHCP_STATUS =
+static const std::map<std::string, uint32_t> DHCP_STATUS =
 {
-    { "dhcp",                   "enabled"           },
-    { "yes",                    "enabled"           },
-    { "static",                 "disabled"          },
-    { "none",                   "disabled"          },
-    { "no",                     "disabled"          },
-    { "manual",                 "disabled"          },
-    { "bootp",                  "BOOTP"             },
+    { "dhcp",                   1           },
+    { "yes",                    1           },
+    { "static",                 0           },
+    { "none",                   0           },
+    { "no",                     0           },
+    { "manual",                 0           },
+    { "bootp",                  1           },
 };
 
 namespace GatewayFileFields
@@ -218,9 +218,9 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             return retVal.get();
         }
 
-        static std::string getRedHatDHCPStatus(const std::vector<std::string>& fields)
+        static uint32_t getRedHatDHCPStatus(const std::vector<std::string>& fields)
         {
-            std::string retVal { "enabled" };
+            uint32_t retVal { 1 };
             const auto value { fields.at(RHInterfaceConfig::Value) };
 
             const auto it { DHCP_STATUS.find(value) };
@@ -233,9 +233,9 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             return retVal;
         }
 
-        static std::string getDebianDHCPStatus(const std::string& family, const std::vector<std::string>& fields)
+        static uint32_t getDebianDHCPStatus(const std::string& family, const std::vector<std::string>& fields)
         {
-            std::string retVal { "enabled" };
+            uint32_t retVal { 1 };
 
             if (fields.at(DebianInterfaceConfig::Family).compare(family) == 0)
             {
@@ -372,10 +372,10 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
             return "";
         }
 
-        std::string dhcp() const override
+        uint32_t dhcp() const override
         {
             auto fileData { Utils::getFileContent(WM_SYS_IF_FILE) };
-            std::string retVal { "unknown" };
+            uint32_t retVal { 0 };
             const auto family { this->family() };
             const auto ifName { this->name() };
 
