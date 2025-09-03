@@ -166,8 +166,8 @@ table dbsync_users {
     user_roles:string;
     user_shell:string;
     user_type:string;
-    user_is_hidden:bool = null;
-    user_is_remote:bool = null;
+    user_is_hidden:int = null;
+    user_is_remote:int = null;
     user_last_login:long = null;
     user_auth_failed_count:long = null;
     user_auth_failed_timestamp:double = null;
@@ -181,7 +181,7 @@ table dbsync_users {
     user_password_warning_days_before_expiration:int = null;
     process_pid:long = null;
     host_ip:string;
-    login_status:bool = null;
+    login_status:int = null;
     login_tty:string;
     login_type:string;
     checksum:string;
@@ -194,9 +194,75 @@ table dbsync_groups {
     group_description:string;
     group_id_signed:long = null;
     group_uuid:string;
-    group_is_hidden:bool = null;
+    group_is_hidden:int = null;
     group_users:string;
     checksum:string;
+}
+
+table dbsync_browser_extensions {
+    scan_time:string;
+    browser_name:string;
+    user_id:string;
+    package_name:string;
+    package_id:string;
+    package_version:string;
+    package_description:string;
+    package_vendor:string;
+    package_build_version:string;
+    package_path:string;
+    browser_profile_name:string;
+    browser_profile_path:string;
+    package_reference:string;
+    package_permissions:string;
+    package_type:string;
+    package_enabled:int = null;
+    package_visible:int = null;
+    package_autoupdate:int = null;
+    package_persistent:int = null;
+    package_from_webstore:int = null;
+    browser_profile_referenced:int = null;
+    package_installed:string;
+    file_hash_sha256:string;
+    checksum:string;
+    item_id:string;
+}
+
+table dbsync_services {
+    scan_time:string;
+    service_id:string;
+    service_name:string;
+    service_description:string;
+    service_type:string;
+    service_state:string;
+    service_sub_state:string;
+    service_enabled:string;
+    service_start_type:string;
+    service_restart:string;
+    service_frequency:long = null;
+    service_starts_on_mount:int = null;
+    service_starts_on_path_modified:string;
+    service_starts_on_not_empty_directory:string;
+    service_inetd_compatibility:int = null;
+    process_pid:long = null;
+    process_executable:string;
+    process_args:string;
+    process_user_name:string;
+    process_group_name:string;
+    process_working_directory:string;
+    process_root_directory:string;
+    file_path:string;
+    service_address:string;
+    log_file_path:string;
+    error_log_file_path:string;
+    service_exit_code:int = null;
+    service_win32_exit_code:int = null;
+    service_following:string;
+    service_object_path:string;
+    service_target_ephemeral_id:long = null;
+    service_target_type:string;
+    service_target_address:string;
+    checksum:string;
+    item_id:string;
 }
 
 union Provider {
@@ -210,7 +276,9 @@ union Provider {
     dbsync_hotfixes,
     dbsync_processes,
     dbsync_users,
-    dbsync_groups
+    dbsync_groups,
+    dbsync_browser_extensions,
+    dbsync_services
 }
 
 table AgentInfo {

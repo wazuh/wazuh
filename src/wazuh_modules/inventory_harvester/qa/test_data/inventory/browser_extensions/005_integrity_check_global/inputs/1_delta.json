@@ -1,0 +1,37 @@
+{
+    "agent_info": {
+        "agent_id": "001",
+        "agent_ip": "any",
+        "agent_name": "centos9",
+        "agent_version": "v4.14.0"
+    },
+    "data_type": "dbsync_browser_extensions",
+    "data": {
+        "scan_time": "2025/07/14 20:23:01",
+        "browser_name": "chrome",
+        "user_id": "S-1-5-21-1234567890-987654321-1122334455-1001",
+        "package_name": "vimium",
+        "package_id": "5b7ed951031058a7e3e8af81d2dfdd1d",
+        "package_version": "2.3",
+        "package_description": "The Hacker's Browser. Vimium provides keyboard shortcuts for navigation and control in the spirit of Vim.",
+        "package_vendor": "Phil Crosby",
+        "package_build_version": "2.3",
+        "package_path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\5b7ed951031058a7e3e8af81d2dfdd1d\\2.3_0",
+        "browser_profile_name": "Default",
+        "browser_profile_path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default",
+        "package_reference": "https://clients2.google.com/service/update2/crx",
+        "package_permissions": "activeTab,storage,tabs,webNavigation",
+        "package_type": "extension",
+        "package_enabled": -1,
+        "package_visible": 1,
+        "package_autoupdate": 1,
+        "package_persistent": 1,
+        "package_from_webstore": 1,
+        "browser_profile_referenced": 1,
+        "package_installed": "1710489821",
+        "file_hash_sha256": "3b323c1c20517e922be878b76365922a70f7cf7c30b3423844f7acd17c191eb5",
+        "checksum": "33c81cae96b5818a4b4cce5a431e0ef8b5f0b650",
+        "item_id": "763ad4927102459ea41d5549267d68a6a3f7aa2e"
+    },
+    "operation": "INSERTED"
+}

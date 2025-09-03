@@ -1,0 +1,37 @@
+{
+  "agent_info": {
+    "agent_id": "004",
+    "agent_ip": "any",
+    "agent_name": "centos9",
+    "agent_version": "v4.14.0"
+  },
+  "data_type": "dbsync_browser_extensions",
+  "data": {
+    "scan_time": null,
+    "browser_name": null,
+    "user_id": null,
+    "package_name": "",
+    "package_id": null,
+    "package_version": null,
+    "package_description": null,
+    "package_vendor": null,
+    "package_build_version": null,
+    "package_path": null,
+    "browser_profile_name": null,
+    "browser_profile_path": null,
+    "package_reference": null,
+    "package_permissions": null,
+    "package_type": null,
+    "package_enabled": 0,
+    "package_visible": 0,
+    "package_autoupdate": 0,
+    "package_persistent": 0,
+    "package_from_webstore": 0,
+    "browser_profile_referenced": 0,
+    "package_installed": null,
+    "file_hash_sha256": null,
+    "checksum": null,
+    "item_id": "da39a3ee5e6b4b0d3255bfef95601890afd80709"
+  },
+  "operation": "INSERTED"
+}

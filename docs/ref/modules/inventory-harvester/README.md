@@ -50,6 +50,8 @@ The **InventoryHarvester** module receives inventory data events as flatbuffer m
    - Ports: Details about open ports in the agent endpoint.
    - Users: Detailed information for each user registered in the OS for control access and permissions.
    - Groups: Detailed information for each group present in the OS for control access and permissions.
+   - Browser extensions: Detailed information for installed extensions in Firefox, Chrome, IE and Safari based web browsers.
+   - Services: Detailed information for each service or daemon installed or running on endpoints, normalized and queryable across operating systems.
 
 2. **File Integrity Monitoring**
 
