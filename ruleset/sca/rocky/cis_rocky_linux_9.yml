@@ -1522,7 +1522,7 @@ checks:
   ###############################################
 
   # 2.1.1 Ensure autofs services are not in use (Automated)
-  - id: 31670
+  - id: 31500
     title: "Ensure autofs services are not in usee."
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
@@ -1717,7 +1717,7 @@ checks:
       - "c:systemctl is-enabled nfs-server -> r:masked|No such file or directory"
 
   # 2.1.10 Ensure nis server services are not in use (Automated)
-  - id: 31669
+  - id: 31500
     title: "Ensure nis server services are not in use."
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
@@ -1922,7 +1922,7 @@ checks:
       - "c:rpm -q httpd -> r:^package httpd is not installed"
 
   # 2.1.19 Ensure xinetd services are not in use (Automated)
-  - id: 31668
+  - id: 31500
     title: "Ensure xinetd services are not in use."
     description: "The eXtended InterNET Daemon (xinetd) is an open source super daemon that replaced the original inetd daemon. The xinetd daemon listens for well known services and dispatches the appropriate daemon to properly respond to service requests."
     rationale: "If there are no xinetd services required, it is recommended that the package be removed to reduce the attack surface are of the system."
@@ -2034,7 +2034,7 @@ checks:
       - "c:rpm -q openldap-clients -> r:^package openldap-clients is not installed"
 
   # 2.2.3 Ensure nis client is not installed (Automated)
-  - id: 31667
+  - id: 31500
     title: "Ensure nis client is not installed."
     description: "The Network Information Service (NIS), formerly known as Yellow Pages, is a client-server directory service protocol used to distribute system configuration files. The NIS client ( ypbind ) was used to bind a machine to an NIS server and receive the distributed configuration files."
     rationale: "The NIS service is inherently an insecure system that has been vulnerable to DOS attacks, buffer overflows and has poor authentication for querying NIS maps. NIS generally has been replaced by such protocols as Lightweight Directory Access Protocol (LDAP). It is recommended that the service be removed."
