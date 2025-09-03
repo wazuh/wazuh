@@ -135,7 +135,7 @@ constexpr auto NETPROTO_SQL_STATEMENT
        interface_name TEXT,
        network_type TEXT,
        network_gateway TEXT,
-       network_dhcp TEXT NOT NULL CHECK (network_dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
+       network_dhcp INTEGER,
        network_metric TEXT,
        checksum TEXT,
        PRIMARY KEY (interface_name,network_type)) WITHOUT ROWID;)"
@@ -145,12 +145,12 @@ constexpr auto NETADDR_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_address (
        interface_name TEXT,
-       network_protocol INTEGER,
+       network_type INTEGER,
        network_ip TEXT,
        network_netmask TEXT,
        network_broadcast TEXT,
        checksum TEXT,
-       PRIMARY KEY (interface_name,network_protocol,network_ip)) WITHOUT ROWID;)"
+       PRIMARY KEY (interface_name,network_type,network_ip)) WITHOUT ROWID;)"
 };
 
 constexpr auto USERS_SQL_STATEMENT

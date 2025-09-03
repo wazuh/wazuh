@@ -405,7 +405,7 @@ nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::stri
 
     if (createFields)
     {
-        setJsonField(ret, data, "/checksum/hash/sha1", "checksum", std::nullopt, true);
+        setJsonField(ret, data, "/checksum/hash/sha1", "checksum", true);
 
         // Add state modified_at field for stateful events only
         nlohmann::json state;
@@ -420,21 +420,21 @@ nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, b
 {
     nlohmann::json ret;
 
-    setJsonField(ret, originalData, "/host/architecture", "architecture", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/hostname", "hostname", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/build", "os_build", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/codename", "os_codename", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/distribution/release", "os_distribution_release", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/full", "os_full", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/kernel/name", "os_kernel_name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/kernel/release", "os_kernel_release", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/kernel/version", "os_kernel_version", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/major", "os_major", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/minor", "os_minor", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/name", "os_name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/patch", "os_patch", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/platform", "os_platform", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/os/version", "os_version", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/architecture", "architecture", createFields);
+    setJsonField(ret, originalData, "/host/hostname", "hostname", createFields);
+    setJsonField(ret, originalData, "/host/os/build", "os_build", createFields);
+    setJsonField(ret, originalData, "/host/os/codename", "os_codename", createFields);
+    setJsonField(ret, originalData, "/host/os/distribution/release", "os_distribution_release", createFields);
+    setJsonField(ret, originalData, "/host/os/full", "os_full", createFields);
+    setJsonField(ret, originalData, "/host/os/kernel/name", "os_kernel_name", createFields);
+    setJsonField(ret, originalData, "/host/os/kernel/release", "os_kernel_release", createFields);
+    setJsonField(ret, originalData, "/host/os/kernel/version", "os_kernel_version", createFields);
+    setJsonField(ret, originalData, "/host/os/major", "os_major", createFields);
+    setJsonField(ret, originalData, "/host/os/minor", "os_minor", createFields);
+    setJsonField(ret, originalData, "/host/os/name", "os_name", createFields);
+    setJsonField(ret, originalData, "/host/os/patch", "os_patch", createFields);
+    setJsonField(ret, originalData, "/host/os/platform", "os_platform", createFields);
+    setJsonField(ret, originalData, "/host/os/version", "os_version", createFields);
 
     return ret;
 }
@@ -443,13 +443,13 @@ nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData,
 {
     nlohmann::json ret;
 
-    setJsonField(ret, originalData, "/host/cpu/cores", "cpu_cores", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/cpu/name", "cpu_name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/cpu/speed", "cpu_speed", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/memory/free", "memory_free", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/memory/total", "memory_total", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/memory/used", "memory_used", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/serial_number", "serial_number", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/cpu/cores", "cpu_cores", createFields);
+    setJsonField(ret, originalData, "/host/cpu/name", "cpu_name", createFields);
+    setJsonField(ret, originalData, "/host/cpu/speed", "cpu_speed", createFields);
+    setJsonField(ret, originalData, "/host/memory/free", "memory_free", createFields);
+    setJsonField(ret, originalData, "/host/memory/total", "memory_total", createFields);
+    setJsonField(ret, originalData, "/host/memory/used", "memory_used", createFields);
+    setJsonField(ret, originalData, "/host/serial_number", "serial_number", createFields);
 
     return ret;
 }
@@ -458,7 +458,7 @@ nlohmann::json Syscollector::ecsHotfixesData(const nlohmann::json& originalData,
 {
     nlohmann::json ret;
 
-    setJsonField(ret, originalData, "/package/hotfix/name", "hotfix_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/hotfix/name", "hotfix_name", createFields);
 
     return ret;
 }
@@ -467,19 +467,19 @@ nlohmann::json Syscollector::ecsPackageData(const nlohmann::json& originalData, 
 {
     nlohmann::json ret;
 
-    setJsonField(ret, originalData, "/package/architecture", "architecture", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/category", "category", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/description", "description", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/installed", "installed", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/multiarch", "multiarch", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/name", "name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/path", "path", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/priority", "priority", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/size", "size", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/source", "source", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/type", "type", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/vendor", "vendor", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/package/version", "version", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/package/architecture", "architecture", createFields);
+    setJsonField(ret, originalData, "/package/category", "category", createFields);
+    setJsonField(ret, originalData, "/package/description", "description", createFields);
+    setJsonField(ret, originalData, "/package/installed", "installed", createFields);
+    setJsonField(ret, originalData, "/package/multiarch", "multiarch", createFields);
+    setJsonField(ret, originalData, "/package/name", "name", createFields);
+    setJsonField(ret, originalData, "/package/path", "path", createFields);
+    setJsonField(ret, originalData, "/package/priority", "priority", createFields);
+    setJsonField(ret, originalData, "/package/size", "size", createFields);
+    setJsonField(ret, originalData, "/package/source", "source", createFields);
+    setJsonField(ret, originalData, "/package/type", "type", createFields);
+    setJsonField(ret, originalData, "/package/vendor", "vendor", createFields);
+    setJsonField(ret, originalData, "/package/version", "version", createFields);
 
     return ret;
 }
@@ -489,15 +489,15 @@ nlohmann::json Syscollector::ecsProcessesData(const nlohmann::json& originalData
     nlohmann::json ret;
 
     setJsonFieldArray(ret, originalData, "/process/args", "args", createFields);
-    setJsonField(ret, originalData, "/process/args_count", "args_count", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/command_line", "command_line", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/name", "name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/parent/pid", "parent_pid", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/pid", "pid", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/start", "start", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/state", "state", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/stime", "stime", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/utime", "utime", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/process/args_count", "args_count", createFields);
+    setJsonField(ret, originalData, "/process/command_line", "command_line", createFields);
+    setJsonField(ret, originalData, "/process/name", "name", createFields);
+    setJsonField(ret, originalData, "/process/parent/pid", "parent_pid", createFields);
+    setJsonField(ret, originalData, "/process/pid", "pid", createFields);
+    setJsonField(ret, originalData, "/process/start", "start", createFields);
+    setJsonField(ret, originalData, "/process/state", "state", createFields);
+    setJsonField(ret, originalData, "/process/stime", "stime", createFields);
+    setJsonField(ret, originalData, "/process/utime", "utime", createFields);
 
     return ret;
 }
@@ -506,17 +506,17 @@ nlohmann::json Syscollector::ecsPortData(const nlohmann::json& originalData, boo
 {
     nlohmann::json ret;
 
-    setJsonField(ret, originalData, "/destination/ip", "destination_ip", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/destination/port", "destination_port", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/file/inode", "file_inode", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/network/egress/queue", "host_network_egress_queue", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/network/ingress/queue", "host_network_ingress_queue", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/interface/state", "interface_state", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/network/transport", "network_transport", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/name", "process_name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/pid", "process_pid", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/source/ip", "source_ip", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/source/port", "source_port", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/destination/ip", "destination_ip", createFields);
+    setJsonField(ret, originalData, "/destination/port", "destination_port", createFields);
+    setJsonField(ret, originalData, "/file/inode", "file_inode", createFields);
+    setJsonField(ret, originalData, "/host/network/egress/queue", "host_network_egress_queue", createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/queue", "host_network_ingress_queue", createFields);
+    setJsonField(ret, originalData, "/interface/state", "interface_state", createFields);
+    setJsonField(ret, originalData, "/network/transport", "network_transport", createFields);
+    setJsonField(ret, originalData, "/process/name", "process_name", createFields);
+    setJsonField(ret, originalData, "/process/pid", "process_pid", createFields);
+    setJsonField(ret, originalData, "/source/ip", "source_ip", createFields);
+    setJsonField(ret, originalData, "/source/port", "source_port", createFields);
 
     return ret;
 }
@@ -526,19 +526,19 @@ nlohmann::json Syscollector::ecsNetworkInterfaceData(const nlohmann::json& origi
     nlohmann::json ret;
 
     setJsonFieldArray(ret, originalData, "/host/mac", "host_mac", createFields);
-    setJsonField(ret, originalData, "/host/network/ingress/bytes", "host_network_ingress_bytes", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/network/ingress/drops", "host_network_ingress_drops", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/network/ingress/errors", "host_network_ingress_errors", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/network/ingress/packets", "host_network_ingress_packages", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/network/egress/bytes", "host_network_egress_bytes", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/network/egress/drops", "host_network_egress_drops", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/network/egress/errors", "host_network_egress_errors", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/host/network/egress/packets", "host_network_egress_packages", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/interface/alias", "interface_alias", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/interface/mtu", "interface_mtu", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/interface/name", "interface_name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/interface/state", "interface_state", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/interface/type", "interface_type", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/bytes", "host_network_ingress_bytes", createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/drops", "host_network_ingress_drops", createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/errors", "host_network_ingress_errors", createFields);
+    setJsonField(ret, originalData, "/host/network/ingress/packets", "host_network_ingress_packages", createFields);
+    setJsonField(ret, originalData, "/host/network/egress/bytes", "host_network_egress_bytes", createFields);
+    setJsonField(ret, originalData, "/host/network/egress/drops", "host_network_egress_drops", createFields);
+    setJsonField(ret, originalData, "/host/network/egress/errors", "host_network_egress_errors", createFields);
+    setJsonField(ret, originalData, "/host/network/egress/packets", "host_network_egress_packages", createFields);
+    setJsonField(ret, originalData, "/interface/alias", "interface_alias", createFields);
+    setJsonField(ret, originalData, "/interface/mtu", "interface_mtu", createFields);
+    setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
+    setJsonField(ret, originalData, "/interface/state", "interface_state", createFields);
+    setJsonField(ret, originalData, "/interface/type", "interface_type", createFields);
 
     return ret;
 }
@@ -547,11 +547,11 @@ nlohmann::json Syscollector::ecsNetworkProtocolData(const nlohmann::json& origin
 {
     nlohmann::json ret;
 
-    setJsonField(ret, originalData, "/interface/name", "interface_name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/network/dhcp", "network_dhcp", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/network/gateway", "network_gateway", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/network/metric", "network_metric", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/network/type", "network_type", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
+    setJsonField(ret, originalData, "/network/dhcp", "network_dhcp", createFields, true);
+    setJsonField(ret, originalData, "/network/gateway", "network_gateway", createFields);
+    setJsonField(ret, originalData, "/network/metric", "network_metric", createFields);
+    setJsonField(ret, originalData, "/network/type", "network_type", createFields);
 
     return ret;
 }
@@ -560,11 +560,11 @@ nlohmann::json Syscollector::ecsNetworkAddressData(const nlohmann::json& origina
 {
     nlohmann::json ret;
 
-    setJsonField(ret, originalData, "/interface/name", "interface_name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/network/broadcast", "network_broadcast", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/network/ip", "network_ip", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/network/netmask", "network_netmask", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/network/protocol", "network_protocol", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
+    setJsonField(ret, originalData, "/network/broadcast", "network_broadcast", createFields);
+    setJsonField(ret, originalData, "/network/ip", "network_ip", createFields);
+    setJsonField(ret, originalData, "/network/netmask", "network_netmask", createFields);
+    setJsonField(ret, originalData, "/network/type", "network_type", createFields);
 
     return ret;
 }
@@ -574,36 +574,36 @@ nlohmann::json Syscollector::ecsUsersData(const nlohmann::json& originalData, bo
     nlohmann::json ret;
 
     setJsonFieldArray(ret, originalData, "/host/ip", "host_ip", createFields);
-    setJsonField(ret, originalData, "/login/status", "login_status", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/login/tty", "login_tty", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/login/type", "login_type", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/process/pid", "process_pid", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/auth_failures/count", "user_auth_failed_count", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/auth_failures/timestamp", "user_auth_failed_timestamp", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/created", "user_created", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/full_name", "user_full_name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/group/id", "user_group_id", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/group/id_signed", "user_group_id_signed", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/login/status", "login_status", createFields, true);
+    setJsonField(ret, originalData, "/login/tty", "login_tty", createFields);
+    setJsonField(ret, originalData, "/login/type", "login_type", createFields);
+    setJsonField(ret, originalData, "/process/pid", "process_pid", createFields);
+    setJsonField(ret, originalData, "/user/auth_failures/count", "user_auth_failed_count", createFields);
+    setJsonField(ret, originalData, "/user/auth_failures/timestamp", "user_auth_failed_timestamp", createFields);
+    setJsonField(ret, originalData, "/user/created", "user_created", createFields);
+    setJsonField(ret, originalData, "/user/full_name", "user_full_name", createFields);
+    setJsonField(ret, originalData, "/user/group/id", "user_group_id", createFields);
+    setJsonField(ret, originalData, "/user/group/id_signed", "user_group_id_signed", createFields);
     setJsonFieldArray(ret, originalData, "/user/groups", "user_groups", createFields);
-    setJsonField(ret, originalData, "/user/home", "user_home", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/id", "user_id", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/is_hidden", "user_is_hidden", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/is_remote", "user_is_remote", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/last_login", "user_last_login", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/name", "user_name", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/password/expiration_date", "user_password_expiration_date", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/password/hash_algorithm", "user_password_hash_algorithm", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/password/inactive_days", "user_password_inactive_days", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/password/last_change", "user_password_last_change", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/password/max_days_between_changes", "user_password_max_days_between_changes", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/password/min_days_between_changes", "user_password_min_days_between_changes", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/password/status", "user_password_status", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/password/warning_days_before_expiration", "user_password_warning_days_before_expiration", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/home", "user_home", createFields);
+    setJsonField(ret, originalData, "/user/id", "user_id", createFields);
+    setJsonField(ret, originalData, "/user/is_hidden", "user_is_hidden", createFields, true);
+    setJsonField(ret, originalData, "/user/is_remote", "user_is_remote", createFields, true);
+    setJsonField(ret, originalData, "/user/last_login", "user_last_login", createFields);
+    setJsonField(ret, originalData, "/user/name", "user_name", createFields);
+    setJsonField(ret, originalData, "/user/password/expiration_date", "user_password_expiration_date", createFields);
+    setJsonField(ret, originalData, "/user/password/hash_algorithm", "user_password_hash_algorithm", createFields);
+    setJsonField(ret, originalData, "/user/password/inactive_days", "user_password_inactive_days", createFields);
+    setJsonField(ret, originalData, "/user/password/last_change", "user_password_last_change", createFields);
+    setJsonField(ret, originalData, "/user/password/max_days_between_changes", "user_password_max_days_between_changes", createFields);
+    setJsonField(ret, originalData, "/user/password/min_days_between_changes", "user_password_min_days_between_changes", createFields);
+    setJsonField(ret, originalData, "/user/password/status", "user_password_status", createFields);
+    setJsonField(ret, originalData, "/user/password/warning_days_before_expiration", "user_password_warning_days_before_expiration", createFields);
     setJsonFieldArray(ret, originalData, "/user/roles", "user_roles", createFields);
-    setJsonField(ret, originalData, "/user/shell", "user_shell", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/type", "user_type", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/uid_signed", "user_uid_signed", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/user/uuid", "user_uuid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/user/shell", "user_shell", createFields);
+    setJsonField(ret, originalData, "/user/type", "user_type", createFields);
+    setJsonField(ret, originalData, "/user/uid_signed", "user_uid_signed", createFields);
+    setJsonField(ret, originalData, "/user/uuid", "user_uuid", createFields);
 
     return ret;
 }
@@ -612,13 +612,13 @@ nlohmann::json Syscollector::ecsGroupsData(const nlohmann::json& originalData, b
 {
     nlohmann::json ret;
 
-    setJsonField(ret, originalData, "/group/description", "group_description", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/group/id", "group_id", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/group/id_signed", "group_id_signed", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/group/is_hidden", "group_is_hidden", std::nullopt, createFields);
-    setJsonField(ret, originalData, "/group/name", "group_name", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/description", "group_description", createFields);
+    setJsonField(ret, originalData, "/group/id", "group_id", createFields);
+    setJsonField(ret, originalData, "/group/id_signed", "group_id_signed", createFields);
+    setJsonField(ret, originalData, "/group/is_hidden", "group_is_hidden", createFields, true);
+    setJsonField(ret, originalData, "/group/name", "group_name", createFields);
     setJsonFieldArray(ret, originalData, "/group/users", "group_users", createFields);
-    setJsonField(ret, originalData, "/group/uuid", "group_uuid", std::nullopt, createFields);
+    setJsonField(ret, originalData, "/group/uuid", "group_uuid", createFields);
 
     return ret;
 }
@@ -723,7 +723,7 @@ nlohmann::json Syscollector::getNetworkData()
                     {
                         // "dbsync_network_address" table data to update and notify
                         addressTableData["interface_name"]   = item.at("interface_name");
-                        addressTableData["network_protocol"] = IPV4;
+                        addressTableData["network_type"] = IPV4;
                         addressTableData["checksum"]         = getItemChecksum(addressTableData);
                         // Remove unwanted fields for dbsync_network_address table
                         addressTableData.erase("network_dhcp");
@@ -749,7 +749,7 @@ nlohmann::json Syscollector::getNetworkData()
                     {
                         // "dbsync_network_address" table data to update and notify
                         addressTableData["interface_name"]   = item.at("interface_name");
-                        addressTableData["network_protocol"] = IPV6;
+                        addressTableData["network_type"] = IPV6;
                         addressTableData["checksum"]         = getItemChecksum(addressTableData);
                         // Remove unwanted fields for dbsync_network_address table
                         addressTableData.erase("network_dhcp");
@@ -1132,7 +1132,7 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
     else if (table == NET_ADDRESS_TABLE)
     {
         std::string iface_name = data.contains("interface_name") ? data["interface_name"].get<std::string>() : "";
-        std::string net_protocol = data.contains("network_protocol") ? std::to_string(data["network_protocol"].get<int>()) : "0";
+        std::string net_protocol = data.contains("network_type") ? std::to_string(data["network_type"].get<int>()) : "0";
         std::string net_ip = data.contains("network_ip") ? data["network_ip"].get<std::string>() : "";
 
         ret = iface_name + ":" + net_protocol + ":" + net_ip;
@@ -1228,8 +1228,8 @@ void Syscollector::setJsonField(nlohmann::json& target,
                                 const nlohmann::json& source,
                                 const std::string& keyPath,
                                 const std::string& jsonKey,
-                                const std::optional<std::string>& defaultValue,
-                                bool createFields)
+                                bool createFields,
+                                bool is_boolean)
 {
     if (createFields || source.contains(jsonKey))
     {
@@ -1237,11 +1237,28 @@ void Syscollector::setJsonField(nlohmann::json& target,
 
         if (source.contains(jsonKey) && source[jsonKey] != EMPTY_VALUE && source[jsonKey] != UNKNOWN_VALUE)
         {
-            target[pointer] = source[jsonKey];
-        }
-        else if (defaultValue.has_value())
-        {
-            target[pointer] = *defaultValue;
+            if (is_boolean)
+            {
+                const auto& value = source[jsonKey];
+
+                if (value.is_number())
+                {
+                    target[pointer] = (value.get<int>() != 0);
+                }
+                else if (value.is_string())
+                {
+                    const std::string strValue = value.get<std::string>();
+                    target[pointer] = (strValue != "0");
+                }
+                else
+                {
+                    target[pointer] = value;
+                }
+            }
+            else
+            {
+                target[pointer] = source[jsonKey];
+            }
         }
         else
         {

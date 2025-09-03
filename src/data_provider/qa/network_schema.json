@@ -24,12 +24,7 @@
                                             "format": "ipv4"
                                         },
                                         "network_dhcp": {
-                                            "type": "string",
-                                            "enum": [
-                                                "enabled",
-                                                "disabled",
-                                                "unknown"
-                                            ]
+                                            "type": "integer"
                                         },
                                         "network_metric": {
                                             "type": "string"
@@ -61,12 +56,7 @@
                                             "type": "string"
                                         },
                                         "network_dhcp": {
-                                            "type": "string",
-                                            "enum": [
-                                                "enabled",
-                                                "disabled",
-                                                "unknown"
-                                            ]
+                                            "type": "integer"
                                         },
                                         "network_metric": {
                                             "type": "string"

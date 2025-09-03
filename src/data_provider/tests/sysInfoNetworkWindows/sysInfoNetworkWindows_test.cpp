@@ -38,7 +38,7 @@ class SysInfoNetworkWindowsWrapperMock: public INetworkInterfaceWrapper
         MOCK_METHOD(std::string, gateway, (), (const override));
         MOCK_METHOD(std::string, metrics, (), (const override));
         MOCK_METHOD(std::string, metricsV6, (), (const override));
-        MOCK_METHOD(std::string, dhcp, (), (const override));
+        MOCK_METHOD(uint32_t, dhcp, (), (const override));
         MOCK_METHOD(uint32_t, mtu, (), (const override));
         MOCK_METHOD(LinkStats, stats, (), (const override));
         MOCK_METHOD(std::string, type, (), (const override));
@@ -77,7 +77,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV4)
     const std::string address   { "192.168.0.1" };
     const std::string netmask   { "255.255.255.0" };
     const std::string broadcast { "192.168.0.255" };
-    const std::string dhcp      { "8.8.8.8" };
+    const uint32_t dhcp         { 1 };
     const std::string metrics   { "25" };
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(Utils::NetworkWindowsHelper::IPV4));
     EXPECT_CALL(*mock, address()).Times(1).WillOnce(Return(address));
@@ -92,7 +92,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV4)
         EXPECT_EQ(address, element.at("network_ip").get_ref<const std::string&>());
         EXPECT_EQ(netmask, element.at("network_netmask").get_ref<const std::string&>());
         EXPECT_EQ(broadcast, element.at("network_broadcast").get_ref<const std::string&>());
-        EXPECT_EQ(dhcp, element.at("network_dhcp").get_ref<const std::string&>());
+        EXPECT_EQ(dhcp, element.at("network_dhcp").get<uint32_t>());
         EXPECT_EQ(metrics, element.at("network_metric").get_ref<const std::string&>());
     }
 }
@@ -104,7 +104,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV6)
     const std::string address   { "2001:db8:85a3:8d3:1319:8a2e:370:7348" };
     const std::string netmask   { "2001:db8:abcd:0012:ffff:ffff:ffff:ffff" };
     const std::string broadcast { "2001:db8:85a3:8d3:1319:8a2e:370:0000" };
-    const std::string dhcp      { "8.8.8.8" };
+    const uint32_t dhcp         { 1 };
     const std::string metrics   { "25" };
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(Utils::NetworkWindowsHelper::IPV6));
     EXPECT_CALL(*mock, addressV6()).Times(1).WillOnce(Return(address));
@@ -119,7 +119,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV6)
         EXPECT_EQ(address, element.at("network_ip").get_ref<const std::string&>());
         EXPECT_EQ(netmask, element.at("network_netmask").get_ref<const std::string&>());
         EXPECT_EQ(broadcast, element.at("network_broadcast").get_ref<const std::string&>());
-        EXPECT_EQ(dhcp, element.at("network_dhcp").get_ref<const std::string&>());
+        EXPECT_EQ(dhcp, element.at("network_dhcp").get<uint32_t>());
         EXPECT_EQ(metrics, element.at("network_metric").get_ref<const std::string&>());
     }
 }

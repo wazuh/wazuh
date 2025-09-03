@@ -92,19 +92,19 @@ static const auto expectedPersistNetIface
 };
 static const auto expectedPersistNetProtoIPv4
 {
-    R"({"checksum":{"hash":{"sha1":"be03649a0596f425cbfe630a164cb2291603b365"}},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}})"
+    R"({"checksum":{"hash":{"sha1":"50f3c227c2278cdf43b6107da8455901a09dfa49"}},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}})"
 };
 static const auto expectedPersistNetAddrIPv4
 {
-    R"({"checksum":{"hash":{"sha1":"1a1d96860fa2ff8ffed446c8f77e3d66ca393afa"}},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}})"
+    R"({"checksum":{"hash":{"sha1":"24ecdd6a316b2320c809085106812f6cf8a4cf67"}},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}})"
 };
 static const auto expectedPersistNetProtoIPv6
 {
-    R"({"checksum":{"hash":{"sha1":"128b7f9181f7b4bc75fe64a5b915cce8406e522b"}},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}})"
+    R"({"checksum":{"hash":{"sha1":"53a9aa90a75f0264beae6beb9bf19192cfc23df1"}},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}})"
 };
 static const auto expectedPersistNetAddrIPv6
 {
-    R"({"checksum":{"hash":{"sha1":"2b5750d4d09e93980c1846e5a50f97b1504b0d79"}},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}})"
+    R"({"checksum":{"hash":{"sha1":"7271714e0616caea85422916dd6ab2fbdac2b5cd"}},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}})"
 };
 static const auto expectedPersistPorts
 {
@@ -128,11 +128,11 @@ static const auto expectedPersistHotfix
 };
 static const auto expectedPersistGroup
 {
-    R"({"checksum":{"hash":{"sha1":"81793e529c565256a60eff6c6345e2f5c5ee8cb0"}},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}})"
+    R"({"checksum":{"hash":{"sha1":"81793e529c565256a60eff6c6345e2f5c5ee8cb0"}},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}})"
 };
 static const auto expectedPersistUser
 {
-    R"({"checksum":{"hash":{"sha1":"11769088416d594d547a508e084cec990e282ece"}},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}})"
+    R"({"checksum":{"hash":{"sha1":"11769088416d594d547a508e084cec990e282ece"}},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}})"
 };
 
 TEST_F(SyscollectorImpTest, defaultCtor)
@@ -143,7 +143,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -209,15 +209,15 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -237,15 +237,15 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult21
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult24
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -312,7 +312,7 @@ TEST_F(SyscollectorImpTest, intervalSeconds)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix_name":"KB12345678"},{"hotfix_name":"KB87654321"}])"_json));
@@ -400,7 +400,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -462,15 +462,15 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -490,15 +490,15 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult25
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -559,7 +559,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                       R"({"serial_number":"Intel Corporation", "cpu_speed":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz", "memory_free":2257872,"memory_total":4972208,"memory_used":54})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, os()).Times(0);
@@ -622,15 +622,15 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -650,15 +650,15 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult25
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -797,11 +797,11 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult23
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult26
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -855,7 +855,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
@@ -918,15 +918,15 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -942,15 +942,15 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult25
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1012,7 +1012,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
@@ -1077,15 +1077,15 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult8
     {
@@ -1101,15 +1101,15 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult25
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1171,7 +1171,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"udp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"","host_network_egress_queue":0},{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -1237,15 +1237,15 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -1269,15 +1269,15 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult21
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult25
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1343,7 +1343,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -1406,15 +1406,15 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -1430,15 +1430,15 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult22
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult25
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1500,7 +1500,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -1566,15 +1566,15 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -1590,15 +1590,15 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult18
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult23
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1660,7 +1660,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -1727,15 +1727,15 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -1751,7 +1751,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult18
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult20
     {
@@ -1759,7 +1759,7 @@ TEST_F(SyscollectorImpTest, noUsers)
     };
     const auto expectedResult23
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1821,7 +1821,7 @@ TEST_F(SyscollectorImpTest, noGroups)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":"x86_64", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_distribution_release":"sp1","os_version":"6.1.7601"})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":"disabled","network_metric":"75","network_netmask":"255.0.0.0","network_protocol":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_mtu":1500, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up", "network_dhcp":0,"network_metric":"75","network_netmask":"255.0.0.0","network_type":"IPv4","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":"127.0.0.1", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp","destination_ip":"0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -1887,15 +1887,15 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -1915,11 +1915,11 @@ TEST_F(SyscollectorImpTest, noGroups)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult25
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -2405,7 +2405,7 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                 R"({"architecture":" x86_64", "hostname":" UBUNTU ","os_build":"  7601","os_major":"6  ","os_minor":"  1  ","os_name":" Microsoft Windows 7 ","os_distribution_release":"   sp1","os_version":"6.1.7601   "})")));
     EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
-                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"   ethernet", "interface_state":"up   ", "network_dhcp":"disabled","interface_mtu":1500,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":"unknown","network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":"unknown","network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+                                                                      R"({"iface":[{"network_ip":"127.0.0.1", "host_mac":"d4:5d:64:51:07:5d", "network_gateway":"192.168.0.1|600","network_broadcast":"127.255.255.255", "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"   ethernet", "interface_state":"up   ", "network_dhcp":0,"interface_mtu":1500,"host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0, "IPv4":[{"network_ip":"192.168.153.1","network_broadcast":"192.168.153.255","network_dhcp":0,"network_metric":" ","network_netmask":"255.255.255.0"}], "IPv6":[{"network_ip":"fe80::250:56ff:fec0:8","network_dhcp":0,"network_metric":" ","network_netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
     EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
                                                                    R"([{"file_inode":0,"source_ip":" 127.0.0.1 ", "source_port":631,"process_pid":0,"process_name":"System Idle Process","network_transport":"tcp   ","destination_ip":"   0.0.0.0","destination_port":0,"host_network_ingress_queue":0,"interface_state":"listening","host_network_egress_queue":0}])")));
     EXPECT_CALL(*spInfoWrapper, packages(_))
@@ -2472,15 +2472,15 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult4
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv4"}},"module":"inventory"})"
     };
     const auto expectedResult5
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","protocol":0}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":"192.168.153.255","ip":"192.168.153.1","netmask":"255.255.255.0","type":0}},"module":"inventory"})"
     };
     const auto expectedResult6
     {
-        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","protocol":1}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_address","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"broadcast":null,"ip":"fe80::250:56ff:fec0:8","netmask":"ffff:ffff:ffff:ffff::","type":1}},"module":"inventory"})"
     };
     const auto expectedResult7
     {
@@ -2500,15 +2500,15 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
     };
     const auto expectedResult20
     {
-        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":"unknown","gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
+        R"({"collector":"dbsync_network_protocol","data":{"event":{"changed_fields":[],"type":"created"},"interface":{"name":"enp4s0"},"network":{"dhcp":false,"gateway":"192.168.0.1|600","metric":null,"type":"ipv6"}},"module":"inventory"})"
     };
     const auto expectedResult21
     {
-        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":0,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_groups","data":{"event":{"changed_fields":[],"type":"created"},"group":{"description":null,"id":1,"id_signed":1,"is_hidden":false,"name":"daemon","users":["daemon:pollinate:vboxadd"],"uuid":null}},"module":"inventory"})"
     };
     const auto expectedResult24
     {
-        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":0,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":0,"is_remote":1,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
+        R"({"collector":"dbsync_users","data":{"event":{"changed_fields":[],"type":"created"},"host":{"ip":["192.168.0.84"]},"login":{"status":false,"tty":"pts/0","type":"user"},"process":{"pid":"129870"},"user":{"auth_failures":{"count":0,"timestamp":0},"created":0,"full_name":"root","group":{"id":0,"id_signed":0},"groups":[0],"home":"/root","id":0,"is_hidden":false,"is_remote":true,"last_login":"1749605216","name":"root","password":{"expiration_date":-1,"hash_algorithm":"y","inactive_days":-1,"last_change":1745971200.0,"max_days_between_changes":99999,"min_days_between_changes":0,"status":"active","warning_days_before_expiration":7},"roles":["sudo"],"shell":"/bin/bash","type":null,"uid_signed":0,"uuid":null}},"module":"inventory"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
