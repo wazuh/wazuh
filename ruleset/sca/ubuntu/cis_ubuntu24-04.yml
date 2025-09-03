@@ -998,12 +998,12 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+loaded compare > 0
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+kill\s+mode compare == 0
-      - c:apparmor_status -> n:^(\p*\d+)\s+profiles\s+are\s+in\s+unconfined\s+mode compare == 0
-      - c:apparmor_status -> n:^(\p*\d+)\s*profiles\s+are\s+in\s+complain\s+mode compare == 0
-      - c:apparmor_status -> n:^(\p*\d+)\s*processes\s+are\s+unconfined compare == 0
+      - c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0
+      - c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0
+      - c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+kill\s+mode compare == 0
+      - c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+unconfined\s+mode compare == 0
+      - c:apparmor_status -> n:^(\d+)\s*profiles\s+are\s+in\s+complain\s+mode compare == 0
+      - c:apparmor_status -> n:^(\d+)\s*processes\s+are\s+unconfined compare == 0
 
   # 1.3.1.4 Ensure all AppArmor Profiles are enforcing. (Automated)
    - id: 35539
@@ -1126,7 +1126,7 @@ checks:
       - "c:sysctl fs.suid_dumpable -> r:^fs\\.suid_dumpable = 0"
       - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
       - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs\.suid_dumpable = 0'
-      - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p hard core 0'
+      - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:[*!+-] hard core 0'
 
   # 1.5.4 Ensure prelink is not installed. (Automated)
    - id: 35544
@@ -2903,8 +2903,8 @@ checks:
        - soc_2: ["CC6.6"]
      condition: all
      rules:
-      - 'c:sh -c "systemctl show ufw.service nft.service iptables.service | grep -cE \"^ActiveState=active\"" -> n:^(\p*\d+) compare == 1'
-      - 'c:sh -c "systemctl show ufw.service nft.service iptables.service | grep -cE \"^LoadState=loaded\"" -> n:^(\p*\d+) compare == 1'
+      - 'c:sh -c "systemctl show ufw.service nft.service iptables.service | grep -cE \"^ActiveState=active\"" -> n:^(\d+) compare == 1'
+      - 'c:sh -c "systemctl show ufw.service nft.service iptables.service | grep -cE \"^LoadState=loaded\"" -> n:^(\d+) compare == 1'
 
   # 4.2.1 Ensure ufw is installed. (Automated)
    - id: 35620
@@ -3356,9 +3356,9 @@ checks:
        - soc_2: ["CC6.6"]
      condition: all
      rules:
-      - 'c:iptables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*\p.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
-      - 'c:iptables -L INPUT -v -n -> r:.*DROP.*all.*\p.*\p.*127\.0\.0\.0/8.*0\.0\.0\.0/0'
-      - 'c:iptables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*\p.*lo.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*[*!+-].*0\.0\.0\.0/0.*0\.0\.0\.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*DROP.*all.*[*!+-].*[*!+-].*127\.0\.0\.0/8.*0\.0\.0\.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*[*!+-].*lo.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
 
   # 4.4.2.3 Ensure iptables outbound and established connections are configured. (Manual) - Not Implemented
   # 4.4.2.4 Ensure iptables firewall rules exist for all open ports. (Automated) - Not Implemented
@@ -3409,9 +3409,9 @@ checks:
        - soc_2: ["CC6.6"]
      condition: all
      rules:
-      - 'c:ip6tables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*\p.*::/0.*::/0'
-      - 'c:ip6tables -L INPUT -v -n -> r:.*DROP.*all.*\p.*\p.*::1.*::/0'
-      - 'c:ip6tables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*\p.*lo.*::/0.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*[*!+-].*::/0.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:.*DROP.*all.*[*!+-].*[*!+-].*::1.*::/0'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*[*!+-].*lo.*::/0.*::/0'
 
   # 4.4.3.3 Ensure ip6tables outbound and established connections are configured. (Manual) - Not Implemented
   # 4.4.3.4 Ensure ip6tables firewall rules exist for all open ports. (Automated) - Not Implemented
@@ -3574,8 +3574,8 @@ checks:
        - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
      condition: all
      rules:
-      - 'c:sshd -T -> n:^clientaliveinterval\s*\t*(\p*\d+) compare > 0'
-      - 'c:sshd -T -> n:^clientalivecountmax\s*\t*(\p*\d+) compare > 0'
+      - 'c:sshd -T -> n:^clientaliveinterval\s*\t*(\d+) compare > 0'
+      - 'c:sshd -T -> n:^clientalivecountmax\s*\t*(\d+) compare > 0'
 
   # 5.1.8 Ensure sshd DisableForwarding is enabled. (Automated)
    - id: 35647
@@ -4220,7 +4220,7 @@ checks:
        - soc_2: ["CC6.2", "CC6.3"]
      condition: all
      rules:
-      - 'f:/etc/security/faillock.conf -> n:^deny\s*\t*=\s*\t*(\p*\d+) compare <= 5'
+      - 'f:/etc/security/faillock.conf -> n:^deny\s*\t*=\s*\t*(\d+) compare <= 5'
 
   # 5.3.3.1.2 Ensure password unlock time is configured. (Automated)
    - id: 35677
@@ -4245,8 +4245,8 @@ checks:
        - soc_2: ["CC6.2", "CC6.3"]
      condition: any
      rules:
-      - 'f:/etc/security/faillock.conf -> n:^unlock_time\s*\t*=\s*\t*(\p*\d+) compare == 0'
-      - 'f:/etc/security/faillock.conf -> n:^unlock_time\s*\t*=\s*\t*(\p*\d+) compare >= 900'
+      - 'f:/etc/security/faillock.conf -> n:^unlock_time\s*\t*=\s*\t*(\d+) compare == 0'
+      - 'f:/etc/security/faillock.conf -> n:^unlock_time\s*\t*=\s*\t*(\d+) compare >= 900'
 
   # 5.3.3.1.3 Ensure password failed attempts lockout includes root account. (Automated)
    - id: 35678
@@ -4272,7 +4272,7 @@ checks:
      condition: any
      rules:
       - "f:/etc/security/faillock.conf -> r:^even_deny_root"
-      - 'f:/etc/security/faillock.conf -> n:^root_unlock_time\s*\t*=\s*\t*(\p*\d+) compare >= 60'
+      - 'f:/etc/security/faillock.conf -> n:^root_unlock_time\s*\t*=\s*\t*(\d+) compare >= 60'
 
   # 5.3.3.2.1 Ensure password number of changed characters is configured. (Automated)
    - id: 35679
@@ -4293,7 +4293,7 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - 'f:/etc/security/pwquality.conf -> n:^difok\s*\t*=\s*\t*(\p*\d+) compare >= 2'
+      - 'f:/etc/security/pwquality.conf -> n:^difok\s*\t*=\s*\t*(\d+) compare >= 2'
 
   # 5.3.3.2.2 Ensure minimum password length is configured. (Automated)
    - id: 35680
@@ -4460,7 +4460,7 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - 'f:/etc/pam.d/common-password -> r:^password\s*\t*requisite\s*\t*pam_pwhistory\.so && n:remember=(\p*\d+) compare >= 24'
+      - 'f:/etc/pam.d/common-password -> r:^password\s*\t*requisite\s*\t*pam_pwhistory\.so && n:remember=(\d+) compare >= 24'
 
   # 5.3.3.3.2 Ensure password history is enforced for the root user. (Automated)
    - id: 35688
@@ -4625,7 +4625,7 @@ checks:
      rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare > 0'
-      - 'not f:/etc/shadow -> !r:^[\w@-]+:\p: && n:^[\w@-]+:\S*:\d*:\d*:(\d+) compare > 365'
+      - 'not f:/etc/shadow -> !r:^[\w@-]+:[*!+-]: && n:^[\w@-]+:\S*:\d*:\d*:(\d+) compare > 365'
 
   # 5.4.1.2 Ensure minimum password days is configured. (Manual)
    - id: 35695
@@ -4647,8 +4647,8 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - 'f:/etc/login.defs -> n:^PASS_MIN_DAYS\s*\t*(\p*\d+) compare > 0'
-      - 'f:/etc/shadow -> n:.*:\$.*:.*:(\p*\d+):.*:.*:.*:.*: compare > 0'
+      - 'f:/etc/login.defs -> n:^PASS_MIN_DAYS\s*\t*(\d+) compare > 0'
+      - 'f:/etc/shadow -> n:.*:\$.*:.*:(\d+):.*:.*:.*:.*: compare > 0'
 
   # 5.4.1.3 Ensure password expiration warning days is configured. (Automated)
    - id: 35696
@@ -4671,8 +4671,8 @@ checks:
        - soc_2: ["CC7.1", "CC8.1"]
      condition: all
      rules:
-      - 'f:/etc/login.defs -> n:^PASS_WARN_AGE\s*\t*(\p*\d+) compare >= 7'
-      - 'f:/etc/shadow -> n:.*:\$.*:.*:.*:.*:(\p*\d+):.*:.*: compare >= 7'
+      - 'f:/etc/login.defs -> n:^PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
+      - 'f:/etc/shadow -> n:.*:\$.*:.*:.*:.*:(\d+):.*:.*: compare >= 7'
 
   # 5.4.1.4 Ensure strong password hashing algorithm is configured. (Automated)
    - id: 35697
@@ -4717,8 +4717,8 @@ checks:
        - soc_2: ["CC6.1"]
      condition: all
      rules:
-      - 'c:useradd -D -> n:^INACTIVE\s*\t*=\s*\t*(\p*\d+) compare <= 45'
-      - 'f:/etc/shadow -> n:.*:\$.*:.*:.*:.*:.*:(\p*\d+):.*: compare <= 45'
+      - 'c:useradd -D -> n:^INACTIVE\s*\t*=\s*\t*(\d+) compare <= 45'
+      - 'f:/etc/shadow -> n:.*:\$.*:.*:.*:.*:.*:(\d+):.*: compare <= 45'
 
   # 5.4.1.6 Ensure all users last password change date is in the past. (Automated) - Not Implemented
 
@@ -4873,7 +4873,7 @@ checks:
        - pci_dss_v4.0: ["8.2.8"]
      condition: all
      rules:
-      - 'c:sh -c "cat /etc/bashrc /etc/profile /etc/profile.d/*.sh" -> n:TMOUT\s*\t*=\s*\t*(\p*\d+) compare <= 900 && n:TMOUT\s*\t*=\s*\t*(\p*\d+) compare > 0'
+      - 'c:sh -c "cat /etc/bashrc /etc/profile /etc/profile.d/*.sh" -> n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900 && n:TMOUT\s*\t*=\s*\t*(\d+) compare > 0'
       - 'c:sh -c "cat /etc/bashrc /etc/profile /etc/profile.d/*.sh" -> r:readonly\s*\t*TMOUT'
       - 'c:sh -c "cat /etc/bashrc /etc/profile /etc/profile.d/*.sh" -> r:export\s*\t*TMOUT'
 
@@ -5398,7 +5398,7 @@ checks:
        - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
      condition: all
      rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && n:audit_backlog_limit=(\p*\d+) compare >= 8192'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && n:audit_backlog_limit=(\d+) compare >= 8192'
 
   # 6.2.2.1 Ensure audit log storage size is configured. (Automated)
    - id: 35727
@@ -6090,7 +6090,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:sh -c "find /etc/audit/ -type f \\( -name ''*.conf'' -o -name ''*.rules'' \\) -exec stat -Lc ''%a'' {} + | grep -cvE ''^(000|040|200|400|600|240|440|640)''" -> n:^(\p*\d+) compare == 0'
+      - 'c:sh -c "find /etc/audit/ -type f \\( -name ''*.conf'' -o -name ''*.rules'' \\) -exec stat -Lc ''%a'' {} + | grep -cvE ''^(000|040|200|400|600|240|440|640)''" -> n:^(\d+) compare == 0'
 
   # 6.2.4.6 Ensure audit configuration files owner is configured. (Automated)
    - id: 35753
@@ -6114,7 +6114,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:sh -c "find /etc/audit/ -type f \\( -name ''*.conf'' -o -name ''*.rules'' \\) -exec stat -Lc ''%U'' {} + | grep -cvE ''^root''" -> n:^(\p*\d+) compare == 0'
+      - 'c:sh -c "find /etc/audit/ -type f \\( -name ''*.conf'' -o -name ''*.rules'' \\) -exec stat -Lc ''%U'' {} + | grep -cvE ''^root''" -> n:^(\d+) compare == 0'
 
   # 6.2.4.7 Ensure audit configuration files group owner is configured. (Automated)
    - id: 35754
@@ -6138,7 +6138,7 @@ checks:
        - soc_2: ["CC5.2", "CC6.1"]
      condition: all
      rules:
-      - 'c:sh -c "find /etc/audit/ -type f \\( -name ''*.conf'' -o -name ''*.rules'' \\) -exec stat -Lc ''%G'' {} + | grep -cvE ''^root''" -> n:^(\p*\d+) compare == 0'
+      - 'c:sh -c "find /etc/audit/ -type f \\( -name ''*.conf'' -o -name ''*.rules'' \\) -exec stat -Lc ''%G'' {} + | grep -cvE ''^root''" -> n:^(\d+) compare == 0'
 
   # 6.2.4.8 Ensure audit tools mode is configured. (Automated)
    - id: 35755
@@ -6278,12 +6278,12 @@ checks:
        - mitre_techniques: ["T1070", "T1070.002", "T1083"]
      condition: all
      rules:
-      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/auditctl\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/auditd\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/ausearch\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/aureport\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/autrace\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/augenrules\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/auditctl\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/auditd\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/ausearch\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/aureport\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/autrace\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:^/sbin|/usr/sbin && r:/augenrules\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
 
   # 7.1.1 Ensure permissions on /etc/passwd are configured. (Automated)
    - id: 35761
@@ -6634,7 +6634,7 @@ checks:
        - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
      condition: all
      rules:
-      - 'c:sh -c "cut -f3 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
+      - 'c:sh -c "cut -f3 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 7.2.6 Ensure no duplicate GIDs exist. (Automated)
    - id: 35776
@@ -6649,7 +6649,7 @@ checks:
        - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
      condition: all
      rules:
-      - 'c:sh -c "cut -f3 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
+      - 'c:sh -c "cut -f3 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 7.2.7 Ensure no duplicate user names exist. (Automated)
    - id: 35777
@@ -6664,7 +6664,7 @@ checks:
        - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
      condition: all
      rules:
-      - 'c:sh -c "cut -f1 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
+      - 'c:sh -c "cut -f1 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 7.2.8 Ensure no duplicate group names exist. (Automated)
    - id: 35778
@@ -6679,7 +6679,7 @@ checks:
        - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
      condition: all
      rules:
-      - 'c:sh -c "cut -f1 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
+      - 'c:sh -c "cut -f1 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 7.2.9 Ensure local interactive user home directories are configured. (Automated) - Not Implemented
   # 7.2.10 Ensure local interactive user dot files access is configured. (Automated) - Not Implemented

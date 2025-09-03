@@ -3,6 +3,7 @@ import sys
 import re
 from typing import List, Tuple, Set, Optional
 
+# ========= DOTS (invert '.' and '\\.' handling) =========
 
 def left_to_right_swap_dots(pattern: str, quote_char: Optional[str]) -> str:
     """Swap '.' and escaped dot inside a regex pattern, quote-aware.
@@ -203,6 +204,8 @@ def find_ids_with_dot_patterns(yml_lines: List[str]) -> Set[str]:
 
     return ids_with_dots
 
+
+# ========= BRACKETS (unescaped '[' and ']' handling) =========
 
 def left_to_right_escape_unescaped_brackets(pattern: str, quote_char: Optional[str]) -> str:
     """Escape unescaped '[' and ']' according to line quote style.
@@ -442,6 +445,8 @@ def _detect_line_quote_char(line: str) -> Optional[str]:
         return m.group(1)
     return None
 
+
+# ========= WORDS (\\w handling) =========
 
 def _has_w(payload: str, quote_char: Optional[str]) -> bool:
     """Return True if payload contains a \w (or \\w in double-quoted lines) token anywhere."""
@@ -837,11 +842,213 @@ def update_yaml_rules_quants(yml_lines: List[str], ids: Set[str]) -> Tuple[List[
         new_lines.append(line)
     return new_lines, edited_count
 
+
+# ========= PUNCT (custom \p handling) =========
+
+def _has_p_in_payload(payload: str, quote_char: Optional[str]) -> bool:
+    i = 0
+    n = len(payload)
+    is_double = (quote_char == '"')
+    while i < n:
+        if not is_double and payload[i] == '\\' and i + 1 < n and payload[i + 1] == 'p':
+            return True
+        if is_double and payload[i] == '\\' and i + 2 < n and payload[i + 1] == '\\' and payload[i + 2] == 'p':
+            return True
+        i += 1
+    return False
+
+
+def _replace_p_in_payload(payload: str, quote_char: Optional[str], context: str, warn_flag: List[bool]) -> str:
+    """Replace custom \p based on context:
+    - In n/!n: remove \p and an immediate trailing quantifier (* or +) if present
+    - In r/!r: replace \p with character class [*!+-]
+    Also set warn_flag[0] = True when replacement occurs in r/!r for manual review.
+    """
+    out: List[str] = []
+    i = 0
+    n = len(payload)
+    is_double = (quote_char == '"')
+    while i < n:
+        if not is_double and payload[i] == '\\' and i + 1 < n and payload[i + 1] == 'p':
+            # consume \p
+            i += 2
+            if context in ('n', '!n'):
+                # drop optional quantifier
+                if i < n and payload[i] in ('*', '+'):
+                    i += 1
+                # emit nothing
+            else:
+                out.append('[*!+-]')
+                warn_flag[0] = True
+            continue
+        if is_double and payload[i] == '\\' and i + 2 < n and payload[i + 1] == '\\' and payload[i + 2] == 'p':
+            i += 3
+            if context in ('n', '!n'):
+                if i < n and payload[i] in ('*', '+'):
+                    i += 1
+            else:
+                out.append('[*!+-]')
+                warn_flag[0] = True
+            continue
+        out.append(payload[i])
+        i += 1
+    return ''.join(out)
+
+
+def _has_p_in_rn_tokens(text: str, quote_char: Optional[str]) -> bool:
+    i = 0
+    s = text
+    n = len(s)
+    def read_until_boundary(k: int) -> Tuple[str, int]:
+        j = k
+        while j < n and not (s.startswith(' && ', j) or s.startswith(' compare ', j)):
+            j += 1
+        return s[k:j], j
+    while i < n:
+        if i + 2 < n and s[i] == '!' and s[i + 1] in ('r', 'n') and s[i + 2] == ':':
+            i += 3
+            payload, i = read_until_boundary(i)
+            if _has_p_in_payload(payload, quote_char):
+                return True
+            continue
+        if i + 1 < n and s[i] in ('r', 'n') and s[i + 1] == ':':
+            i += 2
+            payload, i = read_until_boundary(i)
+            if _has_p_in_payload(payload, quote_char):
+                return True
+            continue
+        i += 1
+    return False
+
+
+def swap_in_rn_tokens_punct(text: str, quote_char: Optional[str], warned_ids: Set[str], current_id: Optional[str]) -> Tuple[str, bool]:
+    i = 0
+    s = text
+    out: List[str] = []
+    n = len(s)
+    changed = False
+    def read_until_boundary(k: int) -> Tuple[str, int]:
+        j = k
+        while j < n and not (s.startswith(' && ', j) or s.startswith(' compare ', j)):
+            j += 1
+        return s[k:j], j
+    while i < n:
+        if i + 2 < n and s[i] == '!' and s[i + 1] in ('r', 'n') and s[i + 2] == ':':
+            context = '!r' if s[i + 1] == 'r' else '!n'
+            out.append(s[i:i+3])
+            i += 3
+            payload, next_i = read_until_boundary(i)
+            warn_flag = [False]
+            new_payload = _replace_p_in_payload(payload, quote_char, context, warn_flag)
+            if warn_flag[0] and current_id is not None and context in ('r', '!r'):
+                warned_ids.add(current_id)
+            if new_payload != payload:
+                changed = True
+            out.append(new_payload)
+            i = next_i
+            continue
+        if i + 1 < n and s[i] in ('r', 'n') and s[i + 1] == ':':
+            context = 'r' if s[i] == 'r' else 'n'
+            out.append(s[i:i+2])
+            i += 2
+            payload, next_i = read_until_boundary(i)
+            warn_flag = [False]
+            new_payload = _replace_p_in_payload(payload, quote_char, context, warn_flag)
+            if warn_flag[0] and current_id is not None and context in ('r', '!r'):
+                warned_ids.add(current_id)
+            if new_payload != payload:
+                changed = True
+            out.append(new_payload)
+            i = next_i
+            continue
+        out.append(s[i])
+        i += 1
+    return ''.join(out), changed
+
+
+def find_ids_with_punct(yml_lines: List[str]) -> Set[str]:
+    ids_with_issue: Set[str] = set()
+    current_id: str = ''
+    in_rules = False
+    rules_indent_len = None
+    id_line_re = re.compile(r'^(\s*)-\s+id:\s+(\d+)\s*$')
+    rules_key_re = re.compile(r'^(\s*)rules:\s*$')
+    list_item_re = re.compile(r'^(\s*)-\s')
+    for line in yml_lines:
+        m_id = id_line_re.match(line)
+        if m_id:
+            current_id = m_id.group(2)
+            in_rules = False
+            rules_indent_len = None
+            continue
+        m_rules = rules_key_re.match(line)
+        if m_rules:
+            in_rules = True
+            rules_indent_len = len(m_rules.group(1))
+            continue
+        if in_rules:
+            leading_spaces = len(line) - len(line.lstrip(' '))
+            if leading_spaces <= (rules_indent_len or 0) or id_line_re.match(line):
+                in_rules = False
+                rules_indent_len = None
+                continue
+            if list_item_re.match(line):
+                quote_char = _detect_line_quote_char(line)
+                if _has_p_in_rn_tokens(line, quote_char):
+                    if current_id:
+                        ids_with_issue.add(current_id)
+    return ids_with_issue
+
+
+def update_yaml_rules_punct(yml_lines: List[str], ids: Set[str]) -> Tuple[List[str], int, Set[str]]:
+    new_lines: List[str] = []
+    edited_count: int = 0
+    warned_ids: Set[str] = set()
+    in_target_check = False
+    in_rules = False
+    rules_indent_len = None
+    current_id: Optional[str] = None
+    id_line_re = re.compile(r'^(\s*)-\s+id:\s+(\d+)\s*$')
+    rules_key_re = re.compile(r'^(\s*)rules:\s*$')
+    list_item_re = re.compile(r'^(\s*)-\s')
+    for line in yml_lines:
+        m_id = id_line_re.match(line)
+        if m_id:
+            current_id = m_id.group(2)
+            in_target_check = current_id in ids
+            in_rules = False
+            rules_indent_len = None
+            new_lines.append(line)
+            continue
+        if in_target_check:
+            m_rules = rules_key_re.match(line)
+            if m_rules:
+                in_rules = True
+                rules_indent_len = len(m_rules.group(1))
+                new_lines.append(line)
+                continue
+            if in_rules:
+                leading_spaces = len(line) - len(line.lstrip(' '))
+                if leading_spaces <= (rules_indent_len or 0) or id_line_re.match(line):
+                    in_rules = False
+                    rules_indent_len = None
+                else:
+                    if list_item_re.match(line):
+                        quote_char = _detect_line_quote_char(line)
+                        transformed, changed = swap_in_rn_tokens_punct(line, quote_char, warned_ids, current_id)
+                        if changed:
+                            edited_count += 1
+                        new_lines.append(transformed)
+                        continue
+        new_lines.append(line)
+    return new_lines, edited_count, warned_ids
+
+
 def main() -> None:
-    # CLI: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --help)
+    # CLI: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct | --help)
     # Help can be requested with --help or -h at any time
     if any(arg in ('--help', '-h') for arg in sys.argv[1:]):
-        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants)')
+        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct)')
         print('')
         print('Modes:')
         print('  --quants   Escape literal * and + in r:/n:/!r:/!n: payloads unless they follow an escaped primitive')
@@ -849,24 +1056,26 @@ def main() -> None:
         print('  --brackets Escape unescaped [ and ] inside r:/n:/!r:/!n: payloads (quote-aware).')
         print('  --words    Expand \\w to [\\w@-] outside classes and \\w@- inside classes (quote-aware).')
         print("  --dots     Swap '.' and escaped dot inside r:/n:/!r:/!n: payloads (quote-aware).")
+        print("  --punct    Replace custom \\p: in n/!n remove (including trailing * or +); in r/!r replace with [*!+-].")
         print('')
-        print('Suggested order to minimize interference: --quants -> --brackets -> --words -> --dots')
+        print('Suggested order to minimize interference: --quants -> --brackets -> --punct -> --words -> --dots')
         sys.exit(0)
 
     if len(sys.argv) < 3:
-        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants)')
+        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct)')
         sys.exit(1)
 
     dots_mode = any(arg == '--dots' for arg in sys.argv[1:])
     brackets_mode = any(arg == '--brackets' for arg in sys.argv[1:])
     words_mode = any(arg == '--words' for arg in sys.argv[1:])
     quants_mode = any(arg == '--quants' for arg in sys.argv[1:])
+    punct_mode = any(arg == '--punct' for arg in sys.argv[1:])
     non_flag_args = [a for a in sys.argv[1:] if not a.startswith('-')]
 
-    modes_selected = int(dots_mode) + int(brackets_mode) + int(words_mode) + int(quants_mode)
+    modes_selected = int(dots_mode) + int(brackets_mode) + int(words_mode) + int(quants_mode) + int(punct_mode)
     if not non_flag_args or modes_selected != 1:
         # Either no file provided, or not exactly one mode provided
-        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants)')
+        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct)')
         sys.exit(1)
 
     policy_yml = non_flag_args[0]
@@ -969,6 +1178,39 @@ def main() -> None:
             f.writelines(updated_lines)
 
         print(f"Updated '{policy_yml}' for IDs: {', '.join(sorted(ids))}. Edited rules: {edited_count}.")
+        return
+
+    if punct_mode:
+        # Stage 1: Detect IDs with \p occurrences
+        ids = find_ids_with_punct(yml_lines)
+        if not ids:
+            print("No IDs found with \\p in r:/n:/!r:/!n: payloads. Nothing to change.")
+            return
+
+        print(f"Detected IDs with \\p: {', '.join(sorted(ids))}")
+
+        # Confirm before applying changes
+        try:
+            answer = input("Proceed to migrate custom \\p? [y/N]: ").strip().lower()
+        except EOFError:
+            answer = ''
+        if answer not in ('y', 'yes'):
+            print('Aborted. No changes applied.')
+            return
+
+        # Stage 2: Apply changes
+        updated_lines, edited_count, warned_ids = update_yaml_rules_punct(yml_lines, ids)
+
+        if updated_lines == yml_lines:
+            print('No changes made. Matching IDs may have no \\p to update.')
+            return
+
+        with open(policy_yml, 'w', encoding='utf-8', newline='') as f:
+            f.writelines(updated_lines)
+
+        print(f"Updated '{policy_yml}' for IDs: {', '.join(sorted(ids))}. Edited rules: {edited_count}.")
+        if warned_ids:
+            print(f"Warning: replaced \\p with [*!+-] under r/!r for IDs: {', '.join(sorted(sorted(warned_ids)))}. Please review those rules manually.")
         return
 
     # --dots mode: dot-swap inside r:/n:/!r:/!n: tokens
