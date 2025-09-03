@@ -75,37 +75,44 @@ void SecurityConfigurationAssessment::Run()
 
     LoggingHelper::getInstance().log(LOG_INFO, "SCA module running.");
 
+    bool firstScan = true;
+
     while (m_keepRunning)
     {
-        if (m_scanOnStart)
+        // If scan on start is enabled and this is the first iteration, scan immediately
+        // Otherwise, wait for the scan interval before scanning
+        if (!m_scanOnStart || !firstScan)
         {
-            LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
-
-            for (auto& policy : m_policies)
-            {
-                if (!m_keepRunning)
-                {
-                    return;
-                }
-
-                policy->Run(
-                    m_scanInterval,
-                    m_scanOnStart,
-                    [this](const CheckResult & checkResult)
-                {
-                    const SCAEventHandler eventHandler(
-                        m_dBSync,
-                        m_pushStatelessMessage,
-                        m_pushStatefulMessage
-                    );
-                    eventHandler.ReportCheckResult(checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
-                },
-                nullptr
-                );
-            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(m_scanInterval));
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(m_scanInterval));
+        if (!m_keepRunning)
+        {
+            return;
+        }
+
+        if (firstScan && m_scanOnStart)
+        {
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
+        }
+
+        auto reportCheckResult = [this](const CheckResult & checkResult)
+        {
+            const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
+            eventHandler.ReportCheckResult(checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
+        };
+
+        for (auto& policy : m_policies)
+        {
+            if (!m_keepRunning)
+            {
+                return;
+            }
+
+            policy->Run(m_scanInterval, m_scanOnStart, reportCheckResult, nullptr);
+        }
+
+        firstScan = false;
     }
 }
 
