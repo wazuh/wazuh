@@ -97,7 +97,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
         } else if (!strcmp(node[i]->element, socket_timeout)) {
         } else if (!strcmp(node[i]->element, connection_timeout)) {
         } else if (!strcmp(node[i]->element, disabled)) {
-            mwarn("Detected a deprecated configuration for cluster. Disabled option is not longer available.");
+            mwarn("Detected a deprecated configuration for cluster. The 'disabled' option is not longer available.");
         } else if (!strcmp(node[i]->element, hidden)) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->hide_cluster_info = 1;
@@ -108,7 +108,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, interval)) {
-            mwarn("Detected a deprecated configuration for cluster. Interval option is not longer available.");
+            mwarn("Detected a deprecated configuration for cluster. The 'interval' option is not longer available.");
         } else if (!strcmp(node[i]->element, nodes)) {
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
