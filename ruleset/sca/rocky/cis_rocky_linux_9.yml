@@ -23,7 +23,7 @@ requirements:
   description: "Requirements for running the policy against Rocky Linux 9 family."
   condition: any
   rules:
-    - 'f:/etc/redhat-release -> r:^Rocky Linux && r:release 9\p*'
+    - 'f:/etc/redhat-release -> r:^Rocky Linux && r:release 9*'
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
