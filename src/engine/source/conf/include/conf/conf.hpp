@@ -102,6 +102,12 @@ public:
     void addUnit(std::string_view key, std::string_view env, const T& defaultValue)
     {
 
+        // Cannot add new config after loads
+        if (!m_fileConfig.empty())
+        {
+            throw std::logic_error("Cannot add new configuration unit after loading the configuration.");
+        }
+
         if (key.empty())
         {
             throw std::invalid_argument("The key cannot be empty.");
