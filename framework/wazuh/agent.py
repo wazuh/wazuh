@@ -50,6 +50,28 @@ STATUS = 'status'
 COUNT = 'count'
 GROUP_CONFIG_STATUS = 'group_config_status'
 
+def _validate_agent_configuration(agent_conf: dict) -> list:
+    """Validate agent configuration for upgrade compatibility by looking for invalid configurations.
+
+    Args:
+        agent_conf (dict): Agent configuration dictionary
+    Returns:
+        list: List of invalid configuration messages
+
+    """
+    invalid_configs = []
+
+    # Check for UDP protocol in any server configuration
+    for server in agent_conf.get('client', {}).get('server', []):
+        if server.get('protocol') == 'udp':
+            invalid_configs.append('[protocol: udp]')
+        break
+
+    # Check for blowfish encryption method
+    if agent_conf.get('client', {}).get('crypto_method') == 'blowfish':
+        invalid_configs.append('[crypto_method: blowfish]')
+
+    return invalid_configs
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_distinct_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
@@ -1150,7 +1172,6 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
 
     return result
 
-
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET})
 def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str = None, force: bool = False,
@@ -1241,21 +1262,10 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                 # Add agents with invalid config options to failed_items
                 else:
                     agent_conf = Agent(agent['id']).get_config('agent', 'client', agent['version'])
-                    found_invalid_config = False
-                    extra_message = ""
-                    for server in agent_conf['client']['server']:
-                        if server.get('protocol') == 'udp':
-                            found_invalid_config = True
-                            extra_message += "[protocol: udp]"
-                            break
-                    if agent_conf['client'].get('crypto_method') == 'blowfish':
-                        found_invalid_config = True
-                        if extra_message != '':
-                            extra_message += ', '
-                        extra_message += "[crypto_method: blowfish]"
-                    if found_invalid_config:
+                    invalid_configs = _validate_agent_configuration(agent_conf)
+                    if invalid_configs:
                         invalid_config_agents.add(agent['id'])
-                        result.add_failed_item(id_=agent['id'], error=WazuhError(1761, extra_message = extra_message))
+                        result.add_failed_item(id_=agent['id'], error=WazuhError(1761, extra_message = ",".join(invalid_configs)))
 
         eligible_agents = agent_list - not_found_agents - non_active_agents - excluded_agents - invalid_config_agents
 
