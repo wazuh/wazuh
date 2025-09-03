@@ -2,6 +2,7 @@
 import sys
 import re
 from typing import List, Tuple, Set, Optional
+import os
 
 # ========= DOTS (invert '.' and '\\.' handling) =========
 
@@ -843,6 +844,114 @@ def update_yaml_rules_quants(yml_lines: List[str], ids: Set[str]) -> Tuple[List[
     return new_lines, edited_count
 
 
+# ========= LOGGING =========
+
+_MODES_ORDER = ['quants', 'brackets', 'punct', 'words', 'dots']
+
+
+def _get_logs_dir() -> str:
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    logs_dir = os.path.join(script_dir, 'logs')
+    os.makedirs(logs_dir, exist_ok=True)
+    return logs_dir
+
+
+def _load_fix_log(policy_yml: str) -> dict:
+    logs_dir = _get_logs_dir()
+    policy_name = os.path.basename(policy_yml)
+    policy_root, _ = os.path.splitext(policy_name)
+    log_path = os.path.join(logs_dir, f"{policy_root}_fixlog.txt")
+    data = {
+        'policy_name': policy_root,
+        'checked': 'no',
+        'modes': {m: {'run': False, 'affected': 0, 'edited': 0, 'ids': [], 'warnings': []} for m in _MODES_ORDER}
+    }
+    if not os.path.exists(log_path):
+        return data
+    try:
+        with open(log_path, 'r', encoding='utf-8', newline='') as f:
+            lines = [ln.rstrip('\n') for ln in f.readlines()]
+    except Exception:
+        return data
+
+    # Very lightweight parser: look for lines starting with mode headers
+    if lines:
+        data['policy_name'] = lines[0].strip() or policy_root
+    for idx, ln in enumerate(lines):
+        ln_stripped = ln.strip()
+        for mode in _MODES_ORDER:
+            hdr = f"--{mode} |"
+            if ln_stripped.startswith(hdr):
+                # Format: --mode | affected | edited | yes/no
+                parts = [p.strip() for p in ln_stripped.split('|')]
+                if len(parts) >= 4:
+                    try:
+                        affected = int(parts[1])
+                    except ValueError:
+                        affected = 0
+                    try:
+                        edited = int(parts[2])
+                    except ValueError:
+                        edited = 0
+                    run_flag = parts[3].lower() in ('yes', 'true', 'y')
+                    data['modes'][mode]['affected'] = affected
+                    data['modes'][mode]['edited'] = edited
+                    data['modes'][mode]['run'] = run_flag
+                # Next lines: policy_list and optionally warnings
+                # policy_list
+                if idx + 1 < len(lines) and lines[idx + 1].strip().startswith('policy_list'):
+                    ids_line = lines[idx + 1]
+                    ids_part = ids_line.split(':', 1)
+                    if len(ids_part) == 2:
+                        ids_str = ids_part[1].strip()
+                        ids = [s.strip() for s in ids_str.split(',') if s.strip()]
+                        data['modes'][mode]['ids'] = ids
+                # policy_list_warnings (only for punct)
+                if mode == 'punct' and idx + 2 < len(lines) and lines[idx + 2].strip().startswith('policy_list_warnings'):
+                    w_line = lines[idx + 2]
+                    w_part = w_line.split(':', 1)
+                    if len(w_part) == 2:
+                        w_str = w_part[1].strip()
+                        warns = [s.strip() for s in w_str.split(',') if s.strip()]
+                        data['modes'][mode]['warnings'] = warns
+    return data
+
+
+def _write_fix_log(policy_yml: str, mode: str, ids: Set[str], edited_count: int, warned_ids: Optional[Set[str]] = None) -> None:
+    logs_dir = _get_logs_dir()
+    policy_name = os.path.basename(policy_yml)
+    policy_root, _ = os.path.splitext(policy_name)
+    log_path = os.path.join(logs_dir, f"{policy_root}_fixlog.txt")
+
+    data = _load_fix_log(policy_yml)
+    # Update current mode
+    ids_list = sorted(ids)
+    data['modes'][mode]['run'] = True
+    data['modes'][mode]['affected'] = len(ids_list)
+    data['modes'][mode]['edited'] = int(edited_count)
+    data['modes'][mode]['ids'] = ids_list
+    if warned_ids is not None:
+        data['modes'][mode]['warnings'] = sorted(warned_ids)
+
+    # Compute totals
+    total_ids: Set[str] = set()
+    total_edited = 0
+    for m in _MODES_ORDER:
+        total_ids.update(data['modes'][m]['ids'])
+        total_edited += int(data['modes'][m]['edited'])
+
+    # Write file
+    with open(log_path, 'w', encoding='utf-8', newline='') as f:
+        f.write(f"{data['policy_name']}\n")
+        f.write(f"fix | {len(total_ids)} | {total_edited} | {data['checked']}\n")
+        for m in _MODES_ORDER:
+            entry = data['modes'][m]
+            f.write(f"--{m} | {entry['affected']} | {entry['edited']} | {'yes' if entry['run'] else 'no'}\n")
+            f.write("policy_list: " + (', '.join(entry['ids'])) + "\n")
+            if m == 'punct':
+                warns = entry.get('warnings') or []
+                f.write("policy_list_warnings: " + (', '.join(warns)) + "\n")
+
 # ========= PUNCT (custom \p handling) =========
 
 def _has_p_in_payload(payload: str, quote_char: Optional[str]) -> bool:
@@ -1059,6 +1168,19 @@ def main() -> None:
         print("  --punct    Replace custom \\p: in n/!n remove (including trailing * or +); in r/!r replace with [*!+-].")
         print('')
         print('Suggested order to minimize interference: --quants -> --brackets -> --punct -> --words -> --dots')
+        print('')
+        print('Log output:')
+        print('  Location: logs/ directory next to this script.')
+        print('  File name: <policy_name>_fixlog.txt')
+        print('  Format:')
+        print('    policy_name')
+        print('    fix | <total policies> | <total lines fixed> | <checked>')
+        print('    --<mode> | <affected> | <edited> | <yes|no>')
+        print('    policy_list: <comma-separated IDs>')
+        print('    (punct only) policy_list_warnings: <comma-separated IDs>')
+        print('')
+        print('Warning: Total policies reflects unique (non-repeatable) policy IDs across modes;')
+        print('         summing per-mode affected counts may not equal the total.')
         sys.exit(0)
 
     if len(sys.argv) < 3:
@@ -1116,6 +1238,7 @@ def main() -> None:
             f.writelines(updated_lines)
 
         print(f"Updated '{policy_yml}' for IDs: {', '.join(sorted(ids))}. Edited rules: {edited_count}.")
+        _write_fix_log(policy_yml, 'words', ids, edited_count)
         return
 
     if brackets_mode:
@@ -1147,6 +1270,7 @@ def main() -> None:
             f.writelines(updated_lines)
 
         print(f"Updated '{policy_yml}' for IDs: {', '.join(sorted(ids))}. Edited rules: {edited_count}.")
+        _write_fix_log(policy_yml, 'brackets', ids, edited_count)
         return
 
     if quants_mode:
@@ -1178,6 +1302,7 @@ def main() -> None:
             f.writelines(updated_lines)
 
         print(f"Updated '{policy_yml}' for IDs: {', '.join(sorted(ids))}. Edited rules: {edited_count}.")
+        _write_fix_log(policy_yml, 'quants', ids, edited_count)
         return
 
     if punct_mode:
@@ -1211,6 +1336,7 @@ def main() -> None:
         print(f"Updated '{policy_yml}' for IDs: {', '.join(sorted(ids))}. Edited rules: {edited_count}.")
         if warned_ids:
             print(f"Warning: replaced \\p with [*!+-] under r/!r for IDs: {', '.join(sorted(sorted(warned_ids)))}. Please review those rules manually.")
+        _write_fix_log(policy_yml, 'punct', ids, edited_count, warned_ids)
         return
 
     # --dots mode: dot-swap inside r:/n:/!r:/!n: tokens
@@ -1240,6 +1366,7 @@ def main() -> None:
         f.writelines(updated_lines)
 
     print(f"Updated '{policy_yml}' for IDs: {', '.join(sorted(ids))}. Edited rules: {edited_count}.")
+    _write_fix_log(policy_yml, 'dots', ids, edited_count)
 
 if __name__ == '__main__':
     main()
