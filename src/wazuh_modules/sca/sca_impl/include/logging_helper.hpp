@@ -1,5 +1,7 @@
 #pragma once
 
+// LCOV_EXCL_START
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,3 +49,5 @@ class LoggingHelper
 
         std::function<void(const modules_log_level_t level, const char* log)> m_externalLogCallback;
 };
+
+// LCOV_EXCL_STOP
