@@ -7,3 +7,19 @@
                     value: '127.0.0.1'
                 - port:
                     value: '1514'
+
+      - section: syscheck
+        elements:
+            - disabled:
+                value: 'yes'
+            - synchronization:
+                elements:
+                    - enabled:
+                        value: 'no'
+
+      - section: wodle
+        attributes:
+            - name: syscollector
+        elements:
+            - disabled:
+                value: 'yes'

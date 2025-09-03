@@ -64,8 +64,6 @@ from wazuh_testing.utils.services import check_if_process_is_running
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
-pytest.skip("Isolate only the tests that are failing.", allow_module_level=True)
-
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
