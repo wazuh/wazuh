@@ -441,6 +441,7 @@ class WazuhException(Exception):
         2014: {'message': 'The wazuh-db client connection timeout has been exceeded'},
         2015: {'message': 'Invalid request URL scheme'},
         2016: {'message': 'Invalid unix socket path'},
+        2017: {'message': 'Could not retrieve agents synchronization information from wazuh-db'},
 
         # External services
         2100: {'message': 'Error in CTI service request'},
