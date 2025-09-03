@@ -26,25 +26,25 @@ protected:
 TEST_F(PolicyHarvesterManagerTest, ModuleEnabled)
 {
     nlohmann::json configJson = nlohmann::json::parse(R"({
-        "enabled": true,
+        "disabled": false,
         "clusterName": "clusterName",
         "clusterEnabled": false
     })");
 
     m_policyHarvesterManager->initialize(configJson);
-    EXPECT_EQ(m_policyHarvesterManager->isGlobalQueriesEnabled(), true);
+    EXPECT_EQ(m_policyHarvesterManager->isGlobalQueriesDisabled(), false);
 }
 
 TEST_F(PolicyHarvesterManagerTest, ModuleDisabled)
 {
     nlohmann::json configJson = nlohmann::json::parse(R"({
-        "enabled": false,
+        "disabled": true,
         "clusterName": "clusterName",
         "clusterEnabled": false
     })");
 
     m_policyHarvesterManager->initialize(configJson);
-    EXPECT_EQ(m_policyHarvesterManager->isGlobalQueriesEnabled(), false);
+    EXPECT_EQ(m_policyHarvesterManager->isGlobalQueriesDisabled(), true);
 }
 
 TEST_F(PolicyHarvesterManagerTest, EnabledOptionNotFound)
@@ -55,5 +55,5 @@ TEST_F(PolicyHarvesterManagerTest, EnabledOptionNotFound)
     })");
 
     m_policyHarvesterManager->initialize(configJson);
-    EXPECT_EQ(m_policyHarvesterManager->isGlobalQueriesEnabled(), true);
+    EXPECT_EQ(m_policyHarvesterManager->isGlobalQueriesDisabled(), false);
 }

@@ -298,7 +298,7 @@ void InventoryHarvesterFacade::start(
 
         auto& policyManagerInstance = PolicyHarvesterManager::instance();
         policyManagerInstance.initialize(configuration);
-        if (!policyManagerInstance.isGlobalQueriesEnabled())
+        if (policyManagerInstance.isGlobalQueriesDisabled())
         {
             logInfo(LOGGER_DEFAULT_TAG, "Global queries are disabled. Exiting Inventory Harvester module.");
             return;
