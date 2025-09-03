@@ -51,6 +51,7 @@ import pytest
 from pathlib import Path
 import sys
 import time
+from queue import Empty
 
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
@@ -62,7 +63,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 from utils import wait_keepalive, wait_ack, wait_state_update, wait_agent_notification
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
@@ -153,12 +154,11 @@ def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration
             check_fields(expected_output, remoted_server)
 
     finally:
-        #Shutdown simulator
+        # Shutdown simulator
         if remoted_server:
             remoted_server.destroy()
 
-
-def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 350):
+def wait_for_custom_message_response(expected_status: str, remoted_server: RemotedSimulator, timeout: int = 120):
     """Request remoted_server the status of the agent
 
     Args:
@@ -177,17 +177,24 @@ def wait_for_custom_message_response(expected_status: str, remoted_server: Remot
     """
     custom_message = f'#!-req {remoted_server.request_counter} agent getstate'
     remoted_server.send_custom_message(custom_message)
-    # Start count to set the timeout.
-    start_time = time.time()
 
-    while time.time() - start_time < timeout:
-        if remoted_server.custom_message_sent:
-            if expected_status in (response := remoted_server.last_message_ctx.get('message')):
-                response = response[response.find('{'):]
-                response = json.loads(response)
-                response = response['data']
-                return response
+    try:
+        log_line = remoted_server._queue_response_req_message.get(timeout=timeout)
 
+        if expected_status in log_line:
+            start_json_index = log_line.find('{')
+            end_json_index = log_line.rfind('}')
+
+            if start_json_index != -1 and end_json_index != -1 and end_json_index > start_json_index:
+                json_str = log_line[start_json_index : end_json_index + 1]
+                try:
+                    response = json.loads(json_str)
+                    response = response['data']
+                    return response
+                except json.JSONDecodeError:
+                    pass
+    except Exception as e:
+        pass
     return None
 
 
