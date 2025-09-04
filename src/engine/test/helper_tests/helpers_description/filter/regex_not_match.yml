@@ -1,0 +1,56 @@
+# Name of the helper function
+name: regex_not_match
+
+metadata:
+  description: |
+    Checks that the field string does not match the given regular expression (partial match).
+    If the regex matches, the function evaluates to false. If the field is missing or not a string, it evaluates to false.
+    This helper function is typically used in the check stage
+  keywords:
+    - undefined
+
+helper_type: filter
+is_variadic: false
+
+# One literal argument: the regular expression to test against
+arguments:
+  regexp:
+    type: string
+    generate: string
+    source: value
+
+# Target field can be any JSON type in input; success only when it's a string and the regex does not match
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+test:
+  - arguments:
+      regexp: "^abc"
+    target_field: "hello world"
+    should_pass: true
+    description: Does not match (no 'abc' prefix)
+  - arguments:
+      regexp: "^abc"
+    target_field: "abc123"
+    should_pass: false
+    description: Matches (regex finds a prefix 'abc')
+  - arguments:
+      regexp: "error|fail"
+    target_field: "Status OK"
+    should_pass: true
+    description: Does not match (no 'error' or 'fail')
+  - arguments:
+      regexp: "error|fail"
+    target_field: "critical failure detected"
+    should_pass: false
+    description: Matches (contains 'fail')
+  - arguments:
+      regexp: "^abc"
+    target_field: 123
+    should_pass: false
+    description: Not a string → fails

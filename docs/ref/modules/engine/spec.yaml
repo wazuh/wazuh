@@ -9,8 +9,8 @@ servers:
     description: "Wazuh server using Unix socket over HTTP"
 
 tags:
-  - name: EventStateless
-    description: "Operations for processing security events"
+  - name: Events
+    description: Event ingestion endpoints
   - name: Catalog
     description: "Operations for managing catalog resources"
   - name: Policy
@@ -29,77 +29,65 @@ tags:
 #################################################################################
 paths:
   ################################
-  # EventStateless
+  # Events
   ################################
-  /events/stateless:
+  /events/enriched:
     post:
       tags:
-        - EventStateless
-      summary: Receive and process security events
+        - Events
+      summary: Ingest enriched events (NDJSON)
       description: |
-        This endpoint receives events to be processed by the Wazuh-Engine security policy.
-
+        Accepts a newline-delimited JSON (NDJSON) stream of enriched events over HTTP via Unix domain socket.
+        Socket path: /var/ossec/queue/sockets/queue-http.sock
       requestBody:
         required: true
         content:
           application/x-ndjson:
             schema:
               type: string
-              description: |
-                Newline-delimited JSON (NDJSON) data
-                - **Agent Metadata (First JSON Line)**: Contains agent-related metadata.
-                - **Subheader (Second JSON Line)**: Includes mandatory module and collector fields.
-                - **Event Logs (Third and Subsequent JSON Lines)**: Individual log events enriched with the agent metadata and subheader information.
-                - **New Subheader (Optional)**: If encountered, it replaces the previous subheader for the following event logs.
-              example: |
-                {"agent":{"id":"2887e1cf-9bf2-431a-b066-a46860080f56","name":"javier","type":"endpoint","version":"5.0.0","groups":["group1","group2"],"host":{"hostname":"myhost","os":{"name":"Amazon Linux 2","platform":"Linux"},"ip":["192.168.1.21"],"architecture":"x86_64"}}}
-                {"module":"logcollector","collector":"file"}
-                {"log":{"file":{"path":"/var/log/syslog"}},"tags":["production"],"event":{"original":"System started.","created":"2023-12-26T09:22:14.000Z"}}
-
+              description: Newline-delimited JSON; one JSON object per line.
+            examples:
+              sample:
+                value: |-
+                  {"ts":"2025-09-01T10:00:00Z","rule_id":1001,"agent_id":"001","data":{"k":"v"}}
+                  {"ts":"2025-09-01T10:00:01Z","rule_id":1002,"agent_id":"001","data":{"k2":"v2"}}
       responses:
         "200":
-          description: Successfully processed events
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Response"
-              example:
-                status: OK
-                error: null
+          description: Events accepted. (Empty body)
         "400":
-          description: Bad Request
+          description: Invalid NDJSON payload.
           content:
             application/json:
               schema:
-                $ref: "#/components/responses/BadRequest_400"
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: integer
+                required: [error, code]
               examples:
-                invalid_header:
-                  summary: The header is invalid
-                  value:
-                    error: "NDJson parser error, invalid header: 'JSON document could not be parsed: Invalid value.'"
-                    code: 400
-                not_enough_lines:
-                  summary: The minimum number of JSONs in the NDJSON is not met
-                  value:
-                    error: "NDJson parser error, invalid batch, expected at least 3 lines"
-                    code: 400
-                missing_subheader:
-                  summary: After the header there is no subheader
-                  value:
-                    error: "NDJson parser error, invalid subheader, expected '/module' and '/collector' fields"
-                    code: 400
-                non_json_event:
-                  summary: One of the events is not a valid JSON
-                  value:
-                    error: "NDJson parser error, invalid ndjson line: 'JSON document could not be parsed: Invalid value.'"
-                    code: 400
-                invalid_subheader:
-                  summary: Invalid subheader
-                  value:
-                    error: "NDJson parser error, invalid subheader, expected '/module' and '/collector' fields"
-                    code: 400
+                emptyBatch:
+                  value: {"error":"NDJson parser error, empty batch","code":400}
+                emptyLine:
+                  value: {"error":"NDJson parser error, empty line","code":400}
+                invalidLine:
+                  value: {"error":"NDJson parser error, invalid ndjson line or event: '...'", "code":400}
         "500":
-          $ref: "#/components/responses/InternalServerError_500"
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: integer
+                required: [error, code]
+              examples:
+                orchestratorUnavailable:
+                  value: {"error":"Internal server error","code":500}
   ################################
   # Catalog
   ################################
@@ -3008,13 +2996,13 @@ components:
 
     TesterRunPost_Request:
       type: object
-      required: [name, ndjson_event]
+      required: [name, event]
       properties:
         name:
           $ref: "#/components/schemas/TesterSessionName"
-        ndjson_event:
+        event:
           type: string
-          description: "Event to test in NDJSON format"
+          description: "Event to test (NDJSON line or batch as string)"
         trace_level:
           type: string
           enum:
