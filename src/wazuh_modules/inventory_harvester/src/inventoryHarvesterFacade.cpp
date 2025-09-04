@@ -296,13 +296,7 @@ void InventoryHarvesterFacade::start(
         // Initialize logging
         Log::assignLogFunction(logFunction);
 
-        auto& policyManagerInstance = PolicyHarvesterManager::instance();
-        policyManagerInstance.initialize(configuration);
-        if (policyManagerInstance.isGlobalQueriesDisabled())
-        {
-            logInfo(LOGGER_DEFAULT_TAG, "Global queries are disabled. Exiting Inventory Harvester module.");
-            return;
-        }
+        PolicyHarvesterManager::instance().initialize(configuration);
 
         // Initialize all event dispatchers.
         m_eventFimInventoryDispatcher = std::make_shared<EventDispatcher>(FIM_EVENTS_QUEUE_PATH, EVENTS_BULK_SIZE);

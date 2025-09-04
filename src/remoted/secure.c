@@ -939,6 +939,15 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         rem_inc_recv_evt(agentid_str);
     }
 
+    if(getDefine_Int("remoted", "router_forwarding_disabled", 0, 1) == 1) {
+        // If router forwarding is disabled, do not forward events to subscribers
+        mdebug2("Router forwarding is disabled, not forwarding message from agent '%s'.", agentid_str);
+        os_free(agentid_str);
+        os_free(agent_ip);
+        os_free(agent_name);
+        return;
+    }
+
     // Forwarding events to subscribers
     router_message_forward(tmp_msg, agentid_str, agent_ip, agent_name);
 
