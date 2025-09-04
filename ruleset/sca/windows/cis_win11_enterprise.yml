@@ -23,7 +23,7 @@ requirements:
   description: "Requirements for running the CIS benchmark Domain Controller under Windows 11"
   condition: all
   rules:
-    - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows 10'
+    - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows 10'
 
 checks:
  # 1.1.1 (L1) Ensure 'Enforce password history' is set to '24 or more password(s)'. (Automated)
@@ -653,7 +653,7 @@ checks:
       - cis: ["2.3.7.5"]
     condition: all
     rules:
-      - 'not c:reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticetext -> r:\s+legalnoticetext\s+REG_SZ\s+$'
+      - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticetext -> r:\s+legalnoticetext\s+REG_SZ\s+$'
 
  # 2.3.7.6 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
   - id: 26027
@@ -668,7 +668,7 @@ checks:
       - cis: ["2.3.7.6"]
     condition: all
     rules:
-      - 'not c:reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticecaption -> r:\s+legalnoticecaption\s+REG_SZ\s+$'
+      - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticecaption -> r:\s+legalnoticecaption\s+REG_SZ\s+$'
 
  # 2.3.7.7 (L2) Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)'. (Automated)
   - id: 26028
@@ -1356,9 +1356,9 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> AuditReceivingNTLMTraffic'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> AuditReceivingNTLMTraffic -> 2'
+      - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0'
+      - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> AuditReceivingNTLMTraffic'
+      - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> AuditReceivingNTLMTraffic -> 2'
 
  # 2.3.11.12 (L1) Ensure 'Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers' is set to 'Audit all' or higher. (Automated)
   - id: 26061
@@ -3830,9 +3830,9 @@ checks:
       - cis: ["18.4.5"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Wintrust\Config'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Wintrust\Config -> EnableCertPaddingCheck'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Wintrust\Config -> EnableCertPaddingCheck -> 1'
+      - 'r:HKLM\SOFTWARE\Microsoft\Cryptography\Wintrust\Config'
+      - 'r:HKLM\SOFTWARE\Microsoft\Cryptography\Wintrust\Config -> EnableCertPaddingCheck'
+      - 'r:HKLM\SOFTWARE\Microsoft\Cryptography\Wintrust\Config -> EnableCertPaddingCheck -> 1'
 
  # 18.4.6 (L1) Ensure 'Enable Structured Exception Handling Overwrite Protection (SEHOP)' is set to 'Enabled'. (Automated)
   - id: 26175
@@ -4818,9 +4818,9 @@ checks:
       - cis: ["18.8.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> HideRecommendedPersonalizedSites'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> HideRecommendedPersonalizedSites -> 1'
+      - 'r:HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'r:HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer -> HideRecommendedPersonalizedSites'
+      - 'r:HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer -> HideRecommendedPersonalizedSites -> 1'
 
  # 18.9.3.1 (L1) Ensure 'Include command line in process creation events' is set to 'Enabled'. (Automated)
   - id: 26222
