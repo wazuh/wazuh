@@ -1186,7 +1186,7 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/SyscollectorUser'
-    
+
     AllItemsResponseSyscollectorGroups:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1199,6 +1199,32 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/SyscollectorGroup'
+
+    AllItemsResponseSyscollectorBrowserExtensions:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorBrowserExtension'
+
+    AllItemsResponseSyscollectorService:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorService'
 
     AllItemsResponseUsers:
       allOf:
@@ -5463,6 +5489,221 @@ components:
         checksum:
           type: string
           description: "Group checksum"
+
+    SyscollectorBrowserExtension:
+      type: object
+      properties:
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        agent_id:
+          $ref: '#/components/schemas/AgentID'
+        browser:
+          type: object
+          description: "Browser information"
+          properties:
+            name:
+              type: string
+              description: "Browser name"
+            profile_name:
+              type: string
+              description: "Browser profile name"
+            profile_path:
+              type: string
+              description: "File system path to the profile"
+            profile_referenced:
+              type: boolean
+              description: "Profile referenced by preferences"
+        file_hash:
+          type: object
+          description: "manifest.json file information"
+          properties:
+            sha256:
+              type: string
+              description: "SHA256 of manifest.json file"
+        package:
+          type: object
+          description: "Package information"
+          properties:
+            id:
+              type: string
+              description: "Unique identifier of the extension"
+            name:
+              type: string
+              description: "Display name of the extension"
+            version:
+              type: string
+              description: "Extension version"
+            path:
+              type: string
+              description: "Path to extension files or manifest"
+            autoupdate:
+              type: boolean
+              description: "If the addon uses background updates"
+            visible:
+              type: boolean
+              description: "If the extension is visible"
+            build_version:
+              type: string
+              description: "Bundle SDK used to compile the extension"
+            description:
+              type: string
+              description: "Package optional description"
+            enabled:
+              type: boolean
+              description: "Whether the extension is enabled"
+            from_webstore:
+              type: boolean
+              description: "Whether the extension is installed from webstore"
+            installed:
+              type: string
+              description: "Original install time"
+            permissions:
+              type: string
+              description: "Required or optional permissions"
+            persistent:
+              type: boolean
+              description: "Persistent across tabs"
+            reference:
+              type: string
+              description: "Update URL for the extension"
+            type:
+              type: string
+              description: "Type of the extension"
+            vendor:
+              type: string
+              description: "Author or creator"
+        checksum:
+          type: string
+          description: "Browser extension checksum"
+
+
+    SyscollectorService:
+      type: object
+      properties:
+        scan:
+          $ref: '#/components/schemas/ScanIdTime'
+        agent_id:
+          $ref: '#/components/schemas/AgentID'
+        service:
+          type: object
+          properties:
+            id:
+              type: string
+              description: "Service unique identifier"
+            name:
+              type: string
+              description: "Service display name"
+            description:
+              type: string
+              description: "Service description"
+            type:
+              type: string
+              description: "Service type"
+            state:
+              type: string
+              description: "Service current state"
+            sub_state:
+              type: string
+              description: "Low-level sub-state"
+            enabled:
+              type: string
+              description: "Service enabled state"
+            start_type:
+              type: string
+              description: "Service start type"
+            restart:
+              type: string
+              description: "Service restart policy"
+            frequency:
+              type: integer
+              format: int64
+              description: "Run frequency in seconds"
+            starts_on_mount:
+              type: boolean
+              description: "Whether the service launches every time a filesystem is mounted"
+            starts_on_path_modified:
+              type: string
+              description: "Whether the service starts on path modification"
+            starts_on_not_empty_directory:
+              type: string
+              description: "Whether the service starts on not empty directory"
+            inetd_compatibility:
+              type: boolean
+              description: "Whether to run job as if launched from inetd"
+            exit_code:
+              type: integer
+              format: int32
+              description: "Service-specific exit code on failure"
+            win32_exit_code:
+              type: integer
+              format: int32
+              description: "Windows 32-bit specific exit code"
+            following:
+              type: string
+              description: "Unit followed by the service in systemd"
+            object_path:
+              type: string
+              description: "D-Bus object path of the service"
+            target_ephemeral_id:
+              type: integer
+              format: int64
+              description: "Job ID assigned"
+            target_type:
+              type: string
+              description: "Type of systemd job"
+            target_address:
+              type: string
+              description: "Path to job object"
+            address:
+              type: string
+              description: "Path to the service"
+        process:
+          type: object
+          description: "Process information"
+          properties:
+            pid:
+              type: integer
+              format: int64
+              description: "Process ID of the running service"
+            executable:
+              type: string
+              description: "Path to the service executable"
+            args:
+              type: string
+              description: "Command line arguments for the service/job."
+            user_name:
+              type: string
+              description: "User account running the service"
+            group_name:
+              type: string
+              description: "Group account running the service"
+            working_directory:
+              type: string
+              description: "Working directory of the service"
+            root_directory:
+              type: string
+              description: "Chroot directory before execution"
+        file:
+          type: object
+          properties:
+            path:
+              type: string
+              description: "Path to the service unit file"
+        log_file:
+          type: object
+          properties:
+            path:
+              type: string
+              description: "Redirect stdout to a file/pipe"
+        error_log_file:
+          type: object
+          properties:
+            path:
+              type: string
+              description: "Redirect stderr to a file/pipe"
+        checksum:
+          type: string
+          description: "Service checksum"
 
     # Lists models
     CDBList:
@@ -17449,6 +17690,176 @@ paths:
                         name: _ssh
                         users: ""
                         uuid: ""
+                      scan:
+                        id: 0
+                        time: "2025-07-16T07:52:59+00:00"
+                      checksum: 077252650e9f983e2f31b271c00e9050f7324756
+                      agent_id: "001"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "All specified syscollector information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /syscollector/{agent_id}/browser_extensions:
+    get:
+      tags:
+        - Syscollector
+      summary: "Get agent browser extensions"
+      operationId: api.controllers.syscollector_controller.get_browser_extensions_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
+      parameters:
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+      responses:
+        '200':
+          description: "Return an agent's browser extensions results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorBrowserExtensions'
+              example:
+                data:
+                  affected_items:
+                    - browser:
+                        name: "Google Chrome"
+                        profile_name: "Default"
+                        profile_path: "/Users/user/Library/Application Support/Google/Chrome/Default"
+                        profile_referenced: false
+                      file_hash:
+                        sha256: "077252650e9f983e2f31b271c00e9050f7324756"
+                      package:
+                        id: 0
+                        name: "Example Extension"
+                        version: "1.0.0"
+                        path: "/Users/user/Library/Application Support/Google/Chrome/Default/Extensions/example"
+                        autoupdate: true
+                        build_version: "1.0.0"
+                        description: "The default profile for Google Chrome"
+                        enabled: true
+                        from_webstore: true
+                        installed: "1721139179"
+                        permissions: ""
+                        persistent: true
+                        reference: https://update.url.for.extension/docs/extensions/reference/
+                        type: "extension"
+                        vendor: "Google Inc."
+                      scan:
+                        id: 0
+                        time: "2025-07-16T07:52:59+00:00"
+                      checksum: 077252650e9f983e2f31b271c00e9050f7324756
+                      agent_id: "001"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "All specified syscollector information was returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /syscollector/{agent_id}/services:
+    get:
+      tags:
+        - Syscollector
+      summary: "Get agent services"
+      operationId: api.controllers.syscollector_controller.get_services_info
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/syscollector:read'
+      parameters:
+        - $ref: '#/components/parameters/agent_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/offset'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/select'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/distinct'
+      responses:
+        '200':
+          description: "Return an agent's services results"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseSyscollectorService'
+              example:
+                data:
+                  affected_items:
+                    - service:
+                        id: "001"
+                        name: "My Service"
+                        description: "A description of my service"
+                        type: "simple"
+                        state: "running"
+                        sub_state: "active"
+                        enabled: true
+                        start_type: "automatic"
+                        restart: "on-failure"
+                        frequency: "daily"
+                        starts_on_mount: true
+                        starts_on_path_modified: yes
+                        starts_on_not_empty_directory: yes
+                        inetd_compatibility: true
+                        exit_code: 0
+                        win32_exit_code: 0
+                        following: ""
+                        object_path: ""
+                        target_ephemeral_id: 2139129
+                        target_type: ""
+                        target_address: ""
+                        address: ""
+                      process:
+                        pid: 9128392
+                        executable: /usr/bin/my_service
+                        args: ["--config", "/etc/my_service/config.yaml"]
+                        user_name: my_user
+                        group_name: my_group
+                        working_directory: /var/lib/my_service
+                        root_directory: /
+                      file:
+                        path: ""
+                      log_file:
+                        path: "/var/log/my_service.log"
+                      error_log_file:
+                        path: ""
                       scan:
                         id: 0
                         time: "2025-07-16T07:52:59+00:00"
