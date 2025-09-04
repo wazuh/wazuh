@@ -24,7 +24,7 @@ ECS standard (Elastic Common Schema).
 
 https://www.elastic.co/guide/en/ecs/current/ecs-threat.html
 
-Ipv4, Domain names, Urls and MD5/SHA1 checksums are checked in Maltiverse
+Ipv4, Ipv6, Domain names, Urls and MD5/SHA1 checksums are checked in Maltiverse
 platform in order to enrich the original alert with threat Intel information
 
 Installation Guide
