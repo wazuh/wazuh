@@ -31,7 +31,6 @@ typedef void((*log_callback_t)(const modules_log_level_t level, const char* log,
 typedef int (*wm_exec_callback_t)(char* command, char** output, int* exitcode, int secs, const char* add_path);
 typedef int (*push_stateless_func)(const char* message);
 typedef int (*push_stateful_func)(const char* id, Operation_t operation, const char* index, const char* message);
-typedef int (*push_stateful_func)(const char* message);
 typedef struct cJSON* (*yaml_to_cjson_func)(const char* yaml_path);
 
 EXPORTED void sca_start(const struct wm_sca_t* sca_config);
