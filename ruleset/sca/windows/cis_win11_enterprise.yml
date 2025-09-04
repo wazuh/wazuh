@@ -653,7 +653,7 @@ checks:
       - cis: ["2.3.7.5"]
     condition: all
     rules:
-      - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticetext -> r:\s+legalnoticetext\s+REG_SZ\s+$'
+      - 'not c:reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticetext -> r:\s+legalnoticetext\s+REG_SZ\s+$'
 
  # 2.3.7.6 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
   - id: 26027
@@ -668,7 +668,7 @@ checks:
       - cis: ["2.3.7.6"]
     condition: all
     rules:
-      - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticecaption -> r:\s+legalnoticecaption\s+REG_SZ\s+$'
+      - 'not c:reg query HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticecaption -> r:\s+legalnoticecaption\s+REG_SZ\s+$'
 
  # 2.3.7.7 (L2) Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)'. (Automated)
   - id: 26028
@@ -1164,9 +1164,9 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa[*!+-]ku2u'
-      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa[*!+-]ku2u -> AllowOnlineID'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa[*!+-]ku2u -> AllowOnlineID -> 0'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa\pku2u -> AllowOnlineID -> 0'
 
   # 2.3.11.4 Ensure 'Network Security: Configure encryption types allowed for Kerberos' is set to 'RC4_HMAC_MD5, AES128_HMAC_SHA1, AES256_HMAC_SHA1, Future encryption types'
   - id: 26053
@@ -1356,9 +1356,9 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0'
-      - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> AuditReceivingNTLMTraffic'
-      - 'r:HKLM\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> AuditReceivingNTLMTraffic -> 2'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> AuditReceivingNTLMTraffic'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0 -> AuditReceivingNTLMTraffic -> 2'
 
  # 2.3.11.12 (L1) Ensure 'Network security: Restrict NTLM: Outgoing NTLM traffic to remote servers' is set to 'Audit all' or higher. (Automated)
   - id: 26061
@@ -1858,7 +1858,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services[*!+-]2psvc -> Start -> 4'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2psvc -> Start -> 4'
 
  # 5.15 (L2) Ensure 'Peer Networking Identity Manager (p2pimsvc)' is set to 'Disabled'. (Automated)
   - id: 26086
@@ -1878,7 +1878,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services[*!+-]2pimsvc -> Start -> 4'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\p2pimsvc -> Start -> 4'
 
  # 5.16 (L2) Ensure 'PNRP Machine Name Publication Service (PNRPAutoReg)' is set to 'Disabled'. (Automated)
   - id: 26087
@@ -2747,7 +2747,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFilePath'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\[*!+-]rivatefw.log'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PrivateProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\privatefw.log'
 
  # 9.2.5 (L1) Ensure 'Windows Firewall: Private: Logging: Size limit (KB)' is set to '16,384 KB or greater'. (Automated)
   - id: 26127
@@ -2963,7 +2963,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\[*!+-]ublicfw.log'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\WindowsFirewall\PublicProfile\Logging -> LogFilePath -> r:System32\\logfiles\\firewall\\publicfw.log'
 
  # 9.3.7 (L1) Ensure 'Windows Firewall: Public: Logging: Size limit (KB)' is set to '16,384 KB or greater'. (Automated)
   - id: 26136
@@ -3830,9 +3830,9 @@ checks:
       - cis: ["18.4.5"]
     condition: all
     rules:
-      - 'r:HKLM\SOFTWARE\Microsoft\Cryptography\Wintrust\Config'
-      - 'r:HKLM\SOFTWARE\Microsoft\Cryptography\Wintrust\Config -> EnableCertPaddingCheck'
-      - 'r:HKLM\SOFTWARE\Microsoft\Cryptography\Wintrust\Config -> EnableCertPaddingCheck -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Wintrust\Config'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Wintrust\Config -> EnableCertPaddingCheck'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\Wintrust\Config -> EnableCertPaddingCheck -> 1'
 
  # 18.4.6 (L1) Ensure 'Enable Structured Exception Handling Overwrite Protection (SEHOP)' is set to 'Enabled'. (Automated)
   - id: 26175
@@ -4818,9 +4818,9 @@ checks:
       - cis: ["18.8.2"]
     condition: all
     rules:
-      - 'r:HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer'
-      - 'r:HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer -> HideRecommendedPersonalizedSites'
-      - 'r:HKLM\SOFTWARE\Policies\Microsoft\Windows\Explorer -> HideRecommendedPersonalizedSites -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> HideRecommendedPersonalizedSites'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> HideRecommendedPersonalizedSites -> 1'
 
  # 18.9.3.1 (L1) Ensure 'Include command line in process creation events' is set to 'Enabled'. (Automated)
   - id: 26222
@@ -5601,8 +5601,8 @@ checks:
       - iso_27001-2013: ["A.11.2.5", "A.13.1.1", "A.9.3.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos[*!+-]arameters -> DevicePKInitBehavior -> 0'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos[*!+-]arameters -> DevicePKInitEnabled -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitBehavior -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitEnabled -> 1'
 
  # 18.9.24.1 (BL) Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'. (Automated)
   - id: 26260
