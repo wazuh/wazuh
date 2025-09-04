@@ -96,10 +96,24 @@ void SecurityConfigurationAssessment::Run()
             LoggingHelper::getInstance().log(LOG_INFO, "SCA module scan on start.");
         }
 
-        auto reportCheckResult = [this](const CheckResult & checkResult)
+        // Load policies on each run iteration
+        const SCAPolicyLoader policyLoader(m_policiesData, m_fileSystemWrapper, m_dBSync);
+        m_policies = policyLoader.LoadPolicies(
+            m_commandsTimeout,
+            m_remoteEnabled,
+            [this](auto policyData, auto checksData)
+            {
+                const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
+                eventHandler.ReportPoliciesDelta(policyData, checksData);
+            },
+            m_yamlToJsonFunc
+        );
+
+        auto reportCheckResult = [this](const CheckResult& checkResult)
         {
             const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
-            eventHandler.ReportCheckResult(checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
+            eventHandler.ReportCheckResult(
+                checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
         };
 
         for (auto& policy : m_policies)
@@ -127,18 +141,10 @@ void SecurityConfigurationAssessment::Setup(bool enabled,
     m_enabled = enabled;
     m_scanOnStart = scanOnStart;
     m_scanInterval = scanInterval;
-
-    m_policies = [this, &policies, commandsTimeout, remoteEnabled, &yamlToJsonFunc]()
-    {
-        const SCAPolicyLoader policyLoader(policies, m_fileSystemWrapper, m_dBSync);
-        return policyLoader.LoadPolicies(commandsTimeout, remoteEnabled,
-                                         [this](auto policyData, auto checksData)
-        {
-            const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
-            eventHandler.ReportPoliciesDelta(policyData, checksData);
-        }, yamlToJsonFunc);
-    }
-    ();
+    m_commandsTimeout = commandsTimeout;
+    m_remoteEnabled = remoteEnabled;
+    m_policiesData = policies;
+    m_yamlToJsonFunc = yamlToJsonFunc;
 }
 
 void SecurityConfigurationAssessment::Stop()
