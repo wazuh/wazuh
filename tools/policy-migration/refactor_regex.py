@@ -19,21 +19,49 @@ def _swap_dots(payload: str, quote_char: Optional[str]) -> str:
     i = 0
     n = len(payload)
     is_double = (quote_char == '"')
-    while i < n:
-        if not is_double and i + 1 < n and payload[i] == '\\' and payload[i + 1] == '.':
-            out.append('.')
-            i += 2
-            continue
-        if is_double and i + 2 < n and payload[i] == '\\' and payload[i + 1] == '\\' and payload[i + 2] == '.':
-            out.append('.')
-            i += 3
-            continue
-        if payload[i] == '.':
-            out.append('\\\\.' if is_double else '\\.')
+    scape_count = 0
+    if not is_double:
+        while i < n:
+            if payload[i] == '\\':
+                scape_count += 1
+                out.append(payload[i])
+                i += 1
+                continue
+            if scape_count % 2 == 1 and payload[i] == '.':
+                out.pop()
+                i += 1
+                out.append('.')
+                scape_count = 0
+                continue
+            if scape_count == 0 and payload[i] == '.':
+                out.append('\\.')
+                i += 1
+                scape_count = 0
+                continue
+            scape_count = 0
+            out.append(payload[i])
             i += 1
-            continue
-        out.append(payload[i])
-        i += 1
+    else:
+        while i < n:
+            if payload[i] == '\\':
+                scape_count += 1
+                out.append(payload[i])
+                i += 1
+                continue
+            if scape_count > 0 and scape_count % 4 == 2 and payload[i] == '.':
+                out.pop(); out.pop()
+                i += 1
+                out.append('.')
+                scape_count = 0
+                continue
+            if scape_count == 0 and payload[i] == '.':
+                out.append('\\\\.')
+                i += 1
+                scape_count = 0
+                continue
+            scape_count = 0
+            out.append(payload[i])
+            i += 1
     return ''.join(out)
 
 
@@ -97,17 +125,39 @@ def _expand_word_chars(payload: str, quote_char: Optional[str]) -> str:
     i = 0
     n = len(payload)
     is_double = (quote_char == '"')
-    while i < n:
-        if not is_double and payload[i] == '\\' and i + 1 < n and payload[i + 1] == 'w':
-            out.append('[\\w@-]')
-            i += 2
-            continue
-        if is_double and payload[i] == '\\' and i + 2 < n and payload[i + 1] == '\\' and payload[i + 2] == 'w':
-            out.append('[\\\\w@-]')
-            i += 3
-            continue
-        out.append(payload[i])
-        i += 1
+    scape_count = 0
+    if not is_double:
+        while i < n:
+            if payload[i] == '\\':
+                scape_count += 1
+                out.append(payload[i])
+                i += 1
+                continue
+            if scape_count % 2 == 1 and payload[i] == 'w':
+                out.pop()
+                i += 1
+                out.append('[\\w@-]')
+                scape_count = 0
+                continue
+            scape_count = 0
+            out.append(payload[i])
+            i += 1
+    else:
+        while i < n:
+            if payload[i] == '\\':
+                scape_count += 1
+                out.append(payload[i])
+                i += 1
+                continue
+            if scape_count > 0 and scape_count % 4 == 2 and payload[i] == 'w':
+                out.pop(); out.pop()
+                i += 1
+                out.append('[\\\\w@-]')
+                scape_count = 0
+                continue
+            scape_count = 0
+            out.append(payload[i])
+            i += 1
     return ''.join(out)
 
 
@@ -281,21 +331,42 @@ def _replace_p(payload: str, quote_char: Optional[str]) -> Tuple[str, bool]:
     n = len(payload)
     is_double = (quote_char == '"')
     warned_flag = False
-    while i < n:
-        if not is_double and payload[i] == '\\' and i + 1 < n and payload[i + 1] == 'p':
-            # consume \p
-            i += 2
-            out.append('[*!+-]')
-            warned_flag = True
-            continue
-        if is_double and payload[i] == '\\' and i + 2 < n and payload[i + 1] == '\\' and payload[i + 2] == 'p':
-            i += 3
-            out.append('[*!+-]')
-            warned_flag = True
-            continue
-        # Regular character
-        out.append(payload[i])
-        i += 1
+    scape_count = 0
+    if not is_double:
+        while i < n:
+            if payload[i] == '\\':
+                scape_count += 1
+                out.append(payload[i])
+                i += 1
+                continue
+            if scape_count % 2 == 1 and payload[i] == 'p':
+                out.pop()
+                i += 1
+                out.append('[*!+-]')
+                warned_flag = True
+                scape_count = 0
+                continue
+            scape_count = 0
+            out.append(payload[i])
+            i += 1
+    else:
+        while i < n:
+            if payload[i] == '\\':
+                scape_count += 1
+                out.append(payload[i])
+                i += 1
+                continue
+            if scape_count > 0 and scape_count % 4 == 2 and payload[i] == 'p':
+                # drop the last backslash from output
+                out.pop(); out.pop()
+                i += 1
+                out.append('[*!+-]')
+                warned_flag = True
+                scape_count = 0
+                continue
+            scape_count = 0
+            out.append(payload[i])
+            i += 1
     return ''.join(out), warned_flag
 
 
@@ -312,20 +383,41 @@ def _remove_p(payload: str, quote_char: Optional[str]) -> str:
     i = 0
     n = len(payload)
     is_double = (quote_char == '"')
-    while i < n:
-        if not is_double and payload[i] == '\\' and i + 1 < n and payload[i + 1] == 'p':
-            i += 2
-            if i < n and payload[i] in ('*', '+'):
+    scape_count = 0
+    if not is_double:
+        while i < n:
+            if payload[i] == '\\':
+                scape_count += 1
+                out.append(payload[i])
                 i += 1
-            continue
-        if is_double and payload[i] == '\\' and i + 2 < n and payload[i + 1] == '\\' and payload[i + 2] == 'p':
-            i += 3
-            if i < n and payload[i] in ('*', '+'):
+                continue
+            if scape_count % 2 == 1 and payload[i] == 'p':
+                out.pop()
                 i += 1
-            continue
-        # Regular character
-        out.append(payload[i])
-        i += 1
+                if i < n and payload[i] in ('*', '+'):
+                    i += 1
+                scape_count = 0
+                continue
+            scape_count = 0
+            out.append(payload[i])
+            i += 1
+    else:
+        while i < n:
+            if payload[i] == '\\':
+                scape_count += 1
+                out.append(payload[i])
+                i += 1
+                continue
+            if scape_count > 0 and scape_count % 4 == 2 and payload[i] == 'p':
+                out.pop(); out.pop()
+                i += 1
+                if i < n and payload[i] in ('*', '+'):
+                    i += 1
+                scape_count = 0
+                continue
+            scape_count = 0
+            out.append(payload[i])
+            i += 1
     return ''.join(out)
 
 
