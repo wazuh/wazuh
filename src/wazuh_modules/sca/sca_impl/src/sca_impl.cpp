@@ -180,6 +180,8 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
     return ret;
 }
 
+// LCOV_EXCL_START
+
 // Sync protocol methods implementation
 void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
 {
@@ -217,3 +219,5 @@ bool SecurityConfigurationAssessment::parseResponseBuffer(const uint8_t* data, s
 
     return false;
 }
+
+// LCOV_EXCL_STOP

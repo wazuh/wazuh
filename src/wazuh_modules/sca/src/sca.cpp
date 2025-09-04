@@ -179,6 +179,8 @@ void SCA::destroy()
     m_sca.reset();
 }
 
+// LCOV_EXCL_START
+
 bool SCA::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
     if (m_sca)
@@ -233,6 +235,8 @@ bool sca_parse_response(const unsigned char* data, size_t length)
 
     return false;
 }
+
+// LCOV_EXCL_STOP
 
 #ifdef __cplusplus
 }

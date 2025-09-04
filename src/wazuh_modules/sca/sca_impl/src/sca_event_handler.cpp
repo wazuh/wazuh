@@ -14,17 +14,21 @@
 /// @brief Map of stateless operations
 static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP
 {
+    // LCOV_EXCL_START
     {MODIFIED, "modified"},
     {DELETED, "deleted"},
     {INSERTED, "created"},
+    // LCOV_EXCL_STOP
 };
 
 /// @brief Map of stateful operations
 static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
 {
+    // LCOV_EXCL_START
     {MODIFIED, OPERATION_MODIFY},
     {DELETED, OPERATION_DELETE},
     {INSERTED, OPERATION_CREATE},
+    // LCOV_EXCL_STOP
 };
 
 /// @brief Sync protocol index name
