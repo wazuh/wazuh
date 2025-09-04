@@ -89,7 +89,6 @@ const wm_context WM_SCA_CONTEXT = {
 void *sca_module = NULL;
 sca_start_func sca_start_ptr = NULL;
 sca_stop_func sca_stop_ptr = NULL;
-sca_sync_message_func sca_sync_message_ptr = NULL;
 sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
 sca_set_log_function_func sca_set_log_function_ptr = NULL;
 sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
@@ -149,7 +148,6 @@ void * wm_sca_main(wm_sca_t * data) {
     {
         sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
-        sca_sync_message_ptr = so_get_function_sym(sca_module, "sca_sync_message");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
         sca_set_log_function_ptr = so_get_function_sym(sca_module, "sca_set_log_function");
         sca_set_push_functions_ptr = so_get_function_sym(sca_module, "sca_set_push_functions");
