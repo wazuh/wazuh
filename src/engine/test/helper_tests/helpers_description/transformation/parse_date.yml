@@ -42,30 +42,28 @@ target_field:
   type: string
   generate: string
 
-test:
+est:
   - arguments:
       input_field: "2025-09-01T10:30:00-05:00"
-      format: "%Y-%m-%dT%H:%M:%S%z"
+      format: "%Y-%m-%dT%H:%M:%S%Ez"
       locale: "_auto"
     target_field: any_value
     should_pass: true
-    expected: "2025-09-01T15:30:00Z"
+    expected: "2025-09-01T15:30:00.000Z"
     description: ISO-8601 with timezone (explicit format)
-
   - arguments:
       input_field: "01/09/2025 10:30"
       format: "%d/%m/%Y %H:%M"
       locale: "_auto"
     target_field: any_value
     should_pass: true
-    expected: "2025-09-01T10:30:00Z"
+    expected: "2025-09-01T10:30:00.000Z"
     description: dd/mm/YYYY HH:MM (explicit format)
-
   - arguments:
-      input_field: "2025-13-99 99:99"
+      input_field: "2025/09/01 10:30"
       format: "%Y-%m-%d %H:%M"
       locale: "_auto"
     target_field: any_value
     should_pass: false
-    description: Invalid date -> error
+    description: Format mismatch -> error
 

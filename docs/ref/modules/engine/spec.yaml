@@ -3002,7 +3002,7 @@ components:
           $ref: "#/components/schemas/TesterSessionName"
         event:
           type: string
-          description: "Event to test (NDJSON line or batch as string)"
+          description: "Event to test"
         trace_level:
           type: string
           enum:
