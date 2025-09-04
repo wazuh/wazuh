@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
     // exit handler
     cmd::details::StackExecutor exitHandler {};
     const auto opts = parseOptions(argc, argv);
-    const bool standalone = logging::standaloneModeEnabled();
+    const bool standalone = base::process::isStandaloneModeEnable();
     const bool cliDebug = (opts.debugCount > 0);
     void* libwazuhshared = nullptr;
 
@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
         }
         exitHandler.add([libwazuhshared]() { dlclose(libwazuhshared); });
 
-        if (chdir(base::process::getWazuhHome().c_str()) == -1)
+        if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
         {
             fprintf(stderr, "chdir to WAZUH_HOME failed: %s\n", strerror(errno));
             return EXIT_FAILURE;

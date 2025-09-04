@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <optional>
@@ -224,9 +225,9 @@ int privSepSetGroup(gid_t gid)
     return false;
 }
 
-std::string getWazuhHome()
+std::filesystem::path getWazuhHome()
 {
-    return std::filesystem::path("/var/ossec").string();
+    return std::filesystem::path("/var/ossec");
 }
 
 void setThreadName(const std::string& name)
@@ -239,6 +240,24 @@ void setThreadName(const std::string& name)
     // Limit thread name to 15 characters (Linux limit)
     std::string threadName = name.substr(0, 15);
     pthread_setname_np(pthread_self(), threadName.c_str());
+}
+
+bool isStandaloneModeEnable()
+{
+    static const bool enabled = []()
+    {
+        const char* env = std::getenv("WAZUH_ENGINE_STANDALONE");
+        if (!env)
+            return false;
+
+        std::string val(env);
+        std::transform(
+            val.begin(), val.end(), val.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+        return val == "true";
+    }();
+
+    return enabled;
 }
 
 } // namespace base::process

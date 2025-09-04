@@ -60,6 +60,7 @@ class Conf final
 {
 private:
     OptionMap m_fileConfig; ///< The configuration from the file.
+    bool m_loaded;          ///< Indicates if the configuration has been loaded.
     std::unordered_map<std::string, std::shared_ptr<internal::BaseUnitConf>> m_units; ///< The configuration units.
     std::shared_ptr<IFileLoader> m_fileLoader;                                        ///< The API loader.
 
@@ -262,8 +263,10 @@ public:
                 {
                     if (!base::utils::string::isNumber(rawValue))
                     {
-                        throw std::runtime_error(fmt::format(
-                            "Invalid configuration type for key '{}'. Expected unsigned integer, got '{}'.", key, rawValue));
+                        throw std::runtime_error(
+                            fmt::format("Invalid configuration type for key '{}'. Expected unsigned integer, got '{}'.",
+                                        key,
+                                        rawValue));
                     }
 
                     std::size_t pos = 0;
@@ -285,8 +288,10 @@ public:
                     }
                     catch (const std::out_of_range& e)
                     {
-                        throw std::runtime_error(fmt::format(
-                            "Invalid configuration type for key '{}'. Value out of range for size_t: '{}'.", key, rawValue));
+                        throw std::runtime_error(
+                            fmt::format("Invalid configuration type for key '{}'. Value out of range for size_t: '{}'.",
+                                        key,
+                                        rawValue));
                     }
                 }
                 else if constexpr (std::is_same_v<T, std::vector<std::string>>)

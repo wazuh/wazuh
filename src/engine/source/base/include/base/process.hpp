@@ -1,6 +1,14 @@
 #ifndef _BASE_PROCESS_HPP
 #define _BASE_PROCESS_HPP
 
+#include <cerrno>
+#include <cstring>
+#include <optional>
+#include <filesystem>
+#include <pthread.h>
+#include <stdexcept>
+#include <string>
+
 #include <fmt/format.h>
 
 #include <base/error.hpp>
@@ -123,11 +131,10 @@ int privSepSetGroup(gid_t gid);
  * It assumes the executable is located in the "bin" subdirectory of the
  * Wazuh installation (e.g., /var/ossec/bin/executable).
  *
- * @return std::string The path to the Wazuh home directory (e.g., "/var/ossec").
- *                     Returns an empty string if the executable path cannot be determined.
+ * @return std::filesystem::path The path to the Wazuh home directory ("/var/ossec").
  *
  */
-std::string getWazuhHome();
+std::filesystem::path getWazuhHome();
 
 /**
  * @brief Sets the name of the current thread.
@@ -139,6 +146,14 @@ std::string getWazuhHome();
  * @param name The desired name for the thread.
  */
 void setThreadName(const std::string& name);
+
+/**
+ * @brief Checks whether standalone mode is enabled for the Wazuh engine.
+ *
+ * @return true  If standalone mode is enabled.
+ * @return false Otherwise.
+ */
+bool isStandaloneModeEnable();
 
 } // namespace base::process
 
