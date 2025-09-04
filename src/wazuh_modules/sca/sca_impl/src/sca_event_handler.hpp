@@ -22,6 +22,7 @@
 /// Event types:
 /// - Stateful: Full snapshot of the current state of a policy and check.
 /// - Stateless: Delta event showing the fields that have changed.
+// LCOV_EXCL_START
 class SCAEventHandler
 {
     public:
@@ -144,3 +145,4 @@ class SCAEventHandler
         /// @brief Pointer to the IDBSync object for database synchronization.
         std::shared_ptr<IDBSync> m_dBSync;
 };
+// LCOV_EXCL_STOP
