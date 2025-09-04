@@ -397,7 +397,7 @@ def get_mitre_information(ioc: dict) -> dict:
     return mitre_info
 
 
-def match_ecs_type(maltiverse_type: str) -> str:
+def match_ecs_type(maltiverse_type: str) -> str | None:
     """Convert the Maltiverse type to the ECS Threat type.
 
     Parameters
@@ -411,7 +411,9 @@ def match_ecs_type(maltiverse_type: str) -> str:
         The ECS Threat type.
     """
     mapping = {
-        'ip': 'ipv4-addr',
+        'ip': 'ipv4-addr',  # fallback
+        'ipv4': 'ipv4-addr',
+        'ipv6': 'ipv6-addr',
         'hostname': 'domain-name',
         'sample': 'file',
         'url': 'url',
@@ -423,7 +425,7 @@ def maltiverse_alert(
     alert_id: int,
     ioc_dict: dict,
     ioc_name: str,
-    ioc_ref: str = None,
+    ioc_ref: str | None = None,
     include_full_source: bool = True,
 ) -> dict:
     """Generate a new alert.
@@ -451,6 +453,13 @@ def maltiverse_alert(
     _type = ioc_dict.get('type')
     _ref = ioc_ref if ioc_ref else ioc_name
 
+    if ioc_dict.get('type') == "ip" and ioc_dict.get("ip_version") == 6:
+        _ecs_type = "ipv6"
+    elif ioc_dict.get('type') == "ip":
+        _ecs_type = 'ipv4'
+    else:
+        _ecs_type = _type
+
     alert = {
         'integration': 'maltiverse',
         'alert_id': alert_id,
@@ -460,7 +469,7 @@ def maltiverse_alert(
         'threat': {
             'indicator': {
                 'name': ioc_name,
-                'type': match_ecs_type(_type),
+                'type': match_ecs_type(_ecs_type),
                 'description': ', '.join(
                     sorted(set([b.get('description') for b in _blacklist])),
                 ),
@@ -489,7 +498,7 @@ def maltiverse_alert(
     return alert
 
 
-def get_md5_in_alert(alert: dict, maltiverse_api: Maltiverse):
+def get_md5_in_alert(alert: dict, maltiverse_api: Maltiverse) -> list[dict]:
     """Extract MD5-related information from the alert and query Maltiverse API.
 
     Parameters
@@ -507,8 +516,8 @@ def get_md5_in_alert(alert: dict, maltiverse_api: Maltiverse):
     results = []
 
     if 'syscheck' in alert and 'md5_after' in alert['syscheck']:
-        debug('# Maltiverse: MD5 checksum present in the alert')
         md5 = alert['syscheck']['md5_after']
+        debug(f'# Maltiverse: MD5 checksum present in the alert: {md5}')
 
         if md5_ioc := maltiverse_api.sample_get_by_md5(md5):
             results.append(
@@ -540,8 +549,8 @@ def get_sha1_in_alert(alert: dict, maltiverse_api: Maltiverse):
     results = []
 
     if 'syscheck' in alert and 'sha1_after' in alert['syscheck']:
-        debug('# Maltiverse: SHA1 checksum present in the alert')
         sha1 = alert['syscheck']['sha1_after']
+        debug(f'# Maltiverse: SHA1 checksum present in the alert: {sha1}')
 
         if sha1_ioc := maltiverse_api.sample_get_by_sha1(sha1):
             results.append(
@@ -573,18 +582,28 @@ def get_source_ip_in_alert(alert: dict, maltiverse_api: Maltiverse):
     results = []
 
     if 'data' in alert and 'srcip' in alert['data']:
-        debug('# Maltiverse: Source IP Address present in the alert')
-        ipv4 = alert['data']['srcip']
+        ip_addr = alert['data']['srcip']
+        debug(f'# Maltiverse: Source IP Address present in the alert: {ip_addr}')
 
-        if not ipaddress.IPv4Address(ipv4).is_private:
-            if ipv4_ioc := maltiverse_api.ip_get(ipv4):
-                results.append(
-                    maltiverse_alert(
-                        alert_id=alert['id'],
-                        ioc_dict=ipv4_ioc,
-                        ioc_name=ipv4,
-                    )
+        try:
+            ip_obj = ipaddress.ip_address(ip_addr)
+        except ValueError:
+            debug(f'# Maltiverse: Invalid IP address format: {ip_addr}')
+            return results
+
+        # Skip private/reserved IPs
+        if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_reserved:
+            debug(f'# Maltiverse: Skipping private/reserved IP: {ip_addr}')
+            return results
+
+        if ip_ioc := maltiverse_api.ip_get(ip_addr):
+            results.append(
+                maltiverse_alert(
+                    alert_id=alert['id'],
+                    ioc_dict=ip_ioc,
+                    ioc_name=ip_addr,
                 )
+            )
 
     return results
 
@@ -607,8 +626,8 @@ def get_hostname_in_alert(alert: dict, maltiverse_api: Maltiverse):
     results = []
 
     if 'data' in alert and 'hostname' in alert['data']:
-        debug('# Maltiverse: Hostname present in the alert')
         hostname = alert['data']['hostname']
+        debug(f'# Maltiverse: Hostname present in the alert: {hostname}')
 
         if hostname_ioc := maltiverse_api.hostname_get(hostname):
             results.append(
@@ -640,9 +659,9 @@ def get_url_in_alert(alert: dict, maltiverse_api: Maltiverse):
     results = []
 
     if 'data' in alert and 'url' in alert['data']:
-        debug('# Maltiverse: URL present in the alert')
         url = alert['data']['url']
         urlchecksum = hashlib.sha256(url.encode('utf-8')).hexdigest()
+        debug(f'# Maltiverse: URL present in the alert: {url}')
 
         if url_ioc := maltiverse_api.url_get(urlchecksum):
             results.append(
@@ -657,7 +676,7 @@ def get_url_in_alert(alert: dict, maltiverse_api: Maltiverse):
     return results
 
 
-def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
+def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> list[str]:
     """Request Maltiverse information and generate alerts.
 
     Parameters
@@ -683,7 +702,7 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
     return results
 
 
-def send_event(msg: str, agent: dict = None):
+def send_event(msg: str, agent: dict | None = None):
     """Send an event to the Wazuh Manager.
 
     Parameters
