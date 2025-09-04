@@ -162,7 +162,6 @@ void SecurityConfigurationAssessment::SetPushStatefulMessageFunction(const std::
 
 void SecurityConfigurationAssessment::SetGlobalWmExecFunction(int (*wmExecFunc)(char*, char**, int*, int, const char*))
 {
-    std::cout << "Setting global wm_exec function pointer." << std::endl;
     s_wmExecFunc = wmExecFunc;
 }
 
