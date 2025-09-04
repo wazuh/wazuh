@@ -455,7 +455,7 @@ TEST_F(ScaPolicyLoaderTest, NormalizeDataWithChecksum_PolicyTable_NoChecksum)
     EXPECT_TRUE(result[0].contains("refs"));
     EXPECT_FALSE(result[0].contains("checksum"));
     EXPECT_EQ(result[0]["name"], "Test Policy");
-    EXPECT_EQ(result[0]["refs"], "ref1,ref2");
+    EXPECT_EQ(result[0]["refs"], "\"ref1,ref2\"");
 }
 
 TEST_F(ScaPolicyLoaderTest, NormalizeDataWithChecksum_CheckTable_AddsChecksum)
@@ -485,7 +485,7 @@ TEST_F(ScaPolicyLoaderTest, NormalizeDataWithChecksum_CheckTable_AddsChecksum)
     EXPECT_TRUE(result[0].contains("refs"));
     EXPECT_TRUE(result[0].contains("checksum"));
     EXPECT_EQ(result[0]["name"], "Test Check");
-    EXPECT_EQ(result[0]["refs"], "ref1");
+    EXPECT_EQ(result[0]["refs"], "\"ref1\"");
 
     EXPECT_TRUE(result[0]["checksum"].is_string());
     EXPECT_FALSE(result[0]["checksum"].get<std::string>().empty());
