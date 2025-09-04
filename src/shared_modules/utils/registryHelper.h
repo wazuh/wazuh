@@ -321,17 +321,17 @@ namespace Utils
 
             static HKEY stringToHKEY(const std::string& rootKey)
             {
-                if (rootKey == "HKEY_CLASSES_ROOT")
+                if (rootKey == "HKEY_CLASSES_ROOT" || rootKey == "HKCR")
                     return HKEY_CLASSES_ROOT;
-                else if (rootKey == "HKEY_CURRENT_CONFIG")
+                else if (rootKey == "HKEY_CURRENT_CONFIG" || rootKey == "HKCC")
                     return HKEY_CURRENT_CONFIG;
-                else if (rootKey == "HKEY_CURRENT_USER")
+                else if (rootKey == "HKEY_CURRENT_USER" || rootKey == "HKCU")
                     return HKEY_CURRENT_USER;
-                else if (rootKey == "HKEY_LOCAL_MACHINE")
+                else if (rootKey == "HKEY_LOCAL_MACHINE" || rootKey == "HKLM")
                     return HKEY_LOCAL_MACHINE;
-                else if (rootKey == "HKEY_PERFORMANCE_DATA")
+                else if (rootKey == "HKEY_PERFORMANCE_DATA" || rootKey == "HKPD")
                     return HKEY_PERFORMANCE_DATA;
-                else if (rootKey == "HKEY_USERS")
+                else if (rootKey == "HKEY_USERS" || rootKey == "HKU")
                     return HKEY_USERS;
                 else
                     throw std::invalid_argument("Invalid registry root key: " + rootKey);
