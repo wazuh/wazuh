@@ -332,9 +332,28 @@ def _remove_p(payload: str, quote_char: Optional[str]) -> str:
 # ========= WINDOWS (HKLM -> HKEY_LOCAL_MACHINE) =========
 
 def _replace_win(pattern: str) -> str:
-    """Replace HKLM with HKEY_LOCAL_MACHINE in the pattern.
+    """Expand Windows registry root abbreviations to full names.
+
+    Replacements:
+      - HKCR -> HKEY_CLASSES_ROOT
+      - HKCU -> HKEY_CURRENT_USER
+      - HKLM -> HKEY_LOCAL_MACHINE
+      - HKU  -> HKEY_USERS
+      - HKCC -> HKEY_CURRENT_CONFIG
     """
-    return pattern.replace('HKLM', 'HKEY_LOCAL_MACHINE')
+    abbrev_to_full = {
+        'HKCR': 'HKEY_CLASSES_ROOT',
+        'HKCU': 'HKEY_CURRENT_USER',
+        'HKLM': 'HKEY_LOCAL_MACHINE',
+        'HKU': 'HKEY_USERS',
+        'HKCC': 'HKEY_CURRENT_CONFIG',
+    }
+
+    def repl(match: re.Match) -> str:
+        key = match.group(0)
+        return abbrev_to_full.get(key, key)
+
+    return re.sub(r'\b(HKCR|HKCU|HKLM|HKU|HKCC)\b', repl, pattern)
 
 # ========= UPDATE YAML =========
 
@@ -395,9 +414,9 @@ def update_rules_based_on_mode(yml_lines: List[str], mode: str) -> Tuple[List[st
     return new_lines, edited_count, ids, warned_ids
 
 
-def read_until_boundary(line: str, lenght: int, index: int) -> Tuple[str, int]:
+def read_until_boundary(line: str, length: int, index: int) -> Tuple[str, int]:
     j = index
-    while j < lenght and not (line.startswith(' && ', j) or line.startswith(' compare ', j) or line.startswith(' -> ', j)):
+    while j < length and not (line.startswith(' && ', j) or line.startswith(' compare ', j) or line.startswith(' -> ', j)):
         j += 1
     return line[index:j], j
 
@@ -408,75 +427,83 @@ def fix_regex_in_line(mode: str, line: str, quote_char: Optional[str]) -> Tuple[
     length = len(line)
     warned_flag: bool = False
     is_r_cmd: bool = False
+    expect_operator: bool = False
 
-    # Skip everything before the first command
-    first_command, index = read_until_boundary(line, length, index)
-    out.append(first_command)
+    # Copy everything before the first boundary (" -> ", " && ", or " compare ")
+    first_segment, index = read_until_boundary(line, length, index)
+    out.append(first_segment)
 
-    # If there is no command after skipping, return the original line
+    # If there is no boundary at all, nothing to do
     if index == length:
         return line, False, False
 
     while index < length:
-        # Handle !r: / !n:
-        if index + 2 < length and line[index] == '!' and line[index + 1] in ('r', 'n') and line[index + 2] == ':':
-            out.append(line[index:index+3])
-            if line[index + 1] == 'r':
-                is_r_cmd = True
-            else:
-                is_r_cmd = False
-            index += 3
-            payload, next_i = read_until_boundary(line, length, index)
-            match mode:
-                case 'quants':
-                    out.append(_escape_literal_quantifiers(payload, quote_char))
-                case 'brackets':
-                    out.append(_escape_literal_brackets(payload, quote_char))
-                case 'punct':
-                    if is_r_cmd:
-                        tmp, warned_flag = _replace_p(payload, quote_char)
-                        out.append(tmp)
-                    else:
-                        out.append(_remove_p(payload, quote_char))
-                case 'words':
-                    out.append(_expand_word_chars(payload, quote_char))
-                case 'dots':
-                    out.append(_swap_dots(payload, quote_char))
-                case _:
-                    raise ValueError(f"Invalid mode: {mode}")
-            index = next_i
+        # Consume and copy boundaries, set expectation for operators only after ' -> ' or ' && '
+        if line.startswith(' -> ', index):
+            out.append(' -> ')
+            index += 4
+            expect_operator = True
             continue
-        # Handle r: / n:
-        if index + 1 < length and line[index] in ('r', 'n') and line[index + 1] == ':':
-            out.append(line[index:index+2])
-            if line[index] == 'r':
-                is_r_cmd = True
-            else:
-                is_r_cmd = False
-            index += 2
-            payload, next_i = read_until_boundary(line, length, index)
-            match mode:
-                case 'quants':
-                    out.append(_escape_literal_quantifiers(payload, quote_char))
-                case 'brackets':
-                    out.append(_escape_literal_brackets(payload, quote_char))
-                case 'punct':
-                    if is_r_cmd:
-                        tmp, warned_flag = _replace_p(payload, quote_char)
-                        out.append(tmp)
-                    else:
-                        out.append(_remove_p(payload, quote_char))
-                case 'words':
-                    out.append(_expand_word_chars(payload, quote_char))
-                case 'dots':
-                    out.append(_swap_dots(payload, quote_char))
-                case _:
-                    raise ValueError(f"Invalid mode: {mode}")
-            index = next_i
+        if line.startswith(' && ', index):
+            out.append(' && ')
+            index += 4
+            expect_operator = True
             continue
-        # Regular character
+        if line.startswith(' compare ', index):
+            out.append(' compare ')
+            index += 9
+            expect_operator = False
+            continue
+
+        # If we are positioned right after a boundary that expects an operator, parse only if the operator is right here
+        if expect_operator:
+            # Preserve spaces immediately after the boundary
+            if line[index] == ' ':
+                out.append(' ')
+                index += 1
+                continue
+            # If negative, consume the leading '!'
+            if line[index] == '!':
+                out.append('!')
+                index += 1
+                continue
+            # r: / n:
+            if index + 1 < length and line[index] in ('r', 'n') and line[index + 1] == ':':
+                out.append(line[index:index + 2])
+                is_r_cmd = (line[index] == 'r')
+                index += 2
+                payload, next_i = read_until_boundary(line, length, index)
+                match mode:
+                    case 'quants':
+                        out.append(_escape_literal_quantifiers(payload, quote_char))
+                    case 'brackets':
+                        out.append(_escape_literal_brackets(payload, quote_char))
+                    case 'punct':
+                        if is_r_cmd:
+                            tmp, warned_flag = _replace_p(payload, quote_char)
+                            out.append(tmp)
+                        else:
+                            out.append(_remove_p(payload, quote_char))
+                    case 'words':
+                        out.append(_expand_word_chars(payload, quote_char))
+                    case 'dots':
+                        out.append(_swap_dots(payload, quote_char))
+                    case _:
+                        raise ValueError(f"Invalid mode: {mode}")
+                index = next_i
+                expect_operator = False
+                continue
+            # No operator here -> this is a literal content segment. Copy until next boundary.
+            literal_segment, next_i = read_until_boundary(line, length, index)
+            out.append(literal_segment)
+            index = next_i
+            expect_operator = False
+            continue
+
+        # Default: copy current character
         out.append(line[index])
         index += 1
+
     updated = ''.join(out)
     return updated, (updated != line), warned_flag
 
@@ -509,7 +536,7 @@ def main() -> None:
         print('  --words    Expand \\w to [\\w@-] outside classes and \\w@- inside classes (quote-aware).')
         print("  --dots     Swap '.' and escaped dot inside r:/n:/!r:/!n: payloads (quote-aware).")
         print("  --punct    Replace custom \\p: in n/!n remove (including trailing * or +); in r/!r replace with [*!+-].")
-        print('  --win      [Windows only] Replace HKLM with HKEY_LOCAL_MACHINE anywhere in rule items.')
+        print('  --win      [Windows only] Expand registry abbreviations HKCR/HKCU/HKLM/HKU/HKCC to full names.')
         print('')
         print('Suggested order for Linux to minimize interference: --quants -> --brackets -> --punct -> --words -> --dots')
         print('Suggested order for Windows to minimize interference: --win')
