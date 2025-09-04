@@ -168,7 +168,7 @@ class Maltiverse:
             'md5': self.sample_get_by_md5,
             'sha1': self.sample_get_by_sha1,
         }
-        callable_function = mapping.get(algorithm, mapping.get('md5'))
+        callable_function = mapping.get(algorithm, self.sample_get_by_md5)
         return callable_function(sample)
 
     def sample_get_by_md5(self, md5: str):
@@ -365,6 +365,8 @@ def get_ioc_confidence(ioc: dict) -> str:
         return 'Medium' if sightings > 1 else 'Low'
     elif classification in ('neutral', 'whitelist'):
         return 'Low' if sightings > 1 else 'None'
+    else:
+        return 'None'
 
 
 def get_mitre_information(ioc: dict) -> dict:
@@ -458,7 +460,7 @@ def maltiverse_alert(
     elif ioc_dict.get('type') == "ip":
         _ecs_type = 'ipv4'
     else:
-        _ecs_type = _type
+        _ecs_type = _type or 'unknown'
 
     alert = {
         'integration': 'maltiverse',
@@ -531,7 +533,7 @@ def get_md5_in_alert(alert: dict, maltiverse_api: Maltiverse) -> list[dict]:
     return results
 
 
-def get_sha1_in_alert(alert: dict, maltiverse_api: Maltiverse):
+def get_sha1_in_alert(alert: dict, maltiverse_api: Maltiverse) -> list[dict]:
     """Extract SHA1-related information from the alert and query Maltiverse API.
 
     Parameters
@@ -564,7 +566,7 @@ def get_sha1_in_alert(alert: dict, maltiverse_api: Maltiverse):
     return results
 
 
-def get_source_ip_in_alert(alert: dict, maltiverse_api: Maltiverse):
+def get_source_ip_in_alert(alert: dict, maltiverse_api: Maltiverse) -> list[dict]:
     """Extract source IP-related information from the alert and query Maltiverse API.
 
     Parameters
@@ -608,7 +610,7 @@ def get_source_ip_in_alert(alert: dict, maltiverse_api: Maltiverse):
     return results
 
 
-def get_hostname_in_alert(alert: dict, maltiverse_api: Maltiverse):
+def get_hostname_in_alert(alert: dict, maltiverse_api: Maltiverse) -> list[dict]:
     """Extract hostname-related information from the alert and query Maltiverse API.
 
     Parameters
@@ -641,7 +643,7 @@ def get_hostname_in_alert(alert: dict, maltiverse_api: Maltiverse):
     return results
 
 
-def get_url_in_alert(alert: dict, maltiverse_api: Maltiverse):
+def get_url_in_alert(alert: dict, maltiverse_api: Maltiverse) -> list[dict]:
     """Extract URL-related information from the alert and query Maltiverse API.
 
     Parameters
