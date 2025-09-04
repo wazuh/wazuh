@@ -373,7 +373,11 @@ std::pair<nlohmann::json, ReturnTypeCallback> SCAEventHandler::ProcessStateful(c
             check.erase("checksum");
         }
 
-        jsonEvent = {{"checksum", checksumObj}, {"check", check}, {"policy", policy}};
+        // Add state modified_at field for stateful events only
+        nlohmann::json state;
+        state["modified_at"] = Utils::getCurrentISO8601();
+
+        jsonEvent = {{"checksum", checksumObj}, {"check", check}, {"policy", policy}, {"state", state}};
     }
     catch (const std::exception& e)
     {
