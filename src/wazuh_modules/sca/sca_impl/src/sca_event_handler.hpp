@@ -1,6 +1,8 @@
 #pragma once
 
 #include <idbsync.hpp>
+#include "iagent_sync_protocol.hpp"
+#include "commonDefs.h"
 
 #include <json.hpp>
 
@@ -8,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 /// @brief Handles Security Configuration Assessment (SCA) events.
@@ -28,7 +31,7 @@ class SCAEventHandler
         /// @param pushStatefulMessage Callback function used to push stateful messages to the message queue.
         SCAEventHandler(std::shared_ptr<IDBSync> dBSync = nullptr,
                         std::function<int(const std::string&)> pushStatelessMessage = nullptr,
-                        std::function<int(const std::string&)> pushStatefulMessage = nullptr);
+                        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> pushStatefulMessage = nullptr);
 
         /// @brief Destructor
         virtual ~SCAEventHandler() = default;
@@ -64,8 +67,8 @@ class SCAEventHandler
         /// the current state.
         ///
         /// @param event JSON containing check and policy data.
-        /// @return A new stateful event object.
-        nlohmann::json ProcessStateful(const nlohmann::json& event) const;
+        /// @return A pair containing the stateful event object and the operation type.
+        std::pair<nlohmann::json, ReturnTypeCallback> ProcessStateful(const nlohmann::json& event) const;
 
         /// @brief Creates a stateless event containing changed fields.
         ///
@@ -79,7 +82,8 @@ class SCAEventHandler
         /// @brief Sends a stateful event using the push message callback.
         ///
         /// @param event The complete event data.
-        void PushStateful(const nlohmann::json& event) const;
+        /// @param operation The operation type for the stateful message.
+        void PushStateful(const nlohmann::json& event, ReturnTypeCallback operation) const;
 
         /// @brief Sends a stateless (delta) event using the push message callback.
         ///
@@ -134,7 +138,7 @@ class SCAEventHandler
         std::function<int(const std::string&)> m_pushStatelessMessage;
 
         /// @brief Callback function used to push stateful messages to the message queue.
-        std::function<int(const std::string&)> m_pushStatefulMessage;
+        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> m_pushStatefulMessage;
 
     private:
         /// @brief Pointer to the IDBSync object for database synchronization.

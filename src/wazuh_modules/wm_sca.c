@@ -25,16 +25,25 @@
 
 #include "sca/include/sca.h"
 
+#define SCA_SYNC_PROTOCOL_DB_PATH "queue/sca/db/sca_sync.db"
+#define SCA_SYNC_RETRIES 3
+
 // SCA message queue variables
-static int g_sca_queue = -1;
 static int g_shutting_down = 0;
-static const long g_max_eps = 100000; // Hardcoded, but same as syscollector
+static int g_sca_queue = 0;
+static long g_max_eps = 50;
 static atomic_int_t g_n_msg_sent = ATOMIC_INT_INITIALIZER(0);
 
+// SCA sync protocol variables
+unsigned int sca_enable_synchronization = 1;     // Database synchronization enabled (default value)
+uint32_t sca_sync_interval = 300;                // Database synchronization interval (default value)
+uint32_t sca_sync_response_timeout = 30;         // Database synchronization response timeout (default value)
+long sca_sync_max_eps = 10;                      // Database synchronization number of events per second (default value)
+
 // Forward declarations
-static int wm_sca_send_stateless(const char* message);
-static int wm_sca_persist_stateful(const char* message);
 static bool wm_sca_is_shutting_down(void);
+static int wm_sca_send_stateless(const char* message);
+static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message);
 
 #undef minfo
 #undef mwarn
@@ -55,20 +64,24 @@ static bool wm_sca_is_shutting_down(void);
 
 #ifdef WIN32
 static DWORD WINAPI wm_sca_main(void *arg);         // Module main function. It won't return
+static DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args);
 #else
 static void * wm_sca_main(wm_sca_t * data);   // Module main function. It won't return
+static void * wm_sca_sync_module(__attribute__((unused)) void * args);
 #endif
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
 
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
+int wm_sca_sync_message(const char *command, size_t command_len); // Send sync message
+
 const wm_context WM_SCA_CONTEXT = {
     .name = SCA_WM_NAME,
     .start = (wm_routine)wm_sca_main,
     .destroy = (void(*)(void *))wm_sca_destroy,
     .dump = (cJSON * (*)(const void *))wm_sca_dump,
-    .sync = NULL,
+    .sync = (int(*)(const char*, size_t))wm_sca_sync_message,
     .stop = NULL,
     .query = NULL,
 };
@@ -76,9 +89,15 @@ const wm_context WM_SCA_CONTEXT = {
 void *sca_module = NULL;
 sca_start_func sca_start_ptr = NULL;
 sca_stop_func sca_stop_ptr = NULL;
-sca_sync_message_func sca_sync_message_ptr = NULL;
 sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
+sca_set_log_function_func sca_set_log_function_ptr = NULL;
 sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
+sca_set_sync_parameters_func sca_set_sync_parameters_ptr = NULL;
+
+// Sync protocol function pointers
+sca_sync_module_func sca_sync_module_ptr = NULL;
+sca_persist_diff_func sca_persist_diff_ptr = NULL;
+sca_parse_response_func sca_parse_response_ptr = NULL;
 
 // Logging callback function for SCA module
 static void sca_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag) {
@@ -101,6 +120,15 @@ static void sca_log_callback(const modules_log_level_t level, const char* log, _
     }
 }
 
+// SCA message queue functions
+static int wm_sca_startmq(const char* key, short type, short attempts) {
+    return StartMQ(key, type, attempts);
+}
+
+static int wm_sca_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
+    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+}
+
 // Module main function. It won't return
 #ifdef WIN32
 DWORD WINAPI wm_sca_main(void *arg) {
@@ -120,9 +148,20 @@ void * wm_sca_main(wm_sca_t * data) {
     {
         sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
-        sca_sync_message_ptr = so_get_function_sym(sca_module, "sca_sync_message");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
+        sca_set_log_function_ptr = so_get_function_sym(sca_module, "sca_set_log_function");
         sca_set_push_functions_ptr = so_get_function_sym(sca_module, "sca_set_push_functions");
+        sca_set_sync_parameters_ptr = so_get_function_sym(sca_module, "sca_set_sync_parameters");
+
+        // Get sync protocol function pointers
+        sca_sync_module_ptr = so_get_function_sym(sca_module, "sca_sync_module");
+        sca_persist_diff_ptr = so_get_function_sym(sca_module, "sca_persist_diff");
+        sca_parse_response_ptr = so_get_function_sym(sca_module, "sca_parse_response");
+
+        // Set the logging function pointer in the SCA module
+        if (sca_set_log_function_ptr) {
+            sca_set_log_function_ptr(sca_log_callback);
+        }
 
         // Set the wm_exec function pointer in the SCA module
         if (sca_set_wm_exec_ptr) {
@@ -132,6 +171,15 @@ void * wm_sca_main(wm_sca_t * data) {
         // Set the push functions for message handling
         if (sca_set_push_functions_ptr) {
             sca_set_push_functions_ptr(wm_sca_send_stateless, wm_sca_persist_stateful);
+        }
+
+        // Set the sync protocol parameters
+        if (sca_set_sync_parameters_ptr) {
+            MQ_Functions mq_funcs = {
+                .start = wm_sca_startmq,
+                .send_binary = wm_sca_send_binary_msg
+            };
+            sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
         }
     } else {
         merror("Can't get SCA module handle.");
@@ -169,7 +217,33 @@ static int wm_sca_start(wm_sca_t *sca) {
 
     minfo("SCA message queue initialized successfully.");
 
-    sca_start_ptr(sca_log_callback, sca);
+    // Set synchronization parameters
+    sca_enable_synchronization = sca->sync.enable_synchronization;
+    if (sca_enable_synchronization) {
+        sca_sync_interval = sca->sync.sync_interval;
+        sca_sync_response_timeout = sca->sync.sync_response_timeout;
+        sca_sync_max_eps = sca->sync.sync_max_eps;
+    }
+
+    if (sca->max_eps) {
+        g_max_eps = sca->max_eps;
+    }
+
+    // Initialize sync protocol if enabled
+    if (sca_enable_synchronization && sca_sync_module_ptr) {
+#ifndef WIN32
+        // Launch SCA synchronization thread
+        w_create_thread(wm_sca_sync_module, NULL);
+#else
+        if (CreateThread(NULL, 0, wm_sca_sync_module, NULL, 0, NULL) == NULL) {
+            merror(THREAD_ERROR);
+        }
+#endif
+    } else {
+        mdebug1("SCA synchronization is disabled or function not available");
+    }
+
+    sca_start_ptr(sca);
     return 0;
 }
 
@@ -194,6 +268,7 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
 
     cJSON_AddStringToObject(wm_wd, "enabled", data->enabled ? "yes" : "no");
     cJSON_AddStringToObject(wm_wd, "scan_on_start", data->scan_on_start ? "yes" : "no");
+    cJSON_AddNumberToObject(wm_wd, "max_eps", data->max_eps);
 
     if (data->policies && *data->policies) {
         cJSON *policies = cJSON_CreateArray();
@@ -206,10 +281,22 @@ cJSON *wm_sca_dump(const wm_sca_t * data) {
         cJSON_AddItemToObject(wm_wd,"policies", policies);
     }
 
+    // Database synchronization values
+    cJSON * synchronization = cJSON_CreateObject();
+    cJSON_AddStringToObject(synchronization, "enabled", data->sync.enable_synchronization ? "yes" : "no");
+    cJSON_AddNumberToObject(synchronization, "interval", data->sync.sync_interval);
+    cJSON_AddNumberToObject(synchronization, "max_eps", data->sync.sync_max_eps);
+    cJSON_AddNumberToObject(synchronization, "response_timeout", data->sync.sync_response_timeout);
+
+    cJSON_AddItemToObject(wm_wd, "synchronization", synchronization);
+
     cJSON_AddItemToObject(root,"sca",wm_wd);
 
-
     return root;
+}
+
+static bool wm_sca_is_shutting_down(void) {
+    return (bool)g_shutting_down;
 }
 
 static int wm_sca_send_stateless(const char* message) {
@@ -242,16 +329,66 @@ static int wm_sca_send_stateless(const char* message) {
     return 0;
 }
 
-static int wm_sca_persist_stateful(const char* message) {
+static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message) {
     if (!message) {
         return -1;
     }
 
-    mdebug1("Persisting SCA event: %s", message);
-    // For now, just log the message. In the future, this could persist to a database
+    if (sca_enable_synchronization && sca_persist_diff_ptr) {
+        mdebug2("Persisting SCA event: %s", message);
+        sca_persist_diff_ptr(id, operation, index, message);
+    } else {
+        mdebug2("SCA synchronization is disabled or function not available");
+    }
+
     return 0;
 }
 
-static bool wm_sca_is_shutting_down(void) {
-    return (bool)g_shutting_down;
+int wm_sca_sync_message(const char *command, size_t command_len) {
+    if (sca_enable_synchronization && sca_parse_response_ptr) {
+        size_t header_len = strlen(SCA_SYNC_HEADER);
+        const uint8_t *data = (const uint8_t *)(command + header_len);
+        size_t data_len = command_len - header_len;
+
+        bool ret = false;
+        ret = sca_parse_response_ptr(data, data_len);
+
+        if (!ret) {
+            mdebug1("Error syncing module");
+            return -1;
+        }
+
+        return 0;
+    } else {
+        mdebug1("SCA synchronization is disabled or function not available");
+        return -1;
+    }
+}
+
+#ifdef WIN32
+DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args) {
+#else
+void * wm_sca_sync_module(__attribute__((unused)) void * args) {
+#endif
+    // Initial wait until SCA is started
+    sleep(sca_sync_interval);
+
+    while (FOREVER()) {
+        mdebug1("Running inventory synchronization.");
+
+        if (sca_sync_module_ptr) {
+            sca_sync_module_ptr(MODE_DELTA, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
+        } else {
+            mdebug1("Sync function not available");
+        }
+
+        mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", sca_sync_interval);
+        sleep(sca_sync_interval);
+    }
+
+#ifdef WIN32
+    return 0;
+#else
+    return NULL;
+#endif
 }

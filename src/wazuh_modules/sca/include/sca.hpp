@@ -29,11 +29,15 @@ class EXPORTED SCA final
             return s_instance;
         }
 
-        void init(const std::function<void(const modules_log_level_t, const std::string&)> logFunction);
+        void init();
         void setup(const struct wm_sca_t* sca_config);
         void run();
         void destroy();
-        void push(const std::string& data);
+
+        // Sync protocol methods
+        bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+        bool parseResponseBuffer(const uint8_t* data, size_t length);
 
     private:
         SCA();
