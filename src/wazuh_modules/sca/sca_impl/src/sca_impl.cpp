@@ -97,6 +97,7 @@ void SecurityConfigurationAssessment::Run()
         }
 
         // Load policies on each run iteration
+        // *INDENT-OFF*
         const SCAPolicyLoader policyLoader(m_policiesData, m_fileSystemWrapper, m_dBSync);
         m_policies = policyLoader.LoadPolicies(
             m_commandsTimeout,
@@ -108,8 +109,9 @@ void SecurityConfigurationAssessment::Run()
             },
             m_yamlToJsonFunc
         );
+        // *INDENT-ON*
 
-        auto reportCheckResult = [this](const CheckResult& checkResult)
+        auto reportCheckResult = [this](const CheckResult & checkResult)
         {
             const SCAEventHandler eventHandler(m_dBSync, m_pushStatelessMessage, m_pushStatefulMessage);
             eventHandler.ReportCheckResult(
