@@ -209,6 +209,7 @@ def _escape_literal_quantifiers(payload: str, quote_char: Optional[str]) -> str:
 # ========= LOGGING =========
 
 _MODES_ORDER = ['quants', 'brackets', 'punct', 'words', 'dots', 'win']
+_RUN_ALL_ORDER = ['quants', 'brackets', 'punct', 'words', 'dots']
 
 
 def _get_logs_dir() -> str:
@@ -277,6 +278,31 @@ def _load_fix_log(policy_yml: str) -> dict:
                         warns = [s.strip() for s in w_str.split(',') if s.strip()]
                         data['modes'][mode]['warnings'] = warns
     return data
+
+
+# ========= BATCH RUN (run all regex modes in suggested order) =========
+
+def _run_all_regex_modes(policy_yml: str, yml_lines: List[str]) -> None:
+    """Run quants -> brackets -> punct -> words -> dots sequentially, updating file and log per step."""
+    current_lines = yml_lines
+    any_changes = False
+    for mode in _RUN_ALL_ORDER:
+        print(f"Running {mode} ...")
+        updated_lines, edited_count, ids, warned_ids = update_rules_based_on_mode(current_lines, mode)
+        # Always write log entry, even if no edits, to record the run
+        _write_fix_log(policy_yml, mode, ids, edited_count, warned_ids)
+        if updated_lines != current_lines:
+            any_changes = True
+            with open(policy_yml, 'w', encoding='utf-8', newline='') as f:
+                f.writelines(updated_lines)
+            print(f"Updated '{policy_yml}' for IDs: {', '.join(sorted(ids)) if ids else 'None'}. Edited rules: {edited_count}.")
+            if warned_ids:
+                print(f"Warning: In {mode} mode, for IDs: {', '.join(sorted(warned_ids))}. Please review those rules manually.")
+        else:
+            print('No changes made.')
+        current_lines = updated_lines
+    if not any_changes:
+        print('No changes made across all modes.')
 
 
 def _write_fix_log(policy_yml: str, mode: str, ids: Set[str], edited_count: int, warned_ids: Optional[Set[str]] = None) -> None:
@@ -616,10 +642,10 @@ def fix_pattern_in_line(mode: str, line: str) -> Tuple[str, bool, bool]:
 
 
 def main() -> None:
-    # CLI: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct | --win | --help)
+    # CLI: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct | --win | --all | --help)
     # Help can be requested with --help or -h at any time
     if any(arg in ('--help', '-h') for arg in sys.argv[1:]):
-        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct | --win)')
+        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct | --win | --all)')
         print('')
         print('Modes:')
         print('  --quants   Escape literal * and + in r:/n:/!r:/!n: payloads unless they follow an escaped primitive')
@@ -629,6 +655,7 @@ def main() -> None:
         print("  --dots     Swap '.' and escaped dot inside r:/n:/!r:/!n: payloads (quote-aware).")
         print("  --punct    Replace custom \\p: in n/!n remove (including trailing * or +); in r/!r replace with [*!+-].")
         print('  --win      [Windows only] Expand registry abbreviations HKCR/HKCU/HKLM/HKU/HKCC to full names.')
+        print("  --all      Run quants -> brackets -> punct -> words -> dots (in order), logging each step.")
         print('')
         print('Suggested order for Linux to minimize interference: --quants -> --brackets -> --punct -> --words -> --dots')
         print('Suggested order for Windows to minimize interference: --win')
@@ -648,7 +675,7 @@ def main() -> None:
         sys.exit(0)
 
     if len(sys.argv) < 3:
-        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct | --win)')
+        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct | --win | --all)')
         sys.exit(1)
 
     dots_mode = any(arg == '--dots' for arg in sys.argv[1:])
@@ -657,12 +684,13 @@ def main() -> None:
     quants_mode = any(arg == '--quants' for arg in sys.argv[1:])
     punct_mode = any(arg == '--punct' for arg in sys.argv[1:])
     win_mode = any(arg == '--win' for arg in sys.argv[1:])
+    all_mode = any(arg == '--all' for arg in sys.argv[1:])
     non_flag_args = [a for a in sys.argv[1:] if not a.startswith('-')]
 
-    modes_selected = int(dots_mode) + int(brackets_mode) + int(words_mode) + int(quants_mode) + int(punct_mode) + int(win_mode)
+    modes_selected = int(dots_mode) + int(brackets_mode) + int(words_mode) + int(quants_mode) + int(punct_mode) + int(win_mode) + int(all_mode)
     if not non_flag_args or modes_selected != 1:
         # Either no file provided, or not exactly one mode provided
-        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct | --win)')
+        print('Usage: python refactor_regex.py <policy.yml> (--dots | --brackets | --words | --quants | --punct | --win | --all)')
         sys.exit(1)
 
     policy_yml = non_flag_args[0]
@@ -673,6 +701,11 @@ def main() -> None:
     except FileNotFoundError:
         print(f"Error: File '{policy_yml}' not found.")
         sys.exit(1)
+
+    # --all mode: run quants -> brackets -> punct -> words -> dots
+    if all_mode:
+        _run_all_regex_modes(policy_yml, yml_lines)
+        return
 
     # --words mode: expand \\w to [\\w@-]
     if words_mode:
