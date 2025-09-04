@@ -19,11 +19,10 @@ policy:
 requirements:
   title: "Check MacOS 13 Ventura platform."
   description: "Requirements for running the policy against MacOS 13 Ventura."
-  condition: any
+  condition: all
   rules:
     - 'c:sw_vers -> r:^ProductVersion:\t*\s*13\p'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*13\p'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*13\p'
+    - 'c:bash -c "ioreg -rd1 -c IOPMrootDomain | grep -q ''\"IOPMUserIsActive\" = Yes'' && echo awake || echo asleep" -> r:^awake$'
 
 checks:
   ##########################################################################
