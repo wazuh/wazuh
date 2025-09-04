@@ -14,6 +14,7 @@ extern "C"
 #include "logging_helper.hpp"
 
 #include <unistd.h>
+#include <chrono>
 
 /* SCA db directory */
 #ifndef WAZUH_UNIT_TESTING
@@ -29,37 +30,34 @@ extern "C"
 static push_stateless_func g_push_stateless_func = NULL;
 static push_stateful_func g_push_stateful_func = NULL;
 
+static const char* g_module_name = NULL;
+static const char* g_sync_db_path = NULL;
+static const MQ_Functions* g_mq_functions = NULL;
+
 void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_func stateful_func)
 {
     g_push_stateless_func = stateless_func;
     g_push_stateful_func = stateful_func;
 }
 
-void sca_start(log_callback_t callbackLog, const struct wm_sca_t* sca_config)
+void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs)
 {
-    std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper
-    {
-        [callbackLog](const modules_log_level_t level, const std::string & data)
-        {
-            callbackLog(level, data.c_str(), WM_SCA_LOGTAG);
-        }};
+    g_module_name = module_name;
+    g_sync_db_path = sync_db_path;
+    g_mq_functions = mq_funcs;
+}
 
-    std::function<void(const std::string&)> callbackErrorLogWrapper
-    {
-        [callbackLog](const std::string & data)
-        {
-            callbackLog(LOG_ERROR, data.c_str(), WM_SCA_LOGTAG);
-        }};
-
+void sca_start(const struct wm_sca_t* sca_config)
+{
     try
     {
-        SCA::instance().init(std::move(callbackLogWrapper));
+        SCA::instance().init();
         SCA::instance().setup(sca_config);
         SCA::instance().run();
     }
     catch (const std::exception& ex)
     {
-        callbackErrorLogWrapper(ex.what());
+        LoggingHelper::getInstance().log(LOG_ERROR, ex.what());
     }
 }
 
@@ -68,20 +66,17 @@ void sca_stop()
     SCA::instance().destroy();
 }
 
-int sca_sync_message(const char* data)
+void sca_set_log_function(log_callback_t log_callback)
 {
-    int ret {-1};
-
-    try
+    std::function<void(const modules_log_level_t, const std::string&)> logWrapper
     {
-        SCA::instance().push(data);
-        ret = 0;
-    }
-    catch (...)
-    {
-    }
+        [log_callback](const modules_log_level_t level, const std::string & data)
+        {
+            log_callback(level, data.c_str(), WM_SCA_LOGTAG);
+        }
+    };
 
-    return ret;
+    LoggingHelper::setLogCallback(logWrapper);
 }
 
 void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback)
@@ -93,19 +88,19 @@ SCA::SCA()
 {
 }
 
-void SCA::init(const std::function<void(const modules_log_level_t, const std::string&)> logFunction)
+void SCA::init()
 {
-    LoggingHelper::setLogCallback(logFunction);
-
     if (!m_sca)
     {
         m_sca = std::make_unique<SecurityConfigurationAssessment>(SCA_DB_DISK_PATH);
 
-        auto persistStatefulMessage = [](const std::string & message) -> int
+        m_sca->initSyncProtocol(g_module_name, g_sync_db_path, *g_mq_functions);
+
+        auto persistStatefulMessage = [](const std::string & id, Operation_t operation, const std::string & index, const std::string & message) -> int
         {
             if (g_push_stateful_func)
             {
-                return g_push_stateful_func(message.c_str());
+                return g_push_stateful_func(id.c_str(), operation, index.c_str(), message.c_str());
             }
 
             LoggingHelper::getInstance().log(LOG_WARNING, "No stateful message handler set");
@@ -184,8 +179,59 @@ void SCA::destroy()
     m_sca.reset();
 }
 
-void SCA::push(const std::string&)
+bool SCA::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
+    if (m_sca)
+    {
+        return m_sca->syncModule(mode, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void SCA::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+{
+    if (m_sca)
+    {
+        m_sca->persistDifference(id, operation, index, data);
+    }
+}
+
+bool SCA::parseResponseBuffer(const uint8_t* data, size_t length)
+{
+    if (m_sca)
+    {
+        return m_sca->parseResponseBuffer(data, length);
+    }
+
+    return false;
+}
+
+bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int max_eps)
+{
+    Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
+    return SCA::instance().syncModule(syncMode, std::chrono::seconds(timeout), retries, max_eps);
+}
+
+void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data)
+{
+    if (id && index && data)
+    {
+        Operation cppOperation = (operation == OPERATION_CREATE) ? Operation::CREATE :
+                                 (operation == OPERATION_MODIFY) ? Operation::MODIFY :
+                                 (operation == OPERATION_DELETE) ? Operation::DELETE_ : Operation::NO_OP;
+        SCA::instance().persistDifference(std::string(id), cppOperation, std::string(index), std::string(data));
+    }
+}
+
+bool sca_parse_response(const unsigned char* data, size_t length)
+{
+    if (data)
+    {
+        return SCA::instance().parseResponseBuffer(data, length);
+    }
+
+    return false;
 }
 
 #ifdef __cplusplus

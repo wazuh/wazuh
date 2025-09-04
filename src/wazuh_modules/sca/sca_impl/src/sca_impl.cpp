@@ -9,10 +9,12 @@
 
 #include <thread>
 #include <iostream>
+#include <chrono>
 
 #include "logging_helper.hpp"
+#include "agent_sync_protocol.hpp"
 
-// Static member definition
+// Static member definitions
 int (*SecurityConfigurationAssessment::s_wmExecFunc)(char*, char**, int*, int, const char*) = nullptr;
 
 constexpr auto POLICY_SQL_STATEMENT
@@ -153,7 +155,7 @@ void SecurityConfigurationAssessment::SetPushStatelessMessageFunction(const std:
     m_pushStatelessMessage = pushMessage;
 }
 
-void SecurityConfigurationAssessment::SetPushStatefulMessageFunction(const std::function<int(const std::string&)>& pushMessage)
+void SecurityConfigurationAssessment::SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)>& pushMessage)
 {
     m_pushStatefulMessage = pushMessage;
 }
@@ -176,4 +178,42 @@ std::string SecurityConfigurationAssessment::GetCreateStatement() const
     ret += CHECK_SQL_STATEMENT;
 
     return ret;
+}
+
+// Sync protocol methods implementation
+void SecurityConfigurationAssessment::initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs)
+{
+    auto logger_func = [](modules_log_level_t level, const std::string & msg)
+    {
+        LoggingHelper::getInstance().log(level, msg);
+    };
+    m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+}
+
+bool SecurityConfigurationAssessment::syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_spSyncProtocol)
+    {
+        return m_spSyncProtocol->synchronizeModule(mode, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void SecurityConfigurationAssessment::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+{
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->persistDifference(id, operation, index, data);
+    }
+}
+
+bool SecurityConfigurationAssessment::parseResponseBuffer(const uint8_t* data, size_t length)
+{
+    if (m_spSyncProtocol)
+    {
+        return m_spSyncProtocol->parseResponseBuffer(data, length);
+    }
+
+    return false;
 }

@@ -3,8 +3,10 @@
 #include <gmock/gmock.h>
 
 #include <sca_event_handler.hpp>
+#include <commonDefs.h>
 
 #include <mock_dbsync.hpp>
+#include <utility>
 
 namespace sca_event_handler
 {
@@ -14,7 +16,7 @@ namespace sca_event_handler
         public:
             SCAEventHandlerMock(const std::shared_ptr<MockDBSync>& mockDB,
                                 std::function<int(const std::string&)> pushStatelessMessage = nullptr,
-                                std::function<int(const std::string&)> pushStatefulMessage = nullptr)
+                                std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> pushStatefulMessage = nullptr)
                 : SCAEventHandler(mockDB, pushStatelessMessage, pushStatefulMessage)
                 , mockDBSync(mockDB)
             {
@@ -30,7 +32,7 @@ namespace sca_event_handler
                 return SCAEventHandler::ProcessStateless(event);
             }
 
-            nlohmann::json ProcessStateful(const nlohmann::json& event)
+            std::pair<nlohmann::json, ReturnTypeCallback> ProcessStateful(const nlohmann::json& event)
             {
                 return SCAEventHandler::ProcessStateful(event);
             }

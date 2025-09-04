@@ -44,12 +44,11 @@ TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
     bool statefulCalled = false;
     bool statelessCalled = false;
 
-    auto statefulLambda = [&](const std::string&) -> int // NOLINT(performance-unnecessary-value-param)
+    auto statefulLambda = [&](const std::string&, Operation_t, const std::string&, const std::string&) -> int // NOLINT(performance-unnecessary-value-param)
     {
         statefulCalled = true;
         return expectedReturnValue;
     };
-
 
     auto statelessLambda = [&](const std::string&) -> int // NOLINT(performance-unnecessary-value-param)
     {
@@ -61,7 +60,7 @@ TEST_F(ScaTest, SetPushMessageFunctionStoresCallback)
     m_sca->SetPushStatefulMessageFunction(statefulLambda);
 
     const std::string dummyMessage = R"({"key": "value"})";
-    const int result = statefulLambda(dummyMessage) + statelessLambda(dummyMessage);
+    const int result = statefulLambda("test_id", Operation_t::OPERATION_CREATE, "index", dummyMessage) + statelessLambda(dummyMessage);
 
     EXPECT_TRUE(statefulCalled && statelessCalled);
     EXPECT_EQ(result, expectedReturnValue * 2);

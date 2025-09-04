@@ -22,10 +22,12 @@ link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/libpcre2/.libs/)
 link_directories(${SRC_FOLDER}/external/libyaml/src/.libs/)
 link_directories(${SRC_FOLDER}/external/openssl/)
+link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
 include_directories(${SRC_FOLDER}/external/bzip2/)
@@ -34,12 +36,15 @@ include_directories(${SRC_FOLDER}/external/libpcre2/include)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/external/libyaml/include)
 include_directories(${SRC_FOLDER}/external/openssl/include/) # needed for hash_helper
+include_directories(${SRC_FOLDER}/external/flatbuffers/include)
 include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 
@@ -54,6 +59,9 @@ find_library(FILE_IO_LIB FileIO
     NO_DEFAULT_PATH)
 find_library(DBSYNC_LIB dbsync
     HINTS ${SRC_FOLDER}/shared_modules/dbsync/build/lib
+    NO_DEFAULT_PATH)
+find_library(SYNC_PROTOCOL_LIB agent_sync_protocol
+    HINTS ${SRC_FOLDER}/shared_modules/sync_protocol/build/lib
     NO_DEFAULT_PATH)
 find_library(YAML_LIB yaml
     HINTS ${SRC_FOLDER}/external/libyaml/src/.libs
@@ -80,6 +88,10 @@ endif()
 if(NOT DBSYNC_LIB)
     set(DBSYNC_LIB dbsync)
     message(STATUS "dbsync library not found, using target name")
+endif()
+if(NOT SYNC_PROTOCOL_LIB)
+    set(SYNC_PROTOCOL_LIB agent_sync_protocol)
+    message(STATUS "agent_sync_protocol library not found, using target name")
 endif()
 if(NOT YAML_LIB)
     set(YAML_LIB yaml)
@@ -119,6 +131,7 @@ target_link_libraries(
             sysinfo
             ${FILESYSTEM_WRAPPER_LIB}
             ${FILE_IO_LIB}
+            ${SYNC_PROTOCOL_LIB}
             ${DBSYNC_LIB}
             wazuhext # contains hash_helper, string_helper, time_helper utilities
             cjson

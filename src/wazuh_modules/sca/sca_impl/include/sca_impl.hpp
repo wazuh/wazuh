@@ -5,6 +5,7 @@
 #include <idbsync.hpp>
 #include <ifilesystem_wrapper.hpp>
 #include <sca_utils.hpp>
+#include "iagent_sync_protocol.hpp"
 
 #include <json.hpp>
 
@@ -57,7 +58,7 @@ class SecurityConfigurationAssessment
 
         /// @brief Set the function to be called for stateful messages
         /// @param pushMessage Function to push stateful messages
-        void SetPushStatefulMessageFunction(const std::function<int(const std::string&)>& pushMessage);
+        void SetPushStatefulMessageFunction(const std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)>& pushMessage);
 
         /// @brief Set the global wm_exec function pointer (static)
         /// @param wmExecFunc Function pointer to wm_exec
@@ -66,6 +67,33 @@ class SecurityConfigurationAssessment
         /// @brief Get the global wm_exec function pointer (static)
         /// @return Function pointer to wm_exec or nullptr if not set
         static int (*GetGlobalWmExecFunction())(char*, char**, int*, int, const char*);
+
+        /// @brief Initialize the sync protocol
+        /// @param moduleName Name of the module
+        /// @param syncDbPath Path to the sync database
+        /// @param mqFuncs Message queue functions
+        void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, MQ_Functions mqFuncs);
+
+        /// @brief Synchronize the module
+        /// @param mode Synchronization mode
+        /// @param timeout Timeout for the synchronization
+        /// @param retries Number of retries
+        /// @param maxEps Maximum number of events per second
+        /// @return true if synchronization was successful, false otherwise
+        bool syncModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+
+        /// @brief Persist a difference
+        /// @param id Identifier of the record
+        /// @param operation Operation type
+        /// @param index Index of the record
+        /// @param data Data to be persisted
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+
+        /// @brief Parse a sync response buffer
+        /// @param data Pointer to the data buffer
+        /// @param length Length of the data buffer
+        /// @return true if parsing was successful, false otherwise
+        bool parseResponseBuffer(const uint8_t* data, size_t length);
 
     protected:
         /// @brief List of policies
@@ -85,7 +113,7 @@ class SecurityConfigurationAssessment
         std::function<int(const std::string&)> m_pushStatelessMessage;
 
         /// @brief Function for pushing stateful event messages
-        std::function<int(const std::string&)> m_pushStatefulMessage;
+        std::function<int(const std::string&, Operation_t, const std::string&, const std::string&)> m_pushStatefulMessage;
 
         /// @brief Pointer to a file system wrapper
         std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
@@ -104,4 +132,7 @@ class SecurityConfigurationAssessment
 
         /// @brief Static/global function pointer to wm_exec
         static int (*s_wmExecFunc)(char*, char**, int*, int, const char*);
+
+        /// @brief Path to the sync protocol
+        std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 };
