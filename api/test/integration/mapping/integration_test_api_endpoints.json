@@ -166,15 +166,6 @@
                 ]
             },
             {
-                "name": "ciscat_controller.py",
-                "tag": "ciscat",
-                "tests": [
-                    "test_ciscat_endpoints.tavern.yaml",
-                    "test_rbac_black_ciscat_endpoints.tavern.yaml",
-                    "test_rbac_white_ciscat_endpoints.tavern.yaml"
-                ]
-            },
-            {
                 "name": "cluster_controller.py",
                 "tag": "cluster",
                 "tests": [
