@@ -30,9 +30,9 @@ test:
   - target_field: true
     should_pass: true
     description: Not number (boolean)
-  - target_field: []
+  - target_field: [1]
     should_pass: true
-    description: Not number (array)
+    description: number (array not empty)
   - target_field:
       key: value
     should_pass: true

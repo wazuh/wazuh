@@ -23,9 +23,10 @@ target_field:
     - array
     - object
 
+
 test:
   - target_field: null
-    should_pass: true
+    should_pass: false
     description: Is null
   - target_field: "hello"
     should_pass: false
