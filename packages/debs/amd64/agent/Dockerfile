@@ -1,8 +1,9 @@
 FROM debian:7
 
 ENV DEBIAN_FRONTEND noninteractive
-
-# Installing necessary packages
+# -------------------------------------------------------------------
+# Install necessary packages
+# -------------------------------------------------------------------
 RUN echo "deb http://archive.debian.org/debian/ wheezy contrib main non-free" > /etc/apt/sources.list && \
     echo "deb-src http://archive.debian.org/debian/ wheezy contrib main non-free" >> /etc/apt/sources.list && \
     apt-get update && apt-get install -y --force-yes apt-utils && \
@@ -14,31 +15,68 @@ RUN echo "deb http://archive.debian.org/debian/ wheezy contrib main non-free" > 
 
 RUN apt-get update && apt-get build-dep python3.2 -y --force-yes
 
+# -------------------------------------------------------------------
+# Download certificates for ssh
+# -------------------------------------------------------------------
+RUN curl -k https://curl.se/ca/cacert.pem -o /etc/ssl/certs/ca-certificates.crt
+
+ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
+# -------------------------------------------------------------------
+# CMake
+# -------------------------------------------------------------------
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.22.0/cmake-3.22.0-Linux-x86_64.sh && \
+    bash cmake-3.22.0-Linux-x86_64.sh --skip-license --prefix=/usr/local && \
+    rm -f cmake-3.22.0-Linux-x86_64.sh
+
+# -------------------------------------------------------------------
+# GCC 9.4.0 (bootstrap only)
+# -------------------------------------------------------------------
 RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
-    tar xzf gcc-9.4.0.tar.gz  && cd gcc-9.4.0/ && \
+    tar xzf gcc-9.4.0.tar.gz && cd gcc-9.4.0 && \
     ./contrib/download_prerequisites && \
-    ./configure --prefix=/usr/local/gcc-9.4.0 --enable-languages=c,c++ --disable-multilib \
+    ./configure --prefix=/usr/local/gcc-9.4.0 \
+        --enable-languages=c,c++ \
+        --disable-multilib \
+        --disable-bootstrap \
         --disable-libsanitizer && \
     make -j$(nproc) && make install && \
-    ln -fs /usr/local/gcc-9.4.0/bin/g++ /usr/bin/c++ && \
-    ln -fs /usr/local/gcc-9.4.0/bin/gcc /usr/bin/cc && cd / && rm -rf gcc-*
+    cd / && rm -rf gcc-9.4.0*
 
-ENV CPLUS_INCLUDE_PATH "/usr/local/gcc-9.4.0/include/c++/9.4.0/"
-ENV LD_LIBRARY_PATH "/usr/local/gcc-9.4.0/lib64:${LD_LIBRARY_PATH}"
-ENV PATH "/usr/local/gcc-9.4.0/bin:${PATH}"
+# -------------------------------------------------------------------
+# GCC 14.3.0 (set as final compiler)
+# -------------------------------------------------------------------
+RUN curl -OL https://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-14.3.0/gcc-14.3.0.tar.gz && \
+    tar xzf gcc-14.3.0.tar.gz && cd gcc-14.3.0 && ./contrib/download_prerequisites && \
+    mkdir build && cd build && \
+    CC=/usr/local/gcc-9.4.0/bin/gcc \
+    CXX=/usr/local/gcc-9.4.0/bin/g++ \
+    ../configure --prefix=/usr/local/gcc-14.3.0 \
+        --enable-languages=c,c++ \
+        --disable-multilib \
+        --disable-libsanitizer \
+        --disable-bootstrap && \
+    make -j$(nproc) && make install && \
+    cd / && rm -rf gcc-14.3.0* && \
+    rm -rf /usr/local/gcc-9.4.0   # limpiar bootstrap
 
-RUN curl -OL http://packages.wazuh.com/utils/cmake/cmake-3.18.3.tar.gz && \
-    tar -zxf cmake-3.18.3.tar.gz && cd cmake-3.18.3 && \
-    ./bootstrap --no-system-curl CXX=/usr/local/gcc-9.4.0/bin/g++ \
-        CC=/usr/local/gcc-9.4.0/bin/gcc && \
-    make -j$(nproc) && make install && ln -s /usr/local/bin/cmake /usr/bin/cmake && \
-    cd / && rm -rf cmake-*
+# -------------------------------------------------------------------
+# Environment variables → only GCC 14.3
+# -------------------------------------------------------------------
+ENV PATH="/usr/local/gcc-14.3.0/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/gcc-14.3.0/lib64"
+ENV CC="/usr/local/gcc-14.3.0/bin/gcc"
+ENV CXX="/usr/local/gcc-14.3.0/bin/g++"
 
-# Add the script and helper_funcitons to build the Debian package
+# -------------------------------------------------------------------
+# Add the script and helper_functions to build the Debian package
+# -------------------------------------------------------------------
 ADD build.sh /usr/local/bin/build_package
 RUN chmod +x /usr/local/bin/build_package
 ADD helper_function.sh /usr/local/bin/helper_function.sh
 ADD gen_permissions.sh /tmp/gen_permissions.sh
 
-# Set the entrypoint
+# -------------------------------------------------------------------
+# Set entrypoint
+# -------------------------------------------------------------------
 ENTRYPOINT ["/usr/local/bin/build_package"]
