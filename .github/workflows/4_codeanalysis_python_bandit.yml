@@ -53,14 +53,13 @@ jobs:
         uses: PyCQA/bandit-action@v1
         with:
           exclude: .git,__pycache__,*/test_*,*/test/*,*/tests/*,*/testing/*
-          format: sarif
-          output_file: bandit.sarif
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: bandit.sarif
+          sarif_file: results.sarif
           category: bandit
           ref: refs/heads/${{ matrix.ref }}
-          commit_sha: ${{ matrix.sha }}
+          sha: ${{ matrix.sha }}
+          wait-for-processing: true
 
