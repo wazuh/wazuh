@@ -103,8 +103,6 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Archiver module
     addUnit<bool>(key::ARCHIVER_ENABLED, "WAZUH_ARCHIVER_ENABLED", false);
-    addUnit<std::string>(
-        key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", (wazuhRoot / "logs/archives-old.json").c_str());
 
     // Process module
     addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());

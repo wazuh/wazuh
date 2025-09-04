@@ -62,7 +62,6 @@ constexpr std::string_view STREAMLOG_ARCHIVES_MAX_SIZE = "analysisd.streamlog_ar
 constexpr std::string_view STREAMLOG_ARCHIVES_BUFFER_SIZE = "analysisd.streamlog_archives_buffer_size";
 
 constexpr std::string_view ARCHIVER_ENABLED = "analysisd.archiver_enabled";
-constexpr std::string_view ARCHIVER_PATH = "analysisd.archiver_path";
 
 constexpr std::string_view PID_FILE_PATH = "analysisd.pid_path";
 constexpr std::string_view SKIP_USER_CHANGE = "analysisd.owner_user_change_skip";

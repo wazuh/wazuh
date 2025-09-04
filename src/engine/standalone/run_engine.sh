@@ -15,7 +15,6 @@ export WAZUH_SERVER_API_SOCKET="${SOCKET_PATH}/engine-api.sock"
 export WAZUH_SERVER_EVENT_SOCKET="${SOCKET_PATH}/engine-prod-event.sock"
 export WAZUH_SERVER_ENRICHED_EVENTS_SOCKET="${SOCKET_PATH}/queue-http.sock"
 export WAZUH_ENGINE_PID_FILE_PATH="${DATA_PATH}"
-export WAZUH_ARCHIVER_PATH="${DATA_PATH}/archiver.log"
 export WAZUH_SKIP_USER_CHANGE="true"
 
 "${SCRIPT_DIR}/bin/wazuh-engine" -f

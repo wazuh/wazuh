@@ -14,12 +14,18 @@ public:
     virtual ~IArchiver() = default;
 
     /**
-     * @brief Archive the given data.
+     * @brief Archive the given data if the archiver is active (ignore errors)
      *
-     * @param data The data to archive.
-     * @return base::OptError An optional error if the archiving fails.
+     * @param data The data to archive, as a std::string.
      */
-    virtual base::OptError archive(const std::string& data) = 0;
+    virtual void archive(const std::string& data) = 0;
+
+    /**
+     * @brief  Archive the given data if the archiver is active (ignore errors
+     *
+     * @param data The data to archive, as a C-style string (To avoid copies in some cases).
+     */
+    virtual void archive(const char* data) = 0;
 
     /**
      * @brief Activate the archiver.

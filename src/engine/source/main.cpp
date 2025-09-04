@@ -599,9 +599,11 @@ int main(int argc, char* argv[])
 
         // Archiver
         {
-            archiver = std::make_shared<archiver::Archiver>(confManager.get<std::string>(conf::key::ARCHIVER_PATH),
-                                                            confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
+            archiver =
+                std::make_shared<archiver::Archiver>(streamLogger, confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
             LOG_INFO("Archiver initialized.");
+            exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                            { archiver->deactivate(); });
         }
 
         // Create and configure the api endpints
@@ -653,10 +655,13 @@ int main(int argc, char* argv[])
 
         // UDP Servers
         {
-            g_engineLocalServer =
-                std::make_shared<udsrv::Server>([orchestrator, archiver](std::string_view msg)
-                                                { orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg)); },
-                                                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
+            g_engineLocalServer = std::make_shared<udsrv::Server>(
+                [orchestrator, archiver](std::string_view msg)
+                {
+                    archiver->archive(msg.data());
+                    orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg));
+                },
+                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
             g_engineLocalServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
 
             LOG_INFO("Local engine's server initialized and started.");

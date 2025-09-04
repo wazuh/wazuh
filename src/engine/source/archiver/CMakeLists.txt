@@ -1,17 +1,30 @@
+# Defs
+set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
+set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
+
+
+# INTERFACE
 add_library(archiver_iface INTERFACE)
-target_include_directories(archiver_iface INTERFACE
-  ${CMAKE_CURRENT_LIST_DIR}/interface
-)
-target_link_libraries(archiver_iface INTERFACE base)
+target_include_directories(archiver_iface INTERFACE ${IFACE_DIR})
+target_link_libraries(archiver_iface INTERFACE base streamlogger::istreamlogger)
 add_library(archiver::iface ALIAS archiver_iface)
 
-add_library(archiver INTERFACE)
-target_include_directories(archiver INTERFACE
-  ${CMAKE_CURRENT_LIST_DIR}/include
+# Implementation
+add_library(archiver_archive STATIC
+  ${SRC_DIR}/archiver.cpp
 )
-target_link_libraries(archiver INTERFACE
-  archiver_iface
+
+target_include_directories(archiver_archive
+  PUBLIC
+  ${INC_DIR}
 )
+target_link_libraries(archiver_archive
+  PUBLIC
+  archiver::iface
+)
+
+add_library(archiver::archive ALIAS archiver_archive)
 
 if(ENGINE_BUILD_TEST)
 
@@ -36,9 +49,11 @@ target_include_directories(archiver_utest
 )
 target_link_libraries(archiver_utest
     PRIVATE
-    archiver
+    archiver::archive
+    GTest::gmock
     GTest::gtest_main
     archiver::mocks
+    streamlogger::mocks
 )
 gtest_discover_tests(archiver_utest)
 

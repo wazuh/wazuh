@@ -322,7 +322,7 @@ target_link_libraries(wazuh-engine
     udgramsrv::udgramsrv
     api::event
     queue
-    archiver
+    archiver::archive
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
