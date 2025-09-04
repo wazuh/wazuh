@@ -99,18 +99,22 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 ValidateConditionString(requirements.condition);
             }
 
+            nlohmann::json requirementsOutput;
+
             if (requirementsNode.contains("rules") && requirementsNode["rules"].is_array())
             {
                 for (const auto& rule : requirementsNode["rules"])
                 {
                     if (rule.is_string())
                     {
-                        std::string ruleString = rule.get<std::string>();
-                        std::unique_ptr<IRuleEvaluator> RuleEvaluator = RuleEvaluatorFactory::CreateEvaluator(ruleString, m_commandsTimeout, m_commandsEnabled);
+                        const auto ruleString = rule.get<std::string>();
+                        auto ruleEvaluator =
+                            RuleEvaluatorFactory::CreateEvaluator(ruleString, m_commandsTimeout, m_commandsEnabled);
 
-                        if (RuleEvaluator != nullptr)
+                        if (ruleEvaluator)
                         {
-                            requirements.rules.push_back(std::move(RuleEvaluator));
+                            requirements.rules.push_back(std::move(ruleEvaluator));
+                            requirementsOutput["rules"].push_back(ruleString);
                         }
                         else
                         {
@@ -124,8 +128,6 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
 
             if (!requirements.rules.empty() || !requirements.condition.empty())
             {
-                nlohmann::json requirementsOutput;
-
                 if (requirementsNode.contains("title") && requirementsNode["title"].is_string())
                 {
                     requirementsOutput["title"] = requirementsNode["title"];
@@ -134,25 +136,6 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
                 if (!requirements.condition.empty())
                 {
                     requirementsOutput["condition"] = requirements.condition;
-                }
-
-                if (requirementsNode.contains("rules") && requirementsNode["rules"].is_array())
-                {
-                    requirementsOutput["rules"] = nlohmann::json::array();
-
-                    for (const auto& rule : requirementsNode["rules"])
-                    {
-                        if (rule.is_string())
-                        {
-                            // Only include rules that were successfully parsed
-                            const std::string ruleStr = rule.get<std::string>();
-
-                            if (RuleEvaluatorFactory::CreateEvaluator(ruleStr, m_commandsTimeout, m_commandsEnabled))
-                            {
-                                requirementsOutput["rules"].push_back(ruleStr);
-                            }
-                        }
-                    }
                 }
 
                 policiesAndChecks["requirements"] = requirementsOutput;

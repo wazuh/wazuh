@@ -272,7 +272,7 @@ nlohmann::json SCAPolicyLoader::NormalizeData(nlohmann::json data) const
     {
         if (entry.contains("references"))
         {
-            entry["refs"] = entry["references"];
+            entry["refs"] = entry["references"].dump();
             entry.erase("references");
         }
 
@@ -280,6 +280,16 @@ nlohmann::json SCAPolicyLoader::NormalizeData(nlohmann::json data) const
         {
             entry["name"] = entry["title"];
             entry.erase("title");
+        }
+
+        if (entry.contains("rules"))
+        {
+            entry["rules"] = entry["rules"].dump();
+        }
+
+        if (entry.contains("compliance"))
+        {
+            entry["compliance"] = entry["compliance"].dump();
         }
     }
 
