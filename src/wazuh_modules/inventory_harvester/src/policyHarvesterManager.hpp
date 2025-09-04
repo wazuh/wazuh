@@ -20,7 +20,6 @@
 
 constexpr auto UNKNOWN_VALUE {" "};
 constexpr auto STATES_INDEX_NAME_PREFIX {"wazuh-states-"};
-constexpr auto GLOBAL_QUERIES_DISABLED {1};
 
 enum class InventoryType : std::uint8_t
 {
@@ -126,11 +125,6 @@ private:
         if (!newPolicy.contains("clusterEnabled"))
         {
             newPolicy["clusterEnabled"] = false;
-        }
-
-        if (!newPolicy.contains("disabled"))
-        {
-            newPolicy["disabled"] = false;
         }
 
         return newPolicy;
@@ -245,16 +239,6 @@ public:
     bool isIndexerEnabled() const
     {
         return Utils::parseStrToBool(m_configuration.at("indexer").at("enabled"));
-    }
-
-    /**
-     * @brief Get Global Queries status.
-     *
-     * @return true if enabled or false if not.
-     */
-    bool isGlobalQueriesDisabled() const
-    {
-        return m_configuration.at("disabled").get<int32_t>() == GLOBAL_QUERIES_DISABLED;
     }
 
     /**

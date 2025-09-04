@@ -104,11 +104,6 @@ void* wm_inventory_harvester_main(__attribute__((unused))wm_inventory_harvester_
                 cJSON_AddStringToObject(config_json, "clusterNodeName", "undefined");
             }
 
-            // Add disabled option
-            cJSON_AddNumberToObject(config_json,
-                                    "disabled",
-                                    getDefine_Int("global-queries", "disabled", 0, 1));
-
             wm_inventory_harvester_log_config(config_json);
             inventory_harvester_start_ptr(mtLoggingFunctionsWrapper, config_json);
             cJSON_Delete(config_json);
