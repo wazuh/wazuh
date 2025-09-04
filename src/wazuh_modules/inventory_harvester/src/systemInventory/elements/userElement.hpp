@@ -60,8 +60,11 @@ public:
             element.data.host.ip = Utils::splitView(userHostIp, ',');
         }
 
-        // To be consistent with SQLite information default value is false
-        element.data.login.status = data->userLoginStatus();
+        if (auto userLoginStatus = data->userLoginStatus(); userLoginStatus >= 0)
+        {
+            element.data.login.status = userLoginStatus;
+        }
+
         if (auto userLoginTty = data->userLoginTty(); userLoginTty.compare(" ") != 0)
         {
             element.data.login.tty = userLoginTty;
@@ -106,9 +109,14 @@ public:
         {
             element.data.user.uuid = userUuid;
         }
-        // To be consistent with SQLite information default value is false
-        element.data.user.is_hidden = data->userIsHidden();
-        element.data.user.is_remote = data->userIsRemote();
+        if (auto userIsHidden = data->userIsHidden(); userIsHidden >= 0)
+        {
+            element.data.user.is_hidden = userIsHidden;
+        }
+        if (auto userIsRemote = data->userIsRemote(); userIsRemote >= 0)
+        {
+            element.data.user.is_remote = userIsRemote;
+        }
 
         auto userGroupId = data->userGroupId();
         if (userGroupId >= 0)

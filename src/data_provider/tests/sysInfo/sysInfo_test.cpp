@@ -65,8 +65,16 @@ nlohmann::json SysInfo::getGroups() const
 {
     return {};
 }
-
 nlohmann::json SysInfo::getUsers() const
+{
+    return {};
+}
+nlohmann::json SysInfo::getBrowserExtensions() const
+{
+    return {};
+}
+
+nlohmann::json SysInfo::getServices() const
 {
     return {};
 }
@@ -113,6 +121,8 @@ class SysInfoWrapper: public SysInfo
         MOCK_METHOD(nlohmann::json, getHotfixes, (), (const override));
         MOCK_METHOD(nlohmann::json, getGroups, (), (const override));
         MOCK_METHOD(nlohmann::json, getUsers, (), (const override));
+        MOCK_METHOD(nlohmann::json, getServices, (), (const override));
+        MOCK_METHOD(nlohmann::json, getBrowserExtensions, (), (const override));
         MOCK_METHOD(void, getPackages, (std::function<void(nlohmann::json&)>), (const override));
         MOCK_METHOD(void, getProcessesInfo, (std::function<void(nlohmann::json&)>), (const override));
 
@@ -242,6 +252,30 @@ TEST_F(SysInfoTest, groups)
     EXPECT_FALSE(result.empty());
 }
 
+TEST_F(SysInfoTest, users)
+{
+    SysInfoWrapper info;
+    EXPECT_CALL(info, getUsers()).WillOnce(Return("users"));
+    const auto result {info.users()};
+    EXPECT_FALSE(result.empty());
+}
+
+TEST_F(SysInfoTest, services)
+{
+    SysInfoWrapper info;
+    EXPECT_CALL(info, getServices()).WillOnce(Return("services"));
+    const auto result {info.services()};
+    EXPECT_FALSE(result.empty());
+}
+
+TEST_F(SysInfoTest, browserExtensions)
+{
+    SysInfoWrapper info;
+    EXPECT_CALL(info, getBrowserExtensions()).WillOnce(Return("browser_extensions"));
+    const auto result {info.browserExtensions()};
+    EXPECT_FALSE(result.empty());
+}
+
 TEST_F(SysInfoTest, hardware_c_interface)
 {
     cJSON* object = NULL;
@@ -334,6 +368,30 @@ TEST_F(SysInfoTest, groups_c_interface)
     EXPECT_NO_THROW(sysinfo_free_result(&object));
 }
 
+TEST_F(SysInfoTest, users_c_interface)
+{
+    cJSON* object = NULL;
+    EXPECT_EQ(0, sysinfo_users(&object));
+    EXPECT_TRUE(object);
+    EXPECT_NO_THROW(sysinfo_free_result(&object));
+}
+
+TEST_F(SysInfoTest, services_c_interface)
+{
+    cJSON* object = NULL;
+    EXPECT_EQ(0, sysinfo_services(&object));
+    EXPECT_TRUE(object);
+    EXPECT_NO_THROW(sysinfo_free_result(&object));
+}
+
+TEST_F(SysInfoTest, browser_extensions_c_interface)
+{
+    cJSON* object = NULL;
+    EXPECT_EQ(0, sysinfo_browser_extension(&object));
+    EXPECT_TRUE(object);
+    EXPECT_NO_THROW(sysinfo_free_result(&object));
+}
+
 TEST_F(SysInfoTest, c_interfaces_bad_params)
 {
     EXPECT_EQ(-1, sysinfo_hardware(NULL));
@@ -344,12 +402,6 @@ TEST_F(SysInfoTest, c_interfaces_bad_params)
     EXPECT_EQ(-1, sysinfo_hotfixes(NULL));
     EXPECT_EQ(-1, sysinfo_groups(NULL));
     EXPECT_EQ(-1, sysinfo_users(NULL));
-}
-
-TEST_F(SysInfoTest, users_c_interface)
-{
-    cJSON* object = NULL;
-    EXPECT_EQ(0, sysinfo_users(&object));
-    EXPECT_TRUE(object);
-    EXPECT_NO_THROW(sysinfo_free_result(&object));
+    EXPECT_EQ(-1, sysinfo_services(NULL));
+    EXPECT_EQ(-1, sysinfo_browser_extension(NULL));
 }

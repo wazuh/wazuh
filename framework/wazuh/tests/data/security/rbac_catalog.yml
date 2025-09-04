@@ -704,6 +704,8 @@ get_rbac_actions:
           - GET /syscollector/{agent_id}/processes
           - GET /syscollector/{agent_id}/users
           - GET /syscollector/{agent_id}/groups
+          - GET /syscollector/{agent_id}/browser_extensions
+          - GET /syscollector/{agent_id}/services
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:

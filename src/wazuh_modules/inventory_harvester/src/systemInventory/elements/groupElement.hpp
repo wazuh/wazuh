@@ -69,8 +69,10 @@ public:
         {
             element.data.group.uuid = groupUuid;
         }
-        // To be consistent with SQLite information default value is false
-        element.data.group.is_hidden = data->groupIsHidden();
+        if (auto groupIsHidden = data->groupIsHidden(); groupIsHidden >= 0)
+        {
+            element.data.group.is_hidden = groupIsHidden;
+        }
         if (auto groupUsers = data->groupUsers(); !groupUsers.empty() && groupUsers.compare(" ") != 0)
         {
             element.data.group.users = Utils::splitView(groupUsers, ':');

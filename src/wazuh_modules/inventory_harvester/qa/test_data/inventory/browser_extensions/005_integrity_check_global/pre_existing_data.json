@@ -1,0 +1,119 @@
+[
+    {
+        "index_name": "wazuh-states-inventory-browser-extensions-cluster01",
+        "ids": {
+            "001": "001_571fdefef67b73320f74a5f2f5fb69bde4ad9680",
+            "002": "002_571fdefef67b73320f74a5f2f5fb69bde4ad9680"
+        },
+        "data": [
+            {
+                "agent": {
+                    "id": "001",
+                    "name": "centos9",
+                    "version": "v4.14.0"
+                },
+                "browser": {
+                    "name": "chrome",
+                    "profile": {
+                        "name": "Default",
+                        "path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default",
+                        "referenced": true
+                    }
+                },
+                "file": {
+                    "hash": {
+                        "sha256": "a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"
+                    }
+                },
+                "package": {
+                    "autoupdate": true,
+                    "build_version": "1.52.2",
+                    "description": "Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.",
+                    "enabled": true,
+                    "visible": true,
+                    "from_webstore": true,
+                    "id": "cjpalhdlnbpafiamejdnhcphjbkeiagm",
+                    "installed": "2024-03-15T08:03:41.000Z",
+                    "name": "UBlock Origin",
+                    "path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0",
+                    "permissions": [
+                        "activeTab",
+                        "storage",
+                        "tabs",
+                        "webNavigation"
+                    ],
+                    "persistent": true,
+                    "reference": "https://clients2.google.com/service/update2/crx",
+                    "type": "extension",
+                    "vendor": "Raymond Hill",
+                    "version": "1.52.2"
+                },
+                "user": {
+                    "id": "S-1-5-21-1234567890-987654321-1122334455-1001"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            },
+            {
+                "agent": {
+                    "id": "002",
+                    "name": "centos9",
+                    "version": "v4.14.0"
+                },
+                "browser": {
+                    "name": "chrome",
+                    "profile": {
+                        "name": "Default",
+                        "path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default",
+                        "referenced": true
+                    }
+                },
+                "file": {
+                    "hash": {
+                        "sha256": "a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"
+                    }
+                },
+                "package": {
+                    "autoupdate": true,
+                    "build_version": "1.52.2",
+                    "description": "Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.",
+                    "enabled": true,
+                    "visible": true,
+                    "from_webstore": true,
+                    "id": "cjpalhdlnbpafiamejdnhcphjbkeiagm",
+                    "installed": "2024-03-15T08:03:41.000Z",
+                    "name": "UBlock Origin",
+                    "path": "C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0",
+                    "permissions": [
+                        "activeTab",
+                        "storage",
+                        "tabs",
+                        "webNavigation"
+                    ],
+                    "persistent": true,
+                    "reference": "https://clients2.google.com/service/update2/crx",
+                    "type": "extension",
+                    "vendor": "Raymond Hill",
+                    "version": "1.52.2"
+                },
+                "user": {
+                    "id": "S-1-5-21-1234567890-987654321-1122334455-1001"
+                },
+                "wazuh": {
+                    "cluster": {
+                        "name": "cluster01"
+                    },
+                    "schema": {
+                        "version": "1.0"
+                    }
+                }
+            }
+        ]
+    }
+]
