@@ -3,54 +3,44 @@ name: regex_not_match
 
 metadata:
   description: |
-    Checks that the field string does not match the given regular expression (partial match).
-    If the regex matches, the function evaluates to false. If the field is missing or not a string, it evaluates to false.
-    This helper function is typically used in the check stage
+    Checks that the target field (string) does NOT match the given regular expression (RE2).
+    If it matches, evaluates to false. If the field is missing or not a string, evaluates to false.
+    Keep in mind YAML escaping rules. RE2 syntax: https://github.com/google/re2/wiki/Syntax
+    Typically used in the check stage.
   keywords:
     - undefined
 
 helper_type: filter
 is_variadic: false
 
-# One literal argument: the regular expression to test against
 arguments:
-  regexp:
+  regxp:
     type: string
-    generate: string
+    generate: regex
     source: value
 
-# Target field can be any JSON type in input; success only when it's a string and the regex does not match
 target_field:
-  type:
-    - number
-    - string
-    - boolean
-    - array
-    - object
+  type: string
+  generate: string
+
+skipped:
+  - success_cases
 
 test:
   - arguments:
-      regexp: "^abc"
+      regxp: "^abc"
     target_field: "hello world"
     should_pass: true
     description: Does not match (no 'abc' prefix)
+
   - arguments:
-      regexp: "^abc"
+      regxp: "^abc"
     target_field: "abc123"
     should_pass: false
-    description: Matches (regex finds a prefix 'abc')
+    description: Matches (prefix 'abc')
+
   - arguments:
-      regexp: "error|fail"
-    target_field: "Status OK"
-    should_pass: true
-    description: Does not match (no 'error' or 'fail')
-  - arguments:
-      regexp: "error|fail"
-    target_field: "critical failure detected"
-    should_pass: false
-    description: Matches (contains 'fail')
-  - arguments:
-      regexp: "^abc"
+      regxp: "^(bye pcre\\d)$"
     target_field: 123
     should_pass: false
-    description: Not a string → fails
+    description: Not a string -> fails

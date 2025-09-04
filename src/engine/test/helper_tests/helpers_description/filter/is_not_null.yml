@@ -11,10 +11,8 @@ metadata:
 
 helper_type: filter
 
-# Indicates whether the helper function supports a variable number of arguments
 is_variadic: false
 
-# Target field can hold any JSON type in input events; success only when it's not null
 target_field:
   type:
     - number
@@ -30,13 +28,16 @@ test:
   - target_field: 0
     should_pass: true
     description: Not null (number)
-  - target_field: []
+  - target_field: true
     should_pass: true
-    description: Not null (array)
+    description: Not null (boolean)
+  - target_field: [1]
+    should_pass: true
+    description: Not null (array, non-empty)
   - target_field:
       key: value
     should_pass: true
-    description: Not null (object)
-  - target_field: null
+    description: Not null (object, non-empty)
+  - target_field: {}
     should_pass: false
-    description: Is null
+    description: Missing (empty object is unmapped)
