@@ -196,8 +196,11 @@ TEST_F(ScaTest, Setup_WithFakePolicies_LoadsNothing)
 
     // Mock filesystem exists() to call Stop() when called, then return true
     EXPECT_CALL(*mockFileSystem, exists(testing::_))
-        .WillOnce(testing::DoAll(testing::InvokeWithoutArgs([&scm]() { scm.Stop(); }), testing::Return(true)))
-        .WillRepeatedly(testing::Return(true));
+    .WillOnce(testing::DoAll(testing::InvokeWithoutArgs([&scm]()
+    {
+        scm.Stop();
+    }), testing::Return(true)))
+    .WillRepeatedly(testing::Return(true));
 
     // Run() should exit when Stop() is called from the mock
     scm.Run();
