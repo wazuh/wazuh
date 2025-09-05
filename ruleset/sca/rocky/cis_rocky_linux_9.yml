@@ -2470,6 +2470,24 @@ checks:
       - 'f:/proc/sys/net/ipv6/conf/default/accept_redirects -> r:^0$'
 
   # 3.3.6 Ensure secure icmp redirects are not accepted (Automated)
+  - id: 31691
+    title: "Ensure secure icmp redirects are not accepted."
+    description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
+    rationale: "It is still possible for even known gateways to be compromised. Setting net.ipv4.conf.all.secure_redirects and net.ipv4.conf.default.secure_redirects to 0 protects the system from routing table updates by possibly compromised known gateways."
+    remediation: "Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.secure_redirects=0 sysctl -w net.ipv4.conf.default.secure_redirects=0 }"
+    compliance:
+      - cis: ["3.3.6"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1030", "M1042"]
+      - mitre_tactics: ["TA0006", "TA0009"]
+      - mitre_techniques: ["T1557", "T1557.000"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv4/conf/all/secure_redirects -> r:^0$'
+      - 'f:/proc/sys/net/ipv4/conf/default/secure_redirects -> r:^0$'
+
   # 3.3.7 Ensure reverse path filtering is enabled (Automated)
   # 3.3.8 Ensure source routed packets are not accepted (Automated)
   # 3.3.9 Ensure suspicious packets are logged (Automated)
