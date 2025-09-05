@@ -2489,6 +2489,25 @@ checks:
       - 'f:/proc/sys/net/ipv4/conf/default/secure_redirects -> r:^0$'
 
   # 3.3.7 Ensure reverse path filtering is enabled (Automated)
+  - id: 31692
+    title: "Ensure reverse path filtering is enabled."
+    description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
+    rationale: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 is a good way to deter attackers from sending your system bogus packets that cannot be responded to. One instance where this feature breaks down is if asymmetrical routing is employed. This would occur when using dynamic routing protocols (bgp, ospf, etc) on your system. If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
+    impact: "If you are using asymmetrical routing on your system, you will not be able to enable this feature without breaking the routing."
+    remediation: "Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.rp_filter=1 sysctl -w net.ipv4.conf.default.rp_filter=1 }"
+    compliance:
+      - cis: ["3.3.7"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1030", "M1042"]
+      - mitre_tactics: ["TA0006", "TA0040"]
+      - mitre_techniques: ["T1498", "T1498.001"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv4/conf/all/rp_filter -> r:^1$'
+      - 'f:/proc/sys/net/ipv4/conf/default/rp_filter -> r:^1$'
+
   # 3.3.8 Ensure source routed packets are not accepted (Automated)
   # 3.3.9 Ensure suspicious packets are logged (Automated)
   # 3.3.10 Ensure tcp syn cookies is enabled (Automated)
