@@ -42,7 +42,7 @@ target_field:
   type: string
   generate: string
 
-est:
+test:
   - arguments:
       input_field: "2025-09-01T10:30:00-05:00"
       format: "%Y-%m-%dT%H:%M:%S%Ez"
