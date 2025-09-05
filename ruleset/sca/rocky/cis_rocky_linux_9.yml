@@ -2530,6 +2530,24 @@ checks:
       - 'f:/proc/sys/net/ipv6/conf/default/accept_source_route -> r:^0$'
 
   # 3.3.9 Ensure suspicious packets are logged (Automated)
+  - id: 31694
+    title: "Ensure suspicious packets are logged."
+    description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
+    rationale: "Setting net.ipv4.conf.all.log_martians and net.ipv4.conf.default.log_martians to 1 enables this feature. Logging these packets allows an administrator to investigate the possibility that an attacker is sending spoofed packets to their system."
+    remediation: "Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.log_martians=1 sysctl -w net.ipv4.conf.default.log_martians=1 }"
+    compliance:
+      - cis: ["3.3.9"]
+      - cis_csc_v8: ["8.5"]
+      - cis_csc_v7: ["6.2", "6.3"]
+      - mitre_mitigations: []
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - nist_sp_800-53: ["AU-3"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv4/conf/all/log_martians -> r:^1$'
+      - 'f:/proc/sys/net/ipv4/conf/default/log_martians -> r:^1$'
+
   # 3.3.10 Ensure tcp syn cookies is enabled (Automated)
   # 3.3.11 Ensure ipv6 router advertisements are not accepted (Automated)
 
