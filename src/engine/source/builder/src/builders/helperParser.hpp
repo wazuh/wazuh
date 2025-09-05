@@ -376,7 +376,7 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eof = false)
     auto middleSeparator = parsec::positiveLook(argSeparatorParser | parenthCloseParser);
     auto argParserMiddle = getHelperArgParser(middleSeparator) << argSeparatorParser;
     auto argParseEnd = getHelperArgParser(parenthCloseParser);
-    auto argsParser = parsec::fmap<parsec::Values<OpArg>, std::tuple<parsec::Values<OpArg>, OpArg>>(
+    auto oneOrMoreArgsParser = parsec::fmap<parsec::Values<OpArg>, std::tuple<parsec::Values<OpArg>, OpArg>>(
         [](auto&& tuple) -> parsec::Values<OpArg>
         {
             auto&& [args, arg] = tuple;
@@ -384,6 +384,28 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eof = false)
             return args;
         },
         parsec::many(argParserMiddle) & argParseEnd);
+
+    parsec::Parser<parsec::Values<OpArg>> argsParser =
+        [parenthCloseParser, oneOrMoreArgsParser](auto sv, auto pos) -> parsec::Result<parsec::Values<OpArg>>
+    {
+        auto next = pos;
+        while (next < sv.size() && std::isspace(sv[next]))
+        {
+            ++next;
+        }
+
+        if (next < sv.size() && sv[next] == syntax::helper::ARG_END)
+        {
+            auto rc = parenthCloseParser(sv, pos);
+            if (rc.failure())
+            {
+                return parsec::makeError<parsec::Values<OpArg>>("Parenthesis close expected", rc.index());
+            }
+            return parsec::makeSuccess<parsec::Values<OpArg>>({}, rc.index());
+        }
+
+        return oneOrMoreArgsParser(sv, pos);
+    };
 
     parsec::Parser<std::string> eofParser = [](auto sv, auto pos) -> parsec::Result<std::string>
     {
@@ -411,11 +433,6 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eof = false)
             for (auto&& arg : std::get<1>(tuple))
             {
                 helperToken.args.emplace_back(std::move(arg));
-            }
-            if (helperToken.args.size() == 1 && helperToken.args[0]->isValue()
-                && std::static_pointer_cast<builders::Value>(helperToken.args[0])->value().isNull())
-            {
-                helperToken.args.clear();
             }
 
             return helperToken;
