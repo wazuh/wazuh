@@ -8,8 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added system users and groups to the inventory data. ([#30848](https://github.com/wazuh/wazuh/pull/30848))
-- Added browser extensions to WDB and Global Queries. ([#31424](https://github.com/wazuh/wazuh/pull/31424))
-- Added services to WDB and inventory harvester. ([#31468](https://github.com/wazuh/wazuh/pull/31468))
+- Added browser extensions and services to the inventory data. ([#31614](https://github.com/wazuh/wazuh/pull/31614))
 
 #### Fixed
 
