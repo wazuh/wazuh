@@ -299,25 +299,36 @@ def test_get_sha1_in_alert(alert, expected):
 
 
 @pytest.mark.parametrize(
-    'alert, is_private, expected',
+    'alert, is_private, is_loopback, is_reserved, expected',
     [
-        ({}, True, 0),
-        ({'data': {}}, True, 0),
-        ({'data': {'srcip': '8.8.8.8'}}, True, 0),
-        ({'data': {'srcip': '8.8.8.8'}, 'id': '1'}, False, 1),
+        ({}, True, True, True, 0),
+        ({'data': {}}, True, True, True, 0),
+        ({'data': {}}, False, False, False, 0),
+        ({'data': {'srcip': '8.8.8.8'}}, True, True, True, 0),
+        ({'data': {'srcip': '8.8.8.8'}}, True, False, True, 0),
+        ({'data': {'srcip': '8.8.8.8'}, 'id': '1'}, False, False, False, 1),
+        ({'data': {'srcip': '2001:4860:4860::8888'}, 'id': '2'}, False, False, False, 1),
+        ({'data': {'srcip': '::1'}, 'id': '3'}, False, True, False, 0),  # loopback IPv6
+        ({'data': {'srcip': 'fc00::1'}, 'id': '4'}, True, False, False, 0),  # private IPv6
+        ({'data': {'srcip': '100::1'}, 'id': '5'}, False, False, True, 0),  # reserved IPv6
     ],
 )
-def test_get_source_ip_in_alert(alert, is_private, expected):
-    """Test the function that extracts source IP-related information from an alert."""
+def test_get_source_ip_in_alert(alert, is_private, is_loopback, is_reserved, expected):
+    """Test the function that extracts source IP-related information from an alert.
+
+    Private, loopback and reserverd IP Address are not enriched by Maltiverse.
+    """
     example_token = 'example_token'
     testing_maltiverse = maltiverse.Maltiverse(example_token)
 
-    with patch('maltiverse.maltiverse_alert') as alert_mock, patch('ipaddress.IPv4Address') as ip_mock, patch(
+    with patch('maltiverse.maltiverse_alert') as alert_mock, patch('ipaddress.ip_address') as ip_mock, patch(
         'maltiverse.requests.Session.get'
     ) as mock_get:
         alert_mock.return_value = {}
         ip_mock_instance = ip_mock.return_value
         ip_mock_instance.is_private = is_private
+        ip_mock_instance.is_loopback = is_loopback
+        ip_mock_instance.is_reserved = is_reserved
 
         mock_response = mock_get.return_value
         mock_response.json.return_value = response_example
