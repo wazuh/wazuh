@@ -1,0 +1,52 @@
+# Name of the helper function
+name: string_greater_or_equal
+
+metadata:
+  description: |
+    Checks whether the string stored in field is lexicographically greater than or equal
+    to the provided value. If it is less, evaluates to false. On error, evaluates to false.
+    Typically used in the check stage.
+  keywords:
+    - string
+    - comparison
+
+helper_type: filter
+is_variadic: false
+
+arguments:
+  any_string:
+    type: string
+    generate: string
+    source: both
+
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      any_string: "hello"
+    target_field: "hello"
+    should_pass: true
+    description: Equal strings → passes
+
+  - arguments:
+      any_string: "hello"
+    target_field: "world"
+    should_pass: true
+    description: Target >= argument (world >= hello) → passes
+
+  - arguments:
+      any_string: "def"
+    target_field: "abc"
+    should_pass: false
+    description: Target < argument (abc < def) → fails
+
+  - arguments:
+      any_string: "abc"
+    target_field: 123
+    should_pass: false
+    description: Not a string → fails

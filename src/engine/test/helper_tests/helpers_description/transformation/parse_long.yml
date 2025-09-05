@@ -1,0 +1,49 @@
+# Name of the helper function
+name: parse_long
+
+metadata:
+  description: |
+    Evaluates if the content of the input field is a string that can be successfully converted into a 64-bit
+    integer (long). It converts and stores the integer value in `field`.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # avoid random auto-generated successes on arbitrary strings
+
+target_field:
+  type: object
+
+test:
+  - arguments:
+      input_field: "12345"
+    target_field: any_value
+    should_pass: true
+    expected: 12345
+    description: Success long parse (positive integer)
+
+  - arguments:
+      input_field: "-42"
+    target_field: any_value
+    should_pass: true
+    expected: -42
+    description: Success long parse (negative integer)
+
+  - arguments:
+      input_field: 12a3
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure long parse (non-numeric characters)

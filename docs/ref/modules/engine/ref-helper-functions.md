@@ -28,8 +28,11 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [is_ipv6](#is_ipv6)
 - [is_not_array](#is_not_array)
 - [is_not_boolean](#is_not_boolean)
+- [is_not_null](#is_not_null)
+- [is_not_number](#is_not_number)
 - [is_not_object](#is_not_object)
 - [is_not_string](#is_not_string)
+- [is_null](#is_null)
 - [is_number](#is_number)
 - [is_object](#is_object)
 - [is_public_ip](#is_public_ip)
@@ -39,6 +42,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [kvdb_match](#kvdb_match)
 - [kvdb_not_match](#kvdb_not_match)
 - [match_value](#match_value)
+- [not_exists](#not_exists)
 - [number_equal](#number_equal)
 - [number_greater](#number_greater)
 - [number_greater_or_equal](#number_greater_or_equal)
@@ -46,9 +50,11 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [number_less_or_equal](#number_less_or_equal)
 - [number_not_equal](#number_not_equal)
 - [regex_match](#regex_match)
+- [regex_not_match](#regex_not_match)
 - [starts_with](#starts_with)
 - [string_equal](#string_equal)
 - [string_greater](#string_greater)
+- [string_greater_or_equal](#string_greater_or_equal)
 - [string_less](#string_less)
 - [string_less_or_equal](#string_less_or_equal)
 - [string_not_equal](#string_not_equal)
@@ -98,6 +104,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [parse_bool](#parse_bool)
 - [parse_byte](#parse_byte)
 - [parse_csv](#parse_csv)
+- [parse_date](#parse_date)
 - [parse_double](#parse_double)
 - [parse_dsv](#parse_dsv)
 - [parse_file](#parse_file)
@@ -106,6 +113,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [parse_ip](#parse_ip)
 - [parse_json](#parse_json)
 - [parse_key_value](#parse_key_value)
+- [parse_long](#parse_long)
 - [parse_quoted](#parse_quoted)
 - [parse_uri](#parse_uri)
 - [parse_useragent](#parse_useragent)
@@ -2674,6 +2682,274 @@ check:
 
 
 ---
+# is_not_null
+
+## Signature
+
+```
+
+field: is_not_null()
+```
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [number, string, boolean, array, object] | - |
+
+
+## Description
+
+Checks if the value stored in field is not null.
+If it is null, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `undefined` 
+
+## Examples
+
+### Example 1
+
+Not null (string)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_null()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "hello"
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Not null (number)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_null()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was successful*
+
+### Example 3
+
+Not null (array)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_null()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was successful*
+
+### Example 4
+
+Not null (object)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_null()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "key": "value"
+  }
+}
+```
+
+*The check was successful*
+
+### Example 5
+
+Is null
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_null()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was performed with errors*
+
+
+
+---
+# is_not_number
+
+## Signature
+
+```
+
+field: is_not_number()
+```
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [number, string, boolean, array, object] | - |
+
+
+## Description
+
+Checks if the value stored in field is not a number.
+If it is a number, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `undefined` 
+
+## Examples
+
+### Example 1
+
+Not number (string)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_number()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "hello"
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Not number (boolean)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_number()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": true
+}
+```
+
+*The check was successful*
+
+### Example 3
+
+Not number (array)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_number()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was successful*
+
+### Example 4
+
+Not number (object)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_number()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "key": "value"
+  }
+}
+```
+
+*The check was successful*
+
+### Example 5
+
+Is number
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_number()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was performed with errors*
+
+
+
+---
 # is_not_object
 
 ## Signature
@@ -2870,6 +3146,139 @@ check:
 ```json
 {
   "target_field": "hello"
+}
+```
+
+*The check was performed with errors*
+
+
+
+---
+# is_null
+
+## Signature
+
+```
+
+field: is_null()
+```
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [number, string, boolean, array, object] | - |
+
+
+## Description
+
+Checks if the value stored in field is null.
+If it's not null, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `undefined` 
+
+## Examples
+
+### Example 1
+
+Is null
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_null()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was successful*
+
+### Example 2
+
+Not null (string)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_null()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "hello"
+}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Not null (number)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_null()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Not null (array)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_null()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was performed with errors*
+
+### Example 5
+
+Not null (object)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_null()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "key": "value"
+  }
 }
 ```
 
@@ -3856,6 +4265,120 @@ check:
 
 
 ---
+# not_exists
+
+## Signature
+
+```
+
+field: not_exists()
+```
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [number, string, boolean, array, object] | - |
+
+
+## Description
+
+Checks that the field does not exist.
+If the field exists (with any value), the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `undefined` 
+
+## Examples
+
+### Example 1
+
+Field exists (string)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: not_exists()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "hello"
+}
+```
+
+*The check was performed with errors*
+
+### Example 2
+
+Field exists (number)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: not_exists()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Field exists (array)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: not_exists()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Field exists (object)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: not_exists()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "key": "value"
+  }
+}
+```
+
+*The check was performed with errors*
+
+
+
+---
 # number_equal
 
 ## Signature
@@ -4700,6 +5223,150 @@ check:
 
 
 ---
+# regex_not_match
+
+## Signature
+
+```
+
+field: regex_not_match(regexp)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| regexp | string | value | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| [number, string, boolean, array, object] | - |
+
+
+## Description
+
+Checks that the field string does not match the given regular expression (partial match).
+If the regex matches, the function evaluates to false. If the field is missing or not a string, it evaluates to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `undefined` 
+
+## Examples
+
+### Example 1
+
+Does not match (no 'abc' prefix)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: regex_not_match('^abc')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "hello world"
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Matches (regex finds a prefix 'abc')
+
+#### Asset
+
+```yaml
+check:
+  - target_field: regex_not_match('^abc')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "abc123"
+}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Does not match (no 'error' or 'fail')
+
+#### Asset
+
+```yaml
+check:
+  - target_field: regex_not_match('error|fail')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "Status OK"
+}
+```
+
+*The check was successful*
+
+### Example 4
+
+Matches (contains 'fail')
+
+#### Asset
+
+```yaml
+check:
+  - target_field: regex_not_match('error|fail')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "critical failure detected"
+}
+```
+
+*The check was performed with errors*
+
+### Example 5
+
+Not a string → fails
+
+#### Asset
+
+```yaml
+check:
+  - target_field: regex_not_match('^abc')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 123
+}
+```
+
+*The check was performed with errors*
+
+
+
+---
 # starts_with
 
 ## Signature
@@ -4983,6 +5650,131 @@ check:
 ```json
 {
   "target_field": "hello world!"
+}
+```
+
+*The check was performed with errors*
+
+
+
+---
+# string_greater_or_equal
+
+## Signature
+
+```
+
+field: string_greater_or_equal(any_string)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_string | string | value | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Checks whether the string stored in field is lexicographically greater than or equal to the provided value.
+If it is less, the function evaluates to false. In case of error, the function will evaluate to false.
+This helper function is typically used in the check stage
+
+
+## Keywords
+
+- `string` 
+
+- `comparison` 
+
+## Examples
+
+### Example 1
+
+Equal strings → passes
+
+#### Asset
+
+```yaml
+check:
+  - target_field: string_greater_or_equal('hello')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "hello"
+}
+```
+
+*The check was successful*
+
+### Example 2
+
+Target > argument → passes
+
+#### Asset
+
+```yaml
+check:
+  - target_field: string_greater_or_equal('hello')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "world"
+}
+```
+
+*The check was successful*
+
+### Example 3
+
+Target < argument → fails
+
+#### Asset
+
+```yaml
+check:
+  - target_field: string_greater_or_equal('def')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": "abc"
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Not a string → fails
+
+#### Asset
+
+```yaml
+check:
+  - target_field: string_greater_or_equal('abc')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": 123
 }
 ```
 
@@ -11240,6 +12032,148 @@ normalize:
 
 
 ---
+# parse_date
+
+## Signature
+
+```
+
+field: parse_date(input_field, format, locale)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| input_field | string | reference | Any string |
+| format | string | value | Any string |
+| locale | string | value | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Parses a date/time string and normalizes it to a datetime value.
+The first option must be either a strftime-like format (e.g., "%Y-%m-%dT%H:%M:%S%z")
+or a sample date string from which the format can be inferred.
+Optionally, a second parameter "locale" can be provided. If omitted, "C/POSIX" is used.
+
+
+## Keywords
+
+- `parser` 
+
+- `date` 
+
+- `time` 
+
+## Examples
+
+### Example 1
+
+ISO-8601 with timezone (explicit format)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_date($input_field, '%Y-%m-%dT%H:%M:%S%z', '_auto')
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "2025-09-01T10:30:00-05:00",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "2025-09-01T10:30:00-05:00",
+  "target_field": "2025-09-01T15:30:00Z"
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+dd/mm/YYYY HH:MM (explicit format)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_date($input_field, '%d/%m/%Y %H:%M', '_auto')
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "01/09/2025 10:30",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "01/09/2025 10:30",
+  "target_field": "2025-09-01T10:30:00Z"
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Invalid date -> error
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_date($input_field, '%Y-%m-%d %H:%M', '_auto')
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "2025-13-99 99:99",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "2025-13-99 99:99",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
 # parse_double
 
 ## Signature
@@ -12466,6 +13400,140 @@ normalize:
 ```json
 {
   "input_field": "a=b=c",
+  "target_field": "any_value"
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# parse_long
+
+## Signature
+
+```
+
+field: parse_long(input_field, [...])
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| input_field | string | reference | Any string |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Evaluates if the content of the input field is a string that can be successfully converted into a 64-bit
+integer (long). It converts and stores the integer value in `field`.
+
+
+## Keywords
+
+- `parser` 
+
+## Examples
+
+### Example 1
+
+Success long parse (positive integer)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "12345",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "12345",
+  "target_field": 12345
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Success long parse (negative integer)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "-42",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "-42",
+  "target_field": -42
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Failure long parse (non-numeric characters)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: parse_long($input_field)
+```
+
+#### Input Event
+
+```json
+{
+  "input_field": "12a3",
+  "target_field": "any_value"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "input_field": "12a3",
   "target_field": "any_value"
 }
 ```
