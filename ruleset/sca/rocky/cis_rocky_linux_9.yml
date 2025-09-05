@@ -3732,8 +3732,8 @@ checks:
     rules:
       - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* @@\.+'
       - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* action && r:target="'
-      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* @@\.+'
-      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* action && r:target="'
+      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> !r:# && r:^*.* @@\.+'
+      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> !r:# && r:^*.* action && r:target="'
 
   # 6.2.3.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated)
   - id: 31605
