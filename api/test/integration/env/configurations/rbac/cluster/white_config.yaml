@@ -8,6 +8,7 @@
 
 - actions:
   - cluster:restart
+  - cluster:ruleset_reload
   resources:
   - node:id:worker2
   effect: allow
