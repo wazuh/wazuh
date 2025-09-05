@@ -2549,6 +2549,23 @@ checks:
       - 'f:/proc/sys/net/ipv4/conf/default/log_martians -> r:^1$'
 
   # 3.3.10 Ensure tcp syn cookies is enabled (Automated)
+  - id: 31695
+    title: "Ensure tcp syn cookies is enabled."
+    description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN/ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
+    rationale: "Attackers use SYN flood attacks to perform a denial of service attacked on a system by sending many SYN packets without completing the three way handshake. This will quickly use up slots in the kernel's half-open connection queue and prevent legitimate connections from succeeding. Setting net.ipv4.tcp_syncookies to 1 enables SYN cookies, allowing the system to keep accepting valid connections, even if under a denial of service attack."
+    remediation: "Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.tcp_syncookies=1 }"
+    compliance:
+      - cis: ["3.3.10"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1037"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_techniques: ["T1499", "T1499.001"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv4/tcp_syncookies -> r:^1$'
+
   # 3.3.11 Ensure ipv6 router advertisements are not accepted (Automated)
 
   ###############################################
