@@ -2216,13 +2216,13 @@ checks:
       - 'c:stat -L /etc/cron.d -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)$'
 
   # 2.4.1.8 Ensure crontab is restricted to authorized users (Automated)
-  - id: 31500
+  - id: 31680
     title: "Ensure crontab is restricted to authorized users"
     description: "crontab is the program used to install, deinstall, or list the tables used to drive the cron daemon. Each user can have their own crontab, and though these are files in /var/spool/cron/crontabs, they are not intended to be edited directly. If the /etc/cron.allow file exists, then you must be listed (one user per line) therein in order to be allowed to use this command. If the /etc/cron.allow file does not exist but the /etc/cron.deny file does exist, then you must not be listed in the /etc/cron.deny file in order to use this command. If neither of these files exists, then depending on site-dependent configuration parameters, only the super user will be allowed to use this command, or all users will be able to use this command. If both files exist then /etc/cron.allow takes precedence. Which means that /etc/cron.deny is not considered and your user must be listed in /etc/cron.allow in order to be able to use the crontab. Regardless of the existence of any of these files, the root administrative user is always allowed to setup a crontab. The files /etc/cron.allow and /etc/cron.deny, if they exist, must be either world-readable, or readable by group crontab. If they are not, then cron will deny access to all users until the permissions are fixed. There is one file for each user's crontab under the /var/spool/cron/crontabs directory. Users are not allowed to edit the files under that directory directly to ensure that only users allowed by the system to run periodic tasks can add them, and only syntactically correct crontabs will be written there. This is enforced by having the directory writable only by the crontab group and configuring crontab command with the setgid bid set for that specific group."
     rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
     remediation: "- IF - cron is installed on the system: Run the following script to: Create /etc/cron.allow if it doesn't exist. Change owner to user root. Change group owner to group root. Change mode to 640 or more restrictive"
     compliance:
-      - cis: ["2.4.1.7"]
+      - cis: ["2.4.1.8"]
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - mitre_mitigations: ["M1018"]
