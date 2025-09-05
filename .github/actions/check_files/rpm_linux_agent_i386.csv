@@ -72,7 +72,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/bin/wazuh-execd,root,root,750,file,-rwxr-x---,745284,0.1
 /var/ossec/bin/wazuh-logcollector,root,root,750,file,-rwxr-x---,821964,0.1
 /var/ossec/bin/wazuh-control,root,root,750,file,-rwxr-x---,7146,0.1
-/var/ossec/bin/manage_agents,root,root,750,file,-rwxr-x---,244212,0.1
+/var/ossec/bin/manage_agents,root,root,750,file,-rwxr-x---,219640,0.1
 /var/ossec/bin/wazuh-modulesd,root,root,750,file,-rwxr-x---,711912,0.1
 /var/ossec/bin/wazuh-agentd,root,root,750,file,-rwxr-x---,789888,0.1
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,174668,0.1
@@ -86,7 +86,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/modern.bpf.o,root,wazuh,750,file,-rwxr-x---,904752,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,1984136,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,562192,0.1
-/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,461824,0.1
+/var/ossec/lib/libsca.so,root,wazuh,750,file,-rwxr-x---,514116,0.1
 /var/ossec/lib/libgcc_s.so.1,root,wazuh,750,file,-rwxr-x---,111408,0.1
 /var/ossec/etc/internal_options.conf,root,wazuh,640,file,-rw-r-----,12008,0.1
 /var/ossec/etc/wpk_root.pem,root,wazuh,640,file,-rw-r-----,1367,0.1
