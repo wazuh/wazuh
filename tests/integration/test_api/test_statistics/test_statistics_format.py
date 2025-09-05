@@ -137,7 +137,7 @@ def test_cluster_statistics_format(test_configuration, test_metadata, load_wazuh
     endpoint = test_metadata['endpoint']
     statistics_schema_path = Path(test1_statistics_template_path, f"{endpoint}_template.json")
     params = f"?daemons_list={endpoint}"
-    url = get_base_url() + '/cluster/wazuh/daemons/stats' + params
+    url = get_base_url() + '/cluster/master-node/daemons/stats' + params
     authentication_headers, _ = login()
 
     # Get daemon statistics

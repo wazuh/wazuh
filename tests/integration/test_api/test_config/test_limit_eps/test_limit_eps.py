@@ -141,7 +141,7 @@ def test_limit_eps(test_configuration, test_metadata, set_wazuh_configuration, a
     authentication_headers['Content-Type'] = 'application/octet-stream'
 
     # Makes an API request for uploading the new configuration
-    response = requests.put(url + '/cluster/wazuh/configuration', headers=authentication_headers, verify=False,
+    response = requests.put(url + '/cluster/master-node/configuration', headers=authentication_headers, verify=False,
                             timeout=10, data=request_body)
 
     # Parses the response

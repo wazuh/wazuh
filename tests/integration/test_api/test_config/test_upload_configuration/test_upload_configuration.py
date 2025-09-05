@@ -138,7 +138,7 @@ def test_upload_configuration(test_configuration, test_metadata, backup_wazuh_co
     authentication_headers, _ = login()
     authentication_headers['Content-Type'] = 'application/octet-stream'
 
-    response = requests.put(url + '/cluster/wazuh/configuration', headers=authentication_headers, verify=False,
+    response = requests.put(url + '/cluster/master-node/configuration', headers=authentication_headers, verify=False,
                             timeout=10, data=body)
     assert response.status_code == expected_code, f"Expected status code {expected_code}, but " \
                                                   f"{response.status_code} was returned: {response.json()}"
