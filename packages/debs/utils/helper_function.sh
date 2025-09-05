@@ -28,8 +28,10 @@ setup_build(){
     sed -i "s:RELEASE:${REVISION}:g" ${sources_dir}/debian/changelog
     sed -i "s:export JOBS=.*:export JOBS=${JOBS}:g" ${sources_dir}/debian/rules
     sed -i "s:export DEBUG_ENABLED=.*:export DEBUG_ENABLED=${debug}:g" ${sources_dir}/debian/rules
-    sed -i "s#export PATH=.*#export PATH=/usr/local/gcc-5.5.0/bin:${PATH}#g" ${sources_dir}/debian/rules
+    sed -i "s#export PATH=.*#export PATH=${PATH}#g" ${sources_dir}/debian/rules
     sed -i "s#export LD_LIBRARY_PATH=.*#export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}#g" ${sources_dir}/debian/rules
+    sed -i "s#export CC.*#export CC=${CC}#g" ${sources_dir}/debian/rules
+    sed -i "s#export CXX.*#export CXX=${CXX}#g" ${sources_dir}/debian/rules
     sed -i "s:export INSTALLATION_DIR=.*:export INSTALLATION_DIR=${INSTALLATION_PATH}:g" ${sources_dir}/debian/rules
     sed -i "s:DIR=\"/var/ossec\":DIR=\"${INSTALLATION_PATH}\":g" ${sources_dir}/debian/{preinst,postinst,prerm,postrm}
 }

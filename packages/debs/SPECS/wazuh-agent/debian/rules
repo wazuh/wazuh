@@ -25,6 +25,8 @@ export JOBS="5"
 export DEBUG_ENABLED="no"
 export PATH="${PATH}"
 export LD_LIBRARY_PATH=""
+export CC=""
+export CXX=""
 
 %:
 	dh $@
