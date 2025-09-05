@@ -2413,6 +2413,23 @@ checks:
       - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> r:^0$'
 
   # 3.3.3 Ensure bogus icmp responses are ignored (Automated)
+  - id: 31688
+    title: "Ensure bogus icmp responses are ignored."
+    description: "Setting net.ipv4.icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
+    rationale: "Some routers (and some attackers) will send responses that violate RFC-1122 and attempt to fill up a log file system with many useless error messages."
+    remediation: "Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.icmp_ignore_bogus_error_responses=1 }"
+    compliance:
+      - cis: ["3.3.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1053"]
+      - mitre_tactics: ["TA0040"]
+      - mitre_techniques: ["T1562", "T1562.006"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv4/icmp_ignore_bogus_error_responses -> r:^1$'
+
   # 3.3.4 Ensure broadcast icmp requests are ignored (Automated)
   # 3.3.5 Ensure icmp redirects are not accepted (Automated)
   # 3.3.6 Ensure secure icmp redirects are not accepted (Automated)
