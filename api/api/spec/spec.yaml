@@ -224,6 +224,14 @@ x-rbac-catalog:
         actions: ['cluster:read']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
+    'cluster:ruleset_reload':
+      description: "Reload the Wazuh's cluster nodes ruleset"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/node:id'
+      example:
+        actions: [ 'cluster:ruleset_reload' ]
+        resources: ['node:id:worker1', 'node:id:worker3']
+        effect: "deny"
     'cluster:update_config':
       description: "Change the Wazuh's cluster node configuration"
       resources:
@@ -263,6 +271,14 @@ x-rbac-catalog:
       example:
         actions: ['manager:read']
         resources: ['*:*:*']
+        effect: "allow"
+    'manager:ruleset_reload':
+      description: "Reload the Wazuh manager ruleset"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'manager:ruleset_reload' ]
+        resources: [ '*:*:*' ]
         effect: "allow"
     'manager:update_config':
       description: "Update current Wazuh manager configuration"
@@ -769,6 +785,19 @@ components:
               - type: string
               - type: object
 
+    NodeAnalysisdReload:
+      type: object
+      required:
+        - name
+        - msg
+      properties:
+        name:
+          type: string
+          description: "Node name"
+        msg:
+          type: string
+          description: "Reload operation message"
+
     AllItemsResponse:
       type: object
       required:
@@ -885,6 +914,18 @@ components:
               items:
                 $ref: '#/components/schemas/NodeID'
         - $ref: '#/components/schemas/AllItemsResponse'
+    
+    AllItemsResponseNodeAnalysisdReload:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              items:
+                $ref: '#/components/schemas/NodeAnalysisdReload'
 
     AllItemsResponseNodeHealthcheck:
       allOf:
@@ -3896,6 +3937,7 @@ components:
           type: string
         uuid:
           type: string
+          nullable: true
 
     WazuhManagerConfiguration:
       type: object
@@ -11932,6 +11974,55 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
+  /cluster/analysisd/reload:
+    put:
+      tags:
+        - Cluster
+      summary: "Reloads the analysisd process for the nodes"
+      description: "Reloads the analysisd process on all nodes in the cluster, or on a specified list of nodes"
+      operationId: api.controllers.cluster_controller.put_reload_analysisd
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:read'
+        - $ref: '#/x-rbac-catalog/actions/cluster:ruleset_reload'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/nodes_list'
+      responses:
+        '200':
+          description: "List of affected nodes and return messages"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNodeAnalysisdReload'
+                example:
+                  data:
+                    affected_items:
+                      - name: "manager"
+                        msg: "Ruleset reload request sent successfully."
+                      - name: "worker"
+                        msg: "Ruleset reload request sent successfully."
+                    total_affected_items: 2
+                    total_failed_items: 0
+                    failed_items: [ ]
+                  message: "Reload request sent to all specified nodes"
+                  error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
   /cluster/configuration/validation:
     get:
       tags:
@@ -13470,6 +13561,52 @@ paths:
                   failed_items: []
                 message: "API configuration was successfully read"
                 error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /manager/analysisd/reload:
+    put:
+      tags:
+        - Manager
+      summary: "Reloads the analysisd process for the master or local node"
+      description: "Reloads the analysisd process on the master or local node"
+      operationId: api.controllers.manager_controller.put_reload_analysisd
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/manager:read'
+        - $ref: '#/x-rbac-catalog/actions/manager:ruleset_reload'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "List of affected nodes and return messages"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseNodeAnalysisdReload'
+                example:
+                  data:
+                    affected_items:
+                      - name: "manager"
+                        msg: "Ruleset reload request sent successfully."
+                    total_affected_items: 1
+                    total_failed_items: 0
+                    failed_items: []
+                  message: "Reload request sent to all specified nodes"
+                  error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

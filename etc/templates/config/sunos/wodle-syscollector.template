@@ -7,7 +7,7 @@
     <os>yes</os>
     <network>yes</network>
     <packages>yes</packages>
-    <ports all="no">no</ports>
+    <ports all="yes">no</ports>
     <processes>no</processes>
     <users>no</users>
     <groups>no</groups>

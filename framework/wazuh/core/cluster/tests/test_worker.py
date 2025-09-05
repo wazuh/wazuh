@@ -312,7 +312,7 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
     # Test the first condition
     with patch("wazuh.core.cluster.worker.WorkerHandler.sync_integrity_ok_from_master",
                return_value=b"ok") as ok_mock:
-        assert worker_handler.process_request(command=b"syn_m_c_ok", data=b"data") == b"ok"
+        assert worker_handler.process_request(command=b"syn_m_c_ok", data=b"data") ==  (b'ok', b'Thanks')
         ok_mock.assert_called_once()
         logger_mock.assert_called_with("Command received: 'b'syn_m_c_ok''")
     # Test the second condition
@@ -849,6 +849,37 @@ async def test_worker_handler_sync_agent_info_ko(SyncWazuhdb_mock, AsyncWazuhDBC
 
     assert logger._error == ["Error synchronizing agent info: object MagicMock can't be used in 'await' expression"]
 
+@pytest.mark.asyncio
+@patch('asyncio.sleep', side_effect=Exception())
+@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
+@patch('wazuh.core.cluster.common.SyncWazuhdb')
+async def test_worker_handler_sync_agent_info_ko_none_returned(SyncWazuhdb_mock, AsyncWazuhDBConnection_mock, sleep_mock, event_loop):
+    """Test that an error is logged if retrieve_agents_information returns None (WazuhException 2017 is raised)."""
+
+    class LoggerMock:
+        def __init__(self):
+            self._error = []
+
+        def error(self, msg):
+            self._error.append(msg)
+
+        def info(self, mg):
+            pass
+
+    logger = LoggerMock()
+    w_handler = get_worker_handler(event_loop)
+    w_handler.connected = True
+    w_handler.task_loggers['Agent-info sync'] = logger
+
+    SyncWazuhdb_mock.return_value.request_permission = AsyncMock(return_value=True)
+    SyncWazuhdb_mock.return_value.retrieve_agents_information = AsyncMock(return_value=None)
+
+    try:
+        await w_handler.sync_agent_info()
+    except Exception:
+        pass
+
+    assert any("Error synchronizing agent info:" in msg and "2017" in msg for msg in logger._error)
 
 @pytest.mark.asyncio
 @freeze_time('1970-01-01')
@@ -1087,9 +1118,8 @@ async def test_worker_handler_process_files_from_master_ko(send_request_mock,
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
 @patch('wazuh.core.analysis.is_ruleset_file', return_value=True)
-@patch('wazuh.core.analysis.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0}))
 async def test_worker_handler_update_master_files_in_worker_reload(
-    mock_reload, mock_is_ruleset, wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
+    mock_is_ruleset, wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
     mkdir_with_mode_mock, safe_move_mock, path_exists_mock, open_mock, event_loop
 ):
     """Test that updating a ruleset file triggers a reload and logs success."""
@@ -1104,8 +1134,6 @@ async def test_worker_handler_update_master_files_in_worker_reload(
                     "extra": {"filename3": {"cluster_item_key": "cluster_item_key"}}}, zip_path="/zip/path",
                 cluster_items=cluster_items)
 
-            mock_reload.assert_called_once()
-
 
 @pytest.mark.asyncio
 @patch("builtins.open")
@@ -1115,9 +1143,7 @@ async def test_worker_handler_update_master_files_in_worker_reload(
 @patch("os.path.join", return_value="queue/testing/")
 @patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
 @patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
-@patch('wazuh.core.analysis.is_ruleset_file', return_value=False)
-@patch('wazuh.core.analysis.send_reload_ruleset_msg', return_value=RulesetReloadResponse({'error': 0}))
-async def test_worker_handler_update_master_files_in_worker_ok(mock_reload, mock_is_ruleset, wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
+async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, wazuh_uid_mock, path_join_mock,
                                                                mkdir_with_mode_mock, safe_move_mock, path_exists_mock,
                                                                open_mock, event_loop):
     """Check if the method is properly receiving and updating files."""

@@ -8,6 +8,7 @@ import logging
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
+import wazuh.analysis as analysis
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
@@ -484,6 +485,35 @@ async def put_restart(pretty: bool = False) -> ConnexionResponse:
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty, status_code=202)
+
+async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Reload the analysisd process on the master or local node.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {}
+
+    dapi = DistributedAPI(f=analysis.reload_ruleset,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
 
 
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:

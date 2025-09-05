@@ -108,6 +108,7 @@ All notable changes to this project will be documented in this file.
 - Added capability to re-index CVEs if documents have changed in Vulnerability detector. ([#29916](https://github.com/wazuh/wazuh/pull/29916))
 - Improved exception handling in `run_local` SDK funcition. ([#30851](https://github.com/wazuh/wazuh/pull/30851))
 - Improved Authd connection management using epoll for better handling of concurrent agent registration requests. ([#29135](https://github.com/wazuh/wazuh/pull/29135))
+- Added single writer buffer manager instance for each indexer connector instances. ([#31114](https://github.com/wazuh/wazuh/pull/31114))
 
 ### Agent
 
@@ -150,7 +151,7 @@ All notable changes to this project will be documented in this file.
 
 - Added the server uuid to the /manager/info endpoint. ([#29524](https://github.com/wazuh/wazuh/pull/29524))
 - Added /agents/summary endpoint. ([#29589](https://github.com/wazuh/wazuh/pull/29589))
-- Added support for hot ruleset reload via API. ([#29954](https://github.com/wazuh/wazuh/pull/29954))
+- Added ruleset reload endpoints. ([#31459](https://github.com/wazuh/wazuh/pull/31459))
 
 #### Fixed
 
