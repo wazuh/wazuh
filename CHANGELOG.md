@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - Added system users and groups to the inventory data. ([#30848](https://github.com/wazuh/wazuh/pull/30848))
+- Added browser extensions to WDB and Global Queries. ([#31424](https://github.com/wazuh/wazuh/pull/31424))
+- Added services to WDB and inventory harvester. ([#31468](https://github.com/wazuh/wazuh/pull/31468))
 
 #### Fixed
 
@@ -36,16 +38,23 @@ All notable changes to this project will be documented in this file.
 
 - Fixed errors with Azure Graph event fields. ([#30831](https://github.com/wazuh/wazuh/pull/30831))
 - Added the missing "provider" field to the whodata section in syscheckd JSON configuration. ([#30877](https://github.com/wazuh/wazuh/pull/30877))
+- Fixed journald disabled filters when both blocks have no filters. ([#31700](https://github.com/wazuh/wazuh/pull/31700))
+
+#### Changed
+
+- Improved rootkit error messages to warnings due to future deprecation. ([#31640](https://github.com/wazuh/wazuh/pull/31640))
 
 ### RESTful API
 
 #### Added
 
 - Added syscollector users and groups endpoints. ([#30913](https://github.com/wazuh/wazuh/pull/30913))
+- Added syscollector services and browser_extension endpoints. ([#31513](https://github.com/wazuh/wazuh/pull/31513))
 
 #### Fixed
 
 - Fixed secure headers. ([#31046](https://github.com/wazuh/wazuh/pull/31046))
+- Fixed the display of sensitive information for non-privileged users. ([#31315](https://github.com/wazuh/wazuh/pull/31315))
 
 ### Ruleset
 
