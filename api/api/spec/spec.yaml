@@ -72,6 +72,8 @@ x-rbac-catalog:
       description: "Reference agent groups via group ID (i.e. group:id:default)"
     'node:id':
       description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
+    'content:file':
+      description: "Reference content file via its path (i.e. decoder:file:asset_name)"
     'decoder:file':
       description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
     'list:file':
@@ -172,6 +174,38 @@ x-rbac-catalog:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: ['agent:uninstall']
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'content:status':
+      description: "Access content status"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'content:status' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'content:validate':
+      description: "Validate content information"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'content:validate' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'content:delete':
+      description: "Delete content"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/content:file'
+      example:
+        actions: [ 'content:delete' ]
+        resources: [ 'content:file:*' ]
+        effect: "allow"
+    'content:reload':
+      description: "Reload contents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'content:reload' ]
         resources: [ '*:*:*' ]
         effect: "allow"
     'group:create':
@@ -3970,6 +4004,58 @@ components:
     CDBListFile:
       $ref: '#/components/schemas/RulesetFile'
 
+    # Content models
+    ContentName:
+      type: object
+      required:
+        - content_name
+      properties:
+        asset_name:
+          type: string
+          description: "Content name"
+
+    ContentStatus:
+      type: object
+      required:
+        - offset
+        - lastUpdated
+      properties:
+        offset:
+          type: integer
+          format: int32
+        lastUpdated:
+          type: string
+          format: timeframe
+    
+    ContentData:
+      type: object
+      required:
+        - type
+        - payload
+      properties:
+        type:
+          type: string
+          format: name
+        payload:
+          type: string
+
+    ReloadChecksum:
+      type: object
+      required:
+        - checksum
+      properties:
+        checksum:
+          type: string
+          format: alphanumeric
+
+    LogPayload:
+      type: object
+      required:
+        - payload
+      properties:
+        payload:
+          type: string
+
     # Overview models
     OverviewAgents:
       type: object
@@ -7724,6 +7810,188 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /v1/content:
+    delete:
+      tags:
+        - Content
+      summary: "Delete content"
+      description: "Delete the specified content"
+      operationId: api.controllers.content_controller.delete_content
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/content:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentName'
+      responses:
+        '200':
+          description: "Delete asset"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "Asset 'asset_name' deleted"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /v1/content/status:
+    get:
+      tags:
+        - Content
+      summary: "Read content status"
+      description: "Read content status"
+      operationId: api.controllers.content_controller.get_content_status
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/content:status'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Get content status"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentStatus'
+              example:
+                offset: 1234
+                lastUpdated: datetime
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /v1/content/reload:
+    put:
+      tags:
+        - Content
+      summary: "Reload contents"
+      description: "Reload custom policy, including checksum retrieval"
+      operationId: api.controllers.content_controller.reload_contents
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/content:reload'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Reload checksum"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReloadChecksum'
+              example:
+                checksum: "sha256"
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+          
+
+  /v1/content/validation:
+    put:
+      tags:
+        - Content
+      summary: "Validate asset"
+      description: "Validatee the syntax of the content"
+      operationId: api.controllers.content_controller.validate_content
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/content:validate'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentData'
+      responses:
+        '200':
+          description: "Validation response"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "No errors where found"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /v1/log/test:
+    put:
+      tags:
+        - Logtest
+      summary: "Log test"
+      description: "Test a log against the rules"
+      operationId: api.controllers.content_controller.log_test
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/content:validate'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogPayload'
+      responses:
+        '200':
+          description: "Log test results"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "Text with the log string"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+
 
   /groups:
     delete:

@@ -218,6 +218,23 @@ default_policies:
           - '*:*:*'
         effect: allow
 
+  content_all:
+    description: Allow reading all content files in the system.
+    policies:
+      files:
+        actions:
+          - content:delelete
+        resources:
+          - content:file:*
+      resourceless:
+        actions:
+          - content:read
+          - content:reload
+          - content:validate
+        resources:
+          - '*:*:*'
+        effect: allow
+
   sca_read:
     description: Allow read agent's sca information.
     policies:
