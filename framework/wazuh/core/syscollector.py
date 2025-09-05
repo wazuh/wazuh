@@ -21,6 +21,8 @@ class Type(Enum):
     HOTFIXES = 'hotfixes'
     USERS = 'users'
     GROUPS = 'groups'
+    BROWSER_EXTENSIONS = 'browser_extensions'
+    SERVICES = 'services'
 
 
 def get_valid_fields(element_type: Type, agent_id: str = None) -> dict:
@@ -104,6 +106,52 @@ def get_valid_fields(element_type: Type, agent_id: str = None) -> dict:
                                      'group.id_signed': 'group_id_signed', 'group.uuid': 'group_uuid',
                                      'group.is_hidden': 'group_is_hidden', 'group.users': 'group_users',
                                      'checksum': 'checksum'}),
+        Type.BROWSER_EXTENSIONS: ('sys_browser_extensions', {'scan.id': 'scan_id', 'scan.time': 'scan_time',
+                                                             'browser.name': 'browser_name', 'user.id': 'user_id',
+                                                             'package.name': 'package_name', 'package.id': 'package_id',
+                                                             'package.version': 'package_version',
+                                                             'package.description': 'package_description',
+                                                             'package.vendor': 'package_vendor',
+                                                             'package.build_version': 'package_build_version',
+                                                             'package.path': 'package_path',
+                                                             'browser.profile_name': 'browser_profile_name',
+                                                             'browser.profile_path': 'browser_profile_path',
+                                                             'package.reference': 'package_reference',
+                                                             'package.permissions': 'package_permissions',
+                                                             'package.type': 'package_type',
+                                                             'package.enabled': 'package_enabled',
+                                                             'package.autoupdate': 'package_autoupdate',
+                                                             'package.visible': 'package_visible',
+                                                             'package.persistent': 'package_persistent',
+                                                             'package.from_webstore': 'package_from_webstore',
+                                                             'browser.profile_referenced': 'browser_profile_referenced',
+                                                             'package.installed': 'package_installed',
+                                                             'file_hash.sha256': 'file_hash_sha256',
+                                                             'checksum': 'checksum'}),
+        Type.SERVICES: ('sys_services', {'scan.id': 'scan_id', 'scan.time': 'scan_time', 'service.id': 'service_id',
+                                         'service.name': 'service_name', 'service.description': 'service_description',
+                                         'service.type': 'service_type', 'service.state': 'service_state',
+                                         'service.sub_state': 'service_sub_state', 'service.enabled': 'service_enabled',
+                                         'service.start_type': 'service_start_type',
+                                         'service.restart': 'service_restart', 'service.frequency': 'service_frequency',
+                                         'service.starts_on_mount': 'service_starts_on_mount',
+                                         'service.starts_on_path_modified': 'service_starts_on_path_modified',
+                                         'service.starts_on_not_empty_directory': 'service_starts_on_not_empty_directory',
+                                         'service.inetd_compatibility': 'service_inetd_compatibility',
+                                         'process.pid': 'process_pid', 'process.executable': 'process_executable',
+                                         'process.args': 'process_args', 'process.user_name': 'process_user_name',
+                                         'process.group_name': 'process_group_name',
+                                         'process.working_directory': 'process_working_directory',
+                                         'process.root_directory': 'process_root_directory', 'file.path': 'file_path',
+                                         'service.address': 'service_address', 'log_file.path': 'log_file_path',
+                                         'error_log_file.path': 'error_log_file_path',
+                                         'service.exit_code': 'service_exit_code',
+                                         'service.win32_exit_code': 'service_win32_exit_code',
+                                         'service.following': 'service_following',
+                                         'service.object_path': 'service_object_path',
+                                         'service.target_ephemeral_id': 'service_target_ephemeral_id',
+                                         'service.target_type': 'service_target_type',
+                                         'service.target_address': 'service_target_address', 'checksum': 'checksum'})
     }
 
     if element_type == Type.OS:

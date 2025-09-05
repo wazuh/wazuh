@@ -747,3 +747,115 @@ async def get_group_info(agent_id: str, pretty: bool = False, wait_for_complete:
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
+
+async def get_browser_extensions_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                          offset: int = 0, limit: int = None, sort: str = None, search: str = None, select: str = None,
+                          q: str = None, distinct: bool = False) -> ConnexionResponse:
+    """Get information about an agent's browser extensions.
+
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in ascending
+        or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return.
+    q : str
+        Query to filter results by.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'agent_list': [agent_id],
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'element_type': syscollector.Type.BROWSER_EXTENSIONS.value,
+                'q': q,
+                'distinct': distinct}
+
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+async def get_services_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                          offset: int = 0, limit: int = None, sort: str = None, search: str = None, select: str = None,
+                          q: str = None, distinct: bool = False) -> ConnexionResponse:
+    """Get information about an agent's services.
+
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in ascending
+        or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return.
+    q : str
+        Query to filter results by.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'agent_list': [agent_id],
+                'offset': offset,
+                'limit': limit,
+                'select': select,
+                'sort': parse_api_param(sort, 'sort'),
+                'search': parse_api_param(search, 'search'),
+                'element_type': syscollector.Type.SERVICES.value,
+                'q': q,
+                'distinct': distinct}
+
+    dapi = DistributedAPI(f=syscollector.get_item_agent,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)

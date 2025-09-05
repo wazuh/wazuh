@@ -145,6 +145,68 @@ namespace Utils
         }
         return path.substr(pos + 1);
     }
+
+    static std::string getFileExtension(const std::string& path)
+    {
+        const std::string fileName = getFilename(path);
+        return "." + split(fileName, '.').back();
+    }
+
+    static std::string getParentPath(const std::string& path)
+    {
+        char baseCopy[PATH_MAX] = {'\0'};
+        strncpy(baseCopy, path.c_str(), sizeof(baseCopy) - 1);
+
+        std::string parentDir(dirname(baseCopy));
+        return parentDir;
+    }
+
+    static std::string joinPaths(const std::string& base, const std::string& relative)
+    {
+        if (base.empty()) return relative;
+        if (relative.empty()) return base;
+
+        if (base.back() == '/' && relative.front() == '/')
+        {
+            return base + relative.substr(1); // Remove extra slash
+        }
+        else if (base.back() != '/' && relative.front() != '/')
+        {
+            return base + "/" + relative; // Add missing slash
+        }
+        else
+        {
+            return base + relative; // Already properly separated
+        }
+    }
+
+    static bool isAbsolutePath(const std::string& path)
+    {
+        if (path.empty()) return false;
+
+    #ifdef _WIN32
+        // Absolute if starts with drive letter (e.g., C:\) or UNC path (\\server\share)
+        return (path.size() >= 2 && std::isalpha(path[0]) && path[1] == ':') ||
+              (path.size() >= 2 && path[0] == '\\' && path[1] == '\\');
+    #else
+        // Unix absolute path starts with '/'
+        return path[0] == '/';
+    #endif
+    }
+
+    static std::string removePrefix(const std::string& fullPath, const std::string& prefix)
+    {
+        if (fullPath.compare(0, prefix.size(), prefix) == 0)
+        {
+            std::string result = fullPath.substr(prefix.size());
+            if (!result.empty() && result[0] == '/')
+            {
+                result.erase(0, 1); // remove leading slash
+            }
+            return result;
+        }
+        return fullPath; // prefix not found, return original
+    }
 }
 
 #pragma GCC diagnostic pop

@@ -3,5 +3,6 @@
 |--------------------------|-----------|--------|------------------------------|
 | manager:read             | *         | *      |                              |
 | manager:restart          | *         | *      |                              |
+| manager:ruleset_reload   | *         | *      |                              |
 | manager:update_config    | *         |        | *                            |
 | manager:read_api_config  | *         |        | *                            |
