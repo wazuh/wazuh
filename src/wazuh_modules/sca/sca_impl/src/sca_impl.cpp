@@ -125,7 +125,7 @@ void SecurityConfigurationAssessment::Run()
                 return;
             }
 
-            policy->Run(m_scanInterval, m_scanOnStart, reportCheckResult, nullptr);
+            policy->Run(reportCheckResult);
         }
 
         firstScan = false;

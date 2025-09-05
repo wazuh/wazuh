@@ -115,9 +115,7 @@ TEST_F(ScaTest, SCAPolicyRunAndStop)
         reported.emplace_back(r.policyId, r.checkId, r.result);
     };
 
-    auto reportScanDuration = [&](std::chrono::milliseconds) {};
-
-    policy.Run(0, true, reportCheckResult, reportScanDuration);
+    policy.Run(reportCheckResult);
 
     EXPECT_FALSE(reported.empty());
     EXPECT_EQ(std::get<0>(reported.front()), policyId);
@@ -127,7 +125,7 @@ TEST_F(ScaTest, SCAPolicyRunAndStop)
     policy.Stop();
 
     reported.clear();
-    policy.Run(0, true, reportCheckResult, reportScanDuration);
+    policy.Run(reportCheckResult);
     // Stop set m_keepRunning=false, Scan should exit early
     EXPECT_TRUE(reported.empty());
 }
@@ -155,9 +153,7 @@ TEST_F(ScaTest, SCAPolicyRun_NoRequirements)
         reported.emplace_back(r.policyId, r.checkId, r.result);
     };
 
-    auto reportScanDuration = [&](std::chrono::milliseconds) {};
-
-    policy.Run(0, true, reportCheckResult, reportScanDuration);
+    policy.Run(reportCheckResult);
 
     EXPECT_FALSE(reported.empty());
     EXPECT_EQ(std::get<0>(reported.front()), policyId);
