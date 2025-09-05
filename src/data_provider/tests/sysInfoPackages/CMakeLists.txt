@@ -4,8 +4,10 @@ project(sysInfoPackages_unit_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
+include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks)
+include_directories(${SRC_FOLDER}/shared_modules/utils)
+include_directories(${SRC_FOLDER}/shared_modules/utils/tests/mocks)
 include_directories(${CMAKE_SOURCE_DIR}/src/packages)
-include_directories(${CMAKE_SOURCE_DIR}/../shared_modules/utils/tests/mocks)
 
 file(GLOB sysinfo_UNIT_TEST_SRC
     "*.cpp")
@@ -14,6 +16,8 @@ add_executable(sysInfoPackages_unit_test
     ${sysinfo_UNIT_TEST_SRC})
 
 target_link_libraries(sysInfoPackages_unit_test
+    FilesystemWrapper
+    FileIO
     debug gtestd
     debug gmockd
     debug gtest_maind

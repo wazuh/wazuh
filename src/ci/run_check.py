@@ -31,16 +31,18 @@ def checkCoverage(output):
     Raises:
         - ValueError: Raises an exception when fails for some reason.
     """
-    reLines = re.search("lines.*(% ).*(lines)", str(output))
-    reFunctions = re.search("functions.*%", str(output))
+    reLines = re.search(r"lines.*: *([\d.]+)%", str(output))
+    reFunctions = re.search(r"functions.*: *([\d.]+)%", str(output))
+
     if reLines:
-        end = reLines.group().index('%')
-        start = reLines.group()[0:end].rindex(' ') + 1
-        linesCoverage = reLines.group()[start:end]
+        linesCoverage = reLines.group(1)
+    else:
+        linesCoverage = "0.0"
+
     if reFunctions:
-        end = reFunctions.group().index('%')
-        start = reFunctions.group().rindex(' ') + 1
-        functionsCoverage = reFunctions.group()[start:end]
+        functionsCoverage = reFunctions.group(1)
+    else:
+        functionsCoverage = "0.0"
     if float(linesCoverage) >= 90.0:
         utils.printGreen(msg="[Lines Coverage {}%: PASSED]"
                          .format(linesCoverage))
@@ -214,6 +216,21 @@ def runCoverage(moduleName):
     elif moduleName == "syscheckd":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
+    elif moduleName == "wazuh_modules/sca":
+        # SCA has nested structure: build/sca_impl/CMakeFiles/*.dir and build/sca_impl/tests/CMakeFiles/*.dir
+        # Only include directories that have .gcda coverage files
+        all_dirs = [root for root, _, _ in os.walk(
+            (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
+        paths = []
+        for dir_path in all_dirs:
+            # Check if directory or its subdirectories have .gcda files
+            has_gcda = False
+            for root, _, files in os.walk(dir_path):
+                if any(f.endswith('.gcda') for f in files):
+                    has_gcda = True
+                    break
+            if has_gcda:
+                paths.append(dir_path)
     else:
         moduleCMakeFiles = os.path.join(currentDir,
                                         "build/tests/*/CMakeFiles/*.dir")
@@ -319,7 +336,8 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
                          srcOnly=False)
     build_tools.makeTarget(targetName=target,
                            tests=True,
-                           debug=True)
+                           debug=True,
+                           fsanitize=(target != "winagent"))
 
     # Running UTs and coverage
     runTests(moduleName=moduleName)
@@ -356,7 +374,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     # The ASAN check is in the end. It builds again the module but with the ASAN flag
     # and runs the test tool.
     # Running this type of check in Windows will be analyzed in #17019
-    if moduleName != "shared_modules/utils" and target != "winagent":
+    if moduleName != "shared_modules/utils" and target != "winagent" and moduleName != "wazuh_modules/sca":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)
     if clean:
@@ -545,9 +563,7 @@ def runTests(moduleName):
     utils.printHeader(moduleName=moduleName,
                       headerKey="tests")
     tests = []
-    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test"
-                     "|.*interface_test|.*integration_test.exe"
-                     "|.*interface_test.exe|.*_tests")
+    reg = re.compile(r".*(?:unit_test|integration_test|interface_test|_test|_tests)(?:\.exe)?$")
     currentDir = utils.moduleDirPathBuild(moduleName=moduleName)
 
     if not moduleName == "shared_modules/utils":
@@ -565,17 +581,51 @@ def runTests(moduleName):
         for test in tests:
             path = os.path.join(currentDir, test)
             if ".exe" in test:
-                rootPath = os.path.join(utils.moduleDirPathBuild(moduleName), "bin")
+                # Don't copy DLLs!! Just add the correct paths
+                dll_dirs = [
+                    "/usr/i686-w64-mingw32/bin",
+                    "/usr/i686-w64-mingw32/lib",
+                    utils.currentPath(),
+                    currentDir,  # already chdir'ed to this later
+                    os.path.join(utils.moduleDirPathBuild("shared_modules/dbsync"), "build", "bin"),
+                    os.path.join(utils.moduleDirPathBuild("data_provider"), "build", "bin"),
+                ]
 
-                # Copy MinGW runtime DLLs
-                stdcpp = utils.findFile(name="libstdc++-6.dll", path=utils.rootPath())
-                libgcc = utils.findFile(name="libgcc_s_dw2-1.dll", path=utils.rootPath())
+                gcc_root = "/usr/lib/gcc/i686-w64-mingw32"
+                if os.path.isdir(gcc_root):
+                    for sub in os.listdir(gcc_root):
+                        p = os.path.join(gcc_root, sub)
+                        if os.path.isdir(p):
+                            dll_dirs.append(p)
 
-                safe_copy(stdcpp, os.path.join(rootPath, "libstdc++-6.dll"))
-                safe_copy(libgcc, os.path.join(rootPath, "libgcc_s_dw2-1.dll"))
+                for _name in ("libstdc++-6.dll", "libgcc_s_dw2-1.dll", "libwinpthread-1.dll",
+                              "dbsync.dll", "sysinfo.dll", "libwazuhext.dll", "libagent_sync_protocol.dll"):
+                    try:
+                        _p = utils.findFile(name=_name, path=utils.rootPath())
+                        if _p:
+                            dll_dirs.append(os.path.dirname(_p))
+                    except Exception:
+                        pass
 
-                command = f'WINEPATH="/usr/i686-w64-mingw32/lib;{utils.currentPath()}" \
-                           WINEARCH=win64 /usr/bin/wine {path}'
+                # De-dup + keep only existing dirs
+                uniq_dirs = []
+                seen = set()
+                for d in (os.fspath(x) for x in dll_dirs if x and os.path.isdir(os.fspath(x))):
+                    if d not in seen:
+                        seen.add(d)
+                        uniq_dirs.append(d)
+
+                # Convert to Windows-style paths for Wine's %PATH% (Z:\… and backslashes)
+                win_path = ";".join(
+                    "Z:" + d.replace("/", "\\\\")
+                    for d in uniq_dirs
+                )
+
+                command = (
+                    f'WINEARCH=win64 '
+                    'wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f & '
+                    f'wine cmd /c "set PATH={win_path};%PATH% & {os.path.basename(path)}"'
+                )
             else:
                 command = path
             out = subprocess.run(command,
@@ -657,10 +707,17 @@ def runValgrind(moduleName):
     """
     utils.printHeader(moduleName=moduleName,
                       headerKey="valgrind")
+
+    # Rebuild tests without sanitizers for valgrind compatibility
+    build_tools.cleanInternals()
+    build_tools.makeTarget(targetName="agent",
+                           tests=True,
+                           debug=True,
+                           fsanitize=False,
+                           valgrind=True)
+
     tests = []
-    reg = re.compile(".*unit_test|.*unit_test.exe|.*integration_test"
-                     "|.*interface_test|.*integration_test.exe"
-                     "|.*interface_test.exe|.*_tests")
+    reg = re.compile(r".*(?:unit_test|integration_test|interface_test|_test|_tests)(?:\.exe)?$")
     currentDir = ""
     if moduleName == "shared_modules/utils":
         currentDir = os.path.join(utils.moduleDirPath(moduleName=moduleName),
@@ -685,8 +742,8 @@ def runValgrind(moduleName):
         if out.returncode == 0:
             utils.printGreen(msg="[{} : PASSED]".format(test))
         else:
-            print(out.stdout.decode('utf-8','replace'))
-            print(out.stderr.decode('utf-8','replace'))
+            print(out.stdout.decode('utf-8', 'replace'))
+            print(out.stderr.decode('utf-8', 'replace'))
             utils.printFail(msg="[{} : FAILED]".format(test))
             errorString = "Error Running valgrind: {}".format(out.returncode)
             raise ValueError(errorString)

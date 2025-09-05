@@ -14,6 +14,11 @@
 #include "../config/localfile-config.h"
 #include <sys/types.h>
 
+#ifdef WIN32
+typedef int uid_t;
+typedef int gid_t;
+#endif
+
 /* Default queues */
 #define LOCALFILE_MQ    '1'
 #define SYSLOG_MQ       '2'

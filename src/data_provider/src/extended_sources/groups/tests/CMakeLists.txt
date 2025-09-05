@@ -23,10 +23,14 @@ add_executable(extended_sources_groups_unit_test ${TEST_SRC})
 
 target_link_libraries(extended_sources_groups_unit_test
     groups
-    gtestd
-    gmockd
-    gtest_maind
-    gmock_maind
+    debug gtestd
+    debug gmockd
+    debug gtest_maind
+    debug gmock_maind
+    optimized gtest
+    optimized gmock
+    optimized gtest_main
+    optimized gmock_main
 )
 
 add_test(NAME GroupsTests COMMAND extended_sources_groups_unit_test)
