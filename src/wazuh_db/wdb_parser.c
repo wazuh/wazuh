@@ -218,7 +218,7 @@ static struct column_list const TABLE_USERS[USERS_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 31, false, false, NULL, "login_status", {.integer = 0}, true}, .next = &TABLE_USERS[31]},
     { .value = { FIELD_TEXT, 32, false, false, NULL, "login_tty", {.text = ""}, true}, .next = &TABLE_USERS[32]},
     { .value = { FIELD_TEXT, 33, false, false, NULL, "login_type", {.text = ""}, true}, .next = &TABLE_USERS[33]},
-    { .value = { FIELD_TEXT, 34, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
+    { .value = { FIELD_TEXT, 34, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL}
 };
 
 #define GROUPS_FIELD_COUNT 9
@@ -232,7 +232,77 @@ static struct column_list const TABLE_GROUPS[GROUPS_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 7, false, false, NULL, "group_uuid", {.text = ""}, true}, .next = &TABLE_GROUPS[7]},
     { .value = { FIELD_INTEGER, 8, false, false, NULL, "group_is_hidden", {.integer = 0}, true}, .next = &TABLE_GROUPS[8]},
     { .value = { FIELD_TEXT, 9, false, false, NULL, "group_users", {.text = ""}, true}, .next = &TABLE_GROUPS[9]},
-    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, true}, .next = NULL}
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "checksum", {.text = ""}, false}, .next = NULL}
+};
+
+#define BROWSER_EXTENSIONS_FIELD_COUNT 25
+static struct column_list const TABLE_BROWSER_EXTENSIONS[BROWSER_EXTENSIONS_FIELD_COUNT + 1] = {
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS [1]},
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [2]},
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "browser_name", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [3]},
+    { .value = { FIELD_TEXT, 4, false, true, NULL, "user_id", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [4]},
+    { .value = { FIELD_TEXT, 5, false, true, NULL, "package_name", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [5]},
+    { .value = { FIELD_TEXT, 6, false, false, NULL, "package_id", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [6]},
+    { .value = { FIELD_TEXT, 7, false, true, NULL, "package_version", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [7]},
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "package_description", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [8]},
+    { .value = { FIELD_TEXT, 9, false, false, NULL, "package_vendor", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS [9]},
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "package_build_version", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[10]},
+    { .value = { FIELD_TEXT, 11, false, false, NULL, "package_path", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[11]},
+    { .value = { FIELD_TEXT, 12, false, true, NULL, "browser_profile_name", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[12]},
+    { .value = { FIELD_TEXT, 13, false, false, NULL, "browser_profile_path", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[13]},
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "package_reference", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[14]},
+    { .value = { FIELD_TEXT, 15, false, false, NULL, "package_permissions", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[15]},
+    { .value = { FIELD_TEXT, 16, false, false, NULL, "package_type", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[16]},
+    { .value = { FIELD_INTEGER, 17, false, false, NULL, "package_enabled", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[17]},
+    { .value = { FIELD_INTEGER, 18, false, false, NULL, "package_visible", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[18]},
+    { .value = { FIELD_INTEGER, 19, false, false, NULL, "package_autoupdate", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[19]},
+    { .value = { FIELD_INTEGER, 20, false, false, NULL, "package_persistent", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[20]},
+    { .value = { FIELD_INTEGER, 21, false, false, NULL, "package_from_webstore", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[21]},
+    { .value = { FIELD_INTEGER, 22, false, false, NULL, "browser_profile_referenced", {.integer = 0}, true}, .next = &TABLE_BROWSER_EXTENSIONS[22]},
+    { .value = { FIELD_TEXT, 23, false, false, NULL, "package_installed", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[23]},
+    { .value = { FIELD_TEXT, 24, false, false, NULL, "file_hash_sha256", {.text = ""}, true}, .next = &TABLE_BROWSER_EXTENSIONS[24]},
+    { .value = { FIELD_TEXT, 25, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_BROWSER_EXTENSIONS[25]},
+    { .value = { FIELD_TEXT, 26, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL }
+};
+
+#define SERVICES_FIELD_COUNT 35
+static struct column_list const TABLE_SERVICES[SERVICES_FIELD_COUNT+1] = {
+    { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_SERVICES[1]},
+    { .value = { FIELD_TEXT, 2, false, false, NULL, "scan_time", {.text = ""}, true}, .next = &TABLE_SERVICES[2]},
+    { .value = { FIELD_TEXT, 3, false, true, NULL, "service_id", {.text = ""}, true}, .next = &TABLE_SERVICES[3]},
+    { .value = { FIELD_TEXT, 4, false, false, NULL, "service_name", {.text = ""}, true}, .next = &TABLE_SERVICES[4]},
+    { .value = { FIELD_TEXT, 5, false, false, NULL, "service_description", {.text = ""}, true}, .next = &TABLE_SERVICES[5]},
+    { .value = { FIELD_TEXT, 6, false, false, NULL, "service_type", {.text = ""}, true}, .next = &TABLE_SERVICES[6]},
+    { .value = { FIELD_TEXT, 7, false, false, NULL, "service_state", {.text = ""}, true}, .next = &TABLE_SERVICES[7]},
+    { .value = { FIELD_TEXT, 8, false, false, NULL, "service_sub_state", {.text = ""}, true}, .next = &TABLE_SERVICES[8]},
+    { .value = { FIELD_TEXT, 9, false, false, NULL, "service_enabled", {.text = ""}, true}, .next = &TABLE_SERVICES[9]},
+    { .value = { FIELD_TEXT, 10, false, false, NULL, "service_start_type", {.text = ""}, true}, .next = &TABLE_SERVICES[10]},
+    { .value = { FIELD_TEXT, 11, false, false, NULL, "service_restart", {.text = ""}, true}, .next = &TABLE_SERVICES[11]},
+    { .value = { FIELD_INTEGER_LONG, 12, false, false, NULL, "service_frequency", {.integer_long = 0LL}, true}, .next = &TABLE_SERVICES[12]},
+    { .value = { FIELD_INTEGER, 13, false, false, NULL, "service_starts_on_mount", {.integer = 0}, true}, .next = &TABLE_SERVICES[13]},
+    { .value = { FIELD_TEXT, 14, false, false, NULL, "service_starts_on_path_modified", {.text = ""}, true}, .next = &TABLE_SERVICES[14]},
+    { .value = { FIELD_TEXT, 15, false, false, NULL, "service_starts_on_not_empty_directory", {.text = ""}, true}, .next = &TABLE_SERVICES[15]},
+    { .value = { FIELD_INTEGER, 16, false, false, NULL, "service_inetd_compatibility", {.integer = 0}, true}, .next = &TABLE_SERVICES[16]},
+    { .value = { FIELD_INTEGER_LONG, 17, false, false, NULL, "process_pid", {.integer_long = 0LL}, true}, .next = &TABLE_SERVICES[17]},
+    { .value = { FIELD_TEXT, 18, false, false, NULL, "process_executable", {.text = ""}, true}, .next = &TABLE_SERVICES[18]},
+    { .value = { FIELD_TEXT, 19, false, false, NULL, "process_args", {.text = ""}, true}, .next = &TABLE_SERVICES[19]},
+    { .value = { FIELD_TEXT, 20, false, false, NULL, "process_user_name", {.text = ""}, true}, .next = &TABLE_SERVICES[20]},
+    { .value = { FIELD_TEXT, 21, false, false, NULL, "process_group_name", {.text = ""}, true}, .next = &TABLE_SERVICES[21]},
+    { .value = { FIELD_TEXT, 22, false, false, NULL, "process_working_directory", {.text = ""}, true}, .next = &TABLE_SERVICES[22]},
+    { .value = { FIELD_TEXT, 23, false, false, NULL, "process_root_directory", {.text = ""}, true}, .next = &TABLE_SERVICES[23]},
+    { .value = { FIELD_TEXT, 24, false, false, NULL, "file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[24]},
+    { .value = { FIELD_TEXT, 25, false, false, NULL, "service_address", {.text = ""}, true}, .next = &TABLE_SERVICES[25]},
+    { .value = { FIELD_TEXT, 26, false, false, NULL, "log_file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[26]},
+    { .value = { FIELD_TEXT, 27, false, false, NULL, "error_log_file_path", {.text = ""}, true}, .next = &TABLE_SERVICES[27]},
+    { .value = { FIELD_INTEGER, 28, false, false, NULL, "service_exit_code", {.integer = 0}, true}, .next = &TABLE_SERVICES[28]},
+    { .value = { FIELD_INTEGER, 29, false, false, NULL, "service_win32_exit_code", {.integer = 0}, true}, .next = &TABLE_SERVICES[29]},
+    { .value = { FIELD_TEXT, 30, false, false, NULL, "service_following", {.text = ""}, true}, .next = &TABLE_SERVICES[30]},
+    { .value = { FIELD_TEXT, 31, false, false, NULL, "service_object_path", {.text = ""}, true}, .next = &TABLE_SERVICES[31]},
+    { .value = { FIELD_INTEGER_LONG, 32, false, false, NULL, "service_target_ephemeral_id", {.integer_long = 0LL}, true}, .next = &TABLE_SERVICES[32]},
+    { .value = { FIELD_TEXT, 33, false, false, NULL, "service_target_type", {.text = ""}, true}, .next = &TABLE_SERVICES[33]},
+    { .value = { FIELD_TEXT, 34, false, false, NULL, "service_target_address", {.text = ""}, true}, .next = &TABLE_SERVICES[34]},
+    { .value = { FIELD_TEXT, 35, false, false, NULL, "checksum", {.text = ""}, false}, .next = &TABLE_SERVICES[35]},
+    { .value = { FIELD_TEXT, 36, false, false, NULL, "item_id", {.text = ""}, true}, .next = NULL}
 };
 
 static struct kv_list const TABLE_MAP[] = {
@@ -246,7 +316,9 @@ static struct kv_list const TABLE_MAP[] = {
     { .current = { "hotfixes", "sys_hotfixes",  false, TABLE_HOTFIXES, HOTFIXES_FIELD_COUNT }, .next = &TABLE_MAP[8]},
     { .current = { "processes", "sys_processes",  false, TABLE_PROCESSES, PROCESSES_FIELD_COUNT }, .next = &TABLE_MAP[9]},
     { .current = { "users", "sys_users", false, TABLE_USERS, USERS_FIELD_COUNT }, .next = &TABLE_MAP[10]},
-    { .current = { "groups", "sys_groups", false, TABLE_GROUPS, GROUPS_FIELD_COUNT }, .next = NULL}
+    { .current = { "groups", "sys_groups", false, TABLE_GROUPS, GROUPS_FIELD_COUNT }, .next = &TABLE_MAP[11]},
+    { .current = { "browser_extensions", "sys_browser_extensions", false, TABLE_BROWSER_EXTENSIONS, BROWSER_EXTENSIONS_FIELD_COUNT }, .next = &TABLE_MAP[12]},
+    { .current = { "services", "sys_services", false, TABLE_SERVICES, SERVICES_FIELD_COUNT }, .next = NULL}
 };
 
 #define AGENT_ID_LEN 64
@@ -2048,6 +2120,18 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
         w_inc_agent_syscollector_groups();
         component = WDB_SYSCOLLECTOR_GROUPS;
         mdebug2("DB(%s) syscollector_groups Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_browser_extensions") == 0)
+    {
+        w_inc_agent_syscollector_browser_extensions();
+        component = WDB_SYSCOLLECTOR_BROWSER_EXTENSIONS;
+        mdebug2("DB(%s) syscollector_browser_extensions Syscollector query. ", wdb->id);
+    }
+    else if (strcmp(query, "syscollector_services") == 0)
+    {
+        w_inc_agent_syscollector_services();
+        component = WDB_SYSCOLLECTOR_SERVICES;
+        mdebug2("DB(%s) syscollector_services Syscollector query. ", wdb->id);
     }
     else
     {

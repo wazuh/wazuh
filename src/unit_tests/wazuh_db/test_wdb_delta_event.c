@@ -31,6 +31,7 @@ cJSON * wdb_dbsync_get_field_default(const struct field * field);
 #define HWINFO_TABLE "sys_hwinfo"
 #define USERS_TABLE "sys_users"
 #define GROUPS_TABLE "sys_groups"
+#define SERVICES_TABLE "sys_services"
 
 /* wdb_dbsync_stmt_bind_from_json */
 
@@ -458,7 +459,7 @@ void test_wdb_dbsync_stmt_bind_groups_multiple_fields_numeric_values(void **stat
         int value = i - 1;
         for (int j = 0; j < sizeof(fields)/sizeof(fields[0]); ++j) {
             // If field is group_id the accepted value is greater or equal than zero.
-            if ((i > 0 && j == 0) || j ==1) {
+            if ((i > 0 && j == 0) || j == 1) {
                 expect_value(__wrap_sqlite3_bind_int64, index, TEST_INDEX);
                 expect_value(__wrap_sqlite3_bind_int64, value, value);
                 will_return(__wrap_sqlite3_bind_int64, SQLITE_OK);
@@ -467,6 +468,57 @@ void test_wdb_dbsync_stmt_bind_groups_multiple_fields_numeric_values(void **stat
                 will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
             }
             assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, FIELD_INTEGER_LONG, values[i], fields[j], GROUPS_TABLE, true));
+        }
+        cJSON_Delete(values[i]);
+    }
+}
+
+/* wdb_dbsync_stmt_bind_from_json for services */
+void test_wdb_dbsync_stmt_bind_services_multiple_fields_numeric_values(void **state) {
+    cJSON * values[3] = {
+        cJSON_CreateNumber(-1),
+        cJSON_CreateNumber(0),
+        cJSON_CreateNumber(1)
+    };
+
+    // long fields
+    const char * fields [] = {
+        "service_frequency",            // First long field
+        "service_process_pid",
+        "service_target_ephemeral_id",
+        "service_exit_code",            // First int field
+        "service_win32_exit_code"
+    };
+
+    for (int i = 0; i < sizeof(values)/sizeof(values[0]); ++i) {
+        int value = i - 1;
+        for (int j = 0; j < sizeof(fields)/sizeof(fields[0]); ++j) {
+            int field_type = FIELD_INTEGER_LONG;
+            if (j >= 0 && j < 3) {
+                // The accepted long values are greater or equal than zero for all fields.
+                if (i > 0) {
+                    expect_value(__wrap_sqlite3_bind_int64, index, TEST_INDEX);
+                    expect_value(__wrap_sqlite3_bind_int64, value, value);
+                    will_return(__wrap_sqlite3_bind_int64, SQLITE_OK);
+                } else {
+                    printf("field: %s\n", fields[j]);
+                    expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+                    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+                }
+            }
+            if (j >= 3) {
+                field_type = FIELD_INTEGER;
+                // The accepted int values are greater or equal than zero for all fields.
+                if (i > 0) {
+                    expect_value(__wrap_sqlite3_bind_int, index, TEST_INDEX);
+                    expect_value(__wrap_sqlite3_bind_int, value, value);
+                    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+                } else {
+                    expect_value(__wrap_sqlite3_bind_null, index, TEST_INDEX);
+                    will_return(__wrap_sqlite3_bind_null, SQLITE_OK);
+                }
+            }
+            assert_true(wdb_dbsync_stmt_bind_from_json((sqlite3_stmt *) ANY_PTR_VALUE, TEST_INDEX, field_type, values[i], fields[j], SERVICES_TABLE, true));
         }
         cJSON_Delete(values[i]);
     }
@@ -1051,6 +1103,8 @@ int main() {
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_users_multiple_fields_valid_numeric_value),
         // wdb_dbsync_stmt_bind_from_json for groups
         cmocka_unit_test(test_wdb_dbsync_stmt_bind_groups_multiple_fields_numeric_values),
+        // wdb_dbsync_stmt_bind_from_json for services
+        cmocka_unit_test(test_wdb_dbsync_stmt_bind_services_multiple_fields_numeric_values),
         /* wdb_upsert_dbsync */
         cmocka_unit_test(test_wdb_upsert_dbsync_err),
         cmocka_unit_test(test_wdb_upsert_dbsync_bad_cache),

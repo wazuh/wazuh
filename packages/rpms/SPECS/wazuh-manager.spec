@@ -762,6 +762,8 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-users.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-groups.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-browser-extensions.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-services.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries-update.json
@@ -776,6 +778,8 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-users-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-groups-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-browser-extensions-update.json
+%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-services-update.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts
@@ -957,7 +961,7 @@ rm -fr %{buildroot}
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html
 * Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
-* Tue Aug 05 2025 support <info@wazuh.com> - 4.13.0
+* Thu Sep 11 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html

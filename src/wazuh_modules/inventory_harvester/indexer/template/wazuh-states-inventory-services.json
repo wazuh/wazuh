@@ -1,0 +1,269 @@
+{
+  "index_patterns": [
+    "wazuh-states-inventory-services*"
+  ],
+  "priority": 1,
+  "template": {
+    "settings": {
+      "index": {
+        "number_of_replicas": "0",
+        "number_of_shards": "1",
+        "query.default_field": [
+          "agent.host.architecture",
+          "agent.host.ip",
+          "agent.id",
+          "agent.name",
+          "agent.version",
+          "service.name",
+          "service.id",
+          "service.description",
+          "service.enabled",
+          "service.restart",
+          "service.state",
+          "service.sub_state",
+          "service.type",
+          "service.start_type",
+          "process.executable",
+          "file.path",
+          "log.file.path",
+          "error.log.file.path",
+          "process.args",
+          "process.user.name",
+          "process.group.name",
+          "service.address",
+          "wazuh.cluster.name",
+          "wazuh.cluster.node",
+          "wazuh.schema.version"
+        ],
+        "refresh_interval": "2s"
+      }
+    },
+    "mappings": {
+      "date_detection": false,
+      "dynamic": "strict",
+      "properties": {
+        "agent": {
+          "properties": {
+            "host": {
+              "properties": {
+                "architecture": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "ip": {
+                  "type": "ip"
+                }
+              }
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "version": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "error": {
+          "properties": {
+            "log": {
+              "properties": {
+                "file": {
+                  "properties": {
+                    "path": {
+                      "ignore_above": 1024,
+                      "type": "keyword"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "file": {
+          "properties": {
+            "path": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "log": {
+          "properties": {
+            "file": {
+              "properties": {
+                "path": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        },
+        "process": {
+          "properties": {
+            "args": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "executable": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "group": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "pid": {
+              "type": "long"
+            },
+            "root_directory": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "user": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "working_directory": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            }
+          }
+        },
+        "service": {
+          "properties": {
+            "address": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "description": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "enabled": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "exit_code": {
+              "type": "integer"
+            },
+            "following": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "frequency": {
+              "type": "long"
+            },
+            "id": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "inetd_compatibility": {
+              "type": "boolean"
+            },
+            "name": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "object_path": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "restart": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "start_type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "starts": {
+              "properties": {
+                "on_mount": {
+                  "type": "boolean"
+                },
+                "on_not_empty_directory": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "on_path_modified": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "state": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "sub_state": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "target": {
+              "properties": {
+                "address": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "ephemeral_id": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "type": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "type": {
+              "ignore_above": 1024,
+              "type": "keyword"
+            },
+            "win32_exit_code": {
+              "type": "integer"
+            }
+          }
+        },
+        "wazuh": {
+          "properties": {
+            "cluster": {
+              "properties": {
+                "name": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                },
+                "node": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            },
+            "schema": {
+              "properties": {
+                "version": {
+                  "ignore_above": 1024,
+                  "type": "keyword"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
