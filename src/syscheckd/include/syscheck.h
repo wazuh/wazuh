@@ -506,6 +506,14 @@ void *audit_parse_thread();
 void audit_set_db_consistency(void);
 
 /**
+ * @brief Function that gets the Audit version using auditctl command
+ *
+ * @param [out] out_code The variable where to store the version code
+ * @return 0 on success, -1 on error
+ */
+int get_audit_version_code(unsigned *out_code);
+
+/**
  * @brief Check if the Audit daemon is installed and running
  *
  * @return The PID of Auditd

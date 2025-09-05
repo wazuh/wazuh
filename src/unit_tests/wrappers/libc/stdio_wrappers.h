@@ -58,6 +58,8 @@ int __wrap__fseeki64(FILE *stream, long offset, int whence);
 FILE *__wrap_popen(const char *command, const char *type);
 void expect_popen(const char *command, const char *type, FILE *ret);
 
+void expect_fscanf(FILE *__stream, const char *formatted_msg, int ret);
+
 int __wrap_pclose(FILE *stream);
 
 int __wrap_fputc(char character, FILE *stream);
