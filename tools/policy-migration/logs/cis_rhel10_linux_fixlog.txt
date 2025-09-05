@@ -1,0 +1,15 @@
+cis_rhel10_linux
+fix | 30 | 53 | no
+--quants | 2 | 5 | yes
+policy_list: 37095, 37096
+--brackets | 0 | 0 | yes
+policy_list: 
+--punct | 2 | 3 | yes
+policy_list: 37142, 37145
+policy_list_warnings: 37142, 37145
+--words | 10 | 14 | yes
+policy_list: 37112, 37123, 37136, 37142, 37143, 37144, 37145, 37156, 37157, 37158
+--dots | 20 | 31 | yes
+policy_list: 37029, 37034, 37051, 37066, 37080, 37085, 37086, 37094, 37095, 37096, 37130, 37131, 37132, 37133, 37134, 37135, 37137, 37138, 37140, 37141
+--win | 0 | 0 | no
+policy_list: 
