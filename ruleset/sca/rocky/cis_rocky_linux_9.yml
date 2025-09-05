@@ -3661,7 +3661,7 @@ checks:
   - id: 31602
     title: "Ensure journald is configured to send logs to rsyslog."
     description: "Data from systemd-journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of systemd-journald logs, however, use of the rsyslog service provides a consistent means of log collection and export."
-    rationale: "IF RSyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing. Note: This recommendation only applies if rsyslog is the chosen method for client side logging. Do not apply this recommendation if journald is used."
+    rationale: "- IF - rsyslog is the preferred method for capturing logs, all logs of the system should be sent to it for further processing."
     impact: "- IF - Journald is the preferred method for capturing logs, this section and Recommendation should be skipped and the 'Configure Journald' section followed."
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line: ForwardToSyslog=yes Restart the service: # systemctl restart rsyslog."
     compliance:
