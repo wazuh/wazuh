@@ -1,7 +1,6 @@
 services:
   wazuh-master:
     profiles:
-      - standalone
       - cluster
     build:
       context: .
@@ -54,7 +53,6 @@ services:
 
   wazuh-agent1:
     profiles:
-      - standalone
       - cluster
     build:
       context: .
@@ -73,7 +71,6 @@ services:
 
   wazuh-agent2:
     profiles:
-      - standalone
       - cluster
     image: integration_test_wazuh-agent
     hostname: wazuh-agent2
@@ -90,7 +87,6 @@ services:
 
   wazuh-agent3:
     profiles:
-      - standalone
       - cluster
     image: integration_test_wazuh-agent
     hostname: wazuh-agent3
@@ -107,7 +103,6 @@ services:
 
   wazuh-agent4:
     profiles:
-      - standalone
       - cluster
     image: integration_test_wazuh-agent
     hostname: wazuh-agent4
@@ -124,7 +119,6 @@ services:
 
   wazuh-agent5:
     profiles:
-      - standalone
       - cluster
     build:
       context: .
@@ -145,7 +139,6 @@ services:
 
   wazuh-agent6:
     profiles:
-      - standalone
       - cluster
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent6
@@ -163,7 +156,6 @@ services:
 
   wazuh-agent7:
     profiles:
-      - standalone
       - cluster
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent7
@@ -181,7 +173,6 @@ services:
 
   wazuh-agent8:
     profiles:
-      - standalone
       - cluster
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent8
@@ -199,7 +190,6 @@ services:
 
   haproxy-lb:
     profiles:
-      - standalone
       - cluster
     build:
       context: ./base/haproxy-lb
@@ -214,7 +204,6 @@ services:
 
   cti:
     profiles:
-      - standalone
       - cluster
     build:
       context: ./base/cti
