@@ -89,6 +89,14 @@ def main():
         f.write(f"Bad fix | {bad_fix}\n")
         f.write(f"Non-fix bad | {non_fix_bad}\n")
         f.write(f"Non-fix good | {non_fix_good}\n")
+        f.write("\n")
+        mismatched_ids_series = merged.loc[merged['Match5xFix'] == '🔴', 'Id'].astype(str).str.strip()
+        mismatched_ids = [s for s in mismatched_ids_series if s]
+        try:
+            mismatched_ids_sorted = [str(i) for i in sorted({int(s) for s in mismatched_ids})]
+        except ValueError:
+            mismatched_ids_sorted = sorted(set(mismatched_ids))
+        f.write(f"Missmatch_after_fix: {', '.join(mismatched_ids_sorted)}\n")
 
     print(f"✅ Done! Results saved to {output_path}")
 

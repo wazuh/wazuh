@@ -1,0 +1,167 @@
+|Id|4.x result|5.x result|4.x vs 5.x|5.x fix result|4.x vs 5.x fix|
+|37000|failed|Failed|✅|Failed|✅|
+|37001|failed|Failed|✅|Failed|✅|
+|37002|failed|Failed|✅|Failed|✅|
+|37003|failed|Failed|✅|Failed|✅|
+|37004|failed|Failed|✅|Failed|✅|
+|37005|failed|Failed|✅|Failed|✅|
+|37006|failed|Failed|✅|Failed|✅|
+|37007|failed|Failed|✅|Failed|✅|
+|37008|failed|Failed|✅|Failed|✅|
+|37009|failed|Failed|✅|Failed|✅|
+|37010|failed|Failed|✅|Failed|✅|
+|37011|failed|Failed|✅|Failed|✅|
+|37012|failed|Failed|✅|Failed|✅|
+|37013|failed|Failed|✅|Failed|✅|
+|37014|failed|Failed|✅|Failed|✅|
+|37015|failed|Failed|✅|Failed|✅|
+|37016|failed|Failed|✅|Failed|✅|
+|37017|failed|Failed|✅|Failed|✅|
+|37018|failed|Failed|✅|Failed|✅|
+|37019|failed|Failed|✅|Failed|✅|
+|37020|failed|Failed|✅|Failed|✅|
+|37021|failed|Failed|✅|Failed|✅|
+|37022|passed|Passed|✅|Passed|✅|
+|37023|passed|Passed|✅|Passed|✅|
+|37024|passed|Passed|✅|Passed|✅|
+|37025|passed|Passed|✅|Passed|✅|
+|37026|passed|Passed|✅|Passed|✅|
+|37027|failed|Failed|✅|Failed|✅|
+|37028|failed|Failed|✅|Failed|✅|
+|*37029|failed|Failed|✅|Failed|✅|
+|37030|failed|Failed|✅|Failed|✅|
+|37031|not applicable|Not applicable|✅|Not applicable|✅|
+|37032|not applicable|Not applicable|✅|Not applicable|✅|
+|37033|passed|Passed|✅|Passed|✅|
+|*37034|not applicable|Not applicable|✅|Not applicable|✅|
+|37035|not applicable|Not applicable|✅|Not applicable|✅|
+|37036|not applicable|Not applicable|✅|Not applicable|✅|
+|37037|not applicable|Not applicable|✅|Not applicable|✅|
+|37038|passed|Passed|✅|Passed|✅|
+|37039|passed|Passed|✅|Passed|✅|
+|37040|passed|Passed|✅|Passed|✅|
+|37041|passed|||||
+|37042|failed|||||
+|37043|failed|Failed|✅|Failed|✅|
+|37044|passed|Passed|✅|Passed|✅|
+|37045|passed|Passed|✅|Passed|✅|
+|37046|passed|Passed|✅|Passed|✅|
+|37047|passed|Passed|✅|Passed|✅|
+|37048|failed|Failed|✅|Failed|✅|
+|37049|passed|Passed|✅|Passed|✅|
+|37050|failed|Failed|✅|Failed|✅|
+|*37051|failed|Failed|✅|Failed|✅|
+|37052|passed|Passed|✅|Passed|✅|
+|37053|passed|Passed|✅|Passed|✅|
+|37054|passed|Passed|✅|Passed|✅|
+|37055|passed|Passed|✅|Passed|✅|
+|37056|passed|Passed|✅|Passed|✅|
+|37057|passed|Passed|✅|Passed|✅|
+|37058|passed|Passed|✅|Passed|✅|
+|37059|passed|Passed|✅|Passed|✅|
+|37060|passed|Passed|✅|Passed|✅|
+|37061|passed|Passed|✅|Passed|✅|
+|37062|passed|Passed|✅|Passed|✅|
+|37063|passed|Passed|✅|Passed|✅|
+|37064|passed|Passed|✅|Passed|✅|
+|37065|passed|Passed|✅|Passed|✅|
+|*37066|passed|Passed|✅|Passed|✅|
+|37067|passed|Passed|✅|Passed|✅|
+|37068|passed|Passed|✅|Passed|✅|
+|37069|passed|Passed|✅|Passed|✅|
+|37070|passed|Passed|✅|Passed|✅|
+|37071|passed|Passed|✅|Passed|✅|
+|37072|passed|Passed|✅|Passed|✅|
+|37073|passed|Passed|✅|Passed|✅|
+|37074|failed|Failed|✅|Failed|✅|
+|37075|failed|Failed|✅|Failed|✅|
+|37076|failed|||||
+|37077|failed|Failed|✅|||
+|37078|failed|Failed|✅|Failed|✅|
+|37079|not applicable|Not applicable|✅|Not applicable|✅|
+|*37080|not applicable|Not applicable|✅|Not applicable|✅|
+|37081|failed|Failed|✅|Failed|✅|
+|37082|not applicable|Not applicable|✅|Not applicable|✅|
+|37083|not applicable|Not applicable|✅|Not applicable|✅|
+|37084|not applicable|Not applicable|✅|Not applicable|✅|
+|*37085|not applicable|Not applicable|✅|Not applicable|✅|
+|*37086|not applicable|Not applicable|✅|Not applicable|✅|
+|37087|not applicable|||||
+|37088|passed|Passed|✅|Passed|✅|
+|37089|passed|Passed|✅|Passed|✅|
+|37090|passed|Passed|✅|Passed|✅|
+|37091|failed|Failed|✅|Failed|✅|
+|37092|failed|Failed|✅|Failed|✅|
+|37093|not applicable|Not applicable|✅|Not applicable|✅|
+|*37094|not applicable|Not applicable|✅|Not applicable|✅|
+|*37095|not applicable|Not applicable|✅|Not applicable|✅|
+|*37096|not applicable|Not applicable|✅|Not applicable|✅|
+|37097|failed|Failed|✅|Failed|✅|
+|37098|failed|Failed|✅|Failed|✅|
+|37099|failed|Failed|✅|Failed|✅|
+|37100|passed|Passed|✅|Passed|✅|
+|37101|not applicable|Not applicable|✅|Not applicable|✅|
+|37102|not applicable|Not applicable|✅|Not applicable|✅|
+|37103|not applicable|Not applicable|✅|Not applicable|✅|
+|37104|failed|Failed|✅|Failed|✅|
+|37105|failed|Failed|✅|Failed|✅|
+|37106|failed|Failed|✅|Failed|✅|
+|37107|failed|Failed|✅|Failed|✅|
+|37108|failed|Failed|✅|Failed|✅|
+|37109|failed|Failed|✅|Failed|✅|
+|37110|failed|Failed|✅|Failed|✅|
+|37111|failed|Failed|✅|Failed|✅|
+|*37112|not applicable|Not applicable|✅|Not applicable|✅|
+|37113|not applicable|Not applicable|✅|Not applicable|✅|
+|37114|not applicable|Not applicable|✅|Not applicable|✅|
+|37115|not applicable|Not applicable|✅|Not applicable|✅|
+|37116|not applicable|Not applicable|✅|Not applicable|✅|
+|37117|not applicable|Not applicable|✅|Not applicable|✅|
+|37118|not applicable|Not applicable|✅|Not applicable|✅|
+|37119|not applicable|Not applicable|✅|Not applicable|✅|
+|37120|not applicable|Not applicable|✅|Not applicable|✅|
+|37121|not applicable|Not applicable|✅|Not applicable|✅|
+|37122|not applicable|Not applicable|✅|Not applicable|✅|
+|*37123|not applicable|Not applicable|✅|Not applicable|✅|
+|37124|not applicable|Not applicable|✅|Not applicable|✅|
+|37125|not applicable|Not applicable|✅|Not applicable|✅|
+|37126|not applicable|Not applicable|✅|Not applicable|✅|
+|37127|not applicable|Not applicable|✅|Not applicable|✅|
+|37128|not applicable|Not applicable|✅|Not applicable|✅|
+|37129|failed|Failed|✅|Failed|✅|
+|*37130|not applicable|Not applicable|✅|Not applicable|✅|
+|*37131|not applicable|Not applicable|✅|Not applicable|✅|
+|*37132|not applicable|Not applicable|✅|Not applicable|✅|
+|*37133|not applicable|Not applicable|✅|Not applicable|✅|
+|*37134|not applicable|||||
+|*37135|failed|Failed|✅|Failed|✅|
+|*37136|failed|Failed|✅|Failed|✅|
+|*37137|failed|Failed|✅|Failed|✅|
+|*37138|failed|Failed|✅|Failed|✅|
+|37139|failed|Failed|✅|Failed|✅|
+|*37140|failed|||||
+|*37141|not applicable|Failed|🔴|Failed|🔴|
+|*37142|failed|Failed|✅|Failed|✅|
+|*37143|failed|Failed|✅|Failed|✅|
+|*37144|failed|Failed|✅|Failed|✅|
+|*37145|failed|Failed|✅|Failed|✅|
+|37146|passed|Passed|✅|Passed|✅|
+|37147|failed|Failed|✅|Failed|✅|
+|37148|passed|Passed|✅|Passed|✅|
+|37149|passed|Passed|✅|Passed|✅|
+|37150|passed|Passed|✅|Passed|✅|
+|37151|passed|Passed|✅|Passed|✅|
+|37152|passed|Passed|✅|Passed|✅|
+|37153|failed|Passed|🔴|Passed|🔴|
+|37154|failed|Passed|🔴|Passed|🔴|
+|37155|failed|Passed|🔴|Passed|🔴|
+|*37156|passed|Passed|✅|Passed|✅|
+|*37157|passed|Not run|🔴|Passed|✅|
+|*37158|passed|Passed|✅|Passed|✅|
+
+Good fix | 1
+Bad fix | 0
+Non-fix bad | 3
+Non-fix good | 121
+
+Missmatch_after_fix: 37141, 37153, 37154, 37155
