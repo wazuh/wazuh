@@ -421,6 +421,19 @@ public:
     std::optional<std::vector<std::string>> getFields() const;
 
     /**
+     * @brief Get a list of fields from a JSON object at the given pointer path.
+     *
+     * If the path points to an object, returns the immediate member names (non-recursive).
+     * Returns std::nullopt if the path does not exist or is not an object.
+     *
+     * @param path The JSON Pointer path. Empty string or "/" refers to the root.
+     * @return std::optional<std::vector<std::string>> The list of field names, or std::nullopt.
+     *
+     * @throws std::runtime_error If the pointer path is invalid.
+     */
+    std::optional<std::vector<std::string>> getFields(std::string_view path) const;
+
+    /**
      * @brief Get Json prettyfied string.
      *
      * @return std::string The Json prettyfied string.
