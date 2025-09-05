@@ -43,11 +43,12 @@ def assert_expected_schema(response):
     for f in list_of_fields:
         assert f in response
 
-
-def test_get_ip():
+@pytest.mark.parametrize(
+    'example_ip', ['77.53.9.158', '2001:4860:4860::8888'],
+)
+def test_get_ip(example_ip):
     """Test the `ip_get` method of the Maltiverse class."""
     example_token = 'example_token'
-    example_ip = '77.53.9.158'
     testing_maltiverse = maltiverse.Maltiverse(auth_token=example_token)
 
     with patch('maltiverse.requests.Session.get') as mock_get:
