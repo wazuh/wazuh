@@ -1,0 +1,43 @@
+# Name of the helper function
+name: is_not_null
+
+metadata:
+  description: |
+    Checks if the value stored in field is not null.
+    If it is null, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+  keywords:
+    - undefined
+
+helper_type: filter
+
+is_variadic: false
+
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+test:
+  - target_field: "hello"
+    should_pass: true
+    description: Not null (string)
+  - target_field: 0
+    should_pass: true
+    description: Not null (number)
+  - target_field: true
+    should_pass: true
+    description: Not null (boolean)
+  - target_field: [1]
+    should_pass: true
+    description: Not null (array, non-empty)
+  - target_field:
+      key: value
+    should_pass: true
+    description: Not null (object, non-empty)
+  - target_field: {}
+    should_pass: false
+    description: Missing (empty object is unmapped)
