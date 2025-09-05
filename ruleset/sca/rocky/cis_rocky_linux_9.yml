@@ -2372,17 +2372,36 @@ checks:
   # 3.3 Configure Network Kernel Parameters
   ###############################################
 
-  # 3.3.1 Ensure ip forwarding is disabled (Automated) - Not Implemented
-  # 3.3.2 Ensure packet redirect sending is disabled (Automated) - Not Implemented
-  # 3.3.3 Ensure bogus icmp responses are ignored (Automated) - Not Implemented
-  # 3.3.4 Ensure broadcast icmp requests are ignored (Automated) - Not Implemented
-  # 3.3.5 Ensure icmp redirects are not accepted (Automated) - Not Implemented
-  # 3.3.6 Ensure secure icmp redirects are not accepted (Automated) - Not Implemented
-  # 3.3.7 Ensure reverse path filtering is enabled (Automated) - Not Implemented
-  # 3.3.8 Ensure source routed packets are not accepted (Automated) - Not Implemented
-  # 3.3.9 Ensure suspicious packets are logged (Automated) - Not Implemented
-  # 3.3.10 Ensure tcp syn cookies is enabled (Automated) - Not Implemented
-  # 3.3.11 Ensure ipv6 router advertisements are not accepted (Automated) - Not Implemented
+  # 3.3.1 Ensure ip forwarding is disabled (Automated)
+  - id: 31686
+    title: "Ensure ip forwarding is disabled."
+    description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
+    rationale: "Setting net.ipv4.ip_forward and net.ipv6.conf.all.forwarding to 0 ensures that a system with multiple interfaces (for example, a hard proxy), will never be able to forward packets, and therefore, never serve as a router."
+    impact: "IP forwarding is required on systems configured to act as a router. If these parameters are disabled, the system will not be able to perform as a router. Many Cloud Service Provider (CSP) hosted systems require IP forwarding to be enabled. If the system is running on a CSP platform, this requirement should be reviewed before disabling IP forwarding."
+    remediation: "Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.ip_forward=0 sysctl -w net.ipv4.route.flush=1 }"
+    compliance:
+      - cis: ["3.3.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1030", "M1042"]
+      - mitre_tactics: ["TA0006", "TA0009"]
+      - mitre_techniques: ["T1557", "T1557.000"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv4/ip_forward -> r:^0$'
+      - 'f:/proc/sys/net/ipv6/conf/all/forwarding -> r:^0$'
+      
+  # 3.3.2 Ensure packet redirect sending is disabled (Automated)
+  # 3.3.3 Ensure bogus icmp responses are ignored (Automated)
+  # 3.3.4 Ensure broadcast icmp requests are ignored (Automated)
+  # 3.3.5 Ensure icmp redirects are not accepted (Automated)
+  # 3.3.6 Ensure secure icmp redirects are not accepted (Automated)
+  # 3.3.7 Ensure reverse path filtering is enabled (Automated)
+  # 3.3.8 Ensure source routed packets are not accepted (Automated)
+  # 3.3.9 Ensure suspicious packets are logged (Automated)
+  # 3.3.10 Ensure tcp syn cookies is enabled (Automated)
+  # 3.3.11 Ensure ipv6 router advertisements are not accepted (Automated)
 
   ###############################################
   # 4.1 Configure a firewall utility
