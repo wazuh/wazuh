@@ -1,0 +1,67 @@
+|Id|4.x result|5.x result|4.x vs 5.x|5.x fix result|4.x vs 5.x fix|
+|*35000|passed|Passed|✅|Passed|✅|
+|*35001|passed|Passed|✅|Passed|✅|
+|*35002|passed|Passed|✅|Passed|✅|
+|35003|passed|Passed|✅|Passed|✅|
+|35004|passed|Passed|✅|Passed|✅|
+|*35005|passed|Passed|✅|Passed|✅|
+|35006|failed|Failed|✅|Failed|✅|
+|35007|failed|Failed|✅|Failed|✅|
+|35008|passed|Passed|✅|Passed|✅|
+|35009|passed|Passed|✅|Passed|✅|
+|35010|passed|Passed|✅|Passed|✅|
+|*35011|failed|Failed|✅|Failed|✅|
+|35012|passed|Passed|✅|Passed|✅|
+|35013|passed|Passed|✅|Passed|✅|
+|35014|passed|Passed|✅|Passed|✅|
+|35015|failed|Passed|🔴|Passed|🔴|
+|35016|passed|Passed|✅|Passed|✅|
+|35017|passed|Passed|✅|Passed|✅|
+|35018|passed|Passed|✅|Passed|✅|
+|*35019|passed|Passed|✅|Passed|✅|
+|35020|passed|Passed|✅|Passed|✅|
+|35021|failed|Failed|✅|Failed|✅|
+|35022|failed|Failed|✅|Failed|✅|
+|35023|passed|Passed|✅|Passed|✅|
+|35024|passed|Passed|✅|Passed|✅|
+|35025|passed|Passed|✅|Passed|✅|
+|35026|failed|Failed|✅|Failed|✅|
+|35027|passed|Passed|✅|Passed|✅|
+|35028|failed|Failed|✅|Failed|✅|
+|*35029|failed|Failed|✅|Failed|✅|
+|35030|failed|Failed|✅|Failed|✅|
+|*35031|passed|Passed|✅|Passed|✅|
+|35032|passed|Passed|✅|Passed|✅|
+|35033|passed|Passed|✅|Passed|✅|
+|35034|passed|Passed|✅|Passed|✅|
+|*35035|passed|Passed|✅|Passed|✅|
+|*35036|failed|Failed|✅|Failed|✅|
+|35037|not applicable|Not applicable|✅|Not applicable|✅|
+|35038|failed|Failed|✅|Failed|✅|
+|*35039|not applicable|Not applicable|✅|Not applicable|✅|
+|35040|failed|Failed|✅|Failed|✅|
+|*35041|passed|Passed|✅|Passed|✅|
+|*35042|failed|Failed|✅|Failed|✅|
+|*35043|passed|Passed|✅|Passed|✅|
+|35044|passed|Passed|✅|Passed|✅|
+|35045|passed|Passed|✅|Passed|✅|
+|35046|failed|Failed|✅|Failed|✅|
+|35047|failed|Failed|✅|Failed|✅|
+|*35048|failed|Failed|✅|Failed|✅|
+|*35049|failed|Failed|✅|Failed|✅|
+|35050|failed|Failed|✅|Failed|✅|
+|35051|failed|Failed|✅|Failed|✅|
+|35052|failed|Failed|✅|Failed|✅|
+|35053|failed|Failed|✅|Failed|✅|
+|*35054|failed|Failed|✅|Failed|✅|
+|35055|passed|Passed|✅|Passed|✅|
+|35056|passed|Passed|✅|Passed|✅|
+|35057|passed|Passed|✅|Passed|✅|
+|35058|failed|Failed|✅|Failed|✅|
+|35059|passed|Passed|✅|Passed|✅|
+|35060|failed|Failed|✅|Failed|✅|
+
+Good fix | 0
+Bad fix | 0
+Non-fix bad | 1
+Non-fix good | 43

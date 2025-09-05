@@ -1,0 +1,15 @@
+cis_apple_macOS_15.x
+fix | 17 | 32 | no
+--quants | 0 | 0 | yes
+policy_list: 
+--brackets | 0 | 0 | yes
+policy_list: 
+--punct | 1 | 8 | yes
+policy_list: 35039
+policy_list_warnings: 35039
+--words | 2 | 9 | yes
+policy_list: 35031, 35039
+--dots | 15 | 15 | yes
+policy_list: 35000, 35001, 35002, 35005, 35011, 35019, 35029, 35035, 35036, 35041, 35042, 35043, 35048, 35049, 35054
+--win | 0 | 0 | no
+policy_list: 
