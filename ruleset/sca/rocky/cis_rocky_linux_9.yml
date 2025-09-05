@@ -2393,6 +2393,25 @@ checks:
       - 'f:/proc/sys/net/ipv6/conf/all/forwarding -> r:^0$'
       
   # 3.3.2 Ensure packet redirect sending is disabled (Automated)
+  - id: 31687
+    title: "Ensure packet redirect sending is disabled."
+    description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
+    rationale: "An attacker could use a compromised host to send invalid ICMP redirects to other router devices in an attempt to corrupt routing and have users access a system set up by the attacker as opposed to a valid system."
+    impact: "IP forwarding is required on systems configured to act as a router. If these parameters are disabled, the system will not be able to perform as a router."
+    remediation: "Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.send_redirects=0 sysctl -w net.ipv4.conf.default.send_redirects=0 }"
+    compliance:
+      - cis: ["3.3.2"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1030", "M1042"]
+      - mitre_tactics: ["TA0006", "TA0009"]
+      - mitre_techniques: ["T1557", "T1557.000"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv4/conf/all/send_redirects -> r:^0$'
+      - 'f:/proc/sys/net/ipv4/conf/default/send_redirects -> r:^0$'
+
   # 3.3.3 Ensure bogus icmp responses are ignored (Automated)
   # 3.3.4 Ensure broadcast icmp requests are ignored (Automated)
   # 3.3.5 Ensure icmp redirects are not accepted (Automated)
