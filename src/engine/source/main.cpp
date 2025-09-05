@@ -27,6 +27,8 @@
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
+#include <scheduler/scheduler.hpp>
+#include <streamlog/logger.hpp>
 #include <httpsrv/server.hpp>
 #include <udgramsrv/udsrv.hpp>
 // TODO: Until the indexer connector is unified with the rest of wazuh-manager
@@ -106,12 +108,14 @@ int main(int argc, char* argv[])
     // exit handler
     cmd::details::StackExecutor exitHandler {};
     const auto opts = parseOptions(argc, argv);
-    const bool standalone = logging::standaloneModeEnabled();
+    const bool standalone = base::process::isStandaloneModeEnable();
     const bool cliDebug = (opts.debugCount > 0);
     void* libwazuhshared = nullptr;
 
+    // Loggin initialization
     if (standalone)
     {
+        // Standalone logging
         if (opts.testConfig)
         {
             return EXIT_SUCCESS;
@@ -125,6 +129,7 @@ int main(int argc, char* argv[])
     }
     else
     {
+        // Use wazuh-shared logging
         libwazuhshared = dlopen("libwazuhshared.so", RTLD_NOW | RTLD_GLOBAL);
         if (!libwazuhshared)
         {
@@ -133,7 +138,7 @@ int main(int argc, char* argv[])
         }
         exitHandler.add([libwazuhshared]() { dlclose(libwazuhshared); });
 
-        if (chdir(base::process::getWazuhHome().c_str()) == -1)
+        if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
         {
             fprintf(stderr, "chdir to WAZUH_HOME failed: %s\n", strerror(errno));
             return EXIT_FAILURE;
@@ -205,7 +210,8 @@ int main(int argc, char* argv[])
         sigaction(SIGPIPE, &sigPipeHandler, nullptr);
     }
 
-    // Init modules
+    // Engine start - Init modules
+    
     std::shared_ptr<store::Store> store;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
@@ -214,6 +220,8 @@ int main(int argc, char* argv[])
     std::shared_ptr<kvdbManager::KVDBManager> kvdbManager;
     std::shared_ptr<geo::Manager> geoManager;
     std::shared_ptr<schemf::Schema> schema;
+    std::shared_ptr<scheduler::Scheduler> scheduler;
+    std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<api::policy::IPolicy> policyManager;
     // std::shared_ptr<IIndexerConnector> iConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
@@ -231,21 +239,21 @@ int main(int argc, char* argv[])
             const auto uid = base::process::privSepGetUser(user);
             const auto gid = base::process::privSepGetGroup(group);
 
-            if (uid == static_cast<uid_t>(-1) || gid == static_cast<gid_t>(-1))
+            if (uid == base::process::INVALID_UID || gid == base::process::INVALID_GID)
             {
-                throw std::runtime_error {fmt::format(base::process::USER_ERROR, user, group, strerror(errno), errno)};
+                throw std::runtime_error {fmt::format("Invalid user '{}' or group '{}'", user, group, strerror(errno), errno)};
             }
 
             /* Privilege separation only if we got valid IDs */
-            if (base::process::privSepSetGroup(gid) < 0)
+            if (base::process::privSepSetGroup(gid))
             {
-                throw std::runtime_error {fmt::format(base::process::SETGID_ERROR, group, errno, strerror(errno))};
+                throw std::runtime_error {fmt::format("Unable to switch to group '{}' due to [({})-({})].", group, errno, strerror(errno))};
             }
 
             /* Changing user only if we got a valid UID */
-            if (base::process::privSepSetUser(uid) < 0)
+            if (base::process::privSepSetUser(uid))
             {
-                throw std::runtime_error {fmt::format(base::process::SETUID_ERROR, user, errno, strerror(errno))};
+                throw std::runtime_error {fmt::format("Unable to switch to user '{}' due to [({})-({})].", user, errno, strerror(errno))};
             }
         }
 
@@ -265,75 +273,31 @@ int main(int argc, char* argv[])
             }
         }
 
-        // Metrics
-        /*
-        TODO: Until the indexer connector is unified with the rest of wazuh-manager
-
-        {
-            SingletonLocator::registerManager<metrics::IManager,
-                                            base::PtrSingleton<metrics::IManager, metrics::Manager>>();
-            auto config = std::make_shared<metrics::Manager::ImplConfig>();
-            config->logLevel = logging::Level::Err;
-            config->exportInterval =
-                std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_INTERVAL));
-            config->exportTimeout =
-                std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_TIMEOUT));
-
-
-            IndexerConnectorOptions icConfig {};
-            icConfig.name = "metrics-index";
-            icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-            icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
-            icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
-            if (confManager.get<bool>(conf::key::INDEXER_SSL_USE_SSL))
+        /* Create PID file */
+        if (!base::process::isStandaloneModeEnable()) {
+            // Get executable file name
+            std::string exePath {};
             {
-                icConfig.sslOptions.cacert = confManager.get<std::string>(conf::key::INDEXER_SSL_CA_BUNDLE);
-                icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
-                icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
-            }
-
-            icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
-            const auto to = confManager.get<int>(conf::key::INDEXER_TIMEOUT);
-            if (to < 0)
-            {
-                throw std::runtime_error("Invalid indexer timeout value.");
-            }
-            icConfig.timeout = to;
-            const auto wt = confManager.get<int>(conf::key::INDEXER_THREADS);
-            if (wt < 0)
-            {
-                throw std::runtime_error("Invalid indexer threads value.");
-            }
-            icConfig.workingThreads = wt;
-
-            config->indexerConnectorFactory = [icConfig]() -> std::shared_ptr<IIndexerConnector>
-            {
-                return std::make_shared<IndexerConnector>(icConfig);
-            };
-
-            SingletonLocator::instance<metrics::IManager>().configure(config);
-
-            LOG_INFO("Metrics initialized.");
-
-            if (confManager.get<bool>(conf::key::METRICS_ENABLED))
-            {
-                SingletonLocator::instance<metrics::IManager>().enable();
-                LOG_INFO("Metrics enabled.");
-            }
-            else
-            {
-                SingletonLocator::instance<metrics::IManager>().disable();
-                LOG_INFO("Metrics disabled.");
-            }
-
-            exitHandler.add(
-                []()
+                try
                 {
-                    SingletonLocator::instance<metrics::IManager>().disable();
-                    SingletonLocator::clear();
-                });
+                    exePath = std::filesystem::read_symlink("/proc/self/exe").filename().string();
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_DEBUG("Could not get executable name: {}", e.what());
+                    exePath = "wazuh-analysisd";
+                }
+            }
+
+            const auto pidError =
+                base::process::createPID(confManager.get<std::string>(conf::key::PID_FILE_PATH), exePath, getpid());
+            if (base::isError(pidError))
+            {
+                throw std::runtime_error(
+                    (fmt::format("Could not create PID file for the engine: {}", base::getError(pidError).message)));
+            }
         }
-        */
+
 
         // Store
         {
@@ -453,6 +417,59 @@ int main(int argc, char* argv[])
         }
         */
 
+        // Scheduler
+        {
+            scheduler = std::make_shared<scheduler::Scheduler>();
+            scheduler->start();
+            LOG_INFO("Scheduler initialized and started.");
+            exitHandler.add(
+                [scheduler, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                {
+                    scheduler->stop();
+                    LOG_INFO_L(functionName.c_str(), "Scheduler stopped.");
+                });
+        }
+
+        // Stream log for alerts an archive
+        {
+
+            streamLogger = std::make_shared<streamlog::LogManager>(store, scheduler);
+            exitHandler.add(
+                [streamLogger, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                {
+                    streamLogger->cleanup();
+                    LOG_INFO_L(functionName.c_str(), "Stream logger cleaned up.");
+                });
+
+            LOG_INFO("Stream logger initialized.");
+
+            auto regChannel =
+                [&](const std::string& name, const std::string& pattern, size_t maxSize, size_t bufferSize)
+            {
+                streamlog::RotationConfig conf = {
+                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
+                    .pattern = pattern,
+                    .maxSize = maxSize,
+                    .bufferSize = bufferSize,
+                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
+                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL)};
+
+                streamLogger->isolatedBasePath(name, conf);
+                streamLogger->registerLog(name, conf, "json");
+                LOG_DEBUG("Stream logger channel '{}' registered.", name);
+            };
+
+            regChannel("alerts",
+                       confManager.get<std::string>(conf::key::STREAMLOG_ALERTS_PATTERN),
+                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_MAX_SIZE),
+                       confManager.get<size_t>(conf::key::STREAMLOG_ALERTS_BUFFER_SIZE));
+
+            regChannel("archives",
+                       confManager.get<std::string>(conf::key::STREAMLOG_ARCHIVES_PATTERN),
+                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_MAX_SIZE),
+                       confManager.get<size_t>(conf::key::STREAMLOG_ARCHIVES_BUFFER_SIZE));
+        }
+
         // Builder and registry
         {
             builder::BuilderDeps builderDeps;
@@ -461,6 +478,7 @@ int main(int argc, char* argv[])
             builderDeps.kvdbScopeName = "builder";
             builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
+            builderDeps.logManager = streamLogger;
             // builderDeps.iConnector = iConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
@@ -539,9 +557,11 @@ int main(int argc, char* argv[])
 
         // Archiver
         {
-            archiver = std::make_shared<archiver::Archiver>(confManager.get<std::string>(conf::key::ARCHIVER_PATH),
-                                                            confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
+            archiver =
+                std::make_shared<archiver::Archiver>(streamLogger, confManager.get<bool>(conf::key::ARCHIVER_ENABLED));
             LOG_INFO("Archiver initialized.");
+            exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                            { archiver->deactivate(); });
         }
 
         // Create and configure the api endpints
@@ -593,10 +613,13 @@ int main(int argc, char* argv[])
 
         // UDP Servers
         {
-            g_engineLocalServer =
-                std::make_shared<udsrv::Server>([orchestrator, archiver](std::string_view msg)
-                                                { orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg)); },
-                                                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
+            g_engineLocalServer = std::make_shared<udsrv::Server>(
+                [orchestrator, archiver](std::string_view msg)
+                {
+                    archiver->archive(msg.data());
+                    orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg));
+                },
+                confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
             g_engineLocalServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));
 
             LOG_INFO("Local engine's server initialized and started.");
@@ -619,41 +642,25 @@ int main(int argc, char* argv[])
             LOG_INFO("Remote engine's server initialized and started.");
         }
 
-        /* Create PID file */
-        {
-            // Get executable file name
-            std::string exePath {};
-            {
-                try
-                {
-                    exePath = std::filesystem::read_symlink("/proc/self/exe").filename().string();
-                }
-                catch (const std::exception& e)
-                {
-                    LOG_DEBUG("Could not get executable name: {}", e.what());
-                    exePath = "wazuh-analysisd";
-                }
-            }
-
-            const auto pidError =
-                base::process::createPID(confManager.get<std::string>(conf::key::PID_FILE_PATH), exePath, getpid());
-            if (base::isError(pidError))
-            {
-                throw std::runtime_error(
-                    (fmt::format("Could not create PID file for the engine: {}", base::getError(pidError).message)));
-            }
-        }
 
         // Do not exit until the server is running
         while (g_engineLocalServer->isRunning())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
+        g_engineLocalServer.reset();
+        LOG_INFO("Engine local server stopped.");
     }
     catch (const std::exception& e)
     {
         const auto msg = utils::getExceptionStack(e);
         LOG_ERROR("An error occurred while initializing the modules: {}.", msg);
+        exitHandler.execute();
+        exit(EXIT_FAILURE);
+    }
+    catch (...)
+    {
+        LOG_ERROR("An unknown error occurred while initializing the modules.");
         exitHandler.execute();
         exit(EXIT_FAILURE);
     }

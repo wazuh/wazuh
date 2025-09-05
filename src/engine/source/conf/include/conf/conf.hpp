@@ -45,7 +45,7 @@ std::string toStr(const U& value)
         return value;
     }
 
-    if constexpr (std::is_same_v<U, int> || std::is_same_v<U, int64_t>)
+    if constexpr (std::is_same_v<U, int> || std::is_same_v<U, int64_t> || std::is_same_v<U, size_t>)
     {
         return fmt::format("{}", value);
     }
@@ -60,6 +60,7 @@ class Conf final
 {
 private:
     OptionMap m_fileConfig; ///< The configuration from the file.
+    bool m_loaded;          ///< Indicates if the configuration has been loaded.
     std::unordered_map<std::string, std::shared_ptr<internal::BaseUnitConf>> m_units; ///< The configuration units.
     std::shared_ptr<IFileLoader> m_fileLoader;                                        ///< The API loader.
 
@@ -101,9 +102,11 @@ public:
     template<typename T>
     void addUnit(std::string_view key, std::string_view env, const T& defaultValue)
     {
+
+        // Cannot add new config after loads
         if (!m_fileConfig.empty())
         {
-            throw std::logic_error("The configuration is already loaded.");
+            throw std::logic_error("Cannot add new configuration unit after loading the configuration.");
         }
 
         if (key.empty())
@@ -252,6 +255,41 @@ public:
                     {
                         throw std::runtime_error(
                             fmt::format("Invalid configuration type for key '{}'. Value out of range for int64: '{}'.",
+                                        key,
+                                        rawValue));
+                    }
+                }
+                else if constexpr (std::is_same_v<T, size_t>)
+                {
+                    if (!base::utils::string::isNumber(rawValue))
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Invalid configuration type for key '{}'. Expected unsigned integer, got '{}'.",
+                                        key,
+                                        rawValue));
+                    }
+
+                    std::size_t pos = 0;
+                    try
+                    {
+                        size_t value = std::stoull(rawValue, &pos);
+                        if (pos != rawValue.size())
+                        {
+                            throw std::runtime_error(
+                                fmt::format("Extra characters after size_t: '{}'", rawValue.substr(pos)));
+                        }
+                        LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, value);
+                        return value;
+                    }
+                    catch (const std::invalid_argument& e)
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Invalid configuration type for key '{}'. Could not parse '{}'.", key, rawValue));
+                    }
+                    catch (const std::out_of_range& e)
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Invalid configuration type for key '{}'. Value out of range for size_t: '{}'.",
                                         key,
                                         rawValue));
                     }

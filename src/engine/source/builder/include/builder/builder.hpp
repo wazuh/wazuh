@@ -12,6 +12,7 @@
 #include <schemf/ischema.hpp>
 #include <schemf/ivalidator.hpp>
 #include <store/istore.hpp>
+#include <streamlog/ilogger.hpp>
 
 #include <builder/iallowedFields.hpp>
 #include <builder/ibuilder.hpp>
@@ -28,6 +29,7 @@ struct BuilderDeps
     std::string kvdbScopeName;
     std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
     std::shared_ptr<geo::IManager> geoManager;
+    std::shared_ptr<streamlog::ILogManager> logManager;
     // std::shared_ptr<IIndexerConnector> iConnector;
 };
 

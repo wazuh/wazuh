@@ -12,6 +12,7 @@
 
 #include <scheduler/ischeduler.hpp>
 #include <store/istore.hpp>
+#include <streamlog/ilogger.hpp>
 
 /**
  * @brief Asynchronous, rotating log management module. Handles named, rotating log channels with asynchronous writes.
@@ -117,22 +118,6 @@
 namespace streamlog
 {
 
-/**
- * @brief Abstract base class for writer event handlers.
- *
- * WriterEvent defines an interface for handling log messages.
- * Derived classes must implement the function call operator to process messages.
- */
-class WriterEvent
-{
-public:
-    virtual ~WriterEvent() = default;
-    /**
-     * @brief Handles a log message, return true if the message was successfully handled, false otherwise.
-     */
-    virtual bool operator()(std::string&& message) = 0;
-};
-
 class ChannelHandler; // Forward declaration of ChannelHandler
 
 /**
@@ -160,7 +145,7 @@ struct RotationConfig
  * It handles the asynchronous writing of log entries to files, ensuring thread safety and
  * efficient I/O operations.
  */
-class LogManager
+class LogManager : public ILogManager
 {
 
 private:
@@ -220,7 +205,7 @@ public:
      * the log channel asynchronously.
      * @throws std::runtime_error if the log channel does not exist.
      */
-    [[nodiscard]] std::shared_ptr<WriterEvent> getWriter(const std::string& name);
+    [[nodiscard]] std::shared_ptr<WriterEvent> getWriter(const std::string& name) override;
 
     /**
      * @brief Gets the current configuration of a log channel.
@@ -248,7 +233,39 @@ public:
      */
     void destroyChannel(const std::string& name);
 
-    ~LogManager();
+    /**
+     * @brief Creates and validates the base directory path for a log channel.
+     *
+     * This method creates a subdirectory within the configured base path using the provided
+     * channel name. It performs validation on both the channel name and configuration,
+     * ensures the target path doesn't conflict with existing files, and creates the
+     * necessary directory structure.
+     *
+     * @param channelName The name of the log channel to create a directory for
+     * @param config The rotation configuration containing the base path and other settings
+     *
+     * @return Reference to the modified RotationConfig with updated base path
+     *
+     * @throws std::runtime_error If the channel name is invalid, configuration is invalid,
+     *                           the target path exists but is not a directory, or
+     *                           directory creation fails
+     *
+     * @note The method modifies the basePath field in the provided config to point to
+     *       the newly created subdirectory (basePath/channelName)
+     */
+    static RotationConfig& isolatedBasePath(const std::string& channelName, RotationConfig& config);
+
+    /**
+     * @brief Clean up the logger, releasing all resources.
+     * 
+     * @warning After calling this method, the LogManager instance should not be used again.
+     */
+    void cleanup();
+
+    /**
+     * @brief Destructor
+     */
+    ~LogManager() = default;
 };
 
 } // namespace streamlog

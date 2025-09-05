@@ -13,6 +13,7 @@ add_library(base STATIC
     ${SRC_DIR}/eventParser.cpp
     ${SRC_DIR}/json.cpp
     ${SRC_DIR}/logging.cpp
+    ${SRC_DIR}/process.cpp
 )
 target_include_directories(base
     PUBLIC

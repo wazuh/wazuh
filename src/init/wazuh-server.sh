@@ -264,7 +264,7 @@ get_wazuh_engine_pid()
 wait_for_wazuh_engine_ready()
 {
     local attempts=0
-    local max_attempts=10
+    local max_attempts=25
 
     ENGINE_PID=$(get_wazuh_engine_pid)
     if [ $? -ne 0 ]; then

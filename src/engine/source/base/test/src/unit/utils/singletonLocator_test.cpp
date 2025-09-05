@@ -129,7 +129,7 @@ TEST(SingletonLocatorTest, ParallelRegister)
 
     for (size_t runs = 0; runs < 100; ++runs)
     {
-        std::shared_ptr<std::vector<bool>> results = std::make_shared<std::vector<bool>>(10);
+        std::shared_ptr<std::vector<int>> results = std::make_shared<std::vector<int>>(10, 0);
         std::vector<std::thread> threads;
         for (size_t i = 0; i < 10; ++i)
         {
@@ -141,11 +141,11 @@ TEST(SingletonLocatorTest, ParallelRegister)
                 }
                 catch (...)
                 {
-                    (*results)[i] = false;
+                    (*results)[i] = 0;
                     return;
                 }
 
-                (*results)[i] = true;
+                (*results)[i] = 1;
             };
             threads.emplace_back(registerManager);
         }
@@ -155,7 +155,7 @@ TEST(SingletonLocatorTest, ParallelRegister)
             thread.join();
         }
 
-        EXPECT_EQ(std::count(results->begin(), results->end(), true), 1);
+        EXPECT_EQ(std::count(results->begin(), results->end(), 1), 1);
         ASSERT_NO_THROW(SingletonLocator::unregisterManager<Instance>());
     }
 }
@@ -170,7 +170,7 @@ TEST(SingletonLocatorTest, ParallelUnregister)
 
     for (size_t runs = 0; runs < 100; ++runs)
     {
-        std::shared_ptr<std::vector<bool>> results = std::make_shared<std::vector<bool>>(10);
+        std::shared_ptr<std::vector<int>> results = std::make_shared<std::vector<int>>(10, 0);
         std::vector<std::thread> threads;
         for (size_t i = 0; i < 10; ++i)
         {
@@ -182,11 +182,11 @@ TEST(SingletonLocatorTest, ParallelUnregister)
                 }
                 catch (...)
                 {
-                    (*results)[i] = false;
+                    (*results)[i] = 0;
                     return;
                 }
 
-                (*results)[i] = true;
+                (*results)[i] = 1;
             };
             threads.emplace_back(unregisterManager);
         }
@@ -196,7 +196,7 @@ TEST(SingletonLocatorTest, ParallelUnregister)
             thread.join();
         }
 
-        EXPECT_EQ(std::count(results->begin(), results->end(), true), 1);
+        EXPECT_EQ(std::count(results->begin(), results->end(), 1), 1);
         // Re-register to allow next run
         auto registerManager = []()
         {

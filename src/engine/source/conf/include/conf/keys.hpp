@@ -51,8 +51,17 @@ constexpr std::string_view METRICS_ENABLED = "analysisd.metrics_enabled";
 constexpr std::string_view METRICS_EXPORT_INTERVAL = "analysisd.metrics_export_interval";
 constexpr std::string_view METRICS_EXPORT_TIMEOUT = "analysisd.metrics_export_timeout";
 
+constexpr std::string_view STREAMLOG_BASE_PATH = "analysisd.streamlog_base_path";
+constexpr std::string_view STREAMLOG_SHOULD_COMPRESS = "analysisd.streamlog_compress";
+constexpr std::string_view STREAMLOG_COMPRESSION_LEVEL = "analysisd.streamlog_compression_level";
+constexpr std::string_view STREAMLOG_ALERTS_PATTERN = "analysisd.streamlog_alerts_pattern";
+constexpr std::string_view STREAMLOG_ALERTS_MAX_SIZE = "analysisd.streamlog_alerts_max_size";
+constexpr std::string_view STREAMLOG_ALERTS_BUFFER_SIZE = "analysisd.streamlog_alerts_buffer_size";
+constexpr std::string_view STREAMLOG_ARCHIVES_PATTERN = "analysisd.streamlog_archives_pattern";
+constexpr std::string_view STREAMLOG_ARCHIVES_MAX_SIZE = "analysisd.streamlog_archives_max_size";
+constexpr std::string_view STREAMLOG_ARCHIVES_BUFFER_SIZE = "analysisd.streamlog_archives_buffer_size";
+
 constexpr std::string_view ARCHIVER_ENABLED = "analysisd.archiver_enabled";
-constexpr std::string_view ARCHIVER_PATH = "analysisd.archiver_path";
 
 constexpr std::string_view PID_FILE_PATH = "analysisd.pid_path";
 constexpr std::string_view SKIP_USER_CHANGE = "analysisd.owner_user_change_skip";

@@ -3,6 +3,12 @@ set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
+# INTERFACE
+add_library(streamlogger_istreamlogger INTERFACE)
+target_include_directories(streamlogger_istreamlogger INTERFACE ${IFACE_DIR})
+target_link_libraries(streamlogger_istreamlogger INTERFACE base queue scheduler::ischeduler store::istore)
+add_library(streamlogger::istreamlogger ALIAS streamlogger_istreamlogger)
+
 # Implementation
 add_library(streamlogger_streamlogger STATIC
     ${SRC_DIR}/logger.cpp
@@ -17,6 +23,7 @@ target_link_libraries(streamlogger_streamlogger
     base
     queue
     scheduler::ischeduler
+    streamlogger::istreamlogger
     store::istore
     PRIVATE
     urlrequest
@@ -29,6 +36,14 @@ if(ENGINE_BUILD_TEST)
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
+set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+
+# Mocks
+add_library(streamlogger_mocks INTERFACE)
+target_include_directories(streamlogger_mocks INTERFACE ${TEST_MOCK_DIR})
+target_link_libraries(streamlogger_mocks INTERFACE GTest::gmock streamlogger::istreamlogger)
+add_library(streamlogger::mocks ALIAS streamlogger_mocks)
+
 
 add_executable(streamlogger_utest
     ${UNIT_SRC_DIR}/logger_test.cpp
