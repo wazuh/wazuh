@@ -153,7 +153,7 @@ class LocalClient(client.AbstractClientManager):
                                              path=os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'))
         except MemoryError:
             raise exception.WazuhInternalError(1119)
-        except (ConnectionRefusedError, FileNotFoundError, Exception) as e:
+        except Exception as e:
             raise exception.WazuhInternalError(3009, str(e))
 
     async def wait_for_response(self, timeout: int) -> str:

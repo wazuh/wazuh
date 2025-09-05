@@ -88,6 +88,8 @@ jobs:
           mkdir -p /tmp/wazuh-logs
           sudo tail -F /var/ossec/logs/api.log >> /tmp/wazuh-logs/api.log 2>/dev/null &
           sudo tail -F /var/ossec/logs/ossec.log >> /tmp/wazuh-logs/ossec.log 2>/dev/null &
+          sudo tail -F /var/ossec/logs/cluster.log >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
+          sudo cat /var/ossec/etc/ossec.conf >> /tmp/wazuh-logs/ossec.conf
           cd tests/integration
           sudo python -m pytest --tier 0 --tier 1 test_api/
       # Collect logs if tests fail

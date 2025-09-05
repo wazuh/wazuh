@@ -323,8 +323,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /cluster/api/config
-          # TODO (#31588): Remove manager endpoints
-          - GET /manager/api/config
       cluster:update_config:
         description: Change the Wazuh's cluster node configuration
         resources:
@@ -337,8 +335,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/{node_id}/configuration
-          # TODO (#31588): Remove manager endpoints
-          - PUT /manager/configuration
       cluster:restart:
         description: Restart Wazuh's cluster nodes
         resources:
@@ -351,8 +347,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
-          # TODO (#31588): Remove manager endpoints
-          - PUT /manager/restart
       lists:read:
         description: Read CDB lists files
         resources:

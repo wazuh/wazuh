@@ -163,14 +163,6 @@ def get_api_config() -> AffectedItemsWazuhResult:
     return result
 
 
-_update_config_default_result_kwargs = {
-    'all_msg': f"API configuration was successfully updated{' in all specified nodes' if node_id != 'manager' else ''}. "
-               f"Settings require restarting the API to be applied.",
-    'some_msg': 'Not all API configuration could be updated.',
-    'none_msg': f"API configuration could not be updated{' in any node' if node_id != 'manager' else ''}.",
-    'sort_casting': ['str']
-}
-
 _restart_default_result_kwargs = {
     'all_msg': f"Restart request sent to {'all specified nodes' if node_id != 'manager' else ''}",
     'some_msg': "Could not send restart request to some specified nodes",
