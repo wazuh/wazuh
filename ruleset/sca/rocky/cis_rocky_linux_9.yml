@@ -2329,7 +2329,44 @@ checks:
       - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+tipc'
 
   # 3.2.3 Ensure rds kernel module is not available (Automated)
+  - id: 31684
+    title: "Ensure rds kernel module is not available."
+    description: "The Reliable Datagram Sockets (RDS) protocol is a transport layer protocol designed to provide low-latency, high-bandwidth communications between cluster nodes. It was developed by the Oracle Corporation."
+    rationale: "- IF - the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
+    remediation: "Run the following script to disable rds: #!/usr/bin/env bash { l_mname=\"rds\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
+    compliance:
+      - cis: ["3.2.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1042"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_techniques: ["T1068", "T1068.000", "T1210", "T1210.000"]
+      - nist_sp_800-53: ["SI-4", "CM-7"]
+    condition: all
+    rules:
+      - "c:modprobe -n -v rds -> r:install /bin/true|install /bin/false"
+      - "not c:lsmod -> r:rds"
+      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+rds'
+
   # 3.2.4 Ensure sctp kernel module is not available (Automated)
+  - id: 31685
+    title: "Ensure sctp kernel module is not available."
+    description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
+    rationale: "- IF - the protocol is not required, it is recommended that the drivers not be installed to reduce the potential attack surface."
+    remediation: "Run the following script to disable sctp: #!/usr/bin/env bash { l_mname=\"sctp\" # set module name # Check if the module exists on the system if [ -z \"$(modprobe -n -v \"$l_mname\" 2>&1 | grep -Pi -- \"\\h*modprobe:\\h+FATAL:\\h+Module\\h+$l_mname\\h+not\\h+found\\h+in\\h+directory\")\" ]; then # Remediate loadable l_loadable=\"$(modprobe -n -v \"$l_mname\")\" [ \"$(wc -l <<< \"$l_loadable\")\" -gt \"1\" ] && l_loadable=\"$(grep -P -- \"(^\\h*install|\\b$l_mname)\\b\" <<< \"$l_loadable\")\" if ! grep -Pq -- '^\\h*install \\/bin\\/(true|false)' <<< \"$l_loadable\"; then echo -e \" - setting module: \\\"$l_mname\\\" to be not loadable\" echo -e \"install $l_mname /bin/false\" >> /etc/modprobe.d/\"$l_mname\".conf fi # Remediate loaded if lsmod | grep \"$l_mname\" > /dev/null 2>&1; then echo -e \" - unloading module \\\"$l_mname\\\"\" modprobe -r \"$l_mname\" fi # Remediate deny list if ! modprobe --showconfig | grep -Pq -- \"^\\h*blacklist\\h+$l_mname\\b\"; then echo -e \" - deny listing \\\"$l_mname\\\"\" echo -e \"blacklist $l_mname\" >> /etc/modprobe.d/\"$l_mname\".conf fi else echo -e \" - Nothing to remediate\\n - Module \\\"$l_mname\\\" doesn't exist on the system\" fi }."
+    compliance:
+      - cis: ["3.2.4"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1042"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_techniques: ["T1068", "T1068.000", "T1210", "T1210.000"]
+      - nist_sp_800-53: ["SI-4", "CM-7"]
+    condition: all
+    rules:
+      - "c:modprobe -n -v sctp -> r:install /bin/true|install /bin/false"
+      - "not c:lsmod -> r:sctp"
+      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+sctp'
 
   ###############################################
   # 3.3 Configure Network Kernel Parameters
