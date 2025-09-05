@@ -1,0 +1,69 @@
+# Name of the helper function
+name: parse_date
+
+metadata:
+  description: |
+    Parses a date/time string and normalizes it to a datetime value.
+    The first option must be either a strftime-like format (e.g., "%Y-%m-%dT%H:%M:%S%z")
+    or a sample date string from which the format can be inferred.
+    Optionally, a second parameter "locale" can be provided. If omitted, "C/POSIX" is used.
+  keywords:
+    - parser
+    - date
+    - time
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string
+    generate: string
+    source: reference
+  format:
+    type: string
+    generate: string
+    source: value
+  locale:
+    type: string
+    generate: string
+    source: value
+    optional: true
+
+# Skip flag for this helper (keep explicit for the generator)
+skipped:
+  - success_cases
+
+# Target field declaration (the resulting normalized date shown as ISO-8601 string in docs)
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      input_field: "2025-09-01T10:30:00-05:00"
+      format: "%Y-%m-%dT%H:%M:%S%Ez"
+      locale: "_auto"
+    target_field: any_value
+    should_pass: true
+    expected: "2025-09-01T15:30:00.000Z"
+    description: ISO-8601 with timezone (explicit format)
+  - arguments:
+      input_field: "01/09/2025 10:30"
+      format: "%d/%m/%Y %H:%M"
+      locale: "_auto"
+    target_field: any_value
+    should_pass: true
+    expected: "2025-09-01T10:30:00.000Z"
+    description: dd/mm/YYYY HH:MM (explicit format)
+  - arguments:
+      input_field: "2025/09/01 10:30"
+      format: "%Y-%m-%d %H:%M"
+      locale: "_auto"
+    target_field: any_value
+    should_pass: false
+    description: Format mismatch -> error
+
