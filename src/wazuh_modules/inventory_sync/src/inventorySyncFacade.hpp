@@ -224,7 +224,12 @@ public:
         logDebug2(LOGGER_DEFAULT_TAG, "Configuration: %s", configuration.dump().c_str());
         m_indexerConnector = std::make_unique<TIndexerConnector>(configuration.at("indexer"), logFunction);
 
-        static std::string clusterName = configuration.at("clusterName");
+        if (!configuration.contains("clusterName"))
+        {
+            throw InventorySyncException("clusterName not found in configuration");
+        }
+
+        const std::string& clusterName = configuration.at("clusterName");
 
         m_workersQueue = std::make_unique<WorkersQueue>(
             [this](const std::vector<char>& dataRaw)
@@ -267,7 +272,7 @@ public:
         };
 
         m_indexerQueue = std::make_unique<IndexerQueue>(
-            [this, &preIndexerAction](const Response& res)
+            [this, &preIndexerAction, &clusterName](const Response& res)
             {
                 logDebug2(LOGGER_DEFAULT_TAG, "Indexer queue action...");
                 if (auto sessionIt = m_agentSessions.find(res.context->sessionId); sessionIt == m_agentSessions.end())
@@ -315,6 +320,12 @@ public:
                             elementId.append("_");
                             elementId.append(data->id()->string_view());
 
+                            thread_local std::string index;
+                            index.clear();
+                            index.append(data->index()->string_view());
+                            index.append("-");
+                            index.append(clusterName);
+
                             if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                             {
                                 logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Upserting data...");
@@ -331,12 +342,12 @@ public:
                                 dataString.append(R"("}},)");
                                 dataString.append(
                                     std::string_view((const char*)data->data()->data() + 1, data->data()->size() - 1));
-                                m_indexerConnector->bulkIndex(elementId, data->index()->string_view(), dataString);
+                                m_indexerConnector->bulkIndex(elementId, index, dataString);
                             }
                             else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
                             {
                                 logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting data...");
-                                m_indexerConnector->bulkDelete(elementId, data->index()->string_view());
+                                m_indexerConnector->bulkDelete(elementId, index);
                             }
                             else
                             {
