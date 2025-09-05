@@ -2567,6 +2567,23 @@ checks:
       - 'f:/proc/sys/net/ipv4/tcp_syncookies -> r:^1$'
 
   # 3.3.11 Ensure ipv6 router advertisements are not accepted (Automated)
+  - id: 31696
+    title: "Ensure ipv6 router advertisements are not accepted."
+    description: "Routers periodically multicast Router Advertisement messages to announce their availability and convey information to neighboring nodes that enable them to be automatically configured on the network. net.ipv6.conf.all.accept_ra and net.ipv6.conf.default.accept_ra determine the systems ability to accept these advertisements"
+    rationale: "It is recommended that systems do not accept router advertisements as they could be tricked into routing traffic to compromised machines. Setting hard routes within the system (usually a single default route to a trusted router) protects the system from bad routes. Setting net.ipv6.conf.all.accept_ra and net.ipv6.conf.default.accept_ra to 0 disables the system's ability to accept IPv6 router advertisements."
+    remediation: "Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv6.conf.all.accept_ra=0 sysctl -w net.ipv6.conf.default.accept_ra=0 }"
+    compliance:
+      - cis: ["3.3.11"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1030", "M1042"]
+      - mitre_tactics: ["TA0006", "TA0040"]
+      - mitre_techniques: ["T1557", "T1557.000"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv6/conf/all/accept_ra -> r:^0$'
+      - 'f:/proc/sys/net/ipv6/conf/default/accept_ra -> r:^0$'
 
   ###############################################
   # 4.1 Configure a firewall utility
