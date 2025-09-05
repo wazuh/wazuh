@@ -51,7 +51,7 @@ from pathlib import Path
 import requests
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
-from wazuh_testing.constants.api import CONFIGURATION_TYPES, MANAGER_CONFIGURATION_ROUTE
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.utils import login, get_base_url
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, get_wazuh_conf
@@ -141,8 +141,8 @@ def test_indexer(test_configuration, test_metadata, set_wazuh_configuration, add
     authentication_headers['Content-Type'] = 'application/octet-stream'
 
     # Makes an API request for uploading the new configuration
-    response = requests.put(url + MANAGER_CONFIGURATION_ROUTE, headers=authentication_headers, verify=False, timeout=10,
-                            data=request_body)
+    response = requests.put(url + '/cluster/wazuh/configuration', headers=authentication_headers, verify=False,
+                            timeout=10, data=request_body)
 
     # Parses the response
     json_response = response.json()
