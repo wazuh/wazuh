@@ -18,17 +18,20 @@
 extern "C"
 {
 #endif
+
 #include "logging_helper.h"
 #include "agent_sync_protocol_c_interface_types.h"
 
-// Forward declaration of wm_sca_t
+// Forward declarations
 struct wm_sca_t;
+struct cJSON;
 
 typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 
 typedef int (*wm_exec_callback_t)(char* command, char** output, int* exitcode, int secs, const char* add_path);
 typedef int (*push_stateless_func)(const char* message);
 typedef int (*push_stateful_func)(const char* id, Operation_t operation, const char* index, const char* message);
+typedef struct cJSON* (*yaml_to_cjson_func)(const char* yaml_path);
 
 EXPORTED void sca_start(const struct wm_sca_t* sca_config);
 
@@ -46,6 +49,9 @@ EXPORTED void sca_set_sync_parameters(const char* module_name, const char* sync_
 EXPORTED bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int max_eps);
 EXPORTED void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data);
 EXPORTED bool sca_parse_response(const unsigned char* data, size_t length);
+
+// YAML to cJSON function
+EXPORTED void sca_set_yaml_to_cjson_func(yaml_to_cjson_func yaml_func);
 
 #ifdef __cplusplus
 }
@@ -68,5 +74,8 @@ typedef void (*sca_set_sync_parameters_func)(const char* module_name, const char
 typedef bool(*sca_sync_module_func)(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int max_eps);
 typedef void(*sca_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data);
 typedef bool(*sca_parse_response_func)(const unsigned char* data, size_t length);
+
+// YAML to cJSON function
+typedef void (*sca_set_yaml_to_cjson_func_func)(yaml_to_cjson_func yaml_func);
 
 #endif //_SCA_H

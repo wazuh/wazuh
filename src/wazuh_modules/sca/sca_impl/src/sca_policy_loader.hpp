@@ -27,6 +27,9 @@ constexpr auto SCA_CHECK_TABLE_NAME {"sca_check"};
 using CreateEventsFunc = std::function<void(std::unordered_map<std::string, nlohmann::json> modifiedPoliciesMap,
                                             std::unordered_map<std::string, nlohmann::json> modifiedChecksMap)>;
 
+/// @brief Type alias for YAML to JSON conversion function
+using YamlToJsonFunc = std::function<nlohmann::json(const std::string&)>;
+
 class SCAPolicyLoader
 {
     public:
@@ -47,9 +50,11 @@ class SCAPolicyLoader
         /// maps:
         ///   - modifiedPoliciesMap: maps policy ID to the JSON data of the created, modified or deleted policy
         ///   - modifiedChecksMap: maps check ID to the JSON data of the created, modified or deleted check
+        /// @param yamlToJsonFunc Function to convert YAML files to JSON strings
         std::vector<std::unique_ptr<ISCAPolicy>> LoadPolicies( const int commandsTimeout,
                                                                const bool remoteEnabled,
-                                                               const CreateEventsFunc& createEvents) const;
+                                                               const CreateEventsFunc& createEvents,
+                                                               const YamlToJsonFunc& yamlToJsonFunc) const;
 
         /// @brief Saves SCA Policies into the database
         /// @param data All SCA policies and its checks

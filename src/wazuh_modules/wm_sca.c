@@ -24,6 +24,7 @@
 #include "logging_helper.h"
 
 #include "sca/include/sca.h"
+#include "yaml2json.h"
 
 #define SCA_SYNC_PROTOCOL_DB_PATH "queue/sca/db/sca_sync.db"
 #define SCA_SYNC_RETRIES 3
@@ -44,6 +45,7 @@ long sca_sync_max_eps = 10;                      // Database synchronization num
 static bool wm_sca_is_shutting_down(void);
 static int wm_sca_send_stateless(const char* message);
 static int wm_sca_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message);
+static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path);
 
 #undef minfo
 #undef mwarn
@@ -98,6 +100,9 @@ sca_set_sync_parameters_func sca_set_sync_parameters_ptr = NULL;
 sca_sync_module_func sca_sync_module_ptr = NULL;
 sca_persist_diff_func sca_persist_diff_ptr = NULL;
 sca_parse_response_func sca_parse_response_ptr = NULL;
+
+// YAML to cJSON function pointer
+sca_set_yaml_to_cjson_func_func sca_set_yaml_to_cjson_func_ptr = NULL;
 
 // Logging callback function for SCA module
 static void sca_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag) {
@@ -163,6 +168,8 @@ void * wm_sca_main(wm_sca_t * data) {
             sca_set_log_function_ptr(sca_log_callback);
         }
 
+        sca_set_yaml_to_cjson_func_ptr = so_get_function_sym(sca_module, "sca_set_yaml_to_cjson_func");
+
         // Set the wm_exec function pointer in the SCA module
         if (sca_set_wm_exec_ptr) {
             sca_set_wm_exec_ptr(wm_exec);
@@ -180,6 +187,11 @@ void * wm_sca_main(wm_sca_t * data) {
                 .send_binary = wm_sca_send_binary_msg
             };
             sca_set_sync_parameters_ptr(SCA_WM_NAME, SCA_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+        }
+
+        // Set the yaml to cjson function
+        if (sca_set_yaml_to_cjson_func_ptr) {
+            sca_set_yaml_to_cjson_func_ptr(wm_sca_yaml_to_cjson);
         }
     } else {
         merror("Can't get SCA module handle.");
@@ -391,4 +403,31 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 #else
     return NULL;
 #endif
+}
+
+static cJSON* wm_sca_yaml_to_cjson(const char* yaml_path)
+{
+    yaml_document_t document;
+    cJSON* json_object = NULL;
+
+    memset(&document, 0, sizeof(document));
+
+    if (yaml_parse_file(yaml_path, &document) == 0)
+    {
+        json_object = yaml2json(&document, 1);
+
+        if (!json_object)
+        {
+            mwarn("Failed to convert YAML document to JSON for file: %s", yaml_path);
+        }
+
+        yaml_document_delete(&document);
+
+    }
+    else
+    {
+        mwarn("Failed to parse YAML file: %s", yaml_path);
+    }
+
+    return json_object;
 }

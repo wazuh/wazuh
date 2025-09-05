@@ -15,6 +15,9 @@
 #include <string>
 #include <vector>
 
+/// @brief Type alias for YAML to JSON conversion function
+using YamlToJsonFunc = std::function<nlohmann::json(const std::string&)>;
+
 class SecurityConfigurationAssessment
 {
     public:
@@ -44,7 +47,8 @@ class SecurityConfigurationAssessment
                    std::time_t scanInterval,
                    const int commandsTimeout,
                    const bool remoteEnabled,
-                   const std::vector<sca::PolicyData>& policies);
+                   const std::vector<sca::PolicyData>& policies,
+                   const YamlToJsonFunc& yamlToJsonFunc = nullptr);
 
         /// @copydoc IModule::Stop
         void Stop() ;
@@ -129,6 +133,18 @@ class SecurityConfigurationAssessment
 
         /// @brief Flag to keep the module running
         std::atomic<bool> m_keepRunning {true};
+
+        /// @brief Commands timeout for policy execution
+        int m_commandsTimeout = 0;
+
+        /// @brief Flag indicating whether remote policies are enabled
+        bool m_remoteEnabled = false;
+
+        /// @brief Vector of policy data
+        std::vector<sca::PolicyData> m_policiesData;
+
+        /// @brief YAML to JSON conversion function
+        YamlToJsonFunc m_yamlToJsonFunc;
 
         /// @brief Static/global function pointer to wm_exec
         static int (*s_wmExecFunc)(char*, char**, int*, int, const char*);

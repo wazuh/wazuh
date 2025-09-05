@@ -2,9 +2,7 @@
 
 #include <sca_policy.hpp>
 #include <sca_policy_check.hpp>
-
-#include <yaml_document.hpp>
-#include <yaml_node.hpp>
+#include <sca_utils.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -16,75 +14,6 @@
 
 namespace
 {
-    std::string Join(const std::vector<std::string>& elements, const std::string& separator)
-    {
-        std::ostringstream oss;
-
-        for (size_t i = 0; i < elements.size(); ++i)
-        {
-            if (i > 0)
-            {
-                oss << separator;
-            }
-
-            oss << elements[i];
-        }
-
-        return oss.str();
-    }
-
-    // NOLINTNEXTLINE(misc-no-recursion)
-    nlohmann::json YamlNodeToJson(const YamlNode& yamlNode)
-    {
-        if (yamlNode.IsScalar())
-        {
-            return yamlNode.AsString();
-        }
-        else if (yamlNode.IsSequence())
-        {
-            std::vector<std::string> values;
-            const auto items = yamlNode.AsSequence();
-
-            for (const auto& item : items)
-            {
-                if (item.IsScalar())
-                {
-                    values.push_back(item.AsString());
-                }
-                else if (item.IsMap())
-                {
-                    for (const auto& [key, subitem] : item.AsMap())
-                    {
-                        if (subitem.IsSequence())
-                        {
-                            const auto subitems = subitem.AsSequence();
-
-                            for (const auto& val : subitems)
-                            {
-                                values.emplace_back(key + ":" + val.AsString());
-                            }
-                        }
-                    }
-                }
-            }
-
-            return Join(values, ", ");
-        }
-        else if (yamlNode.IsMap())
-        {
-            nlohmann::json j;
-
-            for (const auto& [key, node] : yamlNode.AsMap())
-            {
-                j[key] = YamlNodeToJson(node);
-            }
-
-            return j;
-        }
-
-        return nullptr;
-    }
-
     void ValidateConditionString(const std::string& value)
     {
         if (!(value == "any" || value == "none" || value == "all"))
@@ -94,44 +23,34 @@ namespace
     }
 } // namespace
 
-// NOLINTNEXTLINE(performance-unnecessary-value-param)
-PolicyParser::PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, std::unique_ptr<IYamlDocument> yamlDocument)
-    : m_commandsTimeout(commandsTimeout)
+PolicyParser::PolicyParser(const std::filesystem::path& filename, const int commandsTimeout, const bool commandsEnabled, YamlToJsonFunc yamlToJsonFunc)
+    : m_filename(filename)
+    , m_commandsTimeout(commandsTimeout)
     , m_commandsEnabled(commandsEnabled)
+    , m_yamlToJsonFunc(std::move(yamlToJsonFunc))
 {
-    if (yamlDocument)
-    {
-        m_yamlDocument = std::move(yamlDocument);
-    }
-    else
-    {
-        m_yamlDocument = std::make_unique<YamlDocument>(filename);
-    }
-
     try
     {
-        if (!m_yamlDocument->IsValidDocument())
+        m_jsonDocument = m_yamlToJsonFunc(filename.string());
+
+        // Process variables if they exist
+        if (m_jsonDocument.contains("variables") && m_jsonDocument["variables"].is_object())
         {
-            throw std::runtime_error("The file does not contain a valid YAML structure.");
-        }
-
-        YamlNode root = m_yamlDocument->GetRoot();
-
-        if (root.HasKey("variables"))
-        {
-            const auto variablesNode = root["variables"];
-
-            for (const auto& [key, val] : variablesNode.AsMap())
+            for (const auto& [key, val] : m_jsonDocument["variables"].items())
             {
-                m_variablesMap[key] = val.AsString();
+                if (val.is_string())
+                {
+                    m_variablesMap[key] = val.get<std::string>();
+                }
             }
 
-            ReplaceVariablesInNode(root);
+            ReplaceVariablesInJson(m_jsonDocument);
         }
     }
     catch (const std::exception& e)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, std::string("Error parsing YAML file: ") + e.what());
+        m_jsonDocument = nlohmann::json{};
     }
 }
 
@@ -142,15 +61,18 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
 
     std::string policyId;
 
-    const YamlNode root = m_yamlDocument->GetRoot();
-
-    if (root.HasKey("policy"))
+    if (m_jsonDocument.contains("policy") && m_jsonDocument["policy"].is_object())
     {
         try
         {
-            const auto policyNode = root["policy"];
-            policyId = policyNode["id"].AsString();
-            policiesAndChecks["policies"].push_back(YamlNodeToJson(policyNode));
+            const auto& policyNode = m_jsonDocument["policy"];
+
+            if (policyNode.contains("id") && policyNode["id"].is_string())
+            {
+                policyId = policyNode["id"].get<std::string>();
+            }
+
+            policiesAndChecks["policies"].push_back(policyNode);
 
             LoggingHelper::getInstance().log(LOG_DEBUG, "Policy parsed.");
         }
@@ -165,103 +87,134 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
         return nullptr;
     }
 
-    if (root.HasKey("requirements"))
+    if (m_jsonDocument.contains("requirements") && m_jsonDocument["requirements"].is_object())
     {
         try
         {
-            const auto requirementsNode = root["requirements"];
-            requirements.condition = requirementsNode["condition"].AsString();
-            ValidateConditionString(requirements.condition);
+            const auto& requirementsNode = m_jsonDocument["requirements"];
 
-            if (requirementsNode.HasKey("regex_type"))
+            if (requirementsNode.contains("condition") && requirementsNode["condition"].is_string())
             {
-                const auto regexTypeStr = requirementsNode["regex_type"].AsString();
-                requirements.regexEngine = sca::StringToRegexEngineType(regexTypeStr);
-                LoggingHelper::getInstance().log(LOG_DEBUG, "Requirements regex_type set to: " + regexTypeStr);
+                requirements.condition = requirementsNode["condition"].get<std::string>();
+                ValidateConditionString(requirements.condition);
             }
 
-            const auto rules = requirementsNode["rules"].AsSequence();
+            nlohmann::json requirementsOutput;
 
-            for (const auto& rule : rules)
+            if (requirementsNode.contains("rules") && requirementsNode["rules"].is_array())
             {
-                std::unique_ptr<IRuleEvaluator> RuleEvaluator = RuleEvaluatorFactory::CreateEvaluator(rule.AsString(), m_commandsTimeout, m_commandsEnabled, requirements.regexEngine);
+                for (const auto& rule : requirementsNode["rules"])
+                {
+                    if (rule.is_string())
+                    {
+                        const auto ruleString = rule.get<std::string>();
+                        auto ruleEvaluator =
+                            RuleEvaluatorFactory::CreateEvaluator(ruleString, m_commandsTimeout, m_commandsEnabled);
 
-                if (RuleEvaluator != nullptr)
-                {
-                    requirements.rules.push_back(std::move(RuleEvaluator));
-                }
-                else
-                {
-                    LoggingHelper::getInstance().log(LOG_ERROR, "Failed to parse rule: " + rule.AsString());
+                        if (ruleEvaluator)
+                        {
+                            requirements.rules.push_back(std::move(ruleEvaluator));
+                            requirementsOutput["rules"].push_back(ruleString);
+                        }
+                        else
+                        {
+                            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to parse rule: " + ruleString);
+                        }
+                    }
                 }
             }
 
             LoggingHelper::getInstance().log(LOG_DEBUG, "Requirements parsed.");
+
+            if (!requirements.rules.empty() || !requirements.condition.empty())
+            {
+                if (requirementsNode.contains("title") && requirementsNode["title"].is_string())
+                {
+                    requirementsOutput["title"] = requirementsNode["title"];
+                }
+
+                if (!requirements.condition.empty())
+                {
+                    requirementsOutput["condition"] = requirements.condition;
+                }
+
+                policiesAndChecks["requirements"] = requirementsOutput;
+            }
         }
         catch (const std::exception& e)
         {
-            std::stringstream ss;
             LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to parse requirements. Error: ") + e.what());
             return nullptr;
         }
     }
 
-    if (root.HasKey("checks"))
+    if (m_jsonDocument.contains("checks") && m_jsonDocument["checks"].is_array())
     {
-        const auto checksNode = root["checks"].AsSequence();
-
-        for (const auto& checkNode : checksNode)
+        for (const auto& checkNode : m_jsonDocument["checks"])
         {
             try
             {
                 Check check;
-                check.id = checkNode["id"].AsString();
-                check.condition = checkNode["condition"].AsString();
-                ValidateConditionString(check.condition);
 
-                if (checkNode.HasKey("regex_type"))
+                if (checkNode.contains("id"))
                 {
-                    const auto regexTypeStr = checkNode["regex_type"].AsString();
-                    check.regexEngine = sca::StringToRegexEngineType(regexTypeStr);
-                    LoggingHelper::getInstance().log(LOG_DEBUG, "Check " + check.id.value_or("Unknown") + " regex_type set to: " + regexTypeStr);
+                    if (checkNode["id"].is_string())
+                    {
+                        check.id = checkNode["id"].get<std::string>();
+                    }
+                    else if (checkNode["id"].is_number())
+                    {
+                        check.id = std::to_string(checkNode["id"].get<int>());
+                    }
+                    else
+                    {
+                        // Log what type we actually got to help debug
+                        LoggingHelper::getInstance().log(LOG_WARNING, "Check ID is not a string or number, unexpected type found");
+                    }
                 }
 
-                // create new document with valid rules
-                auto newDoc = checkNode.Clone();
-                auto newRoot = newDoc.GetRoot();
-
-                // remove existing rules and create empty sequence
-                auto checkWithValidRules = newRoot;
-                newRoot.RemoveKey("rules");
-                newRoot.CreateEmptySequence("rules");
-
-                if (checkNode.HasKey("rules"))
+                if (checkNode.contains("condition") && checkNode["condition"].is_string())
                 {
-                    const auto rules = checkNode["rules"].AsSequence();
+                    check.condition = checkNode["condition"].get<std::string>();
+                    ValidateConditionString(check.condition);
+                }
 
-                    for (const auto& rule : rules)
+                // Create a copy of the check node for output with valid rules only
+                nlohmann::json checkWithValidRules = checkNode;
+                checkWithValidRules["rules"] = nlohmann::json::array();
+
+                // Ensure the output JSON always has a string ID
+                if (check.id.has_value())
+                {
+                    checkWithValidRules["id"] = check.id.value();
+                }
+
+                if (checkNode.contains("rules") && checkNode["rules"].is_array())
+                {
+                    for (const auto& rule : checkNode["rules"])
                     {
-                        const auto ruleStr = rule.AsString();
+                        if (rule.is_string())
+                        {
+                            const std::string ruleStr = rule.get<std::string>();
 
-                        if (auto ruleEvaluator = RuleEvaluatorFactory::CreateEvaluator(ruleStr, m_commandsTimeout, m_commandsEnabled, check.regexEngine))
-                        {
-                            check.rules.push_back(std::move(ruleEvaluator));
-                            checkWithValidRules["rules"].AppendToSequence(ruleStr);
-                        }
-                        else
-                        {
-                            LoggingHelper::getInstance().log(LOG_ERROR, "Failed to parse rule: " + ruleStr);
+                            if (auto ruleEvaluator = RuleEvaluatorFactory::CreateEvaluator(ruleStr, m_commandsTimeout, m_commandsEnabled))
+                            {
+                                check.rules.push_back(std::move(ruleEvaluator));
+                                checkWithValidRules["rules"].push_back(ruleStr);
+                            }
+                            else
+                            {
+                                LoggingHelper::getInstance().log(LOG_ERROR, "Failed to parse rule: " + ruleStr);
+                            }
                         }
                     }
                 }
 
                 LoggingHelper::getInstance().log(LOG_DEBUG, "Check " + check.id.value_or("Invalid id") + " parsed.");
 
-                nlohmann::json checkJson = YamlNodeToJson(checkWithValidRules);
-                checkJson["policy_id"] = policyId;
-                checkJson["regex_type"] = sca::RegexEngineTypeToString(check.regexEngine);
                 checks.push_back(std::move(check));
-                policiesAndChecks["checks"].push_back(checkJson);
+                checkWithValidRules["policy_id"] = policyId;
+                policiesAndChecks["checks"].push_back(checkWithValidRules);
             }
             catch (const std::exception& e)
             {
@@ -280,11 +233,11 @@ std::unique_ptr<ISCAPolicy> PolicyParser::ParsePolicy(nlohmann::json& policiesAn
 }
 
 // NOLINTNEXTLINE(misc-no-recursion)
-void PolicyParser::ReplaceVariablesInNode(YamlNode& currentNode)
+void PolicyParser::ReplaceVariablesInJson(nlohmann::json& jsonNode)
 {
-    if (currentNode.IsScalar())
+    if (jsonNode.is_string())
     {
-        auto value = currentNode.AsString();
+        std::string value = jsonNode.get<std::string>();
 
         for (const auto& pair : m_variablesMap)
         {
@@ -297,22 +250,20 @@ void PolicyParser::ReplaceVariablesInNode(YamlNode& currentNode)
             }
         }
 
-        currentNode.SetScalarValue(value);
+        jsonNode = value;
     }
-    else if (currentNode.IsMap())
+    else if (jsonNode.is_object())
     {
-        for (auto& [key, node] : currentNode.AsMap())
+        for (auto& [key, node] : jsonNode.items())
         {
-            ReplaceVariablesInNode(node);
+            ReplaceVariablesInJson(node);
         }
     }
-    else if (currentNode.IsSequence())
+    else if (jsonNode.is_array())
     {
-        auto items = currentNode.AsSequence();
-
-        for (auto& item : items)
+        for (auto& item : jsonNode)
         {
-            ReplaceVariablesInNode(item);
+            ReplaceVariablesInJson(item);
         }
     }
 }

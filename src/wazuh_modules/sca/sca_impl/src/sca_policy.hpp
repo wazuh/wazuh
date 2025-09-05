@@ -5,7 +5,6 @@
 #include <sca_utils.hpp>
 
 #include <atomic>
-#include <chrono>
 #include <filesystem>
 #include <functional>
 #include <memory>
@@ -30,11 +29,7 @@ class SCAPolicy : public ISCAPolicy
         SCAPolicy(SCAPolicy&& other) noexcept;
 
         /// @copydoc ISCAPolicy::Run
-        void
-        Run(std::time_t scanInterval,
-            bool scanOnStart,
-            std::function<void(const CheckResult&)> reportCheckResult,
-            std::function<void(std::chrono::milliseconds)> wait) override;
+        void Run(std::function<void(const CheckResult&)> reportCheckResult) override;
 
         /// @copydoc ISCAPolicy::Stop
         void Stop() override;
