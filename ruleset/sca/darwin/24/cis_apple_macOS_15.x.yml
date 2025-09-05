@@ -21,9 +21,9 @@ requirements:
   description: "Requirements for running the policy against MacOS 15 Sequoia."
   condition: any
   rules:
-    - 'c:sw_vers -> r:^ProductVersion:\t*\s*15\p'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*15\p'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*15\p'
+    - 'c:sw_vers -> r:^ProductVersion:\t*\s*15[*!+.-]'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:\.*15[*!+.-]'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*15[*!+.-]'
 
 checks:
   ##########################################################################
@@ -50,7 +50,7 @@ checks:
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticCheckEnabled'')" -> r:^1$'
-      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticCheckEnabled'')" -> r:\.+'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticCheckEnabled'')" -> r:.+'
 
   # 1.3 Ensure Download New Updates When Available Is Enabled. (Automated)
   - id: 35001
@@ -70,7 +70,7 @@ checks:
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticDownload'')" -> r:^1$'
-      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticDownload'')" -> r:\.+'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticDownload'')" -> r:.+'
 
   # 1.4 Ensure Install of macOS Updates Is Enabled. (Automated)
   - id: 35002
@@ -90,7 +90,7 @@ checks:
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticallyInstallMacOSUpdates'')" -> r:^1$'
-      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticallyInstallMacOSUpdates'')" -> r:\.+'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticallyInstallMacOSUpdates'')" -> r:.+'
 
   # 1.5 Ensure Install Application Updates from the App Store Is Enabled. (Automated)
   - id: 35003
@@ -157,7 +157,7 @@ checks:
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> n:^(\d+)$ compare <= 30'
-      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> r:\.+'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> r:.+'
 
   # 1.8 Ensure the System is Managed by a Mobile Device Management (MDM) Software. (Manual) - Not Implemented
 
@@ -308,7 +308,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'not c:launchctl list -> r:com.apple.screensharing$'
+      - 'not c:launchctl list -> r:com\.apple\.screensharing$'
 
   # 2.3.3.3 Ensure File Sharing Is Disabled. (Automated)
   - id: 35012
@@ -481,7 +481,7 @@ checks:
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.TimeMachine'').objectForKey(''AutoBackup'')" -> r:^1$'
-      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.TimeMachine'').objectForKey(''LastDestinationID'')" -> r:^\.+$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.TimeMachine'').objectForKey(''LastDestinationID'')" -> r:^.+$'
 
   # 2.3.4.2 Ensure Time Machine Volumes Are Encrypted If Time Machine Is Enabled. (Automated)
   - id: 35020
@@ -723,7 +723,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''LoginwindowText'')" -> r:^\.+$'
+      - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''LoginwindowText'')" -> r:^.+$'
 
   # 2.10.4 Ensure Login Window Displays as Name and Password Is Enabled. (Automated)
   - id: 35030
@@ -765,7 +765,7 @@ checks:
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:^0$'
-      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:\w+'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:[\w@-]+'
 
   # 2.11.1 Ensure Users' Accounts Do Not Have a Password Hint. (Automated)
   - id: 35032
@@ -850,7 +850,7 @@ checks:
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''com.apple.login.mcx.DisableAutoLoginClient'')" -> r:^1$'
-      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''autoLoginUser'')" -> r:^\.+$'
+      - 'not c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''autoLoginUser'')" -> r:^.+$'
 
   # 2.13.1 Audit Passwords System Preference Setting. (Manual) - Not Implemented
   # 2.14.1 Audit Game Center Settings. (Manual) - Not Implemented
@@ -879,7 +879,7 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - "c:launchctl list -> r:com.apple.auditd"
+      - "c:launchctl list -> r:com\\.apple\\.auditd"
 
   # 3.2 Ensure Security Auditing Flags For User-Attributable Events Are Configured Per Local Organizational Requirements. (Automated)
   - id: 35037
@@ -950,14 +950,14 @@ checks:
       - soc_2: ["A1.1"]
     condition: any
     rules:
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)s compare >= 5184000'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)h compare >= 1440'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)d compare >= 60'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)y compare >= 1'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)b compare >= 5368709120'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)k compare >= 5242880'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)m compare >= 5120'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)g compare >= 5'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)s compare >= 5184000'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)h compare >= 1440'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)d compare >= 60'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)y compare >= 1'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)b compare >= 5368709120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)k compare >= 5242880'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)m compare >= 5120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)g compare >= 5'
 
   # 3.5 Ensure Access to Audit Records Is Controlled. (Automated) - Not Implemented
   # 3.6 Audit Software Inventory. (Manual) - Not Implemented
@@ -1005,7 +1005,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "not c:launchctl list -> r:org.apache.httpd"
+      - "not c:launchctl list -> r:org\\.apache\\.httpd"
 
   # 4.3 Ensure NFS Server Is Disabled. (Automated)
   - id: 35042
@@ -1026,7 +1026,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6", "CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "not c:launchctl list -> r:com.apple.nfsd"
+      - "not c:launchctl list -> r:com\\.apple\\.nfsd"
       - "not f:/etc/exports"
 
   # 5.1.1 Ensure Home Folders Are Secure. (Automated) - Not Implemented
@@ -1053,7 +1053,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.8", "CC7.1"]
     condition: all
     rules:
-      - "c:csrutil status -> r:^System Integrity Protection status: enabled."
+      - "c:csrutil status -> r:^System Integrity Protection status: enabled\\."
 
   # 5.1.3 Ensure Apple Mobile File Integrity (AMFI) Is Enabled. (Automated)
   - id: 35044
@@ -1173,7 +1173,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
+      - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character\\."
       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumLetters " -> n:>(\d+)< compare >= 1'
 
   # 5.2.4 Ensure Complex Password Must Contain Numeric Character Is Configured. (Manual)
@@ -1193,7 +1193,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character."
+      - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character\\."
       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumNumericCharacters " -> n:>(\d+)< compare >= 1'
 
   # 5.2.5 Ensure Complex Password Must Contain Special Character Is Configured. (Manual)
@@ -1295,7 +1295,7 @@ checks:
       - pci_dss_v4.0: ["8.2.8"]
     condition: all
     rules:
-      - "c:sudo -V -> r:Authentication timestamp timeout: 0.0 minutes"
+      - "c:sudo -V -> r:Authentication timestamp timeout: 0\\.0 minutes"
       - "c:stat /etc/sudoers.d -> r:root wheel"
 
   # 5.5 Ensure a Separate Timestamp Is Enabled for Each User/tty Combo. (Automated)
