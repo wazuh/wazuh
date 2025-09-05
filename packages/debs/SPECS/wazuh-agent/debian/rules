@@ -105,6 +105,7 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/10
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/11
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/12
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/13
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/12/04
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/14/04
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/16/04
@@ -125,6 +126,7 @@ override_dh_install:
 	cp etc/templates/config/debian/10/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/10
 	cp etc/templates/config/debian/11/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/11
 	cp etc/templates/config/debian/12/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/12
+	cp etc/templates/config/debian/13/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/13
 
 	cp etc/templates/config/ubuntu/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu
 	cp etc/templates/config/ubuntu/12/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/12/04
