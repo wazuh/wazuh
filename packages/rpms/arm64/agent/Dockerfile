@@ -28,31 +28,51 @@ RUN yum install -y gcc make wget git \
     redhat-rpm-config sqlite-devel gdb tar tcl-devel tix-devel tk-devel \
     valgrind-devel python-rpm-macros python34 nodejs
 
+# -------------------------------------------------------------------
+# GCC 9.4.0 (bootstrap only)
+# -------------------------------------------------------------------
 RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
-    tar xzf gcc-9.4.0.tar.gz  && cd gcc-9.4.0/ && \
+    tar xzf gcc-9.4.0.tar.gz && cd gcc-9.4.0 && \
     ./contrib/download_prerequisites && \
-    ./configure --prefix=/usr/local/gcc-9.4.0 --enable-languages=c,c++ --disable-multilib \
-        --disable-libsanitizer --disable-bootstrap && \
+    ./configure --prefix=/usr/local/gcc-9.4.0 \
+        --enable-languages=c,c++ \
+        --disable-multilib \
+        --disable-bootstrap \
+        --disable-libsanitizer && \
     make -j$(nproc) && make install && \
-    ln -fs /usr/local/gcc-9.4.0/bin/g++ /usr/bin/c++ && \
-    ln -fs /usr/local/gcc-9.4.0/bin/gcc /usr/bin/cc && cd / && rm -rf gcc-*
+    cd / && rm -rf gcc-9.4.0*
 
-ENV CPLUS_INCLUDE_PATH "/usr/local/gcc-9.4.0/include/c++/9.4.0/"
-ENV LD_LIBRARY_PATH "/usr/local/gcc-9.4.0/lib64/"
-ENV PATH "/usr/local/gcc-9.4.0/bin:${PATH}"
+# -------------------------------------------------------------------
+# CMake 3.22
+# -------------------------------------------------------------------
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.22.0/cmake-3.22.0-linux-aarch64.sh && \
+    bash cmake-3.22.0-linux-aarch64.sh --skip-license --prefix=/usr/local && \
+    rm -f cmake-3.22.0-linux-aarch64.sh
 
-RUN curl -OL http://packages.wazuh.com/utils/cmake/cmake-3.18.3.tar.gz && \
-    tar -zxf cmake-3.18.3.tar.gz && cd cmake-3.18.3 && \
-    ./bootstrap --no-system-curl CC=/usr/local/gcc-9.4.0/bin/gcc \
-        CXX=/usr/local/gcc-9.4.0/bin/g++ && \
-    make -j$(nproc) && make install && cd / && rm -rf cmake-*
+# -------------------------------------------------------------------
+# GCC 14.3.0
+# -------------------------------------------------------------------
+RUN curl -OL https://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-14.3.0/gcc-14.3.0.tar.gz && \
+    tar xzf gcc-14.3.0.tar.gz && cd gcc-14.3.0 && ./contrib/download_prerequisites && \
+    mkdir build && cd build && \
+    CC=/usr/local/gcc-9.4.0/bin/gcc \
+    CXX=/usr/local/gcc-9.4.0/bin/g++ \
+    ../configure --prefix=/usr/local/gcc-14.3.0 \
+        --enable-languages=c,c++ \
+        --disable-multilib \
+        --disable-libsanitizer \
+        --disable-bootstrap && \
+    make -j$(nproc) && make install && \
+    cd / && rm -rf gcc-14.3.0* && \
+    rm -rf /usr/local/gcc-9.4.0   # limpiar bootstrap si no lo necesitas más
 
-# Install Perl 5.10
-RUN curl -OL http://packages.wazuh.com/utils/perl/perl-5.10.1.tar.gz && \
-    gunzip perl-5.10.1.tar.gz && tar -xf perl*.tar && \
-    cd /perl-5.10.1 && ./Configure -des -Dcc='gcc' -Dusethreads && \
-    make -j2 && make install && ln -fs /usr/local/bin/perl /bin/perl && \
-    cd / && rm -rf /perl-5.10.1*
+# -------------------------------------------------------------------
+# GCC 14.3 ENV vars
+# -------------------------------------------------------------------
+ENV PATH="/usr/local/gcc-14.3.0/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/gcc-14.3.0/lib64"
+ENV CC="/usr/local/gcc-14.3.0/bin/gcc"
+ENV CXX="/usr/local/gcc-14.3.0/bin/g++"
 
 RUN curl -O http://packages.wazuh.com/utils/openssl/openssl-1.1.1a.tar.gz && \
     tar -xzf openssl-1.1.1a.tar.gz && cd openssl* && \
