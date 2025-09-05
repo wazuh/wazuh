@@ -3,6 +3,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.1]
 
+### Agent
+
+#### Changed
+
+- Changed how the fim_check_ignore function works in case of negative regex cases. ([#31080](https://github.com/wazuh/wazuh/pull/31080))
+- Changed how null values for hotfixes are handled in the Windows agent. ([#31375](https://github.com/wazuh/wazuh/pull/31375))
+
 ### Ruleset
 
 #### Changed
