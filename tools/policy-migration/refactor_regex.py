@@ -396,20 +396,22 @@ def _replace_p(payload: str, quote_char: Optional[str]) -> Tuple[str, bool]:
     return ''.join(out), warned_flag
 
 
-def _remove_p(payload: str, quote_char: Optional[str]) -> str:
-    """Remove \p from n:/!n: payloads.
+def _remove_p_in_group_else_replace(payload: str, quote_char: Optional[str]) -> str:
+    """Remove \p from n:/!n: in a group, else replace with [*!+-].
 
-    - Double-quote: replace '\\\\p' with ''
-    - Single-quote: replace '\\p' with ''
+    - Double-quote: remove '\\\\p' in a group, else replace with [*!+-]
+    - Single-quote: remove '\\p' in a group, else replace with [*!+-]
 
     osregex: \\p means non-letters characters.
-    PCRE2: \\p is not a valid wildcard, needs to be removed.
+    PCRE2: \\p is not a valid wildcard, needs to be removed in capture groups else replace with [*!+-].
     """
     out: List[str] = []
     i = 0
     n = len(payload)
     is_double = (quote_char == '"')
     scape_count = 0
+    warned_flag = False
+    in_group = False
     if not is_double:
         while i < n:
             if payload[i] == '\\':
@@ -417,11 +419,28 @@ def _remove_p(payload: str, quote_char: Optional[str]) -> str:
                 out.append(payload[i])
                 i += 1
                 continue
+            if scape_count % 2 != 1 and payload[i] == '(':
+                in_group = True
+                out.append(payload[i])
+                i += 1
+                scape_count = 0
+                continue
+            if scape_count % 2 != 1 and payload[i] == ')':
+                in_group = False
+                out.append(payload[i])
+                i += 1
+                scape_count = 0
+                continue
             if scape_count % 2 == 1 and payload[i] == 'p':
                 out.pop()
                 i += 1
-                if i < n and payload[i] in ('*', '+'):
-                    i += 1
+                if in_group:
+                    if i < n and payload[i] in ('*', '+'):
+                        i += 1
+                    scape_count = 0
+                    continue
+                out.append('[*!+-]')
+                warned_flag = True
                 scape_count = 0
                 continue
             scape_count = 0
@@ -434,17 +453,34 @@ def _remove_p(payload: str, quote_char: Optional[str]) -> str:
                 out.append(payload[i])
                 i += 1
                 continue
+            if (scape_count == 0 or scape_count % 4 != 2) and payload[i] == '(':
+                in_group = True
+                out.append(payload[i])
+                i += 1
+                scape_count = 0
+                continue
+            if (scape_count == 0 or scape_count % 4 != 2) and payload[i] == ')':
+                in_group = False
+                out.append(payload[i])
+                i += 1
+                scape_count = 0
+                continue
             if scape_count > 0 and scape_count % 4 == 2 and payload[i] == 'p':
                 out.pop(); out.pop()
                 i += 1
-                if i < n and payload[i] in ('*', '+'):
-                    i += 1
+                if in_group:
+                    if i < n and payload[i] in ('*', '+'):
+                        i += 1
+                    scape_count = 0
+                    continue
+                out.append('[*!+-]')
+                warned_flag = True
                 scape_count = 0
                 continue
             scape_count = 0
             out.append(payload[i])
             i += 1
-    return ''.join(out)
+    return ''.join(out), warned_flag
 
 
 # ========= WINDOWS (HKLM -> HKEY_LOCAL_MACHINE) =========
@@ -543,6 +579,7 @@ def fix_regex_in_line(mode: str, line: str, quote_char: Optional[str]) -> Tuple[
     index = 0
     out: List[str] = []
     length = len(line)
+    is_line_with_warning: bool = False
     warned_flag: bool = False
     is_r_cmd: bool = False
     expect_operator: bool = False
@@ -601,13 +638,16 @@ def fix_regex_in_line(mode: str, line: str, quote_char: Optional[str]) -> Tuple[
                             tmp, warned_flag = _replace_p(payload, quote_char)
                             out.append(tmp)
                         else:
-                            out.append(_remove_p(payload, quote_char))
+                            tmp, warned_flag = _remove_p_in_group_else_replace(payload, quote_char)
+                            out.append(tmp)
                     case 'words':
                         out.append(_expand_word_chars(payload, quote_char))
                     case 'dots':
                         out.append(_swap_dots(payload, quote_char))
                     case _:
                         raise ValueError(f"Invalid mode: {mode}")
+                if warned_flag:
+                    is_line_with_warning = True
                 index = next_i
                 expect_operator = False
                 continue
@@ -623,7 +663,7 @@ def fix_regex_in_line(mode: str, line: str, quote_char: Optional[str]) -> Tuple[
         index += 1
 
     updated = ''.join(out)
-    return updated, (updated != line), warned_flag
+    return updated, (updated != line), is_line_with_warning
 
 
 def fix_pattern_in_line(mode: str, line: str) -> Tuple[str, bool, bool]:
@@ -653,7 +693,7 @@ def main() -> None:
         print('  --brackets Escape unescaped [ and ] inside r:/n:/!r:/!n: payloads (quote-aware).')
         print('  --words    Expand \\w to [\\w@-] outside classes and \\w@- inside classes (quote-aware).')
         print("  --dots     Swap '.' and escaped dot inside r:/n:/!r:/!n: payloads (quote-aware).")
-        print("  --punct    Replace custom \\p: in n/!n remove (including trailing * or +); in r/!r replace with [*!+-].")
+        print("  --punct    Remove custom \\p: in n/!n in a group else replace with [*!+-]; in r/!r replace with [*!+-].")
         print('  --win      [Windows only] Expand registry abbreviations HKCR/HKCU/HKLM/HKU/HKCC to full names.')
         print("  --all      Run quants -> brackets -> punct -> words -> dots (in order), logging each step.")
         print('')
