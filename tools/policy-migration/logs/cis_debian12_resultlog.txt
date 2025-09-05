@@ -1,0 +1,215 @@
+|Id|4.x result|5.x result|4.x vs 5.x|5.x fix result|4.x vs 5.x fix|
+|33010|failed|Failed|✅|Failed|✅|
+|33011|failed|Failed|✅|Failed|✅|
+|33012|failed|Failed|✅|Failed|✅|
+|33013|failed|Failed|✅|Failed|✅|
+|33014|passed|Passed|✅|Passed|✅|
+|33015|passed|Passed|✅|Passed|✅|
+|33016|passed|Passed|✅|Passed|✅|
+|33017|passed|Passed|✅|Passed|✅|
+|33018|failed|Failed|✅|Failed|✅|
+|33019|failed|Failed|✅|Failed|✅|
+|33020|failed|Failed|✅|Failed|✅|
+|33021|failed|Failed|✅|Failed|✅|
+|33022|failed|Failed|✅|Failed|✅|
+|33023|failed|Failed|✅|Failed|✅|
+|33024|failed|Failed|✅|Failed|✅|
+|33025|failed|Failed|✅|Failed|✅|
+|33026|failed|Failed|✅|Failed|✅|
+|33027|failed|Failed|✅|Failed|✅|
+|33028|failed|Failed|✅|Failed|✅|
+|33029|failed|Failed|✅|Failed|✅|
+|33030|failed|Failed|✅|Failed|✅|
+|33031|failed|Failed|✅|Failed|✅|
+|33032|failed|Failed|✅|Failed|✅|
+|33033|failed|Failed|✅|Failed|✅|
+|33034|failed|Failed|✅|Failed|✅|
+|33035|failed|Failed|✅|Failed|✅|
+|33039|failed|Failed|✅|Failed|✅|
+|33040|not applicable|Not applicable|✅|Not applicable|✅|
+|*33043|not applicable|Not applicable|✅|Not applicable|✅|
+|33044|failed|Failed|✅|Failed|✅|
+|33048|failed|Failed|✅|Failed|✅|
+|33049|failed|||||
+|33050|failed|Failed|✅|Failed|✅|
+|33051|failed|Failed|✅|Failed|✅|
+|33052|failed|Failed|✅|Failed|✅|
+|33053|failed|Failed|✅|Failed|✅|
+|33054|passed|Passed|✅|Passed|✅|
+|33064|passed|Passed|✅|Passed|✅|
+|33065|passed|Passed|✅|Passed|✅|
+|33066|passed|Passed|✅|Passed|✅|
+|33067|passed|Passed|✅|Passed|✅|
+|33068|passed|Passed|✅|Passed|✅|
+|33069|passed|Passed|✅|Passed|✅|
+|33070|passed|Passed|✅|Passed|✅|
+|33071|passed|Passed|✅|Passed|✅|
+|33072|passed|Passed|✅|Passed|✅|
+|33073|passed|Passed|✅|Passed|✅|
+|33074|passed|Passed|✅|Passed|✅|
+|33075|passed|Passed|✅|Passed|✅|
+|33076|passed|Passed|✅|Passed|✅|
+|33077|passed|Passed|✅|Passed|✅|
+|33078|passed|Passed|✅|Passed|✅|
+|33079|passed|Passed|✅|Passed|✅|
+|33080|passed|Passed|✅|Passed|✅|
+|33081|passed|Passed|✅|Passed|✅|
+|33082|passed|Passed|✅|Passed|✅|
+|33083|passed|Passed|✅|Passed|✅|
+|33086|passed|Passed|✅|Passed|✅|
+|33087|passed|Passed|✅|Passed|✅|
+|33088|passed|Passed|✅|Passed|✅|
+|33089|passed|Passed|✅|Passed|✅|
+|33090|passed|Passed|✅|Passed|✅|
+|33091|passed|Passed|✅|Passed|✅|
+|33094|not applicable|Not applicable|✅|Not applicable|✅|
+|*33096|not applicable|Not applicable|✅|Not applicable|✅|
+|33097|not applicable|Not applicable|✅|Not applicable|✅|
+|*33098|not applicable|Not applicable|✅|Not applicable|✅|
+|33099|failed|Failed|✅|Failed|✅|
+|33100|failed|Failed|✅|Failed|✅|
+|33101|failed|Failed|✅|Failed|✅|
+|33102|failed|Failed|✅|Failed|✅|
+|33103|failed|Failed|✅|Failed|✅|
+|33104|failed|Failed|✅|Failed|✅|
+|33109|passed|Passed|✅|Passed|✅|
+|33126|failed|Failed|✅|Failed|✅|
+|33127|passed|Passed|✅|Passed|✅|
+|33128|not applicable|Not applicable|✅|Not applicable|✅|
+|*33129|not applicable|Not applicable|✅|Not applicable|✅|
+|33132|not applicable|Not applicable|✅|Not applicable|✅|
+|33133|failed|Failed|✅|Failed|✅|
+|33134|passed|Passed|✅|Passed|✅|
+|33136|not applicable|Not applicable|✅|Not applicable|✅|
+|33137|not applicable|Not applicable|✅|Not applicable|✅|
+|33138|failed|Failed|✅|Failed|✅|
+|33140|not applicable|Not applicable|✅|Not applicable|✅|
+|33141|not applicable|Not applicable|✅|Not applicable|✅|
+|33143|failed|Failed|✅|Failed|✅|
+|33144|passed|Passed|✅|Passed|✅|
+|33145|passed|Passed|✅|Passed|✅|
+|33146|not applicable|Not applicable|✅|Not applicable|✅|
+|*33147|not applicable|Not applicable|✅|Not applicable|✅|
+|33150|not applicable|Not applicable|✅|Not applicable|✅|
+|*33151|not applicable|Not applicable|✅|Not applicable|✅|
+|*33157|not applicable|Not applicable|✅|Not applicable|✅|
+|33158|not applicable|Not applicable|✅|Not applicable|✅|
+|33159|not applicable|Not applicable|✅|Not applicable|✅|
+|33160|not applicable|Not applicable|✅|Not applicable|✅|
+|33161|not applicable|Not applicable|✅|Not applicable|✅|
+|33162|not applicable|Not applicable|✅|Not applicable|✅|
+|33163|not applicable|Not applicable|✅|Not applicable|✅|
+|33164|not applicable|Not run|🔴|Not run|🔴|
+|33165|not applicable|Not applicable|✅|Not applicable|✅|
+|33166|not applicable|Not applicable|✅|Not applicable|✅|
+|33167|not applicable|Not applicable|✅|Not applicable|✅|
+|*33168|not applicable|Not applicable|✅|Not applicable|✅|
+|33169|not applicable|Not applicable|✅|Not applicable|✅|
+|33170|not applicable|||||
+|33171|not applicable|Not applicable|✅|Not applicable|✅|
+|33172|not applicable|Not applicable|✅|Not applicable|✅|
+|33173|not applicable|Not applicable|✅|Not applicable|✅|
+|33174|not applicable|Not applicable|✅|Not applicable|✅|
+|33175|not applicable|Not run|🔴|Not run|🔴|
+|33176|failed|Failed|✅|Failed|✅|
+|*33177|not applicable|Not applicable|✅|Not applicable|✅|
+|*33178|not applicable|Not applicable|✅|Not applicable|✅|
+|*33179|not applicable|Not applicable|✅|Not applicable|✅|
+|*33180|not applicable|Not applicable|✅|Not applicable|✅|
+|*33181|not applicable|Not applicable|✅|Not applicable|✅|
+|*33182|failed|Failed|✅|Failed|✅|
+|33183|passed|Passed|✅|Passed|✅|
+|33184|passed|Passed|✅|Passed|✅|
+|33185|failed|Failed|✅|Failed|✅|
+|*33186|passed|Passed|✅|Passed|✅|
+|*33187|failed|Failed|✅|Failed|✅|
+|*33188|failed|Failed|✅|Failed|✅|
+|*33189|failed|Failed|✅|Failed|✅|
+|*33190|passed|Passed|✅|Passed|✅|
+|*33191|passed|Passed|✅|Passed|✅|
+|33192|passed|Passed|✅|Passed|✅|
+|*33193|not applicable|Not applicable|✅|Not applicable|✅|
+|*33194|not applicable|Not applicable|✅|Not applicable|✅|
+|*33195|not applicable|Not applicable|✅|Not applicable|✅|
+|*33196|not applicable|Not applicable|✅|Not applicable|✅|
+|*33197|not applicable|Not applicable|✅|Not applicable|✅|
+|*33198|not applicable|Not applicable|✅|Not applicable|✅|
+|*33199|not applicable|Not applicable|✅|Not applicable|✅|
+|*33200|not applicable|Not applicable|✅|Not applicable|✅|
+|*33201|failed|Failed|✅|Failed|✅|
+|*33202|failed|Failed|✅|Failed|✅|
+|*33203|failed|Failed|✅|Failed|✅|
+|33204|failed|Failed|✅|Failed|✅|
+|33205|passed|Passed|✅|Passed|✅|
+|33206|passed|Passed|✅|Passed|✅|
+|33207|failed|Failed|✅|Failed|✅|
+|*33208|failed|Failed|✅|Failed|✅|
+|*33209|failed|Failed|✅|Failed|✅|
+|*33210|failed|Failed|✅|Failed|✅|
+|33211|failed|Failed|✅|Failed|✅|
+|*33212|failed|Failed|✅|Failed|✅|
+|33214|passed|Passed|✅|Passed|✅|
+|33215|passed|Passed|✅|Passed|✅|
+|33216|failed|Failed|✅|Failed|✅|
+|33217|failed|Failed|✅|Failed|✅|
+|33222|passed|Passed|✅|Passed|✅|
+|33225|not applicable|Not applicable|✅|Not applicable|✅|
+|33229|failed|Failed|✅|Failed|✅|
+|33231|not applicable|Not applicable|✅|Not applicable|✅|
+|33232|not applicable|Not applicable|✅|Not applicable|✅|
+|*33233|not applicable|Not applicable|✅|Not applicable|✅|
+|*33234|not applicable|Not applicable|✅|Not applicable|✅|
+|*33235|not applicable|Not applicable|✅|Not applicable|✅|
+|33236|failed|Failed|✅|Failed|✅|
+|33237|not applicable|Not applicable|✅|Not applicable|✅|
+|*33238|not applicable|Not applicable|✅|Not applicable|✅|
+|*33239|not applicable|Not applicable|✅|Not applicable|✅|
+|33245|failed|Failed|✅|Failed|✅|
+|33246|not applicable|Not applicable|✅|Not applicable|✅|
+|33247|not applicable|Not applicable|✅|Not applicable|✅|
+|33248|not applicable|Not applicable|✅|Not applicable|✅|
+|33249|not applicable|Not applicable|✅|Not applicable|✅|
+|33250|not applicable|Not applicable|✅|Not applicable|✅|
+|33251|not applicable|Not applicable|✅|Not applicable|✅|
+|33252|not applicable|Not applicable|✅|Not applicable|✅|
+|*33253|failed|Failed|✅|Failed|✅|
+|*33254|failed|Failed|✅|Failed|✅|
+|*33255|failed|Failed|✅|Failed|✅|
+|*33256|failed|Failed|✅|Failed|✅|
+|*33257|failed|Failed|✅|Failed|✅|
+|*33259|failed|Failed|✅|Failed|✅|
+|*33260|failed|Failed|✅|Failed|✅|
+|*33261|failed|Failed|✅|Failed|✅|
+|*33262|failed|Failed|✅|Failed|✅|
+|*33263|failed|Failed|✅|Failed|✅|
+|*33264|failed|Failed|✅|Failed|✅|
+|*33265|failed|Failed|✅|Failed|✅|
+|*33266|failed|Failed|✅|Failed|✅|
+|*33267|failed|Failed|✅|Failed|✅|
+|*33268|failed|Failed|✅|Failed|✅|
+|*33269|failed|Failed|✅|Failed|✅|
+|*33270|failed|Failed|✅|Failed|✅|
+|*33271|failed|Failed|✅|Failed|✅|
+|*33272|failed|Failed|✅|Failed|✅|
+|33273|not applicable|Not applicable|✅|Not applicable|✅|
+|33284|failed|Failed|✅|Failed|✅|
+|33285|not applicable|Not applicable|✅|Not applicable|✅|
+|33287|passed|Passed|✅|Passed|✅|
+|33288|passed|Passed|✅|Passed|✅|
+|33289|passed|Passed|✅|Passed|✅|
+|33290|passed|Passed|✅|Passed|✅|
+|33291|passed|Passed|✅|Passed|✅|
+|33292|passed|Passed|✅|Passed|✅|
+|33293|passed|Passed|✅|Passed|✅|
+|33294|passed|Passed|✅|Passed|✅|
+|33295|passed|Passed|✅|Passed|✅|
+|33296|failed|Failed|✅|Failed|✅|
+|*33300|failed|Failed|✅|Failed|✅|
+|*33301|passed|Passed|✅|Passed|✅|
+
+Good fix | 0
+Bad fix | 0
+Non-fix bad | 2
+Non-fix good | 142
+
+Missmatch_after_fix: 33164, 33175

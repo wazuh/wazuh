@@ -1,0 +1,15 @@
+cis_win11_enterprise
+fix | 4 | 4 | no
+--quants | 0 | 0 | yes
+policy_list: 
+--brackets | 0 | 0 | yes
+policy_list: 
+--punct | 0 | 0 | yes
+policy_list: 
+policy_list_warnings: 
+--words | 0 | 0 | yes
+policy_list: 
+--dots | 4 | 4 | yes
+policy_list: 26009, 26119, 26126, 26135
+--win | 0 | 0 | no
+policy_list: 

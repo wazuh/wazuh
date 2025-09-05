@@ -1,0 +1,187 @@
+|Id|4.x result|5.x result|4.x vs 5.x|5.x fix result|4.x vs 5.x fix|
+|38500|failed|Failed|✅|Failed|✅|
+|38501|failed|Failed|✅|Failed|✅|
+|38502|failed|Failed|✅|Failed|✅|
+|38503|failed|Failed|✅|Failed|✅|
+|38504|failed|Failed|✅|Failed|✅|
+|38505|failed|Failed|✅|Failed|✅|
+|38506|failed|Failed|✅|Failed|✅|
+|38507|failed|Failed|✅|Failed|✅|
+|38508|failed|Failed|✅|Failed|✅|
+|38509|failed|Failed|✅|Failed|✅|
+|38510|failed|Failed|✅|Failed|✅|
+|38511|failed|Failed|✅|Failed|✅|
+|38512|failed|Failed|✅|Failed|✅|
+|38513|failed|Failed|✅|Failed|✅|
+|38514|failed|Failed|✅|Failed|✅|
+|38515|failed|Failed|✅|Failed|✅|
+|38516|failed|Failed|✅|Failed|✅|
+|38517|failed|Failed|✅|Failed|✅|
+|38518|failed|Failed|✅|Failed|✅|
+|38519|failed|Failed|✅|Failed|✅|
+|38520|failed|Failed|✅|Failed|✅|
+|38521|failed|Failed|✅|Failed|✅|
+|38522|passed|Passed|✅|Passed|✅|
+|38523|passed|Passed|✅|Passed|✅|
+|38524|passed|Passed|✅|Passed|✅|
+|38525|passed|Passed|✅|Passed|✅|
+|*38526|passed|Failed|🔴|Failed|🔴|
+|38527|failed|Failed|✅|Failed|✅|
+|38528|failed|Failed|✅|Failed|✅|
+|38529|failed|Failed|✅|Failed|✅|
+|*38530|not applicable|Not applicable|✅|Not applicable|✅|
+|*38531|failed|Failed|✅|Failed|✅|
+|38532|failed|Failed|✅|Failed|✅|
+|38533|not applicable|Not applicable|✅|Not applicable|✅|
+|38534|not applicable|Not applicable|✅|Not applicable|✅|
+|38535|passed|Passed|✅|Passed|✅|
+|*38536|not applicable|Not applicable|✅|Not applicable|✅|
+|38537|failed|Failed|✅|Failed|✅|
+|38538|failed|Failed|✅|Failed|✅|
+|38539|failed|Failed|✅|Failed|✅|
+|38540|passed|Passed|✅|Passed|✅|
+|38541|passed|Passed|✅|Passed|✅|
+|38542|passed|Passed|✅|Passed|✅|
+|38543|passed|||||
+|38544|failed|||||
+|38545|failed|Failed|✅|Failed|✅|
+|38546|passed|Passed|✅|Passed|✅|
+|38547|passed|Passed|✅|Passed|✅|
+|38548|passed|Passed|✅|Passed|✅|
+|38549|passed|Passed|✅|Passed|✅|
+|38550|not applicable|Not applicable|✅|Not applicable|✅|
+|38551|passed|Passed|✅|Passed|✅|
+|38552|failed|Failed|✅|Failed|✅|
+|*38553|failed|Failed|✅|Failed|✅|
+|38554|passed|Passed|✅|Passed|✅|
+|38555|passed|Passed|✅|Passed|✅|
+|38556|passed|Passed|✅|Passed|✅|
+|38557|passed|Passed|✅|Passed|✅|
+|38558|passed|Passed|✅|Passed|✅|
+|38559|passed|Passed|✅|Passed|✅|
+|38560|passed|Passed|✅|Passed|✅|
+|38561|passed|Passed|✅|Passed|✅|
+|38562|passed|Passed|✅|Passed|✅|
+|38563|passed|Passed|✅|Passed|✅|
+|38564|passed|Passed|✅|Passed|✅|
+|38565|passed|Passed|✅|Passed|✅|
+|38566|passed|Passed|✅|Passed|✅|
+|38567|passed|Passed|✅|Passed|✅|
+|*38568|not applicable|Not applicable|✅|Not applicable|✅|
+|38569|passed|Passed|✅|Passed|✅|
+|38570|passed|Passed|✅|Passed|✅|
+|38571|passed|Passed|✅|Passed|✅|
+|38572|passed|Passed|✅|Passed|✅|
+|38573|passed|Passed|✅|Passed|✅|
+|38574|passed|Passed|✅|Passed|✅|
+|38575|passed|Passed|✅|Passed|✅|
+|38576|failed|Failed|✅|Failed|✅|
+|38577|failed|Failed|✅|Failed|✅|
+|38578|failed|Not run|🔴|Failed|✅|
+|38579|failed|||||
+|38580|failed|Failed|✅|Failed|✅|
+|38581|not applicable|Not applicable|✅|Not applicable|✅|
+|38582|not applicable|Not applicable|✅|Not applicable|✅|
+|38583|failed|Failed|✅|Failed|✅|
+|38584|not applicable|Not applicable|✅|Not applicable|✅|
+|38585|not applicable|Not applicable|✅|Not applicable|✅|
+|38586|not applicable|Not applicable|✅|Not applicable|✅|
+|*38587|not applicable|Not applicable|✅|Not applicable|✅|
+|*38588|not applicable|Not applicable|✅|Not applicable|✅|
+|*38589|not applicable|Not applicable|✅|Not applicable|✅|
+|*38590|not applicable|Not applicable|✅|Not applicable|✅|
+|*38591|not applicable|Not applicable|✅|Not applicable|✅|
+|*38592|not applicable|Not applicable|✅|Not applicable|✅|
+|*38593|not applicable|Not applicable|✅|Not applicable|✅|
+|*38594|not applicable|Not applicable|✅|Not applicable|✅|
+|*38595|not applicable|Not applicable|✅|Not applicable|✅|
+|*38596|not applicable|Not applicable|✅|Not applicable|✅|
+|*38597|not applicable|Not applicable|✅|Not applicable|✅|
+|*38598|not applicable|Not applicable|✅|Not applicable|✅|
+|*38599|not applicable|Not applicable|✅|Not applicable|✅|
+|*38600|not applicable|Not applicable|✅|Not applicable|✅|
+|*38601|not applicable|Not applicable|✅|Not applicable|✅|
+|*38602|not applicable|Not applicable|✅|Not applicable|✅|
+|38603|not applicable|Not applicable|✅|Not applicable|✅|
+|38604|not applicable|Not applicable|✅|Not applicable|✅|
+|38605|passed|Passed|✅|Passed|✅|
+|38606|passed|Passed|✅|Passed|✅|
+|38607|passed|Passed|✅|Passed|✅|
+|38608|passed|Passed|✅|Passed|✅|
+|38609|passed|Passed|✅|Passed|✅|
+|38610|passed|Passed|✅|Passed|✅|
+|38611|passed|Passed|✅|Passed|✅|
+|38612|passed|Passed|✅|Passed|✅|
+|38613|not applicable|Not applicable|✅|Not applicable|✅|
+|38614|failed|Failed|✅|Failed|✅|
+|*38615|failed|Not applicable|🔴|Not applicable|🔴|
+|*38616|passed|Passed|✅|Passed|✅|
+|38617|failed|Failed|✅|Failed|✅|
+|38618|failed|Failed|✅|Failed|✅|
+|38619|failed|Failed|✅|Failed|✅|
+|38620|passed|Passed|✅|Passed|✅|
+|38621|not applicable|Not applicable|✅|Not applicable|✅|
+|38622|not applicable|Not applicable|✅|Not applicable|✅|
+|38623|not applicable|Not applicable|✅|Not applicable|✅|
+|38624|failed|Failed|✅|Failed|✅|
+|38625|failed|Failed|✅|Failed|✅|
+|38626|failed|Failed|✅|Failed|✅|
+|38627|failed|Failed|✅|Failed|✅|
+|38628|failed|Failed|✅|Failed|✅|
+|38629|failed|Failed|✅|Failed|✅|
+|38630|failed|Failed|✅|Failed|✅|
+|38631|failed|Failed|✅|Failed|✅|
+|*38632|failed|Failed|✅|Failed|✅|
+|*38633|passed|Passed|✅|Passed|✅|
+|*38634|passed|Passed|✅|Passed|✅|
+|*38635|passed|Passed|✅|Passed|✅|
+|*38636|passed|Passed|✅|Passed|✅|
+|*38637|passed|Passed|✅|Passed|✅|
+|*38638|passed|Passed|✅|Passed|✅|
+|*38639|passed|Passed|✅|Passed|✅|
+|*38640|passed|Passed|✅|Passed|✅|
+|*38641|failed|Failed|✅|Failed|✅|
+|38642|passed|Passed|✅|Passed|✅|
+|*38643|failed|Failed|✅|Failed|✅|
+|*38644|failed|Failed|✅|Failed|✅|
+|*38645|failed|Failed|✅|Failed|✅|
+|*38646|passed|Passed|✅|Passed|✅|
+|*38647|failed|Failed|✅|Failed|✅|
+|38648|failed|Failed|✅|Failed|✅|
+|38649|passed|Passed|✅|Passed|✅|
+|*38650|not applicable|Not applicable|✅|Not applicable|✅|
+|*38651|not applicable|Not applicable|✅|Not applicable|✅|
+|*38652|not applicable|Not applicable|✅|Not applicable|✅|
+|*38653|not applicable|Not applicable|✅|Not applicable|✅|
+|*38654|not applicable|Not applicable|✅|||
+|*38655|failed|Failed|✅|Failed|✅|
+|*38656|failed|Failed|✅|Failed|✅|
+|*38657|failed|Failed|✅|Failed|✅|
+|*38658|failed|Failed|✅|Failed|✅|
+|38659|failed|Failed|✅|Failed|✅|
+|*38660|failed|||||
+|*38661|not applicable|Failed|🔴|Failed|🔴|
+|*38662|failed|Failed|✅|Failed|✅|
+|*38663|failed|Failed|✅|Failed|✅|
+|*38664|failed|Failed|✅|Failed|✅|
+|*38665|failed|Failed|✅|Failed|✅|
+|38666|passed|Passed|✅|Passed|✅|
+|38667|failed|Failed|✅|Failed|✅|
+|38668|passed|Passed|✅|Passed|✅|
+|38669|passed|Passed|✅|Passed|✅|
+|38670|passed|Passed|✅|Passed|✅|
+|38671|passed|Passed|✅|Passed|✅|
+|38672|passed|Passed|✅|Passed|✅|
+|38673|failed|Failed|✅|Failed|✅|
+|38674|failed|Failed|✅|Failed|✅|
+|38675|failed|Failed|✅|Failed|✅|
+|*38676|passed|Passed|✅|Passed|✅|
+|*38677|passed|Not run|🔴|Passed|✅|
+|*38678|passed|Passed|✅|Passed|✅|
+
+Good fix | 1
+Bad fix | 0
+Non-fix bad | 0
+Non-fix good | 119
+
+Missmatch_after_fix: 38526, 38615, 38661
