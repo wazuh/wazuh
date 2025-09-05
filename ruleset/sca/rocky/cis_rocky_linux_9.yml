@@ -2262,7 +2262,25 @@ checks:
   ###############################################
 
   # 3.1.1 Ensure IPv6 status is identified. (Manual) - Not Implemented
+
   # 3.1.2 Ensure wireless interfaces are disabled. (Automated) - Not Implemented
+  - id: 31682
+    title: "Ensure wireless interfaces are disabled"
+    description: "Wireless networking is used when wired networks are unavailable."
+    rationale: "- IF - wireless is not to be used, wireless devices can be disabled to reduce the potential attack surface."
+    remediation: "Many if not all laptop workstations and some desktop workstations will connect via wireless requiring these interfaces be enabled."
+    compliance:
+      - cis: ["3.1.2"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["15.4", "15.5"]
+      - mitre_mitigations: ["M1028"]
+      - mitre_tactics: ["TA0010"]
+      - mitre_techniques: ["T1011", "T1011.000", "T1595", "T1595.001", "T1595.002"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: all
+    rules:
+      - 'not c:find /sys/class/net/*/ -type d -name wireless -> r:wireless'
+
   # 3.1.3 Ensure bluetooth services are not in use (Automated) - Not Implemented
 
   ###############################################
