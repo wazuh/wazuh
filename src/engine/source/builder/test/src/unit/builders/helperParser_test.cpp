@@ -511,7 +511,16 @@ INSTANTIATE_TEST_SUITE_P(
         HelperT(R"(test(1, {"key": "value", "key2": "value2"}))",
                 makeSuccess<HelperToken>(
                     {.name = "test", .args = {val(R"(1)"), val(R"({"key": "value", "key2": "value2"})")}}, 43)),
-        HelperT(R"(test([1]123))", makeSuccess<HelperToken>({.name = "test", .args = {val(R"("[1]123")")}}, 12))));
+        HelperT(R"(test([1]123))", makeSuccess<HelperToken>({.name = "test", .args = {val(R"("[1]123")")}}, 12)),
+        HelperT("helper(null)", makeSuccess<HelperToken>({.name = "helper", .args = {val(R"(null)")}}, 12)),
+        HelperT("helper( null )", makeSuccess<HelperToken>({.name = "helper", .args = {val(R"(null)")}}, 14)),
+
+        HelperT("test(null)", makeSuccess<HelperToken>({.name = "test", .args = {val(R"(null)")}}, 10)),
+        HelperT("test(arg1, null)",
+                makeSuccess<HelperToken>({.name = "test", .args = {val(R"("arg1")"), val(R"(null)")}}, 16)),
+        HelperT("test(null,)", makeSuccess<HelperToken>({.name = "test", .args = {val(R"(null)"), val()}}, 11)),
+        HelperT("test(,null)", makeSuccess<HelperToken>({.name = "test", .args = {val(), val(R"(null)")}}, 11)),
+        HelperT("test(null, )", makeSuccess<HelperToken>({.name = "test", .args = {val(R"(null)"), val()}}, 12))));
 
 INSTANTIATE_TEST_SUITE_P(Builder,
                          IsDefaultHelperTest,

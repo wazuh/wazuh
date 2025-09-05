@@ -181,6 +181,19 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Deletes, at top level (non-recursive), the keys of the target object whose value
+ *        equals the provided argument.
+ *
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments where the first argument is the value to match (literal or reference).
+ * @param buildCtx Shared pointer to the build context used for the transformation operation.
+ * @return base::Expression The lifter with the `delete_fields_with_value` transformation.
+ */
+TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
+                                                 const std::vector<OpArg>& opArgs,
+                                                 const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Renames a field of the json event
  *
  * @param targetField target field of the helper

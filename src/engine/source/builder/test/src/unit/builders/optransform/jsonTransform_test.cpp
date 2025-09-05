@@ -37,6 +37,22 @@ INSTANTIATE_TEST_SUITE_P(
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
+
+        /*** Delete Fields With Value***/
+        TransformT({}, opBuilderHelperDeleteFieldsWithValue, FAILURE()),
+        TransformT({makeValue(R"("x")"), makeRef("ref")}, opBuilderHelperDeleteFieldsWithValue, FAILURE()),
+        TransformT({makeValue(R"("x")")}, opBuilderHelperDeleteFieldsWithValue, SUCCESS()),
+        TransformT({makeRef("ref")}, opBuilderHelperDeleteFieldsWithValue, SUCCESS()),
+        TransformT({makeRef("ref")},
+                   opBuilderHelperDeleteFieldsWithValue,
+                   FAILURE(
+                       [](const auto& mocks)
+                       {
+                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                               .WillOnce(testing::Return(false));
+                           return None {};
+                       })),
+
         /*** Rename Field ***/
         TransformT({}, opBuilderHelperRenameField, FAILURE()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperRenameField, FAILURE()),
@@ -128,6 +144,142 @@ INSTANTIATE_TEST_SUITE_P(
                    {},
                    SUCCESS(makeEvent(R"({"other":"value"})"))),
         TransformT(R"({"notTarget": "value"})", opBuilderHelperDeleteField, "target", {}, FAILURE()),
+
+        /*** Delete Fields With Value ***/
+        // string by value
+        TransformT(R"({"target":{"a":"N/A","b":"ok","c":"N/A"}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue(R"("N/A")")},
+                   SUCCESS(makeEvent(R"({"target":{"b":"ok"}})"))),
+
+        // string by reference (external field)
+        TransformT(R"({"target":{"a":"X","b":"ok","c":"X"},"ref":"X"})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"b":"ok"},"ref":"X"})"))),
+
+        // string no-op (no matches)
+        TransformT(R"({"target":{"a":"foo","b":"ok"}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue(R"("N/A")")},
+                   SUCCESS(makeEvent(R"({"target":{"a":"foo","b":"ok"}})"))),
+
+        // snapshot ref inside same object (reference is one of the children)
+        TransformT(R"({"target":{"user":"N/A","group":"N/A","other":"x"}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("target.user")},
+                   SUCCESS(makeEvent(R"({"target":{"other":"x"}})"))),
+
+        // int by value
+        TransformT(R"({"target":{"a":1,"b":2,"c":1}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("1")},
+                   SUCCESS(makeEvent(R"({"target":{"b":2}})"))),
+
+        // int by reference (external field)
+        TransformT(R"({"target":{"a":1,"b":2,"c":1},"ref":1})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"b":2},"ref":1})"))),
+
+        // int no-op
+        TransformT(R"({"target":{"a":1,"b":2}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("3")},
+                   SUCCESS(makeEvent(R"({"target":{"a":1,"b":2}})"))),
+
+        // double by value
+        TransformT(R"({"target":{"a":1.0,"b":2.0,"c":1.0}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("1.0")},
+                   SUCCESS(makeEvent(R"({"target":{"b":2.0}})"))),
+
+        // double by reference (external field)
+        TransformT(R"({"target":{"a":1.5,"b":2.0,"c":1.5},"ref":1.5})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"b":2.0},"ref":1.5})"))),
+
+        // bool by value (true)
+        TransformT(R"({"target":{"a":true,"b":false,"c":true}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("true")},
+                   SUCCESS(makeEvent(R"({"target":{"b":false}})"))),
+
+        // bool by reference (false)
+        TransformT(R"({"target":{"a":false,"b":true,"c":false},"ref":false})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"b":true},"ref":false})"))),
+
+        // null by value
+        TransformT(R"({"target":{"a":null,"b":"x","c":1}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("null")},
+                   SUCCESS(makeEvent(R"({"target":{"b":"x","c":1}})"))),
+
+        // null by reference (external field)
+        TransformT(R"({"target":{"a":1,"b":null,"c":"x"},"ref":null})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"a":1,"c":"x"},"ref":null})"))),
+
+        // object equality by reference
+        TransformT(R"({"target":{"a":{"k":1},"b":{"k":2},"c":{"k":1}},"ref":{"k":1}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"b":{"k":2}},"ref":{"k":1}})"))),
+
+        // array equality by reference
+        TransformT(R"({"target":{"a":[1,2],"b":[3],"c":[1,2]},"ref":[1,2]})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"b":[3]},"ref":[1,2]})"))),
+
+        // target missing -> failure
+        TransformT(R"({"notTarget":{"a":"N/A"}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue(R"("N/A")")},
+                   FAILURE()),
+
+        // target is not an object (string) -> failure
+        TransformT(
+            R"({"target":"N/A"})", opBuilderHelperDeleteFieldsWithValue, "target", {makeValue(R"("N/A")")}, FAILURE()),
+
+        // target is not an object (number) -> failure
+        TransformT(R"({"target":1})", opBuilderHelperDeleteFieldsWithValue, "target", {makeValue("1")}, FAILURE()),
+
+        // target is not an object (double) -> failure
+        TransformT(R"({"target":1.0})", opBuilderHelperDeleteFieldsWithValue, "target", {makeValue("1.0")}, FAILURE()),
+
+        // target is not an object (bool) -> failure
+        TransformT(
+            R"({"target":true})", opBuilderHelperDeleteFieldsWithValue, "target", {makeValue("true")}, FAILURE()),
+
+        // target is not an object (array) -> failure
+        TransformT(
+            R"({"target":[1,2,3]})", opBuilderHelperDeleteFieldsWithValue, "target", {makeValue("1")}, FAILURE()),
+
+        // target is not an object (null) -> failure
+        TransformT(
+            R"({"target":null})", opBuilderHelperDeleteFieldsWithValue, "target", {makeValue("null")}, FAILURE()),
+
         /*** Rename Field ***/
         TransformT(R"({"ref": "value"})",
                    opBuilderHelperRenameField,

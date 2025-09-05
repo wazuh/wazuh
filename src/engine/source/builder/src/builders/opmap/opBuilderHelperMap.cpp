@@ -1722,6 +1722,113 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
     };
 }
 
+// field: +delete_fields_with_value/<value|$ref>
+TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
+                                                 const std::vector<OpArg>& opArgs,
+                                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
+
+    builder::builders::utils::assertSize(opArgs, 1);
+
+    const bool argIsValue = opArgs[0]->isValue();
+
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: Target field '{}' reference not found", name, targetField.dotPath());
+    const auto failureTrace2 =
+        fmt::format("[{}] -> Failure: Target field '{}' type is not object", name, targetField.dotPath());
+    const auto failureTrace3 = fmt::format("[{}] -> Failure: ", name);
+
+    return [=, runState = buildCtx->runState(), tgtPath = targetField.jsonPath()](base::Event event) -> TransformResult
+    {
+        if (!event->exists(tgtPath))
+        {
+            RETURN_FAILURE(runState, event, failureTrace1);
+        }
+        if (!event->isObject(tgtPath))
+        {
+            RETURN_FAILURE(runState, event, failureTrace2);
+        }
+
+        auto fieldsOpt = event->getFields(tgtPath);
+        if (!fieldsOpt)
+        {
+            RETURN_FAILURE(runState, event, failureTrace2);
+        }
+
+        std::function<bool(base::ConstEvent, std::string_view)> equalsFn;
+
+        if (argIsValue)
+        {
+            const auto val = std::static_pointer_cast<Value>(opArgs[0])->value();
+            equalsFn = [val](base::ConstEvent ev, std::string_view child)
+            {
+                return ev->equals(child, val);
+            };
+        }
+        else
+        {
+            const auto refPath = std::static_pointer_cast<Reference>(opArgs[0])->jsonPath();
+            std::optional<json::Json> snapOpt;
+            try
+            {
+                snapOpt = event->getJson(refPath);
+            }
+            catch (const std::runtime_error& e)
+            {
+                RETURN_FAILURE(runState, event, failureTrace3 + e.what());
+            }
+
+            if (snapOpt)
+            {
+                equalsFn = [refSnap = std::move(*snapOpt)](base::ConstEvent ev, std::string_view child)
+                {
+                    return ev->equals(child, refSnap);
+                };
+            }
+            else
+            {
+                equalsFn = [](base::ConstEvent, std::string_view)
+                {
+                    return false;
+                };
+            }
+        }
+
+        const auto& fields = fieldsOpt.value();
+
+        std::string childPath;
+        for (const auto& k : fields)
+        {
+            childPath.clear();
+            childPath.reserve(tgtPath.size() + 1 + k.size());
+            childPath.append(tgtPath);
+            childPath.push_back('/');
+            childPath.append(k);
+
+            try
+            {
+                if (equalsFn(event, childPath))
+                {
+                    (void)event->erase(childPath);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                RETURN_FAILURE(runState, event, failureTrace3 + e.what());
+            }
+        }
+
+        RETURN_SUCCESS(runState, event, successTrace);
+    };
+}
+
 // field: +rename/$sourceField
 TransformOp opBuilderHelperRenameField(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,

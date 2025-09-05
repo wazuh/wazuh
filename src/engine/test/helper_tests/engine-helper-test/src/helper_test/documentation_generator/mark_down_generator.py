@@ -22,6 +22,17 @@ class MarkdownGenerator(IExporter):
                 f"field: {doc.name}({', '.join(str(v) for v in doc.arguments)}, [...])")
         self.content.append(f"```\n")
 
+    def _format_call_arg(self, v):
+        """
+        Format a single call argument for the helper invocation in Markdown.
+
+        :param v: Argument value to render (may be None, bool, number, str, list, dict).
+        :return: String representation suitable for use inside the helper call.
+        """
+        if v is None:
+            return "null"
+        return repr(v)
+
     def create_table(self, arguments: dict, headers: list):
         """
         Create a table in Markdown format.
@@ -150,19 +161,19 @@ class MarkdownGenerator(IExporter):
                             args_values.append(f"${key}")
                             event_data[key] = arg.get("value")
                         else:
-                            args_values.append(repr(arg.get("value")))
+                            args_values.append(self._format_call_arg(arg.get("value")))
                     else:
                         if arg_source == "reference":
                             args_values.append(f"${key}")
                             event_data[key] = arg
                         elif arg_source == "both":
                             if idx % 2 == 1:
-                                args_values.append(repr(arg))
+                                args_values.append(self._format_call_arg(arg))
                             else:
                                 args_values.append(f"${key}")
                                 event_data[key] = arg
                         else:
-                            args_values.append(repr(arg))
+                            args_values.append(self._format_call_arg(arg))
 
             if getattr(example, "target_field", None):
                 event_data["target_field"] = example.target_field
