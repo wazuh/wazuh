@@ -15,11 +15,10 @@ export WAZUH_KVDB_PATH="${DATA_PATH}/kvdb"
 export WAZUH_SERVER_API_SOCKET="${SOCKET_PATH}/engine-api.sock"
 export WAZUH_SERVER_EVENT_SOCKET="${SOCKET_PATH}/engine-prod-event.sock"
 export WAZUH_SERVER_ENRICHED_EVENTS_SOCKET="${SOCKET_PATH}/queue-http.sock"
-export WAZUH_ENGINE_PID_FILE_PATH="${DATA_PATH}"
 export WAZUH_SKIP_USER_CHANGE="true"
 export WAZUH_STREAMLOG_BASE_PATH="${LOG_PATH}"
 
-# If not existe create directories
+# If not exist create directories
 mkdir -p "$SOCKET_PATH" "$LOG_PATH"
 
 "${SCRIPT_DIR}/bin/wazuh-engine" -f

@@ -112,6 +112,7 @@ int main(int argc, char* argv[])
     const bool cliDebug = (opts.debugCount > 0);
     void* libwazuhshared = nullptr;
 
+    // Loggin initialization
     if (standalone)
     {
         // Standalone logging
@@ -209,7 +210,8 @@ int main(int argc, char* argv[])
         sigaction(SIGPIPE, &sigPipeHandler, nullptr);
     }
 
-    // Init modules
+    // Engine start - Init modules
+    
     std::shared_ptr<store::Store> store;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
@@ -271,75 +273,31 @@ int main(int argc, char* argv[])
             }
         }
 
-        // Metrics
-        /*
-        TODO: Until the indexer connector is unified with the rest of wazuh-manager
-
-        {
-            SingletonLocator::registerManager<metrics::IManager,
-                                            base::PtrSingleton<metrics::IManager, metrics::Manager>>();
-            auto config = std::make_shared<metrics::Manager::ImplConfig>();
-            config->logLevel = logging::Level::Err;
-            config->exportInterval =
-                std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_INTERVAL));
-            config->exportTimeout =
-                std::chrono::milliseconds(confManager.get<int64_t>(conf::key::METRICS_EXPORT_TIMEOUT));
-
-
-            IndexerConnectorOptions icConfig {};
-            icConfig.name = "metrics-index";
-            icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-            icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
-            icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
-            if (confManager.get<bool>(conf::key::INDEXER_SSL_USE_SSL))
+        /* Create PID file */
+        if (!base::process::isStandaloneModeEnable()) {
+            // Get executable file name
+            std::string exePath {};
             {
-                icConfig.sslOptions.cacert = confManager.get<std::string>(conf::key::INDEXER_SSL_CA_BUNDLE);
-                icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
-                icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
-            }
-
-            icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
-            const auto to = confManager.get<int>(conf::key::INDEXER_TIMEOUT);
-            if (to < 0)
-            {
-                throw std::runtime_error("Invalid indexer timeout value.");
-            }
-            icConfig.timeout = to;
-            const auto wt = confManager.get<int>(conf::key::INDEXER_THREADS);
-            if (wt < 0)
-            {
-                throw std::runtime_error("Invalid indexer threads value.");
-            }
-            icConfig.workingThreads = wt;
-
-            config->indexerConnectorFactory = [icConfig]() -> std::shared_ptr<IIndexerConnector>
-            {
-                return std::make_shared<IndexerConnector>(icConfig);
-            };
-
-            SingletonLocator::instance<metrics::IManager>().configure(config);
-
-            LOG_INFO("Metrics initialized.");
-
-            if (confManager.get<bool>(conf::key::METRICS_ENABLED))
-            {
-                SingletonLocator::instance<metrics::IManager>().enable();
-                LOG_INFO("Metrics enabled.");
-            }
-            else
-            {
-                SingletonLocator::instance<metrics::IManager>().disable();
-                LOG_INFO("Metrics disabled.");
-            }
-
-            exitHandler.add(
-                []()
+                try
                 {
-                    SingletonLocator::instance<metrics::IManager>().disable();
-                    SingletonLocator::clear();
-                });
+                    exePath = std::filesystem::read_symlink("/proc/self/exe").filename().string();
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_DEBUG("Could not get executable name: {}", e.what());
+                    exePath = "wazuh-analysisd";
+                }
+            }
+
+            const auto pidError =
+                base::process::createPID(confManager.get<std::string>(conf::key::PID_FILE_PATH), exePath, getpid());
+            if (base::isError(pidError))
+            {
+                throw std::runtime_error(
+                    (fmt::format("Could not create PID file for the engine: {}", base::getError(pidError).message)));
+            }
         }
-        */
+
 
         // Store
         {
@@ -684,30 +642,6 @@ int main(int argc, char* argv[])
             LOG_INFO("Remote engine's server initialized and started.");
         }
 
-        /* Create PID file */
-        {
-            // Get executable file name
-            std::string exePath {};
-            {
-                try
-                {
-                    exePath = std::filesystem::read_symlink("/proc/self/exe").filename().string();
-                }
-                catch (const std::exception& e)
-                {
-                    LOG_DEBUG("Could not get executable name: {}", e.what());
-                    exePath = "wazuh-analysisd";
-                }
-            }
-
-            const auto pidError =
-                base::process::createPID(confManager.get<std::string>(conf::key::PID_FILE_PATH), exePath, getpid());
-            if (base::isError(pidError))
-            {
-                throw std::runtime_error(
-                    (fmt::format("Could not create PID file for the engine: {}", base::getError(pidError).message)));
-            }
-        }
 
         // Do not exit until the server is running
         while (g_engineLocalServer->isRunning())
