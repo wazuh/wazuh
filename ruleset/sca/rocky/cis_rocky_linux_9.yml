@@ -2226,7 +2226,7 @@ checks:
       - cis_csc_v8: ["3.3"]
       - cis_csc_v7: ["14.6"]
       - mitre_mitigations: ["M1018"]
-      - mitre_tactics: ["TA0002", "TA0007"]
+      - mitre_tactics: ["TA0002"]
       - mitre_techniques: ["T1053", "T1053.003"]
       - nist_sp_800-53: ["AC-3", "MP-2"]
     condition: all
@@ -2238,7 +2238,24 @@ checks:
   # 2.4.2 Configure at
   ###############################################
 
-  # 2.4.2.1 Ensure at is restricted to authorized users. (Automated) - Not Implemented
+  # 2.4.2.1 Ensure at is restricted to authorized users. (Automated)
+  - id: 31681
+    title: "Ensure at is restricted to authorized users"
+    description: "at allows fairly complex time specifications, extending the POSIX.2 standard. It accepts times of the form HH:MM to run a job at a specific time of day. (If that time is already past, the next day is assumed.) You may also specify midnight, noon, or teatime (4pm) and you can have a time-of-day suffixed with AM or PM for running in the morning or the evening. You can also say what day the job will be run, by giving a date in the form month-name day with an optional year, or giving a date of the form MMDD[CC]YY, MM/DD/[CC]YY, DD.MM.[CC]YY or [CC]YY-MM-DD. The specification of a date must follow the specification of the time of day. You can also give times like now + count time-units, where the time-units can be minutes, hours, days, or weeks and you can tell at to run the job today by suffixing the time with today and to run the job tomorrow by suffixing the time with tomorrow. The /etc/at.allow and /etc/at.deny files determine which user can submit commands for later execution via at or batch. The format of the files is a list of usernames, one on each line. Whitespace is not permitted. If the file /etc/at.allow exists, only usernames mentioned in it are allowed to use at. If /etc/at.allow does not exist, /etc/at.deny is checked, every username not mentioned in it is then allowed to use at. An empty /etc/at.deny means that every user may use at. If neither file exists, only the superuser is allowed to use at."
+    rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
+    remediation: "- IF - at is installed on the system: Run the following script to: /etc/at.allow: Create the file if it doesn't exist. Change owner or user root. If group daemon exists, change to group daemon, else change group to root. Change mode to 640 or more restrictive. - IF - /etc/at.deny exists: Change owner or user root. If group daemon exists, change to group daemon, else change group to root. Change mode to 640 or more restrictive"
+    compliance:
+      - cis: ["2.4.2.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_mitigations: ["M1018"]
+      - mitre_tactics: ["TA0002"]
+      - mitre_techniques: ["T1053", "T1053.003"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/at.allow -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*(root|daemon)\)$'
+      - 'c:stat -L /etc/at.deny -> r:^Access: \(0640/-rw-r-----\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*(root|daemon)\)$'
 
   ###############################################
   # 3.1 Configure Network Devices
