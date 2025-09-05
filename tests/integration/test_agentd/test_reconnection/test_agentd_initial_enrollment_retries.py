@@ -62,9 +62,10 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.utils import callbacks
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_keepalive, wait_enrollment, check_module_stop
+from utils import wait_connect, wait_enrollment, check_module_stop
+
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
@@ -75,7 +76,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -129,7 +130,7 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     expected_output:
         - r'Requesting a key'
         - r'Valid key received'
-        - r'Sending keep alive'
+        - r'Connected to the server'
 
     tags:
         - simulator
@@ -140,25 +141,26 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_REQUESTING_KEY,{'IP':''}), timeout = 300, accumulations = 4)
     assert (wazuh_log_monitor.callback_result != None), f'Enrollment retries was not sent'
 
-    # Start Authd simulador
-    authd_server = AuthdSimulator()
-    authd_server.start()
+    try:
+        # Start Authd simulador
+        authd_server = AuthdSimulator()
+        authd_server.start()
 
-    # Wait succesfull enrollment
-    wait_enrollment()
+        # Wait succesfull enrollment
+        wait_enrollment()
 
-    # Start Remoted simulador
-    remoted_server = RemotedSimulator(protocol = 'tcp')
-    remoted_server.start()
+        # Start Remoted simulador
+        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server.start()
 
-    # Wait until Agent is notifying Manager
-    wait_keepalive()
+        # Wait until Agent is connected
+        wait_connect()
 
-    # Check if no Wazuh module stopped due to Agentd Initialization
-    check_module_stop()
+        # Check if no Wazuh module stopped due to Agentd Initialization
+        check_module_stop()
+    finally:
+        # Reset simulator
+        authd_server.destroy()
 
-    # Reset simulator
-    authd_server.destroy()
-
-    # Reset simulator
-    remoted_server.destroy()
+        # Reset simulator
+        remoted_server.destroy()

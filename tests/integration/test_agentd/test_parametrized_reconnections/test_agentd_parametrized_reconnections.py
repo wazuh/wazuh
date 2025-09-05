@@ -73,7 +73,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 from utils import wait_connect, wait_server_rollback, check_connection_try
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
@@ -84,7 +84,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -184,11 +184,12 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
     if test_metadata['ENROLL'] == 'yes':
         # Start RemotedSimulator for successfully enrollment
         remoted_server = RemotedSimulator(protocol = 'tcp')
-        remoted_server.start()
-        wait_connect()
-
-        # Shutdown RemotedSimulator
-        remoted_server.destroy()
+        try:
+            remoted_server.start()
+            wait_connect()
+        finally:
+            # Shutdown RemotedSimulator
+            remoted_server.destroy()
 
     # Wait for server rollback
     wait_server_rollback()
