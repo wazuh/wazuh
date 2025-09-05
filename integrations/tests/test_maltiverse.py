@@ -314,9 +314,9 @@ def test_get_sha1_in_alert(alert, expected):
     ],
 )
 def test_get_source_ip_in_alert(alert, is_private, is_loopback, is_reserved, expected):
-    """Test the function that extracts source IP-related information from an alert.
+    """Test the function responsible for extracting source IP-related information from an alert.
 
-    Private, loopback and reserverd IP Address are not enriched by Maltiverse.
+    Private, loopback, and reserved IP addresses are excluded from enrichment by Maltiverse.
     """
     example_token = 'example_token'
     testing_maltiverse = maltiverse.Maltiverse(example_token)
