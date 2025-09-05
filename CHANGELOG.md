@@ -3,6 +3,21 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.1]
 
+### Ruleset
+
+#### Changed
+
+- Reworked SCA Policy for Microsoft Windows 10 Enterprise. ([#31449](https://github.com/wazuh/wazuh/pull/31449))
+- Fixed bug in Windows SCA. ([#31349](https://github.com/wazuh/wazuh/pull/31349))
+- Fixed mistaken alert due to expected regex. ([#31102](https://github.com/wazuh/wazuh/pull/31102))
+
+### Other
+
+#### Changed
+
+- Upgraded the `starlette` dependency to 0.47.2. ([#31422](https://github.com/wazuh/wazuh/pull/31422))
+
+
 ## [v4.14.0]
 
 ### Manager
