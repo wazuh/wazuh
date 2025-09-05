@@ -210,6 +210,8 @@ public:
               logFunction,
           const nlohmann::json& configuration)
     {
+        Log::assignLogFunction(logFunction);
+
         std::error_code errorCodeFS;
         std::filesystem::remove_all(INVENTORY_SYNC_PATH, errorCodeFS);
         if (errorCodeFS)
@@ -219,10 +221,10 @@ public:
         m_dataStore = std::make_unique<TRocksDBWrapper>(INVENTORY_SYNC_PATH);
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
 
-        logDebug2(LOGGER_DEFAULT_TAG, "Indexer connector configuration: %s", configuration.dump().c_str());
+        logDebug2(LOGGER_DEFAULT_TAG, "Configuration: %s", configuration.dump().c_str());
         m_indexerConnector = std::make_unique<TIndexerConnector>(configuration.at("indexer"), logFunction);
 
-        Log::assignLogFunction(logFunction);
+        static std::string clusterName = configuration.at("clusterName");
 
         m_workersQueue = std::make_unique<WorkersQueue>(
             [this](const std::vector<char>& dataRaw)
@@ -324,7 +326,9 @@ public:
                                 dataString.append(res.context->agentName);
                                 dataString.append(R"(", "version":")");
                                 dataString.append(res.context->agentVersion);
-                                dataString.append(R"("},)");
+                                dataString.append(R"("},"wazuh":{"cluster":{"name":")");
+                                dataString.append(clusterName);
+                                dataString.append(R"("}},)");
                                 dataString.append(
                                     std::string_view((const char*)data->data()->data() + 1, data->data()->size() - 1));
                                 m_indexerConnector->bulkIndex(elementId, data->index()->string_view(), dataString);
