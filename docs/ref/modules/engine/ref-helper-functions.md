@@ -9311,6 +9311,44 @@ normalize:
 
 *The operation was successful*
 
+### Example 9
+
+No deletions when argument is null but target has no nulls
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value(null)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": "keep",
+    "b": 1,
+    "c": false
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "a": "keep",
+    "b": 1,
+    "c": false
+  }
+}
+```
+
+*The operation was successful*
+
 
 
 ---

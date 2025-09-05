@@ -144,3 +144,19 @@ test:
       a: "keep"
       b: 1
     description: No deletions when reference path is not found
+
+  # null by value (no matches)
+  - arguments:
+      any_object:
+        source: value
+        value: null
+    target_field:
+      a: "keep"
+      b: 1
+      c: false
+    should_pass: true
+    expected:
+      a: "keep"
+      b: 1
+      c: false
+    description: No deletions when argument is null but target has no nulls
