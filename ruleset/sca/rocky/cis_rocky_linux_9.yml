@@ -2449,6 +2449,26 @@ checks:
       - 'f:/proc/sys/net/ipv4/icmp_echo_ignore_broadcasts -> r:^1$'
 
   # 3.3.5 Ensure icmp redirects are not accepted (Automated)
+  - id: 31690
+    title: "Ensure icmp redirects are not accepted."
+    description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables."
+    rationale: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects, net.ipv4.conf.default.accept_redirects, net.ipv6.conf.all.accept_redirects, and net.ipv6.conf.default.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
+    remediation: "Run the following script to set the active kernel parameters: #!/usr/bin/env bash { sysctl -w net.ipv4.conf.all.accept_redirects=0 sysctl -w net.ipv4.conf.default.accept_redirects=0 }"
+    compliance:
+      - cis: ["3.3.5"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1030", "M1042"]
+      - mitre_tactics: ["TA0006", "TA0009"]
+      - mitre_techniques: ["T1557", "T1557.000"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv4/conf/all/accept_redirects -> r:^0$'
+      - 'f:/proc/sys/net/ipv4/conf/default/accept_redirects -> r:^0$'
+      - 'f:/proc/sys/net/ipv6/conf/all/accept_redirects -> r:^0$'
+      - 'f:/proc/sys/net/ipv6/conf/default/accept_redirects -> r:^0$'
+
   # 3.3.6 Ensure secure icmp redirects are not accepted (Automated)
   # 3.3.7 Ensure reverse path filtering is enabled (Automated)
   # 3.3.8 Ensure source routed packets are not accepted (Automated)
