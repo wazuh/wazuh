@@ -3417,13 +3417,13 @@ checks:
       - mitre_techniques: ["T1070", "T1070.002", "T1083"]
     condition: all
     rules:
-      - "f:/etc/aide/aide.conf"
-      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/auditd\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/ausearch\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/aureport\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/autrace\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide/aide.conf -> r:/sbin/augenrules\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - "f:/etc/aide.conf"
+      - 'f:/etc/aide.conf -> r:/sbin/auditctl\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/auditd\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/ausearch\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/aureport\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/autrace\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide.conf -> r:/sbin/augenrules\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
 
   ###############################################
   # 6.2 System Logging
