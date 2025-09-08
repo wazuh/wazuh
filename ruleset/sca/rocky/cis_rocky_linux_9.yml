@@ -4798,6 +4798,21 @@ checks:
       - 'c:/bin/sh -c "cut -f3 -d: /etc/group | sort -n | uniq -c | grep -vE \"^\\s*1\\s\\w*\" | wc -l" -> r:^0$'
 
   # 7.2.6 Ensure no duplicate user names exist. (Automated)
+  - id: 31700
+    title: "Ensure no duplicate user names exist."
+    description: "Although the useradd program will not let you create a duplicate user name, it is possible for an administrator to manually edit the /etc/passwd file and change the user name."
+    rationale: "If a user is assigned a duplicate user name, it will create and have access to files with the first UID for that username in /etc/passwd . For example, if 'test4' has a UID of 1000 and a subsequent 'test4' entry has a UID of 2000, logging in as 'test4' will use UID 1000. Effectively, the UID is shared, which is a security problem."
+    remediation: "Based on the results of the audit script, establish unique GIDs and review all files owned by the shared GID to determine which group they are supposed to belong to."
+    compliance:
+      - cis: ["7.2.6"]
+      - mitre_mitigations: ["M1027"]
+      - mitre_tactics: ["TA0004"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "cut -f1 -d: /etc/group | sort -n | uniq -c | grep -vE \"^\\s*1\\s[_a-z][-0-9_a-z]*\" | wc -l" -> r:^0$'
+
   # 7.2.7 Ensure no duplicate group names exist. (Automated)
   # 7.2.8 Ensure local interactive user home directories are configured (Automated)
   # 7.2.9 Ensure local interactive user dot files access is configured (Automated)
