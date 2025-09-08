@@ -50,13 +50,6 @@ else()
         proc
     )
 
-    if(SOLARIS)
-        target_link_libraries(sysinfo_test_tool
-            sysinfo
-            nsl
-            socket
-        )
-    endif(SOLARIS)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(APPLE)

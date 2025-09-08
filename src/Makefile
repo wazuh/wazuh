@@ -217,34 +217,6 @@ ifeq (${CHECK_ARCHLINUX},YES)
 		AR_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 endif
 else
-ifeq (${uname_S},SunOS)
-SOLARIS_CMAKE_OPTS=-DSOLARIS=ON
-PRECOMPILED_OS:=solaris
-ifneq ($(uname_R),5.10)
-		DEFINES+=-DSUN_MAJOR_VERSION=$(word 1, $(subst ., ,$(uname_V)))
-		DEFINES+=-DSUN_MINOR_VERSION=$(word 2, $(subst ., ,$(uname_V)))
-else
-		DEFINES+=-DSUN_MAJOR_VERSION=10
-		DEFINES+=-DSUN_MINOR_VERSION=0
-endif
-		DEFINES+=-DSOLARIS
-		DEFINES+=-DHIGHFIRST
-		DEFINES+=-D_REENTRANT
-ifneq ($(uname_R),5.10)
-		OSSEC_LDFLAGS+=-z relax=secadj
-		AR_LDFLAGS+=-z relax=secadj
-else
-		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
-endif
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
-		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread -lm
-		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
-		CC=gcc
-#		This is necessary in order to compile libcurl
-		NM=gnm
-		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
-else
 ifeq (${uname_S},Darwin)
 	DEFINES+=-DDarwin
 	DEFINES+=-DHIGHFIRST
@@ -293,7 +265,6 @@ endif # OpenBSD
 endif # NetBSD
 endif # FreeBSD
 endif # Darwin
-endif # SunOS
 endif # Linux
 else
 	    # There is a bug in the delay load mechanism for MinGW 32-bits executables (https://www.sourceware.org/bugzilla/show_bug.cgi?id=22676)
@@ -915,15 +886,7 @@ else
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
 endif
 else
-ifeq (${uname_S},SunOS)
-ifeq ($(uname_M),i86pc)
-	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-x86-gcc && ${MAKE} build_libs
-else
-	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-sparcv9-gcc && ${MAKE} build_libs
-endif
-else
 	cd ${EXTERNAL_OPENSSL} && ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
-endif
 endif
 endif
 
@@ -1209,18 +1172,10 @@ $(LIBPCRE2_LIB):
 ifeq (${TARGET},winagent)
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --enable-jit=no --host=${MINGW_HOST} --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
 else
-ifeq (${uname_S},SunOS)
-ifeq (${uname_R},5.10)
-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=no --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-else
-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-endif
-else
 ifeq (${CHECK_CENTOS5},YES)
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=no --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
 else
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-endif
 endif
 endif
 
@@ -1242,14 +1197,10 @@ else
 ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_LUA} && make macosx MYCFLAGS='-fPIC' && make local
 else
-ifeq (${uname_S},SunOS)
-	cd ${EXTERNAL_LUA} && gmake solaris MYCFLAGS='-fPIC' && gmake local INSTALL='cp -p' INSTALL_EXEC='cp -p' INSTALL_DATA='cp -p'
-else
 ifeq ($(findstring BSD,${uname_S}), BSD)
 	cd ${EXTERNAL_LUA} && make bsd MYCFLAGS='-fPIC' && make local
 else
 	cd ${EXTERNAL_LUA} && make posix MYCFLAGS='-fPIC' && make local
-endif
 endif
 endif
 endif
@@ -1733,12 +1684,12 @@ build_sysinfo: build_shared_modules $(WAZUHEXT_LIB)
 #### Syscollector ##
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
 build_syscollector: build_shared_modules build_sysinfo
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
+	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} .. && ${MAKE}
 endif
 
 #### SCA ##
 build_sca: build_shared_modules build_sysinfo
-	cd ${SCA} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SOLARIS_CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} .. && ${MAKE}
+	cd ${SCA} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} .. && ${MAKE}
 
 #### Wazuh cmake ###
 build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector build_sca
@@ -1860,6 +1811,7 @@ $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS) win32/version-dll.o
 
 
 else
+<<<<<<< HEAD
 ifeq (${uname_S},SunOS)
 ifneq ($(uname_R),5.10)
 LIBGCC_FLAGS := -static-libgcc
@@ -1873,6 +1825,17 @@ else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
+=======
+ifeq (${uname_S},HP-UX)
+$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+	mkdir -p libwazuhext;
+	find external/ -name \*.a -exec cp {} libwazuhext/ \;
+	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
+		ar -x libwazuhext/$$lib; \
+		mv *.o libwazuhext/; \
+	done
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc
+>>>>>>> 7109889fe6 (clean: removed Solaris references in Makefile, CMakelists.txt and scripts)
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
@@ -2024,12 +1987,6 @@ $(WAZUH_LIB): $(WAZUH_DLL) $(WAZUH_DEF)
 
 
 else
-ifeq (${uname_S},SunOS)
-ifneq ($(uname_R),5.10)
-LIBGCC_FLAGS := -static-libgcc
-else
-LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
-endif
 ifeq (${uname_P},sparc)
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
@@ -2037,10 +1994,8 @@ else
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
-else
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -Wl,-rpath,'$$ORIGIN' -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-endif
 endif
 endif
 
