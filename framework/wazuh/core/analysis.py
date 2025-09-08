@@ -1,6 +1,7 @@
 import os
 from json import dumps, loads
 from typing import List
+from logging import Logger
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
@@ -106,27 +107,36 @@ class RulesetReloadResponse:
         """
         return self.success
 
-    def update_affected_items(self, results: AffectedItemsWazuhResult, error_code: int):
-        """
-        Update the results object with warnings or raise an error if the reload failed.
+def log_ruleset_reload_response(logger: Logger, response: RulesetReloadResponse):
+    """
+    Log the result of a ruleset reload operation.
 
-        Parameters
-        ----------
-        results : AffectedItemsWazuhResult
-            Object to update with warning messages.
-        error_code : int
-            Error code to use if raising a WazuhError.
+    Depending on the outcome of the reload, logs an info, warning, or error message
+    using the provided logger. If the reload was successful but with warnings, logs
+    the warnings. If successful without warnings, logs a success message. If failed,
+    logs the errors.
 
-        Raises
-        ------
-        WazuhError
-            If the reload operation was not successful.
-        """
-        if self.is_ok():
-            if self.has_warnings():
-                results.all_msg = ','.join(self.warnings)
+    Parameters
+    ----------
+    logger : Logger
+        Logger instance to use for logging messages.
+    response : RulesetReloadResponse
+        Response object containing the result of the reload operation.
+    """
+    if response.is_ok():
+        if response.has_warnings():
+            logger.warning(
+                f"Ruleset reloaded with warnings after cluster integrity check: {', '.join(response.warnings)}"
+            )
         else:
-            raise WazuhError(error_code, extra_message=','.join(self.errors))
+            logger.info(
+                "Ruleset reload triggered by cluster integrity check: reload message sent successfully."
+            )
+    else:
+        logger.error(
+            f"Ruleset reload failed after cluster integrity check: {', '.join(response.errors)}"
+        )
+
 
 def send_reload_ruleset_msg(origin: dict[str, str]) -> RulesetReloadResponse:
     """Send the reload ruleset command to Analysisd socket.
@@ -150,3 +160,38 @@ def send_reload_ruleset_msg(origin: dict[str, str]) -> RulesetReloadResponse:
     socket.close()
 
     return RulesetReloadResponse(data)
+
+def send_reload_ruleset_and_get_results(node_id: str, results: AffectedItemsWazuhResult) -> AffectedItemsWazuhResult:
+    """
+    Send a reload ruleset command and update the results object with the outcome.
+
+    Sends the reload ruleset command to analysisd and updates the provided results object
+    with either a successful affected item (including warnings if present) or a failed item
+    with the corresponding error.
+
+    Parameters
+    ----------
+    node_id : str
+        The node identifier to associate with the result.
+    results : AffectedItemsWazuhResult
+        The results object to update with affected or failed items.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        The updated results object.
+    """
+    socket_response = send_reload_ruleset_msg(origin={'module': 'api'})
+    if socket_response.is_ok():
+        affected_item = {'name': node_id, 'msg': ''}
+        if socket_response.has_warnings():
+            affected_item['msg'] = ', '.join(socket_response.warnings)
+        else:
+            affected_item['msg'] = 'Ruleset reload request sent successfully.'
+
+        results.affected_items.append(affected_item)
+    else:
+        results.add_failed_item(id_=node_id,
+                                error=WazuhError(code=1914, extra_message=', '.join(socket_response.errors)))
+
+    return results

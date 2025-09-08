@@ -81,6 +81,8 @@ static const std::map<std::string, std::string> INDEX_MAP
     {NET_ADDRESS_TABLE, "wazuh-states-inventory-networks"},
     {USERS_TABLE, "wazuh-states-inventory-users"},
     {GROUPS_TABLE, "wazuh-states-inventory-groups"},
+    {SERVICES_TABLE, "wazuh-states-inventory-services"},
+    {BROWSER_EXTENSIONS_TABLE, "wazuh-states-inventory-browser-extensions"},
     // LCOV_EXCL_STOP
 };
 
@@ -274,6 +276,8 @@ Syscollector::Syscollector()
     , m_notify { false }
     , m_groups { false }
     , m_users { false }
+    , m_services { false }
+    , m_browserExtensions { false }
 {}
 
 std::string Syscollector::getCreateStatement() const
@@ -291,6 +295,8 @@ std::string Syscollector::getCreateStatement() const
     ret += NETADDR_SQL_STATEMENT;
     ret += GROUPS_SQL_STATEMENT;
     ret += USERS_SQL_STATEMENT;
+    ret += SERVICES_SQL_STATEMENT;
+    ret += BROWSER_EXTENSIONS_SQL_STATEMENT;
     return ret;
 }
 
@@ -314,6 +320,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const bool hotfixes,
                         const bool groups,
                         const bool users,
+                        const bool services,
+                        const bool browserExtensions,
                         const bool notifyOnFirstScan)
 {
     m_spInfo = spInfo;
@@ -333,6 +341,8 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_notify = notifyOnFirstScan;
     m_groups = groups;
     m_users = users;
+    m_services = services;
+    m_browserExtensions = browserExtensions;
 
     auto dbSync = std::make_unique<DBSync>(HostType::AGENT, DbEngineType::SQLITE3, dbPath, getCreateStatement(), DbManagement::PERSISTENT);
     auto normalizer = std::make_unique<SysNormalizer>(normalizerConfigPath, normalizerType);
@@ -401,6 +411,14 @@ nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::stri
     else if (table == GROUPS_TABLE)
     {
         ret = ecsGroupsData(data, createFields);
+    }
+    else if (table == SERVICES_TABLE)
+    {
+        ret = ecsServicesData(data, createFields);
+    }
+    else if (table == BROWSER_EXTENSIONS_TABLE)
+    {
+        ret = ecsBrowserExtensionsData(data, createFields);
     }
 
     if (createFields)
@@ -619,6 +637,76 @@ nlohmann::json Syscollector::ecsGroupsData(const nlohmann::json& originalData, b
     setJsonField(ret, originalData, "/group/name", "group_name", createFields);
     setJsonFieldArray(ret, originalData, "/group/users", "group_users", createFields);
     setJsonField(ret, originalData, "/group/uuid", "group_uuid", createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsServicesData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/error/log/file/path", "error_log_file_path", createFields);
+    setJsonField(ret, originalData, "/file/path", "file_path", createFields);
+    setJsonField(ret, originalData, "/log/file/path", "log_file_path", createFields);
+    setJsonFieldArray(ret, originalData, "/process/args", "process_args", createFields);
+    setJsonField(ret, originalData, "/process/executable", "process_executable", createFields);
+    setJsonField(ret, originalData, "/process/group/name", "process_group_name", createFields);
+    setJsonField(ret, originalData, "/process/pid", "process_pid", createFields);
+    setJsonField(ret, originalData, "/process/root_directory", "process_root_dir", createFields);
+    setJsonField(ret, originalData, "/process/user/name", "process_user_name", createFields);
+    setJsonField(ret, originalData, "/process/working_directory", "process_working_dir", createFields);
+    setJsonField(ret, originalData, "/service/address", "service_address", createFields);
+    setJsonField(ret, originalData, "/service/description", "service_description", createFields);
+    setJsonField(ret, originalData, "/service/enabled", "service_enabled", createFields);
+    setJsonField(ret, originalData, "/service/exit_code", "service_exit_code", createFields);
+    setJsonField(ret, originalData, "/service/following", "service_following", createFields);
+    setJsonField(ret, originalData, "/service/frequency", "service_frequency", createFields);
+    setJsonField(ret, originalData, "/service/id", "service_id", createFields);
+    setJsonField(ret, originalData, "/service/inetd_compatibility", "service_inetd_compatibility", createFields, true);
+    setJsonField(ret, originalData, "/service/name", "service_name", createFields);
+    setJsonField(ret, originalData, "/service/object_path", "service_object_path", createFields);
+    setJsonField(ret, originalData, "/service/restart", "service_restart", createFields);
+    setJsonField(ret, originalData, "/service/start_type", "service_start_type", createFields);
+    setJsonField(ret, originalData, "/service/starts/on_mount", "service_starts_on_mount", createFields, true);
+    setJsonFieldArray(ret, originalData, "/service/starts/on_not_empty_directory", "service_starts_on_not_empty_directory", createFields);
+    setJsonFieldArray(ret, originalData, "/service/starts/on_path_modified", "service_starts_on_path_modified", createFields);
+    setJsonField(ret, originalData, "/service/state", "service_state", createFields);
+    setJsonField(ret, originalData, "/service/sub_state", "service_sub_state", createFields);
+    setJsonField(ret, originalData, "/service/target/address", "service_target_address", createFields);
+    setJsonField(ret, originalData, "/service/target/ephemeral_id", "service_target_ephemeral_id", createFields);
+    setJsonField(ret, originalData, "/service/target/type", "service_target_type", createFields);
+    setJsonField(ret, originalData, "/service/type", "service_type", createFields);
+    setJsonField(ret, originalData, "/service/win32_exit_code", "service_win32_exit_code", createFields);
+
+    return ret;
+}
+
+nlohmann::json Syscollector::ecsBrowserExtensionsData(const nlohmann::json& originalData, bool createFields)
+{
+    nlohmann::json ret;
+
+    setJsonField(ret, originalData, "/browser/name", "browser_name", createFields);
+    setJsonField(ret, originalData, "/browser/profile/name", "browser_profile_name", createFields);
+    setJsonField(ret, originalData, "/browser/profile/path", "browser_profile_path", createFields);
+    setJsonField(ret, originalData, "/browser/profile/referenced", "browser_profile_referenced", createFields, true);
+    setJsonField(ret, originalData, "/file/hash/sha256", "file_hash_sha256", createFields);
+    setJsonField(ret, originalData, "/package/autoupdate", "package_autoupdate", createFields, true);
+    setJsonField(ret, originalData, "/package/build_version", "package_build_version", createFields);
+    setJsonField(ret, originalData, "/package/description", "package_description", createFields);
+    setJsonField(ret, originalData, "/package/enabled", "package_enabled", createFields, true);
+    setJsonField(ret, originalData, "/package/from_webstore", "package_from_webstore", createFields, true);
+    setJsonField(ret, originalData, "/package/id", "package_id", createFields);
+    setJsonField(ret, originalData, "/package/installed", "package_installed", createFields);
+    setJsonField(ret, originalData, "/package/name", "package_name", createFields);
+    setJsonField(ret, originalData, "/package/path", "package_path", createFields);
+    setJsonFieldArray(ret, originalData, "/package/permissions", "package_permissions", createFields);
+    setJsonField(ret, originalData, "/package/persistent", "package_persistent", createFields, true);
+    setJsonField(ret, originalData, "/package/reference", "package_reference", createFields);
+    setJsonField(ret, originalData, "/package/type", "package_type", createFields);
+    setJsonField(ret, originalData, "/package/vendor", "package_vendor", createFields);
+    setJsonField(ret, originalData, "/package/version", "package_version", createFields);
+    setJsonField(ret, originalData, "/package/visible", "package_visible", createFields, true);
+    setJsonField(ret, originalData, "/user/id", "user_id", createFields);
 
     return ret;
 }
@@ -939,35 +1027,6 @@ nlohmann::json Syscollector::getPortsData()
     return ret;
 }
 
-nlohmann::json Syscollector::getGroupsData()
-{
-    nlohmann::json ret;
-    auto data = m_spInfo->groups();
-
-    if (!data.is_null())
-    {
-        for (auto& item : data)
-        {
-            item["checksum"] = getItemChecksum(item);
-            ret.push_back(item);
-        }
-    }
-
-    return ret;
-}
-
-nlohmann::json Syscollector::getUsersData()
-{
-    auto allUsers = m_spInfo->users();
-
-    for (auto& user : allUsers)
-    {
-        user["checksum"] = getItemChecksum(user);
-    }
-
-    return allUsers;
-}
-
 void Syscollector::scanPorts()
 {
     if (m_ports)
@@ -1018,6 +1077,78 @@ void Syscollector::scanProcesses()
     }
 }
 
+nlohmann::json Syscollector::getGroupsData()
+{
+    nlohmann::json ret;
+    auto groups = m_spInfo->groups();
+
+    if (!groups.is_null())
+    {
+        for (auto& group : groups)
+        {
+            sanitizeJsonValue(group);
+            group["checksum"] = getItemChecksum(group);
+            ret.push_back(std::move(group));
+        }
+    }
+
+    return ret;
+}
+
+nlohmann::json Syscollector::getUsersData()
+{
+    nlohmann::json ret;
+    auto users = m_spInfo->users();
+
+    if (!users.is_null())
+    {
+        for (auto& user : users)
+        {
+            sanitizeJsonValue(user);
+            user["checksum"] = getItemChecksum(user);
+            ret.push_back(std::move(user));
+        }
+    }
+
+    return ret;
+}
+
+nlohmann::json Syscollector::getServicesData()
+{
+    nlohmann::json ret;
+    auto services = m_spInfo->services();
+
+    if (!services.is_null())
+    {
+        for (auto& service : services)
+        {
+            sanitizeJsonValue(service);
+            service["checksum"] = getItemChecksum(service);
+            ret.push_back(std::move(service));
+        }
+    }
+
+    return ret;
+}
+
+nlohmann::json Syscollector::getBrowserExtensionsData()
+{
+    nlohmann::json ret;
+    auto extensions = m_spInfo->browserExtensions();
+
+    if (!extensions.is_null())
+    {
+        for (auto& extension : extensions)
+        {
+            sanitizeJsonValue(extension);
+            extension["checksum"] = getItemChecksum(extension);
+            ret.push_back(std::move(extension));
+        }
+    }
+
+    return ret;
+}
+
 void Syscollector::scanGroups()
 {
     if (m_groups)
@@ -1040,6 +1171,28 @@ void Syscollector::scanUsers()
     }
 }
 
+void Syscollector::scanServices()
+{
+    if (m_services)
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting services scan");
+        const auto& servicesData { getServicesData() };
+        updateChanges(SERVICES_TABLE, servicesData);
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending services scan");
+    }
+}
+
+void Syscollector::scanBrowserExtensions()
+{
+    if (m_browserExtensions)
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting browser extensions scan");
+        const auto& extensionsData { getBrowserExtensionsData() };
+        updateChanges(BROWSER_EXTENSIONS_TABLE, extensionsData);
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending browser extensions scan");
+    }
+}
+
 void Syscollector::scan()
 {
     m_logFunction(LOG_INFO, "Starting evaluation.");
@@ -1052,6 +1205,8 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanProcesses);
     TRY_CATCH_TASK(scanGroups);
     TRY_CATCH_TASK(scanUsers);
+    TRY_CATCH_TASK(scanServices);
+    TRY_CATCH_TASK(scanBrowserExtensions);
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
@@ -1144,6 +1299,23 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
     else if (table == GROUPS_TABLE)
     {
         ret = data.contains("group_name") ? data["group_name"].get<std::string>() : "";
+    }
+    else if (table == SERVICES_TABLE)
+    {
+        std::string service_id = data.contains("service_id") ? data["service_id"].get<std::string>() : "";
+        std::string file_path = data.contains("file_path") ? data["file_path"].get<std::string>() : "";
+
+        ret = service_id + ":" + file_path;
+    }
+    else if (table == BROWSER_EXTENSIONS_TABLE)
+    {
+        std::string browser_name = data.contains("browser_name") ? data["browser_name"].get<std::string>() : "";
+        std::string user_id = data.contains("user_id") ? data["user_id"].get<std::string>() : "";
+        std::string browser_profile_name = data.contains("browser_profile_name") ? data["browser_profile_name"].get<std::string>() : "";
+        std::string package_name = data.contains("package_name") ? data["package_name"].get<std::string>() : "";
+        std::string package_version = data.contains("package_version") ? data["package_version"].get<std::string>() : "";
+
+        ret = browser_name + ":" + user_id + ":" + browser_profile_name + ":" + package_name + ":" + package_version;
     }
 
     return ret;

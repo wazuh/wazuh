@@ -29,11 +29,6 @@ on:
         required: false
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
-    paths:
-      - "src/**"
-      - "packages/**"
-      - ".github/workflows/4_builderpackage_manager-multiples.yml"
-      - ".github/workflows/4_builderpackage_manager.yml"
 
 jobs:
   select-targets:

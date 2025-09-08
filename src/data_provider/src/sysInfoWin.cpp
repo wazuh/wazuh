@@ -48,6 +48,10 @@
 #include "user_groups_windows.hpp"
 #include "logged_in_users_win.hpp"
 #include "users_windows.hpp"
+#include "services_windows.hpp"
+#include "chrome.hpp"
+#include "firefox.hpp"
+#include "ie_explorer.hpp"
 
 
 constexpr auto CENTRAL_PROCESSOR_REGISTRY {"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0"};
@@ -980,9 +984,12 @@ nlohmann::json SysInfo::getHotfixes() const
 
     for (auto& hotfix : hotfixes)
     {
-        nlohmann::json hotfixValue;
-        hotfixValue["hotfix_name"] = std::move(hotfix);
-        ret.push_back(std::move(hotfixValue));
+        if (!hotfix.empty())
+        {
+            nlohmann::json hotfixValue;
+            hotfixValue["hotfix_name"] = std::move(hotfix);
+            ret.push_back(std::move(hotfixValue));
+        }
     }
 
     return ret;
@@ -1162,6 +1169,208 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_password_warning_days_before_expiration"] = 0;
 
         result.push_back(std::move(userItem));
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getServices() const
+{
+    nlohmann::json result = nlohmann::json::array();
+
+    ServicesProvider servicesProvider;
+    auto collectedServices = servicesProvider.collect();
+
+    for (auto& svc : collectedServices)
+    {
+        nlohmann::json serviceItem{};
+
+        serviceItem["service_id"]                            = (svc.contains("name") && !svc["name"].get<std::string>().empty()) ? svc["name"] : UNKNOWN_VALUE;
+        serviceItem["service_name"]                          = svc.value("display_name", UNKNOWN_VALUE);
+        serviceItem["service_description"]                   = svc.value("description",  UNKNOWN_VALUE);
+        serviceItem["service_type"]                          = svc.value("service_type", UNKNOWN_VALUE);
+        serviceItem["service_state"]                         = svc.value("status",       UNKNOWN_VALUE);
+        serviceItem["service_sub_state"]                     = UNKNOWN_VALUE;
+        serviceItem["service_enabled"]                       = UNKNOWN_VALUE;
+        serviceItem["service_start_type"]                    = svc.value("start_type",   UNKNOWN_VALUE);
+        serviceItem["service_restart"]                       = UNKNOWN_VALUE;
+        serviceItem["service_frequency"]                     = 0;
+        serviceItem["service_starts_on_mount"]               = 0;
+        serviceItem["service_starts_on_path_modified"]       = UNKNOWN_VALUE;
+        serviceItem["service_starts_on_not_empty_directory"] = UNKNOWN_VALUE;
+        serviceItem["service_inetd_compatibility"]           = 0;
+        serviceItem["process_pid"]                           = svc.value("pid", 0);
+        serviceItem["process_executable"]                    = svc.value("path",         UNKNOWN_VALUE);
+        serviceItem["process_args"]                          = UNKNOWN_VALUE;
+        serviceItem["process_user_name"]                     = svc.value("user_account", UNKNOWN_VALUE);
+        serviceItem["process_group_name"]                    = UNKNOWN_VALUE;
+        serviceItem["process_working_directory"]             = UNKNOWN_VALUE;
+        serviceItem["process_root_directory"]                = UNKNOWN_VALUE;
+        serviceItem["file_path"]                             = UNKNOWN_VALUE;
+        serviceItem["service_address"]                       = svc.value("module_path",  UNKNOWN_VALUE);
+        serviceItem["log_file_path"]                         = UNKNOWN_VALUE;
+        serviceItem["error_log_file_path"]                   = UNKNOWN_VALUE;
+        serviceItem["service_exit_code"]                     = svc.value("service_exit_code", 0);
+        serviceItem["service_win32_exit_code"]               = svc.value("win32_exit_code", 0);
+        serviceItem["service_following"]                     = UNKNOWN_VALUE;
+        serviceItem["service_object_path"]                   = UNKNOWN_VALUE;
+        serviceItem["service_target_ephemeral_id"]           = 0;
+        serviceItem["service_target_type"]                   = UNKNOWN_VALUE;
+        serviceItem["service_target_address"]                = UNKNOWN_VALUE;
+
+        result.push_back(std::move(serviceItem));
+    }
+
+    return result;
+}
+
+nlohmann::json SysInfo::getBrowserExtensions() const
+{
+    nlohmann::json result = nlohmann::json::array();
+
+    try
+    {
+        // Collect Chrome extensions
+        chrome::ChromeExtensionsProvider chromeProvider;
+        auto collectedChromeExtensions = chromeProvider.collect();
+
+        for (auto& ext : collectedChromeExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            // Convert string fields to int
+            auto stringToInt = [&ext](const std::string & fieldName) -> int
+            {
+                if (ext.contains(fieldName))
+                {
+                    try
+                    {
+                        auto valueStr = ext[fieldName].get<std::string>();
+                        return valueStr.empty() ? 0 : std::stoi(valueStr);
+                    }
+                    catch (const std::exception&)
+                    {
+                        return 0;
+                    }
+                }
+
+                return 0;
+            };
+
+            extensionItem["browser_name"]              = (ext.contains("browser_type") && !ext["browser_type"].get<std::string>().empty()) ? ext["browser_type"] : UNKNOWN_VALUE;
+            extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
+            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
+            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
+            extensionItem["package_vendor"]            = ext.value("author",              UNKNOWN_VALUE);
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = (ext.contains("profile") && !ext["profile"].get<std::string>().empty()) ? ext["profile"] : UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = ext.value("profile_path",        UNKNOWN_VALUE);
+            extensionItem["package_reference"]         = ext.value("update_url",          UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = ext.value("permissions",         UNKNOWN_VALUE);
+            extensionItem["package_type"]              = UNKNOWN_VALUE;
+
+            if (ext.contains("state") && !ext["state"].get<std::string>().empty())
+            {
+                try
+                {
+                    int stateValue = std::stoi(ext["state"].get<std::string>());
+                    extensionItem["package_enabled"] = (stateValue == 1) ? 1 : 0;
+                }
+                catch (const std::exception&)
+                {
+                    extensionItem["package_enabled"] = -1;
+                }
+            }
+            else
+            {
+                extensionItem["package_enabled"] = -1;
+            }
+
+            extensionItem["package_visible"]           = 0;
+            extensionItem["package_autoupdate"]        = 0;
+            extensionItem["package_persistent"]        = stringToInt("persistent");
+            extensionItem["package_from_webstore"]     = stringToInt("from_webstore");
+            extensionItem["browser_profile_referenced"] = stringToInt("referenced");
+            extensionItem["package_installed"]         = ext.value("install_timestamp",  UNKNOWN_VALUE);
+            extensionItem["file_hash_sha256"]          = ext.value("manifest_hash",      UNKNOWN_VALUE);
+
+            result.push_back(std::move(extensionItem));
+        }
+
+        // Collect Firefox extensions
+        FirefoxAddonsProvider firefoxProvider;
+        auto collectedFirefoxExtensions = firefoxProvider.collect();
+
+        for (auto& ext : collectedFirefoxExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            extensionItem["browser_name"]              = "firefox";
+            extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
+            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
+            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
+            extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
+            extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);
+            extensionItem["package_enabled"]           = ext["disabled"].get<bool>() ? 0 : 1;
+            extensionItem["package_visible"]            = ext["visible"].get<bool>() ? 1 : 0;
+            extensionItem["package_autoupdate"]        = (ext.contains("autoupdate") && ext["autoupdate"].get<bool>()) ? 1 : 0;
+            extensionItem["package_persistent"]        = 0;
+            extensionItem["package_from_webstore"]     = 0;
+            extensionItem["browser_profile_referenced"] = 0;
+            extensionItem["package_installed"]         = UNKNOWN_VALUE;
+            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
+
+            result.push_back(std::move(extensionItem));
+        }
+
+        // Collect Internet Explorer extensions
+        IEExtensionsProvider ieProvider;
+        auto collectedIEExtensions = ieProvider.collect();
+
+        for (auto& ext : collectedIEExtensions)
+        {
+            nlohmann::json extensionItem{};
+
+            extensionItem["browser_name"]              = "ie";
+            extensionItem["user_id"]                   = UNKNOWN_VALUE;
+            extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
+            extensionItem["package_id"]                = UNKNOWN_VALUE;
+            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_description"]       = UNKNOWN_VALUE;
+            extensionItem["package_vendor"]            = UNKNOWN_VALUE;
+            extensionItem["package_build_version"]     = UNKNOWN_VALUE;
+            extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
+            extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["package_reference"]         = ext.value("registry_path",      UNKNOWN_VALUE);
+            extensionItem["package_permissions"]       = UNKNOWN_VALUE;
+            extensionItem["package_type"]              = UNKNOWN_VALUE;
+            extensionItem["package_enabled"]           = 1;
+            extensionItem["package_visible"]           = 0;
+            extensionItem["package_autoupdate"]        = 0;
+            extensionItem["package_persistent"]        = 0;
+            extensionItem["package_from_webstore"]     = 0;
+            extensionItem["browser_profile_referenced"] = 0;
+            extensionItem["package_installed"]         = UNKNOWN_VALUE;
+            extensionItem["file_hash_sha256"]          = UNKNOWN_VALUE;
+
+            result.push_back(std::move(extensionItem));
+        }
+    }
+    catch (const std::exception& e)
+    {
+        // Log error but don't fail completely
     }
 
     return result;

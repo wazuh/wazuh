@@ -91,10 +91,17 @@ def get_package_name_from_path(package_path):
 
 def call_binary(binary_path, parameter):
     try:
-        command =  f"{binary_path}" if platform.system() == "Windows" else f"sudo {binary_path}"
-        # Run the binary and capture its output
+        # Use absolute path to avoid issues with shell execution
+        abs_binary_path = Path(binary_path).resolve()
+
+        if platform.system() == "Windows":
+            cmd = [str(abs_binary_path), parameter]
+        else:
+            cmd = ["sudo", str(abs_binary_path), parameter]
+
+        # Run the binary and capture its output - avoid shell=True for better reliability
         result = subprocess.run(
-            [command, parameter], capture_output=True, check=False, text=True, shell=True)
+            cmd, capture_output=True, check=False, text=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Error while executing the binary: {e}") from e

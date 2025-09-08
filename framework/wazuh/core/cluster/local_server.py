@@ -5,9 +5,10 @@
 import asyncio
 import functools
 import json
+import logging
 import os
 import random
-from typing import Tuple, Union
+from typing import Tuple, Union, Dict
 
 import uvloop
 from wazuh.core import common
@@ -353,7 +354,6 @@ class LocalServerMaster(LocalServer):
 
         self.tasks.extend([self.dapi.run, self.sendsync.run])
 
-
 class LocalServerHandlerWorker(LocalServerHandler):
     """
     The local server handler instance that runs in worker nodes.
@@ -398,8 +398,22 @@ class LocalServerHandlerWorker(LocalServerHandler):
             asyncio.create_task(self.log_exceptions(
                 self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
             return b'ok', b'Added request to sendsync requests queue'
+        elif command == b'sendrreload':
+            if self.server.node.client is None:
+                raise WazuhClusterError(3023)
+            asyncio.create_task(self.log_exceptions(self.set_reload_ruleset_flag()))
+            return b'ok', json.dumps({'success': True}).encode()
         else:
             return super().process_request(command, data)
+
+    async def set_reload_ruleset_flag(self):
+        """Set the reload ruleset flag asynchronously for the worker node.
+
+        This method acquires the reload_ruleset_flag lock and sets the flag,
+        indicating that the ruleset should be reloaded.
+        """
+        async with self.server.node.client.reload_ruleset_flag:
+            self.server.node.client.reload_ruleset_flag.set()
 
     def get_nodes(self, arguments) -> Tuple[bytes, bytes]:
         """Forward 'get_nodes' request to the master node.

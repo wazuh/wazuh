@@ -50,6 +50,12 @@ int __wrap_sysinfo_ports(cJSON ** js_result) {
     return mock_type(int);
 }
 
+int __wrap_sysinfo_browser_extensions(cJSON ** js_result) {
+
+    *js_result = mock_ptr_type(cJSON *);
+    return mock_type(int);
+}
+
 void __wrap_sysinfo_free_result( __attribute__((unused)) cJSON ** js_data) {
 
     js_data = mock_ptr_type(cJSON **);
