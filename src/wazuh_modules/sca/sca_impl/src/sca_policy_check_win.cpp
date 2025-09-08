@@ -102,11 +102,10 @@ namespace
         return a.size() == b.size() && std::equal(a.begin(),
                                                   a.end(),
                                                   b.begin(),
-                                                  [](char a, char b)
-        {
-            return std::tolower(static_cast<unsigned char>(a)) ==
-                   std::tolower(static_cast<unsigned char>(b));
-        });
+                                                  [](char str_a, char str_b) {
+                                                      return std::tolower(static_cast<unsigned char>(str_a)) ==
+                                                             std::tolower(static_cast<unsigned char>(str_b));
+                                                  });
     }
 
     RuleResult CheckMatch(const std::string& candidate, const std::string& pattern, bool isRegex)
