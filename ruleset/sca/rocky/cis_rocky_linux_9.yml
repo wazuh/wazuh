@@ -4815,7 +4815,7 @@ checks:
 
   # 7.2.7 Ensure no duplicate group names exist. (Automated)
   - id: 31701
-    title: "Ensure no duplicate user names exist."
+    title: "Ensure no duplicate group names exist."
     description: "Although the groupadd program will not let you create a duplicate group name, it is possible for an administrator to manually edit the /etc/group file and change the group name."
     rationale: "If a group is assigned a duplicate group name, it will create and have access to files with the first GID for that group in /etc/group . Effectively, the GID is shared, which is a security problem."
     remediation: "Based on the results of the audit script, establish unique names for the user groups. File group ownerships will automatically reflect the change as long as the groups have unique GIDs."
@@ -4830,4 +4830,28 @@ checks:
       - 'c:/bin/sh -c "cut -f1 -d: /etc/group | sort -n | uniq -c | grep -vE \"^\\s*1\\s[_a-z][-0-9_a-z]*\" | wc -l" -> r:^0$'
 
   # 7.2.8 Ensure local interactive user home directories are configured (Automated)
+  - id: 31702
+    title: "Ensure local interactive user home directories are configured."
+    description: "The user home directory is space defined for the particular user to set local environment variables and to store personal files. While the system administrator can establish secure permissions for users' home directories, the users can easily override these. Users can be defined in /etc/passwd without a home directory or with a home directory that does not actually exist."
+    rationale: "Since the user is accountable for files stored in the user home directory, the user must be the owner of the directory. Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges. If the user's home directory does not exist or is unassigned, the user will be placed in '/' and will not be able to write any files or have local environment variables set."
+    remediation: "If a local interactive users' home directory is undefined and/or doesn't exist, follow local site policy and perform one of the following: Lock the user account. Remove the user from the system. Create a directory for the user. If undefined, edit /etc/passwd and add the absolute path to the directory to the last field of the user."
+    compliance:
+      - cis: ["7.2.8"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1222", "T1222.002"]
+    condition: all
+    rules:
+      # NOTE: this check finds interactive users with home dirs MORE permissive than chmod 0750
+      - 'c:/bin/sh -c "cat /etc/shells | xargs -I {} grep -E \".*:{}\" /etc/passwd | cut -d: -f6 | xargs -I {} find {} -maxdepth 0 -type d -perm /g+w,o+rwx | wc -l" -> r:^0$'
+      # NOTE: this check extract interactive users home paths and compare ownership against /etc/passwd
+      - >-
+        c:/bin/sh -c "interactive_users=`cat /etc/shells | xargs -I {} grep -E \".*:{}\" /etc/passwd | cut -d: -f6`;
+        assert_homes=`echo \"${interactive_homes}\" | xargs -I {} find {} -maxdepth 0 -type d -perm /750 | xargs stat -Lc \"%U:.*:%n\" | xargs -I {} grep -E \"{}\" /etc/passwd`;
+        if [ `echo \"${interactive_homes}\" | wc -l` -eq `echo \"${assert_homes}\" | wc -l` ];
+          then echo \"OK\";
+        fi" -> r:OK
+
   # 7.2.9 Ensure local interactive user dot files access is configured (Automated)
