@@ -46,7 +46,7 @@
 
 #ifdef SOLARIS
 #include <sys/exechdr.h>
-#elif defined Darwin || defined HPUX || defined ALPINE
+#elif defined Darwin || defined ALPINE
 
 /* For some reason darwin does not have that */
 struct exec {
