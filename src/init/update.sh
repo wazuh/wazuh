@@ -151,19 +151,6 @@ getPreinstalledDirByType()
             return 1;
         fi
     fi
-    # Checking for HP-UX
-    if [ "X${UN}" = "XHP-UX" ]; then
-        if [ -f /sbin/init.d/${pidir_service_name} ]; then
-            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /sbin/init.d/${pidir_service_name}`
-            if [ -d "$PREINSTALLEDDIR" ]; then
-                return 0;
-            else
-                return 1;
-            fi
-        else
-            return 1;
-        fi
-    fi
     # Checking for BSD
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
         # Checking for the presence of wazuh-control on rc.local

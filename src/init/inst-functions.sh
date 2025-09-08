@@ -667,8 +667,6 @@ InstallCommon()
 
     if [ ${DIST_NAME} = "sunos" ]; then
         INSTALL="ginstall"
-    elif [ ${DIST_NAME} = "HP-UX" ]; then
-        INSTALL="/usr/local/coreutils/bin/install"
     fi
 
     ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
