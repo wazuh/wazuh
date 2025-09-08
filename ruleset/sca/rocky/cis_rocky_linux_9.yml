@@ -4775,14 +4775,29 @@ checks:
       - cis: ["7.2.4"]
       - mitre_mitigations: ["M1027"]
       - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1078", "T1078.001", "T1078.001"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
       - 'c:/bin/sh -c "cut -f3 -d: /etc/passwd | sort -n | uniq -c | grep -vE \"^\\s*1\\s\\w*\" | wc -l" -> r:^0$'
 
-  # 7.2.5 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
-  # 7.2.6 Ensure no duplicate user names exist. (Automated) - Not Implemented
-  # 7.2.7 Ensure no duplicate group names exist. (Automated) - Not Implemented
-  # 7.2.8 Ensure local interactive user home directories are configured (Automated) - Not Implemented
-  # 7.2.9 Ensure local interactive user dot files access is configured (Automated) - Not Implemented
+  # 7.2.5 Ensure no duplicate GIDs exist. (Automated)
+  - id: 31699
+    title: "Ensure no duplicate GIDs exist."
+    description: "Although the groupadd program will not let you create a duplicate Group ID (GID), it is possible for an administrator to manually edit the /etc/group file and change the GID field."
+    rationale: "User groups must be assigned unique GIDs for accountability and to ensure appropriate access protections."
+    remediation: "Based on the results of the audit script, establish unique GIDs and review all files owned by the shared GID to determine which group they are supposed to belong to."
+    compliance:
+      - cis: ["7.2.5"]
+      - mitre_mitigations: ["M1027"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "cut -f3 -d: /etc/group | sort -n | uniq -c | grep -vE \"^\\s*1\\s\\w*\" | wc -l" -> r:^0$'
+
+  # 7.2.6 Ensure no duplicate user names exist. (Automated)
+  # 7.2.7 Ensure no duplicate group names exist. (Automated)
+  # 7.2.8 Ensure local interactive user home directories are configured (Automated)
+  # 7.2.9 Ensure local interactive user dot files access is configured (Automated)
