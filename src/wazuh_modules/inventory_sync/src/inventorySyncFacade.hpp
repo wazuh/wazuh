@@ -18,6 +18,7 @@
 #include "loggerHelper.h"
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
+#include "stringHelper.h"
 #include <asyncValueDispatcher.hpp>
 #include <filesystem>
 #include <format>
@@ -229,7 +230,9 @@ public:
             throw InventorySyncException("clusterName not found in configuration");
         }
 
-        const std::string& clusterName = configuration.at("clusterName");
+        static std::string clusterName = Utils::toLowerCase(configuration.at("clusterName"));
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", clusterName.c_str());
 
         m_workersQueue = std::make_unique<WorkersQueue>(
             [this](const std::vector<char>& dataRaw)
@@ -272,7 +275,7 @@ public:
         };
 
         m_indexerQueue = std::make_unique<IndexerQueue>(
-            [this, &preIndexerAction, &clusterName](const Response& res)
+            [this, &preIndexerAction](const Response& res)
             {
                 logDebug2(LOGGER_DEFAULT_TAG, "Indexer queue action...");
                 if (auto sessionIt = m_agentSessions.find(res.context->sessionId); sessionIt == m_agentSessions.end())
