@@ -127,21 +127,6 @@ runInit()
         return 0;
     fi
 
-    if [ "X${UN}" = "XSunOS" ]; then
-        echo " - ${systemis} Solaris (SunOS)."
-        echo " - ${modifiedinit}"
-        GenerateService ossec-hids-solaris.init > /etc/init.d/${service}
-        chmod 755 /etc/init.d/${service}
-
-        if [ "X${update_only}" = "X" ]
-        then
-            ln -s /etc/init.d/${service} /etc/rc2.d/S97${service}
-            ln -s /etc/init.d/${service} /etc/rc3.d/S97${service}
-        fi
-
-        return 0;
-    fi
-
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
         # Checking for the presence of wazuh-control on rc.local
         grep wazuh-control /etc/rc.local > /dev/null 2>&1
