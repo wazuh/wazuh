@@ -369,14 +369,6 @@ int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6, uint32_t network_i
 {
     int sock = OS_Connect(_port, IPPROTO_UDP, _ip, ipv6, network_interface);
 
-#ifdef HPUX
-    if (sock >= 0) {
-        int flags;
-        flags = fcntl(sock, F_GETFL, 0);
-        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-    }
-#endif
-
     return sock;
 }
 
