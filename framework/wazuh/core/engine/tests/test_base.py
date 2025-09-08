@@ -1,7 +1,7 @@
 from unittest import mock
 
 import pytest
-from httpx import AsyncClient, ConnectError, HTTPStatusError, Timeout, TimeoutException, UnsupportedProtocol
+from httpx import ConnectError, HTTPStatusError, Timeout, TimeoutException, UnsupportedProtocol
 from wazuh.core.engine.base import BaseModule, DEFAULT_TIMEOUT
 from wazuh.core.exception import WazuhEngineError
 
@@ -14,118 +14,170 @@ def test_base_module_init():
 
     assert instance._client == client_mock
 
-
 @pytest.mark.asyncio
-async def test_base_module_send_success():
-    """Validate successful `send` method execution."""
+async def test_base_module_get_success():
+    """Validate successful `get` method execution."""
     client_mock = mock.AsyncMock()
     module = BaseModule(client=client_mock)
-    
-    # Mock successful response
+
     mock_response = mock.Mock()
     mock_response.json.return_value = {'status': 'success', 'data': 'test_data'}
     mock_response.raise_for_status.return_value = None
-    client_mock.post.return_value = mock_response
-    
-    result = await module.send('/test/path', {'key': 'value'})
-    
-    # Verify the request was made correctly
-    client_mock.post.assert_called_once_with(
+    client_mock.get.return_value = mock_response
+
+    result = await module.get('/test/path', {'param': 'value'})
+
+    client_mock.get.assert_called_once_with(
+        url='http://localhost/test/path',
+        params={'param': 'value'},
+        timeout=Timeout(DEFAULT_TIMEOUT)
+    )
+    mock_response.raise_for_status.assert_called_once()
+    mock_response.json.assert_called_once()
+    assert result == {'status': 'success', 'data': 'test_data'}
+
+
+@pytest.mark.asyncio
+async def test_base_module_put_success():
+    """Validate successful `put` method execution."""
+    client_mock = mock.AsyncMock()
+    module = BaseModule(client=client_mock)
+
+    mock_response = mock.Mock()
+    mock_response.json.return_value = {'status': 'success', 'data': 'test_data'}
+    mock_response.raise_for_status.return_value = None
+    client_mock.put.return_value = mock_response
+
+    result = await module.put('/test/path', {'key': 'value'})
+
+    client_mock.put.assert_called_once_with(
         url='http://localhost/test/path',
         json={'key': 'value'},
         timeout=Timeout(DEFAULT_TIMEOUT)
     )
     mock_response.raise_for_status.assert_called_once()
     mock_response.json.assert_called_once()
-    
     assert result == {'status': 'success', 'data': 'test_data'}
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('exception_class,error_code', [
-    (TimeoutException, 2800),
-    (UnsupportedProtocol, 2800),
-    (ConnectError, 2800),
-])
-async def test_base_module_send_connection_errors(exception_class, error_code):
-    """Validate that `send` method connection-related exceptions are properly handled."""
+async def test_base_module_delete_success():
+    """Validate successful `delete` method execution."""
     client_mock = mock.AsyncMock()
     module = BaseModule(client=client_mock)
-    
-    # Mock the exception
-    client_mock.post.side_effect = exception_class('Test error')
-    
-    with pytest.raises(WazuhEngineError, match=f'.*{error_code}.*'):
-        await module.send('test/path', {'key': 'value'})
+
+    mock_response = mock.Mock()
+    mock_response.json.return_value = {'status': 'success', 'data': 'test_data'}
+    mock_response.raise_for_status.return_value = None
+    client_mock.delete.return_value = mock_response
+
+    result = await module.delete('/test/path', {'param': 'value'})
+
+    client_mock.delete.assert_called_once_with(
+        url='http://localhost/test/path',
+        params={'param': 'value'},
+        timeout=Timeout(DEFAULT_TIMEOUT)
+    )
+    mock_response.raise_for_status.assert_called_once()
+    mock_response.json.assert_called_once()
+    assert result == {'status': 'success', 'data': 'test_data'}
 
 
 @pytest.mark.asyncio
-async def test_base_module_send_http_error():
-    """Validate that `send` method HTTP errors are properly handled."""
+@pytest.mark.parametrize('method,client_method,exception_class,error_code', [
+    ('get', 'get', TimeoutException, 2800),
+    ('get', 'get', UnsupportedProtocol, 2800),
+    ('get', 'get', ConnectError, 2800),
+    ('put', 'put', TimeoutException, 2800),
+    ('put', 'put', UnsupportedProtocol, 2800),
+    ('put', 'put', ConnectError, 2800),
+    ('delete', 'delete', TimeoutException, 2800),
+    ('delete', 'delete', UnsupportedProtocol, 2800),
+    ('delete', 'delete', ConnectError, 2800),
+])
+async def test_base_module_methods_connection_errors(method, client_method, exception_class, error_code):
+    """Validate connection-related exceptions for get, put, and delete methods."""
     client_mock = mock.AsyncMock()
     module = BaseModule(client=client_mock)
-    
-    # Create a mock response for HTTPStatusError
+    getattr(client_mock, client_method).side_effect = exception_class('Test error')
+
+    with pytest.raises(WazuhEngineError, match=f'.*{error_code}.*'):
+        if method == 'get':
+            await module.get('test/path', {'param': 'value'})
+        elif method == 'put':
+            await module.put('test/path', {'key': 'value'})
+        elif method == 'delete':
+            await module.delete('test/path', {'param': 'value'})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('method,client_method', [
+    ('get', 'get'),
+    ('put', 'put'),
+    ('delete', 'delete'),
+])
+async def test_base_module_methods_http_error(method, client_method):
+    """Validate HTTP errors for get, put, and delete methods."""
+    client_mock = mock.AsyncMock()
+    module = BaseModule(client=client_mock)
     mock_request = mock.Mock()
     mock_response = mock.Mock()
     mock_response.status_code = 500
-    
-    # Mock HTTPStatusError (which is a subclass of HTTPError)
     http_error = HTTPStatusError('Server error', request=mock_request, response=mock_response)
-    client_mock.post.side_effect = http_error
-    
+    getattr(client_mock, client_method).side_effect = http_error
+
     with pytest.raises(WazuhEngineError, match='.*2803.*'):
-        await module.send('test/path', {'key': 'value'})
+        if method == 'get':
+            await module.get('test/path', {'param': 'value'})
+        elif method == 'put':
+            await module.put('test/path', {'key': 'value'})
+        elif method == 'delete':
+            await module.delete('test/path', {'param': 'value'})
 
 
 @pytest.mark.asyncio
-async def test_base_module_send_generic_exception():
-    """Validate that `send` method generic exceptions are properly handled."""
+@pytest.mark.parametrize('method,client_method', [
+    ('get', 'get'),
+    ('put', 'put'),
+    ('delete', 'delete'),
+])
+async def test_base_module_methods_generic_exception(method, client_method):
+    """Validate generic exceptions for get, put, and delete methods."""
     client_mock = mock.AsyncMock()
     module = BaseModule(client=client_mock)
-    
-    # Mock a generic exception
-    client_mock.post.side_effect = Exception('Generic error')
-    
+    getattr(client_mock, client_method).side_effect = Exception('Generic error')
+
     with pytest.raises(WazuhEngineError, match='.*2804.*'):
-        await module.send('test/path', {'key': 'value'})
+        if method == 'get':
+            await module.get('test/path', {'param': 'value'})
+        elif method == 'put':
+            await module.put('test/path', {'key': 'value'})
+        elif method == 'delete':
+            await module.delete('test/path', {'param': 'value'})
 
 
 @pytest.mark.asyncio
-async def test_base_module_send_json_decode_error():
-    """Validate that `send` method JSON decode errors are properly handled."""
+@pytest.mark.parametrize('method,client_method', [
+    ('get', 'get'),
+    ('put', 'put'),
+    ('delete', 'delete'),
+])
+async def test_base_module_methods_json_decode_error(method, client_method):
+    """Validate JSON decode errors for get, put, and delete methods."""
     client_mock = mock.AsyncMock()
     module = BaseModule(client=client_mock)
-    
-    # Mock successful HTTP response but invalid JSON
     mock_response = mock.Mock()
     mock_response.raise_for_status.return_value = None
     mock_response.json.side_effect = ValueError('Invalid JSON')
     mock_response.text = 'Invalid JSON response'
-    client_mock.post.return_value = mock_response
-    
+    getattr(client_mock, client_method).return_value = mock_response
+
     with pytest.raises(WazuhEngineError, match='.*2805.*'):
-        await module.send('test/path', {'key': 'value'})
-    
+        if method == 'get':
+            await module.get('test/path', {'param': 'value'})
+        elif method == 'put':
+            await module.put('test/path', {'key': 'value'})
+        elif method == 'delete':
+            await module.delete('test/path', {'param': 'value'})
+
     assert mock_response.text == 'Invalid JSON response'
-
-
-@pytest.mark.asyncio
-async def test_base_module_send_http_status_error():
-    """Validate that `send` method HTTP status errors (4xx, 5xx) trigger raise_for_status and are handled."""
-    client_mock = mock.AsyncMock()
-    module = BaseModule(client=client_mock)
-    
-    # Mock response that raises HTTPStatusError on raise_for_status()
-    mock_response = mock.Mock()
-    mock_response.raise_for_status.side_effect = HTTPStatusError(
-        'Bad Request', 
-        request=mock.Mock(), 
-        response=mock.Mock(status_code=400)
-    )
-    client_mock.post.return_value = mock_response
-    
-    with pytest.raises(WazuhEngineError, match='.*2803.*'):
-        await module.send('test/path', {'key': 'value'})
-    
-    mock_response.raise_for_status.assert_called_once()
