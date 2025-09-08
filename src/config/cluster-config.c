@@ -113,7 +113,6 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
         } else if (!strcmp(node[i]->element, haproxy_helper)) {
-
             if (!(child = OS_GetElementsbyNode(xml, node[i]))) {
                 continue;
             }
@@ -127,7 +126,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     }
                 } else if (!strcmp(child[j]->element, frequency)) {
                 } else if (!strcmp(child[j]->element, haproxy_address)) {
-                    if (!strlen(node[i]->content)) {
+                    if (!strlen(child[j]->content)) {
                         merror("HAProxy address is missing in the configuration");
                         OS_ClearNode(child);
                         return OS_INVALID;
@@ -140,13 +139,13 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_user)) {
-                    if (!strlen(node[i]->content)) {
+                    if (!strlen(child[j]->content)) {
                         merror("HAProxy user is missing in the configuration");
                         OS_ClearNode(child);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_password)) {
-                    if (!strlen(node[i]->content)) {
+                    if (!strlen(child[j]->content)) {
                         merror("HAProxy password is missing in the configuration");
                         OS_ClearNode(child);
                         return OS_INVALID;
@@ -169,11 +168,12 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     return OS_INVALID;
                 }
             }
+        OS_ClearNode(child);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
         }
     }
-        
+
     return 0;
 }
