@@ -5,7 +5,7 @@ class LogModule(BaseModule):
 
     MODULE = 'log'
 
-    async def put_log_test(self, payload: str):
+    async def log_test(self, payload: str):
         """Send a test log payload to the engine.
 
         Parameters
@@ -19,4 +19,4 @@ class LogModule(BaseModule):
             The JSON response from the engine.
         """
         body = {'payload': payload}
-        return await self.put('/v1/log/test', body)
+        return await self.send('/v1/log/test', body)

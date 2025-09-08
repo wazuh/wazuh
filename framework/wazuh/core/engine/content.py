@@ -13,9 +13,9 @@ class ContentModule(BaseModule):
         dict
             The JSON response from the engine.
         """
-        return await self.get('/v1/content/status')
+        return await self.send('/v1/content/status', {})
 
-    async def put_content_reload(self) -> dict:
+    async def reload_content(self) -> dict:
         """Reload the content module.
 
         Returns
@@ -23,9 +23,9 @@ class ContentModule(BaseModule):
         dict
             The JSON response from the engine.
         """
-        return await self.put('/v1/content/reload')
+        return await self.send('/v1/content/reload', {})
 
-    async def put_content_validation(self, type: str, payload: str) -> dict:
+    async def validate_content(self, type: str, payload: str) -> dict:
         """Validate content of a specific type.
 
         Parameters
@@ -41,7 +41,7 @@ class ContentModule(BaseModule):
             The JSON response from the engine.
         """
         body = {'type': type, 'payload': payload}
-        return await self.put('/v1/content/validation', body)
+        return await self.send('/v1/content/validation', body)
 
     async def delete_content(self, asset_name: str) -> dict:
         """Delete a specific content asset.
@@ -56,5 +56,5 @@ class ContentModule(BaseModule):
         dict
             The JSON response from the engine.
         """
-        path = f'/v1/content/{asset_name}'
-        return await self.delete(path)
+        body = {'asset_name': asset_name}
+        return await self.send('/v1/content/delete', body)

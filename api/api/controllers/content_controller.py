@@ -7,7 +7,9 @@ import logging
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
-from api.controllers.util import json_response
+from api.controllers.util import json_response, JSON_CONTENT_TYPE
+from api.models.base_model_ import Body
+from api.models.content_model import ContentFileDataModel, LogTestPayloadModel
 from api.util import remove_nones_to_dict, raise_if_exc
 from wazuh import content as content_framework
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -15,8 +17,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh-api')
 
 async def get_content_status(pretty: bool = False, wait_for_complete: bool = False):
-    """
-    Get the status of all available content.
+    """Get the status of all available content.
 
     Parameters
     ----------
@@ -46,8 +47,7 @@ async def get_content_status(pretty: bool = False, wait_for_complete: bool = Fal
 
 
 async def reload_contents(pretty: bool = False, wait_for_complete: bool = False):
-    """
-    Reload all content files.
+    """Reload all content files.
 
     Parameters
     ----------
@@ -76,8 +76,7 @@ async def reload_contents(pretty: bool = False, wait_for_complete: bool = False)
     return json_response(data, pretty=pretty)
 
 async def validate_content(pretty: bool = False, wait_for_complete: bool = False):
-    """
-    Validate all content file.
+    """Validate all content file.
 
     Parameters
     ----------
@@ -91,7 +90,9 @@ async def validate_content(pretty: bool = False, wait_for_complete: bool = False
     ConnexionResponse
         API response with the operation result.
     """
-    f_kwargs = {}
+    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
+    body_model: ContentFileDataModel = await ContentFileDataModel.get_kwargs(request)
+    f_kwargs = {'type': body_model.type, 'payload': body_model.payload}
 
     dapi = DistributedAPI(f=content_framework.validate_contents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -106,8 +107,7 @@ async def validate_content(pretty: bool = False, wait_for_complete: bool = False
     return json_response(data, pretty=pretty)
 
 async def log_test(pretty: bool = False, wait_for_complete: bool = False):
-    """
-    Run log test for content files.
+    """Run log test for content files.
 
     Parameters
     ----------
@@ -121,7 +121,9 @@ async def log_test(pretty: bool = False, wait_for_complete: bool = False):
     ConnexionResponse
         API response with the operation result.
     """
-    f_kwargs = {}
+    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
+    body_model: LogTestPayloadModel = await LogTestPayloadModel.get_kwargs(request)
+    f_kwargs = {'payload': body_model.payload}
 
     dapi = DistributedAPI(f=content_framework.log_tests,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

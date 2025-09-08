@@ -4010,7 +4010,7 @@ components:
           type: string
           format: timeframe
     
-    ContentData:
+    ContentFileData:
       type: object
       required:
         - type
@@ -4031,7 +4031,7 @@ components:
           type: string
           format: alphanumeric
 
-    LogPayload:
+    LogTestPayload:
       type: object
       required:
         - payload
@@ -7876,7 +7876,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ContentData'
+              $ref: '#/components/schemas/ContentFileData'
       responses:
         '200':
           description: "Validation response"
@@ -7914,7 +7914,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LogPayload'
+              $ref: '#/components/schemas/LogTestPayload'
       responses:
         '200':
           description: "Log test results"
