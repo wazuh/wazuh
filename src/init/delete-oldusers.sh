@@ -28,7 +28,7 @@ else
     if [ "$UNAME" = "FreeBSD" -o "$UNAME" = "DragonFly" ]; then
         GROUPDEL="/usr/sbin/pw groupdel"
         USERDEL="/usr/sbin/pw userdel"
-    elif [ "$UNAME" = "SunOS" -o "$UNAME" = "OpenBSD" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
+    elif [ "$UNAME" = "OpenBSD" -o "$UNAME" = "NetBSD" ]; then
         GROUPDEL="/usr/sbin/groupdel"
         USERDEL="/usr/sbin/userdel"
     else

@@ -53,6 +53,8 @@
 #include <sys/mount.h>
 #endif
 
+#include <sys/select.h>
+
 #include <sys/utsname.h>
 #endif /* WIN32 */
 
