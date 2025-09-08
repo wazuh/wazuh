@@ -4748,7 +4748,23 @@ checks:
     rules:
       - 'f:/etc/shadow -> r:^\w+::'
 
-  # 7.2.3 Ensure all groups in /etc/passwd exist in /etc/group. (Automated) - Not Implemented
+  # 7.2.3 Ensure all groups in /etc/passwd exist in /etc/group (Automated)
+  - id: 31697
+    title: "Ensure all groups in /etc/passwd exist in /etc/group."
+    description: "Over time, system administration errors and changes can lead to groups being defined in /etc/passwd but not in /etc/group."
+    rationale: "Groups defined in the /etc/passwd file but not in the /etc/group file pose a threat to system security since group permissions are not properly managed."
+    remediation: "Analyze the output of the Audit step above and perform the appropriate action to correct any discrepancies found."
+    compliance:
+      - cis: ["7.2.3"]
+      - cis_csc_v8: ["14.6", "3.3"]
+      - mitre_mitigations: ["M1027"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_techniques: ["T1222", "T1222.002"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "cut -d: -f4 /etc/passwd | sort -u | xargs -I {} grep -qE \"^.+:.+:{}:.*\" /etc/group && echo \"OK\"" -> r:OK'
+
   # 7.2.4 Ensure no duplicate UIDs exist. (Automated) - Not Implemented
   # 7.2.5 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
   # 7.2.6 Ensure no duplicate user names exist. (Automated) - Not Implemented
