@@ -104,12 +104,6 @@ if [ ! -r "/etc/os-release" ] || [ "$DIST_NAME" = "centos" ]; then
         DIST_VER=$(uname -r | cut -d\. -f1)
         DIST_SUBVER=$(uname -r | cut -d\. -f2)
 
-    # HP-UX
-    elif [ "$(uname)" = "HP-UX" ]; then
-        DIST_NAME="HP-UX"
-        DIST_VER=$(uname -r | cut -d\. -f2)
-        DIST_SUBVER=$(uname -r | cut -d\. -f3)
-
     # AIX
     elif [ "$(uname)" = "AIX" ]; then
         DIST_NAME="AIX"

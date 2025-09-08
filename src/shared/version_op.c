@@ -813,22 +813,6 @@ os_info *get_unix_version()
                         os_free(uname_path);
                         goto free_os_info;
                     }
-                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"HP-UX") == 0){ // HP-UX
-                    info->os_name = strdup("HP-UX");
-                    info->os_platform = strdup("hp-ux");
-
-                    memset(full_cmd, '\0', OS_MAXSTR);
-                    snprintf(full_cmd, sizeof(full_cmd), "%s %s", uname_path, "-r");
-                    if (cmd_output_ver = popen(full_cmd, "r"), cmd_output_ver) {
-                        if(fgets(buff, sizeof(buff) - 1, cmd_output_ver) == NULL){
-                            mdebug1("Cannot read from command output (uname -r).");
-                        } else if (w_regexec("B\\.([0-9][0-9]*\\.[0-9]*)", buff, 2, match)){
-                            match_size = match[1].rm_eo - match[1].rm_so;
-                            os_malloc(match_size + 1, info->os_version);
-                            snprintf (info->os_version, match_size +1, "%.*s", match_size, buff + match[1].rm_so);
-                        }
-                        pclose(cmd_output_ver);
-                    }
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"OpenBSD") == 0 ||
                         strcmp(strtok_r(buff, "\n", &save_ptr),"NetBSD")  == 0 ||
                         strcmp(strtok_r(buff, "\n", &save_ptr),"FreeBSD") == 0 ){ // BSD

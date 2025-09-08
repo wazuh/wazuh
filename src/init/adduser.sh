@@ -33,10 +33,6 @@ else
         GROUPADD="/usr/sbin/groupadd"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
-    elif [ "$UNAME" = "HP-UX" ]; then
-        GROUPADD="/usr/sbin/groupadd"
-        USERADD="/usr/sbin/useradd"
-        OSMYSHELL="/bin/false"
     elif [ "$UNAME" = "AIX" ]; then
         GROUPADD="/usr/bin/mkgroup"
         USERADD="/usr/sbin/useradd"
@@ -77,7 +73,7 @@ else
     fi
 
     if ! grep "^${USER}:" /etc/passwd > /dev/null 2>&1; then
-        if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
+        if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "NetBSD" ]; then
             ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${USER}"
         elif [ "$UNAME" = "AIX" ]; then
             GID=$(cat /etc/group | grep wazuh| cut -d':' -f 3)

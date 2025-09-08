@@ -667,9 +667,7 @@ InstallCommon()
 
     if [ ${DIST_NAME} = "sunos" ]; then
         INSTALL="ginstall"
-    elif [ ${DIST_NAME} = "HP-UX" ]; then
-        INSTALL="/usr/local/coreutils/bin/install"
-   elif [ ${DIST_NAME} = "AIX" ]; then
+    elif [ ${DIST_NAME} = "AIX" ]; then
         INSTALL="/opt/freeware/bin/install"
     fi
 

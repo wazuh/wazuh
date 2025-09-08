@@ -19,20 +19,8 @@ WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 # Set default sed alias
 sed="sed -ri"
 # By default, use gnu sed (gsed).
-use_unix_sed="False"
 
 # Special function to use generic sed
-unix_sed() {
-
-    sed_expression="$1"
-    target_file="$2"
-    special_args="$3"
-
-    sed ${special_args} "${sed_expression}" "${target_file}" > "${target_file}.tmp"
-    cat "${target_file}.tmp" > "${target_file}"
-    rm "${target_file}.tmp"
-
-}
 
 # Update the value of a XML tag inside the ossec.conf
 edit_value_tag() {
@@ -50,10 +38,8 @@ edit_value_tag() {
         end_config="$(grep -n "</$1>" "${file}" | cut -d':' -f 1)"
         if [ -z "${start_config}" ] && [ -z "${end_config}" ] && [ "${file}" = "${TMP_ENROLLMENT}" ]; then
             echo "      <$1>$2</$1>" >> "${file}"
-        elif [ "${use_unix_sed}" = "False" ] ; then
-            ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${file}"
         else
-            unix_sed "s#<$1>.*</$1>#<$1>$2</$1>#g" "${file}"
+            ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${file}"
         fi
     fi
 
@@ -66,11 +52,7 @@ edit_value_tag() {
 delete_blank_lines() {
 
     file=$1
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} '/^$/d' "${file}"
-    else
-        unix_sed '/^$/d' "${file}"
-    fi
+    ${sed} '/^$/d' "${file}"
 
 }
 
@@ -78,11 +60,7 @@ delete_auto_enrollment_tag() {
 
     # Delete the configuration tag if its value is empty
     # This will allow using the default value
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "s#.*<$1>.*</$1>.*##g" "${TMP_ENROLLMENT}"
-    else
-        unix_sed "s#.*<$1>.*</$1>.*##g" "${TMP_ENROLLMENT}"
-    fi
+    ${sed} "s#.*<$1>.*</$1>.*##g" "${TMP_ENROLLMENT}"
 
     cat -s "${TMP_ENROLLMENT}" > "${TMP_ENROLLMENT}.tmp"
     mv "${TMP_ENROLLMENT}.tmp" "${TMP_ENROLLMENT}"
@@ -93,11 +71,7 @@ delete_auto_enrollment_tag() {
 add_adress_block() {
 
     # Remove the server configuration
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<server>/,/\/server>/d" "${CONF_FILE}"
-    else
-        unix_sed "/<server>/,/\/server>/d" "${CONF_FILE}"
-    fi
+    ${sed} "/<server>/,/\/server>/d" "${CONF_FILE}"
 
     # Write the client configuration block
     for i in "${!ADDRESSES[@]}";
@@ -110,11 +84,7 @@ add_adress_block() {
         } >> "${TMP_SERVER}"
     done
 
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
-    else
-        unix_sed "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
-    fi
+    ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
 
     rm -f "${TMP_SERVER}"
 
@@ -250,11 +220,7 @@ add_auto_enrollment () {
 # Add the auto_enrollment block to the configuration file
 concat_conf() {
 
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<\/auto_restart>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
-    else
-        unix_sed "/<\/auto_restart>/r ${TMP_ENROLLMENT}/" "${CONF_FILE}"
-    fi
+    ${sed} "/<\/auto_restart>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
 
     rm -f "${TMP_ENROLLMENT}"
 
@@ -283,8 +249,6 @@ main () {
     if [ "${uname_s}" = "Darwin" ]; then
         sed="sed -ire"
         set_vars
-    elif [ "${uname_s}" = "AIX" ] || [ "${uname_s}" = "SunOS" ] || [ "${uname_s}" = "HP-UX" ]; then
-        use_unix_sed="True"
     fi
 
     get_deprecated_vars

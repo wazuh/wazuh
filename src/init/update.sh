@@ -151,19 +151,6 @@ getPreinstalledDirByType()
             return 1;
         fi
     fi
-    # Checking for HP-UX
-    if [ "X${UN}" = "XHP-UX" ]; then
-        if [ -f /sbin/init.d/${pidir_service_name} ]; then
-            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /sbin/init.d/${pidir_service_name}`
-            if [ -d "$PREINSTALLEDDIR" ]; then
-                return 0;
-            else
-                return 1;
-            fi
-        else
-            return 1;
-        fi
-    fi
     # Checking for AIX
     if [ "X${UN}" = "XAIX" ]; then
         if [ -f /etc/rc.d/init.d/${pidir_service_name} ]; then
