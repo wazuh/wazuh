@@ -13,6 +13,8 @@
 #ifndef OS_LIST
 #define OS_LIST
 
+#include <pthread.h>
+
 #define OSList_foreach(node_it, list)                                                  \
     for (node_it = (list != NULL) ? OSList_GetFirstNode(list) : NULL; node_it != NULL; \
          node_it = OSList_GetNext(list, node_it))

@@ -6,20 +6,17 @@ The output stage is responsible for sending alerts to different destinations. Th
 
 ## File
 
-The `file` output sends alerts to a file. The file is created if it does not exist and is appended to if it does exist.
+The `file` output sends alerts to a file. This output supports compression and rotation.
 
 ### Signature
 
 ```yaml
-file:
-    path: ${PATH}
+file: "alerts"
 ```
 
 ### Parameters
 
-| Name | type | required | Description |
-|------|------|----------|-------------|
-| path | string | yes | Absolute path to the file where the alerts will be written. The path should be writable by the user `wazuh-server`. |
+Only support "alerts" as a parameter, this writes alerts to `alerts.json` file.
 
 ### Asset example
 
@@ -41,8 +38,7 @@ metadata:
     - ""
 
 outputs:
-  - file:
-      path: /var/lib/wazuh-server/engine/alerts-ecs.json
+  - file: "alerts"
 ```
 
 ## Indexer

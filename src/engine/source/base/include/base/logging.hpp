@@ -13,6 +13,8 @@
 #include "commonDefs.h"
 #include "loggerHelper.h"
 
+#include <base/process.hpp>
+
 #define LAMBDA_SEPARATOR "::<lambda>"
 
 namespace logging
@@ -247,13 +249,7 @@ constexpr inline const char* default_tag()
     return "wazuh-analysisd";
 }
 
-/**
- * @brief Checks whether standalone mode is enabled for the Wazuh engine.
- *
- * @return true  If standalone mode is enabled.
- * @return false Otherwise.
- */
-bool standaloneModeEnabled();
+
 
 /**
  * @brief Dispatches a fully composed log message to either spdlog (standalone)
@@ -269,12 +265,12 @@ bool standaloneModeEnabled();
  *       (see `getDefaultLogger()`), and that the Wazuh logging symbols are available in
  *       callback mode. It does not perform formatting; callers should preformat when needed.
  *
- * @see standaloneModeEnabled(), getDefaultLogger(), log_bridge()
+ * @see isStandaloneModeEnable(), getDefaultLogger(), log_bridge()
  */
 inline void
 backend_log(logging::Level lvl, const char* file, int line, const char* funcName, const char* text, size_t len)
 {
-    if (standaloneModeEnabled())
+    if (base::process::isStandaloneModeEnable())
     {
         const auto spd = SEVERITY_LEVEL.at(lvl);
         getDefaultLogger()->log(spdlog::source_loc {file, line, funcName}, spd, "{:.{}s}", text, static_cast<int>(len));

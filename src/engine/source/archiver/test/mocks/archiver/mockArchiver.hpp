@@ -10,7 +10,8 @@ namespace archiver::mocks
 class MockArchiver : public IArchiver
 {
 public:
-    MOCK_METHOD(base::OptError, archive, (const std::string& data), (override));
+    MOCK_METHOD(void, archive, (const std::string& data), (override));
+    MOCK_METHOD(void, archive, (const char* data), (override));
     MOCK_METHOD(void, activate, (), (override));
     MOCK_METHOD(void, deactivate, (), (override));
     MOCK_METHOD(bool, isActive, (), (const, override));

@@ -58,10 +58,10 @@ from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_keepalive, wait_enrollment_try
+from utils import wait_connect, wait_enrollment_try
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')
@@ -72,7 +72,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -134,30 +134,32 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     # Wait until Agent asks keys for the first time
     wait_enrollment_try()
 
-    # Start AuthdSimulator
-    authd_server = AuthdSimulator()
-    authd_server.start()
+    try:
 
-    # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = 'tcp')
-    remoted_server.start()
+        # Start AuthdSimulator
+        authd_server = AuthdSimulator()
+        authd_server.start()
 
-    # Wait until Agent is notifing Manager
-    wait_keepalive()
+        # Start RemotedSimulator
+        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server.start()
 
-    # Reset simulator
-    remoted_server.destroy()
+        # Wait until Agent is connected
+        wait_connect()
 
-    # Wait until Agent asks a new key to enrollment
-    wait_enrollment_try()
+        # Reset simulator
+        remoted_server.destroy()
 
-    remoted_server = RemotedSimulator(protocol = 'tcp')
-    remoted_server.start()
-    # Wait until Agent is notifing Manager
-    wait_keepalive()
+        # Wait until Agent asks a new key to enrollment
+        wait_enrollment_try()
 
-    # Reset simulator
-    authd_server.destroy()
+        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server.start()
+        # Wait until Agent is connected
+        wait_connect()
+    finally:
+        # Reset simulator
+        authd_server.destroy()
 
-    # Reset simulator
-    remoted_server.destroy()
+        # Reset simulator
+        remoted_server.destroy()

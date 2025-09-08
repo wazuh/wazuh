@@ -176,9 +176,34 @@ void LogManager::destroyChannel(const std::string& name)
     LOG_DEBUG("Log channel '{}' destroyed successfully", name);
 }
 
-LogManager::~LogManager()
+RotationConfig& LogManager::isolatedBasePath(const std::string& channelName, RotationConfig& config)
 {
-    LOG_DEBUG("LogManager destroyed");
+
+    ChannelHandler::validateChannelName(channelName);
+    ChannelHandler::validateAndNormalizeConfig(config);
+
+    // Create subdirectory in base path (if not existing and if exist check if is a directory)
+    auto newBasePath = config.basePath / channelName;
+    if (std::filesystem::exists(newBasePath) && !std::filesystem::is_directory(newBasePath))
+    {
+        throw std::runtime_error("Cannot create log channel '" + channelName
+                                 + "' - path exists and is not a directory: " + newBasePath.string());
+    }
+
+    std::error_code ec;
+    std::filesystem::create_directories(newBasePath, ec);
+    if (ec)
+    {
+        throw std::runtime_error("Failed to create directories for log channel '" + channelName + "': " + ec.message());
+    }
+
+    config.basePath = std::move(newBasePath);
+    return config;
 }
 
+void LogManager::cleanup()
+{
+    std::unique_lock lock(m_channelsMutex);
+    m_channels.clear();
+}
 } // namespace streamlog

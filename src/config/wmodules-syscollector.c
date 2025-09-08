@@ -286,8 +286,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, XML_SYNC)) {
-            // Synchronization section - Let's get the children node and iterate
-            // the values (at the moment there is only one: max_eps)
+            // Synchronization section - Let's get the children node and iterate the values
             xml_node **children = OS_GetElementsbyNode(xml, node[i]);
             if (children) {
                 parse_synchronization_section(syscollector, children);

@@ -423,6 +423,14 @@
         "type": "file",
         "user": "root"
     },
+    "/var/ossec/lib/libsca.so": {
+        "class": "static",
+        "group": "wazuh",
+        "mode": "0750",
+        "prot": "-rwxr-x---",
+        "type": "file",
+        "user": "root"
+    },
     "/var/ossec/logs": {
         "class": "static",
         "group": "wazuh",
@@ -1168,6 +1176,22 @@
         "user": "wazuh"
     },
     "/var/ossec/queue/syscollector/db": {
+        "class": "static",
+        "group": "wazuh",
+        "mode": "0750",
+        "prot": "drwxr-x---",
+        "type": "directory",
+        "user": "wazuh"
+    },
+    "/var/ossec/queue/sca": {
+        "class": "static",
+        "group": "wazuh",
+        "mode": "0750",
+        "prot": "drwxr-x---",
+        "type": "directory",
+        "user": "wazuh"
+    },
+    "/var/ossec/queue/sca/db": {
         "class": "static",
         "group": "wazuh",
         "mode": "0750",
