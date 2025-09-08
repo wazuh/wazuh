@@ -1,3 +1,4 @@
+from typing import Optional
 import logging
 
 from httpx import AsyncClient, ConnectError, HTTPError, Timeout, TimeoutException, UnsupportedProtocol
@@ -53,14 +54,14 @@ class BaseModule:
         except ValueError:
             raise WazuhEngineError(2805, extra_message=response.text)
 
-    async def get(self, path: str, params: dict = None) -> dict:
+    async def get(self, path: str, params: Optional[dict] = None) -> dict:
         """Send a GET request to the engine.
 
         Parameters
         ----------
         path : str
             The API endpoint path to send the request to.
-        params : dict, optional
+        params : dict, Optional
             The query parameters to send in the request.
 
         Returns
@@ -90,14 +91,14 @@ class BaseModule:
         except ValueError:
             raise WazuhEngineError(2805, extra_message=response.text)
 
-    async def put(self, path: str, data: dict) -> dict:
+    async def put(self, path: str, data: Optional[dict] = None) -> dict:
         """Send a PUT request to the engine.
 
         Parameters
         ----------
         path : str
             The API endpoint path to send the request to.
-        data : dict
+        data : dict, Optional
             The data to send in the request body.
 
         Returns
@@ -127,14 +128,14 @@ class BaseModule:
         except ValueError:
             raise WazuhEngineError(2805, extra_message=response.text)
 
-    async def delete(self, path: str, params: dict = None) -> dict:
+    async def delete(self, path: str, params: Optional[dict] = None) -> dict:
         """Send a DELETE request to the engine.
 
         Parameters
         ----------
         path : str
             The API endpoint path to send the request to.
-        params : dict, optional
+        params : dict, Optional
             The query parameters to send in the request.
 
         Returns
