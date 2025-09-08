@@ -133,9 +133,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     COMMAND cp "libagent_sync_protocol.lib" "${CMAKE_BINARY_DIR}/bin/libagent_sync_protocol.lib"
     COMMENT "Creating delayed load library for agent_sync_protocol.")
 elseif(UNIX AND NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)

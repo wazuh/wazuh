@@ -51,12 +51,7 @@ include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  link_directories(${INSTALL_PREFIX}/lib)
-  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
-else()
-  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
-endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
@@ -80,9 +75,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(dbsync wazuhext)

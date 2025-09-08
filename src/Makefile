@@ -306,28 +306,7 @@ ifeq (${uname_S},OpenBSD)
 		AR_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../../lib'
 		PRECOMPILED_OS:=openbsd
 else
-ifeq (${uname_S},HP-UX)
-		DEFINES+=-DHPUX
-		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
-		DEFINES+=-DHIGHFIRST
-		DEFINES+=-DOS_BIG_ENDIAN
-		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext
-		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
-ifeq ($(INSTALLDIR),)
-	INSTALLDIR = /var/ossec
-endif
-		CMAKE_OPTS+=-DINSTALL_PREFIX=${INSTALLDIR}
-		OSSEC_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
-		AR_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
-		OSSEC_CFLAGS+=-pthread
-		PATH:=${PATH}:/usr/local/bin
-		CC=gcc
-		INSTALL=/usr/local/coreutils/bin/install
-		PRECOMPILED_OS:=hpux
-else
 	    # Unknow platform
-endif # HPUX
 endif # OpenBSD
 endif # NetBSD
 endif # FreeBSD
@@ -698,9 +677,8 @@ ifeq (${TARGET},server)
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
 endif
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-ifneq (${uname_S},HP-UX)
+
 BUILD_CMAKE_PROJECTS+=build_syscollector
-endif
 endif
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
@@ -947,9 +925,6 @@ ifeq (${uname_M},arm64)
 else
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
 endif
-else
-ifeq (${uname_S},HP-UX)
-	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
 else
 ifeq (${uname_S},AIX)
 	cd ${EXTERNAL_OPENSSL} && ./config aix-gcc $(OPENSSL_FLAGS) && ${MAKE} build_libs
@@ -1349,7 +1324,7 @@ CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
-ifneq (,$(filter ${uname_S},Linux Darwin HP-UX))
+ifneq (,$(filter ${uname_S},Linux Darwin))
 	cpu_arch := ${uname_M}
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 	PRECOMPILED_ARCH := /amd64
@@ -1478,9 +1453,6 @@ external/$(CPYTHON).tar.gz:
 	rm $(patsubst %.gz,%,$@)
 endif
 
-ifeq (${uname_S},HP-UX)
-# nlohmann library
-RESOURCES_URL_BASE_NLOHMANN=$(subst https://,http://,$(RESOURCES_URL_BASE))
 ifeq ($(findstring $(RESOURCES_URL_BASE_NLOHMANN),$(RESOURCES_URL)),$(RESOURCES_URL_BASE_NLOHMANN))
 DEPS_VERSION_NLOHMANN_REQUESTED=$(subst $(RESOURCES_URL_BASE_NLOHMANN),,$(RESOURCES_URL))
 DEPS_VERSION_NLOHMANN_MAX=21
@@ -1507,7 +1479,6 @@ external/nlohmann.tar.gz:
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
-endif
 endif
 endif
 
@@ -1836,10 +1807,6 @@ wazuh_modules/%.o: wazuh_modules/%.c
 
 wmodules_dep := ${wmodules_o} ${wdbhelpers_c:.c=.o} wazuh_db/wdb_shared.o
 
-ifeq (${uname_S},HP-UX)
-	wmodules_dep := ${wmodules_dep} ${config_o}
-endif
-
 #### crypto ##########
 
 crypto_blowfish_c := os_crypto/blowfish/bf_op.c
@@ -1961,19 +1928,8 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	done
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -latomic -lm
 else
-ifeq (${uname_S},HP-UX)
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	mkdir -p libwazuhext;
-	find external/ -name \*.a -exec cp {} libwazuhext/ \;
-	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
-		ar -x libwazuhext/$$lib; \
-		mv *.o libwazuhext/; \
-	done
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc
-else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-endif
 endif
 endif
 endif
@@ -2137,13 +2093,8 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 else
-ifneq (,$(filter ${uname_S},AIX HP-UX))
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $^ ${OSSEC_LIBS} -o $@ -static-libgcc
-else
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-endif
 endif
 endif
 endif

@@ -9,12 +9,7 @@ include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
 include_directories(${SRC_FOLDER}/syscheckd)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/src)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  link_directories(${INSTALL_PREFIX}/lib)
-  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
-else()
-  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
-endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
 file(GLOB DB_SRC
      ${CMAKE_SOURCE_DIR}/src/db/src/db.cpp
@@ -35,9 +30,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                            ${CMAKE_SOURCE_DIR}/src/db/src/fimDBSpecializationWindows.cpp
                            ${SRC_FOLDER}/${RESOURCE_OBJ}
                            )
-elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  add_definitions(-DOS_TYPE=OSType::OTHERS)
-  add_library(fimdb SHARED ${DB_SRC})
 else()
   add_definitions(-DOS_TYPE=OSType::OTHERS)
   add_library(fimdb SHARED ${DB_SRC})
@@ -53,8 +45,6 @@ elseif(UNIX AND NOT APPLE)
                  "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
     string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR
                  "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    # Do nothing for HP-UX
   else()
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
   endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")

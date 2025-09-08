@@ -28,9 +28,6 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  link_directories(${INSTALL_PREFIX}/lib)
-endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
@@ -73,8 +70,6 @@ set(CMAKE_CXX_FLAGS
 
 if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  add_definitions(-DHPUX)
 endif(APPLE)
 
 add_subdirectory("src/db")
@@ -110,8 +105,6 @@ if (UNIX)
             string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
             string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
             target_link_libraries(wazuh-syscheckd PRIVATE -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
-        elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-            # Do nothing for HP-UX
         else()
             string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
         endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
