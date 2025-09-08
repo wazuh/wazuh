@@ -95,11 +95,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/darwin)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
-
-if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  link_directories(${INSTALL_PREFIX}/lib)
-endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   link_directories(${CMAKE_SOURCE_DIR}/lib/)
   include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/windows)

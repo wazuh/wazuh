@@ -28,9 +28,6 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/src/db/include/)
 include_directories(${CMAKE_SOURCE_DIR}/src/ebpf/include/)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  link_directories(${INSTALL_PREFIX}/lib)
-endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib/)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
@@ -73,8 +70,6 @@ set(CMAKE_CXX_FLAGS
 
 if(APPLE)
   set(CMAKE_MACOSX_RPATH 1)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  add_definitions(-DHPUX)
 endif(APPLE)
 
 add_subdirectory("src/db")
