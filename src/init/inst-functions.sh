@@ -650,26 +650,22 @@ WriteLocal()
 InstallCommon()
 {
 
-    WAZUH_GROUP='wazuh'
-    WAZUH_USER='wazuh'
-    INSTALL="install"
+  WAZUH_GROUP='wazuh'
+  WAZUH_USER='wazuh'
+  INSTALL="install"
 
-    if [ ${INSTYPE} = 'server' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
-        OSSEC_CONF_SRC='../etc/ossec-server.conf'
-    elif [ ${INSTYPE} = 'agent' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
-        OSSEC_CONF_SRC='../etc/ossec-agent.conf'
-    elif [ ${INSTYPE} = 'local' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
-        OSSEC_CONF_SRC='../etc/ossec-local.conf'
-    fi
+  if [ ${INSTYPE} = 'server' ]; then
+      OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
+      OSSEC_CONF_SRC='../etc/ossec-server.conf'
+  elif [ ${INSTYPE} = 'agent' ]; then
+      OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
+      OSSEC_CONF_SRC='../etc/ossec-agent.conf'
+  elif [ ${INSTYPE} = 'local' ]; then
+      OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
+      OSSEC_CONF_SRC='../etc/ossec-local.conf'
+  fi
 
-    if [ ${DIST_NAME} = "sunos" ]; then
-        INSTALL="ginstall"
-    fi
-
-    ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
+  ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/
 
@@ -909,14 +905,6 @@ InstallCommon()
 
     if [ -f /etc/TIMEZONE ]; then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
-    fi
-    # Solaris Needs some extra files
-    if [ ${DIST_NAME} = "SunOS" ]; then
-      ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/
-        cp -rf /usr/share/lib/zoneinfo/* ${INSTALLDIR}/usr/share/lib/zoneinfo/
-        chown root:${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/*
-        find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type d -exec chmod 0750 {} +
-        find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
     fi
 
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
