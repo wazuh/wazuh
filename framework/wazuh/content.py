@@ -5,18 +5,6 @@
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.results import WazuhResult
 
-@expose_resources(actions=['content:delete'], resources=['content:file:{filename}'])
-async def delete_content() -> WazuhResult:
-    """
-    Delete a specific content file.
-
-    Returns
-    -------
-    WazuhResult
-        Result object with the operation outcome.
-    """
-    return WazuhResult({'message': 'Not Implemented'})
-
 @expose_resources(actions=['content:status'], resources=['*:*:*'])
 async def get_content_status() -> WazuhResult:
     """

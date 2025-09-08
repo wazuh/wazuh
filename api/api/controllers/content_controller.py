@@ -14,36 +14,6 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh-api')
 
-async def delete_content(pretty: bool = False, wait_for_complete: bool = False):
-    """
-    Delete a specific content file through the distributed API.
-
-    Parameters
-    ----------
-    pretty : bool, optional
-        Whether to pretty-print the response.
-    wait_for_complete : bool, optional
-        Whether to wait for the operation to complete.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response with the operation result.
-    """
-    f_kwargs = {}
-
-    dapi = DistributedAPI(f=content_framework.delete_content,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-
-    data = raise_if_exc(await dapi.distribute_function())
-    return json_response(data, pretty=pretty)
-
 async def get_content_status(pretty: bool = False, wait_for_complete: bool = False):
     """
     Get the status of all available content.

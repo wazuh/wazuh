@@ -221,11 +221,6 @@ default_policies:
   content_all:
     description: Allow reading all content files in the system.
     policies:
-      files:
-        actions:
-          - content:delelete
-        resources:
-          - content:file:*
       resourceless:
         actions:
           - content:read

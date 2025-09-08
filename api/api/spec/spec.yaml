@@ -192,14 +192,6 @@ x-rbac-catalog:
         actions: [ 'content:validate' ]
         resources: [ '*:*:*' ]
         effect: "allow"
-    'content:delete':
-      description: "Delete content"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/content:file'
-      example:
-        actions: [ 'content:delete' ]
-        resources: [ 'content:file:*' ]
-        effect: "allow"
     'content:reload':
       description: "Reload contents"
       resources:
@@ -4005,15 +3997,6 @@ components:
       $ref: '#/components/schemas/RulesetFile'
 
     # Content models
-    ContentName:
-      type: object
-      required:
-        - content_name
-      properties:
-        asset_name:
-          type: string
-          description: "Content name"
-
     ContentStatus:
       type: object
       required:
@@ -7811,45 +7794,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /v1/content:
-    delete:
-      tags:
-        - Content
-      summary: "Delete content"
-      description: "Delete the specified content"
-      operationId: api.controllers.content_controller.delete_content
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/content:delete'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ContentName'
-      responses:
-        '200':
-          description: "Delete asset"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                message: "Asset 'asset_name' deleted"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /v1/content/status:
+  /content/status:
     get:
       tags:
         - Content
@@ -7882,7 +7827,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /v1/content/reload:
+  /content/reload:
     put:
       tags:
         - Content
@@ -7915,7 +7860,7 @@ paths:
           $ref: '#/components/responses/TooManyRequestsResponse'
           
 
-  /v1/content/validation:
+  /content/validation:
     put:
       tags:
         - Content
@@ -7953,7 +7898,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /v1/log/test:
+  /log/test:
     put:
       tags:
         - Logtest
@@ -7990,8 +7935,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
-
 
   /groups:
     delete:
