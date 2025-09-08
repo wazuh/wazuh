@@ -127,21 +127,6 @@ runInit()
         return 0;
     fi
 
-    if [ "X${UN}" = "XSunOS" ]; then
-        echo " - ${systemis} Solaris (SunOS)."
-        echo " - ${modifiedinit}"
-        GenerateService ossec-hids-solaris.init > /etc/init.d/${service}
-        chmod 755 /etc/init.d/${service}
-
-        if [ "X${update_only}" = "X" ]
-        then
-            ln -s /etc/init.d/${service} /etc/rc2.d/S97${service}
-            ln -s /etc/init.d/${service} /etc/rc3.d/S97${service}
-        fi
-
-        return 0;
-    fi
-
     if [ "X${UN}" = "XHP-UX" ]; then
         echo " - ${systemis} HP-UX."
         echo " - ${modifiedinit}"

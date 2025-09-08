@@ -29,7 +29,7 @@ else
         GROUPADD="/usr/sbin/pw groupadd"
         USERADD="/usr/sbin/pw useradd"
         OSMYSHELL="/sbin/nologin"
-    elif [ "$UNAME" = "SunOS" -o "$UNAME" = "OpenBSD" ]; then
+    elif [ "$UNAME" = "OpenBSD" ]; then
         GROUPADD="/usr/sbin/groupadd"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
@@ -73,7 +73,7 @@ else
     fi
 
     if ! grep "^${USER}:" /etc/passwd > /dev/null 2>&1; then
-        if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
+        if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
             ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${USER}"
         elif [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
             ${USERADD} "${USER}" -h "${DIR}" -s ${OSMYSHELL} -G "${GROUP}"

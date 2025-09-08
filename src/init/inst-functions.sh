@@ -665,9 +665,7 @@ InstallCommon()
         OSSEC_CONF_SRC='../etc/ossec-local.conf'
     fi
 
-    if [ ${DIST_NAME} = "sunos" ]; then
-        INSTALL="ginstall"
-    elif [ ${DIST_NAME} = "HP-UX" ]; then
+    if [ ${DIST_NAME} = "HP-UX" ]; then
         INSTALL="/usr/local/coreutils/bin/install"
     fi
 
@@ -911,14 +909,6 @@ InstallCommon()
 
     if [ -f /etc/TIMEZONE ]; then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
-    fi
-    # Solaris Needs some extra files
-    if [ ${DIST_NAME} = "SunOS" ]; then
-      ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/
-        cp -rf /usr/share/lib/zoneinfo/* ${INSTALLDIR}/usr/share/lib/zoneinfo/
-        chown root:${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/*
-        find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type d -exec chmod 0750 {} +
-        find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
     fi
 
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
