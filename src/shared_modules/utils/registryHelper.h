@@ -36,6 +36,12 @@ namespace Utils
             Registry(const HKEY key, const std::string& subKey = "", const REGSAM access = KEY_READ)
                 : m_registryKey{openRegistry(key, subKey, access)}
             {}
+
+            Registry(const std::string& key, const std::string& subKey, const REGSAM access = KEY_READ)
+                : m_registryKey {openRegistry(stringToHKEY(key), subKey, access)}
+            {
+            }
+
             ~Registry()
             {
                 close();
@@ -314,86 +320,154 @@ namespace Utils
                 return ret;
             }
 
+            std::string HandleRegMultiSZ(const BYTE* data, DWORD size) const
+            {
+                if (size == 0)
+                {
+                    return "";
+                }
+
+                std::string result;
+                const char* current = reinterpret_cast<const char*>(data);
+                const char* end = reinterpret_cast<const char*>(data + size);
+
+                while (current < end && *current != '\0')
+                {
+                    size_t remaining = end - current;
+                    size_t len = strnlen(current, remaining);
+
+                    result.append(current, len);
+                    current += len + 1;
+
+                    if (current < end && *current != '\0')
+                    {
+                        result += ' ';
+                    }
+                }
+
+                return result;
+            }
+
             std::string getValue(const std::string& valueName) const
             {
-                return string(valueName);
-            }
-
-            static HKEY stringToHKEY(const std::string& rootKey)
-            {
-                if (rootKey == "HKEY_CLASSES_ROOT" || rootKey == "HKCR")
-                    return HKEY_CLASSES_ROOT;
-                else if (rootKey == "HKEY_CURRENT_CONFIG" || rootKey == "HKCC")
-                    return HKEY_CURRENT_CONFIG;
-                else if (rootKey == "HKEY_CURRENT_USER" || rootKey == "HKCU")
-                    return HKEY_CURRENT_USER;
-                else if (rootKey == "HKEY_LOCAL_MACHINE" || rootKey == "HKLM")
-                    return HKEY_LOCAL_MACHINE;
-                else if (rootKey == "HKEY_PERFORMANCE_DATA" || rootKey == "HKPD")
-                    return HKEY_PERFORMANCE_DATA;
-                else if (rootKey == "HKEY_USERS" || rootKey == "HKU")
-                    return HKEY_USERS;
-                else
-                    throw std::invalid_argument("Invalid registry root key: " + rootKey);
-            }
-
-            static bool KeyExists(const std::string& rootKey, const std::string& subKey)
-            {
-                try
-                {
-                    HKEY hKey = stringToHKEY(rootKey);
-                    HKEY hOpenKey;
-                    LONG result = RegOpenKeyEx(hKey, subKey.c_str(), 0, KEY_READ, &hOpenKey);
-
-                    if (result == ERROR_SUCCESS)
-                    {
-                        RegCloseKey(hOpenKey);
-                        return true;
-                    }
-                    return false;
-                }
-                catch (...)
-                {
-                    return false;
-                }
-            }
-
-            // Constructor that accepts string root key
-            Registry(const std::string& rootKey, const std::string& subKey = "", const REGSAM access = KEY_READ)
-                : m_registryKey{openRegistry(stringToHKEY(rootKey), subKey, access)}
-            {}
-
-        private:
-            static HKEY openRegistry(const HKEY key, const std::string& subKey, const REGSAM access)
-            {
-                HKEY ret{nullptr};
-                const auto result
-                {
-                    RegOpenKeyEx(key, subKey.c_str(), 0, access, &ret)
-                };
+                DWORD type = 0;
+                DWORD size = 0;
+                LONG result = RegQueryValueExA(m_registryKey, valueName.c_str(), nullptr, &type, nullptr, &size);
 
                 if (result != ERROR_SUCCESS)
                 {
-                    throw std::system_error
+                    throw std::system_error {result, std::system_category(), "Error reading the size of: " + valueName};
+                }
+
+                auto spBuff = std::make_unique<BYTE[]>(size);
+                result = RegQueryValueExA(m_registryKey, valueName.c_str(), nullptr, &type, spBuff.get(), &size);
+
+                if (result != ERROR_SUCCESS)
+                {
+                    throw std::system_error {
+                        result, std::system_category(), "Error reading the value of: " + valueName};
+                }
+
+                switch (type)
+                {
+                    case REG_SZ:
+                    case REG_EXPAND_SZ: return std::string(reinterpret_cast<char*>(spBuff.get()));
+                    case REG_DWORD:
                     {
-                        result,
-                        std::system_category(),
-                        "Error opening registry: " + subKey
-                    };
+                        DWORD dwValue;
+                        std::memcpy(&dwValue, spBuff.get(), sizeof(DWORD));
+                        return std::to_string(dwValue);
+                    }
+                    case REG_QWORD:
+                    {
+                        ULONGLONG qwValue;
+                        std::memcpy(&qwValue, spBuff.get(), sizeof(ULONGLONG));
+                        return std::to_string(qwValue);
+                    }
+                    case REG_MULTI_SZ:
+                    {
+                        return HandleRegMultiSZ(spBuff.get(), size);
+                    }
+                    default: throw std::runtime_error("Unsupported registry value type for: " + valueName);
+                }
+            }
+
+            static HKEY stringToHKEY(const std::string& keyName)
+            {
+                if (keyName == "HKEY_CLASSES_ROOT" || keyName == "HKCR")
+                {
+                    return HKEY_CLASSES_ROOT;
+                }
+                if (keyName == "HKEY_CURRENT_USER" || keyName == "HKCU")
+                {
+                    return HKEY_CURRENT_USER;
+                }
+                if (keyName == "HKEY_LOCAL_MACHINE" || keyName == "HKLM")
+                {
+                    return HKEY_LOCAL_MACHINE;
+                }
+                if (keyName == "HKEY_USERS" || keyName == "HKU")
+                {
+                    return HKEY_USERS;
+                }
+                if (keyName == "HKEY_CURRENT_CONFIG" || keyName == "HKCC")
+                {
+                    return HKEY_CURRENT_CONFIG;
+                }
+                if (keyName == "HKEY_PERFORMANCE_DATA")
+                {
+                    return HKEY_PERFORMANCE_DATA;
+                }
+                if (keyName == "HKEY_PERFORMANCE_TEXT")
+                {
+                    return HKEY_PERFORMANCE_TEXT;
+                }
+                if (keyName == "HKEY_PERFORMANCE_NLSTEXT")
+                {
+                    return HKEY_PERFORMANCE_NLSTEXT;
+                }
+                if (keyName == "HKEY_DYN_DATA")
+                {
+                    return HKEY_DYN_DATA; // obsolete
+                }
+                throw std::invalid_argument("Unknown HKEY string: " + keyName);
+            }
+
+            static bool KeyExists(const std::string& key, const std::string& subKey)
+            {
+                HKEY hKey = nullptr;
+
+                LONG result = RegOpenKeyEx(stringToHKEY(key), subKey.c_str(), 0, KEY_READ, &hKey);
+
+                if (hKey != nullptr)
+                {
+                    RegCloseKey(hKey);
+                }
+
+                return (result == ERROR_SUCCESS);
+            }
+
+            HKEY openRegistry(const HKEY key, const std::string& subKey, const REGSAM access)
+            {
+                HKEY ret {nullptr};
+                const auto result {RegOpenKeyEx(key, subKey.c_str(), 0, access, &ret)};
+
+                if (result != ERROR_SUCCESS)
+                {
+                    throw std::system_error {result, std::system_category(), "Error opening registry: " + subKey};
                 }
 
                 return ret;
             }
-            HKEY m_registryKey;
+
+        private:
+            HKEY m_registryKey {nullptr};
     };
 
-
-    static void expandRegistryPath(const HKEY key,
-                                   const std::string& subKey,
-                                   std::vector<std::string>& registryKeys)
+    static void expandRegistryPath(const HKEY key, const std::string& subKey, std::vector<std::string>& registryKeys)
     {
         // Find the first * or ? from path.
-        const std::array<char, 2> wildcards { '*', '?' };
+        const std::array<char, 2> wildcards {'*', '?'};
         size_t wildcardPos = std::string::npos;
 
         for (const auto& wildcard : wildcards)
@@ -401,7 +475,8 @@ namespace Utils
             // Find the first wildcard.
             const auto pos = subKey.find_first_of(wildcard);
 
-            // If the wildcard is found and it is before the current wildcard, then update the wildcard position.
+            // If the wildcard is found and it is before the current wildcard, then update the wildcard
+            // position.
             if (std::string::npos != pos && (std::string::npos == wildcardPos || pos < wildcardPos))
             {
                 wildcardPos = pos;
@@ -411,16 +486,16 @@ namespace Utils
         if (std::string::npos != wildcardPos)
         {
             // The next directory is the part of the path after the first wildcard.
-            const auto nextDirectoryPos { subKey.find_first_of('\\', wildcardPos) };
+            const auto nextDirectoryPos {subKey.find_first_of('\\', wildcardPos)};
 
             // The parent directory is the part of the path before the first wildcard.
             // If the wildcard is the first character, then the parent directory is the root directory.
-            const auto parentDirectoryPos { 0 == wildcardPos ? 0 : subKey.find_last_of('\\', wildcardPos) };
+            const auto parentDirectoryPos {0 == wildcardPos ? 0 : subKey.find_last_of('\\', wildcardPos)};
 
             // If the parent directory is not found, then the path is invalid.
             if (std::string::npos == parentDirectoryPos)
             {
-                throw std::runtime_error { "Invalid path: " + subKey };
+                throw std::runtime_error {"Invalid path: " + subKey};
             }
 
             // The base directory is the part of the path before the first wildcard.
@@ -439,40 +514,42 @@ namespace Utils
 
             // The pattern is the part of the path after the first wildcard.
             // If the wildcard is the last character, then the pattern is the rest of the string.
-            // If the wildcard is the first character, then the pattern is the rest of the string, minus the next '\'.
-            // If there is no next '\', then the pattern is the rest of the string.
-            const auto pattern
-            {
+            // If the wildcard is the first character, then the pattern is the rest of the string, minus the
+            // next '\'. If there is no next '\', then the pattern is the rest of the string.
+            const auto pattern {
                 subKey.substr(0 == parentDirectoryPos ? 0 : parentDirectoryPos + 1,
-                              std::string::npos == nextDirectoryPos ?
-                              std::string::npos : nextDirectoryPos - (0 == parentDirectoryPos ? 0 :
-                                                                      parentDirectoryPos + 1))
-            };
+                              std::string::npos == nextDirectoryPos
+                                  ? std::string::npos
+                                  : nextDirectoryPos - (0 == parentDirectoryPos ? 0 : parentDirectoryPos + 1))};
 
             try
             {
                 // Enumerate the registry keys and expand the path.
-                for (const auto& entry : Utils::Registry{key, baseDir, KEY_READ | KEY_ENUMERATE_SUB_KEYS | KEY_WOW64_64KEY }.enumerate())
+                for (const auto& entry :
+                     Utils::Registry {key, baseDir, KEY_READ | KEY_ENUMERATE_SUB_KEYS | KEY_WOW64_64KEY}.enumerate())
                 {
                     // If the base directory is empty, then the entry name is the entry.
-                    // Otherwise, the entry name is the base directory, followed by a '\', followed by the entry.
-                    const auto entryName { baseDir.empty() ? entry : R"(\)" + entry };
+                    // Otherwise, the entry name is the base directory, followed by a '\', followed by the
+                    // entry.
+                    const auto entryName {baseDir.empty() ? entry : R"(\)" + entry};
 
                     // If the entry name matches the pattern, then expand the path.
                     if (Utils::patternMatch(entryName, pattern))
                     {
                         // If the next directory position is npos, then there is no next directory.
                         // Otherwise, the next directory is the part of the path after the next '\'.
-                        Utils::expandRegistryPath(key, baseDir +
-                                                  entryName +
-                                                  (std::string::npos ==  nextDirectoryPos ? "" :
-                                                   subKey.substr(nextDirectoryPos)),
-                                                  registryKeys);
+                        Utils::expandRegistryPath(
+                            key,
+                            baseDir + entryName +
+                                (std::string::npos == nextDirectoryPos ? "" : subKey.substr(nextDirectoryPos)),
+                            registryKeys);
                     }
                 }
             }
             catch (const std::exception& e)
-            { }
+            {
+                (void)e;
+            }
         }
         else
         {
