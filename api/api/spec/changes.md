@@ -309,16 +309,6 @@ to the group and the checksums of the configuration and shared files.
 * New endpoint. Update an specified group's configuration. 
 This API call expects a full valid XML file with the shared configuration tags/syntax.
 
-## Lists
-### GET     /lists
-* Added **select** parameter.
-* Added **filename** parameter in query used to filter by filename.
-* Renamed **path** parameter in query to **relative_dirname**.
-
-### GET     /lists/files 
-* Added **filename** parameter in query used to filter by filename.
-* added **relative_dirname** parameter in query used to filter by relative directory name.
-
 ## Logtest
 ### PUT        /logtest
 * New endpoint. Run logtest: check if a specified log raises any alert among other information.
