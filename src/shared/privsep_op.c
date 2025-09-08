@@ -136,12 +136,6 @@ int Privsep_SetUser(uid_t uid)
         return (OS_INVALID);
     }
 
-#ifndef HPUX
-    if (seteuid(uid) < 0) {
-        return (OS_INVALID);
-    }
-#endif
-
     return (OS_SUCCESS);
 }
 
@@ -150,12 +144,6 @@ int Privsep_SetGroup(gid_t gid)
     if (setgroups(1, &gid) == -1) {
         return (OS_INVALID);
     }
-
-#ifndef HPUX
-    if (setegid(gid) < 0) {
-        return (OS_INVALID);
-    }
-#endif
 
     if (setgid(gid) < 0) {
         return (OS_INVALID);
