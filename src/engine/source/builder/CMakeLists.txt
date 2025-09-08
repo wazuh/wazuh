@@ -70,6 +70,7 @@ target_link_libraries(builder
     base
     kvdb::ikvdb
     geo::igeo
+    streamlogger::istreamlogger
     # TODO: Until the indexer connector is unified with the rest of wazuh-manager
     # indexerconnector::iindexerconnector
     logpar
@@ -180,6 +181,7 @@ target_link_libraries(builder_utest
     kvdb::mocks
     geo::mocks
     base::test
+    streamlogger::mocks
     # TODO: Until the indexer connector is unified with the rest of wazuh-manager
     # indexerconnector::mocks
 )

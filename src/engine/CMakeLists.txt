@@ -286,6 +286,8 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/store)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
 add_subdirectory(${ENGINE_SOURCE_DIR}/conf)
 add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
+add_subdirectory(${ENGINE_SOURCE_DIR}/streamlog)
+add_subdirectory(${ENGINE_SOURCE_DIR}/scheduler)
 # TODO: Until the indexer connector is unified with the rest of wazuh-manager
 # add_subdirectory(${ENGINE_SOURCE_DIR}/metrics)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
@@ -293,8 +295,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
-add_subdirectory(${ENGINE_SOURCE_DIR}/streamlog)
-add_subdirectory(${ENGINE_SOURCE_DIR}/scheduler)
+
 
 target_link_libraries(wazuh-engine
     base
@@ -314,12 +315,14 @@ target_link_libraries(wazuh-engine
     geo
     schemf
     geo::igeo
+    scheduler::scheduler
+    streamlogger::streamlogger
     # indexerconnector # TODO: Comment until indexerconnector is unified with the old one
     httpsrv
     udgramsrv::udgramsrv
     api::event
     queue
-    archiver
+    archiver::archive
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries

@@ -114,6 +114,12 @@ public:
      */
     void stop();
 
+    /**
+     * @brief Clean up the router
+     * @warning After calling this method, the Orchestrator instance should not be used again.
+     */
+    void cleanup();
+
     /**************************************************************************
      * IRouterAPI
      *************************************************************************/

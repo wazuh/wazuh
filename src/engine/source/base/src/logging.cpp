@@ -185,24 +185,6 @@ extern "C"
 }
 #endif
 
-bool standaloneModeEnabled()
-{
-    static const bool enabled = []()
-    {
-        const char* env = std::getenv("WAZUH_SKIP_OSSEC_CONF");
-        if (!env)
-            return false;
-
-        std::string val(env);
-        std::transform(
-            val.begin(), val.end(), val.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-
-        return val == "true";
-    }();
-
-    return enabled;
-}
-
 void applyLevelStandalone(logging::Level target, int debugCount)
 {
     // -d takes priority over the configuration

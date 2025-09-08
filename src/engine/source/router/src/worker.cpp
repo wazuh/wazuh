@@ -1,6 +1,7 @@
 #include "worker.hpp"
 
 #include <base/logging.hpp>
+#include <base/process.hpp>
 
 namespace router
 {
@@ -18,6 +19,9 @@ void Worker::start(const EpsLimit& epsLimit)
         {
             std::size_t tID = std::hash<std::thread::id> {}(std::this_thread::get_id());
             LOG_DEBUG_L(functionName.c_str(), "Router Worker {} started", tID);
+
+            base::process::setThreadName("ORWorker-" + std::to_string(tID));
+
             while (m_isRunning)
             {
                 // Process test queue

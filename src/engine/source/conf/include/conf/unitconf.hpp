@@ -120,7 +120,7 @@ private:
 
     void setType()
     {
-        if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t>)
+        if constexpr (std::is_same_v<T, int> || std::is_same_v<T, int64_t> || std::is_same_v<T, size_t>)
         {
             m_type = UnitConfType::INTEGER;
         }
@@ -186,6 +186,42 @@ public:
                         throw std::runtime_error(fmt::format(
                             "Number value out of range for environment variable '{}' (value: '{}').", m_env, value));
                     }
+                }
+                return static_cast<T>(number);
+            }
+            catch (const std::invalid_argument& e)
+            {
+                throw std::runtime_error(
+                    fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
+            }
+            catch (const std::out_of_range& e)
+            {
+                throw std::runtime_error(fmt::format(
+                    "Number value out of range for environment variable '{}' (value: '{}').", m_env, value));
+            }
+        }
+        else if constexpr (std::is_same_v<T, size_t>)
+        {
+            std::string::size_type pos;
+            try
+            {
+                // check for whitespace
+                if (std::any_of(value.begin(), value.end(), [](unsigned char c) { return std::isspace(c); }))
+                {
+                    throw std::runtime_error(
+                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
+                }
+                // check for invalid characters
+                const auto number = std::stoull(value, &pos);
+                if (pos != value.size())
+                {
+                    throw std::runtime_error(
+                        fmt::format("Invalid number value for environment variable '{}' (value: '{}').", m_env, value));
+                }
+                if (number > std::numeric_limits<size_t>::max())
+                {
+                    throw std::runtime_error(fmt::format(
+                        "Number value out of range for environment variable '{}' (value: '{}').", m_env, value));
                 }
                 return static_cast<T>(number);
             }

@@ -25,12 +25,12 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
             return;
         }
 
-        archiver->archive(std::string(req.body));
+        archiver->archive(req.body);
 
         std::queue<base::Event> events;
         try
         {
-            events = protocolHandler(std::string(req.body));
+            events = protocolHandler(std::string(req.body)); // TODO: DELETE THIS COPY
         }
         catch (const std::exception& e)
         {

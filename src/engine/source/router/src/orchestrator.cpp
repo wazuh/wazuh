@@ -330,6 +330,21 @@ void Orchestrator::stop()
     }
 }
 
+void Orchestrator::cleanup()
+{
+    this->stop();
+    std::shared_lock lock {m_syncMutex};
+    m_workers.clear();
+    m_envBuilder.reset();
+    m_eventQueue.reset();
+    m_testQueue.reset();
+    m_wStore.reset();
+    if (m_epsCounter && m_epsCounter->isActive())
+    {
+        m_epsCounter->stop();
+    }
+}
+
 /**************************************************************************
  * IRouterAPI
  *************************************************************************/

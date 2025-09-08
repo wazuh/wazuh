@@ -105,12 +105,8 @@ void Server::stop()
         return;
     }
 
-    if (m_sockFd >= 0)
-    {
-        ::close(m_sockFd);
-        m_sockFd = -1;
-    }
-
+    // Wait before closing the socket to let workers exit recv()
+    // (they will check m_running and exit)
     for (auto& t : m_threads)
     {
         if (t.joinable())
@@ -119,6 +115,12 @@ void Server::stop()
         }
     }
     m_threads.clear();
+
+    if (m_sockFd >= 0)
+    {
+        ::close(m_sockFd);
+        m_sockFd = -1;
+    }
 }
 
 Server::~Server()
@@ -140,11 +142,17 @@ void Server::workerLoop()
         ssize_t n = ::recv(m_sockFd, buffer.data(), buffer.capacity(), 0); // Block on recv() with a timeout
         if (n <= 0)
         {
-            // Ignore signals unless we are not running
+            // Check if we should stop (either due to timeout, error, or shutdown signal)
             if (!m_running.load())
             {
                 break;
             }
+            // For timeout (EAGAIN/EWOULDBLOCK) or other temporary errors, continue
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                continue;
+            }
+            // For other errors, also continue (socket might be closed during shutdown)
             continue;
         }
 

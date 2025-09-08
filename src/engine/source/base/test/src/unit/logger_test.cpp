@@ -93,7 +93,7 @@ public:
         m_tmpPath = tempFileName;
         ASSERT_NE(tempFileDescriptor, -1);
         // Set the environment variable
-        setenv("WAZUH_SKIP_OSSEC_CONF", "true", 1);
+        setenv("WAZUH_ENGINE_STANDALONE", "true", 1);
     }
 
     void checkLogFileContent(const std::string& message, bool shouldContain)
@@ -117,7 +117,7 @@ public:
     void TearDown() override
     {
         // Unset the environment variable
-        unsetenv("WAZUH_SKIP_OSSEC_CONF");
+        unsetenv("WAZUH_ENGINE_STANDALONE");
         logging::stop();
         std::filesystem::remove(m_tmpPath); // Remove temporary log file
     }
@@ -177,7 +177,7 @@ TEST(LoggerTestLevels, ChengeInRuntime)
     auto tempFileDescriptor = mkstemp(tempFileName);
     ASSERT_NE(tempFileDescriptor, -1);
     // Set the environment variable
-    setenv("WAZUH_SKIP_OSSEC_CONF", "true", 1);
+    setenv("WAZUH_ENGINE_STANDALONE", "true", 1);
     std::string tmpPath = tempFileName;
 
     ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = tmpPath, .level = logging::Level::Off}));
@@ -237,7 +237,7 @@ TEST(LoggerTestLevels, ChengeInRuntime)
     ASSERT_NO_THROW(logging::stop());
 
     // Unset the environment variable
-    unsetenv("WAZUH_SKIP_OSSEC_CONF");
+    unsetenv("WAZUH_ENGINE_STANDALONE");
 
     std::filesystem::remove(tmpPath); // Remove temporary log file
 }
@@ -316,7 +316,7 @@ public:
     void TearDown() override
     {   
         // Unset the environment variable
-        unsetenv("WAZUH_SKIP_OSSEC_CONF");
+        unsetenv("WAZUH_ENGINE_STANDALONE");
         logging::stop();
     }
 };
@@ -336,7 +336,7 @@ TEST_P(LoggerTestLevelsParam, LogLevelTest)
     }
 
     // Set the environment variable
-    setenv("WAZUH_SKIP_OSSEC_CONF", "true", 1);
+    setenv("WAZUH_ENGINE_STANDALONE", "true", 1);
 
     LOG_TRACE("TRACE message");
     LOG_DEBUG("DEBUG message");
