@@ -4763,9 +4763,24 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - 'c:/bin/sh -c "cut -d: -f4 /etc/passwd | sort -u | xargs -I {} grep -qE \"^.+:.+:{}:.*\" /etc/group && echo \"OK\"" -> r:OK'
+      - 'c:/bin/sh -c "cut -f4 -d: /etc/passwd | sort -u | xargs -I {} grep -qE \"^.+:.+:{}:.*\" /etc/group && echo \"OK\"" -> r:OK'
 
-  # 7.2.4 Ensure no duplicate UIDs exist. (Automated) - Not Implemented
+  # 7.2.4 Ensure no duplicate UIDs exist. (Automated)
+  - id: 31698
+    title: "Ensure no duplicate UIDs exist."
+    description: "Although the useradd program will not let you create a duplicate User ID (UID), it is possible for an administrator to manually edit the /etc/passwd file and change the UID field."
+    rationale: "Users must be assigned unique UIDs for accountability and to ensure appropriate access protections."
+    remediation: "Based on the results of the audit script, establish unique UIDs and review all files owned by the shared UIDs to determine which UID they are supposed to belong to."
+    compliance:
+      - cis: ["7.2.4"]
+      - mitre_mitigations: ["M1027"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.001"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "cut -f3 -d: /etc/passwd | sort -n | uniq -c | grep -vE \"^\\s*1\\s\\w*\" | wc -l" -> r:^0$'
+
   # 7.2.5 Ensure no duplicate GIDs exist. (Automated) - Not Implemented
   # 7.2.6 Ensure no duplicate user names exist. (Automated) - Not Implemented
   # 7.2.7 Ensure no duplicate group names exist. (Automated) - Not Implemented
