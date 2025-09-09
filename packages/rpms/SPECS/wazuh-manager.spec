@@ -583,6 +583,15 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/ruleset/
   rm -rf %{_localstatedir}/tmp
+
+
+  # Delete audisp wazuh plugin if exists
+  if [ -e /etc/audit/plugins.d/af_wazuh.conf ]; then
+    rm -f -- /etc/audit/plugins.d/af_wazuh.conf
+  fi
+  if [ -e /etc/audisp/plugins.d/af_wazuh.conf ]; then
+    rm -f -- /etc/audisp/plugins.d/af_wazuh.conf
+  fi
 fi
 
 # posttrans code is the last thing executed in a install/upgrade
