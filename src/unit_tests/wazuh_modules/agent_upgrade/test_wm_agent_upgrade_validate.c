@@ -262,21 +262,6 @@ void test_wm_agent_upgrade_validate_system_darwin_arm_ok(void **state)
     os_free(package_type);
 }
 
-void test_wm_agent_upgrade_validate_system_invalid_platform_solaris(void **state)
-{
-    (void) state;
-    char *platform = "sunos";
-    char *os_major = "11";
-    char *os_minor = "4";
-    char *arch = "x64";
-    char *package_type = NULL;
-
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
-
-    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
-    assert_null(package_type);
-}
-
 void test_wm_agent_upgrade_validate_system_invalid_platform_suse(void **state)
 {
     (void) state;
@@ -1791,7 +1776,6 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_almalinux_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_x64_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_arm_ok),
-        cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_solaris),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_suse),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_rhel),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_centos),
