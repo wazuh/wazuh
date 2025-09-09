@@ -1745,7 +1745,19 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
         fmt::format("[{}] -> Failure: Target field '{}' type is not object", name, targetField.dotPath());
     const auto failureTrace3 = fmt::format("[{}] -> Failure: ", name);
 
-    return [=, runState = buildCtx->runState(), tgtPath = targetField.jsonPath()](base::Event event) -> TransformResult
+    const auto runState = buildCtx->runState();
+    const auto tgtPath = targetField.jsonPath();
+
+    const std::optional<json::Json> capturedVal =
+        argIsValue ? std::optional<json::Json>(std::static_pointer_cast<Value>(opArgs[0])->value())
+                   : std::optional<json::Json> {};
+
+    const std::optional<std::string> refPath =
+        (!argIsValue) ? std::optional<std::string>(std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
+                      : std::optional<std::string> {};
+
+    return [runState, tgtPath, successTrace, failureTrace1, failureTrace2, failureTrace3, capturedVal, refPath](
+               base::Event event) -> TransformResult
     {
         if (!event->exists(tgtPath))
         {
@@ -1762,59 +1774,54 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
             RETURN_FAILURE(runState, event, failureTrace2);
         }
 
-        std::function<bool(base::ConstEvent, std::string_view)> equalsFn;
-
-        if (argIsValue)
+        std::optional<json::Json> cmpLocal = capturedVal;
+        if (!cmpLocal && refPath)
         {
-            const auto val = std::static_pointer_cast<Value>(opArgs[0])->value();
-            equalsFn = [val](base::ConstEvent ev, std::string_view child)
-            {
-                return ev->equals(child, val);
-            };
-        }
-        else
-        {
-            const auto refPath = std::static_pointer_cast<Reference>(opArgs[0])->jsonPath();
-            std::optional<json::Json> snapOpt;
             try
             {
-                snapOpt = event->getJson(refPath);
+                if (auto snapOpt = event->getJson(*refPath))
+                {
+                    cmpLocal = std::move(*snapOpt);
+                }
             }
             catch (const std::runtime_error& e)
             {
                 RETURN_FAILURE(runState, event, failureTrace3 + e.what());
             }
-
-            if (snapOpt)
-            {
-                equalsFn = [refSnap = std::move(*snapOpt)](base::ConstEvent ev, std::string_view child)
-                {
-                    return ev->equals(child, refSnap);
-                };
-            }
-            else
-            {
-                equalsFn = [](base::ConstEvent, std::string_view)
-                {
-                    return false;
-                };
-            }
         }
 
-        const auto& fields = fieldsOpt.value();
+        const auto& fields = *fieldsOpt;
+
+        std::string pathPrefix;
+        pathPrefix.reserve(tgtPath.size() + 1);
+        pathPrefix.append(tgtPath);
+        pathPrefix.push_back('/');
+
+        auto encodePtrToken = [](std::string_view s)
+        {
+            std::string out;
+            out.reserve(s.size() + 2);
+            for (char ch : s)
+            {
+                if (ch == '~')
+                    out += "~0";
+                else if (ch == '/')
+                    out += "~1";
+                else
+                    out += ch;
+            }
+            return out;
+        };
 
         std::string childPath;
         for (const auto& k : fields)
         {
-            childPath.clear();
-            childPath.reserve(tgtPath.size() + 1 + k.size());
-            childPath.append(tgtPath);
-            childPath.push_back('/');
-            childPath.append(k);
+            childPath.assign(pathPrefix);
+            childPath.append(encodePtrToken(k));
 
             try
             {
-                if (equalsFn(event, childPath))
+                if (cmpLocal && event->equals(childPath, *cmpLocal))
                 {
                     (void)event->erase(childPath);
                 }
