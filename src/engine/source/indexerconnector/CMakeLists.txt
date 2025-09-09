@@ -1,49 +1,52 @@
-project(indexerconnector)
+# Defs
+set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
+set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
-# INTERFACE_AUTOMOC_MACRO_NAMES
-add_library(indexerconnector_iindexerconnector INTERFACE)
-target_include_directories(indexerconnector_iindexerconnector INTERFACE ${CMAKE_CURRENT_LIST_DIR}/interface)
-target_link_libraries(indexerconnector_iindexerconnector INTERFACE base)
-add_library(indexerconnector::iindexerconnector ALIAS indexerconnector_iindexerconnector)
+# INTERFACE
+add_library(wIndexerConnector_iwIndexerConnector INTERFACE)
+target_include_directories(wIndexerConnector_iwIndexerConnector INTERFACE ${IFACE_DIR})
+target_link_libraries(wIndexerConnector_iwIndexerConnector INTERFACE base)
+add_library(wIndexerConnector::iwIndexerConnector ALIAS wIndexerConnector_iwIndexerConnector)
 
-# Include directories
-include_directories(include)
-
-file(GLOB INDEXER_CONNECTOR_SRC
-    "src/*.cpp"
-    )
-
-add_library(indexerconnector STATIC
-    ${INDEXER_CONNECTOR_SRC}
-    )
-
-target_include_directories(indexerconnector PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
-target_link_libraries(indexerconnector
-  PUBLIC
-   indexerconnector::iindexerconnector
-  PRIVATE
-  rocksdb
-  urlrequest
+# Implementation
+add_library(wIndexerConnector_wIndexerConnector STATIC
+    ${SRC_DIR}/wIndexerConnector.cpp
 )
+target_include_directories(wIndexerConnector_wIndexerConnector
+    PUBLIC
+    ${INC_DIR}
+)
+target_link_libraries(wIndexerConnector_wIndexerConnector
+    PUBLIC
+    base
+)
+add_library(wIndexerConnector::wIndexerConnector ALIAS wIndexerConnector_wIndexerConnector)
 
+# Tests
 if(ENGINE_BUILD_TEST)
-    # Mocks
-    set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 
-    add_library(indexerconnector_mocks INTERFACE)
-    target_include_directories(indexerconnector_mocks INTERFACE ${TEST_MOCK_DIR})
-    target_link_libraries(indexerconnector_mocks INTERFACE GTest::gmock indexerconnector::iindexerconnector)
-    add_library(indexerconnector::mocks ALIAS indexerconnector_mocks)
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 
-    add_library(httprequest_mocks INTERFACE)
-    target_include_directories(httprequest_mocks INTERFACE ${TEST_MOCK_DIR})
-    target_link_libraries(httprequest_mocks INTERFACE GTest::gmock)
-    add_library(httprequest::mock ALIAS httprequest_mocks)
-endif()
+# Mocks
+# add_library(wIndexerConnector_mocks INTERFACE)
+# target_include_directories(wIndexerConnector_mocks INTERFACE ${TEST_MOCK_DIR})
+# target_link_libraries(wIndexerConnector_mocks INTERFACE GTest::gmock wIndexerConnector::iwIndexerConnector)
+# add_library(wIndexerConnector::mocks ALIAS wIndexerConnector_mocks)
 
-add_library(indexerconnector_test INTERFACE)
-target_include_directories(indexerconnector_test INTERFACE ${CMAKE_CURRENT_LIST_DIR}/src)
-add_library(indexerconnector::test ALIAS indexerconnector_test)
 
-add_subdirectory(tool)
-add_subdirectory(test)
+add_executable(wIndexerConnector_utest
+    ${UNIT_SRC_DIR}/wic_test.cpp
+)
+target_link_libraries(wIndexerConnector_utest
+    PRIVATE
+    GTest::gtest_main
+    GTest::gmock
+    wIndexerConnector::wIndexerConnector
+)
+target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR})
+gtest_discover_tests(wIndexerConnector_utest)
+
+endif(ENGINE_BUILD_TEST)
