@@ -26,7 +26,9 @@ requirements:
     - 'f:/etc/redhat-release -> r:^Rocky Linux && r:release 9\p*'
 
 variables:
-  $sshd_file: /etc/ssh/sshd_config
+  $unused_filesystems_kernel_modules: afs,ceph,cifs,exfat,ext,fat,fscache,fuse,gfs2,nfs_common,nfsd,smbfs_common
+  $approved_services: sshd.service
+  $ipv6_status: enabled
 
 checks:
 
