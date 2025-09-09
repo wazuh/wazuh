@@ -1,4 +1,4 @@
-FROM public.ecr.aws/o5x5t0j3/amd64/api_development:integration_test_wazuh-generic
+FROM ubuntu:22.04
 
 ARG WAZUH_BRANCH
 
