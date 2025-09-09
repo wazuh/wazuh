@@ -335,6 +335,43 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/{node_id}/configuration
+      content:reload:
+        description: Reload contents
+        resources:
+          - '*:*'
+        example:
+          actions:
+            - content:reload
+          resources:
+            - '*:*:*'
+          effect: allow
+        related_endpoints:
+          - PUT /content/reload
+      content:status:
+        description: Access content status
+        resources:
+          - '*:*'
+        example:
+          actions:
+            - content:status
+          resources:
+            - '*:*:*'
+          effect: allow
+        related_endpoints:
+          - GET /content/status
+      content:validate:
+        description: Validate content information
+        resources:
+          - '*:*'
+        example:
+          actions:
+            - content:validate
+          resources:
+            - '*:*:*'
+          effect: allow
+        related_endpoints:
+          - PUT /content/validation
+          - PUT /log/test
       cluster:restart:
         description: Restart Wazuh's cluster nodes
         resources:

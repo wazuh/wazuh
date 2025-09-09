@@ -4,6 +4,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from typing import Optional
 from api.models.base_model_ import Body
 
 class ContentFileDataModel(Body):
@@ -17,7 +18,7 @@ class ContentFileDataModel(Body):
     payload : str
         The content file to validate.
     """
-    def __init__(self, type: str, payload: str):
+    def __init__(self, type: Optional[str] = None, payload: Optional[str] = None):
         self.swagger_types = {
             'type': str,
             'payload': str
@@ -57,7 +58,7 @@ class LogTestPayloadModel(Body):
     payload : str
         The log payload to test.
     """
-    def __init__(self, payload: str):
+    def __init__(self, payload: Optional[str] = None):
         self.swagger_types = {
             'payload': str
         }
