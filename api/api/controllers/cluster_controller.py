@@ -10,6 +10,7 @@ from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
 import wazuh.core.common as common
+import wazuh.analysis as analysis
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.controllers.util import json_response, XML_CONTENT_TYPE
@@ -818,6 +819,42 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
             result.total_affected_items += 1
 
     return json_response(result, pretty=pretty, status_code=202)
+
+
+async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = False,
+                               nodes_list: str = '*') -> ConnexionResponse:
+    """Reload the analysisd process on all nodes in the cluster, or a list of them.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    nodes_list : str
+        List of node IDs.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {'node_list': nodes_list}
+
+    nodes = raise_if_exc(await get_system_nodes())
+    dapi = DistributedAPI(f=analysis.reload_ruleset,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='distributed_master',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          broadcasting=nodes_list == '*',
+                          rbac_permissions=request.context['token_info']['rbac_policies'],
+                          nodes=nodes
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
 
 
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False,

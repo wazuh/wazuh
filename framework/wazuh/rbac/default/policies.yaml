@@ -292,6 +292,7 @@ default_policies:
           - manager:read_api_config
           - manager:update_config
           - manager:restart
+          - manager:ruleset_reload
         resources:
           - '*:*:*'
         effect: allow
@@ -300,6 +301,7 @@ default_policies:
           - cluster:read_api_config
           - cluster:read
           - cluster:restart
+          - cluster:ruleset_reload
           - cluster:update_config
         resources:
           - node:id:*
