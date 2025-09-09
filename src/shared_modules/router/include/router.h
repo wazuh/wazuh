@@ -53,6 +53,8 @@ enum msg_type
     MT_SYS_DELTAS,
     MT_SYNC,
     MT_SYSCHECK_DELTAS,
+    MT_INV_SYNC,
+    MT_UPGRADE_ACK,
 };
 
 #ifdef __cplusplus
@@ -160,6 +162,51 @@ extern "C"
 
     EXPORTED void router_stop_api(const char* socket_path);
 
+    /**
+     * @brief Represents the handle associated with router subscriber manipulation.
+     */
+    typedef void* ROUTER_SUBSCRIBER_HANDLE;
+
+    /**
+     * @brief Subscriber callback function.
+     *
+     * @param message Message received.
+     */
+    typedef void (*router_subscriber_callback_t)(const char* message);
+
+    /**
+     * @brief Create a router subscriber.
+     *
+     * @param topic_name Name of the topic to subscribe to.
+     * @param subscriber_id Unique subscriber ID.
+     * @param isLocal True if the subscriber is local, false otherwise.
+     * @return ROUTER_SUBSCRIBER_HANDLE Handle to the router subscriber.
+     */
+    EXPORTED ROUTER_SUBSCRIBER_HANDLE router_subscriber_create(const char* topic_name, const char* subscriber_id, bool isLocal);
+
+    /**
+     * @brief Subscribe to messages with a callback.
+     *
+     * @param handle Handle to the router subscriber.
+     * @param callback Callback function to be called when message is received.
+     * @return 0 on success, -1 on error.
+     */
+    EXPORTED int router_subscriber_subscribe(ROUTER_SUBSCRIBER_HANDLE handle, router_subscriber_callback_t callback);
+
+    /**
+     * @brief Unsubscribe from messages.
+     *
+     * @param handle Handle to the router subscriber.
+     */
+    EXPORTED void router_subscriber_unsubscribe(ROUTER_SUBSCRIBER_HANDLE handle);
+
+    /**
+     * @brief Destroy a router subscriber.
+     *
+     * @param handle Handle to the router subscriber.
+     */
+    EXPORTED void router_subscriber_destroy(ROUTER_SUBSCRIBER_HANDLE handle);
+
 #ifdef __cplusplus
 }
 #endif
@@ -194,5 +241,13 @@ typedef void (*router_register_api_endpoint_func)(const char* module,
 typedef void (*router_start_api_func)(const char* socket_path);
 
 typedef void (*router_stop_api_func)(const char* socket_path);
+
+typedef ROUTER_SUBSCRIBER_HANDLE (*router_subscriber_create_func)(const char* topic_name, const char* subscriber_id, bool isLocal);
+
+typedef int (*router_subscriber_subscribe_func)(ROUTER_SUBSCRIBER_HANDLE handle, router_subscriber_callback_t callback);
+
+typedef void (*router_subscriber_unsubscribe_func)(ROUTER_SUBSCRIBER_HANDLE handle);
+
+typedef void (*router_subscriber_destroy_func)(ROUTER_SUBSCRIBER_HANDLE handle);
 
 #endif // _ROUTER_H
