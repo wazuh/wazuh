@@ -164,19 +164,6 @@ getPreinstalledDirByType()
             return 1;
         fi
     fi
-    # Checking for AIX
-    if [ "X${UN}" = "XAIX" ]; then
-        if [ -f /etc/rc.d/init.d/${pidir_service_name} ]; then
-            PREINSTALLEDDIR=`sed -n 's/^WAZUH_HOME=\(.*\)$/\1/p' /etc/rc.d/init.d/${pidir_service_name}`
-            if [ -d "$PREINSTALLEDDIR" ]; then
-                return 0;
-            else
-                return 1;
-            fi
-        else
-            return 1;
-        fi
-    fi
     # Checking for BSD
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
         # Checking for the presence of wazuh-control on rc.local
