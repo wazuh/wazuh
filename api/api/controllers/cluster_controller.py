@@ -12,12 +12,16 @@ import wazuh.cluster as cluster
 import wazuh.core.common as common
 import wazuh.manager as manager
 import wazuh.stats as stats
+from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from api.controllers.util import json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
+from api.signals import cti_context
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
 from api.validator import check_component_configuration_pair
 from wazuh.core.cluster.control import get_system_nodes
+from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.manager import query_update_check_service
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
@@ -939,4 +943,47 @@ async def update_configuration(node_id: str, body: bytes, pretty: bool = False,
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
+    return json_response(data, pretty=pretty)
+
+
+async def check_available_version(pretty: bool = False, force_query: bool = False) -> ConnexionResponse:
+    """Get available update information.
+
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format, by default False.
+    force_query : bool, optional
+        Make the query to the CTI service on demand, by default False.
+
+    Returns
+    -------
+    web.Response
+        API response.
+    """
+    installation_uid = cti_context[INSTALLATION_UID_KEY]
+
+    if force_query and update_check_is_enabled():
+        logger.debug('Forcing query to the update check service...')
+        dapi = DistributedAPI(f=query_update_check_service,
+                              f_kwargs={
+                                  INSTALLATION_UID_KEY: installation_uid
+                              },
+                              request_type='local_master',
+                              is_async=True,
+                              logger=logger
+                              )
+        update_information = raise_if_exc(await dapi.distribute_function())
+        cti_context[UPDATE_INFORMATION_KEY] = update_information.dikt
+
+    dapi = DistributedAPI(f=manager.get_update_information,
+                          f_kwargs={
+                              INSTALLATION_UID_KEY: installation_uid,
+                              UPDATE_INFORMATION_KEY: cti_context.get(UPDATE_INFORMATION_KEY, {})
+                          },
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
     return json_response(data, pretty=pretty)

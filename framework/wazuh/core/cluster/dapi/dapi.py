@@ -21,7 +21,6 @@ from sqlalchemy.exc import OperationalError
 
 import api.configuration as aconf
 import wazuh.core.cluster.cluster
-import wazuh.core.cluster.utils
 import wazuh.core.manager
 import wazuh.core.results as wresults
 from wazuh import agent
