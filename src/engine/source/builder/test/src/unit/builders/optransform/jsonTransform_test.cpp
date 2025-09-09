@@ -280,6 +280,76 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT(
             R"({"target":null})", opBuilderHelperDeleteFieldsWithValue, "target", {makeValue("null")}, FAILURE()),
 
+        // key with '/' — by value
+        TransformT(R"({"target":{"a/b":"N/A","x":1}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue(R"("N/A")")},
+                   SUCCESS(makeEvent(R"({"target":{"x":1}})"))),
+
+        // key with '~' — by value
+        TransformT(R"({"target":{"a~b":"N/A","x":"ok"}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue(R"("N/A")")},
+                   SUCCESS(makeEvent(R"({"target":{"x":"ok"}})"))),
+
+        // both keys ('/' and '~') — by value
+        TransformT(R"({"target":{"a/b":"N/A","a~b":"N/A","z":"keep"}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue(R"("N/A")")},
+                   SUCCESS(makeEvent(R"({"target":{"z":"keep"}})"))),
+
+        // key with '/' — by external reference
+        TransformT(R"({"target":{"a/b":"X","z":"ok"},"ref":"X"})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"z":"ok"},"ref":"X"})"))),
+
+        // key with '~' — by external reference
+        TransformT(R"({"target":{"a~b":"X","z":0},"ref":"X"})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("ref")},
+                   SUCCESS(makeEvent(R"({"target":{"z":0},"ref":"X"})"))),
+
+        // snapshot ref inside same object — removes child with '/'
+        TransformT(R"({"target":{"user":"N/A","a/b":"N/A","other":123}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("target.user")},
+                   SUCCESS(makeEvent(R"({"target":{"other":123}})"))),
+
+        // snapshot ref inside same object — removes child with '~'
+        TransformT(R"({"target":{"user":false,"a~b":false,"keep":true}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeRef("target.user")},
+                   SUCCESS(makeEvent(R"({"target":{"keep":true}})"))),
+
+        // no-op with special keys (no matches)
+        TransformT(R"({"target":{"a/b":"keep","a~b":"also-keep"}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue(R"("N/A")")},
+                   SUCCESS(makeEvent(R"({"target":{"a/b":"keep","a~b":"also-keep"}})"))),
+
+        // number match with '/' key — by value
+        TransformT(R"({"target":{"a/b":10,"x":11}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("10")},
+                   SUCCESS(makeEvent(R"({"target":{"x":11}})"))),
+
+        // boolean match with '~' key — by value
+        TransformT(R"({"target":{"a~b":true,"x":false}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("true")},
+                   SUCCESS(makeEvent(R"({"target":{"x":false}})"))),
+
         /*** Rename Field ***/
         TransformT(R"({"ref": "value"})",
                    opBuilderHelperRenameField,
