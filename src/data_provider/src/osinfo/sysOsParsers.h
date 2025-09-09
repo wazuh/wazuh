@@ -118,14 +118,6 @@ class FedoraOsParser : public ISysOsParser
         bool parseFile(std::istream& in, nlohmann::json& output) override;
 };
 
-class SolarisOsParser : public ISysOsParser
-{
-    public:
-        SolarisOsParser() = default;
-        ~SolarisOsParser() = default;
-        bool parseFile(std::istream& in, nlohmann::json& output) override;
-};
-
 class AlpineOsParser : public ISysOsParser
 {
     public:
@@ -172,11 +164,6 @@ class FactorySysOsParser final
             if (platform == "fedora")
             {
                 return std::make_unique<FedoraOsParser>();
-            }
-
-            if (platform == "solaris")
-            {
-                return std::make_unique<SolarisOsParser>();
             }
 
             if (platform == "debian")

@@ -312,37 +312,6 @@ bool FedoraOsParser::parseFile(std::istream& in, nlohmann::json& output)
     return ret;
 }
 
-bool SolarisOsParser::parseFile(std::istream& in, nlohmann::json& output)
-{
-    const std::string HEADER_STRING{"Solaris "};
-    output["os_name"] = "SunOS";
-    output["os_platform"] = "sunos";
-    std::string line;
-    size_t pos{std::string::npos};
-
-    while (pos == std::string::npos && std::getline(in, line))
-    {
-        line = Utils::trim(line);
-        pos = line.find(HEADER_STRING);
-
-        if (std::string::npos != pos)
-        {
-            line = line.substr(pos + HEADER_STRING.size());
-            pos = line.find(" ");
-
-            if (pos != std::string::npos)
-            {
-                line = line.substr(0, pos);
-            }
-
-            output["os_version"] = Utils::trim(line);
-            findMajorMinorVersionInString(Utils::trim(line), output);
-        }
-    }
-
-    return std::string::npos == pos ? false : true;
-}
-
 bool AlpineOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
     constexpr auto PATTERN_MATCH{R"((?:[0-9]+\.)?(?:[0-9]+\.)?(?:[0-9]+))"};

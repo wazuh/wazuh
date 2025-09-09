@@ -159,7 +159,7 @@ int main (int argc, char **argv) {
         unlock(lock_path, argv[0]);
         os_free(iptables);
 
-    } else if (!strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname) || !strcmp("NetBSD", uname_buffer.sysname)) {
+    } else if (!strcmp("FreeBSD", uname_buffer.sysname) || !strcmp("NetBSD", uname_buffer.sysname)) {
         char arg1[COMMANDSIZE_4096];
         char arg2[COMMANDSIZE_4096];
         char ipfarg[COMMANDSIZE_4096];
