@@ -3653,9 +3653,37 @@ checks:
   # 5.4.3 Configure user default environment
   ###############################################
 
-  # 5.4.3.1 Ensure nologin is not listed in /etc/shells (Automated) - Not Implemented
-  # 5.4.3.2 Ensure default user shell timeout is configured (Automated) - Not Implemented
-  # 5.4.3.3 Ensure default user umask is configured (Automated) - Not Implemented
+  # 5.4.3.1 Ensure nologin is not listed in /etc/shells (Automated)
+  - id: 31704
+    title: "Ensure nologin is not listed in /etc/shells."
+    description: "/etc/shells is a text file which contains the full pathnames of valid login shells. This file is consulted by chsh and available to be queried by other programs. Be aware that there are programs which consult this file to find out if a user is a normal user; for example, FTP daemons traditionally disallow access to users with shells not included in this file."
+    rationale: "A user can use chsh to change their configured shell. If a user has a shell configured that isn't in in /etc/shells, then the system assumes that they're somehow restricted. In the case of chsh it means that the user cannot change that value. Other programs might query that list and apply similar restrictions. By putting nologin in /etc/shells, any user that has nologin as its shell is considered a full, unrestricted user. This is not the expected behavior for nologin."
+    remediation: "Edit /etc/shells and remove any lines that include nologin"
+    compliance:
+      - cis: ["5.4.3.1"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - "f:/etc/shells -> !r:^.*nologin"
+
+  # 5.4.3.2 Ensure default user shell timeout is configured (Automated)
+  - id: 31705
+    title: "Ensure default user shell timeout is configured."
+    description: "TMOUT is an environmental setting that determines the timeout of a shell in seconds. TMOUT=n - Sets the shell timeout to n seconds. A setting of TMOUT=0 disables timeout. readonly TMOUT- Sets the TMOUT environmental variable as readonly, preventing unwanted modification during run-time. export TMOUT - exports the TMOUT variable"
+    rationale: "Setting a timeout value reduces the window of opportunity for unauthorized user access to another user's shell session that has been left unattended. It also ends the inactive session and releases the resources associated with that session."
+    remediation: "Review /etc/bashrc, /etc/profile, and all files ending in *.sh in the /etc/profile.d/ directory and remove or edit all TMOUT=_n_ entries to follow local site policy. TMOUT should not exceed 900 or be equal to 0. Configure TMOUT in one of the following files: A file in the /etc/profile.d/ directory ending in .sh /etc/profile /etc/bashrc"
+    compliance:
+      - cis: ["5.4.3.2"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+      - mitre_mitigations: ["M1026"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1078"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "grep TMOUT /etc/profile.d/*.sh /etc/profile /etc/profile.d/*.sh| cut -d: -f2" -> n:TMOUT=(\d+) compare <= 900'
+
+  # 5.4.3.3 Ensure default user umask is configured (Automated)
 
   ###############################################
   # 6.1 Configure Integrity Checking
