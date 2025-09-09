@@ -101,17 +101,8 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
 
             if (m_currentUnicastAddress)
             {
-                if (Utils::isVistaOrLater())
-                {
-                    retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(),
-                                                                           (reinterpret_cast<sockaddr_in6*>(m_currentUnicastAddress->Address.lpSockaddr))->sin6_addr);
-                }
-                else
-                {
-                    // Windows XP
-                    const auto ipv6Address { reinterpret_cast<sockaddr_in6*>(m_currentUnicastAddress->Address.lpSockaddr) };
-                    retVal = Utils::NetworkWindowsHelper::getIpV6Address(ipv6Address->sin6_addr.u.Byte);
-                }
+                retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(),
+                                                                       (reinterpret_cast<sockaddr_in6*>(m_currentUnicastAddress->Address.lpSockaddr))->sin6_addr);
             }
 
             return retVal;
@@ -121,28 +112,14 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
         {
             std::string retVal;
 
-            if (Utils::isVistaOrLater())
-            {
-                ULONG mask { 0 };
-                static auto pfnGetConvertLengthToIpv4Mask { Utils::getConvertLengthToIpv4MaskFunctionAddress() };
+            ULONG mask { 0 };
+            static auto pfnGetConvertLengthToIpv4Mask { Utils::getConvertLengthToIpv4MaskFunctionAddress() };
 
-                if (pfnGetConvertLengthToIpv4Mask)
-                {
-                    if (m_currentUnicastAddress && !pfnGetConvertLengthToIpv4Mask(m_currentUnicastAddress->OnLinkPrefixLength, &mask))
-                    {
-                        retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(), *(reinterpret_cast<in_addr*>(&mask)));
-                    }
-                }
-            }
-            else
+            if (pfnGetConvertLengthToIpv4Mask)
             {
-                // Windows XP mechanism
-                const auto address { this->address() };
-                const auto interfaceAddress { findInterfaceMatch(address) };
-
-                if (interfaceAddress)
+                if (m_currentUnicastAddress && !pfnGetConvertLengthToIpv4Mask(m_currentUnicastAddress->OnLinkPrefixLength, &mask))
                 {
-                    retVal = interfaceAddress->IpMask.String;
+                    retVal = Utils::NetworkWindowsHelper::IAddressToString(this->adapterFamily(), *(reinterpret_cast<in_addr*>(&mask)));
                 }
             }
 
@@ -153,13 +130,12 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
         {
             std::string retVal;
 
-            if (m_currentUnicastAddress && Utils::isVistaOrLater())
+            if (m_currentUnicastAddress)
             {
                 // Get ipv6Netmask based on current OnLinkPrefixLength value
                 retVal = Utils::NetworkWindowsHelper::ipv6Netmask(m_currentUnicastAddress->OnLinkPrefixLength);
             }
 
-            // Windows XP netmask IPv6 is not supported
             return retVal;
         }
 
@@ -188,60 +164,27 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
             std::string retVal;
             constexpr auto GATEWAY_SEPARATOR { "," };
 
-            if (Utils::isVistaOrLater())
+            auto gatewayAddress { m_interfaceAddress->FirstGatewayAddress };
+
+            while (gatewayAddress)
             {
-                auto gatewayAddress { m_interfaceAddress->FirstGatewayAddress };
+                const auto gatewayFamily { gatewayAddress->Address.lpSockaddr->sa_family };
+                const auto sockAddress   { gatewayAddress->Address.lpSockaddr };
 
-                while (gatewayAddress)
+                if (AF_INET == gatewayFamily)
                 {
-                    const auto gatewayFamily { gatewayAddress->Address.lpSockaddr->sa_family };
-                    const auto sockAddress   { gatewayAddress->Address.lpSockaddr };
-
-                    if (AF_INET == gatewayFamily)
-                    {
-                        retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
-                                                                                (reinterpret_cast<sockaddr_in*>(sockAddress))->sin_addr);
-                        retVal += GATEWAY_SEPARATOR;
-                    }
-                    else if (AF_INET6 == gatewayFamily)
-                    {
-                        retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
-                                                                                (reinterpret_cast<sockaddr_in6*>(sockAddress))->sin6_addr);
-                        retVal += GATEWAY_SEPARATOR;
-                    }
-
-                    gatewayAddress = gatewayAddress->Next;
+                    retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
+                                                                            (reinterpret_cast<sockaddr_in*>(sockAddress))->sin_addr);
+                    retVal += GATEWAY_SEPARATOR;
                 }
-            }
-            else
-            {
-                // Under Windows XP, the only way to retrieve IPv4 gateway addresses is through GetAdaptersInfo()
-                PIP_ADDR_STRING currentGWAddress { nullptr };
-                PIP_ADAPTER_INFO currentAdapterInfo { m_adapterInfo };
-                bool foundMatch { false };
-
-                while (currentAdapterInfo && !foundMatch)
+                else if (AF_INET6 == gatewayFamily)
                 {
-                    if (!(MIB_IF_TYPE_LOOPBACK == currentAdapterInfo->Type))
-                    {
-                        if (currentAdapterInfo->Index == m_interfaceAddress->IfIndex)
-                        {
-                            // Found an interface match.
-                            currentGWAddress = &(currentAdapterInfo->GatewayList);
-
-                            while (currentGWAddress)
-                            {
-                                retVal += currentGWAddress->IpAddress.String;
-                                retVal += GATEWAY_SEPARATOR;
-                                currentGWAddress = currentGWAddress->Next;
-                            }
-
-                            foundMatch = true;
-                        }
-                    }
-
-                    currentAdapterInfo = currentAdapterInfo->Next;
+                    retVal += Utils::NetworkWindowsHelper::IAddressToString(gatewayFamily,
+                                                                            (reinterpret_cast<sockaddr_in6*>(sockAddress))->sin6_addr);
+                    retVal += GATEWAY_SEPARATOR;
                 }
+
+                gatewayAddress = gatewayAddress->Next;
             }
 
             if (retVal.empty())
@@ -261,12 +204,8 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
         {
             std::string retVal;
 
-            if (Utils::isVistaOrLater())
-            {
-                retVal = std::to_string(m_interfaceAddress->Ipv4Metric);
-            }
+            retVal = std::to_string(m_interfaceAddress->Ipv4Metric);
 
-            // XP structure does not support Ipv4Metric information
             return retVal;
         }
 
@@ -274,12 +213,8 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
         {
             std::string retVal;
 
-            if (Utils::isVistaOrLater())
-            {
-                retVal = std::to_string(m_interfaceAddress->Ipv6Metric);
-            }
+            retVal = std::to_string(m_interfaceAddress->Ipv6Metric);
 
-            // XP structure does not support Ipv6Metric information
             return retVal;
         }
 
@@ -315,8 +250,45 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
 
         LinkStats stats() const override
         {
-            return Utils::isVistaOrLater() ? statsVistaOrLater()
-                   : statsXP();
+            LinkStats retVal {};
+            auto ifRow { std::make_unique<MIB_IF_ROW2>() };
+
+            if (!ifRow)
+            {
+                throw std::system_error
+                {
+                    static_cast<int>(GetLastError()),
+                    std::system_category(),
+                    "Unable to allocate memory for MIB_IF_ROW2 struct."
+                };
+            }
+
+            ifRow->InterfaceIndex = (0 != m_interfaceAddress->IfIndex) ? m_interfaceAddress->IfIndex
+                                    : m_interfaceAddress->Ipv6IfIndex;
+
+            if (0 != ifRow->InterfaceIndex)
+            {
+                static auto pfnGetIfEntry2 { Utils::getIfEntry2FunctionAddress() };
+
+                if (pfnGetIfEntry2)
+                {
+                    if (NO_ERROR == pfnGetIfEntry2(ifRow.get()))
+                    {
+                        const auto txPackets { ifRow->OutUcastPkts + ifRow->OutNUcastPkts };
+                        const auto rxPackets { ifRow->InUcastPkts  + ifRow->InNUcastPkts  };
+                        retVal.txPackets = txPackets;
+                        retVal.rxPackets = rxPackets;
+                        retVal.txBytes   = ifRow->OutOctets;
+                        retVal.rxBytes   = ifRow->InOctets;
+                        retVal.txErrors  = ifRow->OutErrors;
+                        retVal.rxErrors  = ifRow->InErrors;
+                        retVal.txDropped = ifRow->OutDiscards;
+                        retVal.rxDropped = ifRow->InDiscards;
+                    }
+                }
+            }
+
+            return retVal;
         }
 
         std::string type() const override
@@ -421,91 +393,10 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
             return currentInterfaceAddr;
         }
 
-        LinkStats statsVistaOrLater() const
-        {
-            LinkStats retVal {};
-            auto ifRow { std::make_unique<MIB_IF_ROW2>() };
-
-            if (!ifRow)
-            {
-                throw std::system_error
-                {
-                    static_cast<int>(GetLastError()),
-                    std::system_category(),
-                    "Unable to allocate memory for MIB_IF_ROW2 struct."
-                };
-            }
-
-            ifRow->InterfaceIndex = (0 != m_interfaceAddress->IfIndex) ? m_interfaceAddress->IfIndex
-                                    : m_interfaceAddress->Ipv6IfIndex;
-
-            if (0 != ifRow->InterfaceIndex)
-            {
-                static auto pfnGetIfEntry2 { Utils::getIfEntry2FunctionAddress() };
-
-                if (pfnGetIfEntry2)
-                {
-                    if (NO_ERROR == pfnGetIfEntry2(ifRow.get()))
-                    {
-                        const auto txPackets { ifRow->OutUcastPkts + ifRow->OutNUcastPkts };
-                        const auto rxPackets { ifRow->InUcastPkts  + ifRow->InNUcastPkts  };
-                        retVal.txPackets = txPackets;
-                        retVal.rxPackets = rxPackets;
-                        retVal.txBytes   = ifRow->OutOctets;
-                        retVal.rxBytes   = ifRow->InOctets;
-                        retVal.txErrors  = ifRow->OutErrors;
-                        retVal.rxErrors  = ifRow->InErrors;
-                        retVal.txDropped = ifRow->OutDiscards;
-                        retVal.rxDropped = ifRow->InDiscards;
-                    }
-                }
-            }
-
-            return retVal;
-        }
-
-        LinkStats statsXP() const
-        {
-            LinkStats retVal {};
-            auto ifRow { std::make_unique<MIB_IFROW>() };
-
-            if (!ifRow)
-            {
-                throw std::system_error
-                {
-                    static_cast<int>(GetLastError()),
-                    std::system_category(),
-                    "Unable to allocate memory for MIB_IFROW struct."
-                };
-            }
-
-            ifRow->dwIndex = (0 != m_interfaceAddress->IfIndex) ? m_interfaceAddress->IfIndex
-                             : m_interfaceAddress->Ipv6IfIndex;
-
-            if (0 != ifRow->dwIndex)
-            {
-                if (NO_ERROR == GetIfEntry(ifRow.get()))
-                {
-                    const auto txPackets { ifRow->dwOutUcastPkts + ifRow->dwOutNUcastPkts };
-                    const auto rxPackets { ifRow->dwInUcastPkts  + ifRow->dwInNUcastPkts  };
-                    retVal.txPackets = txPackets;
-                    retVal.rxPackets = rxPackets;
-                    retVal.txBytes   = ifRow->dwOutOctets;
-                    retVal.rxBytes   = ifRow->dwInOctets;
-                    retVal.txErrors  = ifRow->dwOutErrors;
-                    retVal.rxErrors  = ifRow->dwInErrors;
-                    retVal.txDropped = ifRow->dwOutDiscards;
-                    retVal.rxDropped = ifRow->dwInDiscards;
-                }
-            }
-
-            return retVal;
-        }
-
         Utils::NetworkWindowsHelper::NetworkFamilyTypes m_interfaceFamily;
         PIP_ADAPTER_ADDRESSES                           m_interfaceAddress;
         PIP_ADAPTER_UNICAST_ADDRESS                     m_currentUnicastAddress;
-        PIP_ADAPTER_INFO                                m_adapterInfo;  // XP needed structure
+        PIP_ADAPTER_INFO                                m_adapterInfo;
 };
 
 #endif //_NETWORK_WINDOWS_WRAPPER_H
