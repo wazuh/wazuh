@@ -497,7 +497,7 @@ nlohmann::json SysInfo::getGroups() const
         gid_t currentGid = static_cast<gid_t>(group["gid"].get<int>());
 
         groupItem["group_id"] = group["gid"];
-        groupItem["group_name"] = group["groupname"];
+        groupItem["group_name"] = (group.contains("groupname") && !group["groupname"].get<std::string>().empty()) ? group["groupname"] : UNKNOWN_VALUE;
         groupItem["group_description"] = group["comment"];
         groupItem["group_id_signed"] = group["gid_signed"];
         groupItem["group_uuid"] = UNKNOWN_VALUE;
@@ -554,7 +554,7 @@ nlohmann::json SysInfo::getUsers() const
     {
         nlohmann::json userItem {};
 
-        std::string username = user["username"].get<std::string>();
+        std::string username = (user.contains("username") && !user["username"].get<std::string>().empty()) ? user["username"] : UNKNOWN_VALUE;
 
         userItem["user_id"] = user["uid"];
         userItem["user_full_name"] = user["description"];
