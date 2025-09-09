@@ -3684,6 +3684,22 @@ checks:
       - 'c:/bin/sh -c "grep TMOUT /etc/profile.d/*.sh /etc/profile /etc/profile.d/*.sh| cut -d: -f2" -> n:TMOUT=(\d+) compare <= 900'
 
   # 5.4.3.3 Ensure default user umask is configured (Automated)
+  - id: 31706
+    title: "Ensure default user umask is configured."
+    description: "The user file-creation mode mask (umask) is used to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode."
+    rationale: "Setting a secure default value for umask ensures that users make a conscious choice about their file permissions. A permissive umask value could result in directories or files with excessive permissions that can be read and/or written to by unauthorized users."
+    remediation: "Set the default umask to 027 or more restrictive"
+    compliance:
+      - cis: ["5.4.3.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1083"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "grep -i \"^\s*umask\" /etc/profile /etc/profile.d/*.sh /etc/login.defs | cut -d: -f 2" -> r:UMASK|umask\s*0[2-7][7]'
+      #- 'c:/bin/sh -c "grep -i \"^\s*umask\" /etc/profile /etc/profile.d/*.sh /etc/login.defs | cut -d: -f 2" -> !r:(UMASK|umask)\s+[7][0-1][0-6]'
 
   ###############################################
   # 6.1 Configure Integrity Checking
