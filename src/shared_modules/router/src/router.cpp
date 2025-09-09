@@ -420,6 +420,8 @@ extern "C"
                 [callbackPre, callbackPost, endpointStr = std::move(endpointStr), moduleStr = std::move(moduleStr)](
                     const httplib::Request& req, httplib::Response& res)
                 {
+                    try
+                    {
                     logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE,
                                "GET: " + endpointStr + " request parameters: " + req.path);
                     auto start = std::chrono::high_resolution_clock::now();
@@ -427,8 +429,14 @@ extern "C"
                     auto end = std::chrono::high_resolution_clock::now();
                     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
                     logMessage(modules_log_level_t::LOG_DEBUG,
-                               "GET: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
-                                   " us");
+                                   "GET: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
+                                       " us");
+                    }
+                    catch (const std::exception& e)
+                    {
+                        logMessage(modules_log_level_t::LOG_ERROR, "Error processing GET endpoint: " + endpointStr + " " + e.what());
+                        throw;
+                    }
                 });
         }
         else if (methodStr.compare("POST") == 0)
@@ -439,6 +447,8 @@ extern "C"
                 [callbackPre, callbackPost, endpointStr = std::move(endpointStr), moduleStr = std::move(moduleStr)](
                     const httplib::Request& req, httplib::Response& res)
                 {
+                    try
+                    {
                     auto start = std::chrono::high_resolution_clock::now();
                     RouterModuleGateway::redirect(moduleStr, callbackPre, callbackPost, endpointStr, "POST", req, res);
                     auto end = std::chrono::high_resolution_clock::now();
@@ -446,6 +456,12 @@ extern "C"
                     logMessage(modules_log_level_t::LOG_DEBUG,
                                "POST: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
+                    }
+                    catch (const std::exception& e)
+                    {
+                        logMessage(modules_log_level_t::LOG_ERROR, "Error processing POST endpoint: " + endpointStr + " " + e.what());
+                        throw;
+                    }
                 });
         }
         else
