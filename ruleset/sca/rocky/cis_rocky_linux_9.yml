@@ -4763,7 +4763,7 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - 'c:/bin/sh -c "cut -f4 -d: /etc/passwd | sort -u | xargs -I {} grep -qE \"^.+:.+:{}:.*\" /etc/group && echo \"OK\"" -> r:OK'
+      - 'c:/bin/sh -c "comm -23 <(cut -f4 -d: /etc/passwd | sort -u) <(cut -f3 -d: /etc/group | sort -u) | wc -l" -> r:^0$'
 
   # 7.2.4 Ensure no duplicate UIDs exist. (Automated)
   - id: 31698
@@ -4779,7 +4779,7 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - 'c:/bin/sh -c "cut -f3 -d: /etc/passwd | sort -n | uniq -c | grep -vE \"^\\s*1\\s\\w*\" | wc -l" -> r:^0$'
+      - 'c:/bin/sh -c "cut -f3 -d: /etc/passwd | sort -n | uniq -d | wc -l" -> r:^0$'
 
   # 7.2.5 Ensure no duplicate GIDs exist. (Automated)
   - id: 31699
@@ -4795,7 +4795,7 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - 'c:/bin/sh -c "cut -f3 -d: /etc/group | sort -n | uniq -c | grep -vE \"^\\s*1\\s\\w*\" | wc -l" -> r:^0$'
+      - 'c:/bin/sh -c "cut -f3 -d: /etc/group | sort -n | uniq -d | wc -l" -> r:^0$'
 
   # 7.2.6 Ensure no duplicate user names exist. (Automated)
   - id: 31700
@@ -4811,7 +4811,7 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - 'c:/bin/sh -c "cut -f1 -d: /etc/passwd | sort -n | uniq -c | grep -vE \"^\\s*1\\s[_a-z][-0-9_a-z]*\" | wc -l" -> r:^0$'
+      - 'c:/bin/sh -c "cut -f1 -d: /etc/passwd | sort -n | uniq -d | wc -l" -> r:^0$'
 
   # 7.2.7 Ensure no duplicate group names exist. (Automated)
   - id: 31701
@@ -4827,7 +4827,7 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - 'c:/bin/sh -c "cut -f1 -d: /etc/group | sort -n | uniq -c | grep -vE \"^\\s*1\\s[_a-z][-0-9_a-z]*\" | wc -l" -> r:^0$'
+      - 'c:/bin/sh -c "cut -f1 -d: /etc/group | sort -n | uniq -d | wc -l" -> r:^0$'
 
   # 7.2.8 Ensure local interactive user home directories are configured (Automated)
   - id: 31702
@@ -4846,7 +4846,7 @@ checks:
     rules:
       # NOTE: this check finds interactive users with home dirs MORE permissive than chmod 0750
       - 'c:/bin/sh -c "cat /etc/shells | xargs -I {} grep -E \".*:{}\" /etc/passwd | cut -d: -f6 | xargs -I {} find {} -maxdepth 0 -type d -perm /g+w,o+rwx | wc -l" -> r:^0$'
-      # NOTE: this check extract interactive users home paths and compare ownership against /etc/passwd
+      # NOTE: this check extracts interactive users home paths and compare ownership against /etc/passwd
       - >-
         c:/bin/sh -c "interactive_users=`cat /etc/shells | xargs -I {} grep -E \".*:{}\" /etc/passwd | cut -d: -f6`;
         assert_homes=`echo \"${interactive_homes}\" | xargs -I {} find {} -maxdepth 0 -type d -perm /750 | xargs stat -Lc \"%U:.*:%n\" | xargs -I {} grep -E \"{}\" /etc/passwd`;
