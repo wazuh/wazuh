@@ -1141,6 +1141,30 @@ nlohmann::json Syscollector::getBrowserExtensionsData()
         for (auto& extension : extensions)
         {
             sanitizeJsonValue(extension);
+
+            // Convert package_installed from string to integer for ECS compatibility
+            if (extension.contains("package_installed") && extension["package_installed"].is_string())
+            {
+                try
+                {
+                    const auto& timestampStr = extension["package_installed"].get<std::string>();
+
+                    if (!timestampStr.empty() && timestampStr != " " && timestampStr != "0")
+                    {
+                        int64_t timestamp = std::stoll(timestampStr);
+                        extension["package_installed"] = timestamp;
+                    }
+                    else
+                    {
+                        extension["package_installed"] = nullptr;
+                    }
+                }
+                catch (const std::exception&)
+                {
+                    extension["package_installed"] = nullptr;
+                }
+            }
+
             extension["checksum"] = getItemChecksum(extension);
             ret.push_back(std::move(extension));
         }
