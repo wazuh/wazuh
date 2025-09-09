@@ -48,30 +48,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
     fimdb PROPERTIES LINK_FLAGS "-Wl,--add-stdcall-alias -Wl,--output-def,libfimdb.def")
 elseif(UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR
-                 "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
-    string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR
-                 "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    # Do nothing for HP-UX
-  else()
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
-
-
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-  target_link_libraries(fimdb dbsync wazuhext)
-else()
-  target_link_libraries(
-    fimdb
-    dbsync
-    wazuhext
-    -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR}
-  )
-endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+target_link_libraries(fimdb dbsync wazuhext)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   find_program(DLLTOOL i686-w64-mingw32-dlltool)

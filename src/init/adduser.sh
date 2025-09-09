@@ -37,10 +37,6 @@ else
         GROUPADD="/usr/sbin/groupadd"
         USERADD="/usr/sbin/useradd"
         OSMYSHELL="/bin/false"
-    elif [ "$UNAME" = "AIX" ]; then
-        GROUPADD="/usr/bin/mkgroup"
-        USERADD="/usr/sbin/useradd"
-        OSMYSHELL="/bin/false"
     elif [ "$UNAME" = "NetBSD" ]; then
         GROUPADD="/usr/sbin/groupadd"
         USERADD="/usr/sbin/useradd"
@@ -79,10 +75,6 @@ else
     if ! grep "^${USER}:" /etc/passwd > /dev/null 2>&1; then
         if [ "$UNAME" = "OpenBSD" -o "$UNAME" = "SunOS" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
             ${USERADD} -d "${DIR}" -s ${OSMYSHELL} -g "${GROUP}" "${USER}"
-        elif [ "$UNAME" = "AIX" ]; then
-            GID=$(cat /etc/group | grep wazuh| cut -d':' -f 3)
-            uid=$(( $GID + 1 ))
-            echo "${USER}:x:$uid:$GID::${DIR}:/bin/false" >> /etc/passwd
         elif [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
             ${USERADD} "${USER}" -h "${DIR}" -s ${OSMYSHELL} -G "${GROUP}"
         else

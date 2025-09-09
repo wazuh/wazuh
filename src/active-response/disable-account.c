@@ -86,25 +86,6 @@ int main (int argc, char **argv) {
             snprintf(args, COMMANDSIZE_4096 -1, "-u");
         }
 
-    } else if (!strcmp("AIX", uname_buffer.sysname)) {
-        // Checking if chuser is present
-        if (get_binary_path("chuser", &cmd_path) < 0) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "The chuser file '%s' is not accessible: %s (%d)", cmd_path, strerror(errno), errno);
-            write_debug_file(argv[0], log_msg);
-            cJSON_Delete(input_json);
-            os_free(cmd_path);
-            return OS_SUCCESS;
-        }
-
-        // Disabling an account
-        memset(args, '\0', COMMANDSIZE_4096);
-        if (action == ADD_COMMAND) {
-            snprintf(args, COMMANDSIZE_4096 -1, "account_locked=true");
-        } else {
-            snprintf(args, COMMANDSIZE_4096 -1, "account_locked=false");
-        }
-
     } else {
         write_debug_file(argv[0], "Invalid system");
         cJSON_Delete(input_json);
