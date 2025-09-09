@@ -3681,6 +3681,23 @@ checks:
       - 'c:/bin/sh -c "grep -i umask /root/.bash_profile /root/.bashrc | cut -d: -f 2" -> r:umask\s*0027|umask\s*0077'
 
   # 5.4.2.7 Ensure system accounts do not have a valid login shell (Automated)
+  - id: 31709
+    title: "Ensure system accounts do not have a valid login shell."
+    description: "There are a number of accounts provided with most distributions that are used to manage applications and are not intended to provide an interactive shell. Furthermore, a user may add special accounts that are not intended to provide an interactive shell."
+    rationale: "It is important to make sure that accounts that are not being used by regular users are prevented from being used to provide an interactive shell. By default, most distributions set the password field for these accounts to an invalid string, but it is also recommended that the shell field in the password file be set to the nologin shell. This prevents the account from potentially being used to run any commands."
+    remediation: "Run the following command to set the shell for any service accounts returned by the audit to nologin: # usermod -s $(command -v nologin) <user>"
+    compliance:
+      - cis: ["5.4.2.7"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_mitigations: ["M1026"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
+      - nist_sp_800-53: ["AC-2(5)", "AC-3", "AC-11", "MP-2"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "cut -d: -f3 /etc/passwd | grep -Ev \"root|sync|halt|shutdown|nfsnobody|/sbin/nologin|/bin/false\"" -> n:(\d+) compare < 1000'
+
   # 5.4.2.8 Ensure accounts without a valid login shell are locked (Automated)
 
   ###############################################
