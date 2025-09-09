@@ -4855,3 +4855,19 @@ checks:
         fi" -> r:OK
 
   # 7.2.9 Ensure local interactive user dot files access is configured (Automated)
+  - id: 31703
+    title: "Ensure local interactive user dot files access is configured."
+    description: "While the system administrator can establish secure permissions for users 'dot' files, the users can easily override these. .forward file specifies an email address to forward the user's mail to. .rhost file provides the 'remote authentication' database for the rcp, rlogin, and rsh commands and the rcmd() function. These files bypass the standard password-based user authentication mechanism. They specify remote hosts and users that are considered trusted (i.e. are allowed to access the local system without supplying a password) .netrc file contains data for logging into a remote host or passing authentication to an API. .bash_history file keeps track of the users commands."
+    rationale: "User configuration files with excessive or incorrect access may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
+    remediation: "Making global modifications to users' files without alerting the user community can result in unexpected outages and unhappy users. Therefore, it is recommended that a monitoring policy be established to report user dot file permissions and determine the action to be taken in accordance with site policy."
+    compliance:
+      - cis: ["7.2.9"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1222", "T1222.001", "T1222.002", "T1552", "T1552.003", "T1552.004"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "find /home/ -maxdepth 1 \( -name .netrc -o -name .rhost -o -name .forward \) | wc -l" -> r:^0$'
