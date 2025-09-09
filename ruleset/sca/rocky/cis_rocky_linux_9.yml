@@ -4993,4 +4993,6 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - 'c:/bin/sh -c "find /home/ -maxdepth 1 \( -name .netrc -o -name .rhost -o -name .forward \) | wc -l" -> r:^0$'
+      - 'c:/bin/sh -c "find /home/ -maxdepth 1 -name .netrc | wc -l" -> r:^0$'
+      - 'c:/bin/sh -c "find /home/ -maxdepth 1 -name .rhost | wc -l" -> r:^0$'
+      - 'c:/bin/sh -c "find /home/ -maxdepth 1 -name .forward | wc -l" -> r:^0$'
