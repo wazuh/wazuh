@@ -3598,7 +3598,20 @@ checks:
       - 'f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
       - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
-  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated) - Not Implemented
+  # 5.4.1.6 Ensure all users last password change date is in the past. (Automated)
+  - id: 31711
+    title: "Ensure all users last password change date is in the past."
+    description: "All users should have a password change date in the past."
+    rationale: "If a user's recorded password change date is in the future, then they could bypass any set password expiration."
+    remediation: "Investigate any users with a password change date in the future and correct them. Locking the account, expiring the password, or resetting the password manually may be appropriate."
+    compliance:
+      - cis: ["5.4.1.6"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1078.004", "T1110", "T1110.001", "T1110.002", "T1110.003", "T1110.004"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "for usr in `cut -d: -f1 /etc/shadow`; do [[ $(chage --list $usr | grep \"^Last password change\" | cut -d: -f2) > $(date) ]] && echo \"KO\" ; done" -> !r:KO'
 
   ###############################################
   # 5.4.2 Configure root and system accounts and environment
