@@ -4,10 +4,14 @@ from typing import Any, AsyncIterator
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core import common
 
+import certifi
+import ssl
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol, \
     RequestError
 
+
 APPLICATION_JSON = 'application/json'
+SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 
 class AgentIDGroups:
@@ -83,10 +87,9 @@ class WazuhDBHTTPClient:
         self.socket_path = f'{common.WDB_HTTP_SOCKET}.sock'
 
         try:
-            transport = AsyncHTTPTransport(uds=self.socket_path, retries=retries, verify=False)
+            transport = AsyncHTTPTransport(uds=self.socket_path, retries=retries, verify=SSL_CONTEXT)
             self._client = AsyncClient(transport=transport, timeout=Timeout(timeout))
-
-        except (OSError, TimeoutException) as e:
+        except Exception as e:
             raise WazuhInternalError(2011, e)
 
     async def close(self) -> None:
