@@ -2084,7 +2084,7 @@ addagent/%.o: addagent/%.c
 
 
 manage_agents: ${addagent_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
+	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${WAZUH_LDFLAGS} $^ ${OSSEC_LIBS} ${WAZUH_LIBS} -o $@
 
 #### Active Response ####
 

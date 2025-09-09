@@ -40,6 +40,10 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
 std::map<ROUTER_PROVIDER_HANDLE, std::shared_ptr<RouterProvider>> PROVIDERS;
 std::shared_mutex PROVIDERS_MUTEX;
 
+std::map<ROUTER_SUBSCRIBER_HANDLE, std::shared_ptr<RouterSubscriber>> SUBSCRIBERS;
+std::shared_mutex SUBSCRIBERS_MUTEX;
+
+
 flatbuffers::Parser initSchemaParsers()
 {
     flatbuffers::Parser parser;
@@ -553,6 +557,79 @@ extern "C"
                 it->second->serverThread.join();
             }
             G_HTTPINSTANCES.erase(it);
+        }
+    }
+
+    ROUTER_SUBSCRIBER_HANDLE router_subscriber_create(const char* topic_name, const char* subscriber_id, bool isLocal)
+    {
+        ROUTER_SUBSCRIBER_HANDLE retVal = nullptr;
+        try
+        {
+            if (!topic_name || !subscriber_id)
+            {
+                logMessage(modules_log_level_t::LOG_ERROR, "Error creating subscriber. Topic name or subscriber ID is empty");
+            }
+            else
+            {
+                std::shared_ptr<RouterSubscriber> subscriber = std::make_shared<RouterSubscriber>(topic_name, subscriber_id, isLocal);
+                std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
+                SUBSCRIBERS[subscriber.get()] = subscriber;
+                retVal = subscriber.get();
+            }
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error creating subscriber: ") + e.what());
+        }
+
+        return retVal;
+    }
+
+    int router_subscriber_subscribe(ROUTER_SUBSCRIBER_HANDLE handle, router_subscriber_callback_t callback)
+    {
+        int retVal = -1;
+        try
+        {
+            if (!callback)
+            {
+                throw std::runtime_error("Error subscribing. Callback is null");
+            }
+            else
+            {
+                std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
+                SUBSCRIBERS.at(handle)->subscribe([callback](const std::vector<char>& message) {
+                    callback(message.data());
+                });
+                retVal = 0;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error subscribing: ") + e.what());
+        }
+        return retVal;
+    }
+
+    void router_subscriber_unsubscribe(ROUTER_SUBSCRIBER_HANDLE handle)
+    {
+        try
+        {
+            std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
+            SUBSCRIBERS.at(handle).reset();
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error unsubscribing: ") + e.what());
+        }
+    }
+
+    void router_subscriber_destroy(ROUTER_SUBSCRIBER_HANDLE handle)
+    {
+        std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
+        auto it = SUBSCRIBERS.find(handle);
+        if (it != SUBSCRIBERS.end())
+        {
+            SUBSCRIBERS.erase(it);
         }
     }
 

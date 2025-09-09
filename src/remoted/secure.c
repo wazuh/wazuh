@@ -41,11 +41,16 @@ _Atomic (time_t) current_ts;
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
+ROUTER_PROVIDER_HANDLE router_upgrade_ack_handle = NULL;
 ROUTER_PROVIDER_HANDLE router_sync_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
+
+// Headers for messages
+#define UPGRADE_ACK_HEADER "u:upgrade_module:"
+#define UPGRADE_ACK_HEADER_SIZE 17
 
 // Headers for inventory sync messages
 #define INVENTORY_SYNC_HEADER "s:"
@@ -240,6 +245,10 @@ void HandleSecure()
     router_initialize(taggedLogFunction);
 
     // Router providers initialization
+    if (router_upgrade_ack_handle = router_provider_create("upgrade_notifications", false), !router_upgrade_ack_handle) {
+        mdebug2("Failed to create router handle for 'upgrade_notifications'.");
+    }
+
     if (router_sync_handle = router_provider_create("inventory-states", false), !router_sync_handle) {
         mdebug2("Failed to create router handle for 'inventory synchronization'.");
     }
@@ -936,72 +945,116 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
 
     mdebug2("Forwarding message to router");
 
-    // Check if we have the router handle available
-    if (!router_sync_handle) {
-        mdebug2("Router handle for 'inventory synchronization' not available.");
+    ROUTER_PROVIDER_HANDLE router_handle = NULL;
+    int message_header_size = 0;
+    msg_type message_type = MT_INVALID;
+
+
+    if(strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
+        if (!router_sync_handle) {
+            mdebug2("Router handle for 'inventory synchronization' not available.");
+            return;
+        }
+        router_handle = router_sync_handle;
+        message_header_size = INVENTORY_SYNC_HEADER_SIZE;
+        message_type = MT_INV_SYNC;
+    }
+    else if(strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
+        if (!router_upgrade_ack_handle) {
+            mdebug2("Router handle for 'upgrade_notifications' not available.");
+            return;
+        }
+        router_handle = router_upgrade_ack_handle;
+        message_header_size = UPGRADE_ACK_HEADER_SIZE;
+        message_type = MT_UPGRADE_ACK;
+    }
+
+    if (!router_handle) {
         return;
     }
 
-    // Check if message starts with inventory sync header
-    if (strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) != 0) {
-        mdebug2("Message does not have inventory sync header.");
-        return;
+    char* msg_start = msg + message_header_size;
+    if (message_type == MT_INV_SYNC) {
+        // Validate minimum message length: header + "x:y" (4 chars minimum after header)
+        if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
+            mdebug2("Message too short for expected format.");
+            return;
+        }
+
+        size_t remaining_len = msg_length - INVENTORY_SYNC_HEADER_SIZE;
+
+        // Find colon separator between module and message
+        // Format after header: {module}:{msg}
+        char* colon = (char*)memchr(msg_start, ':', remaining_len);
+        if (!colon || colon == msg_start) {
+            mdebug2("Invalid message format: missing or empty module.");
+            return;
+        }
+
+        // Calculate module length and validate it's reasonable
+        size_t module_len = colon - msg_start;
+        if (module_len == 0 || module_len > OS_SIZE_64) { // Reasonable module name limit
+            mdebug2("Invalid module length.");
+            return;
+        }
+
+        // Calculate message payload position
+        char* msg_to_send = colon + 1;
+        size_t payload_offset = msg_to_send - msg;
+
+        if (payload_offset >= msg_length) {
+            mdebug2("Invalid message format: no payload data.");
+            return;
+        }
+
+        // Calculate safe message size
+        size_t msg_size = msg_length - payload_offset;
+
+        // Temporarily null-terminate module name (save original char)
+        char saved_char = *colon;
+        *colon = '\0';
+
+        struct agent_ctx agent_ctx = {
+            .id = agent_id,
+            .name = agent_name,
+            .ip = agent_ip,
+            .version = (char *)OSHash_Get_ex(agent_data_hash, agent_id),
+            .module = msg_start
+        };
+
+        if (router_provider_send_fb_agent_ctx(router_sync_handle, msg_to_send, msg_size, &agent_ctx) != 0) {
+            mdebug2("Unable to forward message for agent '%s'.", agent_id);
+        }
+
+        // Restore original character
+        *colon = saved_char;
     }
+    else if (message_type == MT_UPGRADE_ACK) {
 
-    // Validate minimum message length: header + "x:y" (4 chars minimum after header)
-    if (msg_length <= INVENTORY_SYNC_HEADER_SIZE + 4) {
-        mdebug2("Message too short for expected format.");
-        return;
+        cJSON* upgrade_ack_json;
+        const char *json_err;
+        if (upgrade_ack_json = cJSON_ParseWithOpts(msg_start, &json_err, 0), !upgrade_ack_json) {
+            merror("Failed to parse router message JSON: '%s'", json_err);
+            return;
+        }
+
+        cJSON* parameters_obj = cJSON_GetObjectItem(upgrade_ack_json, "parameters");
+
+        int agent = atoi(agent_id);
+        cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+        cJSON_AddItemToObject(parameters_obj, "agents", agents);
+
+        char *upgrade_message = cJSON_PrintUnformatted(upgrade_ack_json);
+        size_t msg_size = strlen(upgrade_message) + 1; // +1 for null terminator
+
+        if (router_provider_send(router_handle, upgrade_message, msg_size) != 0) {
+            mdebug2("Unable to forward upgrade-ack message '%s' for agent %s", msg_start, agent_id);
+        }
+
+        // Free the printed message and JSON object
+        cJSON_free(upgrade_message);
+        cJSON_Delete(upgrade_ack_json);
     }
-
-    char* msg_start = msg + INVENTORY_SYNC_HEADER_SIZE;
-    size_t remaining_len = msg_length - INVENTORY_SYNC_HEADER_SIZE;
-
-    // Find colon separator between module and message
-    // Format after header: {module}:{msg}
-    char* colon = (char*)memchr(msg_start, ':', remaining_len);
-    if (!colon || colon == msg_start) {
-        mdebug2("Invalid message format: missing or empty module.");
-        return;
-    }
-
-    // Calculate module length and validate it's reasonable
-    size_t module_len = colon - msg_start;
-    if (module_len == 0 || module_len > OS_SIZE_64) { // Reasonable module name limit
-        mdebug2("Invalid module length.");
-        return;
-    }
-
-    // Calculate message payload position
-    char* msg_to_send = colon + 1;
-    size_t payload_offset = msg_to_send - msg;
-
-    if (payload_offset >= msg_length) {
-        mdebug2("Invalid message format: no payload data.");
-        return;
-    }
-
-    // Calculate safe message size
-    size_t msg_size = msg_length - payload_offset;
-
-    // Temporarily null-terminate module name (save original char)
-    char saved_char = *colon;
-    *colon = '\0';
-
-    struct agent_ctx agent_ctx = {
-        .id = agent_id,
-        .name = agent_name,
-        .ip = agent_ip,
-        .version = (char *)OSHash_Get_ex(agent_data_hash, agent_id),
-        .module = msg_start
-    };
-
-    if (router_provider_send_fb_agent_ctx(router_sync_handle, msg_to_send, msg_size, &agent_ctx) != 0) {
-        mdebug2("Unable to forward message for agent '%s'.", agent_id);
-    }
-
-    // Restore original character
-    *colon = saved_char;
 }
 
 // Close and remove socket from keystore
