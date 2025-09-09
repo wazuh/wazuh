@@ -2,7 +2,7 @@
   description: Verify that the module does not start when it's disabled
   configuration_parameters:
     DISABLED: 'yes'
-    INVERVAL_SCAN: 5s
+    INTERVAL_SCAN: 5s
     START_ON_START: 'yes'
     HARDWARE_SCAN: 'yes'
     OS_SCAN: 'yes'
@@ -14,6 +14,8 @@
     HOTFIXES_SCAN: 'yes'
     GROUPS_SCAN: 'yes'
     USERS_SCAN: 'yes'
+    SERVICES_SCAN: 'yes'
+    BROWSER_EXTENSIONS_SCAN: 'yes'
     MAX_EPS: 10
   metadata:
     disabled: 'yes'
@@ -29,4 +31,6 @@
     hotfixes_scan: 'yes'
     groups_scan: 'yes'
     users_scan: 'yes'
+    services_scan: 'yes'
+    browser_extensions_scan: 'yes'
     max_eps: 10

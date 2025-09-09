@@ -18,6 +18,8 @@
 #include "stringHelper.h"
 #include "rpmlib.h"
 
+#include <filesystem_wrapper.hpp>
+
 void getRpmInfo(std::function<void(nlohmann::json&)> callback)
 {
 
@@ -130,6 +132,7 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
             for (const auto& file : pFiles)
             {
                 std::smatch match;
+                const file_system::FileSystemWrapper fileSystemWrapper;
 
                 for (const auto& [pattern, extraFile] : PYTHON_INFO_FILES)
                 {
@@ -137,7 +140,7 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
                     {
                         std::string baseInfoPath = match.str(0);
 
-                        if (std::filesystem::is_regular_file(baseInfoPath))
+                        if (fileSystemWrapper.is_regular_file(baseInfoPath))
                         {
                             pythonPackages.insert(std::move(baseInfoPath));
                         }
@@ -145,7 +148,7 @@ void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages)
                         {
                             std::string fullPath = baseInfoPath + extraFile;
 
-                            if (std::filesystem::exists(fullPath))
+                            if (fileSystemWrapper.exists(fullPath))
                             {
                                 pythonPackages.insert(std::move(fullPath));
                             }

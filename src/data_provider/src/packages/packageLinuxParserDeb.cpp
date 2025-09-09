@@ -15,6 +15,9 @@
 #include <iostream>
 #include <unordered_set>
 
+#include <filesystem_wrapper.hpp>
+#include <filesystem>
+
 void getDpkgInfo(const std::string& fileName, std::function<void(nlohmann::json&)> callback)
 {
     std::fstream file{fileName, std::ios_base::in};
@@ -56,15 +59,16 @@ void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages)
     std::regex listPattern(R"(^python.*\.list$)");
     const auto PYTHON_INFO_FILES = std::array {std::make_pair(std::regex(R"(^.*\.egg-info$)"), "/PKG-INFO"),
                                                std::make_pair(std::regex(R"(^.*\.dist-info$)"), "/METADATA")};
+    const file_system::FileSystemWrapper fileSystemWrapper;
 
     try
     {
-        for (const auto& entry : std::filesystem::directory_iterator(DPKG_INFO_PATH))
+        for (const auto& entry : fileSystemWrapper.list_directory(DPKG_INFO_PATH))
         {
-            if (std::filesystem::is_regular_file(entry) &&
-                    std::regex_search(entry.path().filename().string(), listPattern))
+            if (fileSystemWrapper.is_regular_file(entry) &&
+                    std::regex_search(entry.filename().string(), listPattern))
             {
-                std::ifstream file(entry.path());
+                std::ifstream file(entry);
                 std::string line;
 
                 while (std::getline(file, line))
@@ -77,7 +81,7 @@ void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages)
                         {
                             std::string baseInfoPath = match.str(0);
 
-                            if (std::filesystem::is_regular_file(baseInfoPath))
+                            if (fileSystemWrapper.is_regular_file(baseInfoPath))
                             {
                                 pythonPackages.insert(std::move(baseInfoPath));
                             }
@@ -85,7 +89,7 @@ void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages)
                             {
                                 std::string fullPath = baseInfoPath + extraFile;
 
-                                if (std::filesystem::exists(fullPath))
+                                if (fileSystemWrapper.exists(fullPath))
                                 {
                                     pythonPackages.insert(std::move(fullPath));
                                 }

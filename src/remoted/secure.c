@@ -860,15 +860,11 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             } else if (validation_result == 0) {
                 // Message was handled directly (HC_REQUEST), don't queue it
                 mdebug2("Control message processed directly, not queued.");
-                if (key) {
-                    OS_FreeKey(key);
-                }
+                OS_FreeKey(key);
             } else {
                 // Error in validation
                 mwarn("Error validating control message from agent ID '%s'.", key->id);
-                if (key) {
-                    OS_FreeKey(key);
-                }
+                OS_FreeKey(key);
             }
 
             // Free cleaned message if allocated
@@ -917,6 +913,15 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         }
     } else {
         rem_inc_recv_evt(agentid_str);
+    }
+
+    if(getDefine_Int("remoted", "router_forwarding_disabled", 0, 1) == 1) {
+        // If router forwarding is disabled, do not forward events to subscribers
+        mdebug2("Router forwarding is disabled, not forwarding message from agent '%s'.", agentid_str);
+        os_free(agentid_str);
+        os_free(agent_ip);
+        os_free(agent_name);
+        return;
     }
 
     // Forwarding events to subscribers

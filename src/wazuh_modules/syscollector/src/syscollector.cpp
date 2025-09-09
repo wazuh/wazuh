@@ -37,6 +37,8 @@ void syscollector_start(const unsigned int inverval,
                         const bool hotfixes,
                         const bool groups,
                         const bool users,
+                        const bool services,
+                        const bool browserExtensions,
                         const bool notifyOnFirstScan)
 {
     std::function<void(const std::string&)> callbackDiffWrapper
@@ -94,6 +96,8 @@ void syscollector_start(const unsigned int inverval,
                                       hotfixes,
                                       groups,
                                       users,
+                                      services,
+                                      browserExtensions,
                                       notifyOnFirstScan);
     }
     catch (const std::exception& ex)

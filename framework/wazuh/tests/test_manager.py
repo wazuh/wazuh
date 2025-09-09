@@ -317,7 +317,7 @@ def test_read_ossec_con_ko():
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
 
 
-@patch('wazuh.core.common.os.chown')  # <- evita el fallo
+@patch('wazuh.core.common.os.chown')
 @patch('wazuh.core.common.os.path.exists', return_value=True)
 @patch('builtins.open', new_callable=mock_open, read_data='test-uuid')
 @patch('wazuh.core.common.wazuh_gid', return_value=0)

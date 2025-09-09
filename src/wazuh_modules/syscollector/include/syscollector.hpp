@@ -65,6 +65,8 @@ class EXPORTED Syscollector final
                   const bool hotfixes = true,
                   const bool groups = true,
                   const bool users = true,
+                  const bool services = true,
+                  const bool browserExtensions = true,
                   const bool notifyOnFirstScan = false);
 
         void destroy();
@@ -87,6 +89,8 @@ class EXPORTED Syscollector final
         nlohmann::json getPortsData();
         nlohmann::json getGroupsData();
         nlohmann::json getUsersData();
+        nlohmann::json getServicesData();
+        nlohmann::json getBrowserExtensionsData();
 
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table, bool createFields = true);
         nlohmann::json ecsSystemData(const nlohmann::json& originalData, bool createFields = true);
@@ -100,6 +104,8 @@ class EXPORTED Syscollector final
         nlohmann::json ecsNetworkAddressData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsUsersData(const nlohmann::json& originalData, bool createFields = true);
         nlohmann::json ecsGroupsData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsServicesData(const nlohmann::json& originalData, bool createFields = true);
+        nlohmann::json ecsBrowserExtensionsData(const nlohmann::json& originalData, bool createFields = true);
 
         std::string getPrimaryKeys(const nlohmann::json& data, const std::string& table);
         std::string calculateHashId(const nlohmann::json& data, const std::string& table);
@@ -123,6 +129,8 @@ class EXPORTED Syscollector final
         void scanProcesses();
         void scanGroups();
         void scanUsers();
+        void scanServices();
+        void scanBrowserExtensions();
         void scan();
         void syncLoop(std::unique_lock<std::mutex>& lock);
 
@@ -156,6 +164,8 @@ class EXPORTED Syscollector final
         bool                                                                     m_notify;
         bool                                                                     m_groups;
         bool                                                                     m_users;
+        bool                                                                     m_services;
+        bool                                                                     m_browserExtensions;
         std::unique_ptr<DBSync>                                                  m_spDBSync;
         std::condition_variable                                                  m_cv;
         std::mutex                                                               m_mutex;
