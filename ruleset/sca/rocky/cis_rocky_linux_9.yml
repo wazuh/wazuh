@@ -3644,10 +3644,44 @@ checks:
 
   # 5.4.2.3 Ensure group root is the only GID 0 group (Automated) - Not Implemented
   # 5.4.2.4 Ensure root account access is controlled (Automated) - Not Implemented
-  # 5.4.2.5 Ensure root path integrity (Automated) - Not Implemented
-  # 5.4.2.6 Ensure root user umask is configured (Automated) - Not Implemented
-  # 5.4.2.7 Ensure system accounts do not have a valid login shell (Automated) - Not Implemented
-  # 5.4.2.8 Ensure accounts without a valid login shell are locked (Automated) - Not Implemented
+
+  # 5.4.2.5 Ensure root path integrity (Automated)
+  - id: 31707
+    title: "Ensure root path integrity."
+    description: "The root user can execute any command on the system and could be fooled into executing programs unintentionally if the PATH is not set correctly."
+    rationale: "Including the current working directory (.) or other writable directory in root's executable path makes it likely that an attacker can gain superuser access by forcing an administrator operating as root to execute a Trojan horse program."
+    remediation: "Correct or justify any: Locations that are not directories. Empty directories (::). Trailing (:). Current working directory (.). Non root owned directories. Directories that less restrictive than mode 0755"
+    compliance:
+      - cis: ["5.4.2.5"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1204", "T1204.002"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'c:/bin/bash --login -c "env | grep ^PATH=" -> !r:^PATH=.*::.*'
+      - 'c:/bin/bash --login -c "env | grep ^PATH=" -> !r:^PATH=.*:$'
+      - 'c:/bin/bash --login -c "env | grep ^PATH=" -> !r:^PATH=.*:\.(\/)*(:.)*'
+
+  # 5.4.2.6 Ensure root user umask is configured (Automated)
+  - id: 31708
+    title: "Ensure root user umask is configured."
+    description: "The user file-creation mode mask (umask) is used to determine the file permission for newly created directories and files. In Linux, the default permissions for any newly created directory is 0777 (rwxrwxrwx), and for any newly created file it is 0666 (rw-rw-rw-). The umask modifies the default Linux permissions by restricting (masking) these permissions. The umask is not simply subtracted, but is processed bitwise. Bits set in the umask are cleared in the resulting file mode."
+    rationale: "Setting a secure value for umask ensures that users make a conscious choice about their file permissions. A permissive umask value could result in directories or files with excessive permissions that can be read and/or written to by unauthorized users."
+    remediation: "Edit /root/.bash_profile and /root/.bashrc and remove, comment out, or update any line with umask to be 0027 or more restrictive."
+    compliance:
+      - cis: ["5.4.2.6"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1083"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "grep -i umask /root/.bash_profile /root/.bashrc | cut -d: -f 2" -> r:umask\s*0027|umask\s*0077'
+
+  # 5.4.2.7 Ensure system accounts do not have a valid login shell (Automated)
+  # 5.4.2.8 Ensure accounts without a valid login shell are locked (Automated)
 
   ###############################################
   # 5.4.3 Configure user default environment
@@ -3698,8 +3732,7 @@ checks:
       - nist_sp_800-53: ["AC-3", "MP-2"]
     condition: all
     rules:
-      - 'c:/bin/sh -c "grep -i \"^\s*umask\" /etc/profile /etc/profile.d/*.sh /etc/login.defs | cut -d: -f 2" -> r:UMASK|umask\s*0[2-7][7]'
-      #- 'c:/bin/sh -c "grep -i \"^\s*umask\" /etc/profile /etc/profile.d/*.sh /etc/login.defs | cut -d: -f 2" -> !r:(UMASK|umask)\s+[7][0-1][0-6]'
+      - 'c:/bin/sh -c "grep -i \"^\s*umask\" /etc/profile /etc/profile.d/*.sh /etc/login.defs | cut -d: -f 2 | tr \"[:upper:]\" \"[:lower:]\" -> r:umask\.*027|umask\.*037|umask\.*047|umask\.*057|umask\.*067|umask\.*077'
 
   ###############################################
   # 6.1 Configure Integrity Checking
