@@ -223,7 +223,7 @@ default_policies:
     policies:
       resourceless:
         actions:
-          - content:read
+          - content:status
           - content:reload
           - content:validate
         resources:

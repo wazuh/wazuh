@@ -18,14 +18,12 @@ async def get_content_status() -> WazuhResult:
         Result object with the operation outcome.
     """
     try:
-        with get_engine_client() as client:
-            module = content.ContentModule(client)
+        async with get_engine_client() as client:
+            module = content.ContentModule(client._client)
             response = await module.get_content_status()
             return WazuhResult(response)
     except WazuhException as e:
-        if e.code == 2802:
-            return WazuhResult({'message': 'Not Implemented'})
-        raise e
+        return WazuhResult({'message': 'Not Implemented'})
 
 @expose_resources(actions=['content:reload'], resources=['*:*:*'])
 async def reload_contents() -> WazuhResult:
@@ -38,16 +36,14 @@ async def reload_contents() -> WazuhResult:
         Result object with the operation outcome.
     """
     try:
-        with get_engine_client() as client:
-            module = content.ContentModule(client)
+        async with get_engine_client() as client:
+            module = content.ContentModule(client._client)
             response = await module.reload_content()
             return WazuhResult(response)
     except WazuhException as e:
-        if e.code == 2802:
-            return WazuhResult({'message': 'Not Implemented'})
-        raise e
+        return WazuhResult({'message': 'Not Implemented'})
 
-@expose_resources(actions=['decoders:validate'], resources=['*:*:*'])
+@expose_resources(actions=['content:validate'], resources=['*:*:*'])
 async def validate_contents(type: str, payload: str) -> WazuhResult:
     """
     Validate a content file.
@@ -65,16 +61,14 @@ async def validate_contents(type: str, payload: str) -> WazuhResult:
         Result object with the operation outcome.
     """
     try:
-        with get_engine_client() as client:
-            module = content.ContentModule(client)
+        async with get_engine_client() as client:
+            module = content.ContentModule(client._client)
             response = await module.validate_content(type, payload)
             return WazuhResult(response)
     except WazuhException as e:
-        if e.code == 2802:
-            return WazuhResult({'message': 'Not Implemented'})
-        raise e
+        return WazuhResult({'message': 'Not Implemented'})
 
-@expose_resources(actions=['decoders:validate'], resources=['*:*:*'])
+@expose_resources(actions=['content:validate'], resources=['*:*:*'])
 async def log_tests(payload: str) -> WazuhResult:
     """
     Run log test for content files.
@@ -90,11 +84,9 @@ async def log_tests(payload: str) -> WazuhResult:
         Result object with the operation outcome.
     """
     try:
-        with get_engine_client() as client:
-            module = log.LogModule(client)
+        async with get_engine_client() as client:
+            module = log.LogModule(client._client)
             response = await module.log_test(payload)
             return WazuhResult(response)
     except WazuhException as e:
-        if e.code == 2802:
-            return WazuhResult({'message': 'Not Implemented'})
-        raise e
+        return WazuhResult({'message': 'Not Implemented'})
