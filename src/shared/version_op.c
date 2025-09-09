@@ -779,40 +779,6 @@ os_info *get_unix_version()
                         pclose(cmd_output_ver);
                     }
                     os_free(cmd_path);
-                } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"SunOS") == 0){ // Sun OS
-                    info->os_name = strdup("SunOS");
-                    info->os_platform = strdup("sunos");
-
-                    if (os_release = wfopen("/etc/release", "r"), os_release) {
-                        if (fgets(buff, sizeof(buff) - 1, os_release) == NULL) {
-                            merror("Cannot read from /etc/release.");
-                            fclose(os_release);
-                            pclose(cmd_output);
-                            os_free(uname_path);
-                            goto free_os_info;
-                        } else {
-                            char *base;
-                            char tag[]  = "Solaris";
-                            char *found = strstr(buff, tag);
-                            if (found) {
-                                for (found += strlen(tag); *found != '\0' && *found == ' '; found++);
-                                for (base = found; *found != '\0' && *found != ' '; found++);
-                                *found = '\0';
-                                os_strdup(base, info->os_version);
-                                fclose(os_release);
-                            } else {
-                                merror("Cannot get the Solaris version.");
-                                fclose(os_release);
-                                pclose(cmd_output);
-                                os_free(uname_path);
-                                goto free_os_info;
-                            }
-                        }
-                    } else {
-                        pclose(cmd_output);
-                        os_free(uname_path);
-                        goto free_os_info;
-                    }
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr),"OpenBSD") == 0 ||
                         strcmp(strtok_r(buff, "\n", &save_ptr),"NetBSD")  == 0 ||
                         strcmp(strtok_r(buff, "\n", &save_ptr),"FreeBSD") == 0 ){ // BSD
