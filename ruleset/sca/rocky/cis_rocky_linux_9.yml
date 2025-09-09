@@ -2723,7 +2723,7 @@ checks:
       - mitre_mitigations: ["M1022"]
       - mitre_tactics: ["TA0005"]
       - mitre_techniques: ["T1098", "T1098.004", "T1543", "T1543.002"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
       - pci_dss_3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
@@ -2734,8 +2734,9 @@ checks:
       - "not c:find /etc/ssh/sshd_config.d -type f -name '*.conf' ! -user root -exec stat -L {} \\; -> r:^.*File:"
       - "not c:find /etc/ssh/sshd_config.d -type f -name '*.conf' ! -group root -exec stat -L {} \\; -> r:^.*File:"
 
-  # 5.1.2 Ensure permissions on SSH private host key files are configured. (Automated) - Not Implemented
-  # 5.1.3 Ensure permissions on SSH public host key files are configured. (Automated) - Not Implemented
+  # 5.1.2 Ensure permissions on SSH private host key files are configured. (Automated)
+  # 5.1.3 Ensure permissions on SSH public host key files are configured. (Automated)
+
   # 5.1.4 Ensure sshd Ciphers are configured (Automated) - Not Implemented
   # 5.1.5 Ensure sshd KexAlgorithms is configured (Automated) - Not Implemented
   # 5.1.6 Ensure sshd MACs are configured (Automated) - Not Implemented
@@ -4969,13 +4970,12 @@ checks:
     rules:
       # NOTE: this check finds interactive users with home dirs MORE permissive than chmod 0750
       - 'c:/bin/sh -c "cat /etc/shells | xargs -I {} grep -E \".*:{}\" /etc/passwd | cut -d: -f6 | xargs -I {} find {} -maxdepth 0 -type d -perm /g+w,o+rwx | wc -l" -> r:^0$'
-      # NOTE: this check extracts interactive users home paths and compare ownership against /etc/passwd
+      # NOTE: this check extracts (i)nteractive user's (home) and compare ownership against /etc/passwd
       - >-
-        c:/bin/sh -c "interactive_users=`cat /etc/shells | xargs -I {} grep -E \".*:{}\" /etc/passwd | cut -d: -f6`;
-        assert_homes=`echo \"${interactive_homes}\" | xargs -I {} find {} -maxdepth 0 -type d -perm /750 | xargs stat -Lc \"%U:.*:%n\" | xargs -I {} grep -E \"{}\" /etc/passwd`;
-        if [ `echo \"${interactive_homes}\" | wc -l` -eq `echo \"${assert_homes}\" | wc -l` ];
-          then echo \"OK\";
-        fi" -> r:OK
+        c:/bin/sh -c "
+        ihomes=`cat /etc/shells | xargs -I {} grep -E \".*:{}\" /etc/passwd | cut -d: -f6 | sort -u`;
+        assert_perms=`echo \"${ihomes}\" | xargs -I {} find {} -maxdepth 0 -type d -perm /750 | xargs stat -Lc \"%U:.*:%n\" | xargs -I {} grep -E \"{}\" /etc/passwd | cut -d: -f6 | sort -u`;
+        comm -23 <( echo \"${ihomes}\" ) <( echo \"${assert_perms}\" ) | wc -l" -> r:^0$
 
   # 7.2.9 Ensure local interactive user dot files access is configured (Automated)
   - id: 31703
