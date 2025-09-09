@@ -354,6 +354,8 @@ class WazuhException(Exception):
                },
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
+        1761: {'message': 'The next set of configuration values are no longer supported',
+               'remediation': 'Please choose supported values and try again'},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
