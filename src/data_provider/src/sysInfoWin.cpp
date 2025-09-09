@@ -225,13 +225,12 @@ class SysInfoProcess final
             // At least one logical drive couldn't be mapped, trying another use of QueryDosDevice
             if (logicalDrives.size() != ret.size())
             {
-                // We avoid using OS_MAXSTR on Windows XP
-                const auto spPhysicalDevices { std::make_unique<char[]>(OS_SIZE_32768) };
+                const auto spPhysicalDevices { std::make_unique<char[]>(OS_MAXSTR) };
 
-                if (QueryDosDevice(nullptr, spPhysicalDevices.get(), OS_SIZE_32768))
+                if (QueryDosDevice(nullptr, spPhysicalDevices.get(), OS_MAXSTR))
                 {
                     const auto tokens = Utils::splitNullTerminatedStrings(spPhysicalDevices.get());
-                    const auto spDosDevice { std::make_unique<char[]>(OS_SIZE_32768) };
+                    const auto spDosDevice { std::make_unique<char[]>(OS_MAXSTR) };
 
                     for (const auto& token : tokens)
                     {
@@ -500,43 +499,26 @@ static std::string getSerialNumber()
 {
     std::string ret;
 
-    if (Utils::isVistaOrLater())
+    static auto pfnGetSystemFirmwareTable{Utils::getSystemFirmwareTableFunctionAddress()};
+
+    if (pfnGetSystemFirmwareTable)
     {
-        static auto pfnGetSystemFirmwareTable{Utils::getSystemFirmwareTableFunctionAddress()};
+        const auto size {pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, nullptr, 0)};
 
-        if (pfnGetSystemFirmwareTable)
+        if (size)
         {
-            const auto size {pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, nullptr, 0)};
+            const auto spBuff{std::make_unique<unsigned char[]>(size)};
 
-            if (size)
+            if (spBuff)
             {
-                const auto spBuff{std::make_unique<unsigned char[]>(size)};
-
-                if (spBuff)
+                // Get raw SMBIOS firmware table
+                if (pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, spBuff.get(), size) == size)
                 {
-                    // Get raw SMBIOS firmware table
-                    if (pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, spBuff.get(), size) == size)
-                    {
-                        PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
-                        // Parse SMBIOS structures
-                        ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, smbios->Length);
-                    }
+                    PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
+                    // Parse SMBIOS structures
+                    ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, smbios->Length);
                 }
             }
-        }
-    }
-    else
-    {
-        const auto rawData{Utils::exec("wmic baseboard get SerialNumber")};
-        const auto pos{rawData.find("\r\n")};
-
-        if (pos != std::string::npos)
-        {
-            ret = Utils::trim(rawData.substr(pos), " \t\r\n");
-        }
-        else
-        {
-            ret = UNKNOWN_VALUE;
         }
     }
 
@@ -675,12 +657,6 @@ nlohmann::json SysInfo::getNetworks() const
     std::unique_ptr<IP_ADAPTER_INFO, Utils::IPAddressSmartDeleter> adapterInfo;
     std::unique_ptr<IP_ADAPTER_ADDRESSES, Utils::IPAddressSmartDeleter> adaptersAddresses;
     Utils::NetworkWindowsHelper::getAdapters(adaptersAddresses);
-
-    if (!Utils::isVistaOrLater())
-    {
-        // Get additional IPv4 info - Windows XP only
-        Utils::NetworkWindowsHelper::getAdapterInfo(adapterInfo);
-    }
 
     auto rawAdapterAddresses { adaptersAddresses.get() };
 
