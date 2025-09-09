@@ -963,21 +963,15 @@ int get_ipv4_numeric(const char *address, struct in_addr *addr) {
     int ret = OS_INVALID;
 
 #ifdef WIN32
-    if (checkVista()) {
-        typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
-        inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
+    typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+    inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
 
-        if (NULL != InetPton) {
-            if (InetPton(AF_INET, address, addr) == 1) {
-                ret = OS_SUCCESS;
-            }
-        } else {
-            mwarn("It was not possible to convert IPv4 address");
-        }
-    } else {
-        if ((addr->s_addr = inet_addr(address)) > 0) {
+    if (NULL != InetPton) {
+        if (InetPton(AF_INET, address, addr) == 1) {
             ret = OS_SUCCESS;
         }
+    } else {
+        mwarn("It was not possible to convert IPv4 address");
     }
 #else
     if (inet_pton(AF_INET, address, addr) == 1) {
@@ -992,19 +986,15 @@ int get_ipv6_numeric(const char *address, struct in6_addr *addr6) {
     int ret = OS_INVALID;
 
 #ifdef WIN32
-    if (checkVista()) {
-        typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
-        inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
+    typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+    inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
 
-        if (NULL != InetPton) {
-            if (InetPton(AF_INET6, address, addr6) == 1) {
-                ret = OS_SUCCESS;
-            }
-        } else {
-            mwarn("It was not possible to convert IPv6 address");
+    if (NULL != InetPton) {
+        if (InetPton(AF_INET6, address, addr6) == 1) {
+            ret = OS_SUCCESS;
         }
     } else {
-        mwarn("IPv6 in Windows XP is not supported");
+        mwarn("It was not possible to convert IPv6 address");
     }
 #else
     if (inet_pton(AF_INET6, address, addr6) == 1) {
@@ -1019,23 +1009,15 @@ int get_ipv4_string(struct in_addr addr, char *address, size_t address_size) {
     int ret = OS_INVALID;
 
 #ifdef WIN32
-    if (checkVista()) {
-        typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
-        inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
+    typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
+    inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
 
-        if (NULL != InetNtop) {
-            if (InetNtop(AF_INET, &addr, address, address_size)) {
-                ret = OS_SUCCESS;
-            }
-        } else {
-            mwarn("It was not possible to convert IPv4 address");
-        }
-    } else {
-        char *aux = inet_ntoa(addr);
-        if (aux) {
-            strncpy(address, aux, address_size);
+    if (NULL != InetNtop) {
+        if (InetNtop(AF_INET, &addr, address, address_size)) {
             ret = OS_SUCCESS;
         }
+    } else {
+        mwarn("It was not possible to convert IPv4 address");
     }
 #else
     if (inet_ntop(AF_INET, &addr, address, address_size)) {
@@ -1050,19 +1032,15 @@ int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size) {
     int ret = OS_INVALID;
 
 #ifdef WIN32
-    if (checkVista()) {
-        typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
-        inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
+    typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
+    inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
 
-        if (NULL != InetNtop) {
-            if (InetNtop(AF_INET6, &addr6, address, address_size)) {
-                ret = OS_SUCCESS;
-            }
-        } else {
-            mwarn("It was not possible to convert IPv6 address");
+    if (NULL != InetNtop) {
+        if (InetNtop(AF_INET6, &addr6, address, address_size)) {
+            ret = OS_SUCCESS;
         }
     } else {
-        mwarn("IPv6 in Windows XP is not supported");
+        mwarn("It was not possible to convert IPv6 address");
     }
 #else
     if (inet_ntop(AF_INET6, &addr6, address, address_size)) {

@@ -251,17 +251,7 @@ void LogCollectorStart()
 
     m_uname = getuname();
 
-    /* Check if we are on Windows Vista */
-    if (!checkVista()) {
-        minfo("Windows version is older than 6.0. (%s).", m_uname);
-    } else {
-        minfo("Windows version is 6.0 or newer. (%s).", m_uname);
-    }
-
-    /* Read vista descriptions */
-    if (isVista) {
-        win_read_vista_sec();
-    }
+    win_read_vista_sec();
 
     /* Check for ASCII, UTF-8 */
     check_text_only();

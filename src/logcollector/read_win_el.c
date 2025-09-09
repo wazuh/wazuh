@@ -379,7 +379,7 @@ void readel(os_el *el, int printit)
                 }
 
                 /* Get a more descriptive message (if available) */
-                if (isVista && strcmp(el->name, "Security") == 0) {
+                if (strcmp(el->name, "Security") == 0) {
                     descriptive_msg = el_vista_getMessage(id, el_sstring);
                 }
 
@@ -414,7 +414,7 @@ void readel(os_el *el, int printit)
                 }
             }
 
-            else if (isVista && strcmp(el->name, "Security") == 0) {
+            else if (strcmp(el->name, "Security") == 0) {
                 int uid_array_id = -1;
 
                 switch (id) {
