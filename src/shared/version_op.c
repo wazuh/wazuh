@@ -863,29 +863,6 @@ os_info *get_unix_version()
                         }
                         pclose(cmd_output_ver);
                     }
-                } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "AIX") == 0) { // AIX
-                    char *cmd_path = NULL;
-
-                    os_strdup("AIX", info->os_name);
-                    os_strdup("aix", info->os_platform);
-
-                    if (get_binary_path("oslevel", &cmd_path) < 0) {
-                        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
-                    }
-
-                    if (cmd_output_ver = popen(cmd_path, "r"), cmd_output_ver) {
-                        if (fgets(buff, sizeof(buff) - 1, cmd_output_ver)) {
-                            int buff_len = strlen(buff);
-                            if (buff_len > 0) {
-                                buff[buff_len - 1] = '\0';
-                                os_strdup(buff, info->os_version);
-                            }
-                        } else {
-                            mdebug1("Cannot read from command output (oslevel).");
-                        }
-                        pclose(cmd_output_ver);
-                    }
-                    os_free(cmd_path);
                 } else if (strcmp(strtok_r(buff, "\n", &save_ptr), "Linux") == 0) { // Linux undefined
                     info->os_name = strdup("Linux");
                     info->os_platform = strdup("linux");

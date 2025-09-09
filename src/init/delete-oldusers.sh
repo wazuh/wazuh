@@ -31,9 +31,6 @@ else
     elif [ "$UNAME" = "SunOS" -o "$UNAME" = "OpenBSD" -o "$UNAME" = "HP-UX" -o "$UNAME" = "NetBSD" ]; then
         GROUPDEL="/usr/sbin/groupdel"
         USERDEL="/usr/sbin/userdel"
-    elif [ "$UNAME" = "AIX" ]; then
-        GROUPDEL="/usr/bin/rmgroup"
-        USERDEL="/usr/sbin/userdel"
     else
         # All current linux distributions should support system accounts for
         # users/groups. If not, leave the GROUPDEL/USERDEL as it was before

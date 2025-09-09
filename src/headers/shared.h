@@ -171,10 +171,6 @@ typedef uint8_t u_int8_t;
 #endif
 #endif /* WIN32 */
 
-#ifdef AIX
-#define MSG_DONTWAIT MSG_NONBLOCK
-#endif
-
 #if defined(__GNUC__) && __GNUC__ >= 7
 #define WFALLTHROUGH __attribute__ ((fallthrough))
 #else

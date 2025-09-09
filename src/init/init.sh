@@ -157,21 +157,6 @@ runInit()
         return 0;
     fi
 
-    if [ "X${UN}" = "XAIX" ]; then
-        echo " - ${systemis} AIX."
-        echo " - ${modifiedinit}"
-        GenerateService ossec-hids-aix.init > /etc/rc.d/init.d/${service}
-        chmod 755 /etc/rc.d/init.d/${service}
-
-        if [ "X${update_only}" = "X" ]
-        then
-            ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc2.d/S97${service}
-            ln -s /etc/rc.d/init.d/${service} /etc/rc.d/rc3.d/S97${service}
-        fi
-
-        return 0;
-    fi
-
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
         # Checking for the presence of wazuh-control on rc.local
         grep wazuh-control /etc/rc.local > /dev/null 2>&1

@@ -55,12 +55,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
         sysinfo
         syscollector
         pthread)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    target_link_libraries(syscollector_test_tool
-        dbsync
-        sysinfo
-        syscollector
-        dl)
 else()
     target_link_libraries(syscollector_test_tool
         dbsync
