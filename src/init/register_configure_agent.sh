@@ -283,8 +283,6 @@ main () {
     if [ "${uname_s}" = "Darwin" ]; then
         sed="sed -ire"
         set_vars
-    elif [ "${uname_s}" = "AIX" ] || [ "${uname_s}" = "SunOS" ] || [ "${uname_s}" = "HP-UX" ]; then
-        use_unix_sed="True"
     fi
 
     get_deprecated_vars

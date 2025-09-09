@@ -669,8 +669,6 @@ InstallCommon()
         INSTALL="ginstall"
     elif [ ${DIST_NAME} = "HP-UX" ]; then
         INSTALL="/usr/local/coreutils/bin/install"
-   elif [ ${DIST_NAME} = "AIX" ]; then
-        INSTALL="/opt/freeware/bin/install"
     fi
 
     ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
@@ -859,34 +857,22 @@ InstallCommon()
         fi
     fi
 
-    if [ ${DIST_NAME} = 'AIX' ]
+
+    if [ -f libstdc++.so.6 ]
     then
-        if [ -f libstdc++.a ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.a ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
         fi
+    fi
 
-        if [ -f libgcc_s.a ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.a ${INSTALLDIR}/lib
-        fi
-    else
-        if [ -f libstdc++.so.6 ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
+    if [ -f libgcc_s.so.1 ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
 
-            if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
-            fi
-        fi
-
-        if [ -f libgcc_s.so.1 ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
-
-            if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
-            fi
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
         fi
     fi
 

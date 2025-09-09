@@ -2054,118 +2054,6 @@ void test_get_unix_version_zscaler(void **state)
     assert_string_equal(ret->os_platform, "bsd");
 }
 
-void test_get_unix_version_fail_os_release_uname_aix(void **state)
-{
-    (void) state;
-    os_info *ret;
-
-    // Fail to open /etc/os-release
-    expect_string(__wrap_wfopen, path, "/etc/os-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /usr/lib/os-release
-    expect_string(__wrap_wfopen, path, "/usr/lib/os-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/centos-release
-    expect_string(__wrap_wfopen, path, "/etc/centos-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/fedora-release
-    expect_string(__wrap_wfopen, path, "/etc/fedora-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/redhat-release
-    expect_string(__wrap_wfopen, path, "/etc/redhat-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/arch-release
-    expect_string(__wrap_wfopen, path, "/etc/arch-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/gentoo-release
-    expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/SuSE-release
-    expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/debian_version
-    expect_string(__wrap_wfopen, path, "/etc/debian_version");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/slackware-version
-    expect_string(__wrap_wfopen, path, "/etc/slackware-version");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/alpine-release
-    expect_string(__wrap_wfopen, path, "/etc/alpine-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // uname
-    char *uname_path = NULL;
-    os_strdup("/path/to/uname", uname_path);
-    expect_string(__wrap_get_binary_path, command, "uname");
-    will_return(__wrap_get_binary_path, uname_path);
-    will_return(__wrap_get_binary_path, 0);
-
-    expect_string(__wrap_popen, command, "/path/to/uname");
-    expect_string(__wrap_popen, type, "r");
-    will_return(__wrap_popen, 1);
-
-    expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "AIX\n");
-
-    // oslevel
-    char *oslevel_path = NULL;
-    os_strdup("/path/to/oslevel", oslevel_path);
-    expect_string(__wrap_get_binary_path, command, "oslevel");
-    will_return(__wrap_get_binary_path, oslevel_path);
-    will_return(__wrap_get_binary_path, 0);
-
-    expect_string(__wrap_popen, command, "/path/to/oslevel");
-    expect_string(__wrap_popen, type, "r");
-    will_return(__wrap_popen, 1);
-
-    expect_value(__wrap_fgets, __stream, 1);
-    will_return(__wrap_fgets, "7.1\n");
-
-    expect_value(__wrap_pclose, stream, 1);
-    will_return(__wrap_pclose, 1);
-
-
-    expect_value(__wrap_pclose, stream, 1);
-    will_return(__wrap_pclose, 1);
-
-    ret = get_unix_version();
-    *state = ret;
-
-    assert_non_null(ret);
-    assert_string_equal(ret->os_name, "AIX");
-    assert_string_equal(ret->os_major, "7");
-    assert_string_equal(ret->os_minor, "1");
-    assert_string_equal(ret->os_version, "7.1");
-    assert_string_equal(ret->os_platform, "aix");
-    assert_string_equal(ret->sysname, "Linux");
-}
-
 void test_OSX_ReleaseName(void **state) {
     (void)state;
 
@@ -2343,7 +2231,6 @@ int main(void) {
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_hp_ux, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_bsd, delete_os_info),
             cmocka_unit_test_teardown(test_get_unix_version_zscaler, delete_os_info),
-            cmocka_unit_test_teardown(test_get_unix_version_fail_os_release_uname_aix, delete_os_info),
             cmocka_unit_test(test_OSX_ReleaseName),
 #endif
             // compare_wazuh_versions

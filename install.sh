@@ -74,8 +74,6 @@ Install()
           MAKEBIN=gmake
     elif [ "X$NUNAME" = "XHP-UX" ]; then
           MAKEBIN=/usr/local/bin/gmake
-    elif [ "X$NUNAME" = "XAIX" ]; then
-          MAKEBIN=/opt/freeware/bin/gmake
     fi
     if [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
         ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
@@ -554,9 +552,6 @@ checkDependencies()
     OLDOPATH=$PATH
     if [ "X$NUNAME" = "XSunOS" ]; then
         PATH=$PATH:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
-        export  PATH
-    elif [ "X$NUNAME" = "XAIX" ]; then
-        PATH=$PATH:/usr/vac/bin
         export  PATH
     fi
 
