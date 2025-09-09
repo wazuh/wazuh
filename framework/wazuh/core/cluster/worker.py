@@ -19,6 +19,7 @@ from wazuh.core import cluster as metadata, common, exception, utils, analysis
 from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.cluster.dapi import dapi
+from wazuh.core.exception import WazuhException
 from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
@@ -117,6 +118,53 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         super().done_callback(future)
 
 
+class AsyncReloadRulesetFlag:
+    """
+    Asynchronous flag with locking to control ruleset reload operations in worker nodes.
+
+    This class provides an async context manager for safely setting and clearing a boolean flag
+    used to indicate when the ruleset should be reloaded.
+    """
+
+    def __init__(self):
+        """Initializes the asynchronous lock and the flag state."""
+        self._lock = asyncio.Lock()
+        self._flag = False
+
+    async def __aenter__(self):
+        """Acquire the lock asynchronously when entering the context.
+
+        Returns
+        -------
+        AsyncReloadRulesetFlag
+            The instance itself.
+        """
+        await self._lock.acquire()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Release the lock when exiting the context."""
+        self._lock.release()
+
+    def set(self):
+        """Set the flag to True, indicating a reload is required."""
+        self._flag = True
+
+    def clear(self):
+        """Clear the flag, indicating no reload is required."""
+        self._flag = False
+
+    def is_set(self):
+        """Check if the flag is set.
+
+        Returns
+        -------
+        bool
+            True if the flag is set, False otherwise.
+        """
+        return self._flag
+
+
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     """
     Handle connection with the master node.
@@ -142,6 +190,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
 
         # Flag to prevent a new Integrity check if Integrity sync is in progress.
         self.check_integrity_free = True
+
+        # Async flag used to indicate when the worker should reload the ruleset after the next sync
+        self.reload_ruleset_flag = AsyncReloadRulesetFlag()
 
         # Every task logger is configured to log using a tag describing the synchronization process. For example,
         # a log coming from the "Integrity" logger will look like this:
@@ -214,7 +265,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         self.logger.debug(f"Command received: '{command}'")
         if command == b'syn_m_c_ok':
-            return self.sync_integrity_ok_from_master()
+            asyncio.create_task(self.log_exceptions(self.sync_integrity_ok_from_master()))
+            return b'ok', b'Thanks'
         elif command == b'syn_m_c':
             return self.setup_receive_files_from_master()
         elif command == b'syn_m_c_e':
@@ -340,21 +392,20 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         """
         return super().error_receiving_file(task_id_and_error_details=data, logger_tag='Integrity sync')
 
-    def sync_integrity_ok_from_master(self) -> Tuple[bytes, bytes]:
-        """Function called when the master sends the "syn_m_c_ok" command.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            Response message.
-        """
+    async def sync_integrity_ok_from_master(self):
+        """Function called when the master sends the "syn_m_c_ok" command."""
         integrity_logger = self.task_loggers['Integrity check']
         integrity_logger.info(
             f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
             f"Sync not required.")
-        return b'ok', b'Thanks'
+
+        async with self.reload_ruleset_flag:
+            if self.reload_ruleset_flag.is_set():
+                response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
+                analysis.log_ruleset_reload_response(self.logger, response)
+
+                # Clear the flag
+                self.reload_ruleset_flag.clear()
 
     async def compare_agent_groups_checksums(self, master_checksum, logger):
         """Compare the checksum of the local database with the checksum of the master node to check if these differ.
@@ -576,6 +627,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                         self.agent_info_sync_status['date_start'] = start_time
 
                         agents_sync = await agent_info.retrieve_agents_information()
+                        if agents_sync is None:
+                            raise WazuhException(code=2017)
+
                         sync_sum = len(agents_sync.get('syncreq', [])) + \
                             len(agents_sync.get('syncreq_keepalive', [])) + \
                             len(agents_sync.get('syncreq_status', []))
@@ -682,6 +736,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 log_subprocess_execution(self.task_loggers['Integrity sync'], logs)
                 logger.debug("Updating local files: End.")
 
+            async with self.reload_ruleset_flag:
+                if self.reload_ruleset_flag.is_set():
+                    response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
+                    analysis.log_ruleset_reload_response(self.logger, response)
+
+                    # Clear the flag
+                    self.reload_ruleset_flag.clear()
+
             logger.info(f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
         except Exception as e:
             logger.error(f"Error synchronizing files: {e}")
@@ -753,7 +815,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                           ownership=(common.wazuh_uid(), common.wazuh_gid())
                           )
 
-        reload_ruleset_files = []
         errors = {'shared': 0, 'missing': 0, 'extra': 0}
         result_logs = {'debug2': defaultdict(list), 'error': defaultdict(list), 'generic_errors': []}
 
@@ -763,10 +824,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for filename, data in files.items():
                     try:
                         result_logs['debug2'][filename].append(f"Processing file {filename}")
-                        if analysis.is_ruleset_file(filename):
-                            result_logs['debug2'][filename].append("This file update will trigger a hot-reload in analysisd")
-                            reload_ruleset_files.append({'type': filetype, 'file': filename})
-
                         overwrite_or_create_files(filename, data)
                     except Exception as e:
                         errors[filetype] += 1
@@ -778,10 +835,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 for file_to_remove in files:
                     try:
                         result_logs['debug2'][file_to_remove].append(f"Remove file: '{file_to_remove}'")
-                        if analysis.is_ruleset_file(file_to_remove):
-                            result_logs['debug2'][file_to_remove].append("This file update will trigger a hot-reload in analysisd")
-                            reload_ruleset_files.append({'type': filetype, 'file': file_to_remove})
-
                         file_path = os.path.join(common.WAZUH_PATH, file_to_remove)
                         try:
                             os.remove(file_path)
@@ -812,43 +865,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 result_logs["debug2"][directory].append(f"Error removing directory '{directory}': {e}")
                 continue
 
-        # If analysisd must be reloaded
-        if len(reload_ruleset_files) > 0:
-            try:
-                response = analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
-                if response.is_ok():
-                    if response.has_warnings():
-                        for warning in response.warnings:
-                            matched = [file_info for file_info in reload_ruleset_files if file_info['file'] in warning]
-                            if matched:
-                                for match in matched:
-                                    result_logs['debug2'][match['file']].append(warning)
-                            else:
-                                result_logs['debug2']['warnings'].append(warning)
-
-                else:
-                    for error in response.errors:
-                        matched = [file_info for file_info in reload_ruleset_files if file_info['file'] in error]
-                        if matched:
-                            for match in matched:
-                                result_logs['error'][match['type']].append(f"Error reloading {match['type']} "
-                                                                      f"file '{match['file']}': {error}")
-                                errors[match['type']] += 1
-                        else:
-                            result_logs['generic_errors'].append(f"Error reloading ruleset {error}")
-
-                            # Add an error to all filetypes if we can't specify the file
-                            unique_types = []
-                            for file_info in reload_ruleset_files:
-                                unique_types.append(file_info['type'])
-
-                            for file_type in set(unique_types):
-                                errors[file_type] += 1
-
-
             except Exception as e:
                 result_logs['generic_errors'].append(f"Error reloading ruleset {e}")
-
 
         if sum(errors.values()) > 0:
             result_logs['generic_errors'].append(f"Found errors: {errors['shared']} overwriting, "

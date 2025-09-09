@@ -38,6 +38,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   add_library(browser_extensions STATIC ${SRC_FILES})
   target_link_libraries(browser_extensions
     ${SRC_FOLDER}/external/openssl/libcrypto.a
+    dl
   )
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   include_directories(

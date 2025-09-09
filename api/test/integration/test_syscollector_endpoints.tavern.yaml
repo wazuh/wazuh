@@ -425,7 +425,7 @@ stages:
       verify: False
       <<: *packages_request_003
       params:
-        vendor: "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>"
+        vendor: "Ubuntu Core developers"
         limit: 1
     response:
       status_code: 200
@@ -4365,6 +4365,123 @@ stages:
     request:
       verify: False
       <<: *group_request_001
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
+---
+test_name: GET /syscollector/{agent_id}/browser_extensions
+
+stages:
+
+  - name: Get all browser extensions from an agent
+    request: &browser_extension_request_001
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/browser_extensions"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Get distinct browser extensions info
+    request:
+      verify: False
+      <<: *browser_extension_request_001
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/browser_extensions"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Get distinct browser extensions info
+    request:
+      verify: False
+      <<: *browser_extension_request_001
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
+---
+test_name: GET /syscollector/{agent_id}/services
+
+stages:
+
+  - name: Get all services from an agent
+    request: &service_request_001
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/services"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Get distinct services info
+    request:
+      verify: False
+      <<: *service_request_001
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/syscollector/001/services"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
+  - name: Get distinct services info
+    request:
+      verify: False
+      <<: *service_request_001
       params:
         distinct: true
     response:

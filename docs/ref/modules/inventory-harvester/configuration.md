@@ -64,7 +64,7 @@ Turn off specific providers individually
 <os>yes</os>
 <network>yes</network>
 <packages>yes</packages>
-<ports all="no">yes</ports>
+<ports all="yes">yes</ports>
 <processes>yes</processes>
 <users>yes</users>
 <groups>yes</groups>
