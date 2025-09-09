@@ -3,7 +3,7 @@
    - Öntanımlı olarak host-deny ve firewall-drop etkin yanıt
      mekanizmalarını etkin hale getirebiliriz. Bunlardan ilki
      bir bilgisayarı /etc/hosts.deny dosyasına ekler, ikincisi
-     bilgisayarı iptables (linux) veya ipfilter (Solaris,
+     bilgisayarı iptables (linux) veya ipfilter (
      FreeBSD vb.) ile engeller.
    - Bunlar, SSHD kaba güç saldırılarını, port taramalarını
      ve diğer saldırı şekillerini durdurmak için kullanılabilir.

@@ -20,11 +20,6 @@
 #include <string.h>
 #include <pthread.h>
 
-#ifdef SOLARIS
-#include <stropts.h>
-#include <sys/sockio.h>
-#endif
-
 #include "headers/debug_op.h"
 #include "headers/defs.h"
 #include "rootcheck.h"

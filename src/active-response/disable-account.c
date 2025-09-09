@@ -68,7 +68,7 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    if (!strcmp("Linux", uname_buffer.sysname) || !strcmp("SunOS", uname_buffer.sysname)) {
+    if (!strcmp("Linux", uname_buffer.sysname)) {
         // Checking if passwd is present
         if (get_binary_path("passwd", &cmd_path) < 0) {
             memset(log_msg, '\0', OS_MAXSTR);
