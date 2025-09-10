@@ -362,7 +362,7 @@ DWORD WINAPI wm_sync_module(__attribute__((unused)) void * args) {
 void * wm_sync_module(__attribute__((unused)) void * args) {
 #endif
     // Initial wait until syscollector is started
-    for (int i = 0; i < sync_interval && sync_module_running; i++) {
+    for (uint32_t i = 0; i < sync_interval && sync_module_running; i++) {
         sleep(1);
     }
 
@@ -378,7 +378,7 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
         mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization finished, waiting for %d seconds before next run.", sync_interval);
 
         // Sleep in small intervals to allow responsive stopping
-        for (int i = 0; i < sync_interval && sync_module_running; i++) {
+        for (uint32_t i = 0; i < sync_interval && sync_module_running; i++) {
             sleep(1);
         }
     }
