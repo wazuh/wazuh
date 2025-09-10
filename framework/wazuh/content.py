@@ -9,8 +9,7 @@ from wazuh.core.engine import get_engine_client, content, log
 
 @expose_resources(actions=['content:status'], resources=['*:*:*'])
 async def get_content_status() -> WazuhResult:
-    """
-    Get the status of all available content.
+    """Get the status of all available content.
 
     Returns
     -------
@@ -27,8 +26,7 @@ async def get_content_status() -> WazuhResult:
 
 @expose_resources(actions=['content:reload'], resources=['*:*:*'])
 async def reload_contents() -> WazuhResult:
-    """
-    Reload all content files.
+    """Reload all content files.
 
     Returns
     -------
@@ -45,8 +43,7 @@ async def reload_contents() -> WazuhResult:
 
 @expose_resources(actions=['content:validate'], resources=['*:*:*'])
 async def validate_contents(type: str, payload: str) -> WazuhResult:
-    """
-    Validate a content file.
+    """Validate a content file.
 
     Parameters
     ----------
@@ -70,8 +67,7 @@ async def validate_contents(type: str, payload: str) -> WazuhResult:
 
 @expose_resources(actions=['content:validate'], resources=['*:*:*'])
 async def log_tests(payload: str) -> WazuhResult:
-    """
-    Run log test for content files.
+    """Run log test for content files.
 
     Parameters
     ----------

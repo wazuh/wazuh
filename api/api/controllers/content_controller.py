@@ -31,10 +31,8 @@ async def get_content_status(pretty: bool = False, wait_for_complete: bool = Fal
     ConnexionResponse
         API response with the operation result.
     """
-    f_kwargs = {}
-
     dapi = DistributedAPI(f=content_framework.get_content_status,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          f_kwargs={},
                           request_type='local_master',
                           is_async=True,
                           wait_for_complete=wait_for_complete,
@@ -61,10 +59,8 @@ async def reload_contents(pretty: bool = False, wait_for_complete: bool = False)
     ConnexionResponse
         API response with the operation result.
     """
-    f_kwargs = {}
-
     dapi = DistributedAPI(f=content_framework.reload_contents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          f_kwargs={},
                           request_type='local_master',
                           is_async=True,
                           wait_for_complete=wait_for_complete,
@@ -91,8 +87,7 @@ async def validate_content(pretty: bool = False, wait_for_complete: bool = False
         API response with the operation result.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    body_model: ContentFileDataModel = await ContentFileDataModel.get_kwargs(request)
-    f_kwargs = {'type': body_model.type, 'payload': body_model.payload}
+    f_kwargs = await ContentFileDataModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=content_framework.validate_contents,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -122,8 +117,7 @@ async def log_test(pretty: bool = False, wait_for_complete: bool = False):
         API response with the operation result.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    body_model: LogTestPayloadModel = await LogTestPayloadModel.get_kwargs(request)
-    f_kwargs = {'payload': body_model.payload}
+    f_kwargs = await LogTestPayloadModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=content_framework.log_tests,
                           f_kwargs=remove_nones_to_dict(f_kwargs),

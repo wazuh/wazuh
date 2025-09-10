@@ -175,29 +175,29 @@ x-rbac-catalog:
         resources: [ '*:*:*' ]
         effect: "allow"
     'content:status':
-      description: "Access content status"
+      description: 'Access content status'
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: [ 'content:status' ]
         resources: [ '*:*:*' ]
-        effect: "allow"
+        effect: 'allow'
     'content:validate':
-      description: "Validate content information"
+      description: 'Validate content information'
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: [ 'content:validate' ]
         resources: [ '*:*:*' ]
-        effect: "allow"
+        effect: 'allow'
     'content:reload':
-      description: "Reload contents"
+      description: 'Reload contents'
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
         actions: [ 'content:reload' ]
         resources: [ '*:*:*' ]
-        effect: "allow"
+        effect: 'allow'
     'group:create':
       description: "Create new agent groups"
       resources:
@@ -7796,8 +7796,8 @@ paths:
     get:
       tags:
         - Content
-      summary: "Read content status"
-      description: "Read content status"
+      summary: 'Read content status'
+      description: 'Read content status'
       operationId: api.controllers.content_controller.get_content_status
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/content:status'
@@ -7829,8 +7829,8 @@ paths:
     put:
       tags:
         - Content
-      summary: "Reload contents"
-      description: "Reload custom policy, including checksum retrieval"
+      summary: 'Reload contents'
+      description: 'Reload custom policy, including checksum retrieval'
       operationId: api.controllers.content_controller.reload_contents
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/content:reload'
@@ -7862,8 +7862,8 @@ paths:
     put:
       tags:
         - Content
-      summary: "Validate asset"
-      description: "Validatee the syntax of the content"
+      summary: 'Validate asset'
+      description: 'Validate the syntax of the content'
       operationId: api.controllers.content_controller.validate_content
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/content:validate'
@@ -7900,8 +7900,8 @@ paths:
     put:
       tags:
         - Logtest
-      summary: "Log test"
-      description: "Test a log against the rules"
+      summary: 'Log test'
+      description: 'Test a log against the rules'
       operationId: api.controllers.content_controller.log_test
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/content:validate'
