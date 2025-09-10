@@ -61,6 +61,16 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
 MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Helper function to build a MapOp that converts a numeric value (0 or 1) to a boolean string.
+ *
+ * @param opArgs Vector of operation arguments containing the numeric value to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return base::Expression
+ * @throw std::runtime_error if the parameter is not a number or not 0/1.
+ */
+MapOp opBuilderHelperToBoolStr(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Helper function to build a MapOp that concatenates strings from OpArgs.
  *
  * This function constructs a MapOp that concatenates strings from OpArgs, either directly

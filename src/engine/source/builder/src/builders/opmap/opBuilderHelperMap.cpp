@@ -760,7 +760,7 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
         if (!std::static_pointer_cast<Value>(opArgs[1])->value().isString())
         {
             throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
-                                                 std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+                                                std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
         }
 
         op = strToNumCastOp(std::static_pointer_cast<Value>(opArgs[1])->value().getString().value());
@@ -816,6 +816,89 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
 
         json::Json result;
         result.setInt64(res);
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
+
+// field: +to_bool_str/$ref
+MapOp opBuilderHelperToBoolStr(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    builder::builders::utils::assertSize(opArgs, 1);
+
+    // Parameter type check
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
+
+    if (buildCtx->validator().hasField(ref->dotPath()))
+    {
+        auto sType = buildCtx->validator().getType(ref->dotPath());
+        if (typeToJType(sType) != json::Json::Type::Number)
+        {
+            throw std::runtime_error(fmt::format("Expected number reference but got reference '{}' of type '{}'",
+                                                    ref->dotPath(), schemf::typeToStr(sType)));
+        }
+    }
+
+    // Format name for the tracer
+    const auto name = buildCtx->context().opName;
+
+    // Tracing messages
+    const std::string successTrace{fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureTrace1{fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
+    const std::string failureTrace2{fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
+    const std::string failureTrace3{fmt::format("{} -> Reference '{}' is not a valid boolean value (0 or 1)", name, ref->dotPath())};
+
+    return [failureTrace1, failureTrace2, failureTrace3, successTrace, ref, runState = buildCtx->runState()](
+                base::ConstEvent event) -> MapResult {
+        auto object = event->getJson(ref->jsonPath());
+        if (!object.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json{}, failureTrace1);
+        }
+
+        if (!object.value().isNumber())
+        {
+            RETURN_FAILURE(runState, json::Json{}, failureTrace2);
+        }
+
+        // Extract numeric value
+        double numValue;
+        if (const auto val = object->getIntAsInt64(); val.has_value())
+        {
+            numValue = static_cast<double>(val.value());
+        }
+        else if (const auto val = object->getFloat(); val.has_value())
+        {
+            numValue = static_cast<double>(val.value());
+        }
+        else if (const auto val = object->getDouble(); val.has_value())
+        {
+            numValue = val.value();
+        }
+        else
+        {
+            RETURN_FAILURE(runState, json::Json{}, failureTrace2);
+        }
+
+        // Check if the value is exactly 0 or 1
+        if (numValue != 0.0 && numValue != 1.0)
+        {
+            RETURN_FAILURE(runState, json::Json{}, failureTrace3);
+        }
+
+        // Convert to boolean string
+        json::Json result;
+        if (numValue == 1.0)
+        {
+            result.setString("true");
+        }
+        else
+        {
+            result.setString("false");
+        }
+
         RETURN_SUCCESS(runState, result, successTrace);
     };
 }
