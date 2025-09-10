@@ -55,7 +55,6 @@ static char * const old_policies_filenames[] = {
     "cis_rhel5_linux_rcl.yml",
     "cis_rhel6_linux_rcl.yml",
     "cis_rhel7_linux_rcl.yml",
-    "cis_sles11_linux_rcl.yml",
     "cis_sles12_linux_rcl.yml",
     "cis_win10_enterprise_L1_rcl.yml",
     "cis_win10_enterprise_L2_rcl.yml",
