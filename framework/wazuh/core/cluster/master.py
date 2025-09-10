@@ -403,7 +403,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                  set_data_command='global set-agent-groups',
                                                  set_payload={'mode': 'override', 'sync_status': 'synced'})
 
-        if len(self.server.clients) == 0:
+        if not self.server.tasks_event.is_set():
             self.logger.info("Starting cluster tasks.")
             self.server.tasks_event.set()
 
