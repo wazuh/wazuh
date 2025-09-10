@@ -124,7 +124,19 @@ public:
                             stmtInsertLabels.bind(1, idAgent);
                             stmtInsertLabels.bind(2, value<std::string_view>(label, "key"));
                             stmtInsertLabels.bind(3, value<std::string_view>(label, "value"));
-                            stmtInsertLabels.step();
+                            try
+                            {
+                                stmtInsertLabels.step();
+                            }
+                            catch (const std::exception& e)
+                            {
+                                logMessage(modules_log_level_t::LOG_WARNING,
+                                           "Cannot set label for agent: %d, %s",
+                                           idAgent,
+                                           e.what());
+                                break;
+                            }
+
                             stmtInsertLabels.reset();
                         }
                     }
