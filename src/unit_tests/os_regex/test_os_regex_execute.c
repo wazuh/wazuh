@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "../../external/cJSON/cJSON.h"
 #include "../../os_regex/os_regex.h"

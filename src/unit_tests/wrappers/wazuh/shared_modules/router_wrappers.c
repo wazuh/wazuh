@@ -15,6 +15,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "router.h"
 
 int __wrap_router_provider_send(__attribute__((unused)) ROUTER_PROVIDER_HANDLE handle,
