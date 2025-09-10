@@ -550,8 +550,8 @@ TEST_F(DirRuleEvaluatorTest, ContentFilenameWithArrowAndComplexContentFound)
     // For exact filename + content pattern, evaluator should read and evaluate file content.
     EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
     .WillOnce(::testing::Return(
-        std::string("goodbye world\n")
-    ));
+                  std::string("goodbye world\n")
+              ));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
@@ -574,10 +574,9 @@ TEST_F(DirRuleEvaluatorTest, NegatedContentFilenameWithArrowAndComplexContentNot
     // For exact filename + content pattern, evaluator should read and evaluate file content.
     EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
     .WillOnce(::testing::Return(
-        std::string("goodbye world\n")
-    ));
+                  std::string("goodbye world\n")
+              ));
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
 }
-

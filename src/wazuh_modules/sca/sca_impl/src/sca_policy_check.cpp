@@ -133,10 +133,12 @@ RuleResult FileRuleEvaluator::CheckFileForContents()
     if (result.has_value())
     {
         const auto value = result.value();
+
         if (value == RuleResult::Invalid)
         {
             return RuleResult::Invalid;
         }
+
         return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : value;
     }
     else
@@ -473,10 +475,12 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                     if (result.has_value())
                     {
                         const auto value = result.value();
+
                         if (value == RuleResult::Invalid)
                         {
                             return RuleResult::Invalid;
                         }
+
                         return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : value;
                     }
                     else
