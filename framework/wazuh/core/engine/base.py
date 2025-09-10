@@ -40,17 +40,13 @@ class BaseModule:
                 timeout=Timeout(DEFAULT_TIMEOUT)
             )
             response.raise_for_status()
-        except TimeoutException as e:
+        except (TimeoutException, ConnectError, NetworkError) as e:
             raise WazuhEngineError(2800, extra_message=str(e))
         except UnsupportedProtocol as e:
             raise WazuhEngineError(2801, extra_message=str(e))
         except InvalidURL as e:
             raise WazuhEngineError(2802, extra_message=str(e))
-        except HTTPStatusError as e:
-            raise WazuhEngineError(2803, extra_message=str(e))
-        except (ConnectError, NetworkError) as e:
-            raise WazuhEngineError(2800, extra_message=str(e))
-        except HTTPError as e:
+        except (HTTPStatusError, HTTPError) as e:
             raise WazuhEngineError(2803, extra_message=str(e))
         except Exception as e:
             raise WazuhEngineError(2804, extra_message=str(e))

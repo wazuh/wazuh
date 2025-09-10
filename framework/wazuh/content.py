@@ -18,8 +18,7 @@ async def get_content_status() -> WazuhResult:
     """
     try:
         async with get_engine_client() as client:
-            module = content.ContentModule(client._client)
-            response = await module.get_content_status()
+            response = await client.content.get_content_status()
             return WazuhResult(response)
     except WazuhException as e:
         return WazuhResult({'message': 'Not Implemented'})
@@ -35,8 +34,7 @@ async def reload_contents() -> WazuhResult:
     """
     try:
         async with get_engine_client() as client:
-            module = content.ContentModule(client._client)
-            response = await module.reload_content()
+            response = await client.content.reload_content()
             return WazuhResult(response)
     except WazuhException as e:
         return WazuhResult({'message': 'Not Implemented'})
@@ -59,8 +57,7 @@ async def validate_contents(type: str, payload: str) -> WazuhResult:
     """
     try:
         async with get_engine_client() as client:
-            module = content.ContentModule(client._client)
-            response = await module.validate_content(type, payload)
+            response = await client.content.validate_content(type, payload)
             return WazuhResult(response)
     except WazuhException as e:
         return WazuhResult({'message': 'Not Implemented'})
@@ -81,8 +78,7 @@ async def log_tests(payload: str) -> WazuhResult:
     """
     try:
         async with get_engine_client() as client:
-            module = log.LogModule(client._client)
-            response = await module.log_test(payload)
+            response = await client.log.log_test(payload)
             return WazuhResult(response)
     except WazuhException as e:
         return WazuhResult({'message': 'Not Implemented'})
