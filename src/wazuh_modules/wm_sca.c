@@ -29,6 +29,9 @@
 #define SCA_SYNC_PROTOCOL_DB_PATH "queue/sca/db/sca_sync.db"
 #define SCA_SYNC_RETRIES 3
 
+// Global flag to stop sync module
+static volatile int sca_sync_module_running = 0;
+
 // SCA message queue variables
 static int g_shutting_down = 0;
 static int g_sca_queue = 0;
@@ -243,6 +246,7 @@ static int wm_sca_start(wm_sca_t *sca) {
 
     // Initialize sync protocol if enabled
     if (sca_enable_synchronization && sca_sync_module_ptr) {
+        sca_sync_module_running = 1;
 #ifndef WIN32
         // Launch SCA synchronization thread
         w_create_thread(wm_sca_sync_module, NULL);
@@ -262,6 +266,7 @@ static int wm_sca_start(wm_sca_t *sca) {
 // Destroy data
 void wm_sca_destroy(wm_sca_t * data) {
     g_shutting_down = 1;
+    sca_sync_module_running = 0;
 
     if (sca_stop_ptr) {
         sca_stop_ptr();
@@ -383,9 +388,11 @@ DWORD WINAPI wm_sca_sync_module(__attribute__((unused)) void * args) {
 void * wm_sca_sync_module(__attribute__((unused)) void * args) {
 #endif
     // Initial wait until SCA is started
-    sleep(sca_sync_interval);
+    for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++) {
+        sleep(1);
+    }
 
-    while (FOREVER()) {
+    while (sca_sync_module_running) {
         mdebug1("Running inventory synchronization.");
 
         if (sca_sync_module_ptr) {
@@ -395,7 +402,10 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
         }
 
         mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", sca_sync_interval);
-        sleep(sca_sync_interval);
+
+        for (uint32_t i = 0; i < sca_sync_interval && sca_sync_module_running; i++) {
+            sleep(1);
+        }
     }
 
 #ifdef WIN32

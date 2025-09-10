@@ -43,6 +43,9 @@ void audit_set_db_consistency(void);
 #define STATIC static
 #endif
 
+// Global flag to stop sync module
+volatile int fim_sync_module_running = 0;
+
 // Prototypes
 #ifdef WIN32
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
@@ -278,6 +281,7 @@ void start_daemon()
     w_create_thread(symlink_checker_thread, NULL);
 
     if (syscheck.enable_synchronization) {
+        fim_sync_module_running = 1;
         // Launch inventory synchronization thread
         w_create_thread(fim_run_integrity, NULL);
     } else {
@@ -290,6 +294,7 @@ void start_daemon()
     }
 
     if (syscheck.enable_synchronization) {
+        fim_sync_module_running = 1;
         if (CreateThread(NULL, 0, fim_run_integrity, NULL, 0, NULL) == NULL) {
             merror(THREAD_ERROR);
         }
@@ -522,13 +527,21 @@ DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
 void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
-    while (FOREVER()) {
+    // Initial wait until FIM is started
+    for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
+        sleep(1);
+    }
+
+    while (fim_sync_module_running) {
         mdebug1("Running inventory synchronization.");
 
         asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
 
         mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
-        sleep(syscheck.sync_interval);
+
+        for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
+            sleep(1);
+        }
     }
 
 #ifdef WIN32
