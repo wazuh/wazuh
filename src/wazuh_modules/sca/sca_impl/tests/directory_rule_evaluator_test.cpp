@@ -480,7 +480,7 @@ TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndContent)
     EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
     EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
-        .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"file"}));
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"file"}));
     EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
     EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
 

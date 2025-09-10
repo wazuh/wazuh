@@ -426,7 +426,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                         if (content.has_value())
                         {
                             const auto result = TryFunc(
-                                [&] { return FindContentInFile(m_fileUtils, file.string(), content.value(), m_ctx); });
+                                                    [&] { return FindContentInFile(m_fileUtils, file.string(), content.value(), m_ctx); });
 
                             if (result.has_value())
                             {
@@ -437,6 +437,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                                         "Pattern '" + pattern + "' was found in directory '" + rootPath.string() + "'");
                                     return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
                                 }
+
                                 // If content doesn't match, continue to check other files
                             }
                             else
@@ -450,7 +451,7 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
                         {
                             LoggingHelper::getInstance().log(LOG_DEBUG,
                                                              "Pattern '" + pattern + "' was found in directory '" +
-                                                                 rootPath.string() + "'");
+                                                             rootPath.string() + "'");
                             return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
                         }
                     }
