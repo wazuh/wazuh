@@ -1311,7 +1311,7 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - "c:dpkg-query -s gdm3 -> r:package 'gdm3' is not installed'"
+      - "c:dpkg-query -s gdm3 -> r:package 'gdm3' is not installed"
 
   # 1.7.2 Ensure GDM login banner is configured. (Automated)
    - id: 35553
