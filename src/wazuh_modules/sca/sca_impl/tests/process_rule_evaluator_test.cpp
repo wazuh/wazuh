@@ -108,3 +108,17 @@ TEST_F(ProcessRuleEvaluatorTest, GetProcessesFailureHasReasonString)
     EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("test_process"));
     EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Failed to get process list"));
 }
+
+TEST_F(ProcessRuleEvaluatorTest, NegatedProcessFoundReturnsNotFound)
+{
+    m_ctx.rule = "myprocess";
+    m_ctx.isNegated = true;
+
+    m_processesMock = []
+    {
+        return std::vector<std::string> {"init", "myprocess", "sshd"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
