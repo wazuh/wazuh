@@ -180,6 +180,14 @@ if [ -f ${DIR}/bin/agent-auth ]; then
   rm -f ${DIR}/bin/agent-auth
 fi
 
+# Remove old databases
+if [ -f ${DIR}/queue/syscollector/db/local.db ]; then
+  rm -f ${DIR}/queue/syscollector/db/local.db
+fi
+if [ -f ${DIR}/queue/fim/db/fim.db ]; then
+  rm -f ${DIR}/queue/fim/db/fim.db
+fi
+
 if [ -n "${upgrade}" ] && [ -n "${restart}" ]; then
     echo "Restarting Wazuh..."
     launchctl bootstrap system /Library/LaunchDaemons/com.wazuh.agent.plist
