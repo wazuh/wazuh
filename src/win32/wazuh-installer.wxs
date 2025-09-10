@@ -117,6 +117,9 @@
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
         <CustomAction Id="SetWazuhPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetWazuhPermissions" Return="check" Execute="commit" Impersonate="no"/>
 
+        <CustomAction Id="SetCustomActionDataCleanupLegacyDBs" Return="check" Property="CleanupLegacyDatabases" Value="&quot;[APPLICATIONFOLDER]&quot;" />
+        <CustomAction Id="CleanupLegacyDatabases" BinaryKey="InstallerScripts" VBScriptCall="CleanupLegacyDatabases" Return="check" Execute="deferred" Impersonate="no" />
+
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
         <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
@@ -179,6 +182,10 @@
             <!-- Set Wazuh permissions on upgrade -->
             <Custom Action="SetCustomActionDataForSetWazuhPermissions" After="InstallInitialize">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
             <Custom Action="SetWazuhPermissions" After="SetCustomActionDataForSetWazuhPermissions">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
+
+            <!-- If upgrading from prior to 5.x, remove legacy DBs before service start -->
+            <Custom Action="SetCustomActionDataCleanupLegacyDBs" After="AppSearch">IS_UPGRADING_FROM_PRIOR_TO_5X</Custom>
+            <Custom Action="CleanupLegacyDatabases" After="InstallFiles">IS_UPGRADING_FROM_PRIOR_TO_5X</Custom>
 
             <!-- Start services if necessary -->
             <Custom Action="StartWazuhSvc" After="InstallFinalize">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
@@ -693,6 +700,8 @@
             <ComponentRef Id="W2019_CONF_PROFILE" />
         </Feature>
         <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
+        <Upgrade Id="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+        <UpgradeVersion Maximum="5.0.0" IncludeMaximum="no" Property="IS_UPGRADING_FROM_PRIOR_TO_5X" /></Upgrade>
     </Product>
     <Fragment>
         <Binary Id="CustomImage" SourceFile="ui\bannrbmp.jpg" />
