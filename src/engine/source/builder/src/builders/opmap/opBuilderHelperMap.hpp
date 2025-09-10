@@ -311,6 +311,17 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Convert an ISO-8601 date/time string to UNIX epoch seconds as a double (UTC).
+ *
+ * @param opArgs One argument: string reference to the date field.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @throws std::runtime_error on signature/type mismatch.
+ * @return base::Expression
+ */
+MapOp opBuilderHelperDateToEpochTime(const std::vector<OpArg>& opArgs,
+                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Builds an operation to generate the current date in ISO 8601 format.
  *
  * This function returns a callable operation that produces the current date
