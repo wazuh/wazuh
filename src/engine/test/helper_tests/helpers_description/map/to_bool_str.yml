@@ -1,0 +1,59 @@
+name: to_bool_str
+metadata:
+  description: |
+    Converts a numeric boolean (0/1) to a string value "false"/"true".
+    The result of the to_bool_str operation is mapped to “target_field”.
+    In case of errors “target_field” will not be modified.
+    This helper function is typically used in the map stage.
+  keywords:
+    - boolean
+    - number
+    - string
+helper_type: map
+is_variadic: false
+
+arguments:
+  number_to_convert:
+    type: number
+    generate:
+      - float
+      - double
+      - integer
+    source: reference
+
+output:
+  type: string
+
+test:
+  - arguments:
+      number_to_convert: 1
+    should_pass: true
+    expected: "true"
+    description: Converts integer 1 to "true".
+  - arguments:
+      number_to_convert: 1.0
+    should_pass: true
+    expected: "true"
+    description: Converts float 1.0 to "true".
+  - arguments:
+      number_to_convert: 0
+    should_pass: true
+    expected: "false"
+    description: Converts integer 0 to "false".
+  - arguments:
+      number_to_convert: 0.0
+    should_pass: true
+    expected: "false"
+    description: Converts float 0.0 to "false".
+  - arguments:
+      number_to_convert: 2
+    should_pass: false
+    description: Fails because only exact 0/1 are accepted.
+  - arguments:
+      number_to_convert: -1
+    should_pass: false
+    description: Fails because only exact 0/1 are accepted.
+  - arguments:
+      number_to_convert: 0.5
+    should_pass: false
+    description: Fails because only exact 0/1 are accepted.
