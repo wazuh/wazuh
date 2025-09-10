@@ -59,6 +59,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [concat](#concat)
 - [concat_any](#concat_any)
 - [date_from_epoch](#date_from_epoch)
+- [date_to_epoch](#date_to_epoch)
 - [decode_base16](#decode_base16)
 - [downcase](#downcase)
 - [float_calculate](#float_calculate)
@@ -5723,6 +5724,452 @@ normalize:
 ```
 
 *The operation was successful*
+
+
+
+---
+# date_to_epoch
+
+## Signature
+
+```
+
+field: date_to_epoch(date, pattern)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| date | string | reference | Any string |
+| pattern | string | value | Any string |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| double |
+
+
+## Description
+
+Converts a date/time string to its UNIX epoch (seconds since 1970-01-01T00:00:00Z), returned as a double.
+Parsing is strict and driven entirely by a format pattern:
+  - If a second argument `pattern` is provided (string literal), it is used verbatim by the parser.
+  - If `pattern` is omitted, the default pattern "%Y-%m-%dT%H:%M:%SZ" (ISO 8601, UTC with trailing 'Z') is used.
+To support other ISO-8601 variants (offsets, basic format, space instead of 'T', etc.), pass the appropriate pattern.
+
+
+## Keywords
+
+- `date` 
+
+- `time` 
+
+- `epoch` 
+
+- `timestamp` 
+
+## Examples
+
+### Example 1
+
+Default pattern → epoch start
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%Y-%m-%dT%H:%M:%SZ')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "1970-01-01T00:00:00Z"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "1970-01-01T00:00:00Z",
+  "target_field": 0.0
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Default pattern → UTC with trailing Z
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%Y-%m-%dT%H:%M:%SZ')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "2024-05-17T15:10:58Z"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "2024-05-17T15:10:58Z",
+  "target_field": 1715958658.0
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Default pattern → fractional seconds preserved
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%Y-%m-%dT%H:%M:%SZ')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "2024-09-24T23:03:00.597629Z"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "2024-09-24T23:03:00.597629Z",
+  "target_field": 1727218980.597629
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+Default pattern → negative epoch
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%Y-%m-%dT%H:%M:%SZ')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "1969-12-31T23:59:59Z"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "1969-12-31T23:59:59Z",
+  "target_field": -1.0
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Default pattern requires 'Z' → fails without timezone
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%Y-%m-%dT%H:%M:%SZ')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "2024-05-17T15:10:58"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "2024-05-17T15:10:58"
+}
+```
+
+*The operation was performed with errors*
+
+### Example 6
+
+Offset with colon (−03:00)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%FT%T%Ez')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "2024-05-17T12:10:58-03:00"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "2024-05-17T12:10:58-03:00",
+  "target_field": 1715958658.0
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+Offset without colon (−0300)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%FT%T%z')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "2024-05-17T12:10:58-0300"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "2024-05-17T12:10:58-0300",
+  "target_field": 1715958658.0
+}
+```
+
+*The operation was successful*
+
+### Example 8
+
+Space instead of 'T' + offset
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%F %T%Ez')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "2024-05-17 15:10:58+00:00"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "2024-05-17 15:10:58+00:00",
+  "target_field": 1715958658.0
+}
+```
+
+*The operation was successful*
+
+### Example 9
+
+Basic (no-extended) format with 'Z'
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%Y%m%dT%H%M%SZ')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "20240517T151058Z"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "20240517T151058Z",
+  "target_field": 1715958658.0
+}
+```
+
+*The operation was successful*
+
+### Example 10
+
+Basic format with offset (−0300)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%Y%m%dT%H%M%S%z')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "20240517T121058-0300"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "20240517T121058-0300",
+  "target_field": 1715958658.0
+}
+```
+
+*The operation was successful*
+
+### Example 11
+
+No timezone in input; pattern without timezone
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%FT%T')
+```
+
+#### Input Event
+
+```json
+{
+  "date": "2024-05-17T15:10:58"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": "2024-05-17T15:10:58",
+  "target_field": 1715958658.0
+}
+```
+
+*The operation was successful*
+
+### Example 12
+
+Reject non-string input for 'date'
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%Y-%m-%dT%H:%M:%SZ')
+```
+
+#### Input Event
+
+```json
+{
+  "date": 123456789
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "date": 123456789
+}
+```
+
+*The operation was performed with errors*
+
+### Example 13
+
+Reject null input for 'date'
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: date_to_epoch($date, '%Y-%m-%dT%H:%M:%SZ')
+```
+
+#### Input Event
+
+```json
+{
+  "date": null
+}
+```
+
+#### Outcome Event
+
+```json
+{}
+```
+
+*The operation was performed with errors*
 
 
 
