@@ -465,7 +465,7 @@ namespace SQLite
                 checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
                 ++m_bindParametersIndex;
             }
-            void Statement::bind(const int32_t index, const uint32_t value)
+            void bind(const int32_t index, const uint32_t value)
             {
                 const auto result{ sqlite3_bind_int(m_stmt.get(), index, value) };
                 checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
