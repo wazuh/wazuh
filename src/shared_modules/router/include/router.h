@@ -182,7 +182,9 @@ extern "C"
      * @param isLocal True if the subscriber is local, false otherwise.
      * @return ROUTER_SUBSCRIBER_HANDLE Handle to the router subscriber.
      */
-    EXPORTED ROUTER_SUBSCRIBER_HANDLE router_subscriber_create(const char* topic_name, const char* subscriber_id, bool isLocal);
+    EXPORTED ROUTER_SUBSCRIBER_HANDLE router_subscriber_create(const char* topic_name,
+                                                               const char* subscriber_id,
+                                                               bool isLocal);
 
     /**
      * @brief Subscribe to messages with a callback.
@@ -191,7 +193,8 @@ extern "C"
      * @param callback Callback function to be called when message is received.
      * @return 0 on success, -1 on error.
      */
-    EXPORTED int router_subscriber_subscribe(ROUTER_SUBSCRIBER_HANDLE handle, router_subscriber_callback_t callback);
+    EXPORTED int router_subscriber_subscribe(ROUTER_SUBSCRIBER_HANDLE handle,
+                                             router_subscriber_callback_t callback);
 
     /**
      * @brief Unsubscribe from messages.
