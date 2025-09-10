@@ -1347,7 +1347,7 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
 
 std::string Syscollector::calculateHashId(const nlohmann::json& data, const std::string& table)
 {
-    const std::string primaryKey = getPrimaryKeys(data, table);
+    const std::string primaryKey = table + ":" + getPrimaryKeys(data, table);
 
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(primaryKey.c_str(), primaryKey.size());
@@ -1478,7 +1478,28 @@ void Syscollector::setJsonFieldArray(nlohmann::json& target,
         {
             const auto& value = source[sourceKey];
             target[destPointer] = nlohmann::json::array();
-            target[destPointer].push_back(value);
+
+            // If the value is a string that contains commas, split it into multiple array elements
+            if (value.is_string())
+            {
+                const auto valueStr = value.get<std::string>();
+                const auto splitValues = Utils::split(valueStr, ',');
+
+                for (const auto& splitValue : splitValues)
+                {
+                    const auto trimmedValue = Utils::trim(splitValue);
+
+                    if (!trimmedValue.empty())
+                    {
+                        target[destPointer].push_back(trimmedValue);
+                    }
+                }
+            }
+            else
+            {
+                // For non-string values, add as single element
+                target[destPointer].push_back(value);
+            }
         }
     }
 }
