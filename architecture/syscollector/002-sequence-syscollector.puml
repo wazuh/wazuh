@@ -4,20 +4,23 @@
 
 @startuml syscollector
 
-database "<agent-id>.db" as agent.db
+database "Indexer" as indexer
 actor "wazuh-manager" as manager
 participant syscollector as sysco
 participant sysinfo as info
 participant dbsync
+participant "agent_sync_protocol" as sync_protocol
 database local.db as ldb
+database "sync_protocol.db" as sync_db
 
 activate sysco
 activate manager
-activate agent.db
+activate indexer
 
 
-sysco -> dbsync ++: reset DB
-dbsync -> ldb --
+sysco -> sync_protocol ++: initialize sync protocol
+sync_protocol -> sync_db: create/open sync database
+sync_protocol --> sysco --
 
 loop every ""interval"" seconds
     note across: Supported scans: osinfo, hwinfo, packages, processes, netaddr, netproto, netiface, ports, hotfixes
@@ -26,17 +29,35 @@ loop every ""interval"" seconds
         sysco <-- info --: info
         sysco -> dbsync++ : update DB with new info
         dbsync -> ldb
-        alt not first set of scans
-            note over manager, sysco
-                delta synchronization
+        alt data changed
+            dbsync --> sysco --: delta callback (CREATED/MODIFIED/DELETED)
+            note over sysco, sync_protocol
+                Dual event system:
+                1. Stateless
+                2. Stateful
             end note
-            dbsync --> sysco --: delta changes
-            sysco ->> manager : send delta data
-            manager -> agent.db: update DB
-            alt syscollector rules?
-            manager -> manager: generate alert
-            end
+            sysco ->> manager : send Stateless event (immediate)
+            sysco -> sync_protocol ++: persistDifference(id, operation, index, data)
+            sync_protocol -> sync_db: store for sync
+            sync_protocol --> sysco --
+        else no changes
+            dbsync --> sysco --: no delta callback
         end
+    end
+end
+
+== Periodic Synchronization ==
+loop every sync ""interval"" seconds
+    sysco -> sync_protocol ++: syncModule(mode, timeout, retries, maxEps)
+    sync_protocol -> sync_db: get pending differences
+    sync_protocol ->> manager: send sync session request
+    manager --> sync_protocol: flatbuffer response
+    sync_protocol -> sync_protocol: parseResponseBuffer()
+    sync_protocol -> sync_db: mark as synchronized
+    manager -> indexer: update DB (persistent state)
+    sync_protocol --> sysco --: sync result
+    alt syscollector rules?
+        manager -> manager: generate alert
     end
 end
 
