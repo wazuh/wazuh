@@ -25,8 +25,7 @@ requirements:
   rules:
     - 'f:/etc/redhat-release -> r:^Rocky Linux && r:release 9\p*'
 
-variables:
-  $ipv6_status: enabled
+variables: {}
 
 checks:
 
@@ -2293,7 +2292,25 @@ checks:
   # 3.1 Configure Network Devices
   ###############################################
 
-  # 3.1.1 Ensure IPv6 status is identified. (Manual) - Not Implemented
+  # 3.1.1 Ensure IPv6 status is identified. (Manual)
+  - id: 31715
+    title: "Ensure IPv6 status is identified."
+    description: "Internet Protocol Version 6 (IPv6) is the most recent version of Internet Protocol (IP). It's designed to supply IP addressing and additional security to support the predicted growth of connected devices. IPv6 is based on 128-bit addressing and can support 340 undecillion, which is 340,282,366,920,938,463,463,374,607,431,768,211,456 unique addresses."
+    rationale: "IETF RFC 4038 recommends that applications are built with an assumption of dual stack. It is recommended that IPv6 be enabled and configured in accordance with Benchmark recommendations. - IF - dual stack and IPv6 are not used in your environment, IPv6 may be disabled to reduce the attack surface of the system, and recommendations pertaining to IPv6 can be skipped. Note: It is recommended that IPv6 be enabled and configured unless this is against local site policy"
+    remediation: "Enable or disable IPv6 in accordance with system requirements and local site policy."
+    compliance:
+      - cis: ["3.1.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1042"]
+      - mitre_tactics: ["TA0008"]
+      - mitre_techniques: ["T1557", "T1557.000", "T1595", "T1595.001", "T1595.002"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: all
+    rules:
+      - 'f:/proc/sys/net/ipv6/conf/all/disable_ipv6 -> r:^0$'
+      - 'f:/proc/sys/net/ipv6/conf/default/disable_ipv6 -> r:^0$'
+      - 'f:/sys/module/ipv6/parameters/disable -> r:^0$'
 
   # 3.1.2 Ensure wireless interfaces are disabled. (Automated)
   - id: 31682
