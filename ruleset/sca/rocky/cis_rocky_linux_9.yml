@@ -26,8 +26,6 @@ requirements:
     - 'f:/etc/redhat-release -> r:^Rocky Linux && r:release 9\p*'
 
 variables:
-  $unused_filesystems_kernel_modules: afs,ceph,cifs,exfat,ext,fat,fscache,fuse,gfs2,nfs_common,nfsd,smbfs_common
-  $approved_services: sshd.service
   $ipv6_status: enabled
 
 checks:
@@ -212,7 +210,39 @@ checks:
       - "not c:lsmod -> r:usb-storage"
       - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+usb-storage'
 
-  # 1.1.1.9 Ensure unused filesystems kernel modules are not available (Manual) - Not Implemented
+  # 1.1.1.9 Ensure unused filesystems kernel modules are not available (Manual)
+  - id: 31714
+    title: "Ensure unused filesystems kernel modules are not available."
+    description: "Filesystem kernel modules are pieces of code that can be dynamically loaded into the Linux kernel to extend its filesystem capabilities, or so-called base kernel, of an operating system. Filesystem kernel modules are typically used to add support for new hardware (as device drivers), or for adding system calls."
+    rationale: "While loadable filesystem kernel modules are a convenient method of modifying the running kernel, this can be abused by attackers on a compromised system to prevent detection of their processes or files, allowing them to maintain control over the system. Many rootkits make use of loadable filesystem kernel modules in this way. Removing support for unneeded filesystem types reduces the local attack surface of the system. If this filesystem type is not needed, disable it."
+    impact: "Unloading, disabling or denylisting filesystem modules that are in use on the system maybe FATAL. It is extremely important to thoroughly review the filesystems returned by the audit before following the remediation procedure."
+    remediation: "Unload the filesystem kernel module from the kernel. Create a file ending in .conf with install filesystem kernel modules /bin/false in the /etc/modprobe.d/ directory. Create a file ending in .conf with deny list filesystem kernel modules in the /etc/modprobe.d/ directory"
+    references:
+      - "https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=filesystem"
+    compliance:
+      - cis: ["1.1.1.9"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+    condition: any
+    rules:
+      - >-
+        not c:/bin/sh -c "
+        blacklist=('afs' 'ceph' 'cifs' 'exfat' 'ext' 'fat' 'fscache' 'fuse' 'gfs2' 'nfs_common' 'nfsd' 'smbfs_common');
+        ignore=('xfs' 'vfat' 'ext2' 'ext3' 'ext4');
+        modules=$(lsmod | awk '{ print $1 }');
+        for mod in ${modules}; do 
+          for ignored_mod in \"${ignore[@]}\"; do
+            if [ \"${mod}\" == \"${ignored_mod}\" ]; then
+              continue 2;
+            fi
+            for blacklisted_mod in \"${blacklist[@]}\"; do
+              if [ \"${mod}\" == \"${blacklisted_mod}\" ]; then
+                echo \"Module ${mod} Found\"; continue 3;
+              fi
+            done;
+          done;
+        done
+        " -> r:Found
 
   ###############################################
   # 1.1.2 Configure Filesystem Partitions
