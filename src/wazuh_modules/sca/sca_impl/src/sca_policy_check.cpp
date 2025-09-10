@@ -66,7 +66,7 @@ namespace
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' " + (matchFound ? "was" : "was not") + " found in file '" + filePath + "'");
-        return (matchFound != ctx.isNegated) ? RuleResult::Found : RuleResult::NotFound;
+        return matchFound ? RuleResult::Found : RuleResult::NotFound;
     }
 
     RuleResult FindContentInFile(const std::unique_ptr<IFileIOUtils>& fileUtils,
@@ -132,7 +132,12 @@ RuleResult FileRuleEvaluator::CheckFileForContents()
 
     if (result.has_value())
     {
-        return result.value();
+        const auto value = result.value();
+        if (value == RuleResult::Invalid)
+        {
+            return RuleResult::Invalid;
+        }
+        return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : value;
     }
     else
     {
@@ -467,7 +472,12 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                     if (result.has_value())
                     {
-                        return result.value();
+                        const auto value = result.value();
+                        if (value == RuleResult::Invalid)
+                        {
+                            return RuleResult::Invalid;
+                        }
+                        return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : value;
                     }
                     else
                     {

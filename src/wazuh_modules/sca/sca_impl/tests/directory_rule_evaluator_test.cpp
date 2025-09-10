@@ -471,6 +471,7 @@ TEST_F(DirRuleEvaluatorTest, InvalidRegexPatternHasReasonString)
     EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Invalid pattern"));
 }
 
+
 TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndContent)
 {
     // Pattern starts with a regex for filename and then includes a content pattern after '->'.
@@ -490,3 +491,93 @@ TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndContent)
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
 }
+
+TEST_F(DirRuleEvaluatorTest, NegatedRegexFilenameWithArrowAndComplexContentFound)
+{
+    // Pattern starts with a regex for filename and then includes a content pattern after '->'.
+    m_ctx.pattern = std::string("r:.+ -> !r:hello && r:world");
+    m_ctx.rule = "dir/";
+    m_ctx.isNegated = true;
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"file"}));
+    EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+
+    // Expect the file content to be read and evaluated
+    EXPECT_CALL(*m_rawIoMock, getFileContent("file")).WillOnce(::testing::Return(std::string("hello world\n")));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(DirRuleEvaluatorTest, NegatedRegexFilenameWithArrowAndSimpleContentFound)
+{
+    // Pattern starts with a regex for filename and then includes a content pattern after '->'.
+    m_ctx.pattern = std::string("r:.+ -> !r:hello");
+    m_ctx.rule = "dir/";
+    m_ctx.isNegated = true;
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"file"}));
+    EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+
+    // Expect the file content to be read and evaluated
+    EXPECT_CALL(*m_rawIoMock, getFileContent("file")).WillOnce(::testing::Return(std::string("hello world\n")));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(DirRuleEvaluatorTest, ContentFilenameWithArrowAndComplexContentFound)
+{
+    // Pattern starts with filename and then includes a content pattern after '->'.
+    m_ctx.pattern = std::string("file -> !r:hello && r:world");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"file"}));
+    EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+
+    // For exact filename + content pattern, evaluator should read and evaluate file content.
+    EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
+    .WillOnce(::testing::Return(
+        std::string("goodbye world\n")
+    ));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(DirRuleEvaluatorTest, NegatedContentFilenameWithArrowAndComplexContentNotFound)
+{
+    // Pattern starts with filename and then includes a content pattern after '->'.
+    m_ctx.pattern = std::string("file -> !r:hello && r:world");
+    m_ctx.rule = "dir/";
+    m_ctx.isNegated = true;
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"file"}));
+    EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+
+    // For exact filename + content pattern, evaluator should read and evaluate file content.
+    EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
+    .WillOnce(::testing::Return(
+        std::string("goodbye world\n")
+    ));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
