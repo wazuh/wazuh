@@ -127,6 +127,10 @@ Install()
         UpdateStopOSSEC
     fi
 
+    if [ "X${update_only}" = "Xyes" ]; then
+        WazuhPreUpgrade $INSTYPE
+    fi
+
     # Install
     InstallWazuh
 

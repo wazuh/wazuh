@@ -239,6 +239,14 @@ case "$1" in
     . ${SCRIPTS_DIR}/src/init/update-indexer.sh
     updateIndexerTemplate "${DIR}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
 
+    # Add new CDB lists into configuration
+    if [ -f ${WAZUH_TMP_DIR}/lists.old.manifest ]; then
+        . ${SCRIPTS_DIR}/src/init/update-ruleset-lists.sh
+        find $DIR/etc/lists/ -type f -exec realpath --relative-to=$DIR --no-symlinks -- {} \; > ${WAZUH_TMP_DIR}/lists.new.manifest
+        updateRulesetLists "${DIR}/etc/ossec.conf" ${WAZUH_TMP_DIR}/lists.old.manifest ${WAZUH_TMP_DIR}/lists.new.manifest
+        rm ${WAZUH_TMP_DIR}/lists.*.manifest
+    fi
+
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true
 
