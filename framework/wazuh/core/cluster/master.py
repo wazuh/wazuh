@@ -403,6 +403,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                  set_data_command='global set-agent-groups',
                                                  set_payload={'mode': 'override', 'sync_status': 'synced'})
 
+        if len(self.server.clients) == 0:
+            self.logger.info("Starting cluster tasks.")
+            self.server.tasks_event.set()
+
         return cmd, payload
 
     def get_manager(self) -> server.AbstractServer:
@@ -971,6 +975,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             In case the connection was lost due to an exception, it will be available on this parameter.
         """
         super().connection_lost(exc)
+
+        if len(self.server.clients) == 0:
+            self.logger.info("Stopping cluster tasks.")
+            self.server.tasks_event.clear()
+
         self.logger.info("Cancelling pending tasks.")
 
         # Cancel all pending tasks
@@ -1048,6 +1057,8 @@ class Master(server.AbstractServer):
         await asyncio.sleep(self.cluster_items['intervals']['master']['agent_group_start_delay'])
 
         while True:
+            await self.tasks_event.wait()
+
             try:
                 before = perf_counter()
                 sync_object.logger.info("Starting.")
@@ -1073,6 +1084,8 @@ class Master(server.AbstractServer):
         """
         file_integrity_logger = self.setup_task_logger("Local integrity")
         while True:
+            await self.tasks_event.wait()
+
             before = perf_counter()
             file_integrity_logger.info("Starting.")
             try:
