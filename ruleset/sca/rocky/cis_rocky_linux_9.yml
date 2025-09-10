@@ -3880,7 +3880,7 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - "f:/etc/shells -> !r:^.*nologin"
+      - "not f:/etc/shells -> r:nologin"
 
   # 5.4.3.2 Ensure default user shell timeout is configured (Automated)
   - id: 31705
