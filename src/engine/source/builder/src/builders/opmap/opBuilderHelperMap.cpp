@@ -1971,6 +1971,104 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
     };
 }
 
+// field: +date_to_epoch/<$date_field_ref>|[pattern]
+MapOp opBuilderHelperDateToEpochTime(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Check parameters
+    utils::assertSize(opArgs, 1, 2);
+    utils::assertRef(opArgs, 0);
+    const bool hasPattern = (opArgs.size() == 2);
+    if (hasPattern)
+    {
+        utils::assertValue(opArgs, 1);
+    }
+
+    const auto& dateRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    if (buildCtx->validator().hasField(dateRef.dotPath()))
+    {
+        const auto jType = buildCtx->validator().getJsonType(dateRef.dotPath());
+        if (jType != json::Json::Type::String)
+        {
+            throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                 dateRef.dotPath(),
+                                                 json::Json::typeToStr(jType)));
+        }
+    }
+
+    std::string patLiteral;
+    if (hasPattern)
+    {
+        const auto v = std::static_pointer_cast<Value>(opArgs[1])->value();
+        if (!v.isString())
+        {
+            throw std::runtime_error("date_to_epoch pattern must be a string literal");
+        }
+        patLiteral = v.getString().value();
+    }
+
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, dateRef.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, dateRef.dotPath());
+    const auto failureTrace3 = fmt::format("{} -> Invalid date/time per pattern", name);
+    const auto failureTrace4 = fmt::format("{} -> Epoch number is out of range", name);
+    const auto failureTraceP = fmt::format("{} -> Pattern is not allowed", name);
+
+    return [runState = buildCtx->runState(),
+            refPath = dateRef.jsonPath(),
+            hasPattern,
+            patLiteral,
+            successTrace,
+            failureTrace1,
+            failureTrace2,
+            failureTrace3,
+            failureTrace4,
+            failureTraceP](base::ConstEvent event) -> MapResult
+    {
+        if (!event->exists(refPath))
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace1);
+        }
+
+        const auto dateStrOpt = event->getString(refPath);
+        if (!dateStrOpt.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+        }
+
+        const std::string& dateStr = dateStrOpt.value();
+        std::string fmt = hasPattern ? patLiteral : "%Y-%m-%dT%H:%M:%SZ";
+
+        if (hasPattern && (fmt.empty() || fmt.size() > 64))
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTraceP);
+        }
+
+        date::sys_time<std::chrono::nanoseconds> tp;
+        {
+            std::istringstream is {dateStr};
+            is >> ::date::parse(fmt.c_str(), tp);
+            if (is.fail() || is.peek() != std::char_traits<char>::eof())
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureTrace3);
+            }
+        }
+
+        const auto us = std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch()).count();
+        const double sd = static_cast<double>(us) / 1'000'000.0;
+
+        if (!std::isfinite(sd) || sd > static_cast<double>(std::numeric_limits<int64_t>::max())
+            || sd < static_cast<double>(std::numeric_limits<int64_t>::min()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace4);
+        }
+
+        json::Json out;
+        out.setDouble(sd);
+        RETURN_SUCCESS(runState, out, successTrace);
+    };
+}
+
 // field:  get_date
 MapOp opBuilderHelperGetDate(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {

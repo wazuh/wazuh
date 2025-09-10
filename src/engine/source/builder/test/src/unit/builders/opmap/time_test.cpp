@@ -66,7 +66,22 @@ INSTANTIATE_TEST_SUITE_P(
         MapT({makeRef("ref")}, opBuilderHelperDateFromEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Object))),
         MapT({makeRef("ref")}, opBuilderHelperDateFromEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Array))),
         MapT({makeRef("ref")}, opBuilderHelperDateFromEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Boolean))),
-        MapT({makeRef("ref")}, opBuilderHelperDateFromEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Null)))),
+        MapT({makeRef("ref")}, opBuilderHelperDateFromEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Null))),
+        /*** Date To Epoch ***/
+        MapT({}, opBuilderHelperDateToEpochTime, FAILURE()),
+        MapT({makeValue(R"("2024-05-17T15:10:58Z")")}, opBuilderHelperDateToEpochTime, FAILURE()),
+        MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, SUCCESS(customRefExpected())),
+        // ok: ref + pattern literal
+        MapT({makeRef("ref"), makeValue(R"("%FT%TZ")")}, opBuilderHelperDateToEpochTime, SUCCESS(customRefExpected())),
+        // fail: pattern must be value, not ref
+        MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperDateToEpochTime, FAILURE()),
+        // input type checks for ref
+        MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, SUCCESS(jTypeRefExpected(json::Json::Type::String))),
+        MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Number))),
+        MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Object))),
+        MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Array))),
+        MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Boolean))),
+        MapT({makeRef("ref")}, opBuilderHelperDateToEpochTime, FAILURE(jTypeRefExpected(json::Json::Type::Null)))),
     testNameFormatter<MapBuilderTest>("Time"));
 } // namespace mapbuildtest
 
@@ -112,6 +127,262 @@ INSTANTIATE_TEST_SUITE_P(
         MapT(R"({"ref": []})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": {}})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),
         MapT(R"({"ref": true})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapT(R"({"ref": null})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected()))),
+        MapT(R"({"ref": null})", opBuilderHelperDateFromEpochTime, {makeRef("ref")}, FAILURE(customRefExpected())),
+        /*** Date To Epoch ***/
+        // Epoch start
+        MapT(R"({"ref": "1970-01-01T00:00:00Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(0.0);
+                     return j;
+                 }()))),
+        // UTC with 'Z'
+        MapT(R"({"ref": "2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Same instant with offset -03:00
+        MapT(R"({"ref": "2024-05-17T12:10:58-03:00"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%T%Ez")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Offset without colon (+hhmm)
+        MapT(R"({"ref": "2024-05-17T12:10:58-0300"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%T%z")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Space instead of 'T' + offset
+        MapT(R"({"ref": "2024-05-17 15:10:58+00:00"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%F %T%Ez")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Space + offset without colon
+        MapT(R"({"ref": "2024-05-17 12:10:58-0300"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%F %T%z")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // No timezone → assume UTC
+        MapT(R"({"ref": "2024-05-17T15:10:58"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%T")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Negative epoch
+        MapT(R"({"ref": "1969-12-31T23:59:59Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(-1.0);
+                     return j;
+                 }()))),
+        // Basic (no extended) with Z
+        MapT(R"({"ref": "20240517T151058Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%Y%m%dT%H%M%SZ")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Basic with offset (colon)
+        MapT(R"({"ref": "20240517T121058-03:00"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%Y%m%dT%H%M%S%Ez")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Basic with offset (no colon)
+        MapT(R"({"ref": "20240517T121058-0300"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%Y%m%dT%H%M%S%z")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Basic + fractional seconds with Z
+        MapT(R"({"ref": "20240924T230300.597629Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%Y%m%dT%H%M%SZ")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     const long long us = 1727218980LL * 1000000LL + 597629LL;
+                     json::Json j;
+                     j.setDouble(static_cast<double>(us) / 1'000'000.0);
+                     return j;
+                 }()))),
+        // Date-only with explicit pattern (%F) → success at midnight UTC
+        MapT(R"({"ref": "1970-01-02"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%F")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(86400.0);
+                     return j;
+                 }()))),
+        // Success without pattern
+        MapT(R"({"ref": "1970-01-01T00:00:00Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(0.0);
+                     return j;
+                 }()))),
+        MapT(R"({"ref": "2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Pattern with space
+        MapT(R"({"ref": " 2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"(" %FT%TZ")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        MapT(R"({"ref": "2024-05-17T15:10:58Z "})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ ")")},
+             SUCCESS(customRefExpected(
+                 []
+                 {
+                     json::Json j;
+                     j.setDouble(1715958658.0);
+                     return j;
+                 }()))),
+        // Without pattern but offset present → should fail
+        MapT(R"({"ref": "2024-05-17T12:10:58-03:00"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref")},
+             FAILURE(customRefExpected())),
+        // Empty pattern literal → pattern not allowed
+        MapT(R"({"ref": "2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("")")},
+             FAILURE(customRefExpected())),
+        // Oversized pattern literal (>64 chars) → pattern not allowed
+        MapT(R"({"ref": "2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")")},
+             FAILURE(customRefExpected())),
+        // Invalid pattern token → parse fails
+        MapT(R"({"ref": "2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%Q")")},
+             FAILURE(customRefExpected())),
+        // Pattern ok but not matching → parse fails
+        MapT(R"({"ref": "2024/05/17 15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": 1706172785})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": []})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": {}})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": true})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": null})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"notRef": "2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": "aaaa2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": "2024-05-17T15:10:58Zaaaa"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": "2024-05-17T15:10:58Z "})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": " 2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref"), makeValue(R"("%FT%TZ")")},
+             FAILURE(customRefExpected())),
+        MapT(R"({"ref": "2024-05-17T15:10:58Z2024-05-17T15:10:58Z"})",
+             opBuilderHelperDateToEpochTime,
+             {makeRef("ref")},
+             FAILURE(customRefExpected()))),
     testNameFormatter<MapOperationTest>("Time"));
 } // namespace mapoperatestest
