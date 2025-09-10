@@ -1971,6 +1971,140 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
     };
 }
 
+// field: +date_to_epoch/<$date_field_ref>/format
+MapOp opBuilderHelperDateToEpochTime(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Check parameters
+    utils::assertSize(opArgs, 1, 2);
+    utils::assertRef(opArgs, 0);
+    const bool hasFormat = (opArgs.size() == 2);
+    if (hasFormat)
+    {
+        utils::assertValue(opArgs, 1);
+    }
+
+    const auto& dateRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    if (buildCtx->validator().hasField(dateRef.dotPath()))
+    {
+        const auto sType = buildCtx->validator().getType(dateRef.dotPath());
+        if (!(sType == schemf::Type::DATE || sType == schemf::Type::DATE_NANOS))
+        {
+            throw std::runtime_error(fmt::format("Expected 'date' reference but got reference '{}' of type '{}'",
+                                                 dateRef.dotPath(),
+                                                 schemf::typeToStr(sType)));
+        }
+    }
+
+    constexpr size_t kMaxFormatLen = 64;
+    constexpr const char* kDefaultFmt = "%Y-%m-%dT%H:%M:%SZ";
+
+    std::string formatLiteral;
+    if (hasFormat)
+    {
+        const auto v = std::static_pointer_cast<Value>(opArgs[1])->value();
+        if (!v.isString())
+        {
+            throw std::runtime_error("date_to_epoch format must be a string literal");
+        }
+        formatLiteral = v.getString().value();
+        if (formatLiteral.empty())
+        {
+            throw std::runtime_error("date_to_epoch format must be a non-empty string");
+        }
+        if (formatLiteral.size() > kMaxFormatLen)
+        {
+            throw std::runtime_error(fmt::format("date_to_epoch format exceeds maximum length '{}'", kMaxFormatLen));
+        }
+    }
+
+    const std::string fmt = hasFormat ? formatLiteral : kDefaultFmt;
+
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 = fmt::format("{} -> Reference '{}' not found", name, dateRef.dotPath());
+    const auto failureTrace2 = fmt::format("{} -> Reference '{}' is not a string", name, dateRef.dotPath());
+    const auto failureTrace3 = fmt::format("{} -> Invalid date/time per format", name);
+    const auto failureTrace4 = fmt::format("{} -> Epoch number is out of range", name);
+    const auto failureTraceTZ = fmt::format("{} -> Time zone not found/unsupported in tzdb", name);
+
+    return [runState = buildCtx->runState(),
+            refPath = dateRef.jsonPath(),
+            fmt = std::move(fmt),
+            successTrace,
+            failureTrace1,
+            failureTrace2,
+            failureTrace3,
+            failureTrace4,
+            failureTraceTZ](base::ConstEvent event) -> MapResult
+    {
+        const auto dateStrOpt = event->getString(refPath);
+        if (!dateStrOpt.has_value())
+        {
+            const bool exists = event->exists(refPath);
+            RETURN_FAILURE(runState, json::Json {}, exists ? failureTrace2 : failureTrace1);
+        }
+
+        const std::string& dateStr = dateStrOpt.value();
+
+        date::sys_time<std::chrono::nanoseconds> tp;
+        {
+            std::istringstream is {dateStr};
+            is.imbue(std::locale::classic());
+
+            ::date::local_time<std::chrono::nanoseconds> lt {};
+            std::string abbr;
+            std::chrono::minutes off {0};
+
+            is >> ::date::parse(fmt.c_str(), lt, abbr, off);
+            if (is.fail() || is.peek() != std::char_traits<char>::eof())
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureTrace3);
+            }
+
+            try
+            {
+                if (!abbr.empty())
+                {
+                    const ::date::time_zone* tz = ::date::locate_zone(abbr);
+                    tp = tz->to_sys(lt);
+                }
+                else
+                {
+                    tp = ::date::sys_time<std::chrono::nanoseconds>(lt.time_since_epoch()) - off;
+                }
+            }
+            catch (const date::nonexistent_local_time&)
+            {
+                // DST spring-forward gap
+                RETURN_FAILURE(runState, json::Json {}, fmt::format("{} (DST gap)", failureTrace3));
+            }
+            catch (const date::ambiguous_local_time&)
+            {
+                // DST fall-back fold
+                RETURN_FAILURE(runState, json::Json {}, fmt::format("{} (DST fold)", failureTrace3));
+            }
+            catch (const std::runtime_error&)
+            {
+                // Unknown IANA zone / tzdb not available
+                RETURN_FAILURE(runState, json::Json {}, fmt::format("{} ('{}')", failureTraceTZ, abbr));
+            }
+        }
+
+        const auto us = std::chrono::duration_cast<std::chrono::microseconds>(tp.time_since_epoch()).count();
+        const double sd = static_cast<double>(us) / 1'000'000.0;
+
+        if (!std::isfinite(sd) || sd > static_cast<double>(std::numeric_limits<int64_t>::max())
+            || sd < static_cast<double>(std::numeric_limits<int64_t>::min()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureTrace4);
+        }
+
+        json::Json out;
+        out.setDouble(sd);
+        RETURN_SUCCESS(runState, out, successTrace);
+    };
+}
+
 // field:  get_date
 MapOp opBuilderHelperGetDate(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
