@@ -1170,9 +1170,9 @@ checks:
        - soc_2: ["CC6.3", "CC6.6"]
      condition: all
      rules:
-      - "c:systemctl is-enabled apport.service -> r:disabled"
+      - "c:systemctl is-enabled apport.service -> r:disabled|masked"
       - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
-      - "not c:systemctl is-active apport.service -> r:active"
+      - "c:systemctl is-active apport.service -> r:inactive"
 
   # 1.6.1 Ensure message of the day is configured properly. (Automated)
    - id: 35546
@@ -6683,3 +6683,4 @@ checks:
 
   # 7.2.9 Ensure local interactive user home directories are configured. (Automated) - Not Implemented
   # 7.2.10 Ensure local interactive user dot files access is configured. (Automated) - Not Implemented
+
