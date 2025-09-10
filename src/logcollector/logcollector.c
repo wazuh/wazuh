@@ -249,8 +249,6 @@ void LogCollectorStart()
     memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
     const char *m_uname;
 
-    m_uname = getuname();
-
     win_read_vista_sec();
 
     /* Check for ASCII, UTF-8 */
