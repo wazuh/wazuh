@@ -131,9 +131,7 @@ public:
                             catch (const std::exception& e)
                             {
                                 logMessage(modules_log_level_t::LOG_WARNING,
-                                           "Cannot set label for agent: %d, %s",
-                                           idAgent,
-                                           e.what());
+                                           "Cannot set label for agent: " + std::to_string(idAgent) + ", " + e.what());
                                 break;
                             }
 

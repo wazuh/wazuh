@@ -18,6 +18,7 @@
 
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::Throw;
 
 static std::shared_ptr<NiceMock<MockSQLiteStatement>> mockStmt(std::shared_ptr<std::vector<std::string>> qs)
 {
@@ -166,4 +167,159 @@ TEST_F(EndpointPostV1AgentsSyncTest, StatusSingleAgent)
         (*qdump)[0],
         "UPDATE agent SET connection_status = ?, sync_status = 'synced', disconnection_time = ?, status_code = ?, "
         "version = ? WHERE id = ?;");
+}
+
+TEST_F(EndpointPostV1AgentsSyncTest, LabelsSynchronizationError)
+{
+    auto stmt = mockStmt(qdump);
+
+    // Mock the step() method to throw an exception on the first call for labels insertion
+    EXPECT_CALL(*stmt, bindStringView).Times(testing::AtLeast(0));
+    EXPECT_CALL(*stmt, bindInt64).Times(testing::AtLeast(0));
+    EXPECT_CALL(*stmt, step())
+        .Times(3)                      // 1 for UPDATE, 1 for DELETE, 1 for INSERT (will throw)
+        .WillOnce(Return(SQLITE_DONE)) // UPDATE agent
+        .WillOnce(Return(SQLITE_DONE)) // DELETE labels
+        .WillOnce(testing::Throw(std::runtime_error("Database constraint violation"))); // INSERT labels (throws)
+    EXPECT_CALL(*stmt, reset()).Times(2); // Only for UPDATE and DELETE, not for INSERT due to exception
+
+    req.body = R"(
+    {
+        "syncreq": [
+            {
+            "config_sum": "x",
+            "id": 1,
+            "merged_sum": "y",
+            "name": "Alice",
+            "version": "4.7.0",
+            "labels": [
+                {
+                "key": "env",
+                "value": "test"
+                }
+            ]
+            }
+        ]
+    })";
+
+    // The call should not throw an exception, but should handle the error gracefully
+    try
+    {
+        TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
+    }
+    catch (const std::exception& e)
+    {
+        FAIL() << "Unexpected exception: " << e.what();
+    }
+
+    // Verify that the queries were executed up to the point of failure
+    ASSERT_EQ(qdump->size(), 3);
+    EXPECT_EQ((*qdump)[0],
+              "UPDATE agent SET config_sum = ?, ip = ?, manager_host = ?, merged_sum = ?, name = ?, node_name = ?, "
+              "os_arch = ?, os_build = ?, os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, os_platform = ?, "
+              "os_uname = ?, os_version = ?, version = ?, last_keepalive = ?, connection_status = ?, "
+              "disconnection_time = ?, group_config_status = ?, status_code= ?, sync_status = 'synced' WHERE id = ?;");
+    EXPECT_EQ((*qdump)[1], "DELETE FROM labels WHERE id = ?;");
+    EXPECT_EQ((*qdump)[2], "INSERT INTO labels (id, key, value) VALUES (?, ?, ?);");
+}
+
+TEST_F(EndpointPostV1AgentsSyncTest, MultipleLabelsWithErrorBreaksLoop)
+{
+    auto stmt = mockStmt(qdump);
+
+    // Mock the step() method to throw an exception on the second label insertion
+    EXPECT_CALL(*stmt, bindStringView).Times(testing::AtLeast(0));
+    EXPECT_CALL(*stmt, bindInt64).Times(testing::AtLeast(0));
+    EXPECT_CALL(*stmt, step())
+        .Times(4)                      // 1 for UPDATE, 1 for DELETE, 2 for INSERT (second will throw)
+        .WillOnce(Return(SQLITE_DONE)) // UPDATE agent
+        .WillOnce(Return(SQLITE_DONE)) // DELETE labels
+        .WillOnce(Return(SQLITE_DONE)) // INSERT first label
+        .WillOnce(testing::Throw(std::runtime_error("Database constraint violation"))); // INSERT second label (throws)
+    EXPECT_CALL(*stmt, reset()).Times(3); // UPDATE, DELETE, and first INSERT
+
+    req.body = R"(
+    {
+        "syncreq": [
+            {
+            "config_sum": "x",
+            "id": 1,
+            "merged_sum": "y",
+            "name": "Alice",
+            "version": "4.7.0",
+            "labels": [
+                {
+                "key": "env",
+                "value": "test"
+                },
+                {
+                "key": "role",
+                "value": "server"
+                }
+            ]
+            }
+        ]
+    })";
+
+    // The call should not throw an exception, but should handle the error gracefully
+    try
+    {
+        TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
+    }
+    catch (const std::exception& e)
+    {
+        FAIL() << "Unexpected exception: " << e.what();
+    }
+
+    // Verify that the queries were executed up to the point of failure
+    ASSERT_EQ(qdump->size(), 3);
+    EXPECT_EQ((*qdump)[0],
+              "UPDATE agent SET config_sum = ?, ip = ?, manager_host = ?, merged_sum = ?, name = ?, node_name = ?, "
+              "os_arch = ?, os_build = ?, os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, os_platform = ?, "
+              "os_uname = ?, os_version = ?, version = ?, last_keepalive = ?, connection_status = ?, "
+              "disconnection_time = ?, group_config_status = ?, status_code= ?, sync_status = 'synced' WHERE id = ?;");
+    EXPECT_EQ((*qdump)[1], "DELETE FROM labels WHERE id = ?;");
+    EXPECT_EQ((*qdump)[2], "INSERT INTO labels (id, key, value) VALUES (?, ?, ?);");
+}
+
+TEST_F(EndpointPostV1AgentsSyncTest, LabelsSynchronizationSuccess)
+{
+    auto stmt = mockStmt(qdump);
+
+    // Mock successful execution for all operations including labels
+    EXPECT_CALL(*stmt, bindStringView).Times(testing::AtLeast(0));
+    EXPECT_CALL(*stmt, bindInt64).Times(testing::AtLeast(0));
+    EXPECT_CALL(*stmt, step()).Times(3);  // UPDATE + DELETE + INSERT
+    EXPECT_CALL(*stmt, reset()).Times(3); // All operations succeed
+
+    req.body = R"(
+    {
+        "syncreq": [
+            {
+            "config_sum": "x",
+            "id": 1,
+            "merged_sum": "y",
+            "name": "Alice",
+            "version": "4.7.0",
+            "labels": [
+                {
+                "key": "env",
+                "value": "test"
+                }
+            ]
+            }
+        ]
+    })";
+
+    TEndpointPostV1AgentsSync<MockSQLiteConnection, TrampolineSQLiteStatement>::call(db, req, res);
+
+    // Verify that all queries were executed successfully
+    ASSERT_EQ(qdump->size(), 3);
+    EXPECT_EQ((*qdump)[0],
+              "UPDATE agent SET config_sum = ?, ip = ?, manager_host = ?, merged_sum = ?, name = ?, node_name = ?, "
+              "os_arch = ?, os_build = ?, os_codename = ?, os_major = ?, os_minor = ?, os_name = ?, os_platform = ?, "
+              "os_uname = ?, os_version = ?, version = ?, last_keepalive = ?, connection_status = ?, "
+              "disconnection_time = ?, group_config_status = ?, status_code= ?, sync_status = 'synced' WHERE id = ?;");
+    EXPECT_EQ((*qdump)[1], "DELETE FROM labels WHERE id = ?;");
+    EXPECT_EQ((*qdump)[2], "INSERT INTO labels (id, key, value) VALUES (?, ?, ?);");
 }
