@@ -386,7 +386,7 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
     sleep(sca_sync_interval);
 
     while (FOREVER()) {
-        mdebug1("Running inventory synchronization.");
+        mdebug1("Running SCA synchronization.");
 
         if (sca_sync_module_ptr) {
             sca_sync_module_ptr(MODE_DELTA, sca_sync_response_timeout, SCA_SYNC_RETRIES, sca_sync_max_eps);
@@ -394,7 +394,7 @@ void * wm_sca_sync_module(__attribute__((unused)) void * args) {
             mdebug1("Sync function not available");
         }
 
-        mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", sca_sync_interval);
+        mdebug1("SCA synchronization finished, waiting for %d seconds before next run.", sca_sync_interval);
         sleep(sca_sync_interval);
     }
 
