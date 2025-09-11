@@ -15,6 +15,7 @@ from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 cluster_enabled = not read_cluster_config(from_import=True)['disabled']
 node_id = get_node().get('node') if cluster_enabled else None
+node_type = get_node().get('type') if cluster_enabled else 'master'
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])

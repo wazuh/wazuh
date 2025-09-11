@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 int __wrap_sysinfo_hardware(cJSON ** js_result) {
@@ -44,6 +45,12 @@ int __wrap_sysinfo_networks(cJSON ** js_result) {
 }
 
 int __wrap_sysinfo_ports(cJSON ** js_result) {
+
+    *js_result = mock_ptr_type(cJSON *);
+    return mock_type(int);
+}
+
+int __wrap_sysinfo_browser_extensions(cJSON ** js_result) {
 
     *js_result = mock_ptr_type(cJSON *);
     return mock_type(int);

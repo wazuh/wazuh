@@ -39,8 +39,6 @@ echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_ACTIVE_RESPONSE="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_SYSCHECK="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_ROOTCHECK="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_CISCAT="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_AGENT_SERVER_IP="MANAGER_IP"' >> ./etc/preloaded-vars.conf
 echo 'USER_CA_STORE="/path/to/my_cert.pem"' >> ./etc/preloaded-vars.conf
@@ -173,6 +171,11 @@ rm -f %{_localstatedir}/tmp/add_localfiles.sh
 
 chmod 0660 %{_localstatedir}/etc/ossec.conf
 
+# Remove deprecated binaries
+if [ -f %{_localstatedir}/bin/agent-auth ]; then
+  rm -f %{_localstatedir}/bin/agent-auth
+fi
+
 # Remove old ossec user and group if exists and change ownwership of files
 
 if grep "^ossec:" /etc/group > /dev/null 2>&1; then
@@ -229,7 +232,6 @@ rm -fr %{buildroot}
 
 %dir %attr(750, root, wazuh) %{_localstatedir}
 %attr(440, wazuh, wazuh) %{_localstatedir}/VERSION.json
-%attr(750, root, wazuh) %{_localstatedir}/agentless
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response/bin
@@ -244,7 +246,6 @@ rm -fr %{buildroot}
 %attr(660, root, wazuh) %config(noreplace) %{_localstatedir}/etc/ossec.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/wpk_root.pem
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
-%attr(660, root, wazuh) %config(missingok,noreplace) %{_localstatedir}/etc/shared/*
 %dir %attr(750, root, system) %{_localstatedir}/lib
 %attr(750, root, wazuh) %{_localstatedir}/lib/*
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/logs
@@ -260,6 +261,8 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector/db
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/queue/syscollector/norm_config.json
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca/db
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/alerts
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
@@ -287,7 +290,7 @@ rm -fr %{buildroot}
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html
 * Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
-* Tue Aug 05 2025 support <info@wazuh.com> - 4.13.0
+* Thu Sep 11 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html

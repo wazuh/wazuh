@@ -87,8 +87,6 @@ void Monitord()
 
         if(check_logs_time_trigger()){
             monitor_logs(!CHECK_LOGS_SIZE, path, path_json);
-            /* Generating reports */
-            manage_files(mond_time_control.today, mond_time_control.thismonth, mond_time_control.thisyear);
             monitor_update_date();
 
         } else{
@@ -132,39 +130,6 @@ cJSON *getMonitorGlobalOptions(void) {
     return root;
 }
 
-cJSON *getReportsOptions(void) {
-
-    cJSON *root = cJSON_CreateObject();
-    unsigned int i;
-
-    if (mond.reports) {
-        cJSON *arr = cJSON_CreateArray();
-        for (i=0;mond.reports[i];i++) {
-            cJSON *rep = cJSON_CreateObject();
-            if (mond.reports[i]->title) cJSON_AddStringToObject(rep,"title",mond.reports[i]->title);
-            if (mond.reports[i]->r_filter.group) cJSON_AddStringToObject(rep,"group",mond.reports[i]->r_filter.group);
-            if (mond.reports[i]->r_filter.rule) cJSON_AddStringToObject(rep,"rule",mond.reports[i]->r_filter.rule);
-            if (mond.reports[i]->r_filter.level) cJSON_AddStringToObject(rep,"level",mond.reports[i]->r_filter.level);
-            if (mond.reports[i]->r_filter.srcip) cJSON_AddStringToObject(rep,"srcip",mond.reports[i]->r_filter.srcip);
-            if (mond.reports[i]->r_filter.user) cJSON_AddStringToObject(rep,"user",mond.reports[i]->r_filter.user);
-            if (mond.reports[i]->r_filter.show_alerts) cJSON_AddStringToObject(rep,"showlogs","yes"); else cJSON_AddStringToObject(rep,"showlogs","no");
-            if (mond.reports[i]->emailto) {
-                unsigned int j = 0;
-                cJSON *email = cJSON_CreateArray();
-                while (mond.reports[i]->emailto[j]) {
-                    cJSON_AddItemToArray(email, cJSON_CreateString(mond.reports[i]->emailto[j]));
-                    j++;
-                }
-                cJSON_AddItemToObject(rep,"email_to",email);
-            }
-            cJSON_AddItemToArray(arr, rep);
-        }
-        cJSON_AddItemToObject(root,"reports",arr);
-    }
-
-    return root;
-}
-
 int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short day_wait) {
     int modules = 0;
 
@@ -180,18 +145,12 @@ int MonitordConfig(const char *cfg, monitor_config *mond, int no_agents, short d
     mond->delete_old_agents = (unsigned int)getDefine_Int("monitord", "delete_old_agents", 0, 9600);
 
     mond->agents = NULL;
-    mond->smtpserver = NULL;
-    mond->emailfrom = NULL;
-    mond->emailidsname = NULL;
 
     /* Setting default agent's global configuration */
     mond->global.agents_disconnection_time = 900;
     mond->global.agents_disconnection_alert_time = 0;
 
-    modules |= CREPORTS;
-
-    if (ReadConfig(modules, cfg, mond, NULL) < 0 ||
-        ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
+    if (ReadConfig(CGLOBAL, cfg, &mond->global, NULL) < 0) {
         merror_exit(CONFIG_ERROR, cfg);
     }
 

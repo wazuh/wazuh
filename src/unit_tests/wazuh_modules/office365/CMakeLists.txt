@@ -14,7 +14,7 @@ list(APPEND tests_flags "-Wl,--wrap,access -Wl,--wrap,wurl_http_request \
                         -Wl,--wrap,wurl_free_response -Wl,--wrap,wm_sendmsg -Wl,--wrap,strftime -Wl,--wrap,gmtime_r \
                         -Wl,--wrap,wm_state_io -Wl,--wrap,time -Wl,--wrap,StartMQ -Wl,--wrap,wfopen \
                         -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \ -Wl,--wrap=is_fim_shutdown \
-                        -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                        -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
                         -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_run_integrity -Wl,--wrap,fim_db_remove_path \
                         -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start -Wl,--wrap,fim_db_transaction_deleted_rows \
                         -Wl,--wrap,fim_db_transaction_sync_row -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_file_pattern_search \

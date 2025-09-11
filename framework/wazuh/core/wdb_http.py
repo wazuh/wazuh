@@ -83,7 +83,7 @@ class WazuhDBHTTPClient:
         self.socket_path = f'{common.WDB_HTTP_SOCKET}.sock'
 
         try:
-            transport = AsyncHTTPTransport(uds=self.socket_path, retries=retries)
+            transport = AsyncHTTPTransport(uds=self.socket_path, retries=retries, verify=False)
             self._client = AsyncClient(transport=transport, timeout=Timeout(timeout))
 
         except (OSError, TimeoutException) as e:

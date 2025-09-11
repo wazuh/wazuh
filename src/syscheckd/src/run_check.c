@@ -24,6 +24,7 @@
 #include "../rootcheck/rootcheck.h"
 #include "file/file.h"
 #include "ebpf/include/ebpf_whodata.h"
+#include "agent_sync_protocol_c_interface.h"
 
 #ifdef WAZUH_UNIT_TESTING
 unsigned int files_read = 0;
@@ -41,6 +42,9 @@ void audit_set_db_consistency(void);
 #else
 #define STATIC static
 #endif
+
+// Global flag to stop sync module
+volatile int fim_sync_module_running = 0;
 
 // Prototypes
 #ifdef WIN32
@@ -112,13 +116,13 @@ void send_syscheck_msg(const cJSON *_msg) {
 }
 
 // Persist a syscheck message
-void persist_syscheck_msg(const cJSON* _msg) {
+void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg) {
     if (syscheck.enable_synchronization) {
         char* msg = cJSON_PrintUnformatted(_msg);
 
         mdebug2(FIM_PERSIST, msg);
 
-        // fim_persist_stateful_event(msg);
+        asp_persist_diff(syscheck.sync_handle, id, operation, index, msg);
 
         os_free(msg);
     } else {
@@ -277,6 +281,7 @@ void start_daemon()
     w_create_thread(symlink_checker_thread, NULL);
 
     if (syscheck.enable_synchronization) {
+        fim_sync_module_running = 1;
         // Launch inventory synchronization thread
         w_create_thread(fim_run_integrity, NULL);
     } else {
@@ -289,6 +294,7 @@ void start_daemon()
     }
 
     if (syscheck.enable_synchronization) {
+        fim_sync_module_running = 1;
         if (CreateThread(NULL, 0, fim_run_integrity, NULL, 0, NULL) == NULL) {
             merror(THREAD_ERROR);
         }
@@ -521,13 +527,21 @@ DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
 void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
-    while (FOREVER()) {
+    // Initial wait until FIM is started
+    for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
+        sleep(1);
+    }
+
+    while (fim_sync_module_running) {
         mdebug1("Running inventory synchronization.");
 
-        // fim_synchronize(syscheck.sync_response_timeout, syscheck.sync_max_eps);
+        asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
 
         mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
-        sleep(syscheck.sync_interval);
+
+        for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
+            sleep(1);
+        }
     }
 
 #ifdef WIN32
@@ -705,7 +719,7 @@ static void *symlink_checker_thread(__attribute__((unused)) void * data) {
                     snprintf(path, PATH_MAX, "%s", dir_it->symbolic_links);
                     fim_link_check_delete(dir_it);
 
-                    directory_t *config = fim_configuration_directory(path);
+                    directory_t *config = fim_configuration_directory(path, true);
 
                     if (config != NULL) {
                         fim_link_silent_scan(path, config);

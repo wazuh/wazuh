@@ -20,7 +20,7 @@
 int w_agentd_get_buffer_lenght();
 
 #ifndef TEST_WINAGENT
-int buffer_append(const char *msg);
+int buffer_append(const char *msg, ssize_t msg_len);
 int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity);
 void w_agentd_buffer_free(unsigned int current_capacity);
 void buffer_init();
@@ -143,7 +143,7 @@ void test_buffer_append(void **state)
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     buffer_init();
-    buffer_append("Testing");
+    buffer_append("Testing", -1);
 
     assert_int_equal(1, w_agentd_get_buffer_lenght());
 
@@ -185,7 +185,7 @@ void test_w_agentd_buffer_resize_shrink(void **state)
         expect_function_call(__wrap_pthread_mutex_unlock);
         // Unloock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_unlock);
-        buffer_append("Testing");
+        buffer_append("Testing", -1);
     }
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -248,7 +248,7 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
         expect_function_call(__wrap_pthread_mutex_unlock);
         // Unloock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_unlock);
-        buffer_append("Testing");
+        buffer_append("Testing", -1);
     }
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -306,7 +306,7 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
         expect_function_call(__wrap_pthread_mutex_unlock);
         // Unloock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_unlock);
-        buffer_append("Testing");
+        buffer_append("Testing", -1);
     }
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -364,7 +364,7 @@ void test_w_agentd_buffer_free(void **state)
         expect_function_call(__wrap_pthread_mutex_unlock);
         // Unloock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_unlock);
-        buffer_append("Testing");
+        buffer_append("Testing", -1);
     }
 
     expect_function_call(__wrap_pthread_mutex_lock);

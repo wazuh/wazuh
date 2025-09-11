@@ -145,9 +145,15 @@ typedef enum fdb_stmt {
 #endif
 
 #include "../os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
-#include "integrity_op.h"
+#include "shared.h"
 #include "../external/sqlite/sqlite3.h"
 #include "../headers/list_op.h"
+
+/// @brief Opaque handle to the AgentSyncProtocol C++ object.
+///
+/// Used to interact with the AgentSyncProtocol instance from C code.
+typedef struct AgentSyncProtocol AgentSyncProtocolHandle;
+
 
 #ifdef WIN32
 typedef struct whodata_dir_status whodata_dir_status;
@@ -354,7 +360,6 @@ typedef struct fdb_t {
 typedef struct _config {
     int rootcheck;                                     /* set to 0 when rootcheck is disabled */
     int disabled;                                      /* is syscheck disabled? */
-    int scan_on_start;
     int max_depth;                                     /* max level of recursivity allowed */
     size_t file_max_size;                              /* max file size for calculating hashes */
 
@@ -398,6 +403,7 @@ typedef struct _config {
     uint32_t sync_response_timeout;                    /* Minimum interval for the synchronization process */
     long sync_max_eps;                                 /* Maximum events per second for synchronization messages. */
     int max_eps;                                       /* Maximum events per second. */
+    unsigned int notify_first_scan;                    /* Notify the first scan */
 
     /* Windows only registry checking */
 #ifdef WIN32
@@ -428,9 +434,9 @@ typedef struct _config {
     rtfim *realtime;
     fdb_t *database;
 
-    char **prefilter_cmd;
     int process_priority; // Adjusts the priority of the process (or threads in Windows)
-    bool allow_remote_prefilter_cmd;
+
+    AgentSyncProtocolHandle *sync_handle;
 } syscheck_config;
 
 

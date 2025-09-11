@@ -19,6 +19,7 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
+#include <regex>
 #if __cplusplus >= 201703L
 #include <charconv>
 #include <string_view>
@@ -131,7 +132,7 @@ namespace Utils
             return "1970/01/01 00:00:00";
         }
 
-        ss << std::put_time(localTime, "%FT%T");
+        ss << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
 
         // Get milliseconds from the current time
         auto milliseconds =
@@ -145,6 +146,13 @@ namespace Utils
 
     static std::string timestampToISO8601(const std::string& timestamp)
     {
+        // Accepts: YYYY-MM-DDTHH:MM:SS(.mmm)?Z
+        static const std::regex iso8601_regex(R"(^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$")");
+        if (std::regex_match(timestamp, iso8601_regex))
+        {
+            return timestamp;
+        }
+
         std::tm tm {};
         std::istringstream ss(timestamp);
         ss >> std::get_time(&tm, "%Y/%m/%d %H:%M:%S");
@@ -164,7 +172,7 @@ namespace Utils
             return "";
         }
 
-        output << std::put_time(localTime, "%FT%T");
+        output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
 
         // Get milliseconds from the current time
         auto milliseconds =
@@ -207,7 +215,7 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%FT%T");
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
             // Get milliseconds from the current time
             auto milliseconds =
                 std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
@@ -228,7 +236,7 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%FT%T");
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
             if (std::abs(timestamp - static_cast<int>(timestamp)) < 1e-9)
             {
                 // Get milliseconds from the current time
@@ -261,7 +269,7 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%FT%T");
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
             // Get milliseconds from the current time
             auto milliseconds =
                 std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;
@@ -291,7 +299,7 @@ namespace Utils
             {
                 return "";
             }
-            output << std::put_time(localTime, "%FT%T");
+            output << std::put_time(localTime, "%Y-%m-%dT%H:%M:%S");
             // Get milliseconds from the current time
             auto milliseconds =
                 std::chrono::duration_cast<std::chrono::milliseconds>(itt.time_since_epoch()).count() % 1000;

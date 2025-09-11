@@ -641,7 +641,6 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
 #endif
     if (calculate_checksums) {
         expect_OS_MD5_SHA1_SHA256_File_call(file_path,
-                                            syscheck.prefilter_cmd,
                                             "d41d8cd98f00b204e9800998ecf8427e",
                                             "da39a3ee5e6b4b0d3255bfef95601890afd80709",
                                             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -982,7 +981,7 @@ static void test_fim_check_depth_failure_null_directory(void **state) {
 static void test_fim_configuration_directory_no_path(void **state) {
     directory_t *ret;
 
-    ret = fim_configuration_directory(NULL);
+    ret = fim_configuration_directory(NULL, true);
 
     assert_null(ret);
 }
@@ -1000,7 +999,7 @@ static void test_fim_configuration_directory_file(void **state) {
     expect_function_call_any(__wrap_pthread_mutex_unlock);
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
 
-    ret = fim_configuration_directory(path);
+    ret = fim_configuration_directory(path, true);
 
     assert_non_null(ret);
     assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
@@ -1022,7 +1021,7 @@ static void test_fim_configuration_directory_file(void **state) {
 
     str_lowercase(path);
 
-    ret = fim_configuration_directory(path);
+    ret = fim_configuration_directory(path, true);
 
     assert_ptr_equal(ret, ((directory_t *)OSList_GetDataFromIndex(syscheck.directories, 3)));
 }
@@ -1048,7 +1047,29 @@ static void test_fim_configuration_directory_not_found(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/invalid'");
 
-    ret = fim_configuration_directory(path);
+    ret = fim_configuration_directory(path, true);
+
+    assert_null(ret);
+}
+
+static void test_fim_configuration_directory_not_found_not_debug(void **state) {
+    const char *path = "/invalid";
+    directory_t *ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+
+#ifndef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+#else
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#endif
+
+    ret = fim_configuration_directory(path, false);
 
     assert_null(ret);
 }
@@ -1135,7 +1156,7 @@ static void test_fim_file_modify_transaction(void **state) {
     expect_value(__wrap_decode_win_acl_json, perms, permissions);
 #endif
 
-    expect_OS_MD5_SHA1_SHA256_File_call(file_path, syscheck.prefilter_cmd, "d41d8cd98f00b204e9800998ecf8427e",
+    expect_OS_MD5_SHA1_SHA256_File_call(file_path, "d41d8cd98f00b204e9800998ecf8427e",
                                         "da39a3ee5e6b4b0d3255bfef95601890afd80709",
                                         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", OS_BINARY,
                                         0x400, 0);
@@ -1188,7 +1209,7 @@ static void test_fim_file_modify(void **state) {
     expect_value(__wrap_decode_win_acl_json, perms, permissions);
 #endif
 
-    expect_OS_MD5_SHA1_SHA256_File_call(file_path, syscheck.prefilter_cmd, "d41d8cd98f00b204e9800998ecf8427e",
+    expect_OS_MD5_SHA1_SHA256_File_call(file_path, "d41d8cd98f00b204e9800998ecf8427e",
                                         "da39a3ee5e6b4b0d3255bfef95601890afd80709",
                                         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", OS_BINARY,
                                         0x400, 0);
@@ -1224,7 +1245,6 @@ static void test_fim_file_no_attributes(void **state) {
 #endif
 
     expect_OS_MD5_SHA1_SHA256_File_call(file_path,
-                                        syscheck.prefilter_cmd,
                                         "d41d8cd98f00b204e9800998ecf8427e",
                                         "da39a3ee5e6b4b0d3255bfef95601890afd80709",
                                         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -1283,11 +1303,6 @@ static void test_fim_file_error_on_insert(void **state) {
     expect_value(__wrap_decode_win_acl_json, perms, permissions);
 #endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, file_path);
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, syscheck.prefilter_cmd);
-#else
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, syscheck.prefilter_cmd);
-#endif
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -2913,11 +2928,7 @@ static void test_fim_get_data_hash_error(void **state) {
     expect_get_data(strdup("user"), strdup("group"), "test", 0);
 
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, fname, "test");
-#ifndef TEST_WINAGENT
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, syscheck.prefilter_cmd);
-#else
-    expect_string(__wrap_OS_MD5_SHA1_SHA256_File, prefilter_cmd, syscheck.prefilter_cmd);
-#endif
+
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, md5output, "d41d8cd98f00b204e9800998ecf8427e");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha1output, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
     expect_string(__wrap_OS_MD5_SHA1_SHA256_File, sha256output, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
@@ -3877,6 +3888,7 @@ int main(void) {
         cmocka_unit_test(test_fim_configuration_directory_no_path),
         cmocka_unit_test(test_fim_configuration_directory_file),
         cmocka_unit_test(test_fim_configuration_directory_not_found),
+        cmocka_unit_test(test_fim_configuration_directory_not_found_not_debug),
 
         /* init_fim_data_entry */
         cmocka_unit_test(test_init_fim_data_entry),
@@ -3993,13 +4005,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
     };
-    const struct CMUnitTest fim_regex_tests[] = { 
+    const struct CMUnitTest fim_regex_tests[] = {
         /* fim_check_ignore */
         cmocka_unit_test(test_fim_check_ignore_strncasecmp),
         cmocka_unit_test(test_fim_check_ignore_regex_file),
         cmocka_unit_test(test_fim_check_ignore_regex_directory),
         cmocka_unit_test(test_fim_check_ignore_failure),
-    }; 
+    };
     const struct CMUnitTest root_monitor_tests[] = {
         cmocka_unit_test(test_fim_checker_root_ignore_file_under_recursion_level),
         cmocka_unit_test(test_fim_checker_root_file_within_recursion_level),

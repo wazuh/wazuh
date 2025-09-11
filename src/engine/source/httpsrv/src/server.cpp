@@ -6,6 +6,7 @@
 #include <fmt/format.h>
 
 #include <base/logging.hpp>
+#include <base/process.hpp>
 
 namespace httpsrv
 {
@@ -94,7 +95,12 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
 
     if (useThread)
     {
-        m_thread = std::thread([srv = m_srv, socketPath]() { srv->listen(socketPath, true); });
+        m_thread = std::thread(
+            [srv = m_srv, socketPath]()
+            {
+                base::process::setThreadName("httpsrv");
+                srv->listen(socketPath, true);
+            });
         m_srv->wait_until_ready();
 
         auto tid = m_thread.get_id();

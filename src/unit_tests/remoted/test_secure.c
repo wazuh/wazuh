@@ -12,7 +12,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <stdint.h>
 #include <cmocka.h>
 
 #include "../../headers/shared.h"
@@ -33,6 +33,7 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
+#include "../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../wrappers/wazuh/shared_modules/router_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_metadata_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
@@ -109,8 +110,6 @@ static int teardown_remoted_configuration(void** state)
 {
     test_mode = 0;
     node_name = "";
-    router_syscollector_handle = NULL;
-    router_rsync_handle = NULL;
 
     test_agent_info* data = (test_agent_info*)*state;
     free(data->agent_id);
@@ -1218,7 +1217,11 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 12!");
+    // getDefine_Int for router_forwarding_disabled
+    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -1313,7 +1316,11 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized AAA");
+    // getDefine_Int for router_forwarding_disabled
+    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -1867,7 +1874,11 @@ void test_HandleSecureMessage_close_same_sock(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 12!");
+    // getDefine_Int for router_forwarding_disabled
+    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -1940,13 +1951,93 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized AAA");
+    // getDefine_Int for router_forwarding_disabled
+    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
     os_free(key->id);
     os_free(key->ip);
     os_free(key->name);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
+void test_HandleSecureMessage_router_forwarding_disabled(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "12!";
+    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    current_ts = 61;
+
+    logr.connection_overtake_time = 60;
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("name");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // SendMSG
+    expect_string(__wrap_SendMSG, message, "12!");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (name) 127.0.0.1");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, 0);
+
+    expect_function_call(__wrap_rem_inc_recv_evt);
+
+    // getDefine_Int for router_forwarding_disabled - DISABLED (return 1)
+    will_return(__wrap_getDefine_Int, 1); // Router forwarding DISABLED
+
+    // Expect the debug message when router forwarding is disabled
+    expect_string(__wrap__mdebug2, formatted_msg, "Router forwarding is disabled, not forwarding message from agent '001'.");
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
     os_free(key);
     os_free(keyentries);
     indexed_queue_free(control_msg_queue);
@@ -2313,6 +2404,7 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_control_msg_succes),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock_2),
+        cmocka_unit_test(test_HandleSecureMessage_router_forwarding_disabled),
         // Tests handle_new_tcp_connection
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_success, setup_new_tcp, teardown_new_tcp),
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_wnotify_fail, setup_new_tcp, teardown_new_tcp),

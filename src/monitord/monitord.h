@@ -16,8 +16,10 @@
 #define ARGV0 "wazuh-monitord"
 #endif
 
-#include "../config/reports-config.h"
 #include "../config/global-config.h"
+
+/* Forward declarations */
+typedef struct _monitor_config monitor_config;
 
 #define MAX_DAY_WAIT 600
 #define MONITORD_MSG_HEADER "1:" ARGV0 ":"
@@ -149,7 +151,6 @@ void monitor_logs(bool check_logs_size, char path[PATH_MAX], char path_json[PATH
 /* Parse read config into JSON format */
 cJSON *getMonitorInternalOptions(void);
 cJSON *getMonitorGlobalOptions(void);
-cJSON *getReportsOptions(void);
 size_t moncom_dispatch(char * command, char ** output);
 size_t moncom_getconfig(const char * section, char ** output);
 void * moncom_main(__attribute__((unused)) void * arg);
@@ -163,6 +164,23 @@ typedef struct _monitor_time_control {
     int thismonth;
     int thisyear;
 } monitor_time_control;
+
+// Moved from deprecated reportd
+typedef struct _monitor_config {
+    short int day_wait;
+    unsigned int compress:1;
+    unsigned int sign:1;
+    unsigned int monitor_agents:1;
+    unsigned int rotate_log:1;
+    unsigned int delete_old_agents;
+    int a_queue;
+    int keep_log_days;
+    unsigned long size_rotate;
+    int daily_rotations;
+    char **agents;
+
+    _Config global;
+} monitor_config;
 
 /* Global variables */
 extern monitor_config mond;

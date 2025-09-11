@@ -156,6 +156,14 @@ case "$1" in
     chown ${USER}:${GROUP} ${DIR}/logs/active-responses.log
     chmod 0660 ${DIR}/logs/active-responses.log
 
+    touch ${DIR}/logs/ossec.log
+    chown ${USER}:${GROUP} ${DIR}/logs/ossec.log
+    chmod 0660 ${DIR}/logs/ossec.log
+
+    touch ${DIR}/logs/ossec.json
+    chown ${USER}:${GROUP} ${DIR}/logs/ossec.json
+    chmod 0660 ${DIR}/logs/ossec.json
+
     # Set merged.mg permissions to new ones
     find ${DIR}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
@@ -270,7 +278,12 @@ case "$1" in
         fi
     fi
 
-    #Delete obsolete files
+    # Delete deprecated manage_agents binary
+    if [ -f ${DIR}/bin/manage_agents ]; then
+        rm -f ${DIR}/bin/manage_agents
+    fi
+
+    # Delete obsolete files
     if [ -f /etc/ossec-init.conf ]; then
         rm -f /etc/ossec-init.conf
     fi

@@ -11,6 +11,8 @@ endif()
 
 file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
 list(APPEND rootfiles ${SRC_FOLDER}/shared/fs_op.o)
+list(APPEND rootfiles ${SRC_FOLDER}/shared/store_op.o)
+list(APPEND rootfiles ${SRC_FOLDER}/os_regex/os_match.o)
 
 if(${TARGET} STREQUAL "winagent")
   # Exclude winagent file
@@ -38,6 +40,7 @@ if(${TARGET} STREQUAL "winagent")
        ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/*.o
        ${SRC_FOLDER}/unit_tests/wrappers/windows/*.o
        ${SRC_FOLDER}/unit_tests/wrappers/windows/libc/*.o
+       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared_modules/*.o
        )
   list(APPEND sysfiles ${test_wrapper_files})
 endif()
@@ -118,7 +121,9 @@ set(FIM_SYSCOM_BASE_FLAGS "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckC
                            -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_db_init -Wl,--wrap,fim_db_transaction_sync_row \
                            -Wl,--wrap,fim_db_file_pattern_search -Wl,--wrap,fim_db_transaction_deleted_rows \
                            -Wl,--wrap,fim_db_get_count_file_entry -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_file_inode_search \
-                           -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start \
+                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                           ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS} -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=fim_db_init -Wl,--wrap,fim_sync_push_msg \
@@ -127,7 +132,7 @@ if(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_transaction_start \
                                      -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_transaction_deleted_rows \
                                      -Wl,--wrap=fim_db_file_update -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=is_fim_shutdown \
-                                     -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS}")
 endif()
@@ -146,14 +151,16 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                  -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
                                  -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
-                                 -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
+                                 -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen \
+                                 -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "fim_diff_changes")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=utf8_GetShortPathName")
+                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap=utf8_GetShortPathName")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
 endif()
@@ -168,6 +175,7 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_get_count_file_entry \
                              -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                              -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                             -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                              ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_realtime")
@@ -175,7 +183,7 @@ if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=fim_db_teardown")
 
   # Create event channel tests for run_realtime
   list(APPEND syscheckd_event_tests_names "test_run_realtime_event")
@@ -184,7 +192,7 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
                                            -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch
                                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                                           -Wl,--wrap=fim_db_teardown \
                                            -Wl,--wrap=utf8_CreateFile")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
@@ -198,6 +206,7 @@ set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthr
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                                 -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                                -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                                 ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "config")
@@ -209,7 +218,7 @@ else()
                                       -Wl,--wrap=fim_db_get_count_registry_data \
                                       -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                       -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                      -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                      -Wl,--wrap=fim_db_teardown")
   else()
     list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
   endif()
@@ -221,6 +230,7 @@ set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--w
                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                          -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                         -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                          ${DEBUG_OP_WRAPPERS}")
 list(APPEND syscheckd_tests_names "syscheck")
 if(${TARGET} STREQUAL "winagent")
@@ -236,7 +246,7 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap=fim_db_get_count_registry_data \
                                     -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                    -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                    -Wl,--wrap=fim_db_teardown")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
@@ -254,7 +264,9 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
                           -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
-                          -Wl,--wrap=fim_generate_delete_event ${DEBUG_OP_WRAPPERS}")
+                          -Wl,--wrap=fim_generate_delete_event -Wl,--wrap=asp_sync_module \
+                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                          ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_check")
 if(${TARGET} STREQUAL "agent")
@@ -266,7 +278,7 @@ elseif(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
                                      -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=fim_db_teardown")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
@@ -284,7 +296,7 @@ elseif(${TARGET} STREQUAL "winagent")
                                                                    -Wl,--wrap=fim_generate_delete_event \
                                                                    -Wl,--wrap=is_fim_shutdown \
                                                                    -Wl,--wrap=_imp__dbsync_initialize \
-                                                                   -Wl,--wrap=_imp__rsync_initialize \
+                                                                   \
                                                                    -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
@@ -372,6 +384,7 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg -Wl,--wrap,persist_sysche
                           -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
                           ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_fim_scan SYSCHECK_O ${TEST_DEPS} fim_shared)
@@ -383,7 +396,7 @@ if(${TARGET} STREQUAL "winagent")
                                           -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
                                           -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg \
                                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                          -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                                          -Wl,--wrap=fim_db_teardown \
                                           -Wl,--wrap=utf8_stat64"
                                           fimdb)
 else()

@@ -11,7 +11,6 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "syscheck_op.h"
-#include "integrity_op.h"
 #include "time_op.h"
 #include "db/include/db.h"
 #include "file/file.h"
@@ -37,6 +36,9 @@ extern void mock_assert(const int result, const char* const expression,
 #define assert(expression) \
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
+
+// Global variables
+static int _base_line = 0;
 
 time_t fim_scan() {
     struct timespec start;
@@ -112,6 +114,10 @@ time_t fim_scan() {
             realtime_sanitize_watch_map();
         }
         fim_realtime_print_watches();
+    }
+
+    if (notify_scan == 0) {
+        notify_scan = 1;
     }
 
     minfo(FIM_FREQUENCY_ENDED);

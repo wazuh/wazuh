@@ -140,7 +140,6 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddStringToObject(syscfg, "skip_dev", syscheck.skip_fs.dev ? "yes" : "no");
     cJSON_AddStringToObject(syscfg, "skip_sys", syscheck.skip_fs.sys ? "yes" : "no");
     cJSON_AddStringToObject(syscfg, "skip_proc", syscheck.skip_fs.proc ? "yes" : "no");
-    if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
     cJSON_AddNumberToObject(syscfg, "max_files_per_second", syscheck.max_files_per_second);
@@ -469,18 +468,6 @@ cJSON *getSyscheckConfig(void) {
     }
 #endif
 
-    cJSON_AddStringToObject(syscfg, "allow_remote_prefilter_cmd", syscheck.allow_remote_prefilter_cmd ? "yes" : "no");
-
-    if (syscheck.prefilter_cmd) {
-        char *full_command;
-        os_strdup(syscheck.prefilter_cmd[0], full_command);
-        for (int i = 1; syscheck.prefilter_cmd[i]; i++) {
-            wm_strcat(&full_command, syscheck.prefilter_cmd[i], ' ');
-        }
-        cJSON_AddStringToObject(syscfg,"prefilter_cmd", full_command);
-        os_free(full_command);
-    }
-
     cJSON * synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
@@ -490,6 +477,7 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddItemToObject(syscfg, "synchronization", synchronization);
 
     cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);
+    cJSON_AddStringToObject(syscfg, "notify_first_scan", syscheck.notify_first_scan ? "yes" : "no");
     cJSON_AddNumberToObject(syscfg, "process_priority", syscheck.process_priority);
 
     cJSON_AddItemToObject(root,"syscheck",syscfg);

@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(bounded_queue_test)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)

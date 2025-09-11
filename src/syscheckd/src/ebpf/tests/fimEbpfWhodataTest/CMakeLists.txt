@@ -3,7 +3,8 @@ project(fim_ebpf_whodata_test)
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(${SRC_FOLDER}/external/googletest/googletest/include/)
 include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
@@ -20,12 +21,11 @@ set(TEST_FILES
     pop_event_test.cpp
 )
 
-
 # Create an executable for each test file
 foreach(TEST_FILE ${TEST_FILES})
     get_filename_component(TEST_NAME "${TEST_FILE}" NAME_WE)
     add_executable("${TEST_NAME}" "${TEST_FILE}")
-    target_link_libraries(${TEST_NAME}
+    target_link_libraries(${TEST_NAME} PRIVATE
         debug gtestd
         debug gmockd
         debug gtest_maind
@@ -36,8 +36,8 @@ foreach(TEST_FILE ${TEST_FILES})
         optimized gmock_main
 	    pthread
         fimebpf
-        -fsanitize=address
-        -fsanitize=undefined
+        $<$<BOOL:${FSANITIZE}>:-fsanitize=address>
+        $<$<BOOL:${FSANITIZE}>:-fsanitize=undefined>
     )
 
     add_test(NAME ${TEST_NAME}

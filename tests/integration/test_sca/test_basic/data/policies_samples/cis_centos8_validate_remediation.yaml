@@ -26,7 +26,7 @@ checks:
       - cis: [1.8.1.5]
     condition: all
     rules:
-      - c:stat -L /testfile -> r:Access:\s*\(0222/d-w--w--w-\)\s*Uid:\.*root\)\s*\t*Gid:\.*root\)
+      - c:stat -L /testfile -> r:Access:\s*\(0222/d-w--w--w-\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)
 
   # Check that permitions for file are 644
   - id: 2
@@ -38,4 +38,4 @@ checks:
       - cis: [1.8.1.5]
     condition: all
     rules:
-      - c:stat -L /testfile -> r:Access:\s*\(0644/drw-r--r--\)\s*Uid:\.*root\)\s*\t*Gid:\.*root\)
+      - c:stat -L /testfile -> r:Access:\s*\(0644/drw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)

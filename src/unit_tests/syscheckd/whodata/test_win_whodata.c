@@ -203,7 +203,6 @@ int syscheck_teardown(void ** state) {
     syscheck.key_ignore_regex = NULL;
     syscheck.registry = NULL;
     syscheck.realtime = NULL;
-    syscheck.prefilter_cmd = NULL;
     syscheck.audit_key = NULL;
 
     return 0;
@@ -5509,8 +5508,6 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
     expect_string(__wrap_OSHash_Get, key, "1193046");
     will_return(__wrap_OSHash_Get, w_evt);
 
-    expect_string(__wrap__mdebug2, formatted_msg,
-        "(6319): No configuration found for (file):'c:\\a\\path'");
     expect_string(__wrap__mdebug2, formatted_msg,
         "(6243): The 'c:\\a\\path' directory has been discarded because it is not being monitored in whodata mode.");
 

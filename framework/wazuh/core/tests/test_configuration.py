@@ -75,7 +75,6 @@ def test_read_option():
     """Checks insert_section function."""
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options.conf')) as f:
         data = fromstring(f.read())
-        assert configuration._read_option('open-scap', data)[0] == 'directories'
         assert configuration._read_option('syscheck', data)[0] == 'directories'
         assert configuration._read_option('labels', data)[0] == 'directories'
 
@@ -86,7 +85,6 @@ def test_read_option():
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:
         data = fromstring(f.read())
-        assert configuration._read_option('open-scap', data)[0] == 'synchronization'
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:

@@ -283,9 +283,9 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
             return retVal;
         }
 
-        std::string dhcp() const override
+        uint32_t dhcp() const override
         {
-            std::string retVal { UNKNOWN_VALUE };
+            uint32_t retVal { 0 };
             const auto family { this->adapterFamily() };
 
             if (AF_INET == family)
@@ -294,7 +294,7 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
                 {
                     (m_interfaceAddress->Flags & IP_ADAPTER_DHCP_ENABLED)&& (m_interfaceAddress->Flags & IP_ADAPTER_IPV4_ENABLED)
                 };
-                retVal = ipv4DHCPEnabled ? "enabled" : "disabled";
+                retVal = ipv4DHCPEnabled ? 1 : 0;
             }
             else if (AF_INET6 == family)
             {
@@ -302,7 +302,7 @@ class NetworkWindowsInterface final : public INetworkInterfaceWrapper
                 {
                     (m_interfaceAddress->Flags & IP_ADAPTER_DHCP_ENABLED)&& (m_interfaceAddress->Flags & IP_ADAPTER_IPV6_ENABLED)
                 };
-                retVal = ipv6DHCPEnabled ? "enabled" : "disabled";
+                retVal = ipv6DHCPEnabled ? 1 : 0;
             }
 
             return retVal;

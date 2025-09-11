@@ -25,6 +25,8 @@ export JOBS="5"
 export DEBUG_ENABLED="no"
 export PATH="${PATH}"
 export LD_LIBRARY_PATH=""
+export CC=""
+export CXX=""
 
 %:
 	dh $@
@@ -51,8 +53,6 @@ override_dh_install:
 	USER_ENABLE_ACTIVE_RESPONSE="y" \
 	USER_ENABLE_SYSCHECK="y" \
 	USER_ENABLE_ROOTCHECK="y" \
-	USER_ENABLE_OPENSCAP="y" \
-	USER_ENABLE_CISCAT="y" \
 	USER_ENABLE_SYSCOLLECTOR="y" \
 	USER_UPDATE="n" \
 	USER_AGENT_SERVER_IP="MANAGER_IP" \

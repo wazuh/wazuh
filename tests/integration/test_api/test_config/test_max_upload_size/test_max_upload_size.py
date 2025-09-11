@@ -115,6 +115,7 @@ def create_cdb_list(min_length: int) -> str:
 # Tests
 @pytest.mark.tier(level=2)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+@pytest.mark.xfail(reason="Upload was related to deprecated CDB lists. Should be updated with new upload features.")
 def test_max_upload_size(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
                          daemons_handler, wait_for_api_start):
     """

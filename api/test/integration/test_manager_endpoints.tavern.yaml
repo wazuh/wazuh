@@ -72,12 +72,10 @@ marks:
      vals:
        - alerts
        - auth
-       - cis-cat
        - cluster
        - command
        - global
        - localfile
-       - osquery
        - remote
        - rootcheck
        - ruleset
@@ -143,12 +141,10 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
               localfile: !anything
-              osquery: !anything
               remote: !anything
               rootcheck: !anything
               ruleset: !anything
@@ -920,7 +916,6 @@ stages:
                   block_time: !anyint
                   max_request_per_minute: !anyint
                 drop_privileges: !anybool
-                experimental_features: !anybool
                 authentication_pool_size: !anyint
                 upload_configuration:
                   remote_commands:
@@ -1352,6 +1347,30 @@ stages:
       status_code: 400
       json:
         error: 1128
+
+---
+test_name: PUT /manager/analysisd/reload
+
+stages:
+
+  - name: Reload analysisd on master
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/analysisd/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: 'manager'
+              msg: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
 
 ---
 test_name: PUT /manager/configuration

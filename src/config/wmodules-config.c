@@ -74,17 +74,11 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     // Select module by name
 
     //osQuery monitor module
-    if (!strcmp(node->values[0], WM_OSQUERYMONITOR_CONTEXT.name)) {
-        if (wm_osquery_monitor_read(children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+    if (!strcmp(node->values[0], "osquery")) {
+        mwarn("Deprecated module 'osquery' is no longer available.");
     }
-    else if (!strcmp(node->values[0], WM_OSCAP_CONTEXT.name)) {
-        if (wm_oscap_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+    else if (!strcmp(node->values[0], "open-scap")) {
+        mwarn("Deprecated module 'open-scap' is no longer available.");
     }
 #ifdef ENABLE_SYSC
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
@@ -100,14 +94,9 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             return OS_INVALID;
         }
     }
-#ifdef ENABLE_CISCAT
-    else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)) {
-        if (wm_ciscat_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+    else if (!strcmp(node->values[0], "cis-cat")) {
+        mwarn("Deprecated module 'cis-cat' is no longer available.");
     }
-#endif
     else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) {
 #ifndef WIN32
         if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'", WM_AWS_CONTEXT.name);

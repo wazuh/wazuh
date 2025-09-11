@@ -11,6 +11,12 @@
 #include <base/logging.hpp>
 #include <spdlog/pattern_formatter.h>
 
+namespace Log
+{
+std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+    GLOBAL_LOG_FUNCTION;
+};
+
 namespace logging
 {
 
@@ -147,6 +153,76 @@ void testInit(Level lvl)
         logConfig.level = lvl;
         start(logConfig);
     }
+}
+
+void initializeFullLogFunction(
+    const std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+        callback)
+{
+    Log::assignLogFunction(callback);
+}
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+    void init(full_log_fnc_t callback)
+    {
+        initializeFullLogFunction(
+            [callback](const int logLevel,
+                       const std::string& tag,
+                       const std::string& file,
+                       const int line,
+                       const std::string& func,
+                       const std::string& logMessage,
+                       va_list args)
+            { callback(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
+    }
+
+#ifdef __cplusplus
+}
+#endif
+
+void applyLevelStandalone(logging::Level target, int debugCount)
+{
+    // -d takes priority over the configuration
+    const logging::Level effective = (debugCount > 1)    ? logging::Level::Trace
+                                     : (debugCount == 1) ? logging::Level::Debug
+                                                         : target; // without -d, use config level (target)
+
+    const auto current = logging::getLevel();
+    if (current != effective)
+    {
+        logging::setLevel(effective);
+        LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(effective));
+    }
+}
+
+void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared)
+{
+    // -d takes priority over the configuration
+    const logging::Level effective = (debugCount > 1)    ? logging::Level::Trace
+                                     : (debugCount == 1) ? logging::Level::Debug
+                                                         : target; // without -d, use config level (target)
+
+    if (effective != logging::Level::Debug && effective != logging::Level::Trace)
+    {
+        return; // Info/Warn/Err/Critical
+    }
+
+    using now_debug_fn_t = void (*)();
+    auto* nowDebug = reinterpret_cast<now_debug_fn_t>(dlsym(libwazuhshared, "nowDebug"));
+    if (!nowDebug)
+    {
+        throw std::runtime_error {fmt::format("nowDebug symbol not found: {}", dlerror())};
+    }
+
+    const int times = (effective == logging::Level::Debug) ? 1 : 2;
+    for (int i = 0; i < times; ++i) nowDebug();
+
+    LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(effective));
 }
 
 } // namespace logging

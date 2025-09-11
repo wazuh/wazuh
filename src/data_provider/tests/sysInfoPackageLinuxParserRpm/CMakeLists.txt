@@ -26,6 +26,7 @@ target_link_libraries(sysInfoPackageLinuxParserRPM_unit_test
     optimized gmock_main
     pthread
     dl
+    FilesystemWrapper
 )
 
 add_test(NAME sysInfoPackageLinuxParserRPM_unit_test

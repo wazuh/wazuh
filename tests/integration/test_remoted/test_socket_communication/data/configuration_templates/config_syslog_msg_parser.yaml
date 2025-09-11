@@ -11,7 +11,3 @@
             value: PROTOCOL
         - ipv6:
             value: "yes"
-    - section: global
-      elements:
-        - logall:
-            value: "yes"

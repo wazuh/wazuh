@@ -25,6 +25,7 @@ set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 option(ENGINE_BUILD_TEST "Generate tests" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" OFF)
 option(ENGINE_ENABLE_ASAN "Enable AddressSanitizer for all targets" OFF)
+option(ENGINE_ENABLE_TSAN "Enable ThreadSanitizer for all targets" OFF)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
@@ -41,6 +42,7 @@ if(WAZUH_ENGINE_TEST)
 elseif(UNIT_TEST)
   set(ENGINE_BUILD_TEST ON CACHE BOOL "Generate tests" FORCE)
   set(ENGINE_ENABLE_ASAN ON CACHE BOOL "Enable AddressSanitizer for all targets" FORCE)
+  message(WARNING "When compiling with ASAN, you must specify in LD_LIBRARY_PATH the directory where it should look for libwazuhshared.so")
 endif()
 
 
@@ -63,6 +65,10 @@ if(ENGINE_ENABLE_ASAN)
   message(STATUS "Building engine with AddressSanitizer")
   add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
   add_link_options(-fsanitize=address -fno-omit-frame-pointer)
+elseif(ENGINE_ENABLE_TSAN)
+  message(STATUS "Building engine with ThreadSanitizer")
+  add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=thread -fno-omit-frame-pointer)
 endif()
 
 # Ensures that we do an out of source build
@@ -173,6 +179,15 @@ include(GoogleTest)
 endif(ENGINE_BUILD_TEST)
 
 ####################################################################################################
+# Shared modules
+####################################################################################################
+if (NOT SHARED_MODULES)
+    get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/shared_modules/ ABSOLUTE)
+endif()
+include_directories(${SHARED_MODULES}/utils)
+
+
+####################################################################################################
 # Rocksdb dynamic link
 ####################################################################################################
 # Ser var rocksdb build directory
@@ -271,6 +286,8 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/store)
 add_subdirectory(${ENGINE_SOURCE_DIR}/router)
 add_subdirectory(${ENGINE_SOURCE_DIR}/conf)
 add_subdirectory(${ENGINE_SOURCE_DIR}/proto)
+add_subdirectory(${ENGINE_SOURCE_DIR}/streamlog)
+add_subdirectory(${ENGINE_SOURCE_DIR}/scheduler)
 # TODO: Until the indexer connector is unified with the rest of wazuh-manager
 # add_subdirectory(${ENGINE_SOURCE_DIR}/metrics)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
@@ -278,6 +295,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
+
 
 target_link_libraries(wazuh-engine
     base
@@ -297,12 +315,14 @@ target_link_libraries(wazuh-engine
     geo
     schemf
     geo::igeo
+    scheduler::scheduler
+    streamlogger::streamlogger
     # indexerconnector # TODO: Comment until indexerconnector is unified with the old one
     httpsrv
     udgramsrv::udgramsrv
     api::event
     queue
-    archiver
+    archiver::archive
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries

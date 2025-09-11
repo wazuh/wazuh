@@ -65,8 +65,7 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
     select_key : str
         Keys requested in select parameter. Lists and nested fields accepted e.g: id,cpu.mhz,json
     flag_nested_key_list : bool
-        Flag used to indicate that the nested key contains a list. Used to test endpoints like
-        GET /sca/{agent_id}/checks/{policy_id}.
+        Flag used to indicate that the nested key contains a list.
     """
     main_keys = set()
     nested_keys = dict()
@@ -98,9 +97,6 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
             try:
                 if not flag_nested_key_list:
                     set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
-
-                # If we are using select in endpoints like GET /sca/{agent_id}/checks/{policy_id},
-                # the nested field contains a list
                 else:
                     set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]][0].keys()))
 
@@ -352,18 +348,6 @@ def test_validate_auth_context(response, expected_roles=None):
     token = response.json()['data']['token'].split('.')[1]
     payload = loads(b64decode(token + '===').decode())
     assert payload['rbac_roles'] == expected_roles
-
-
-def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental=False):
-    hotfixes_keys = {'hotfix', 'scan_id', 'scan_time'}
-    if experimental:
-        hotfixes_keys.add('agent_id')
-    affected_items = response.json()['data']['affected_items']
-    if affected_items:
-        for item in affected_items:
-            assert set(item.keys()) == hotfixes_keys
-            if hotfix_filter:
-                assert item['hotfix'] == hotfix_filter
 
 
 def test_validate_group_configuration(response, expected_field, expected_value):

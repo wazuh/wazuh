@@ -622,7 +622,7 @@ stages:
            never_connected: 1
            pending: 0
          os:
-          ubuntu: 6
+          ubuntu: 5
          groups: !anything
 
 ---

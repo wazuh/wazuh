@@ -15,7 +15,6 @@
 #include "../db/include/db.h"
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha1/sha1_op.h"
-#include "../os_crypto/md5_sha1/md5_sha1_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -26,9 +25,6 @@
 #else
 #define STATIC static
 #endif
-
-// Global variables
-int _base_line = 0;
 
 static const char *FIM_EVENT_TYPE_ARRAY[] = {
     "added",
@@ -63,6 +59,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     char *diff = NULL;
     char *path = NULL;
     char iso_time[32];
+    Operation_t sync_operation = OPERATION_NO_OP;
 
     callback_ctx *txn_context = (callback_ctx *) user_data;
 
@@ -77,7 +74,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     }
 
     if (txn_context->config == NULL) {
-        txn_context->config = fim_configuration_directory(path);
+        txn_context->config = fim_configuration_directory(path, true);
         if (txn_context->config == NULL) {
             goto end;
         }
@@ -90,10 +87,12 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
     switch (resultType) {
         case INSERTED:
             txn_context->event->type = FIM_ADD;
+            sync_operation = OPERATION_CREATE;
             break;
 
         case MODIFIED:
             txn_context->event->type = FIM_MODIFICATION;
+            sync_operation = OPERATION_MODIFY;
             break;
 
         case DELETED:
@@ -101,6 +100,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
                 fim_diff_process_delete_file(path);
             }
             txn_context->event->type = FIM_DELETE;
+            sync_operation = OPERATION_DELETE;
             break;
 
         case MAX_ROWS:
@@ -188,7 +188,7 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddStringToObject(file_stateless, "tags", txn_context->config->tag);
     }
 
-    if (_base_line != 0 && txn_context->event->report_event) {
+    if (notify_scan != 0 && txn_context->event->report_event) {
         send_syscheck_msg(stateless_event);
     }
 
@@ -210,7 +210,19 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    persist_syscheck_msg(stateful_event);
+    // Add state modified_at field for stateful event only
+    cJSON* state = cJSON_CreateObject();
+    if (state != NULL) {
+        char modified_at_time[32];
+        get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+        cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+        cJSON_AddItemToObject(stateful_event, "state", state);
+    }
+
+    char file_path_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(path, -1, file_path_sha1);
+
+    persist_syscheck_msg(file_path_sha1, sync_operation, FIM_FILES_SYNC_INDEX, stateful_event);
 
 end:
     os_free(diff);
@@ -242,7 +254,7 @@ void fim_db_remove_validated_path(void * data, void * ctx)
     char *path = (char *)data;
     struct callback_ctx *ctx_data = (struct callback_ctx *)ctx;
 
-    directory_t *validated_configuration = fim_configuration_directory(path);
+    directory_t *validated_configuration = fim_configuration_directory(path, true);
 
     if (validated_configuration == ctx_data->config)
     {
@@ -250,7 +262,7 @@ void fim_db_remove_validated_path(void * data, void * ctx)
     }
 }
 
-directory_t *fim_configuration_directory(const char *key) {
+directory_t *fim_configuration_directory(const char *key, bool notify_not_found) {
     char full_path[OS_SIZE_4096 + 1] = {'\0'};
     char full_entry[OS_SIZE_4096 + 1] = {'\0'};
     directory_t *dir_it = NULL;
@@ -290,7 +302,7 @@ directory_t *fim_configuration_directory(const char *key) {
         os_free(real_path);
     }
 
-    if (dir == NULL) {
+    if (dir == NULL && notify_not_found) {
         mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", key);
     }
 
@@ -562,8 +574,8 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     // We won't calculate hash for symbolic links, empty or large files
     if (S_ISREG(statbuf->st_mode) && (statbuf->st_size > 0 && (size_t)statbuf->st_size < syscheck.file_max_size) &&
         (configuration->options & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM))) {
-        if (OS_MD5_SHA1_SHA256_File(file, syscheck.prefilter_cmd, data->hash_md5,
-                                    data->hash_sha1, data->hash_sha256, OS_BINARY, syscheck.file_max_size) < 0) {
+        if (OS_MD5_SHA1_SHA256_File(file, data->hash_md5, data->hash_sha1, data->hash_sha256,
+                                    OS_BINARY, syscheck.file_max_size) < 0) {
             mdebug1(FIM_HASHES_FAIL, file);
             free_file_data(data);
             return NULL;
@@ -604,7 +616,7 @@ void fim_checker(const char *path,
     }
 #endif
 
-    configuration = fim_configuration_directory(path);
+    configuration = fim_configuration_directory(path, true);
     if (configuration == NULL) {
         return;
     }
@@ -815,7 +827,7 @@ void fim_file(const char *path,
 void fim_process_missing_entry(char * pathname, fim_event_mode mode, whodata_evt * w_evt) {
     directory_t *configuration = NULL;
 
-    configuration = fim_configuration_directory(pathname);
+    configuration = fim_configuration_directory(pathname, true);
     if (NULL == configuration) {
         return;
     }

@@ -59,8 +59,8 @@ static OptionMap parseFile(const std::filesystem::path& path)
         std::string high = base::utils::string::trim(line.substr(0, pos_dot), " \t");
         std::string low = base::utils::string::trim(line.substr(pos_dot + 1, pos_eq - pos_dot - 1), " \t");
 
-        // Only parse keys under "engine"
-        if (high != "engine")
+        // Only parse keys under "analysisd"
+        if (high != "analysisd")
             continue;
 
         // Extract the right-hand side (RHS) after '='

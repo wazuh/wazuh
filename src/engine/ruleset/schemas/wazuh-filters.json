@@ -1,0 +1,191 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "wazuh-filter.json",
+  "name": "schema/wazuh-filter/0",
+  "title": "Schema for Wazuh filters",
+  "type": "object",
+  "description": "Filter asset schema",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "metadata"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Component name with 3 parts: filter/<name>/<version>",
+      "pattern": "^filter\\/[^\\/]+\\/[^\\/]+$"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Filter metadata",
+      "additionalProperties": false,
+      "required": [
+        "module",
+        "title",
+        "description",
+        "compatibility",
+        "versions",
+        "author",
+        "references"
+      ],
+      "properties": {
+        "module": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "compatibility": {
+          "type": "string"
+        },
+        "versions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "author": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "date"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            }
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "definitions": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Build-time typed macros expanded by interpolation. Conflicts, precedence, chaining, and scope are enforced at build time.",
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "array"
+          },
+          {
+            "type": "object"
+          }
+        ]
+      }
+    },
+    "check": {
+      "$ref": "#/definitions/_check"
+    }
+  },
+  "definitions": {
+    "_check": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/_checkExpression"
+        },
+        {
+          "$ref": "#/definitions/_checkList"
+        }
+      ],
+      "errorMessage": "check must be either a conditional expression (string) with $fields/operators, or a checklist (array) of single-pair objects { field: condition }."
+    },
+    "_checkExpression": {
+      "type": "string",
+      "description": "Conditional expression with $fields/helpers and optionally NOT/AND/OR or comparison operators.",
+      "allOf": [
+        {
+          "description": "Must contain at least one $field or a helper call",
+          "pattern": "[\\s\\S]*(\\$[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*|[A-Za-z_][A-Za-z0-9_]*\\()[\\s\\S]*"
+        }
+      ],
+      "anyOf": [
+        {
+          "description": "Contains comparison or logical operators",
+          "pattern": "[\\s\\S]*(==|!=|<=|>=|<|>|\\bAND\\b|\\bOR\\b|\\bNOT\\b)[\\s\\S]*"
+        },
+        {
+          "description": "Is just a helper call (e.g., exists($x), is_null($y), helper($f, ...))",
+          "pattern": "^\\s*[A-Za-z_][A-Za-z0-9_]*\\([^)]*\\)\\s*$"
+        }
+      ]
+    },
+    "_checkList": {
+      "type": "array",
+      "description": "Checklist: each item is { field: condition }. All must pass in order.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "minProperties": 1,
+        "maxProperties": 1,
+        "description": "Each item must be an object with a single { field: condition } pair.",
+        "allOf": [
+          {
+            "additionalProperties": {
+              "description": "Condition: JSON literal, field reference ($field.path), or helper (exists(), helper(args...))",
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "array"
+                },
+                {
+                  "type": "object"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\$[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*$"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\([^)]*\\)$"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

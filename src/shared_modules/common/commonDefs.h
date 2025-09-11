@@ -68,11 +68,6 @@ typedef void* DBSYNC_HANDLE;
 typedef void* TXN_HANDLE;
 
 /**
- * @brief Represents the handle associated with the remote synch.
- */
-typedef void* RSYNC_HANDLE;
-
-/**
  * @brief Callback function for results
  *
  * @param result_type Enumeration value indicating what action was taken.

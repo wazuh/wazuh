@@ -38,7 +38,7 @@ typedef struct _enrollment_target_cfg {
     char *agent_name;         /**< (optional) Name of the agent. In case of NULL enrollment message will send local hostname */
     char *centralized_group;  /**< (optional) In case the agent belong to a group */
     char *sender_ip;          /**< (optional) IP adress or CIDR of the agent. In case of null the manager will use the source ip */
-    int use_src_ip;           /**< (optional) Forces manager to use source ip (-i option in agent_auth) */
+    int use_src_ip;           /**< (optional) Forces manager to use source ip  */
 } w_enrollment_target;
 
 /**

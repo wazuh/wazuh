@@ -1,138 +1,107 @@
-name: Coverity-Scan
+name: Coverity Scan
 
 on:
-  # Only for register the workflow
-  # pull_request:
   workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: ''
-      target:
-        description: 'Target server, agent or winagent'
-        required: true
-        default: 'server'
-        type: choice
-        options:
-          - 'server'
-          - 'agent'
-          - 'winagent'
-      ossec_project:
-        description: 'Use the ossec project'
-        default: false
-        type: boolean
+
+env:
+  REGISTRY: ghcr.io
 
 jobs:
-  coverity:
-    runs-on: ubuntu-22.04
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      project: ${{ steps.vars.outputs.PROJECT }}
+      jobs: ${{ steps.vars.outputs.JOBS }}
+      version: ${{ steps.vars.outputs.VERSION }}
+      description: ${{ steps.vars.outputs.DESCRIPTION }}
     steps:
-
-      - name: Select project
-        id: project
-        env:
-          COVERITY_OSSEC_PROJECT: "wazuh%2Fossec-wazuh"
-          COVERITY_WAZUH_PROJECT: "wazuh%2Fwazuh"
-        run: |
-          if [ ${{ inputs.ossec_project }} == true ]; then
-            echo "Using ossec project"
-            echo 'PROJECT_NAME=${{ ENV.COVERITY_OSSEC_PROJECT }}' | tee -a $GITHUB_OUTPUT
-            echo 'TOKEN=${{ secrets.COVERITY_SCAN_OSSEC_TOKEN }}' | tee -a $GITHUB_OUTPUT
-          else
-            echo "Using wazuh project"
-            echo 'PROJECT_NAME=${{ ENV.COVERITY_WAZUH_PROJECT }}' | tee -a $GITHUB_OUTPUT
-            echo 'TOKEN=${{ secrets.COVERITY_SCAN_WAZUH_TOKEN }}' | tee -a $GITHUB_OUTPUT
-          fi
-      - name: Get coverity
-        id: coverity
-        env:
-          URL_TOOL: "https://scan.coverity.com/download/linux64"
-          PROJECT:  ${{ steps.project.outputs.PROJECT_NAME }}
-          TOKEN: ${{ steps.project.outputs.TOKEN }}
-        run: |
-          echo "Current directory: $(pwd)"
-          wget ${URL_TOOL} --post-data "token=${TOKEN}&project=${PROJECT}" -O coverity_tool.tgz
-          tar xzf coverity_tool.tgz
-
-          # Save the path to the coverity tool
-          COVERITY_PATH=$(realpath cov-analysis-linux64*)/bin
-
-          # Export as variable
-          echo "BIN_PATH=$COVERITY_PATH" | tee -a $GITHUB_OUTPUT
-
-      - name: Unsoppurted target
-        if: ${{ inputs.target == 'winagent' }}
-        run: |
-          echo "Unsupported target 'winagent' for coverity, delete this step when wazuh/wazuh supports it"
-          exit 1
-
-      - name: Configure compiler if target is winagent
-        if: ${{ inputs.target == 'winagent' }}
-        run: |
-          sudo apt-get install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
-          ln -s /usr/bin/true /usr/local/bin/makensis # workaround for mingw32-make
-          ${{ steps.coverity.outputs.BIN_PATH }}/cov-configure  --compiler i686-w64-mingw32-gcc --comptype gcc --template
-
-      - name: Checkout the repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          # Input branch or same branch if not provided
-          ref: ${{ github.event.inputs.base_branch }}
-          path: "wazuh"
+          ref: ${{ github.ref_name }}
 
-      - name: build
-        working-directory: wazuh/src
-        id: build
+      - name: Set up project and build variables
+        id: vars
         run: |
-          if [[ -s ../VERSION.json ]]; then
-            VERSION="v$(grep '"version"' ../VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-            REVISION=$(grep '"stage"' ../VERSION.json | sed -E 's/.*"stage": *"([^"]+)".*/\1/')
-          elif [[ -s VERSION && -s REVISION ]]; then
-            VERSION=$(cat VERSION)
-            REVISION=$(cat REVISION)
+          if [[ "${{ github.event.inputs.project }}" == "wazuh" ]]; then
+            echo "PROJECT=wazuh/wazuh" >> $GITHUB_OUTPUT
           else
-            echo "Version file not found." >&2
-            exit 1
+            echo "PROJECT=wazuh/ossec-wazuh" >> $GITHUB_OUTPUT
           fi
 
+          if [[ ${{ github.event.inputs.threads }} -le 0 ]]; then
+            echo "JOBS=$(nproc)" >> $GITHUB_OUTPUT
+          else
+            echo "JOBS=${{ github.event.inputs.threads }}" >> $GITHUB_OUTPUT
+          fi
 
-          VERSION_REVISION="${VERSION}-r${REVISION}"
-          DESCRIPTION="Revision ${REVISION}"
+          VERSION=$(jq -r '.version + "-" + .stage' VERSION.json)
+          DESCRIPTION="Version $VERSION - Git ref ${{ github.ref_name }}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_OUTPUT
 
-          # Export
-          echo "VERSION_REVISION=$VERSION_REVISION" | tee -a $GITHUB_OUTPUT
-          echo "DESCRIPTION=$DESCRIPTION" | tee -a $GITHUB_OUTPUT
+  build:
+    runs-on: ubuntu-latest
+    needs: prepare
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
+      - name: Download dependencies
+        run: make -C src deps -j${{ needs.prepare.outputs.jobs }}
 
-          echo "Building version $VERSION_REVISION: $DESCRIPTION"
-          make deps -j$(nproc)
-          make clean-internals
-          make TARGET=${{ inputs.target}} external COVERITY=YES -j$(nproc)
-          ${{ steps.coverity.outputs.BIN_PATH }}/cov-build --dir cov-int make TARGET=${{ inputs.target}} COVERITY=YES -j$(nproc)
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compression
-        id: compress_result
-        working-directory: wazuh/src
+      - name: Print variables
         run: |
-          OUTPUT_FILE="wazuh.tgz"
-          echo "OUTPUT_FILE=$OUTPUT_FILE" | tee -a $GITHUB_OUTPUT
-          tar zcf $OUTPUT_FILE cov-int
+          echo Description: ${{ needs.prepare.outputs.description }}
 
-      - name: Upload to coverity
-        working-directory: wazuh/src
-        env:
-          URL_UPLOAD: "https://scan.coverity.com/builds?project=${{ steps.project.outputs.PROJECT_NAME }}"
-          TOKEN: ${{ steps.project.outputs.TOKEN }}
-          EMAIL: ${{ secrets.COVERITY_SCAN_NOTIFICATION_EMAIL }}
-          FILE: ${{ steps.compress_result.outputs.OUTPUT_FILE }}
-          VERSION: ${{ steps.build.outputs.VERSION_REVISION }}
-          DESCRIPTION: ${{ steps.build.outputs.DESCRIPTION }}
-          OUTPUT_FILE: ${{ steps.compress_result.outputs.OUTPUT_FILE }}
-        run: |
-          echo "Uploading to coverity"
-          curl --form token=$TOKEN \
-               --form email=$EMAIL \
-               --form file=@${FILE} \
-               --form version=$VERSION_REVISION \
-               --form description=$DESCRIPTION \
-               $URL_UPLOAD
+      - name: Build Coverity artifact
+        uses: ./.github/actions/coverity/build
+        with:
+          command: make -C src TARGET=server COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
+
+      - name: List files
+        run: ls -l cov-int/emit/*/emit-db*
+
+      - name: Archive Coverity build
+        run: tar czf wazuh.tgz cov-int
+
+      - name: Upload Coverity artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wazuh.tgz
+          path: wazuh.tgz
+
+  upload:
+    runs-on: ubuntu-latest
+    needs: [prepare, build]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Download Coverity artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: wazuh.tgz
+
+      - name: Upload to Coverity Scan
+        uses: ./.github/actions/coverity/upload
+        with:
+          project: ${{ needs.prepare.outputs.project }}
+          email: ${{ secrets.COVERITY_SCAN_NOTIFICATION_EMAIL }}
+          token: ${{ github.event.inputs.project == 'wazuh' && secrets.COVERITY_SCAN_WAZUH_TOKEN || secrets.COVERITY_SCAN_OSSEC_TOKEN }}
+          version: ${{ needs.prepare.outputs.version }}
+          description: "${{ needs.prepare.outputs.description }}"

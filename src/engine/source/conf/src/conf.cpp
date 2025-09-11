@@ -3,25 +3,10 @@
 #include <filesystem>
 #include <unistd.h>
 
+#include <base/process.hpp>
 #include <fmt/format.h>
 
 #include <conf/keys.hpp>
-
-namespace
-{
-std::string getExecutablePath()
-{
-    char path[PATH_MAX];
-    ssize_t count = readlink("/proc/self/exe", path, PATH_MAX);
-    if (count != -1)
-    {
-        path[count] = '\0';
-        std::string pathStr(path);
-        return pathStr.substr(0, pathStr.find_last_of('/'));
-    }
-    return {};
-}
-} // namespace
 
 namespace conf
 {
@@ -30,6 +15,7 @@ using namespace internal;
 
 Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     : m_fileLoader(fileLoader)
+    , m_loaded(false)
 {
     if (!m_fileLoader)
     {
@@ -37,12 +23,15 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     }
 
     // fs path
-    const std::filesystem::path wazuhRoot {"/var/ossec/"};
+    const std::filesystem::path wazuhRoot = base::process::getWazuhHome();
 
     // Register available configuration units with Default Settings
 
     // Logging module
-    addUnit<std::string>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", "info");
+    addUnit<int>(key::LOGGING_LEVEL, "WAZUH_LOG_LEVEL", 0);
+
+    // Standalone Logging module
+    addUnit<std::string>(key::STANDALONE_LOGGING_LEVEL, "WAZUH_STANDALONE_LOG_LEVEL", "info");
 
     // Store module
     addUnit<std::string>(key::STORE_PATH, "WAZUH_STORE_PATH", (wazuhRoot / "engine/store").c_str());
@@ -80,7 +69,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Http server module
     addUnit<std::string>(
-        key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/engine-api").c_str());
+        key::SERVER_API_SOCKET, "WAZUH_SERVER_API_SOCKET", (wazuhRoot / "queue/sockets/analysis").c_str());
     addUnit<int>(key::SERVER_API_TIMEOUT, "WAZUH_SERVER_API_TIMEOUT", 5000);
 
     // Event server (dgram)
@@ -89,7 +78,9 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<int>(key::SERVER_EVENT_THREADS, "WAZUH_SERVER_EVENT_THREADS", 1);
 
     // Event server - enriched (http)
-    addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET, "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET", (wazuhRoot / "queue/sockets/queue-http.sock").c_str());
+    addUnit<std::string>(key::SERVER_ENRICHED_EVENTS_SOCKET,
+                         "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",
+                         (wazuhRoot / "queue/sockets/queue-http.sock").c_str());
 
     // TZDB module
     addUnit<std::string>(key::TZDB_PATH, "WAZUH_TZDB_PATH", (wazuhRoot / "queue/tzdb").c_str());
@@ -101,10 +92,21 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<int64_t>(key::METRICS_EXPORT_INTERVAL, "WAZUH_METRICS_EXPORT_INTERVAL", 10000);
     addUnit<int64_t>(key::METRICS_EXPORT_TIMEOUT, "WAZUH_METRICS_EXPORT_TIMEOUT", 1000);
 
+    // Streamlog module
+    addUnit<std::string>(key::STREAMLOG_BASE_PATH, "WAZUH_STREAMLOG_BASE_PATH", (wazuhRoot / "logs/").c_str());
+    addUnit<bool>(key::STREAMLOG_SHOULD_COMPRESS, "WAZUH_STREAMLOG_SHOULD_COMPRESS", true);
+    addUnit<size_t>(key::STREAMLOG_COMPRESSION_LEVEL, "WAZUH_STREAMLOG_COMPRESSION_LEVEL", 5);
+    addUnit<std::string>(
+        key::STREAMLOG_ALERTS_PATTERN, "WAZUH_STREAMLOG_ALERTS_PATTERN", "${YYYY}/${MMM}/ossec-${name}-${DD}.json");
+    addUnit<size_t>(key::STREAMLOG_ALERTS_MAX_SIZE, "WAZUH_STREAMLOG_ALERTS_MAX_SIZE", 0);
+    addUnit<size_t>(key::STREAMLOG_ALERTS_BUFFER_SIZE, "WAZUH_STREAMLOG_ALERTS_BUFFER_SIZE", 0x1 << 20);
+    addUnit<std::string>(
+        key::STREAMLOG_ARCHIVES_PATTERN, "WAZUH_STREAMLOG_ARCHIVES_PATTERN", "${YYYY}/${MMM}/ossec-${name}-${DD}.json");
+    addUnit<size_t>(key::STREAMLOG_ARCHIVES_MAX_SIZE, "WAZUH_STREAMLOG_ARCHIVES_MAX_SIZE", 0);
+    addUnit<size_t>(key::STREAMLOG_ARCHIVES_BUFFER_SIZE, "WAZUH_STREAMLOG_ARCHIVES_BUFFER_SIZE", 0x1 << 20);
+
     // Archiver module
     addUnit<bool>(key::ARCHIVER_ENABLED, "WAZUH_ARCHIVER_ENABLED", false);
-    addUnit<std::string>(
-        key::ARCHIVER_PATH, "WAZUH_ARCHIVER_PATH", (wazuhRoot / "logs/archives/archives.json").c_str());
 
     // Process module
     addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());
@@ -210,13 +212,19 @@ void Conf::validate(const OptionMap& config) const
 
 void Conf::load()
 {
-    if (!m_fileConfig.empty())
+    if (m_loaded)
     {
         throw std::logic_error("The configuration is already loaded.");
     }
-    auto fileConf = (*m_fileLoader)();
-    validate(fileConf);
-    m_fileConfig = std::move(fileConf);
+    m_loaded = true;
+
+    // Only load the internal configuration if we are not in standalone mode
+    if (!base::process::isStandaloneModeEnable())
+    {
+        auto fileConf = (*m_fileLoader)();
+        validate(fileConf);
+        m_fileConfig = std::move(fileConf);
+    }
 }
 
 } // namespace conf

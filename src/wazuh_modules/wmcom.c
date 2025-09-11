@@ -13,7 +13,7 @@
 #include "os_net/os_net.h"
 
 
-size_t wmcom_dispatch(char * command, char ** output){
+size_t wmcom_dispatch(char * command, size_t length, char ** output){
 
     if (strncmp(command, "getconfig", 9) == 0){
         /*
@@ -36,12 +36,10 @@ size_t wmcom_dispatch(char * command, char ** output){
         return wmcom_getconfig(rcv_args, output);
     } else if (strncmp(command, "query ", 6) == 0) {
         return wm_module_query(command + 6, output);
-    } else if (wmcom_sync(command) == 0) {
+    } else if (wmcom_sync(command, length) == 0) {
         /*
-         * syscollector_hwinfo dbsync checksum_fail { ... }
-         * syscollector_osinfo dbsync checksum_fail { ... }
-         * syscollector_ports dbsync checksum_fail { ... }
-         * syscollector_processes dbsync checksum_fail { ... }
+         * syscollector_sync { ... }
+         * sca_sync { ... }
         */
         return 0;
     } else {
@@ -87,8 +85,8 @@ error:
     return strlen(*output);
 }
 
-int wmcom_sync(char * buffer) {
-    const int ret = modulesSync(buffer);
+int wmcom_sync(char * buffer, size_t length) {
+    const int ret = modulesSync(buffer, length);
     if(ret) {
         mdebug1("At WMCOM sync: Could not sync '%s' buffer", buffer);
     }
@@ -96,13 +94,15 @@ int wmcom_sync(char * buffer) {
 }
 
 #ifdef WIN32
-void wmcom_send(char * message)
+void wmcom_send(char * message, size_t length)
 {
-    wmcom_sync(message);
+    char * response = NULL;
+    wmcom_dispatch(message, length, &response);
+    os_free(response);
 }
 #else
 
-void wmcom_send(char * message)
+void wmcom_send(char * message, size_t length)
 {
     int sock;
     if (sock = OS_ConnectUnixDomain(WM_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
@@ -117,7 +117,7 @@ void wmcom_send(char * message)
     }
     else
     {
-        OS_SendSecureTCP(sock, strlen(message), message);
+        OS_SendSecureTCP(sock, length, message);
         close(sock);
     }
 }
@@ -184,7 +184,7 @@ void * wmcom_main(__attribute__((unused)) void * arg) {
             break;
 
         default:
-            length = wmcom_dispatch(buffer, &response);
+            length = wmcom_dispatch(buffer, length, &response);
             if (length) {
                 OS_SendSecureTCP(peer, length, response);
             }

@@ -70,7 +70,7 @@ from pathlib import Path
 
 import pytest
 
-from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.constants.platforms import MACOS, WINDOWS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG, FILE_MAX_SIZE, RT_DELAY
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
@@ -92,7 +92,11 @@ pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.ma
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_disk_quota_values.yaml')
-config_path = Path(CONFIGS_PATH, 'configuration_diff_size.yaml')
+if sys.platform in (MACOS, WINDOWS):
+    config_path = Path(CONFIGS_PATH, 'configuration_diff_size.yaml')
+else:
+    config_path = Path(CONFIGS_PATH, 'configuration_diff_size_whodata.yaml')
+
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
@@ -104,7 +108,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: 2, FILE_MAX_S
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_disk_quota_values(test_configuration, test_metadata, configure_local_internal_options,
-                           truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler, detect_end_scan):
+                           truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, clean_fim_sync_db, daemons_handler, detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon limits the size of the diff folder to generate
                  'diff' information from a specific value of the 'disk_quota' option. For this purpose,

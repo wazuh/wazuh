@@ -76,17 +76,17 @@ def test_get_status(mock_status):
 
 
 @pytest.mark.parametrize('tag, level, total_items, sort_by, sort_ascending', [
-    (None, None, 13, None, None),
+    (None, None, 11, None, None),
     ('wazuh-modulesd:database', None, 2, None, None),
     ('wazuh-modulesd:syscollector', None, 2, None, None),
     ('wazuh-modulesd:syscollector', None, 2, None, None),
     ('wazuh-modulesd:aws-s3', None, 5, None, None),
     ('wazuh-execd', None, 1, None, None),
     ('random', None, 0, ['timestamp'], True),
-    (None, 'info', 7, ['timestamp'], False),
+    (None, 'info', 5, ['timestamp'], False),
     (None, 'error', 2, ['level'], True),
     (None, 'debug', 2, ['level'], False),
-    (None, None, 13, ['tag'], True),
+    (None, None, 11, ['tag'], True),
     (None, 'random', 0, None, True),
     (None, 'warning', 2, None, False)
 ])
@@ -180,7 +180,7 @@ def test_ossec_log_summary(mock_exists, mock_active_logging_format):
 
         # Assert data match what was expected and type of the result.
         assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-        assert result.render()['data']['total_affected_items'] == 6
+        assert result.render()['data']['total_affected_items'] == len(expected_result.keys())
         assert all(all(value == expected_result[key] for key, value in item.items())
                    for item in result.render()['data']['affected_items'])
 
@@ -317,7 +317,7 @@ def test_read_ossec_con_ko():
     assert result.render()['data']['failed_items'][0]['error']['code'] == 1102
 
 
-@patch('wazuh.core.common.os.chown')  # <- evita el fallo
+@patch('wazuh.core.common.os.chown')
 @patch('wazuh.core.common.os.path.exists', return_value=True)
 @patch('builtins.open', new_callable=mock_open, read_data='test-uuid')
 @patch('wazuh.core.common.wazuh_gid', return_value=0)

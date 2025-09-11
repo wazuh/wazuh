@@ -61,8 +61,10 @@ case "$1" in
             cp -p ${DIR}/etc/ossec.conf ${WAZUH_TMP_DIR}/ossec.conf
         fi
 
-        if [ -d ${DIR}/etc/shared ]; then
-            files="$(ls -A ${DIR}/etc/shared/*)"
+        if [ -d "${DIR}/etc/shared" ]; then
+            if [ "$(ls -A "${DIR}/etc/shared")" ]; then
+                files="$(ls -A ${DIR}/etc/shared/*)"
+            fi
         fi
 
         if [ ! -z "$files" ]; then

@@ -43,47 +43,40 @@ int receive_msg()
 
     /* Read until no more messages are available */
     while (1) {
-        if (agt->server[agt->rip_id].protocol == IPPROTO_TCP) {
-            /* Only one read per call */
-            if (reads++) {
+
+        /* Only one read per call */
+        if (reads++) {
+            break;
+        }
+
+        recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
+
+        // Manager disconnected or error
+
+        if (recv_b <= 0) {
+            switch (recv_b) {
+            case OS_SOCKTERR:
+                merror("Corrupt payload (exceeding size) received.");
                 break;
-            }
 
-            recv_b = OS_RecvSecureTCP(agt->sock, buffer, OS_MAXSTR);
-
-            // Manager disconnected or error
-
-            if (recv_b <= 0) {
-                switch (recv_b) {
-                case OS_SOCKTERR:
-                    merror("Corrupt payload (exceeding size) received.");
-                    break;
-
-                case -1:
+            case -1:
 #ifndef WIN32
-                    if (errno == ENOTCONN) {
-                        mdebug1("Manager disconnected (ENOTCONN).");
-                    } else {
-                        merror("Connection socket: %s (%d)", strerror(errno), errno);
-                    }
-#else
-                    merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
-#endif
-                    break;
-
-                case 0:
-                    mdebug1("Manager disconnected.");
+                if (errno == ENOTCONN) {
+                    mdebug1("Manager disconnected (ENOTCONN).");
+                } else {
+                    merror("Connection socket: %s (%d)", strerror(errno), errno);
                 }
-
-                // -1 means that the agent must reconnect
-                return -1;
-            }
-        } else {
-            recv_b = recv(agt->sock, buffer, OS_MAXSTR, MSG_DONTWAIT);
-
-            if (recv_b <= 0) {
+#else
+                merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+#endif
                 break;
+
+            case 0:
+                mdebug1("Manager disconnected.");
             }
+
+            // -1 means that the agent must reconnect
+            return -1;
         }
 
         buffer[recv_b] = '\0';
@@ -136,14 +129,16 @@ int receive_msg()
 
             /* Syscheck */
             else if (strncmp(tmp_msg, HC_SK, strlen(HC_SK)) == 0
-                     || strncmp(tmp_msg, HC_FIM_SYNC, strlen(HC_FIM_SYNC)) == 0) {
-                ag_send_syscheck(tmp_msg);
+                     || strncmp(tmp_msg, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
+                ag_send_syscheck(tmp_msg, msg_length);
                 continue;
             }
 
             /* Syscollector */
-            else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0) {
-                wmcom_send(tmp_msg);
+            else if (strncmp(tmp_msg, HC_SYSCOLLECTOR, strlen(HC_SYSCOLLECTOR)) == 0
+                     || strncmp(tmp_msg, SYSCOLECTOR_SYNC_HEADER, strlen(SYSCOLECTOR_SYNC_HEADER)) == 0
+                     || strncmp(tmp_msg, SCA_SYNC_HEADER, strlen(SCA_SYNC_HEADER)) == 0) {
+                wmcom_send(tmp_msg, msg_length);
                 continue;
             }
 
@@ -160,39 +155,7 @@ int receive_msg()
 
             /* Security configuration assessment DB request */
             else if (strncmp(tmp_msg, CFGA_DB_DUMP, strlen(CFGA_DB_DUMP)) == 0) {
-#ifndef WIN32
-                /* Connect to the Security configuration assessment queue */
-                if (agt->cfgadq >= 0) {
-                    if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                        mwarn("Error communicating with Security configuration assessment");
-                        close(agt->cfgadq);
-
-                        if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
-                            mwarn("Unable to connect to the Security configuration assessment "
-                                    "queue (disabled).");
-                            agt->cfgadq = -1;
-                        } else if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            mwarn("Error communicating with Security configuration assessment");
-                            close(agt->cfgadq);
-                            agt->cfgadq = -1;
-                        }
-                    }
-                } else {
-                    if ((agt->cfgadq = StartMQ(CFGAQUEUE, WRITE, 1)) < 0) {
-                        mwarn("Unable to connect to the Security configuration assessment "
-                            "queue (disabled).");
-                        agt->cfgadq = -1;
-                    } else {
-                         if (OS_SendUnix(agt->cfgadq, tmp_msg, 0) < 0) {
-                            mwarn("Error communicating with Security configuration assessment");
-                            close(agt->cfgadq);
-                            agt->cfgadq = -1;
-                        }
-                    }
-                }
-#else
-                wm_sca_push_request_win(tmp_msg);
-#endif
+                mwarn("SCA dump operation is deprecated");
                 continue;
             }
 

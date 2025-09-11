@@ -44,7 +44,7 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
         pOsInfoProvider
     };
     EXPECT_CALL(*pOsInfoProvider, name()).WillOnce(Return("Microsoft Windows 10 Home"));
-    EXPECT_CALL(*pOsInfoProvider, version()).WillOnce(Return("10.0.18362"));
+    EXPECT_CALL(*pOsInfoProvider, version()).Times(2).WillRepeatedly(Return("10.0.18362"));
     EXPECT_CALL(*pOsInfoProvider, majorVersion()).WillOnce(Return("10"));
     EXPECT_CALL(*pOsInfoProvider, minorVersion()).WillOnce(Return("0"));
     EXPECT_CALL(*pOsInfoProvider, build()).WillOnce(Return("18362"));
@@ -59,7 +59,8 @@ TEST_F(SysOsInfoTest, setOsInfoSchema)
     EXPECT_EQ("10", output.at("os_major"));
     EXPECT_EQ("0", output.at("os_minor"));
     EXPECT_EQ("Microsoft Windows 10 Home", output.at("os_name"));
-    EXPECT_EQ("1903", output.at("os_release"));
-    EXPECT_EQ("19H1", output.at("os_display_version"));
+    EXPECT_EQ("1903", output.at("os_distribution_release"));
+    EXPECT_EQ("19H1", output.at("os_full"));
     EXPECT_EQ("10.0.18362", output.at("os_version"));
+    EXPECT_EQ("10.0.18362", output.at("os_kernel_release"));
 }

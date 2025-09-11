@@ -27,7 +27,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-engine wazuh-execd wazuh-db wazuh-authd wazuh-apid wazuh-forwarder"
+DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-execd wazuh-db wazuh-authd wazuh-apid wazuh-forwarder"
 OP_DAEMONS="wazuh-clusterd"
 DEPRECATED_DAEMONS="ossec-authd"
 
@@ -242,21 +242,20 @@ testconfig()
 
 get_wazuh_engine_pid()
 {
-    local max_wait=10
-    local interval=0.1
-    local elapsed=0
+    local max_ticks=100
+    local ticks=0
     local pidfile
 
-    ${DIR}/bin/wazuh-engine
+    ${DIR}/bin/wazuh-analysisd
 
-    while awk "BEGIN { exit !($elapsed < $max_wait) }"; do
-        pidfile=$(ls ${DIR}/var/run/wazuh-engine-*.pid 2>/dev/null | head -n1)
+    while [ $ticks -lt $max_ticks ]; do
+        pidfile=$(ls ${DIR}/var/run/wazuh-analysisd-*.pid 2>/dev/null | head -n1)
         if [ -n "$pidfile" ]; then
             echo "${pidfile##*-}" | sed 's/\.pid$//'
             return 0
         fi
-        sleep $interval
-        elapsed=$(awk "BEGIN { print $elapsed + $interval }")
+        ticks=$((ticks + 1))
+        sleep 0.1
     done
 
     return 1  # timeout
@@ -265,16 +264,16 @@ get_wazuh_engine_pid()
 wait_for_wazuh_engine_ready()
 {
     local attempts=0
-    local max_attempts=10
+    local max_attempts=25
 
     ENGINE_PID=$(get_wazuh_engine_pid)
     if [ $? -ne 0 ]; then
-        echo "Failed to obtain PID for wazuh-engine"
+        echo "Failed to obtain PID for wazuh-analysisd"
         return 1
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --unix-socket ${DIR}/queue/sockets/engine-api \
+        curl --silent --unix-socket ${DIR}/queue/sockets/analysis \
             -X POST -H "Content-Type: application/json" \
             -d '{"name":"default"}' \
             http://localhost/router/route/get \
@@ -284,7 +283,7 @@ wait_for_wazuh_engine_ready()
         fi
 
         if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
-            echo "wazuh-engine died during route check."
+            echo "wazuh-analysisd died during route check."
             return 1
         fi
 
@@ -292,7 +291,7 @@ wait_for_wazuh_engine_ready()
         sleep 1
     done
 
-    echo "wazuh-engine did not respond correctly after $max_attempts attempts."
+    echo "wazuh-analysisd did not respond correctly after $max_attempts attempts."
     kill $ENGINE_PID
     return 1
 }
@@ -368,7 +367,7 @@ start_service()
             if [ $USE_JSON = true ]; then
                 ${DIR}/bin/${i} ${DEBUG_CLI} > /dev/null 2>&1;
             else
-                if [ "$i" = "wazuh-engine" ]; then
+                if [ "$i" = "wazuh-analysisd" ]; then
                     wait_for_wazuh_engine_ready
                 else
                     ${DIR}/bin/${i} ${DEBUG_CLI};

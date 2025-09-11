@@ -18,17 +18,14 @@
 #include "../db/include/db.h"
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha1/sha1_op.h"
-#include "../os_crypto/md5_sha1/md5_sha1_op.h"
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
 #ifdef WAZUH_UNIT_TESTING
 #include "../../../unit_tests/wrappers/windows/winreg_wrappers.h"
-extern int _base_line;
 // Remove static qualifier when unit testing
 #define STATIC
 #else
-static int _base_line = 0;
 #define STATIC static
 #endif
 
@@ -125,6 +122,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     char *path = NULL;
     int arch = -1;
     char iso_time[32];
+    Operation_t sync_operation = OPERATION_NO_OP;
 
     fim_key_txn_context_t *event_data = (fim_key_txn_context_t *) user_data;
 
@@ -154,14 +152,17 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     switch (resultType) {
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
+            sync_operation = OPERATION_CREATE;
             break;
 
         case MODIFIED:
             event_data->evt_data->type = FIM_MODIFICATION;
+            sync_operation = OPERATION_MODIFY;
             break;
 
         case DELETED:
             event_data->evt_data->type = FIM_DELETE;
+            sync_operation = OPERATION_DELETE;
             break;
 
         case MAX_ROWS:
@@ -250,7 +251,7 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddStringToObject(registry_stateless, "tags", event_data->config->tag);
     }
 
-    if (_base_line != 0 && event_data->evt_data->report_event) {
+    if (notify_scan != 0 && event_data->evt_data->report_event) {
         send_syscheck_msg(stateless_event);
     }
 
@@ -272,7 +273,22 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    persist_syscheck_msg(stateful_event);
+    // Add state modified_at field for stateful event only
+    cJSON* state = cJSON_CreateObject();
+    if (state != NULL) {
+        char modified_at_time[32];
+        get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+        cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+        cJSON_AddItemToObject(stateful_event, "state", state);
+    }
+
+    char id_source_string[OS_MAXSTR] = {0};
+    snprintf(id_source_string, OS_MAXSTR - 1, "%d:%s", arch, path);
+
+    char registry_key_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(id_source_string, -1, registry_key_sha1);
+
+    persist_syscheck_msg(registry_key_sha1, sync_operation, FIM_REGISTRY_KEYS_SYNC_INDEX, stateful_event);
 
 end:
     cJSON_Delete(stateless_event);
@@ -302,6 +318,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     char *value = NULL;
     int arch = -1;
     char iso_time[32];
+    Operation_t sync_operation = OPERATION_NO_OP;
 
     fim_val_txn_context_t *event_data = (fim_val_txn_context_t *) user_data;
 
@@ -335,10 +352,12 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     switch (resultType) {
         case INSERTED:
             event_data->evt_data->type = FIM_ADD;
+            sync_operation = OPERATION_CREATE;
             break;
 
         case MODIFIED:
             event_data->evt_data->type = FIM_MODIFICATION;
+            sync_operation = OPERATION_MODIFY;
             break;
 
         case DELETED:
@@ -346,6 +365,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
                 fim_diff_process_delete_value(path, value, arch);
             }
             event_data->evt_data->type = FIM_DELETE;
+            sync_operation = OPERATION_DELETE;
             break;
 
         case MAX_ROWS:
@@ -440,7 +460,7 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         cJSON_AddStringToObject(registry_stateless, "content_changes", event_data->diff);
     }
 
-    if (_base_line != 0 && event_data->evt_data->report_event) {
+    if (notify_scan != 0 && event_data->evt_data->report_event) {
         send_syscheck_msg(stateless_event);
     }
 
@@ -462,7 +482,22 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    persist_syscheck_msg(stateful_event);
+    // Add state modified_at field for stateful event only
+    cJSON* state = cJSON_CreateObject();
+    if (state != NULL) {
+        char modified_at_time[32];
+        get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+        cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+        cJSON_AddItemToObject(stateful_event, "state", state);
+    }
+
+    char id_source_string[OS_MAXSTR] = {0};
+    snprintf(id_source_string, OS_MAXSTR - 1, "%s:%d:%s", path, arch, value);
+
+    char registry_value_sha1[FILE_PATH_SHA1_BUFFER_SIZE] = {0};
+    OS_SHA1_Str(id_source_string, -1, registry_value_sha1);
+
+    persist_syscheck_msg(registry_value_sha1, sync_operation, FIM_REGISTRY_VALUES_SYNC_INDEX, stateful_event);
 
 end:
     os_free(event_data->diff);
@@ -1246,10 +1281,6 @@ void fim_registry_scan() {
     regval_txn_handler = NULL;
 
     mdebug1(FIM_WINREGISTRY_ENDED);
-
-    if (_base_line == 0) {
-        _base_line = 1;
-    }
 }
 
 #endif

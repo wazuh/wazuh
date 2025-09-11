@@ -29,7 +29,6 @@ LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
-CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
 INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
 
@@ -52,8 +51,6 @@ WriteSyscheck()
       if [ "$1" = "manager" ]; then
         echo "  <syscheck>" >> $NEWCONFIG
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        echo "    <scan_on_start>yes</scan_on_start>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
         echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG
         echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG
@@ -126,34 +123,6 @@ WriteSyscollector()
       cat ${SYSCOLLECTOR_TEMPLATE} >> $NEWCONFIG
       echo "" >> $NEWCONFIG
     fi
-}
-
-##########
-# Osquery()
-##########
-WriteOsquery()
-{
-    # Adding to the config file
-    OSQUERY_TEMPLATE=$(GetTemplate "osquery.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-}
-
-##########
-# WriteCISCAT()
-##########
-WriteCISCAT()
-{
-    # Adding to the config file
-    CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
 }
 
 ##########
@@ -363,7 +332,6 @@ WriteAgent()
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1514</port>" >> $NEWCONFIG
-    echo "      <protocol>tcp</protocol>" >> $NEWCONFIG
     echo "    </server>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
@@ -382,7 +350,6 @@ WriteAgent()
     echo "    <notify_time>20</notify_time>" >> $NEWCONFIG
     echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
-    echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -396,14 +363,6 @@ WriteAgent()
 
     # Rootcheck
     WriteRootcheck "agent"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "agent"
 
     # Syscollector configuration
     WriteSyscollector "agent"
@@ -480,14 +439,7 @@ WriteManager()
 
     echo "<ossec_config>" >> $NEWCONFIG
 
-    if [ "$EMAILNOTIFY" = "yes"   ]; then
-        GLOBAL_CONTENT=$(sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
-        s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
-        s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}")
-    else
-        GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
-    fi
+    GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
 
     if [ "$UPDATE_CHECK" = "no" ]; then
         GLOBAL_CONTENT=$(echo "$GLOBAL_CONTENT" | sed "s|<update_check>yes</update_check>|<update_check>no</update_check>|g")
@@ -508,14 +460,6 @@ WriteManager()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "manager"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Syscollector configuration
     WriteSyscollector "manager"
@@ -621,15 +565,7 @@ WriteLocal()
     echo "" >> $NEWCONFIG
 
     echo "<ossec_config>" >> $NEWCONFIG
-
-    if [ "$EMAILNOTIFY" = "yes"   ]; then
-        sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
-        s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
-        s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
-    else
-        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
-    fi
+    cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Logging format
@@ -638,14 +574,6 @@ WriteLocal()
 
     # Write rootcheck
     WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -803,6 +731,11 @@ InstallCommon()
             ${INSTALL} -m 0750 -o root -g 0 shared_modules/dbsync/build/lib/libdbsync.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/libdbsync.dylib
         fi
+        if [ -f shared_modules/sync_protocol/build/lib/libagent_sync_protocol.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 shared_modules/sync_protocol/build/lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib/libagent_sync_protocol.dylib
+        fi
     elif [ -f shared_modules/dbsync/build/lib/libdbsync.so ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/dbsync/build/lib/libdbsync.so ${INSTALLDIR}/lib
@@ -811,21 +744,12 @@ InstallCommon()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libdbsync.so
         fi
     fi
-
-    if [ ${NUNAME} = 'Darwin' ]
+    if [ -f shared_modules/sync_protocol/build/lib/libagent_sync_protocol.so ]
     then
-        if [ -f shared_modules/rsync/build/lib/librsync.dylib ]
-        then
-            ${INSTALL} -m 0750 -o root -g 0 shared_modules/rsync/build/lib/librsync.dylib ${INSTALLDIR}/lib
-            install_name_tool -id @rpath/../lib/librsync.dylib ${INSTALLDIR}/lib/librsync.dylib
-            install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/librsync.dylib
-        fi
-    elif [ -f shared_modules/rsync/build/lib/librsync.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/rsync/build/lib/librsync.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/sync_protocol/build/lib/libagent_sync_protocol.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librsync.so
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_sync_protocol.so
         fi
     fi
 
@@ -898,8 +822,8 @@ InstallCommon()
             ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/syscollector/build/lib/libsyscollector.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libsyscollector.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
             install_name_tool -change $(PWD)/data_provider/build/lib/libsysinfo.dylib @rpath/../lib/libsysinfo.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/shared_modules/rsync/build/lib/librsync.dylib @rpath/../lib/librsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
             install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/shared_modules/sync_protocol/build/lib/libagent_sync_protocol.dylib @rpath/../lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
         fi
     elif [ -f wazuh_modules/syscollector/build/lib/libsyscollector.so ]
     then
@@ -907,6 +831,31 @@ InstallCommon()
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsyscollector.so
+        fi
+    fi
+
+    if [ -f build/wazuh_modules/inventory_sync/libinventory_sync.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/wazuh_modules/inventory_sync/libinventory_sync.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libinventory_sync.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f wazuh_modules/sca/build/lib/libsca.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/sca/build/lib/libsca.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libsca.dylib ${INSTALLDIR}/lib/libsca.dylib
+        fi
+    elif [ -f wazuh_modules/sca/build/lib/libsca.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh_modules/sca/build/lib/libsca.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsca.so
         fi
     fi
 
@@ -955,6 +904,8 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fim/db
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector/db
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca/db
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
@@ -1011,6 +962,8 @@ InstallCommon()
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset/assets
+  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/ruleset/kvdb
 
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/.ssh
 
@@ -1121,20 +1074,18 @@ InstallLocal()
 
     ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 clear_stats ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-regex ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 agent_control ${INSTALLDIR}/bin/
     ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-analysisd
 
     installEngineStore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tzdb
 
-    ${INSTALL} -m 0750 -o root -g 0 alert_forwarder/main.py ${INSTALLDIR}/bin/wazuh-forwarder
+    ${INSTALL} -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} alert_forwarder/main.py ${INSTALLDIR}/bin/wazuh-forwarder
     setForwarderConf
 
     # TODO Deletes old ruleset and stats, rootcheck and SCA?
-    ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/rootcheck
 
     InstallSecurityConfigurationAssessmentFiles "manager"
 
@@ -1151,34 +1102,8 @@ InstallLocal()
     # Install templates files
     ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/templates
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/index-template.json ${INSTALLDIR}/templates/vd_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-files.json ${INSTALLDIR}/templates/wazuh-states-fim-files.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-registries.json ${INSTALLDIR}/templates/wazuh-states-fim-registries.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-packages.json ${INSTALLDIR}/templates/wazuh-states-inventory-packages.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-processes.json ${INSTALLDIR}/templates/wazuh-states-inventory-processes.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-system.json ${INSTALLDIR}/templates/wazuh-states-inventory-system.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hardware.json ${INSTALLDIR}/templates/wazuh-states-inventory-hardware.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-networks.json ${INSTALLDIR}/templates/wazuh-states-inventory-networks.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-protocols.json ${INSTALLDIR}/templates/wazuh-states-inventory-protocols.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users.json ${INSTALLDIR}/templates/wazuh-states-inventory-users.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups.json
 
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json ${INSTALLDIR}/templates/vd_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-files-update.json ${INSTALLDIR}/templates/wazuh-states-fim-files-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-registries-update.json ${INSTALLDIR}/templates/wazuh-states-fim-registries-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-packages-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-packages-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-processes-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-processes-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-system-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-system-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hardware-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-hardware-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-networks-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-networks-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-protocols-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-protocols-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-users-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups-update.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
@@ -1251,22 +1176,7 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libcontent_manager.so
         fi
     fi
-    if [ -f build/wazuh_modules/vulnerability_scanner/libvulnerability_scanner.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/wazuh_modules/vulnerability_scanner/libvulnerability_scanner.so ${INSTALLDIR}/lib
 
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libvulnerability_scanner.so
-        fi
-    fi
-    if [ -f build/wazuh_modules/inventory_harvester/libinventory_harvester.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/wazuh_modules/inventory_harvester/libinventory_harvester.so ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libinventory_harvester.so
-        fi
-    fi
     if [ -f build/shared_modules/indexer_connector/libindexer_connector.so ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/indexer_connector/libindexer_connector.so ${INSTALLDIR}/lib
@@ -1308,8 +1218,6 @@ InstallServer()
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/agents
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/db
-
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/default
 
     if [ ! -f ${INSTALLDIR}/etc/shared/default/agent.conf ]; then
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/default
@@ -1397,11 +1305,9 @@ InstallAgent()
 
     ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
     ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 agent-auth ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming
-    ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wpk_root.pem ${INSTALLDIR}/etc/
 
     # Install the plugins files

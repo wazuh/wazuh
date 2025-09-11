@@ -17,7 +17,7 @@ if sys.platform == 'win32':
 from typing import Any
 from pathlib import Path
 
-from wazuh_testing.constants.paths.databases import FIM_DB_PATH
+from wazuh_testing.constants.paths.databases import FIM_DB_PATH, FIM_SYNC_DB_DIR, FIM_SYNC_DB_FILES
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
 from wazuh_testing.modules.fim.patterns import MONITORING_PATH, FIM_SCAN_END
@@ -25,10 +25,8 @@ from wazuh_testing.modules.fim.utils import create_registry, delete_registry
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
-from wazuh_testing.utils import file
+from wazuh_testing.utils import file, services
 from wazuh_testing.utils.callbacks import generate_callback
-from wazuh_testing.utils.services import get_service
-
 
 @pytest.fixture()
 def file_to_monitor(test_metadata: dict) -> Any:
@@ -220,3 +218,23 @@ def clean_fim_db():
             os.remove(FIM_DB_PATH)
     except Exception as e:
         pytest.fail(f"Failed to delete FIM DB file at {FIM_DB_PATH}: {e}")
+
+@pytest.fixture()
+def clean_fim_sync_db():
+    """
+    Fixture to delete the FIM synchronization DB files (fim_sync)
+    before each test.
+    Works on both Linux and Windows agents.
+    """
+
+    # Stop wazuh-service and ensure all daemons are stopped
+    services.control_service('stop')
+    services.wait_expected_daemon_status(running_condition=False, timeout=180)
+
+    for filename in FIM_SYNC_DB_FILES:
+        file_path = os.path.join(FIM_SYNC_DB_DIR, filename)
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            pytest.fail(f"Failed to delete FIM SYNC DB file at {file_path}: {e}")

@@ -1336,8 +1336,8 @@ int check_pattern_expand(int do_seek) {
                 }
 
                 struct stat statbuf;
-                if (lstat(g.gl_pathv[glob_offset], &statbuf) < 0) {
-                    merror("Error on lstat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
+                if (stat(g.gl_pathv[glob_offset], &statbuf) < 0) {
+                    merror("Error on stat '%s' due to [(%d)-(%s)]", g.gl_pathv[glob_offset], errno, strerror(errno));
                     glob_offset++;
                     continue;
                 }
@@ -1948,7 +1948,7 @@ void * w_output_thread(void * args){
 #ifdef CLIENT
                     merror("Unable to send message to '%s' (wazuh-agentd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #else
-                    merror("Unable to send message to '%s' (wazuh-engine might be down). Attempting to reconnect.", DEFAULTQUEUE);
+                    merror("Unable to send message to '%s' (wazuh-analysisd might be down). Attempting to reconnect.", DEFAULTQUEUE);
 #endif
                 }
                 // Retry to connect infinitely.

@@ -27,7 +27,7 @@ extern "C" {
  * @param loggingFn Pointer to loggingFunction.
  * @param abspathFn Pointer to abspath.
  */
-void fimebpf_initialize(directory_t *(*fim_conf)(const char *),
+void fimebpf_initialize(directory_t *(*fim_conf)(const char *, bool),
                         char *(*getUser)(int),
                         char *(*getGroup)(int),
                         void (*fimWhodataEvent)(whodata_evt *),

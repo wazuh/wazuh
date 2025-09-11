@@ -44,7 +44,7 @@
             "description": "user rules"
         },
 
-        "etc/decoders/": {
+        "etc/ruleset/assets/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],
@@ -52,10 +52,10 @@
             "restart": true,
             "remove_subdirs_if_empty": false,
             "extra_valid": false,
-            "description": "user decoders"
+            "description": "user assets"
         },
 
-        "etc/lists/": {
+        "etc/ruleset/kvdb/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],
@@ -63,7 +63,7 @@
             "restart": true,
             "remove_subdirs_if_empty": false,
             "extra_valid": false,
-            "description": "user CDB lists"
+            "description": "user kvdb"
         },
 
         "excluded_files": [

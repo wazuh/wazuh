@@ -296,24 +296,22 @@ get_rbac_actions:
           - GET /cluster/{node_id}/logs
           - GET /cluster/{node_id}/logs/summary
           - PUT /cluster/restart
+          - PUT /cluster/analysisd/reload
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
-      ciscat:read:
-        description: Access CIS-CAT results for agents
+      cluster:ruleset_reload:
+        description: Reload the Wazuh's cluster nodes ruleset
         resources:
-          - agent:id
-          - agent:group
+          - node:id
         example:
           actions:
-            - ciscat:read
+            - cluster:ruleset_reload
           resources:
-            - agent:id:001
-            - agent:id:003
-            - agent:group:default
+            - node:id:worker1
+            - node:id:worker3
           effect: deny
         related_endpoints:
-          - GET /ciscat/{agent_id}/results
-          - GET /experimental/ciscat/results
+          - PUT /cluster/analysisd/reload
       cluster:status:
         description: Check Wazuh's cluster general status
         resources:
@@ -437,9 +435,22 @@ get_rbac_actions:
           - GET /manager/stats/remoted
           - GET /manager/logs
           - GET /manager/logs/summary
+          - PUT /manager/analysisd/reload
           - PUT /manager/restart
           - GET /manager/configuration/validation
           - GET /manager/configuration/{component}/{configuration}
+      manager:ruleset_reload:
+        description: Reload the Wazuh manager ruleset
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - manager:ruleset_reload
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - PUT /manager/analysisd/reload
       manager:update_config:
         description: Update current Wazuh manager configuration
         resources:
@@ -494,20 +505,6 @@ get_rbac_actions:
           - GET /mitre/software
           - GET /mitre/tactics
           - GET /mitre/techniques
-      rootcheck:clear:
-        description: Clear the agents rootcheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:clear
-          resources:
-            - agent:id:*
-          effect: deny
-        related_endpoints:
-          - DELETE /rootcheck/{agent_id}
-          - DELETE /experimental/rootcheck
       rootcheck:run:
         description: Run agents rootcheck scan
         resources:
@@ -521,20 +518,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /rootcheck
-      rootcheck:read:
-        description: Access information from agents rootcheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - rootcheck:read
-          resources:
-            - agent:id:011
-          effect: allow
-        related_endpoints:
-          - GET /rootcheck/{agent_id}
-          - GET /rootcheck/{agent_id}/last_scan
       rules:read:
         description: Read rules files
         resources:
@@ -576,20 +559,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /rules/files/{filename}
           - DELETE /rules/files/{filename}
-      sca:read:
-        description: Access agents security configuration assessment
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - sca:read
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - GET /sca/{agent_id}
-          - GET /sca/{agent_id}/checks/{policy_id}
       syscheck:run:
         description: Run agents syscheck scan
         resources:
@@ -603,35 +572,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /syscheck
-      syscheck:read:
-        description: Access information from agents syscheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:read
-          resources:
-            - agent:id:011
-            - agent:group:us-west
-          effect: allow
-        related_endpoints:
-          - GET /syscheck/{agent_id}
-          - GET /syscheck/{agent_id}/last_scan
-      syscheck:clear:
-        description: Clear the agents syscheck database
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscheck:clear
-          resources:
-            - agent:id:*
-          effect: deny
-        related_endpoints:
-          - DELETE /syscheck/{agent_id}
-          - DELETE /experimental/syscheck
       decoders:read:
         description: Read decoders files
         resources:
@@ -672,38 +612,6 @@ get_rbac_actions:
         related_endpoints:
           - PUT /decoders/files/{filename}
           - DELETE /decoders/files/{filename}
-      syscollector:read:
-        description: Access agents syscollector information
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - syscollector:read
-          resources:
-            - agent:id:*
-          effect: allow
-        related_endpoints:
-          - GET /experimental/syscollector/hardware
-          - GET /experimental/syscollector/netaddr
-          - GET /experimental/syscollector/netiface
-          - GET /experimental/syscollector/netproto
-          - GET /experimental/syscollector/os
-          - GET /experimental/syscollector/packages
-          - GET /experimental/syscollector/ports
-          - GET /experimental/syscollector/processes
-          - GET /experimental/syscollector/hotfixes
-          - GET /syscollector/{agent_id}/hardware
-          - GET /syscollector/{agent_id}/hotfixes
-          - GET /syscollector/{agent_id}/netaddr
-          - GET /syscollector/{agent_id}/netiface
-          - GET /syscollector/{agent_id}/netproto
-          - GET /syscollector/{agent_id}/os
-          - GET /syscollector/{agent_id}/packages
-          - GET /syscollector/{agent_id}/ports
-          - GET /syscollector/{agent_id}/processes
-          - GET /syscollector/{agent_id}/users
-          - GET /syscollector/{agent_id}/groups
       security:edit_run_as:
         description: Change the value of the allow_run_as flag for a user
         resources:

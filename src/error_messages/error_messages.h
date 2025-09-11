@@ -118,13 +118,6 @@
 #define RWLOCK_UNLOCK   "(1338) Cannot unlock rwlock: %s (%d)."
 #define SET_TIMEO_ERR   "(1339) Cannot set timeout: %s (%d)."
 
-/* Mail errors */
-#define CHLDWAIT_ERROR  "(1261): Waiting for child process. (status: %d)."
-#define TOOMANY_WAIT_ERROR "(1262): Too many errors waiting for child process(es)."
-#define SNDMAIL_ERROR   "(1263): Error Sending email to %s (smtp server)"
-#define XML_INV_GRAN_MAIL "(1264): Invalid 'email_alerts' config (missing parameters)."
-#define INVALID_SMTP    "(1265): Invalid SMTP Server: %s"
-
 /* rootcheck */
 #define INVALID_RKCL_NAME  "(1251): Invalid rk configuration name: '%s'."
 #define INVALID_RKCL_VALUE "(1252): Invalid rk configuration value: '%s'."
@@ -310,18 +303,6 @@
                         "It may lead to false positives. Exiting. "
 #define RL_REGEX_SYNTAX "(5107): Syntax error on tag '%s' in rule %d"
 
-/* Syslog output */
-#define XML_INV_CSYSLOG    "(5301): Invalid client-syslog configuration."
-#define ERROR_SENDING_MSG  "(5302): Error sending message to '%s'."
-
-/* Integrator daemon */
-#define XML_INV_INTEGRATOR "(5310): Invalid integratord configuration."
-
-/* Agentless */
-#define XML_INV_AGENTLESS   "(7101): Invalid agentless configuration."
-#define XML_INV_MISSFREQ    "(7102): Frequency not set for the periodic option."
-#define XML_INV_MISSOPTS    "(7103): Missing agentless options."
-
 /* Database messages */
 #define DBINIT_ERROR          "(5201): Error initializing database handler."
 #define DBCONN_ERROR          "(5202): Error connecting to database '%s'(%s): ERROR: %s."
@@ -337,10 +318,6 @@
 #define DB_SQL_ERROR          "(5211): SQL error: '%s'"
 #define DB_TRANSACTION_ERROR  "(5212): Cannot begin transaction."
 #define DB_CACHE_ERROR        "(5213): Cannot cache statement."
-#define DB_CACHE_NULL_STMT    "(5214): Null statement on internal cache."
-#define DB_AGENT_SQL_ERROR    "(5215): DB(%s) SQL Error: '%s'."
-#define DB_INVALID_DELTA_MSG  "(5216): DB(%s) Could not bind delta field '%s' from '%s' scan."
-#define DB_DELTA_PARSING_ERR  "(5217): Could not parse syscollector delta information as JSON."
 
 /* File integrity monitoring error messages*/
 #define FIM_ERROR_WHODATA_SUM_MAX                   "(6603): The whodata sum for '%s' file could not be included in the alert as it is too large."
@@ -475,28 +452,6 @@
 #define FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL         "(6979): Healthcheck file can't be removed. Path: %s"
 #define FIM_ERROR_EBPF_INVALID_KERNEL               "(6980): Invalid Kernel version detected. Must be +5.8."
 
-/* Wazuh Logtest error messsages */
-#define LOGTEST_ERROR_BIND_SOCK                     "(7300): Unable to bind to socket '%s'. Errno: (%d) %s"
-#define LOGTEST_ERROR_ACCEPT_CONN                   "(7301): Failure to accept connection. Errno: %s"
-#define LOGTEST_ERROR_RECV_MSG_ERRNO                "(7302): Failure to receive message: Errno: %s"
-#define LOGTEST_ERROR_INIT_HASH                     "(7303): Failure to initialize all_sessions hash"
-#define LOGTEST_ERROR_INV_CONF                      "(7304): Invalid wazuh-logtest configuration"
-#define LOGTEST_ERROR_SIZE_HASH                     "(7305): Failure to resize all_sessions hash"
-#define LOGTEST_ERROR_COMMAND_NOT_ALLOWED           "(7306): Unable to process command"
-#define LOGTEST_ERROR_JSON_PARSE_POS                "(7307): Error parsing JSON in position %i, ... %s ..."
-#define LOGTEST_ERROR_JSON_REQUIRED_SFIELD          "(7308): '%s' JSON field is required and must be a string"
-#define LOGTEST_ERROR_TOKEN_INVALID                 "(7309): '%s' is not a valid token"
-#define LOGTEST_ERROR_RESPONSE                      "(7310): Failure to sending response to client [%i] %s."
-#define LOGTEST_ERROR_INITIALIZE_SESSION            "(7311): Failure to initializing session"
-#define LOGTEST_ERROR_PROCESS_EVENT                 "(7312): Failed to process the event"
-#define LOGTEST_ERROR_FIELD_NOT_FOUND               "(7313): '%s' JSON field not found"
-#define LOGTEST_ERROR_RECV_MSG_EMPTY_TO             "(7314): Failure to receive message: empty or reception timeout"
-#define LOGTEST_ERROR_RECV_MSG_OVERSIZE             "(7315): Failure to receive message: size is bigger than expected"
-#define LOGTEST_ERROR_TOKEN_INVALID_TYPE            "(7316): Failure to remove session. token JSON field must be a string"
-#define LOGTEST_ERROR_FIELD_NOT_VALID               "(7317): '%s' JSON field value is not valid"
-#define LOGTEST_ERROR_REMOVE_SESSION                "(7318): Failure to remove session '%s'"
-#define XML_ERROR_EMPTY_OR_
-
 /* Modules messages */
 #define WM_UPGRADE_JSON_PARSE_ERROR                 "(8101): Cannot parse JSON: '%s'"
 #define WM_UPGRADE_UNDEFINED_ACTION_ERRROR          "(8102): No action defined for command: '%s'"
@@ -564,7 +519,6 @@
 #define NO_SYSLOG       "(1501): IP or network must be present in syslog" \
                         " access list (allowed-ips). Syslog server disabled."
 #define CONN_TO     "Connected to '%s' (%s queue)"
-#define MAIL_DIS    "E-Mail notification disabled. Clean Exit."
 #define WAZUH_HOMEDIR "Wazuh home directory: %s"
 
 /* Debug Messages */

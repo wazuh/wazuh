@@ -104,7 +104,9 @@ static void help_authd(char * home_path)
 static void set_non_blocking(int fd) {
     int flags = fcntl(fd, F_GETFL, 0);
     if (flags < 0) flags = 0;
-    fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        merror("Failed to set socket to non-blocking mode: %s", strerror(errno));
+    }
 }
 
 int main(int argc, char **argv)
@@ -907,7 +909,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
             uint32_t index = events[i].data.u32;
             if (index == SERVER_INDEX)
             {
-                if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) > 0) {
+                if ((client_sock = accept(remote_sock, (struct sockaddr *) &_nc, &_ncl)) >= 0) {
                     struct client *new_client;
                     os_malloc(sizeof(struct client), new_client);
                     new_client->socket = client_sock;
@@ -1060,8 +1062,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
     struct keynode *copy_remove;
     struct keynode *cur;
     struct keynode *next;
-    char wdbquery[OS_SIZE_128];
-    char wdboutput[128];
     int wdb_sock = -1;
 
     authd_sigblock();
@@ -1181,12 +1181,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
             }
             gettime(&t1);
             mdebug2("[Writer] wdb_remove_agent(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
-
-            snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", cur->id);
-            gettime(&t0);
-            wdbc_query_ex(&wdb_sock, wdbquery, wdboutput, sizeof(wdboutput));
-            gettime(&t1);
-            mdebug2("[Writer] wdbc_query_ex(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             os_free(cur->id);
             os_free(cur->name);

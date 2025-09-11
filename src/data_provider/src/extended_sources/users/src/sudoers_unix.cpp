@@ -15,18 +15,22 @@
 #include <vector>
 #include <fstream>
 
-#include "filesystemHelper.h"
+#include <filesystem_wrapper.hpp>
+#include <filesystem>
+
 #include "stringHelper.h"
 
 #include "sudoers_unix.hpp"
 
-SudoersProvider::SudoersProvider(std::string fileName)
+SudoersProvider::SudoersProvider(std::string fileName, std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_sudoFile(std::move(fileName))
+    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>())
 {
 }
 
 SudoersProvider::SudoersProvider()
     : m_sudoFile("/etc/sudoers")
+    , m_fileSystemWrapper(std::make_unique<file_system::FileSystemWrapper>())
 {
 }
 
@@ -53,7 +57,15 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         return;
     }
 
-    if (!Utils::existsRegular(fileName))
+    try
+    {
+        if (!m_fileSystemWrapper->is_regular_file(fileName))
+        {
+            // std::cout << "sudoers file doesn't exists: " << fileName << std::endl;
+            return;
+        }
+    }
+    catch (const std::filesystem::filesystem_error&)
     {
         // std::cout << "sudoers file doesn't exists: " << fileName << std::endl;
         return;
@@ -154,10 +166,21 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             // support both relative and full paths
             if (ruleDetails.at(0) != '/')
             {
-                ruleDetails = Utils::resolvePath(fileName, ruleDetails);
+                const auto fullPath = (std::filesystem::path(fileName).parent_path() / ruleDetails).string();
+                ruleDetails = fullPath;
             }
 
-            std::vector<std::string> inc_files = Utils::enumerateDir(ruleDetails);
+            std::vector<std::filesystem::path> inc_files;
+
+            try
+            {
+                inc_files = m_fileSystemWrapper->list_directory(ruleDetails);
+            }
+            catch (const std::filesystem::filesystem_error&)
+            {
+                // Directory doesn't exist or cannot be accessed, skip it
+                continue;
+            }
 
             if (inc_files.empty())
             {
@@ -167,7 +190,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
 
             for (const auto& incFile : inc_files)
             {
-                std::string incBasename = Utils::getFilename(incFile);
+                const auto incBasename = incFile.filename().string();
 
                 // Per sudoers(5): Any files in the included directory that
                 // contain a '.' or end with '~' are ignored.
@@ -178,7 +201,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
                     continue;
                 }
 
-                genSudoersFile(incFile, level + 1, results);
+                genSudoersFile(incFile.string(), level + 1, results);
             }
         }
 
@@ -187,7 +210,8 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
             // Relative or full paths
             if (ruleDetails.at(0) != '/')
             {
-                ruleDetails = Utils::resolvePath(fileName, ruleDetails);
+                const auto fullPath = (std::filesystem::path(fileName).parent_path() / ruleDetails).string();
+                ruleDetails = fullPath;
             }
 
             genSudoersFile(ruleDetails, level + 1, results);

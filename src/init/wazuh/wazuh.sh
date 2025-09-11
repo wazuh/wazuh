@@ -23,7 +23,6 @@ CheckModuleIsEnabled(){
 
     # How to use it:
     #
-    # CheckModuleIsEnabled '<wodle name="open-scap">' '</wodle>' 'disabled'
     # CheckModuleIsEnabled '<cluster>' '</cluster>' 'disabled'
     # CheckModuleIsEnabled '<sca>' '</sca>' 'enabled'
 
@@ -157,18 +156,12 @@ WazuhUpgrade()
     # Remove old Wazuh daemons
 
     rm -f $PREINSTALLEDDIR/bin/ossec-agentd
-    rm -f $PREINSTALLEDDIR/bin/ossec-agentlessd
-    rm -f $PREINSTALLEDDIR/bin/ossec-analysisd
     rm -f $PREINSTALLEDDIR/bin/ossec-authd
-    rm -f $PREINSTALLEDDIR/bin/ossec-csyslogd
     rm -f $PREINSTALLEDDIR/bin/ossec-dbd
     rm -f $PREINSTALLEDDIR/bin/ossec-execd
-    rm -f $PREINSTALLEDDIR/bin/ossec-integratord
     rm -f $PREINSTALLEDDIR/bin/ossec-logcollector
-    rm -f $PREINSTALLEDDIR/bin/ossec-maild
     rm -f $PREINSTALLEDDIR/bin/ossec-monitord
     rm -f $PREINSTALLEDDIR/bin/ossec-remoted
-    rm -f $PREINSTALLEDDIR/bin/ossec-reportd
     rm -f $PREINSTALLEDDIR/bin/ossec-syscheckd
 
     # Remove existing ruleset version file
@@ -211,10 +204,10 @@ WazuhUpgrade()
         fi
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP
-    
+
     # Set merged.mg permissions to new ones
     find $PREINSTALLEDDIR/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
-    
+
     # Remove unnecessary `execa` socket
     if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
         rm -f $DIRECTORY/queue/alerts/execa
