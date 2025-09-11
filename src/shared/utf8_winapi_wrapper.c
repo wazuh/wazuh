@@ -228,4 +228,33 @@ DWORD utf8_SetNamedSecurityInfo(const char *utf8_path, SE_OBJECT_TYPE obj_type, 
     return res;
 }
 
+BOOL utf8_LookupAccountSid(LPCSTR lpSystemName, PSID lpSid, char **lpName, LPDWORD cchName, char **lpReferencedDomainName, LPDWORD cchReferencedDomainName, PSID_NAME_USE peUse) {
+    wchar_t *wsystemname = NULL;
+    wchar_t wname[256];
+    wchar_t wdomain[256];
+    DWORD wname_size = 256;
+    DWORD wdomain_size = 256;
+    BOOL result;
+
+    if (lpSystemName) {
+        wsystemname = auto_to_wide(lpSystemName);
+        if (!wsystemname) {
+            return FALSE;
+        }
+    }
+
+    result = LookupAccountSidW(wsystemname, lpSid, wname, &wname_size, wdomain, &wdomain_size, peUse);
+
+    if (result) {
+        *lpName = wide_to_utf8(wname);
+        *lpReferencedDomainName = wide_to_utf8(wdomain);
+
+        if (cchName) *cchName = *lpName ? strlen(*lpName) + 1 : 0;
+        if (cchReferencedDomainName) *cchReferencedDomainName = *lpReferencedDomainName ? strlen(*lpReferencedDomainName) + 1 : 0;
+    }
+
+    os_free(wsystemname);
+    return result;
+}
+
 #endif
