@@ -204,7 +204,7 @@ TEST_F(RouterSubscriberCInterfaceTest, TestCreateMultipleSubscribersSameId)
 /**
  * @brief Global callback function for testing
  */
-static std::atomic<int> g_callback_count{0};
+static std::atomic<int> g_callback_count {0};
 static std::string g_last_message;
 
 void test_callback(const char* message)
@@ -428,21 +428,22 @@ TEST_F(RouterSubscriberCInterfaceTest, TestConcurrentSubscriberCreation)
 
     for (int t = 0; t < num_threads; ++t)
     {
-        threads.emplace_back([&handles, &handles_mutex, t, subscribers_per_thread]()
-        {
-            for (int i = 0; i < subscribers_per_thread; ++i)
+        threads.emplace_back(
+            [&handles, &handles_mutex, t, subscribers_per_thread]()
             {
-                std::string topic = "thread-" + std::to_string(t) + "-topic-" + std::to_string(i);
-                std::string subscriber_id = "thread-" + std::to_string(t) + "-subscriber-" + std::to_string(i);
-
-                auto handle = router_subscriber_create(topic.c_str(), subscriber_id.c_str(), true);
-                if (handle != nullptr)
+                for (int i = 0; i < subscribers_per_thread; ++i)
                 {
-                    std::lock_guard<std::mutex> lock(handles_mutex);
-                    handles.push_back(handle);
+                    std::string topic = "thread-" + std::to_string(t) + "-topic-" + std::to_string(i);
+                    std::string subscriber_id = "thread-" + std::to_string(t) + "-subscriber-" + std::to_string(i);
+
+                    auto handle = router_subscriber_create(topic.c_str(), subscriber_id.c_str(), true);
+                    if (handle != nullptr)
+                    {
+                        std::lock_guard<std::mutex> lock(handles_mutex);
+                        handles.push_back(handle);
+                    }
                 }
-            }
-        });
+            });
     }
 
     for (auto& thread : threads)

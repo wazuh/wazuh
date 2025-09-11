@@ -43,7 +43,6 @@ std::shared_mutex PROVIDERS_MUTEX;
 std::map<ROUTER_SUBSCRIBER_HANDLE, std::shared_ptr<RouterSubscriber>> SUBSCRIBERS;
 std::shared_mutex SUBSCRIBERS_MUTEX;
 
-
 flatbuffers::Parser initSchemaParsers()
 {
     flatbuffers::Parser parser;
@@ -567,11 +566,13 @@ extern "C"
         {
             if (!topic_name || !subscriber_id)
             {
-                logMessage(modules_log_level_t::LOG_ERROR, "Error creating subscriber. Topic name or subscriber ID is empty");
+                logMessage(modules_log_level_t::LOG_ERROR,
+                           "Error creating subscriber. Topic name or subscriber ID is empty");
             }
             else
             {
-                std::shared_ptr<RouterSubscriber> subscriber = std::make_shared<RouterSubscriber>(topic_name, subscriber_id, isLocal);
+                std::shared_ptr<RouterSubscriber> subscriber =
+                    std::make_shared<RouterSubscriber>(topic_name, subscriber_id, isLocal);
                 std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
                 SUBSCRIBERS[subscriber.get()] = subscriber;
                 retVal = subscriber.get();
@@ -597,9 +598,8 @@ extern "C"
             else
             {
                 std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
-                SUBSCRIBERS.at(handle)->subscribe([callback](const std::vector<char>& message) {
-                    callback(message.data());
-                });
+                SUBSCRIBERS.at(handle)->subscribe([callback](const std::vector<char>& message)
+                                                  { callback(message.data()); });
                 retVal = 0;
             }
         }
