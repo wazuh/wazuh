@@ -580,3 +580,49 @@ TEST_F(DirRuleEvaluatorTest, NegatedContentFilenameWithArrowAndComplexContentNot
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
 }
+
+TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndNumericContentFound)
+{
+    // Pattern starts with filename and then includes a content pattern after '->'.
+    m_ctx.pattern = std::string("r:. -> n:messi (\\d+) compare == 10");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"file"}));
+    EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+
+    // For exact filename + content pattern, evaluator should read and evaluate file content.
+    EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
+    .WillOnce(::testing::Return(
+                  std::string("messi 10\n")
+              ));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndComplexNumericContentFound)
+{
+    // Pattern starts with filename and then includes a content pattern after '->'.
+    m_ctx.pattern = std::string("r:. -> r:lionel && n:messi (\\d+) compare == 10");
+    m_ctx.rule = "dir/";
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, list_directory(std::filesystem::path("dir/")))
+    .WillOnce(::testing::Return(std::vector<std::filesystem::path> {"file"}));
+    EXPECT_CALL(*m_rawFsMock, is_symlink(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*m_rawFsMock, is_directory(std::filesystem::path("file"))).WillOnce(::testing::Return(false));
+
+    // For exact filename + content pattern, evaluator should read and evaluate file content.
+    EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
+    .WillOnce(::testing::Return(
+                  std::string("lionel messi 10\n")
+              ));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
