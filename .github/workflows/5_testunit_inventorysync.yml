@@ -47,6 +47,7 @@ jobs:
         uses: ./.github/actions/coverage_cpp
         with:
           path: src/wazuh_modules/inventory_sync
+          test_directory: src/wazuh_modules/inventory_sync
           id: inventory_sync
           validate_function_coverage: "false"
 

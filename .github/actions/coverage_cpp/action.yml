@@ -68,18 +68,31 @@ runs:
                 include_files+="--include=$(pwd)/$file "
               fi
             done
-          else
+          elif [[ ${{ inputs.path }} =~ "wazuh_modules/inventory_sync" ]]; then
+            # For inventory_sync module, include src/ and include/ directories
             paths="src/ include/"
+            for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
+            do
+              file=$(echo $file | sed 's/\.\///g')
+              # Exclude test files and generated files
+              if [[ ! "$file" =~ "_generated.h" ]] && [[ ! "$file" =~ "/tests/" ]] && [[ ! "$file" =~ "test\.(cpp|hpp|h|c)$" ]]; then
+                include_files+="--include=$(pwd)/$file "
+              fi
+            done
+          else
+            # Default case for other modules
+            paths="src/ include/"
+            for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
+            do
+              file=$(echo $file | sed 's/\.\///g')
+              if [[ ! "$file" =~ "_generated.h" ]]; then
+                include_files+="--include=$(pwd)/$file "
+              fi
+            done
           fi
-          for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
-          do
-            file=$(echo $file | sed 's/\.\///g')
-            if [[ ! "$file" =~ "_generated.h" ]]; then
-              include_files+="--include=$(pwd)$dir/$file "
-            fi
-          done
           arguments+="$include_files"
           echo "Executing: lcov $arguments"
+          echo "Include files: $include_files"
           lcov $arguments
 
       # Generate the HTML coverage report
@@ -99,6 +112,7 @@ runs:
           name: Coverage Report - ${{ inputs.id }}
           path: ./src/build/coverage_report
           retention-days: 1
+        continue-on-error: true
 
       # Check whether the coverage is greater than 90% both for lines and functions
       - name: Validate coverage
