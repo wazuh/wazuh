@@ -132,23 +132,10 @@ struct UpdateFileAction final : public IAction
     {
         auto retVal { false };
         nlohmann::json jsonEvent;
-
-        directory_t configuration = {};
-        configuration.options = -1;
-
-        event_data_t evt_data = {};
-        evt_data.report_event = true;
-        evt_data.mode = FIM_REALTIME;
-        evt_data.w_evt = NULL;
-
-        create_json_event_ctx callback_ctx = {};
-        callback_ctx.event = &evt_data;
-        callback_ctx.config = &configuration;
-
         try
         {
-            DB::instance().updateFile(value, &callback_ctx,
-            [&jsonEvent](const nlohmann::json data) {
+            DB::instance().updateFile(value,
+            [&jsonEvent](int, const nlohmann::json data) {
                 jsonEvent.push_back(data);
             });
             retVal = true;
@@ -208,61 +195,6 @@ struct SearchFileAction final : public IAction
                 {"result", retVal },
                 {"value", jsonReturn },
                 {"action", "SearchFile" }
-            };
-        outputFile << jsonResult.dump() << std::endl;
-    }
-};
-
-struct RunIntegrityAction final : public IAction
-{
-    void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& /*value*/) override
-    {
-        auto retVal = false;
-        try
-        {
-            DB::instance().runIntegrity();
-            retVal = true;
-        }
-        catch (const std::exception &e)
-        {
-            std::cout << "Error running integrity: " << e.what() << std::endl;
-        }
-        std::stringstream oFileName;
-        oFileName << "action_" << ctx->currentId << ".json";
-        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
-
-        std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                {"result", retVal },
-                {"action", "RunIntegrity" }
-            };
-        outputFile << jsonResult.dump() << std::endl;
-    }
-};
-
-struct PushMessageAction final : public IAction
-{
-    void execute(std::unique_ptr<TestContext>& ctx, const nlohmann::json& value) override
-    {
-        auto retVal = false;
-        try
-        {
-            const auto message = value.at("message").get_ref<const std::string&>();
-            DB::instance().pushMessage(message);
-            retVal = true;
-        }
-        catch (const std::exception &e)
-        {
-            std::cout << "Error pushing message: " << e.what() << std::endl;
-        }
-        std::stringstream oFileName;
-        oFileName << "action_" << ctx->currentId << ".json";
-        const auto outputFileName{ ctx->outputPath + "/" + oFileName.str() };
-
-        std::ofstream outputFile{ outputFileName };
-        const nlohmann::json jsonResult = {
-                {"result", retVal },
-                {"action", "PushMessage" }
             };
         outputFile << jsonResult.dump() << std::endl;
     }

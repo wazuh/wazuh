@@ -22,7 +22,7 @@ def wait_connect():
         Watch ossec.log until received "Connected to the server" message is found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
+    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER), timeout = 150)
     assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
 
 
@@ -49,7 +49,7 @@ def wait_enrollment():
         Watch ossec.log until "Valid key received" message is found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_RECEIVED_VALID_KEY))
+    wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_RECEIVED_VALID_KEY), timeout = 150)
     assert (wazuh_log_monitor.callback_result != None), 'Agent never enrolled'
 
 

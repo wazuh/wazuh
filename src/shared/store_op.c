@@ -34,6 +34,8 @@ OSStore *OSStore_Create()
     my_list->max_size = 0;
     my_list->free_data_function = NULL;
 
+    w_rwlock_init(&my_list->wr_mutex, NULL);
+
     return (my_list);
 }
 
@@ -63,6 +65,8 @@ OSStore *OSStore_Free(OSStore *list)
 
     list->first_node = NULL;
     list->last_node = NULL;
+
+    w_rwlock_destroy(&list->wr_mutex);
 
     free(list);
     list = NULL;
@@ -206,6 +210,26 @@ int OSStore_GetPosition(OSStore *list, const char *key)
         pos++;
     }
     return (0);
+}
+
+/**
+ * @brief Get key position from storage
+ *
+ * Thread safe version of OSStore_GetPosition
+ * @param list Storage list
+ * @param key Key to search
+ * @return int Position of the key in the list
+ * @retval 0 if not present
+ * @warning Position may change after each PUT
+ */
+int OSStore_GetPosition_ex(OSStore * list, const char * key) {
+
+    // Write lock because change the current node
+    w_rwlock_wrlock((pthread_rwlock_t *) &list->wr_mutex);
+    int pos = OSStore_GetPosition(list, key);
+    w_rwlock_unlock((pthread_rwlock_t *) &list->wr_mutex);
+
+    return pos;
 }
 
 /* Get first node from storage
@@ -381,4 +405,22 @@ int OSStore_Put(OSStore *list, const char *key, void *data)
     list->currently_size++;
 
     return (1);
+}
+
+/**
+ * @brief Add data to the list
+ *
+ * Thread safe version of OSStore_Put 
+ * @param list Storage list
+ * @param key Key to store
+ * @param data Data to store
+ * @return int 1 on success, 0 on failure
+ */
+int OSStore_Put_ex(OSStore * list, const char * key, void * data) {
+
+    w_rwlock_wrlock((pthread_rwlock_t *) &list->wr_mutex);
+    int ret = OSStore_Put(list, key, data);
+    w_rwlock_unlock((pthread_rwlock_t *) &list->wr_mutex);
+
+    return ret;
 }

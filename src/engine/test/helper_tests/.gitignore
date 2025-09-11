@@ -1,0 +1,4 @@
+# Helper test output file
+map/outputs/*
+filter/outputs/*
+transformation/outputs/*

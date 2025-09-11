@@ -1,0 +1,19 @@
+{
+    "steps": [
+        {
+            "description": "Build (UBSAN flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_UBSAN=ON",
+                "--log-name ubsan-build"
+            ]
+        },
+        {
+            "description": "Unit tests (UBSAN)",
+            "parameters": [
+                "--test ut",
+                "--log-name ubsan"
+            ]
+        }
+    ]
+}

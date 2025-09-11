@@ -14,7 +14,6 @@ custom_api_configuration = {
     "host": ["0.0.0.0", "::"],
     "port": 55000,
     "drop_privileges": True,
-    "experimental_features": False,
     "max_upload_size": 10485760,
     "authentication_pool_size": 2,
     "https": {
@@ -60,14 +59,6 @@ custom_api_configuration = {
         },
         "indexer": {
             "allow": True
-        },
-        "integrations": {
-            "virustotal": {
-                "public_key": {
-                    "allow": True,
-                    "minimum_quota": 240
-                }
-            }
         }
     }
 }
@@ -117,7 +108,6 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'host': 1234},
     {'port': 'invalid_type'},
     {'drop_privileges': 'invalid_type'},
-    {'experimental_features': 'invalid_type'},
     {'max_upload_size': 'invalid_type'},
     {'authentication_pool_size': 'invalid_type'},
     {'authentication_pool_size': 0},
@@ -151,7 +141,6 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'remote_commands': {'wodle_command': {'invalid_subkey': 'invalid_type'}}},
     {'agents': {'allow_higher_versions': {'allow': True}}},
     {'indexer': {'allow': True}},
-    {'integrations': {'virustotal': {'public_key': {'allow': True}}}},
 ])
 @patch('os.path.exists', return_value=True)
 def test_read_wrong_configuration(mock_exists, config):

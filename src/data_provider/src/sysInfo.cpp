@@ -57,6 +57,26 @@ nlohmann::json SysInfo::hotfixes()
     return getHotfixes();
 }
 
+nlohmann::json SysInfo::groups()
+{
+    return getGroups();
+}
+
+nlohmann::json SysInfo::users()
+{
+    return getUsers();
+}
+
+nlohmann::json SysInfo::services()
+{
+    return getServices();
+}
+
+nlohmann::json SysInfo::browserExtensions()
+{
+    return getBrowserExtensions();
+}
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -274,6 +294,98 @@ int sysinfo_hotfixes(cJSON** js_result)
             SysInfo info;
             const auto& hotfixes       {info.hotfixes()};
             *js_result = cJSON_Parse(hotfixes.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_groups(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& grps       {info.groups()};
+            *js_result = cJSON_Parse(grps.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_users(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& users       {info.users()};
+            *js_result = cJSON_Parse(users.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_services(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& services       {info.services()};
+            *js_result = cJSON_Parse(services.dump().c_str());
+            retVal = 0;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (...)
+    {}
+
+    // LCOV_EXCL_STOP
+
+    return retVal;
+}
+
+int sysinfo_browser_extension(cJSON** js_result)
+{
+    auto retVal { -1 };
+
+    try
+    {
+        if (js_result)
+        {
+            SysInfo info;
+            const auto& browserExtensions       {info.browserExtensions()};
+            *js_result = cJSON_Parse(browserExtensions.dump().c_str());
             retVal = 0;
         }
     }

@@ -20,9 +20,10 @@
  * @brief TEndpointGetV1AgentsSync class.
  *
  */
-template<typename DBConnection = SQLite::Connection, typename DBStatement = SQLite::Statement>
+template<typename DBConnection = SQLite3Wrapper::Connection, typename DBStatement = SQLite3Wrapper::Statement>
 class TEndpointGetV1AgentsSync final
 {
+    virtual ~TEndpointGetV1AgentsSync() = default; // LCOV_EXCL_LINE
     struct SyncReq final
     {
         /**
@@ -110,7 +111,7 @@ public:
         constexpr size_t RESERVE_SIZE = 32 * 1024 * 1024; // Size to avoid reallocation/fragmentation.
 
         Response resObj;
-        DBStatement stmtCount(db, "SELECT COUNT(*) FROM agent WHERE id > 0 AND sync_status = ?;");
+        DBStatement stmtCount(db, "SELECT COUNT(*) FROM agent WHERE id > 0 AND sync_status = ?;"); // LCOV_EXCL_LINE
 
         {
             stmtCount.bind(1, std::string_view("syncreq"));
@@ -119,14 +120,14 @@ public:
                 resObj.agentsSyncReq.reserve(stmtCount.template value<int64_t>(0));
             }
 
-            DBStatement stmtSyncReq(
+            DBStatement stmtSyncReq( // LCOV_EXCL_LINE
                 db,
                 "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_codename, os_build, os_platform, "
                 "os_uname, os_arch, version, config_sum, merged_sum, manager_host, node_name, last_keepalive, "
                 "connection_status, disconnection_time, group_config_status, status_code FROM agent WHERE id > 0 AND "
                 "sync_status = 'syncreq';");
 
-            DBStatement stmtGetLabels(db, "SELECT key, value FROM labels WHERE id = ?;");
+            DBStatement stmtGetLabels(db, "SELECT key, value FROM labels WHERE id = ?;"); // LCOV_EXCL_LINE
 
             while (stmtSyncReq.step() == SQLITE_ROW)
             {
@@ -175,8 +176,9 @@ public:
                 resObj.agentsSyncKeepAlive.reserve(stmtCount.template value<int64_t>(0));
             }
 
-            DBStatement stmtSyncKeepAlive(
-                db, "SELECT id, version FROM agent WHERE id > 0 AND sync_status = 'syncreq_keepalive';");
+            DBStatement stmtSyncKeepAlive( // LCOV_EXCL_LINE
+                db,
+                "SELECT id, version FROM agent WHERE id > 0 AND sync_status = 'syncreq_keepalive';");
 
             while (stmtSyncKeepAlive.step() == SQLITE_ROW)
             {
@@ -194,7 +196,7 @@ public:
                 resObj.agentsSyncStatus.reserve(stmtCount.template value<int64_t>(0));
             }
 
-            DBStatement stmtSyncStatus(
+            DBStatement stmtSyncStatus( // LCOV_EXCL_LINE
                 db,
                 "SELECT id, version, connection_status, disconnection_time, status_code FROM agent "
                 "WHERE id > 0 AND sync_status = 'syncreq_status';");
@@ -210,7 +212,7 @@ public:
         }
 
         {
-            DBStatement stmtSynced(db, "UPDATE agent SET sync_status = 'synced' WHERE id > 0;");
+            DBStatement stmtSynced(db, "UPDATE agent SET sync_status = 'synced' WHERE id > 0;"); // LCOV_EXCL_LINE
             stmtSynced.step();
         }
 
@@ -220,6 +222,8 @@ public:
     }
 };
 
+// LCOV_EXCL_START
 using EndpointGetV1AgentsSync = TEndpointGetV1AgentsSync<>;
+// LCOV_EXCL_STOP
 
 #endif /* _ENDPOINT_GET_V1_AGENTS_SYNC_HPP */

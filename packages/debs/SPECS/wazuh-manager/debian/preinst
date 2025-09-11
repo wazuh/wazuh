@@ -104,9 +104,6 @@ case "$1" in
           rm /etc/init.d/ossec
         fi
 
-        if [ -d ${DIR}/etc/lists ]; then
-          cp -rp ${DIR}/etc/lists ${WAZUH_TMP_DIR}/lists
-        fi
 
         if [ -f ${DIR}/etc/client.keys ]; then
             cp -p ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys
@@ -114,14 +111,6 @@ case "$1" in
 
         if [ -f ${DIR}/etc/local_internal_options.conf ]; then
             cp -p ${DIR}/etc/local_internal_options.conf ${WAZUH_TMP_DIR}/local_internal_options.conf
-        fi
-
-        if [ -f ${DIR}/etc/rules/local_rules.xml ]; then
-            cp -p ${DIR}/etc/rules/local_rules.xml ${WAZUH_TMP_DIR}/local_rules.xml
-        fi
-
-        if [ -f ${DIR}/etc/decoders/local_decoder.xml ]; then
-            cp -p ${DIR}/etc/decoders/local_decoder.xml ${WAZUH_TMP_DIR}/local_decoder.xml
         fi
 
         if [ -f ${DIR}/etc/ossec.conf ]; then

@@ -46,9 +46,6 @@
 # Drop privileges (Run as wazuh user)
 # drop_privileges: yes
 
-# Enable features under development
-# experimental_features: no
-
 # Maximum body size that the API can accept, in bytes (0 -> limitless)
 # max_upload_size: 10485760
 
@@ -72,8 +69,3 @@
 #       allow: yes
 #   indexer:
 #     allow: yes
-#   integrations:
-#     virustotal:
-#       public_key:
-#         allow: yes
-#         minimum_quota: 240

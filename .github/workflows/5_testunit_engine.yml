@@ -1,0 +1,35 @@
+name: Engine Unit Tests
+
+on:
+  # Triggers the workflow on pull request but only changes in the src/engine/ directory.
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - 'src/engine/**'
+
+# Ensures only one instance of this workflow is running per PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+env:
+  BUILD_DIR: ${{github.workspace}}/src/build
+
+jobs:
+  build:
+    name: Build Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install CMake
+        uses: ./.github/actions/reinstall_cmake
+
+      - name: Build Wazuh server
+        run: |
+          make deps -C src TARGET=server -j$(nproc)
+          make -C src TARGET=server ENGINE_TEST=y -j$(nproc)
+
+      - name: Unit Test
+        # Run unit tests using CTest
+        working-directory: ${{env.BUILD_DIR}}/engine
+        run: MALLOC_CHECK_=2 ctest -T test --output-on-failure -j$(nproc)

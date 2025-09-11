@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.archiver;
+
+/*
+ * This API is used to manage the archives in the engine
+ */
+
+/***************************************************
+ * Activate the Archiver
+ *
+ * command: archiver/activate
+ **************************************************/
+message ArchiverActivate_Request {}
+
+// message ArchiverActivate_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Deactivate the Archiver
+ *
+ * command: archiver/deactivate
+ **************************************************/
+message ArchiverDeactivate_Request {}
+
+// message ArchiverDeactivate_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get the status of the Archiver
+ *
+ * command: archiver/status
+ **************************************************/
+message ArchiverStatus_Request {}
+
+message ArchiverStatus_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    bool active = 3;           // Wether the Archiver is active
+}

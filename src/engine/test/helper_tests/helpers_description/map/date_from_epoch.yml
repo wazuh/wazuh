@@ -1,0 +1,37 @@
+# Name of the helper function
+name: date_from_epoch
+
+metadata:
+  description: |
+    Date from epoch will convert the input value, can be a reference or a value representing the epoch time to a human readable date time.
+    Transforms UNIX epoch time to a human readable date time in the format of 'YYYY-MM-DDTHH:MM:SSZ'.
+  keywords:
+    - undefined
+
+helper_type: map
+
+# Arguments expected by the helper function
+arguments:
+  epoch:
+    type: number # Expected type is string
+    generate: integer
+    source: reference # Includes only references (their names start with $)
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: False
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      epoch: 0
+    should_pass: true
+    expected: '1970-01-01T00:00:00.000000Z'
+    description: Get date using initial epoch
+  - arguments:
+      epoch: 1715958658
+    should_pass: true
+    expected: '2024-05-17T15:10:58.000000Z'
+    description: Get date using any epoch

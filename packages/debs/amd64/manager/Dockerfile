@@ -16,24 +16,28 @@ RUN echo 'Acquire::Check-Valid-Until "false";' >> /etc/apt/apt.conf && \
 RUN echo "deb-src http://archive.debian.org/debian jessie contrib main non-free" >> /etc/apt/sources.list && \
     apt-get update && apt-get build-dep python3 -y --force-yes
 
-RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
-    tar xzf gcc-9.4.0.tar.gz  && cd gcc-9.4.0/ && \
-    ./contrib/download_prerequisites && \
-    ./configure --prefix=/usr/local/gcc-9.4.0 --enable-languages=c,c++ --disable-multilib \
-        --disable-libsanitizer && \
-    make -j$(nproc) && make install && \
-    ln -fs /usr/local/gcc-9.4.0/bin/g++ /usr/bin/c++ && cd / && rm -rf gcc-*
+ADD https://packages.wazuh.com/utils/gcc/gcc_14.3-1_amd64.deb /tmp/gcc_14.3-1_amd64.deb
+RUN dpkg -i /tmp/gcc_14.3-1_amd64.deb && \
+    ln -fs /opt/gcc-14/bin/g++ /usr/bin/c++ && \
+    ln -fs /opt/gcc-14/bin/g++ /usr/bin/g++ && \
+    ln -fs /opt/gcc-14/bin/gcc /usr/bin/gcc
 
-ENV CPLUS_INCLUDE_PATH "/usr/local/gcc-9.4.0/include/c++/9.4.0/"
-ENV LD_LIBRARY_PATH "/usr/local/gcc-9.4.0/lib64:${LD_LIBRARY_PATH}"
-ENV PATH "/usr/local/gcc-9.4.0/bin:${PATH}"
+ENV CPLUS_INCLUDE_PATH "/opt/gcc-14/include/c++/14.3.0/"
+ENV LD_LIBRARY_PATH "/opt/gcc-14/lib64:${LD_LIBRARY_PATH}"
+ENV PATH "/opt/gcc-14/bin:${PATH}"
 
-RUN curl -OL http://packages.wazuh.com/utils/cmake/cmake-3.18.3.tar.gz && \
-    tar -zxf cmake-3.18.3.tar.gz && cd cmake-3.18.3 && \
-    ./bootstrap --no-system-curl CXX=/usr/local/gcc-9.4.0/bin/g++ \
-        CC=/usr/local/gcc-9.4.0/bin/gcc && \
-    make -j$(nproc) && make install && ln -s /usr/local/bin/cmake /usr/bin/cmake && \
-    cd / && rm -rf cmake-*
+ADD https://packages.wazuh.com/utils/binutils/binutils_2.38-1_amd64.deb /tmp/binutils_2.38-1_amd64.deb
+RUN dpkg -i /tmp/binutils_2.38-1_amd64.deb
+
+ENV PATH "/opt/binutils-2/bin:${PATH}"
+
+ADD https://github.com/Kitware/CMake/releases/download/v3.30.4/cmake-3.30.4-linux-x86_64.sh /tmp/cmake-3.30.4-linux-x86_64.sh
+
+RUN mkdir -p /opt/cmake
+RUN sh /tmp/cmake-3.30.4-linux-x86_64.sh --prefix=/opt/cmake --skip-license
+
+RUN ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake
+RUN ln -s /opt/cmake/bin/ctest /usr/local/bin/ctest
 
 # Add the script to build the Debian package
 ADD build.sh /usr/local/bin/build_package

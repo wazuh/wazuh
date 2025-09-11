@@ -12,15 +12,11 @@
 
         logging.template
 
-        alerts.template
-
         remote-secure.template
 
         [remote-syslog.template]
 
         rootcheck.template
-
-        wodle-openscap.template
 
         wodle-syscollector.template
 
@@ -62,8 +58,6 @@
         logging.template
 
         rootcheck.template
-
-        wodle-openscap.template
 
         wodle-syscollector.template
 

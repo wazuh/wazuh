@@ -2,12 +2,17 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(syscollectorimp_unit_test)
 
-set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
-
+if(FSANITIZE)
+set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage -fsanitize=address,leak,undefined")
+endif()
 
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
-link_directories(${SRC_FOLDER}/shared_modules/rsync/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+
+include_directories(${SRC_FOLDER}/data_provider/tests/mocks/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/include/)
+include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
 
 file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
     "*.cpp")
@@ -15,9 +20,6 @@ file(GLOB SYSCOLLECTOR_IMP_UNIT_TEST_SRC
 file(GLOB SYSCOLLECTOR_IMP_SRC
     "${CMAKE_SOURCE_DIR}/src/syscollectorImp.cpp"
     "${CMAKE_SOURCE_DIR}/src/syscollectorNormalizer.cpp")
-
-file(GLOB RSYNC_IMP_SRC
-    "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
 
 file(GLOB DBSYNC_IMP_SRC
     "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
@@ -28,9 +30,15 @@ add_definitions(-DWAZUH_UNIT_TESTING)
 add_executable(syscollectorimp_unit_test
     ${SYSCOLLECTOR_IMP_UNIT_TEST_SRC}
     ${SYSCOLLECTOR_IMP_SRC}
-    ${RSYNC_IMP_SRC}
     ${DBSYNC_IMP_SRC})
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    add_custom_command(TARGET syscollectorimp_unit_test POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${SRC_FOLDER}/shared_modules/sync_protocol/build/bin/libagent_sync_protocol.dll"
+        "$<TARGET_FILE_DIR:syscollectorimp_unit_test>/libagent_sync_protocol.dll"
+        COMMENT "Copying libagent_sync_protocol.dll to test directory"
+    )
+
     target_link_libraries(syscollectorimp_unit_test
         debug gtestd
         debug gmockd
@@ -47,6 +55,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
         ws2_32
         ssl
         crypt32
+        agent_sync_protocol
         -static-libgcc -static-libstdc++
     )
 else()
@@ -64,6 +73,7 @@ else()
         cjson
         crypto
         dl
+        agent_sync_protocol
     )
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

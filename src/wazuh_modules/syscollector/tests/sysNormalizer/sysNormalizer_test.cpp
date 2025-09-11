@@ -11,7 +11,7 @@
 #include "sysNormalizer_test.h"
 #include "test_config.h"
 #include "test_input.h"
-#include "syscollectorNormalizer.h"
+#include "syscollectorNormalizer.hpp"
 #include <fstream>
 #include <cstdio>
 

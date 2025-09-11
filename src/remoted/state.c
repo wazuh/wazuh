@@ -186,7 +186,7 @@ int rem_write_state() {
         "# TCP sessions\n"
         "tcp_sessions='%u'\n"
         "\n"
-        "# Events sent to Analysisd\n"
+        "# Events sent to Engine\n"
         "evt_count='%lu'\n"
         "\n"
         "# Control messages received\n"

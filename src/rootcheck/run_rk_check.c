@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "rootcheck.h"
 #include "config/syscheck-config.h"
+#include "syscheck.h"
 
 static void log_realtime_status_rk(int next);
 
@@ -43,7 +44,7 @@ int notify_rk(int rk_type, const char *msg)
     if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
         mterror(ARGV0, QUEUE_SEND);
 
-        if ((rootcheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        if ((rootcheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
             mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
         }
 
@@ -61,8 +62,6 @@ void run_rk_check()
 {
     time_t time1;
     time_t time2;
-    FILE *fp;
-    OSList *plist;
 
 #ifndef WIN32
     /* On non-Windows, always start at / */
@@ -104,128 +103,6 @@ void run_rk_check()
     if (rootcheck.notify == QUEUE) {
         mtinfo(ARGV0, "Starting rootcheck scan.");
     }
-
-    /* Check for Rootkits */
-    /* Open rootkit_files and pass the pointer to check_rc_files */
-    if (rootcheck.checks.rc_files) {
-        if (!rootcheck.rootkit_files) {
-#ifndef WIN32
-            mterror(ARGV0, "No rootcheck_files file configured.");
-#endif
-        } else {
-            fp = wfopen(rootcheck.rootkit_files, "r");
-            if (!fp) {
-                mterror(ARGV0, "No rootcheck_files file: '%s'", rootcheck.rootkit_files);
-            }
-
-            else {
-                check_rc_files(rootcheck.basedir, fp);
-                fclose(fp);
-            }
-        }
-    }
-
-    /* Check for trojan entries in common binaries */
-    if (rootcheck.checks.rc_trojans) {
-        if (!rootcheck.rootkit_trojans) {
-#ifndef WIN32
-            mterror(ARGV0, "No rootcheck_trojans file configured.");
-#endif
-        } else {
-            fp = wfopen(rootcheck.rootkit_trojans, "r");
-            if (!fp) {
-                mterror(ARGV0, "No rootcheck_trojans file: '%s'", rootcheck.rootkit_trojans);
-            } else {
-#ifndef HPUX
-                check_rc_trojans(rootcheck.basedir, fp);
-#endif
-                fclose(fp);
-            }
-        }
-    }
-
-#ifdef WIN32
-    /* Get process list */
-    plist = os_get_process_list();
-
-    /* Windows audit check */
-    if (rootcheck.checks.rc_winaudit) {
-        if (!rootcheck.winaudit) {
-            mtinfo(ARGV0, "No winaudit file configured.");
-        } else {
-            fp = wfopen(rootcheck.winaudit, "r");
-            if (!fp) {
-                mterror(ARGV0, "No winaudit file: '%s'", rootcheck.winaudit);
-            } else {
-                check_rc_winaudit(fp, plist);
-                fclose(fp);
-            }
-        }
-    }
-
-    /* Windows malware */
-    if (rootcheck.checks.rc_winmalware) {
-        if (!rootcheck.winmalware) {
-            mtinfo(ARGV0, "No winmalware file configured.");
-        } else {
-            fp = wfopen(rootcheck.winmalware, "r");
-            if (!fp) {
-                mterror(ARGV0, "No winmalware file: '%s'", rootcheck.winmalware);
-            } else {
-                check_rc_winmalware(fp, plist);
-                fclose(fp);
-            }
-        }
-    }
-
-    /* Windows Apps */
-    if (rootcheck.checks.rc_winapps) {
-        if (!rootcheck.winapps) {
-            mtinfo(ARGV0, "No winapps file configured.");
-        } else {
-            fp = wfopen(rootcheck.winapps, "r");
-            if (!fp) {
-                mterror(ARGV0, "No winapps file: '%s'", rootcheck.winapps);
-            } else {
-                check_rc_winapps(fp, plist);
-                fclose(fp);
-            }
-        }
-    }
-
-    /* Free the process list */
-    del_plist((void *)plist);
-
-#else
-    size_t i;
-    /* Checks for other non-Windows */
-
-    /* Unix audit check ***/
-    if (rootcheck.checks.rc_unixaudit) {
-        if (rootcheck.unixaudit) {
-            /* Get process list */
-            plist = os_get_process_list();
-
-            i = 0;
-            while (rootcheck.unixaudit[i]) {
-                fp = wfopen(rootcheck.unixaudit[i], "r");
-                if (!fp) {
-                    mterror(ARGV0, "No unixaudit file: '%s'", rootcheck.unixaudit[i]);
-                } else {
-                    /* Run unix audit */
-                    check_rc_unixaudit(fp, plist);
-                    fclose(fp);
-                }
-
-                i++;
-            }
-
-            /* Free list */
-            del_plist(plist);
-        }
-    }
-
-#endif /* !WIN32 */
 
     /* Check for files in the /dev filesystem */
     if (rootcheck.checks.rc_dev) {

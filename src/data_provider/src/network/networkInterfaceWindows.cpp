@@ -60,11 +60,11 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV4>::buildNetworkData(nlo
     if (!address.empty())
     {
         nlohmann::json ipv4JS;
-        ipv4JS["address"] = address;
-        ipv4JS["netmask"] =  m_interfaceAddress->netmask();
-        ipv4JS["broadcast"] = m_interfaceAddress->broadcast();
-        ipv4JS["metric"] = m_interfaceAddress->metrics();
-        ipv4JS["dhcp"] = m_interfaceAddress->dhcp();
+        ipv4JS["network_ip"] = address;
+        ipv4JS["network_netmask"] =  m_interfaceAddress->netmask();
+        ipv4JS["network_broadcast"] = m_interfaceAddress->broadcast();
+        ipv4JS["network_metric"] = m_interfaceAddress->metrics();
+        ipv4JS["network_dhcp"] = m_interfaceAddress->dhcp();
 
         networkV4["IPv4"].push_back(ipv4JS);
     }
@@ -82,11 +82,11 @@ void WindowsNetworkImpl<Utils::NetworkWindowsHelper::IPV6>::buildNetworkData(nlo
     if (!address.empty())
     {
         nlohmann::json ipv6JS { };
-        ipv6JS["address"] = address;
-        ipv6JS["netmask"] = m_interfaceAddress->netmaskV6();
-        ipv6JS["broadcast"] = m_interfaceAddress->broadcastV6();
-        ipv6JS["metric"] = m_interfaceAddress->metricsV6();
-        ipv6JS["dhcp"] = m_interfaceAddress->dhcp();
+        ipv6JS["network_ip"] = address;
+        ipv6JS["network_netmask"] = m_interfaceAddress->netmaskV6();
+        ipv6JS["network_broadcast"] = m_interfaceAddress->broadcastV6();
+        ipv6JS["network_metric"] = m_interfaceAddress->metricsV6();
+        ipv6JS["network_dhcp"] = m_interfaceAddress->dhcp();
 
         networkV6["IPv6"].push_back(ipv6JS);
     }
@@ -100,22 +100,22 @@ template <>
 void WindowsNetworkImpl<Utils::NetworkWindowsHelper::COMMON_DATA>::buildNetworkData(nlohmann::json& networkCommon)
 {
     // Extraction of common adapter data
-    networkCommon["name"]       = m_interfaceAddress->name();
-    networkCommon["adapter"]    = m_interfaceAddress->adapter();
-    networkCommon["state"]      = m_interfaceAddress->state();
-    networkCommon["type"]       = m_interfaceAddress->type();
-    networkCommon["mac"]        = m_interfaceAddress->MAC();
+    networkCommon["interface_name"]  = m_interfaceAddress->name();
+    networkCommon["interface_alias"] = m_interfaceAddress->adapter();
+    networkCommon["interface_state"] = m_interfaceAddress->state();
+    networkCommon["interface_type"]  = m_interfaceAddress->type();
+    networkCommon["host_mac"]        = m_interfaceAddress->MAC();
 
     const auto stats { m_interfaceAddress->stats() };
-    networkCommon["tx_packets"] = stats.txPackets;
-    networkCommon["rx_packets"] = stats.rxPackets;
-    networkCommon["tx_bytes"]   = stats.txBytes;
-    networkCommon["rx_bytes"]   = stats.rxBytes;
-    networkCommon["tx_errors"]  = stats.txErrors;
-    networkCommon["rx_errors"]  = stats.rxErrors;
-    networkCommon["tx_dropped"] = stats.txDropped;
-    networkCommon["rx_dropped"] = stats.rxDropped;
+    networkCommon["host_network_egress_packages"]  = stats.txPackets;
+    networkCommon["host_network_ingress_packages"] = stats.rxPackets;
+    networkCommon["host_network_egress_bytes"]     = stats.txBytes;
+    networkCommon["host_network_ingress_bytes"]    = stats.rxBytes;
+    networkCommon["host_network_egress_errors"]    = stats.txErrors;
+    networkCommon["host_network_ingress_errors"]   = stats.rxErrors;
+    networkCommon["host_network_egress_drops"]     = stats.txDropped;
+    networkCommon["host_network_ingress_drops"]    = stats.rxDropped;
 
-    networkCommon["mtu"]        = m_interfaceAddress->mtu();
-    networkCommon["gateway"]    = m_interfaceAddress->gateway();
+    networkCommon["interface_mtu"]   = m_interfaceAddress->mtu();
+    networkCommon["network_gateway"] = m_interfaceAddress->gateway();
 }

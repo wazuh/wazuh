@@ -7,16 +7,6 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_authd-tier-0-1.yml"
-        - "src/config/authd-config.c"
-        - "src/config/authd-config.h"
-        - "src/config/authd-key-request-config.c"
-        - "src/os_auth/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_authd/**"
 
 jobs:
   build:
@@ -73,10 +63,13 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
           if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
           elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
+              QA_BRANCH=${VERSION}
           else
               QA_BRANCH="main"
           fi

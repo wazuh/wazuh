@@ -1912,7 +1912,7 @@ constexpr auto FIM_SQL_DB_DUMP
 	INSERT INTO entry_path VALUES('/etc/nsswitch.conf.rpmnew',1904,0,1596489275,0,0,131583,'b7760d81ca72a551c76b8eb2b4b30ddcdd0629b5');
 	INSERT INTO entry_path VALUES('/bin',4185,0,1596489884,0,0,131583,'d4d78779b3fc938daf66c2e370fee8b40c394b5a');
 	INSERT INTO entry_path VALUES('/sbin',4186,0,1596489884,0,0,131583,'cdbc22c438201ab272c0bc486dff8654f47cbbbc');
-	CREATE TABLE entry_data (    dev INTEGER,    inode INTEGER,    size INTEGER,    perm TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    user_name TEXT,    group_name TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(dev, inode));
+	CREATE TABLE entry_data (    device INTEGER,    inode INTEGER,    size INTEGER,    permissions TEXT,    attributes TEXT,    uid INTEGER,    gid INTEGER,    owner TEXT,    group_ TEXT,    hash_md5 TEXT,    hash_sha1 TEXT,    hash_sha256 TEXT,    mtime INTEGER,    PRIMARY KEY(device, inode));
 	INSERT INTO entry_data VALUES(2049,301,2560080,'rw-r--r--',NULL,0,0,'root','root','03a48cc9eb032c95489a8e31d9327288','dc4ea4b5e2132dc4f0d0328c4e27d443c9eda830','969216e8dfabf75993d6d990a1357211cf84d86b2366c41d0c0ab79a2f702759',1591914514);
 	INSERT INTO entry_data VALUES(2049,314,1024,'rw-------',NULL,0,0,'root','root','01dd45bc1295f596ffcc268bde53efae','012b2b2b4e906b47db267eebb27b800cd168d16f','1aaafccccaf4c79fe1b4820d8e4beb04e03be68bb9db821a2f9eb8517bd6137f',1596036742);
 	INSERT INTO entry_data VALUES(2049,119,2020,'rw-r--r--',NULL,0,0,'root','root','59f343e72863aceaf70a41f44bf9a1a3','477f80c902e94d3d290c029bdfd05e060196bff8','606effe7374f3b4b170a4efd5393e95a30d52d11277f2f4fc417ed1d7456b83d',1591914513);
@@ -3821,7 +3821,7 @@ constexpr auto FIM_SQL_DB_DUMP
 	INSERT INTO entry_data VALUES(2051,146,8,'rwxrwxrwx',NULL,0,0,'root','root','d41d8cd98f00b204e9800998ecf8427e','da39a3ee5e6b4b0d3255bfef95601890afd80709','e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',1557534786);
 	CREATE INDEX path_index ON entry_path (path);
 	CREATE INDEX inode_index ON entry_path (inode_id);
-	CREATE INDEX dev_inode_index ON entry_data (dev, inode);
+	CREATE INDEX dev_inode_index ON entry_data (device, inode);
 	COMMIT;)"
 };
 #endif //_FIM_DB_DUMP_H

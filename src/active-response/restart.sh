@@ -4,10 +4,11 @@
 
 
 PARAM_TYPE=$1
+PARAM_ACTION="${2:-restart}"
 
 help()
 {
-    echo "Usage: $0 [manager|agent]"
+    echo "Usage: $0 [manager|agent] [restart|reload]"
 }
 
 # Usage
@@ -34,13 +35,10 @@ PWD=`pwd`
 # Logging the call
 echo "`date` $0 $1 $2 $3 $4 $5" >> ${PWD}/logs/active-responses.log
 
-# Rules and decoders test
-if [ "$TYPE" = "manager" ]; then
-    if !(${PWD}/bin/wazuh-logtest-legacy -t > /dev/null 2>&1); then
-        exit 1;
-    fi
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl $PARAM_ACTION wazuh-$TYPE
+else
+    ${PWD}/bin/wazuh-control $PARAM_ACTION
 fi
-
-${PWD}/bin/wazuh-control restart
 
 exit $?;

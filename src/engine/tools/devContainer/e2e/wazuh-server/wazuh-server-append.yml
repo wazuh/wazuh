@@ -1,0 +1,7 @@
+# Automatically appended to the Wazuh server configuration file
+# when using the devcontainer e2e environment.
+
+# Engine configuration for Wazuh server
+engine:
+  logging:
+    level: debug

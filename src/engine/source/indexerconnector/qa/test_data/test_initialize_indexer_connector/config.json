@@ -1,0 +1,5 @@
+{
+  "name": "wazuh-states-vulnerabilities",
+  "enabled": "yes",
+  "hosts": ["http://localhost:9200"]
+}

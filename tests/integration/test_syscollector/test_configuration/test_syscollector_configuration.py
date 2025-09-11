@@ -205,7 +205,10 @@ def test_syscollector_all_scans_disabled(test_configuration, test_metadata, set_
     '''
     check_callbacks = [patterns.CB_HARDWARE_SCAN_STARTED, patterns.CB_OS_SCAN_STARTED,
                        patterns.CB_NETWORK_SCAN_STARTED, patterns.CB_PACKAGES_SCAN_STARTED,
-                       patterns.CB_PORTS_SCAN_STARTED, patterns.CB_PROCESSES_SCAN_STARTED]
+                       patterns.CB_PORTS_SCAN_STARTED, patterns.CB_PROCESSES_SCAN_STARTED,
+                       patterns.CB_GROUPS_SCAN_STARTED, patterns.CB_USERS_SCAN_STARTED,
+                       patterns.CB_SERVICES_SCAN_STARTED,patterns.CB_BROWSER_EXTENSIONS_SCAN_STARTED]
+
     # Add the hotfixes check if the platform is Windows.
     if sys.platform == WINDOWS:
         check_callbacks.append(patterns.CB_HOTFIXES_SCAN_STARTED)
@@ -446,7 +449,9 @@ def test_syscollector_scanning(test_configuration, test_metadata, set_wazuh_conf
     # Check that each scan was accomplished
     check_callbacks = [patterns.CB_HARDWARE_SCAN_FINISHED, patterns.CB_OS_SCAN_FINISHED,
                     patterns.CB_NETWORK_SCAN_FINISHED, patterns.CB_PACKAGES_SCAN_FINISHED,
-                    patterns.CB_PORTS_SCAN_FINISHED, patterns.CB_PROCESSES_SCAN_STARTED]
+                    patterns.CB_PORTS_SCAN_FINISHED, patterns.CB_PROCESSES_SCAN_FINISHED,
+                    patterns.CB_GROUPS_SCAN_FINISHED, patterns.CB_USERS_SCAN_FINISHED,
+                    patterns.CB_SERVICES_SCAN_FINISHED, patterns.CB_BROWSER_EXTENSIONS_SCAN_FINISHED]
     if sys.platform == WINDOWS:
         check_callbacks.append(patterns.CB_HOTFIXES_SCAN_FINISHED)
 
@@ -456,8 +461,5 @@ def test_syscollector_scanning(test_configuration, test_metadata, set_wazuh_conf
         assert log_monitor.callback_result
 
     # Check general scan has finished
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_FINISHED), timeout=10)
-    assert log_monitor.callback_result
-    # Check that the sync has finished
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SYNC_FINISHED), timeout=10)
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_FINISHED), timeout=30)
     assert log_monitor.callback_result

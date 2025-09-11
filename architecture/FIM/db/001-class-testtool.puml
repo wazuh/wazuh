@@ -25,12 +25,6 @@ package "testtool" <<folder>> #DDDDDD {
         class "SearchFileAction" {
             +void execute()
         }
-        class "RunIntegrityAction" {
-            +void execute()
-        }
-        class "PushMessageAction" {
-            +void execute()
-        }
         class "StartTransactionAction" {
             +void execute()
         }
@@ -51,8 +45,6 @@ IAction <|-- GetFileAction
 IAction <|-- CountEntriesAction
 IAction <|-- UpdateFileAction
 IAction <|-- SearchFileAction
-IAction <|-- RunIntegrityAction
-IAction <|-- PushMessageAction
 IAction <|-- StartTransactionAction
 IAction <|-- SyncTxnRowsAction
 IAction <|-- GetDeletedRowsAction

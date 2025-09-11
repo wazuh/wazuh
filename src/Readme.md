@@ -41,29 +41,29 @@ usage: python3 build.py [-h] [-r READYTOREVIEW]
 |Argument|Description|
 |---|---|
 | `-h`, `--help`          | Show the help message and exit |
-| `-r`, `--readytoreview` | Run all the quality checks needed to create a PR. Example: `python3 build.py -r <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `-d`, `--readytoreviewandclean` | Run all the quality checks needed to create a PR. Example: `python3 build.py -d <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `-m`, `--make`          | Compile the lib. Example: `python3 build.py -m <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `-t`, `--tests`         | Run tests (should be configured with TEST=on). Example: `python3 build.py -t <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `-v`, `--valgrind`      | Run valgrind on tests. Example: `python3 build.py -v <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `--clean`               | Clean the lib. Example: `python3 build.py --clean <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `--cppcheck`            | Run cppcheck on the code. Example: `python3 build.py --cppcheck <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `--asan`                | Run ASAN on the code. Example: `python3 build.py --asan <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `--scheck`              | Run AStyle on the code for checking purposes. Example: `python3 build.py --scheck <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
-| `--sformat`             | Run AStyle on the code formatting the needed files. Example: `python3 build.py --sformat <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
+| `-r`, `--readytoreview` | Run all the quality checks needed to create a PR. Example: `python3 build.py -r <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `-d`, `--readytoreviewandclean` | Run all the quality checks needed to create a PR. Example: `python3 build.py -d <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `-m`, `--make`          | Compile the lib. Example: `python3 build.py -m <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `-t`, `--tests`         | Run tests (should be configured with TEST=on). Example: `python3 build.py -t <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `-c`, `--coverage`      | Collect tests coverage and generates report. Example: `python3 build.py -c <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `-v`, `--valgrind`      | Run valgrind on tests. Example: `python3 build.py -v <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `--clean`               | Clean the lib. Example: `python3 build.py --clean <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `--cppcheck`            | Run cppcheck on the code. Example: `python3 build.py --cppcheck <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `--asan`                | Run ASAN on the code. Example: `python3 build.py --asan <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `--scheck`              | Run AStyle on the code for checking purposes. Example: `python3 build.py --scheck <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
+| `--sformat`             | Run AStyle on the code formatting the needed files. Example: `python3 build.py --sformat <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
 | `--scanbuild` | Run scan-build on the code. Example: `python3 build.py --scanbuild <agent\|server\|winagent>` |
 | `--target` | This is an add-on to the ready-to-review test because this could add specific tests, by default the target is the agent. Example: `python3 build.py -r --target <agent\|server\|winagent>` |
-| `--deleteLogs` | Clean log results to some module. Example: `python3 build.py --deleteLogs <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>` |
+| `--deleteLogs` | Clean log results to some module. Example: `python3 build.py --deleteLogs <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>` |
 
 Ready to review checks:
-  1. Runs cppcheck on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd> folder.
-  2. Compiles <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>.
-  3. Runs <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd> UTs.
-  4. Runs valgrind on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd> UTs.
-  5. Runs code coverage on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd> tests and generates coverage reports.
-  6. Runs AStyle on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>.
-  7. Runs ASAN on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>.
+  1. Runs cppcheck on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd> folder.
+  2. Compiles <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>.
+  3. Runs <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd> UTs.
+  4. Runs valgrind on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd> UTs.
+  5. Runs code coverage on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd> tests and generates coverage reports.
+  6. Runs AStyle on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>.
+  7. Runs ASAN on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>.
   8. Runs Test tool for Windows on <syscheckd>.
   9. Runs check output from test tool on <syscheckd>.
 
@@ -197,10 +197,10 @@ Output Example executing the RTR tool with `syscheck` module and target `winagen
 ```
 
 Address sanitizer checks:
-  1. Clean previous builds <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd> folder.
-  2. Compiles with address sanitizers flags<wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>.
-  3. Runs smoke tests <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd>
-  4. Runs valgrind on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/rsync|shared_modules/utils|data_provider|syscheckd> UTs.
+  1. Clean previous builds <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd> folder.
+  2. Compiles with address sanitizers flags<wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>.
+  3. Runs smoke tests <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd>
+  4. Runs valgrind on <wazuh_modules/syscollector|shared_modules/dbsync|shared_modules/sync_protocol|shared_modules/utils|data_provider|syscheckd> UTs.
 If all the checks passed it returns 0 and prints a "[ASAN: PASSED]", otherwise it stops the execution of the checking on the first failure, prints the info related to the failure and returns and error code.
 
 Output Example executing the ASAN tests with `dbsync` module:

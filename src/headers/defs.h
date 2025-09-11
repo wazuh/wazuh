@@ -69,7 +69,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v4.13.0"
+#define __ossec_version "v5.0.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -132,10 +132,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WM_LOCAL_SOCK  "queue/sockets/wmodules"
 #define REMOTE_LOCAL_SOCK  "queue/sockets/remote"
 #define ANLSYS_LOCAL_SOCK  "queue/sockets/analysis"
-#define MAIL_LOCAL_SOCK "queue/sockets/mail"
-#define LESSD_LOCAL_SOCK "queue/sockets/agentless"
-#define INTG_LOCAL_SOCK "queue/sockets/integrator"
-#define CSYS_LOCAL_SOCK  "queue/sockets/csyslog"
 #define MON_LOCAL_SOCK  "queue/sockets/monitor"
 #define CLUSTER_SOCK "queue/cluster/c-internal.sock"
 #define CONTROL_SOCK "queue/sockets/control"
@@ -183,8 +179,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Active Response queue */
 #define ARQUEUE         "queue/alerts/ar"
 
-/* Decoder file */
-#define XML_LDECODER    "etc/decoders/local_decoder.xml"
 
 /* Agent groups location */
 #define GROUPS_DIR    "queue/agent-groups"
@@ -227,9 +221,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_DIR                "var/db"
 #define WDB2_DIR               "queue/db"
 #define WDB_GLOB_NAME          "global"
-#define WDB_MITRE_NAME         "mitre"
-#define WDB_PROF_NAME          ".template.db"
-#define WDB_PROF_PATH          WDB2_DIR "/" WDB_PROF_NAME
 #define WDB_TASK_DIR           "queue/tasks"
 #define WDB_TASK_NAME          "tasks"
 #define WDB_BACKUP_FOLDER      "backup/db"
@@ -262,14 +253,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #else
 #define AGENT_INFO_FILE ".agent_info"
 #endif
-
-/* Agentless directories */
-#define AGENTLESSDIR        "agentless"
-#define AGENTLESS_ENTRYDIR  "queue/agentless"
-
-/* Integration directory. */
-#define INTEGRATORDIR "integrations"
-
 
 /* Internal definitions files */
 #ifndef WIN32
@@ -371,10 +354,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* XML global elements */
 #ifndef xml_global
 #define xml_global "global"
-#endif
-
-#ifndef xml_alerts
-#define xml_alerts "alerts"
 #endif
 
 #ifndef xml_rules

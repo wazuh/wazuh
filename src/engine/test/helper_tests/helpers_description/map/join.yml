@@ -1,0 +1,45 @@
+# Name of the helper function
+name: join
+
+metadata:
+  description: |
+    The operation concatenates the elements (strings) of the "array" and separates them with “separator”.
+    The result of the string concatenation (join) operation is mapped to “field”.
+    If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
+  keywords:
+    - undefined
+
+helper_type: map
+
+# Arguments expected by the helper function
+arguments:
+  array:
+    type: array # Expected type is string
+    generate: string
+    source: reference # Includes values or references (their names start with $)
+
+  separator:
+    type: string # Expected type is string
+    generate: string
+    source: value # Includes values or references (their names start with $)
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      array: ["Hi Wazuh!", "It is", "the", "year", "2024"]
+      separator: ' '
+    should_pass: true
+    expected: Hi Wazuh! It is the year 2024
+    description: Join a string using space like separator
+  - arguments:
+      array: ["Hi Wazuh!", "It is", "the", "year", "2024"]
+      separator: separator
+    should_pass: true
+    expected: Hi Wazuh!separatorIt isseparatortheseparatoryearseparator2024
+    description: Join a string using a string like separator

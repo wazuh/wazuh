@@ -32,14 +32,17 @@
 extern "C" {
 #endif
 #include "logging_helper.h"
+#include "agent_sync_protocol_c_interface_types.h"
 
 typedef void((*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag));
 
 typedef void((*send_data_callback_t)(const void* buffer));
 
+typedef void((*persist_data_callback_t)(const char* id, Operation_t operation, const char* index, const void* buffer));
+
 EXPORTED void syscollector_start(const unsigned int inverval,
                                  send_data_callback_t callbackDiff,
-                                 send_data_callback_t callbackSync,
+                                 persist_data_callback_t callbackPersistDiff,
                                  log_callback_t callbackLog,
                                  const char* dbPath,
                                  const char* normalizerConfigPath,
@@ -52,13 +55,20 @@ EXPORTED void syscollector_start(const unsigned int inverval,
                                  const bool ports,
                                  const bool portsAll,
                                  const bool processes,
-                                 const bool hotfixes);
+                                 const bool hotfixes,
+                                 const bool groups,
+                                 const bool users,
+                                 const bool services,
+                                 const bool browserExtensions,
+                                 const bool notifyOnFirstScan);
 
 EXPORTED void syscollector_stop();
 
-EXPORTED int syscollector_sync_message(const char* data);
-
-
+// Sync protocol C wrapper functions
+EXPORTED void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs);
+EXPORTED bool syscollector_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int maxEps);
+EXPORTED void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data);
+EXPORTED bool syscollector_parse_response(const unsigned char* data, size_t length);
 
 #ifdef __cplusplus
 }
@@ -66,7 +76,7 @@ EXPORTED int syscollector_sync_message(const char* data);
 
 typedef void(*syscollector_start_func)(const unsigned int inverval,
                                        send_data_callback_t callbackDiff,
-                                       send_data_callback_t callbackSync,
+                                       persist_data_callback_t callbackPersistDiff,
                                        log_callback_t callbackLog,
                                        const char* dbPath,
                                        const char* normalizerConfigPath,
@@ -79,12 +89,19 @@ typedef void(*syscollector_start_func)(const unsigned int inverval,
                                        const bool ports,
                                        const bool portsAll,
                                        const bool processes,
-                                       const bool hotfixes);
+                                       const bool hotfixes,
+                                       const bool groups,
+                                       const bool users,
+                                       const bool services,
+                                       const bool browserExtensions,
+                                       const bool notifyOnFirstScan);
 
 typedef void(*syscollector_stop_func)();
 
-typedef int (*syscollector_sync_message_func)(const char* data);
-
-typedef void (*rsync_initialize_full_log_func)(full_log_fnc_t log_function);
+// Sync protocol C wrapper functions
+typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* syncDbPath, const MQ_Functions* mqFuncs);
+typedef bool(*syscollector_sync_module_func)(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int maxEps);
+typedef void(*syscollector_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data);
+typedef bool(*syscollector_parse_response_func)(const unsigned char* data, size_t length);
 
 #endif //_SYSCOLLECTOR_H

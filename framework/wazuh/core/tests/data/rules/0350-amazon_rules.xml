@@ -12,15 +12,6 @@ ID: 80200 - 80499
 <group name="amazon,aws,">
 
 
-    <!-- AWS wodle -->
-    <rule id="80200" level="0">
-        <decoded_as>json</decoded_as>
-        <field name="integration">aws</field>
-        <description>AWS alert.</description>
-        <options>no_full_log</options>
-    </rule>
-
-
     <!-- Cloudtrail -->
 
     <!-- Filter by eventName: etc/lists/amazon/aws-eventnames -->

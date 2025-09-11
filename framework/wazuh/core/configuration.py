@@ -35,30 +35,13 @@ logger = logging.getLogger('wazuh')
 CONF_SECTIONS = MappingProxyType({
     'active-response': {'type': 'duplicate', 'list_options': []},
     'command': {'type': 'duplicate', 'list_options': []},
-    'agentless': {'type': 'duplicate', 'list_options': []},
     'localfile': {'type': 'duplicate', 'list_options': ["filter", "ignore"]},
     'remote': {'type': 'duplicate', 'list_options': []},
-    'syslog_output': {'type': 'duplicate', 'list_options': []},
-    'integration': {'type': 'duplicate', 'list_options': []},
 
-    'alerts': {'type': 'merge', 'list_options': []},
     'client': {'type': 'merge', 'list_options': []},
-    'database_output': {'type': 'merge', 'list_options': []},
-    'email_alerts': {
-        'type': 'merge',
-        'list_options': ['email_to']
-    },
-    'reports': {
-        'type': 'merge',
-        'list_options': ['email_to']
-    },
     'global': {
         'type': 'merge',
         'list_options': ['white_list']
-    },
-    'open-scap': {
-        'type': 'merge',
-        'list_options': ['content']
     },
     'cis-cat': {
         'type': 'merge',
@@ -207,21 +190,7 @@ def _read_option(section_name: str, opt: str) -> tuple:
 
     opt_name = opt.tag.lower()
 
-    if section_name == 'open-scap':
-        if opt.attrib:
-            opt_value = {}
-            for a in opt.attrib:
-                opt_value[a] = opt.attrib[a]
-            # profiles
-            profiles_list = []
-            for profiles in opt.iter():
-                profiles_list.append(profiles.text)
-
-            if profiles_list:
-                opt_value['profiles'] = profiles_list
-        else:
-            opt_value = opt.text
-    elif section_name == 'syscheck' and opt_name == 'directories':
+    if section_name == 'syscheck' and opt_name == 'directories':
         opt_value = []
 
         json_attribs = {}
@@ -1176,12 +1145,12 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
         The active configuration the agent is currently using.
     """
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
-    component_socket_mapping = {'agent': 'analysis', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
-                                'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
+    component_socket_mapping = {'agent': 'analysis', 'analysis': 'analysis', 'auth': 'auth',
+                                'com': 'com', 'integrator': 'integrator',
                                 'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
                                 'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}
-    component_socket_dir_mapping = {'agent': 'sockets', 'agentless': 'sockets', 'analysis': 'sockets',
-                                    'auth': 'sockets', 'com': 'sockets', 'csyslog': 'sockets', 'integrator': 'sockets',
+    component_socket_dir_mapping = {'agent': 'sockets', 'analysis': 'sockets',
+                                    'auth': 'sockets', 'com': 'sockets', 'integrator': 'sockets',
                                     'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
                                     'request': 'sockets', 'syscheck': 'sockets', 'wazuh-db': 'db',
                                     'wmodules': 'sockets'}

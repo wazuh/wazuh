@@ -1,0 +1,47 @@
+# Name of the helper function
+name: kvdb_get_merge_recursive
+
+metadata:
+  description: |
+    Gets the value of a given key in the DB named db-name and, if successful, merges this value with what the field had before.
+    The merge process is recursive, meaning that for object or array types, the new value is deeply integrated with the existing value in the field.
+    Key value type can be string, number, object, array, or null, and it must match the previous value type held by the field.
+    This helper function is typically used in the map stage.
+
+  keywords:
+    - kvdb
+    - recursive
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db-name:
+    type: string  # Accept only object
+    generate: string
+    source: value # Includes only values
+  key:
+    type: string  # Accept only string
+    generate: string
+    source: both # Includes values or references (their names start with $)
+
+# Database not exists
+skipped:
+  - success_cases # key indicate by target_field not found
+
+target_field:
+  type:
+    - object
+    - array
+
+test:
+  - arguments:
+      db-name: testing
+      key: key
+    target_field: Type mismatch between target field and value when merging
+    should_pass: false
+    expected: false
+    description: Failure kvdb get merge

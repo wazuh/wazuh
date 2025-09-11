@@ -49,6 +49,10 @@ runs:
       pip3 install --upgrade pip
       pip3 install -r requirements.txt
 
+  - name: Generate an UUID for artifacts
+    shell: bash
+    run: echo "UUID=$(uuidgen)" >> $GITHUB_ENV
+
   - name: Get the files stats
     shell: bash
     run: |
@@ -66,7 +70,7 @@ runs:
     if: success()
     uses: actions/upload-artifact@v4
     with:
-      name: current_stats
+      name: current_stats_${{ env.UUID }}
       path: ${{ inputs.current_status }}
 
   - name: Compare results
@@ -86,7 +90,7 @@ runs:
     if: always()
     uses: actions/upload-artifact@v4
     with:
-      name: validation_results
+      name: validation_results_${{ env.UUID }}
       path: ${{ inputs.report_file }}
 
   - name: Generate report

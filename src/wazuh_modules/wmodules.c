@@ -18,7 +18,7 @@
 wmodule *wmodules = NULL;   // Config: linked list of all modules.
 int wm_task_nice = 0;       // Nice value for tasks.
 static gid_t wm_gid;               // Group ID.
-int wm_max_eps;             // Maximum events per second sent by OpenScap and CIS-CAT Wazuh Module
+int wm_max_eps;             // Maximum events per second
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
 
@@ -101,8 +101,8 @@ int wm_config() {
     if ((module = wm_download_read()))
         wm_add(module);
 
-    // Inventory harvester
-    if ((module = wm_inventory_harvester_read()))
+    // Inventory sync
+    if ((module = wm_inventory_sync_read()))
         wm_add(module);
 
 #endif
@@ -316,7 +316,7 @@ cJSON *getModulesConfig(void) {
 }
 
 // sync data
-int modulesSync(char* args) {
+int modulesSync(char* args, size_t length) {
     int ret = -1;
     wmodule *cur_module = NULL;
     int retry = 0;
@@ -330,8 +330,8 @@ int modulesSync(char* args) {
         for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
             if (strstr(args, cur_module->context->name)) {
                 ret = 0;
-                if (strstr(args, "dbsync") && cur_module->context->sync != NULL) {
-                    ret = cur_module->context->sync(args);
+                if (strstr(args, "_sync ") && cur_module->context->sync != NULL) {
+                    ret = cur_module->context->sync(args, length);
                 }
                 break;
             }

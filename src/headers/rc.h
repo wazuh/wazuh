@@ -40,10 +40,6 @@
 #define CFGA_DB_DUMP                    "sca-dump"
 #define HC_SK                           "syscheck "
 #define HC_SYSCOLLECTOR                 "syscollector_"
-#define HC_FIM_FILE                     "fim_file "
-#define HC_FIM_REGISTRY                 "fim_registry "
-#define HC_FIM_REGISTRY_KEY             "fim_registry_key "
-#define HC_FIM_REGISTRY_VALUE           "fim_registry_value "
 #define HC_FORCE_RECONNECT              "force_reconnect"
 #define HC_RESTART                      "restart"
 #define HC_GETCONFIG                    "getconfig"
@@ -51,4 +47,11 @@
 #define HC_INVALID_VERSION_RESPONSE     "Agent version must be lower or equal to manager version"
 #define HC_INVALID_VERSION              "Incompatible version"
 #define HC_RETRIEVE_VERSION             "Couldn't retrieve version"
+
+/* Sync responses */
+#define SYNC_HEADER                     "_sync "
+#define FIM_SYNC_HEADER                 "fim" SYNC_HEADER
+#define SYSCOLECTOR_SYNC_HEADER         "syscollector" SYNC_HEADER
+#define SCA_SYNC_HEADER                 "sca" SYNC_HEADER
+
 #endif /* RC_H */

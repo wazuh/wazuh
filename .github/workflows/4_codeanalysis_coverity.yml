@@ -2,19 +2,6 @@ name: Coverity Scan
 
 on:
   workflow_dispatch:
-    inputs:
-      project:
-        description: "Project (use ossec-wazuh for development)"
-        required: true
-        type: choice
-        options:
-          - wazuh
-          - ossec-wazuh
-      threads:
-        description: "Number of threads for make -j (0 = auto)"
-        required: false
-        default: 0
-        type: number
 
 env:
   REGISTRY: ghcr.io

@@ -14,6 +14,11 @@
 #include "../config/localfile-config.h"
 #include <sys/types.h>
 
+#ifdef WIN32
+typedef int uid_t;
+typedef int gid_t;
+#endif
+
 /* Default queues */
 #define LOCALFILE_MQ    '1'
 #define SYSLOG_MQ       '2'
@@ -23,7 +28,6 @@
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
 #define SYSCOLLECTOR_MQ 'd'
-#define CISCAT_MQ       'e'
 #define WIN_EVT_MQ      'f'
 #define SCA_MQ          'p'
 #define UPGRADE_MQ      'u'
@@ -60,6 +64,19 @@ int StartMQWithSpecificOwnerAndPerms(const char *key, short int type, short int 
 int StartMQ(const char *key, short int type, short int n_attempts) __attribute__((nonnull));
 
 /**
+ *  Starts a Message Queue with predicated.
+ *  @param key path where the message queue will be created
+ *  @param type WRITE||READ
+ *  @param n_attempts Number of attempts to connect to the queue (0 to attempt until a successful conection).
+ *  @param fn_ptr function pointer to the function that will check if the process is shutting down
+ *  @return
+ *  UNIX -> OS_INVALID if queue failed to start
+ *  UNIX -> int(rc) file descriptor of initialized queue
+ *  WIN32 -> 0
+ */
+int StartMQPredicated(const char *key, short int type, short int n_attempts, bool (*fn_ptr)()) __attribute__((nonnull));
+
+/**
  * Sends a message string through a message queue
  * @param queue file descriptor of the queue where the message will be sent (UNIX)
  * @param message string containing the message
@@ -91,6 +108,22 @@ int SendMSGPredicated(int queue, const char *message, const char *locmsg, char l
  */
 
 int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attribute__((nonnull));
+
+/**
+ * Sends a message binary through a message queue
+ * @param queue file descriptor of the queue where the message will be sent (UNIX)
+ * @param message binary containing the message
+ * @param message_len The length of the message payload in bytes
+ * @param locmsg path to the queue file
+ * @param loc  queue location (WIN32)
+ * @return
+ * UNIX -> 0 if file descriptor is still available
+ * UNIX -> -1 if there is an error in the socket. The socket will be closed before returning (StartMQ should be called to restore queue)
+ * WIN32 -> 0 on success
+ * WIN32 -> -1 on error
+ * Notes: (UNIX) If the socket is busy when trying to send a message a DEBUG2 message will be loggeed but the return code will be 0
+ */
+int SendBinaryMSG(int queue, const void *message, size_t message_len, const char *locmsg, char loc);
 
 /**
  * Sends a message to a socket. If the socket has not been created yet it will be created based on

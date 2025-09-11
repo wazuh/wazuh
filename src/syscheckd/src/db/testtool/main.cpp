@@ -20,11 +20,6 @@
 #include "action.h"
 #include "factoryAction.h"
 
-static void syncCallback(const char* tag, const char* msg)
-{
-    std::cout << tag << ": " << msg;
-}
-
 static void loggerFunction(modules_log_level_t level, const char* msg)
 {
     std::cout << "Level:" << level << " Msg: " << msg << std::endl;
@@ -46,30 +41,8 @@ int main(int argc, const char* argv[])
         {
             const auto& jsonConfigFile { nlohmann::json::parse(configFile) };
             const auto storageType{ jsonConfigFile.at("storage_type").get<const uint32_t>() };
-            const auto syncInterval{ jsonConfigFile.at("sync_interval").get<const uint32_t>() };
             const auto fileLimit{ jsonConfigFile.at("file_limit").get<const uint32_t>() };
             const auto registryLimit{ jsonConfigFile.at("registry_limit").get<const uint32_t>() };
-            const bool syncRegistryEnabled { jsonConfigFile.at("registry_sync") };
-            const auto syncResponseTimeout{ jsonConfigFile.at("sync_response_timeout").get<const uint32_t>() };
-            const auto syncMaxInterval{ jsonConfigFile.at("sync_max_interval").get<const uint32_t>() };
-            const auto syncThreadPool{ jsonConfigFile.at("thread_pool").get<const uint32_t>() };
-            const auto syncQueueSize{ jsonConfigFile.at("queue_size").get<const uint32_t>() };
-
-            std::function<void(const std::string&)> callbackSyncFileWrapper
-            {
-                [](const std::string & msg)
-                {
-                    syncCallback(FIM_COMPONENT_FILE, msg.c_str());
-                }
-            };
-
-            std::function<void(const std::string&)> callbackSyncRegistryWrapper
-            {
-                [](const std::string & msg)
-                {
-                    syncCallback(FIM_COMPONENT_REGISTRY_KEY, msg.c_str());
-                }
-            };
 
             std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper
             {
@@ -82,17 +55,9 @@ int main(int argc, const char* argv[])
             try
             {
                 DB::instance().init(storageType,
-                                    syncInterval,
-                                    syncMaxInterval,
-                                    syncResponseTimeout,
-                                    callbackSyncFileWrapper,
-                                    callbackSyncRegistryWrapper,
                                     callbackLogWrapper,
                                     fileLimit,
-                                    registryLimit,
-                                    syncRegistryEnabled,
-                                    syncThreadPool,
-                                    syncQueueSize);
+                                    registryLimit);
 
                 std::unique_ptr<TestContext> testContext { std::make_unique<TestContext>()};
                 testContext->outputPath = cmdLineArgs.outputFolder();

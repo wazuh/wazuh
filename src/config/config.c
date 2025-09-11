@@ -23,23 +23,13 @@ static int read_main_elements(const OS_XML *xml, int modules,
 {
     int i = 0;
     const char *osglobal = "global";                            /* Server Config */
-#ifndef WIN32
-    const char *osrules = "ruleset";                            /* Server Config */
-#endif
     const char *ossyscheck = "syscheck";                        /* Agent Config  */
     const char *osrootcheck = "rootcheck";                      /* Agent Config  */
-    const char *osalerts = "alerts";                            /* Server Config */
-    const char *osemailalerts = "email_alerts";                 /* Server Config */
-    const char *osdbd = "database_output";                      /* Server Config */
-    const char *oscsyslogd = "syslog_output";                   /* Server Config */
-    const char *oscagentless = "agentless";                     /* Server Config */
     const char *oslocalfile = "localfile";                      /* Agent Config  */
     const char *osremote = "remote";                            /* Agent Config  */
     const char *osclient = "client";                            /* Agent Config  */
-    const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osbuffer = "client_buffer";                     /* Agent Buffer Config  */
     const char *oscommand = "command";                          /* ? Config      */
-    const char *osintegratord = "integration";                  /* Server Config */
     const char *osactive_response = "active-response";          /* Agent Config  */
     const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
     const char *oslabels = "labels";                            /* Labels Config */
@@ -52,14 +42,12 @@ static int read_main_elements(const OS_XML *xml, int modules,
     const char *osindexer = "indexer";                          /* Indexer Config */
     const char *osgcp_pub = "gcp-pubsub";                       /* Google Cloud PubSub - Wazuh Module */
     const char *osgcp_bucket = "gcp-bucket";                    /* Google Cloud Bucket - Wazuh Module */
-    const char *wlogtest = "rule_test";                         /* Wazuh Logtest */
     const char *agent_upgrade = "agent-upgrade";                /* Agent Upgrade Module */
     const char *task_manager = "task-manager";                  /* Task Manager Module */
     const char *wazuh_db = "wdb";                               /* Wazuh-DB Daemon */
 #ifndef WIN32
-    const char *osfluent_forward = "fluent-forward";            /* Fluent forwarder */
+    const char *anti_tampering = "anti_tampering";              /* Agent anti tampering Config */
     const char *osauthd = "auth";                               /* Authd Config */
-    const char *osreports = "reports";                          /* Server Config */
 #ifndef CLIENT
     const char *key_polling = "agent-key-polling";              /* Deprecated Agent Key Polling module */
 #endif
@@ -85,36 +73,8 @@ static int read_main_elements(const OS_XML *xml, int modules,
                     && (Read_Global(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
-        } else if (chld_node && (strcmp(node[i]->element, osemailalerts) == 0)) {
-            if ((modules & CMAIL) && (Read_EmailAlerts(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osdbd) == 0)) {
-            if ((modules & CDBD) && (Read_DB(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, oscsyslogd) == 0)) {
-            if ((modules & CSYSLOGD) && (Read_CSyslog(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if(chld_node && (strcmp(node[i]->element, osintegratord) == 0)) {
-            if((modules & CINTEGRATORD) && (Read_Integrator(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, oscagentless) == 0)) {
-            if ((modules & CAGENTLESS) && (Read_CAgentless(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        }
-#ifndef WIN32
-        else if (chld_node && (strcmp(node[i]->element, osrules) == 0)) {
-            if ((modules & CRULES) && (Read_Rules(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        }
-#endif
-        else if (strcmp(node[i]->element, ossyscheck) == 0) {
-            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2, modules) < 0)) {
+        } else if (strcmp(node[i]->element, ossyscheck) == 0) {
+            if ((modules & CSYSCHECK) && (Read_Syscheck(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
             if ((modules & CGLOBAL) && (Read_GlobalSK(chld_node, d1, d2) < 0)) {
@@ -122,10 +82,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, osrootcheck) == 0) {
             if ((modules & CROOTCHECK) && (Read_Rootcheck(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, osalerts) == 0)) {
-            if ((modules & CALERTS) && (Read_Alerts(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, oslocalfile) == 0)) {
@@ -168,13 +124,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         }
-#ifndef WIN32
-        else if (chld_node && (strcmp(node[i]->element, osreports) == 0)) {
-            if ((modules & CREPORTS) && (Read_CReports(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        }
-#endif
         else if (strcmp(node[i]->element, oswmodule) == 0) {
             if ((modules & CWMODULE) && (Read_WModule(xml, node[i], d1, d2) < 0)) {
                 goto fail;
@@ -233,11 +182,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
 #ifndef WIN32
-        } else if (strcmp(node[i]->element, osfluent_forward) == 0) {
-            if ((modules & CWMODULE) && (Read_Fluent_Forwarder(xml, node[i], d1) < 0)) {
-                goto fail;
-            }
-        } else if (strcmp(node[i]->element, osauthd) == 0) {
+        }  else if (strcmp(node[i]->element, osauthd) == 0) {
             if ((modules & CAUTHD) && (Read_Authd(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
@@ -253,13 +198,6 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
             if ((modules & CLGCSOCKET) && (Read_LogCollecSocket(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-            if ((modules & CANDSOCKET) && (Read_AnalysisdSocket(chld_node, d1, d2) < 0)) {
-                goto fail;
-            }
-        } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {
-            if ((modules & CLOGTEST) && (Read_Logtest(chld_node) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, agent_upgrade) == 0)) {

@@ -1,6 +1,0 @@
-<!-- Test: no group -->
-
-    <rule id="100001" level="0">
-    <program_name>example</program_name>
-    <description>example_description</description>
-    </rule>

@@ -2,7 +2,6 @@
 
 package "fimCommonDefs" <<Folder>> #DDDDDD{
     interface callbacks{
-        void((*fim_sync_callback_t)(const char *, const char*));
         void((*logging_callback_t)(const modules_log_level_t, const char*));
         void((*callback_t)(void *, void *));
     }
@@ -23,34 +22,29 @@ package "fimCommonDefs" <<Folder>> #DDDDDD{
 package "item" <<Folder>> {
     abstract DBItem {
         # string m_identifier
-        # bool m_scanned
-        # time_t m_lastEvent
         # string m_checksum
-        # enum m_mode
         # bool m_oldData
 
         + DBItem()
         + ~DBItem()
         + {abstract} fim_entry toFimEntry()
         + {abstract} json toJSON()
-        + bool state()
     }
 
     class FileItem {
         - unsigned int m_size
-        - string m_perm
+        - string m_permissions
         - string m_attributes
         - string m_uid
-        - string m_username
+        - string m_owner
         - string m_gid
-        - string m_groupname
+        - string m_group
         - time_t m_time
         - unsigned long long int m_inode
         - string m_md5
         - string m_sha1
         - string m_sha256
-        - unsigned long int m_dev
-        - int m_options
+        - unsigned long int m_device
         - unique_ptr<fim_entry, FimFileDataDeleter> m_fimEntry
         - unique_ptr<json> m_statementConf
         - void createFimEntry()
@@ -64,7 +58,7 @@ package "item" <<Folder>> {
     }
     class "RegistryValue" {
         - int m_type
-        - int m_keyUid
+        - int m_architecture
         - int m_size
         - string m_path
         - string m_md5
@@ -72,7 +66,6 @@ package "item" <<Folder>> {
         - string m_sha256
         - unique_ptr<fim_entry, FimRegistryValueDeleter> m_fimEntry
         - unique_ptr<json> m_statementConf
-        - string m_hashpath
         - void createFimEntry()
         - void createJSON()
 
@@ -83,16 +76,15 @@ package "item" <<Folder>> {
         + const json* toJSON() const
     }
     class "RegistryKey" {
-        - string m_perm
+        - string m_permissions
         - string m_uid
-        - string m_username
+        - string m_owner
         - string m_gid
-        - string m_groupname
+        - string m_group
         - time_t m_time
-        - int m_arch
+        - int m_architecture
         - unique_ptr<fim_entry, FimRegistryKeyDeleter> m_fimEntry
         - unique_ptr<json> m_statementConf
-        - string m_hashpath
         - void createFimEntry()
         - void createJSON()
 
@@ -109,18 +101,9 @@ package "item" <<Folder>> {
 class "FimDB"  <<(S,#FF7700) Singleton>> {
     - int m_fileLimit
     - int m_registryLimit
-    - int m_syncInterval
     - bool m_stopping
-    - mutex m_fimSyncMutex
-    - condition_variable m_cv
     - shared_ptr<DBSync> m_dbsyncHandler
-    - shared_ptr<RSync> m_rsyncHandler
-    - function<void(const string&)> m_syncFileMessageFunction
-    - function<void(const string&)> m_syncRegistryMessageFunction
     - function<void(modules_log_level_t, const string&)> m_loggingFunction
-    - bool m_runIntegrity
-    - thread m_integrityThread
-    - void sync()
 
     # FIMDB()
     # ~FIMDB()
@@ -129,23 +112,12 @@ class "FimDB"  <<(S,#FF7700) Singleton>> {
     # void setRegistryLimit()
     # void setValueLimit()
 
-    + void init(unsigned int,
-                function<void(const string&)>,
-                function<void(const string&)>,
-                function<void(modules_log_level_t, const string&)>,
+    + void init(function<void(modules_log_level_t, const string&)>,
                 shared_ptr<DBSync>,
-                shared_ptr<RemoteSync>,
                 unsigned int,
-                unsigned int,
-                bool)
-    + void registerRsync()
-    + void pushMessage(const string&)
-    + void runIntegrity()
-    + void stopSync()
-    + void stopIntegrity()
+                unsigned int)
     + void logFunction(const modules_log_level_t, const string&)
     + DBSYNC_HANDLE DBSyncHandle()
-    + void loopRsync()
     + void removeItem(json)
     + void updateItem(json, callback)
     + void executeQuery(json, callback)
@@ -160,12 +132,9 @@ package "db.hpp" <<Folder>> #DDDDDD{
         - DB& operation=(const DB&)
 
         + static DB& instance()
-        + void init(const int, const int, const uint32_t, const uint32_t, function<void(const string&)>, function<void(const string&)>, function<void(modules_log_level_t, const string&)>, int, int, bool)
-        + void runIntegrity()
-        + void pushMessage(const string&)
+        + void init(const int, function<void(modules_log_level_t, const string&)>, int, int)
         + DBSYNC_HANDLE DBSyncHandle()
         + void removeFile(const string&)
-        + json createJsonEvent(json&, json&, ReturnTypeCallback, create_json_event_ctc*)
         + void getFile(const string&, function<void(const json&)>)
         + int countEntries(const string&, const COUNT_SELECT_TYPE)
         + bool updateFile(const json &)
@@ -195,9 +164,7 @@ package "db.hpp" <<Folder>> #DDDDDD{
 }
 package "db.h" <<Folder>> #DDDDDD{
     interface db {
-        FIMDBErrorCode fim_db_init(int, int, uint32_t, uint32_t, fim_sync_callback_t, logging_callback_t, int, int,bool)
-        FIMDBErrorCode fim_run_integrity()
-        FIMDBErrorCode fim_sync_push_msg(const char*)
+        FIMDBErrorCode fim_db_init(int, logging_callback_t, int, int, log_fnc_t)
         TXN_HANDLE fim_db_transaction_start(const char*, result_callback_t, void*)
         FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE, const fim_entry*)
         FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE, result_callback_t, void*)
@@ -221,8 +188,6 @@ package "fimDBSpecialization" <<Folder>> #DDDDDD {
     class "FIMDBCreator<OSType osType>" {
         + static void setLimits(shared_ptr<DBSync>, const unsigned int&, const unsigned int&)
         + static string CreateStatement()
-        + static void registerRSync(shared_ptr<RemoteSync>, const DBSYNC_HANDLE&, function<void(const string&)>, function<void(const string&)>, const bool)
-        + static void sync(shared_ptr<RemoteSync>, const DBSYNC_HANDLE&, function<void(const string&)>, function<void(const string&)>)
         + static void encodeString(string&)
     }
     class "RegistryTypes<OSType osType>" {

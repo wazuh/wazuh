@@ -3,20 +3,16 @@
 entity "file_entry" {
   path : text **<<PK>>**
   --
-  mode : integer
-  last_event : integer
-  scanned : integer
-  options : integer
   checksum : text
-  dev : integer
+  device : integer
   inode : integer
   size : integer
-  perm : text
+  permissions : text
   attributes : text
   uid : integer
   gid : integer
-  user_name : text
-  group_name : text
+  owner : text
+  group : text
   hash_md5 : text
   hash_sha1 : text
   hash_sha256 : text
@@ -25,24 +21,21 @@ entity "file_entry" {
 
 entity "registry_key" {
   path : text **<<PK>>**
-  arch : text **<<PK>>**
+  architecture : text **<<PK>>**
   --
-  perm : text 
+  permissions : text
   uid : integer
   gid : integer
-  user_name : text
-  group_name : text
+  owner : text
+  group : text
   mtime : integer
-  scanned : integer
-  last_event : integer
   checksum : text
-  hash_full_path : text
 }
 
 entity "registry_data" {
   path : text **<<PK>>**
-  arch : text **<<PK>>**
-  name : text **<<PK>>**
+  architecture : text **<<PK>>**
+  value : text **<<PK>>**
   --
   registry_key_path **<<FK>>**
   registry_key_arch **<<FK>>**
@@ -51,10 +44,7 @@ entity "registry_data" {
   hash_md5 : text
   hash_sha1 : text
   hash_sha256 : text
-  scanned : integer
-  last_event : integer
   checksum : text
-  hash_full_path : text
 }
 registry_data }o--|| registry_key
 

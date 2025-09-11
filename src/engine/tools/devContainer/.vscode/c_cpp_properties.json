@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "Clang-11-C++17",
+            "includePath": [
+                "${workspaceFolder}/wazuh/src/engine/source/**",
+                "${workspaceFolder}/wazuh/src/engine/build/**"
+
+            ],
+            "defines": [],
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "browse": {
+                "path": [],
+                "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db",
+                "limitSymbolsToIncludedHeaders": false
+            }
+        }
+    ],
+    "version": 4
+}

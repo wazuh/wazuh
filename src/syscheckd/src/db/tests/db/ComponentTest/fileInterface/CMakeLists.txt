@@ -8,7 +8,6 @@ file(GLOB FILE_UNIT_TEST_SRC
     "*.cpp")
 
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/include/)
-include_directories(${SRC_FOLDER}/shared_modules/rsync/include/)
 include_directories(${SRC_FOLDER}/shared_modules/dbsync/src/)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/tests/db/FIMDB)
 include_directories(${SRC_FOLDER}/syscheckd/src/db/tests/db/ComponentTest/dbInterface)
@@ -20,9 +19,6 @@ file(GLOB FILE_SRC
 
 file(GLOB FIMDB_SRC
     "${SRC_FOLDER}/syscheckd/src/db/src/fimDB.cpp")
-
-file(GLOB RSYNC_IMP_SRC
-    "${SRC_FOLDER}/shared_modules/rsync/src/*.cpp")
 
 file(GLOB DBSYNC_IMP_SRC
     "${SRC_FOLDER}/shared_modules/dbsync/src/*.cpp"
@@ -40,7 +36,6 @@ add_executable(fim_file_interface_test
     ${FILE_SRC}
     ${REGISTRY_SRC}
     ${FIMDB_SRC}
-    ${RSYNC_IMP_SRC}
     ${DBSYNC_IMP_SRC}
     ${WINDOWS_FILE_SRC})
 

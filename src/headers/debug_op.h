@@ -108,12 +108,6 @@ void nowDaemon(void);
 
 int isChroot(void);
 
-/* Debug analysisd */
-#ifdef DEBUGAD
-#define DEBUG_MSG(x,y,z) minfo(x,y,z)
-#else
-#define DEBUG_MSG(x,y,z)
-#endif /* end debug analysisd */
 
 /**
  * @brief Wrapper for the tagged log functions.

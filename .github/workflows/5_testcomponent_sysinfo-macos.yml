@@ -1,0 +1,44 @@
+name: Syscollector test on macOS
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+        - ".github/workflows/5_testcomponent_sysinfo-macos.yml"
+        - "src/data_provider/**"
+        - "src/shared_modules/**"
+        - "src/wazuh_modules/syscollector/**"
+        - "src/Makefile"
+
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      # Build wazuh agent for macOS.
+      - name: Build wazuh agent for macOS
+        run: |
+          make deps -C src TARGET=agent -j4
+          make -C src build_syscollector TARGET=agent -j4
+      - name: Install dependencies
+        run: |
+          brew install wget jq
+          pip3 install -r src/data_provider/qa/requirements.txt
+      - name: Install macports package manager
+        run: |
+          API_URL="https://api.github.com/repos/macports/macports-base/releases/latest"
+          last_macport=$(curl -s -H "Accept: application/vnd.github+json" \
+                            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                            "$API_URL" | jq -r '.assets[] | select(.name | endswith("Ventura.pkg")).browser_download_url')
+          wget $last_macport
+          sudo installer -pkg $(basename $last_macport) -target /
+          rm -rf $(basename $last_macport)
+      - name: Install port
+        run: |
+          sudo /opt/local/bin/port selfupdate
+          sudo /opt/local/bin/port -b install nano
+      - name: Run tests
+        run: |
+          cd src/data_provider
+          sudo python3 -m pytest -vv qa/

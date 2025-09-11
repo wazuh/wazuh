@@ -1564,13 +1564,8 @@ stages:
         error: 0
         data:
           global:
-            alerts_log: !anystr
-            email_notification: !anystr
             host_information: !anyint
             integrity_checking: !anyint
-            jsonout_output: !anystr
-            logall: !anystr
-            logall_json: !anystr
             max_output_size: !anyint
             memory_size: !anyint
             prelude_output: !anystr
@@ -1607,7 +1602,6 @@ stages:
         error: 0
         data:
           alerts:
-            email_alert_level: !anyint
             log_alert_level: !anyint
 
   - name: Get command configuration from analysis component

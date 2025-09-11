@@ -85,6 +85,111 @@ std::string ZlibHelperTest::getFileHash(const std::filesystem::path& filepath) c
 };
 
 /**
+ * @brief Tests the GZ compression when the input file is empty or it doesn't exist.
+ *
+ */
+TEST_F(ZlibHelperTest, GzCompressInvalidInputFile)
+{
+    const auto outputGzFile = OUTPUT_DIR / "test_output.gz";
+    EXPECT_THROW(Utils::ZlibHelper::gzipCompress("", outputGzFile), std::runtime_error);
+    EXPECT_THROW(Utils::ZlibHelper::gzipCompress("inexistant.json", outputGzFile), std::runtime_error);
+}
+
+/**
+ * @brief Tests the GZ compression when the output path doesn't exist.
+ *
+ */
+TEST_F(ZlibHelperTest, GzCompressInvalidOutputPath)
+{
+    EXPECT_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, "inexistant/test.gz"), std::runtime_error);
+}
+
+/**
+ * @brief Tests the GZ compression with invalid compression levels.
+ *
+ */
+TEST_F(ZlibHelperTest, GzCompressInvalidCompressionLevel)
+{
+    const auto outputGzFile = OUTPUT_DIR / "test_output.gz";
+    EXPECT_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, outputGzFile, -1), std::runtime_error);
+    EXPECT_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, outputGzFile, 10), std::runtime_error);
+}
+
+/**
+ * @brief Tests the correct GZ compression of a file with default compression level.
+ *
+ */
+TEST_F(ZlibHelperTest, GzCompressFileDefault)
+{
+    const auto outputGzFile = OUTPUT_DIR / "test_compressed.gz";
+    const auto decompressedFile = OUTPUT_DIR / "test_decompressed.json";
+
+    // Compress the file
+    ASSERT_NO_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, outputGzFile));
+
+    // Verify the compressed file exists and is not empty
+    ASSERT_TRUE(std::filesystem::exists(outputGzFile));
+    ASSERT_GT(std::filesystem::file_size(outputGzFile), 0);
+
+    // Decompress the file and verify it matches the original
+    ASSERT_NO_THROW(Utils::ZlibHelper::gzipDecompress(outputGzFile, decompressedFile));
+    EXPECT_EQ(getFileHash(RAW_FILE), getFileHash(decompressedFile));
+}
+
+/**
+ * @brief Tests the correct GZ compression of a file with different compression levels.
+ *
+ */
+TEST_F(ZlibHelperTest, GzCompressFileWithDifferentLevels)
+{
+    const auto decompressedFile = OUTPUT_DIR / "test_decompressed.json";
+    std::vector<std::pair<int, std::filesystem::path>> testCases = {
+        {0, OUTPUT_DIR / "test_compressed_level0.gz"},
+        {1, OUTPUT_DIR / "test_compressed_level1.gz"},
+        {6, OUTPUT_DIR / "test_compressed_level6.gz"},
+        {9, OUTPUT_DIR / "test_compressed_level9.gz"}
+    };
+
+    for (const auto& [level, outputFile] : testCases)
+    {
+        // Compress the file with specific level
+        ASSERT_NO_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, outputFile, level));
+
+        // Verify the compressed file exists and is not empty
+        ASSERT_TRUE(std::filesystem::exists(outputFile));
+        ASSERT_GT(std::filesystem::file_size(outputFile), 0);
+
+        // Decompress the file and verify it matches the original
+        const auto decompressedTestFile = OUTPUT_DIR / ("decompressed_level" + std::to_string(level) + ".json");
+        ASSERT_NO_THROW(Utils::ZlibHelper::gzipDecompress(outputFile, decompressedTestFile));
+        EXPECT_EQ(getFileHash(RAW_FILE), getFileHash(decompressedTestFile));
+    }
+}
+
+/**
+ * @brief Tests that higher compression levels produce smaller files.
+ *
+ */
+TEST_F(ZlibHelperTest, GzCompressLevelsProduceDifferentSizes)
+{
+    const auto outputLevel0 = OUTPUT_DIR / "test_level0.gz";
+    const auto outputLevel9 = OUTPUT_DIR / "test_level9.gz";
+
+    // Compress with minimum compression (level 0)
+    ASSERT_NO_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, outputLevel0, 0));
+
+    // Compress with maximum compression (level 9)
+    ASSERT_NO_THROW(Utils::ZlibHelper::gzipCompress(RAW_FILE, outputLevel9, 9));
+
+    // Verify both files exist
+    ASSERT_TRUE(std::filesystem::exists(outputLevel0));
+    ASSERT_TRUE(std::filesystem::exists(outputLevel9));
+
+    // Level 9 should produce a smaller or equal file than level 0
+    EXPECT_LE(std::filesystem::file_size(outputLevel9), std::filesystem::file_size(outputLevel0));
+}
+
+/**
  * @brief Tests the GZ decompression when the input file is empty or it doesn't exist.
  *
  */

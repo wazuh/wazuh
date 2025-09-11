@@ -1,0 +1,108 @@
+# Name of the helper function
+name: array_contains_any
+
+metadata:
+  description: |
+    Checks whether at least one of the provided elements is present in a given array.
+    It supports multiple data types, including objects, arrays, numbers, strings, and boolean values.
+    As a variadic function, it accepts multiple elements as search arguments.
+    A test passes if at least one provided element exists in the target array.
+    If none of the elements are found, the validation fails.
+    This behavior makes it useful for filtering lists based on partial matches.
+
+  keywords:
+    - array
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  element:
+    type:
+      - object
+      - array
+      - number
+      - string
+      - boolean
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      element: dracut
+      element_1: vz-start
+      element_2: thin-provisioning-tools
+    target_field:
+      - mkinitramfs
+      - cryptroot
+      - framebuffer
+      - dracut
+      - thin-provisioning-tools
+      - lvm2
+      - vz-start
+    should_pass: true
+    description: All specified elements are present in the target array.
+
+  - arguments:
+      element: dracut
+      element_1: hello
+      element_2: wazuh
+    target_field:
+      - mkinitramfs
+      - cryptroot
+      - framebuffer
+      - dracut
+      - thin-provisioning-tools
+      - lvm2
+      - vz-start
+    should_pass: true
+    description: At least one specified element ("dracut") is present in the target array.
+
+  - arguments:
+      element: 7
+      element_1: 1
+      element_2: 8
+    target_field:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    should_pass: true
+    description: At least one specified number (1) is present in the target array.
+
+  - arguments:
+      element:
+        key: value
+      element_1:
+        key-non-exists: value-non-exists
+      element_2:
+        keyn: valuen
+    target_field:
+      - key: value
+      - key1: value1
+      - key2: value2
+    should_pass: true
+    description: At least one specified object is present in the target array.
+
+  - arguments:
+      element:
+        keyn: valuen
+      element_1: 1000
+      element_2: valuen
+    target_field:
+      - key: value
+      - 1000
+      - value
+    should_pass: true
+    description: At least one specified element (1000) is present in the target array.

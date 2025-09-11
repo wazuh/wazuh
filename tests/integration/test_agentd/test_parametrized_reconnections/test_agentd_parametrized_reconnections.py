@@ -9,7 +9,7 @@ type: integration
 
 brief: The 'wazuh-agentd' program is the client-side daemon that communicates with the server.
        The objective is to check how the 'wazuh-agentd' daemon behaves when there are delays
-       between connection attempts to the 'wazuh-remoted' daemon using TCP and UDP protocols.
+       between connection attempts to the 'wazuh-remoted' daemon using TCP protocol.
        The 'wazuh-remoted' program is the server side daemon that communicates with the agents.
 
 components:
@@ -84,7 +84,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -96,7 +96,7 @@ daemons_handler_configuration = {'all_daemons': True}
 This test covers different options of delays between server connection attempts:
 -Different values of max_retries parameter
 -Different values of retry_interval parameter
--UDP/TCP connection
+-TCP connection
 -Enrollment between retries
 """
 
@@ -143,7 +143,7 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
 
     input_description: An external YAML file (wazuh_conf.yaml) includes configuration settings for the agent.
                        Different test cases are found in the test module and include parameters
-                       for the environment setup using the TCP and UDP protocols.
+                       for the environment setup using the TCP protocols.
 
     expected_output:
         - r'Trying to connect to server'
@@ -183,12 +183,13 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
     # If auto enrollment is enabled, retry check enrollment
     if test_metadata['ENROLL'] == 'yes':
         # Start RemotedSimulator for successfully enrollment
-        remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-        remoted_server.start()
-        wait_connect()
-
-        # Shutdown RemotedSimulator
-        remoted_server.destroy()
+        remoted_server = RemotedSimulator(protocol = 'tcp')
+        try:
+            remoted_server.start()
+            wait_connect()
+        finally:
+            # Shutdown RemotedSimulator
+            remoted_server.destroy()
 
     # Wait for server rollback
     wait_server_rollback()

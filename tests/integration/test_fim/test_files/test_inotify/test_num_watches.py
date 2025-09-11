@@ -69,7 +69,6 @@ from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils import file
 from wazuh_testing.modules.fim.patterns import NUM_INOTIFY_WATCHES
-from wazuh_testing.modules.fim.utils import get_fim_event_data
 
 from . import TEST_CASES_PATH, CONFIGS_PATH
 

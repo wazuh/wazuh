@@ -276,47 +276,6 @@ or a list of them if parameter **nodes_list** is used.
 * New endpoint. Download an specified decoder file.
 * The response has been changed to the new RBAC generic response. 
 
-## Experimental
-### General
-* Added **agents_list** parameter in query to all experimental endpoints.
-* Removed **agent_id** parameter from all endpoints.
-
-### GET ​   /experimental/ciscat/results
-* Removed **agent_id** parameter in query.
-
-### GET     /experimental/syscollector/hardware
-* Renamed **ram_free** parameter in query to **ram.free** and changed it's type to integer.
-* Renamed **ram_total** parameter in query to **ram.total** and changed it's type to integer.
-* Renamed **cpu_cores** parameter in query to **cpu.cores** and changed it's type to integer.
-* Renamed **cpu_mhz** parameter in query to **cpu.mhz** and changed it's type to number.
-* Renamed **cpu_name**  parameter in query to **cpu.name**.
-
-### GET ​   /experimental/syscollector/hotfixes
-* New endpoint. Get the hotfixes info of all agents or a list of agents.
-
-### GET     /experimental/syscollector/netiface
-* Changed the type of **mtu** parameter to integer.
-* Renamed **tx_packets** parameter in query to **tx.packets** and changed it's type to integer.
-* Renamed **rx_packets** parameter in query to **rx.packets** and changed it's type to integer.
-* Renamed **tx_bytes** parameter in query to **tx.bytes** and changed it's type to integer.
-* Renamed **rx_bytes** parameter in query to **rx.bytes** and changed it's type to integer.
-* Renamed **tx_errors** parameter in query to **tx.errors** and changed it's type to integer.
-* Renamed **rx_errors** parameter in query to **rx.errors** and changed it's type to integer.
-* Renamed **tx_dropped** parameter in query to **tx.dropped**  and changed it's type to integer.
-* Renamed **rx_dropped** parameter in query to **rx.dropped** and changed it's type to integer.
-
-### GET ​   /experimental/syscollector/os
-* Renamed **os_name** parameter in query to **os.name**.
-* Renamed **os_version** parameter in query to **os.version**.
-
-### GET     /experimental/syscollector/ports
-* Renamed **local_ip** parameter to **local.ip**.
-* Renamed **local_port** parameter to **local.port**.
-* Renamed **remote_ip**  parameter to **remote.ip**. 
-
-### DELETE /experimental/syscheck
-* Nothing removed by default, it must be specified with the "all" keyword.
-
 ## Groups
 ### DELETE ​/groups
 * Nothing removed by default, it must be specified with the "all" keyword.

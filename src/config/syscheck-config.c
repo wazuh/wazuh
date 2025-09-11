@@ -66,12 +66,10 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
 
     syscheck->rootcheck                       = 0;
     syscheck->disabled                        = SK_CONF_UNPARSED;
-    syscheck->database_store                  = FIM_DB_DISK;
     syscheck->skip_fs.nfs                     = 1;
     syscheck->skip_fs.dev                     = 1;
     syscheck->skip_fs.sys                     = 1;
     syscheck->skip_fs.proc                    = 1;
-    syscheck->scan_on_start                   = 1;
     syscheck->time                            = 43200;
     syscheck->ignore                          = NULL;
     syscheck->ignore_regex                    = NULL;
@@ -92,7 +90,11 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->enable_synchronization          = 1;
     syscheck->restart_audit                   = 1;
     syscheck->enable_whodata                  = 0;
+#ifndef WIN32
+    syscheck->whodata_provider                = EBPF_PROVIDER;
+#else
     syscheck->whodata_provider                = AUDIT_PROVIDER;
+#endif
     syscheck->realtime                        = NULL;
     syscheck->audit_healthcheck               = 1;
     syscheck->process_priority                = 10;
@@ -112,20 +114,15 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->max_fd_win_rt                   = 0;
     syscheck->registry_nodiff                 = NULL;
     syscheck->registry_nodiff_regex           = NULL;
-    syscheck->enable_registry_synchronization = 1;
 #else
     syscheck->queue_size                      = 16384;
 #endif
-    syscheck->prefilter_cmd                   = NULL;
     syscheck->sync_interval                   = 300;
     syscheck->sync_response_timeout           = 30;
-    syscheck->sync_max_interval               = 3600;
-    syscheck->sync_thread_pool                = 1;
     syscheck->sync_max_eps                    = 10;
-    syscheck->sync_queue_size                 = 16384;
     syscheck->max_eps                         = 50;
+    syscheck->notify_first_scan               = 0; // Default value, no notification on first scan
     syscheck->max_files_per_second            = 0;
-    syscheck->allow_remote_prefilter_cmd      = false;
     syscheck->disk_quota_enabled              = true;
     syscheck->disk_quota_limit                = 1024 * 1024; // 1 GB
     syscheck->file_size_enabled               = true;
@@ -759,6 +756,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
     const char *xml_check_perm = "check_perm";
     const char *xml_check_mtime = "check_mtime";
     const char *xml_check_inode = "check_inode";
+    const char *xml_check_device = "check_device";
     const char *xml_check_attrs = "check_attrs";
     const char *xml_follow_symbolic_link = "follow_symbolic_link";
     const char *xml_real_time = "realtime";
@@ -804,7 +802,7 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 fim_set_check_all(&opts);
             } else if (strcmp(*values, "no") == 0) {
                 opts &= ~ ( CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_PERM | CHECK_SHA256SUM | CHECK_SIZE
-                        | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE);
+                        | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_DEVICE);
 
 #ifdef WIN32
                 opts &= ~ CHECK_ATTRS;
@@ -933,6 +931,17 @@ static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs
                 opts |= CHECK_INODE;
             } else if (strcmp(*values, "no") == 0) {
                 opts &= ~ CHECK_INODE;
+            } else {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto out_free;
+            }
+        }
+        /* Check device */
+        else if (strcmp(*attrs, xml_check_device) == 0) {
+            if (strcmp(*values, "yes") == 0) {
+                opts |= CHECK_DEVICE;
+            } else if (strcmp(*values, "no") == 0) {
+                opts &= ~ CHECK_DEVICE;
             } else {
                 mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
                 goto out_free;
@@ -1200,99 +1209,50 @@ out_free:
 }
 
 static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
-    const char *xml_enabled = "enabled";
-    const char *xml_sync_interval = "interval";
-    const char *xml_sync_max_interval = "max_interval";
-    const char *xml_response_timeout = "response_timeout";
-    const char *xml_sync_queue_size = "queue_size";
-    const char *xml_max_eps = "max_eps";
-    const char *xml_registry_enabled = "registry_enabled";
-    const char *xml_sync_thread_pool = "thread_pool";
+     const char *xml_enabled = "enabled";
+     const char *xml_sync_interval = "interval";
+     const char *xml_response_timeout = "response_timeout";
+     const char *xml_max_eps = "max_eps";
 
-    for (int i = 0; node[i]; i++) {
-        if (strcmp(node[i]->element, xml_enabled) == 0) {
-            int r = w_parse_bool(node[i]->content);
+     for (int i = 0; node[i]; i++) {
+         if (strcmp(node[i]->element, xml_enabled) == 0) {
+             int r = w_parse_bool(node[i]->content);
 
-            if (r < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->enable_synchronization = r;
-            }
-        } else if (strcmp(node[i]->element, xml_sync_interval) == 0) {
-            long t = w_parse_time(node[i]->content);
+             if (r < 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->enable_synchronization = r;
+             }
+         } else if (strcmp(node[i]->element, xml_sync_interval) == 0) {
+             long t = w_parse_time(node[i]->content);
 
-            if (t <= 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->sync_interval = t;
-            }
-        } else if (strcmp(node[i]->element, xml_sync_max_interval) == 0) {
-            long max_interval = w_parse_time(node[i]->content);
+             if (t <= 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_interval = t;
+             }
+         } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
+             long response_timeout = w_parse_time(node[i]->content);
 
-            if (max_interval < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->sync_max_interval = (uint32_t) max_interval;
-            }
-        } else if (strcmp(node[i]->element, xml_response_timeout) == 0) {
-            long response_timeout = w_parse_time(node[i]->content);
+             if (response_timeout < 0) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_response_timeout = (uint32_t) response_timeout;
+             }
+         } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
+             char * end;
+             long value = strtol(node[i]->content, &end, 10);
 
-            if (response_timeout < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->sync_response_timeout = (uint32_t) response_timeout;
-            }
-        } else if (strcmp(node[i]->element, xml_sync_queue_size) == 0) {
-            char * end;
-            long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 2 || value > 1000000 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else {
-                syscheck->sync_queue_size = value;
-            }
-        } else if (strcmp(node[i]->element, xml_max_eps) == 0) {
-            char * end;
-            long value = strtol(node[i]->content, &end, 10);
-
-            if (value < 0 || value > 1000000 || *end) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->sync_max_eps = value;
-            }
-        } else if (strcmp(node[i]->element, xml_registry_enabled) == 0) {
-#ifdef WIN32
-            int r = w_parse_bool(node[i]->content);
-
-            if (r < 0) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                syscheck->enable_registry_synchronization = r;
-            }
-#endif
-        } else if (strcmp(node[i]->element, xml_sync_thread_pool) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            } else {
-                int value = atoi(node[i]->content);
-
-                if (value < 1) {
-                    mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                } else {
-                    syscheck->sync_thread_pool = value;
-                }
-            }
-        } else {
-            mwarn(XML_INVELEM, node[i]->element);
-        }
-    }
-
-    if (syscheck->sync_max_interval < syscheck->sync_interval) {
-        syscheck->sync_max_interval = syscheck->sync_interval;
-        mwarn("'max_interval' cannot be less than 'interval'. New 'max_interval' value: '%d'", syscheck->sync_interval);
-    }
-}
+             if (value < 0 || value > 1000000 || *end) {
+                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+             } else {
+                 syscheck->sync_max_eps = value;
+             }
+         } else {
+             mwarn(XML_INVELEM, node[i]->element);
+         }
+     }
+ }
 
 int read_data_unit(const char *content) {
     size_t len_value_str = strlen(content);
@@ -1617,7 +1577,7 @@ void parse_diff(const OS_XML *xml, syscheck_config * syscheck, XML_NODE node) {
     }
 }
 
-int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp, int modules)
+int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
     int j = 0;
@@ -1628,14 +1588,11 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_registry = "windows_registry";
     const char *xml_time = "frequency";
     const char *xml_scanday = "scan_day";
-    const char *xml_database = "database";
     const char *xml_scantime = "scan_time";
     const char *xml_file_limit = "file_limit";
     const char *xml_enabled = "enabled";
     const char *xml_entries = "entries";
-#ifdef WIN32
     const char *xml_registry_limit = "registry_limit";
-#endif
     const char *xml_ignore = "ignore";
     const char *xml_registry_ignore = "registry_ignore";
 #ifdef WIN32
@@ -1645,8 +1602,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_alert_new_files = "alert_new_files"; // TODO: Deprecated since 3.11.0
     const char *xml_remove_old_diff = "remove_old_diff"; // Deprecated since 3.8.0
     const char *xml_disabled = "disabled";
-    const char *xml_scan_on_start = "scan_on_start";
-    const char *xml_prefilter_cmd = "prefilter_cmd";
     const char *xml_skip_nfs = "skip_nfs";
     const char *xml_skip_dev = "skip_dev";
     const char *xml_skip_sys = "skip_sys";
@@ -1670,7 +1625,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
     const char *xml_process_priority = "process_priority";
     const char *xml_synchronization = "synchronization";
     const char *xml_max_eps = "max_eps";
-    const char *xml_allow_remote_prefilter_cmd = "allow_remote_prefilter_cmd";
+    const char *xml_notify_first_scan = "notify_first_scan";
     const char *xml_diff = "diff";
 
     /* Configuration example
@@ -1681,7 +1636,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
     syscheck_config *syscheck;
     syscheck = (syscheck_config *)configp;
-    char prefilter_cmd[OS_MAXSTR] = "";
 
     if (syscheck->disabled == SK_CONF_UNPARSED) {
         syscheck->disabled = SK_CONF_UNDEFINED;
@@ -1735,18 +1689,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
             syscheck->wdata.interval_scan = atoi(node[i]->content);
 #endif
-        }
-
-        /*  Store database in memory or in disk.
-        *   By default disk.
-        */
-        else if (strcmp(node[i]->element, xml_database) == 0) {
-            if (strcmp(node[i]->content, "memory") == 0) {
-                syscheck->database_store = FIM_DB_MEMORY;
-            }
-            else if (strcmp(node[i]->content, "disk") == 0){
-                syscheck->database_store = FIM_DB_DISK;
-            }
         }
 
         /* Get frequency */
@@ -1819,7 +1761,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             OS_ClearNode(children);
         }
 
-#ifdef WIN32
         // Get registry limit
         else if (strcmp(node[i]->element, xml_registry_limit) == 0) {
             if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
@@ -1828,10 +1769,14 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             for(j = 0; children[j]; j++) {
                 if (strcmp(children[j]->element, xml_enabled) == 0) {
                     if (strcmp(children[j]->content, "yes") == 0) {
+#ifdef WIN32
                         syscheck->registry_limit_enabled = true;
+#endif
                     }
                     else if (strcmp(children[j]->content, "no") == 0) {
+#ifdef WIN32
                         syscheck->registry_limit_enabled = false;
+#endif
                     }
                     else {
                         mwarn(XML_VALUEERR, children[j]->element, children[j]->content);
@@ -1845,34 +1790,26 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                         OS_ClearNode(children);
                         return (OS_INVALID);
                     }
-
+#ifdef WIN32
                     syscheck->db_entry_registry_limit = atoi(children[j]->content);
 
                     if (syscheck->db_entry_registry_limit < 0) {
                         mdebug2("Maximum value allowed for registry_limit is '%d'", MAX_FILE_LIMIT);
                         syscheck->db_entry_registry_limit = MAX_FILE_LIMIT;
                     }
+#endif
                 }
             }
-
+#ifdef WIN32
             if (!syscheck->registry_limit_enabled) {
                 syscheck->db_entry_registry_limit = 0;
             }
-
+#endif
             OS_ClearNode(children);
         }
-#endif
 
-        /* Get if xml_scan_on_start */
-        else if (strcmp(node[i]->element, xml_scan_on_start) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                syscheck->scan_on_start = 1;
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                syscheck->scan_on_start = 0;
-            } else {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
+        else if (strcmp(node[i]->element, "scan_on_start") == 0) {
+            mwarn("Deprecated option 'scan_on_start' is not longer available.");
         }
 
         /* Get if disabled */
@@ -2033,33 +1970,8 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             /* auto_ignore is not read here */
         } else if (strcmp(node[i]->element, xml_alert_new_files) == 0) {
             /* alert_new_files option is not read here */
-        } else if (strcmp(node[i]->element, xml_prefilter_cmd) == 0) {
-            struct stat statbuf;
-
-#ifdef WIN32
-            if(!ExpandEnvironmentStrings(node[i]->content, prefilter_cmd, sizeof(prefilter_cmd) - 1)){
-                merror("Could not expand the environment variable %s (%ld)", node[i]->content, GetLastError());
-                continue;
-            }
-            str_lowercase(prefilter_cmd);
-#else
-            strncpy(prefilter_cmd, node[i]->content, sizeof(prefilter_cmd) - 1);
-            prefilter_cmd[sizeof(prefilter_cmd) - 1] = '\0';
-#endif
-
-            if (strlen(prefilter_cmd) > 0) {
-                char statcmd[OS_MAXSTR];
-                char *ix;
-                strncpy(statcmd, prefilter_cmd, sizeof(statcmd) - 1);
-                statcmd[sizeof(statcmd) - 1] = '\0';
-                if (NULL != (ix = strchr(statcmd, ' '))) {
-                    *ix = '\0';
-                }
-                if (w_stat(statcmd, &statbuf) != 0) {
-                    mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-            }
+        } else if (strcmp(node[i]->element, "prefilter_cmd") == 0) {
+            mwarn("Deprecated option 'prefilter_cmd' is not longer available.");
         } else if (strcmp(node[i]->element, xml_remove_old_diff) == 0) {
             // Deprecated since 3.8.0, aplied by default...
         } else if (strcmp(node[i]->element, xml_restart_audit) == 0) {
@@ -2193,22 +2105,18 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             } else {
                 syscheck->max_eps = value;
             }
-        } /* Allow prefilter cmd */
-        else if (strcmp(node[i]->element, xml_allow_remote_prefilter_cmd) == 0) {
-            if (modules & CAGENT_CONFIG) {
-                mwarn("'%s' option can't be changed using centralized configuration (agent.conf).",
-                      xml_allow_remote_prefilter_cmd);
-                i++;
-                continue;
+        } else if (strcmp(node[i]->element, xml_notify_first_scan) == 0) {
+            if (strcmp(node[i]->content, "yes") == 0) {
+                syscheck->notify_first_scan = 1;
+            } else if (strcmp(node[i]->content, "no") == 0) {
+                syscheck->notify_first_scan = 0;
+            } else {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
             }
-            if(strcmp(node[i]->content, "yes") == 0)
-                syscheck->allow_remote_prefilter_cmd = 1;
-            else if(strcmp(node[i]->content, "no") == 0)
-                syscheck->allow_remote_prefilter_cmd = 0;
-            else {
-                mwarn(XML_VALUEERR,node[i]->element,node[i]->content);
-                return(OS_INVALID);
-            }
+        }
+        else if (strcmp(node[i]->element, "allow_remote_prefilter_cmd") == 0) {
+            mwarn("Deprecated option 'allow_remote_prefilter_cmd' is not longer available.");
         }
         else if (strcmp(node[i]->element, xml_max_files_per_second) == 0) {
             if (!OS_StrIsNum(node[i]->content)) {
@@ -2219,30 +2127,6 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
 
         } else {
             mwarn(XML_INVELEM, node[i]->element);
-        }
-    }
-
-    // Set prefilter only if it's expressly allowed (ossec.conf in agent side).
-
-    if (prefilter_cmd[0]) {
-        if (!(modules & CAGENT_CONFIG) || syscheck->allow_remote_prefilter_cmd) {
-            char *save_ptr;
-            int total_vectors = 2;
-
-            os_calloc(total_vectors, sizeof(char *), syscheck->prefilter_cmd);
-            strtok_r(prefilter_cmd, " ", &save_ptr);
-            os_strdup(prefilter_cmd, syscheck->prefilter_cmd[0]);
-            syscheck->prefilter_cmd[1] = NULL;
-
-            while (save_ptr != NULL && *save_ptr != '\0') {
-                os_realloc(syscheck->prefilter_cmd, (total_vectors + 1) * sizeof(char *), syscheck->prefilter_cmd);
-                syscheck->prefilter_cmd[total_vectors] = NULL;
-                os_strdup( save_ptr, syscheck->prefilter_cmd[total_vectors - 1]);
-                total_vectors++;
-                strtok_r(NULL, " ", &save_ptr);
-            }
-        } else if (!syscheck->allow_remote_prefilter_cmd) {
-            mwarn(FIM_WARN_ALLOW_PREFILTER, prefilter_cmd, xml_allow_remote_prefilter_cmd);
         }
     }
 
@@ -2276,6 +2160,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         CHECK_GROUP,
         CHECK_MTIME,
         CHECK_INODE,
+        CHECK_DEVICE,
         CHECK_MD5SUM,
         CHECK_SHA1SUM,
         CHECK_SHA256SUM,
@@ -2295,6 +2180,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "group",
     	"mtime",
         "inode",
+        "device",
         "hash_md5",
         "hash_sha1",
         "hash_sha256",
@@ -2304,7 +2190,7 @@ char *syscheck_opts2str(char *buf, int buflen, int opts) {
         "realtime",
         "whodata",
         "scheduled",
-        "reg_value_type",
+        "type",
 	    NULL
 	};
 
@@ -2482,9 +2368,6 @@ void Free_Syscheck(syscheck_config * config) {
 #endif
             free(config->realtime);
         }
-        if (config->prefilter_cmd) {
-            free_strarray(config->prefilter_cmd);
-        }
 
         free_strarray(config->audit_key);
     }
@@ -2633,6 +2516,7 @@ static void fim_set_check_all(int *opt) {
     *opt |= CHECK_GROUP;
     *opt |= CHECK_MTIME;
     *opt |= CHECK_INODE;
+    *opt |= CHECK_DEVICE;
 #ifdef WIN32
     *opt |= CHECK_ATTRS;
 #endif

@@ -139,3 +139,18 @@ bool is_leap_year(int year) {
 
     return result;
 }
+
+// Get the current ISO 8601 UTC time
+
+void get_iso8601_utc_time(char *buffer, size_t size) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    struct tm *tm_info = gmtime(&tv.tv_sec);
+
+    char datetime[24];
+    strftime(datetime, sizeof(datetime), "%Y-%m-%dT%H:%M:%S", tm_info);
+
+    // Write full string with milliseconds and Z
+    snprintf(buffer, size, "%s.%03ldZ", datetime, tv.tv_usec / 1000);
+}

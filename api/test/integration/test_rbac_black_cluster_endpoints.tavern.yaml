@@ -331,12 +331,10 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
               localfile: !anything
-              osquery: !anything
               remote: !anything
               rootcheck: !anything
               ruleset: !anything
@@ -695,11 +693,4 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
-      json:
-        error: !anyint
-        data: # Empty response. Lack of combined permissions for every node
-          affected_items: []
-          failed_items: []
-          total_affected_items: 0
-          total_failed_items: 0
+      <<: *permission_denied

@@ -9,7 +9,7 @@
             "flags": "-r"
         },
         {
-            "name": "shared_modules/rsync",
+            "name": "shared_modules/sync_protocol",
             "flags": "-r"
         },
         {
@@ -33,6 +33,10 @@
         },
         {
             "name": "syscheckd",
+            "flags": "-r"
+        },
+        {
+            "name": "wazuh_modules/sca",
             "flags": "-r"
         }
     ]

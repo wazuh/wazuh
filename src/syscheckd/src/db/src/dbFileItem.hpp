@@ -11,10 +11,10 @@
 
 #ifndef _FILEITEM_HPP
 #define _FILEITEM_HPP
-#include "json.hpp"
 #include "dbItem.hpp"
 #include "fimCommonDefs.h"
 #include "fimDBSpecialization.h"
+#include "json.hpp"
 
 struct FimFileDataDeleter
 {
@@ -36,28 +36,24 @@ class FileItem final : public DBItem
 {
     public:
         FileItem(const fim_entry* const fim, bool oldData = false)
-            : DBItem(fim->file_entry.path == NULL ? "" : fim->file_entry.path
-                     , fim->file_entry.data->scanned
-                     , fim->file_entry.data->last_event
-                     , fim->file_entry.data->checksum[0] == '\0' ? "" : fim->file_entry.data->checksum
-                     , fim->file_entry.data->mode)
+            : DBItem(fim->file_entry.path == NULL ? "" : fim->file_entry.path,
+                     fim->file_entry.data->checksum[0] == '\0' ? "" : fim->file_entry.data->checksum)
         {
             m_oldData = oldData;
-            m_options = fim->file_entry.data->options;
             m_time = fim->file_entry.data->mtime;
             m_size = fim->file_entry.data->size;
-            m_dev = fim->file_entry.data->dev;
+            m_device = fim->file_entry.data->device;
             m_inode = fim->file_entry.data->inode;
 
             m_attributes = fim->file_entry.data->attributes == NULL ? "" : fim->file_entry.data->attributes;
-            m_username = fim->file_entry.data->user_name == NULL ? "" : fim->file_entry.data->user_name;
-            m_groupname = fim->file_entry.data->group_name == NULL ? "" : fim->file_entry.data->group_name;
-            m_perm = fim->file_entry.data->perm == NULL ? "" : fim->file_entry.data->perm;
+            m_owner = fim->file_entry.data->owner == NULL ? "" : fim->file_entry.data->owner;
+            m_group = fim->file_entry.data->group == NULL ? "" : fim->file_entry.data->group;
+            m_permissions = fim->file_entry.data->permissions == NULL ? "" : fim->file_entry.data->permissions;
 
             FIMDBCreator<OS_TYPE>::encodeString(m_attributes);
-            FIMDBCreator<OS_TYPE>::encodeString(m_username);
-            FIMDBCreator<OS_TYPE>::encodeString(m_groupname);
-            FIMDBCreator<OS_TYPE>::encodeString(m_perm);
+            FIMDBCreator<OS_TYPE>::encodeString(m_owner);
+            FIMDBCreator<OS_TYPE>::encodeString(m_group);
+            FIMDBCreator<OS_TYPE>::encodeString(m_permissions);
 
             m_md5 = fim->file_entry.data->hash_md5[0] == '\0' ? "" : fim->file_entry.data->hash_md5;
             m_sha1 = fim->file_entry.data->hash_sha1[0] == '\0' ? "" : fim->file_entry.data->hash_sha1;
@@ -69,22 +65,21 @@ class FileItem final : public DBItem
         };
 
         FileItem(const nlohmann::json& fim)
-            : DBItem(fim.at("path"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
+            : DBItem(fim.at("path"), fim.at("checksum"))
         {
-            m_options = fim.at("options");
             m_time = fim.at("mtime");
             m_size = fim.at("size");
-            m_dev = fim.at("dev");
+            m_device = fim.at("device");
             m_inode = fim.at("inode");
             m_attributes = fim.at("attributes");
             m_gid = fim.at("gid");
-            m_groupname = fim.at("group_name");
+            m_group = fim.at("group_");
             m_md5 = fim.at("hash_md5");
-            m_perm = fim.at("perm");
+            m_permissions = fim.at("permissions");
             m_sha1 = fim.at("hash_sha1");
             m_sha256 = fim.at("hash_sha256");
             m_uid = fim.at("uid");
-            m_username = fim.at("user_name");
+            m_owner = fim.at("owner");
 
             createFimEntry();
             m_statementConf = std::make_unique<nlohmann::json>(fim);
@@ -102,22 +97,21 @@ class FileItem final : public DBItem
         };
 
     private:
-        int                                             m_options;
-        std::string                                     m_gid;
-        std::string                                     m_uid;
-        unsigned long long int                          m_size;
-        unsigned long int                               m_dev;
-        unsigned long long int                          m_inode;
-        time_t                                          m_time;
-        std::string                                     m_attributes;
-        std::string                                     m_groupname;
-        std::string                                     m_md5;
-        std::string                                     m_perm;
-        std::string                                     m_sha1;
-        std::string                                     m_sha256;
-        std::string                                     m_username;
-        std::unique_ptr<fim_entry, FimFileDataDeleter>  m_fimEntry;
-        std::unique_ptr<nlohmann::json>                 m_statementConf;
+        std::string m_gid;
+        std::string m_uid;
+        unsigned long long int m_size;
+        unsigned long int m_device;
+        unsigned long long int m_inode;
+        time_t m_time;
+        std::string m_attributes;
+        std::string m_group;
+        std::string m_md5;
+        std::string m_permissions;
+        std::string m_sha1;
+        std::string m_sha256;
+        std::string m_owner;
+        std::unique_ptr<fim_entry, FimFileDataDeleter> m_fimEntry;
+        std::unique_ptr<nlohmann::json> m_statementConf;
 #ifdef WIN32
         std::string m_pathAnsi;
 #endif

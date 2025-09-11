@@ -66,6 +66,7 @@ void ExecdShutdown(int sig) __attribute__((noreturn));
 size_t wcom_unmerge(const char *file_path, char **output);
 size_t wcom_uncompress(const char * source, const char * target, char ** output);
 size_t wcom_restart(char **output);
+size_t wcom_reload(char ** output);
 size_t wcom_dispatch(char *command, char **output);
 size_t lock_restart(int timeout);
 size_t wcom_getconfig(const char * section, char ** output);

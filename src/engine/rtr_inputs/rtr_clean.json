@@ -1,0 +1,10 @@
+{
+    "steps": [
+        {
+            "description": "Clean",
+            "parameters": [
+                "--test clean"
+            ]
+        }
+    ]
+}

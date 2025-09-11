@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+import "engine.proto";
+import "google/protobuf/struct.proto"; // For Value
+
+package com.wazuh.api.engine.test;
+
+/******************** Only for test proposes ********************/
+message Request
+{
+    string defaultStr = 1;                      // Serialied field
+    int32 defaultInt = 2;                       // Serialized field
+    bool defaultBool = 3;                       // Serialized field
+    optional string valueString = 4;            // Serialized field
+    optional google.protobuf.Value anyJSON = 5; // JSON Object in
+}
+
+message Response
+{
+    ReturnStatus status = 1;                     // Status of the query
+    optional string error = 2;                   // Error message if status is ERROR
+    optional google.protobuf.Value valueObj = 3; // json object output
+    optional string valueString = 4;             // string output
+}

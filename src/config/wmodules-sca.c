@@ -14,9 +14,11 @@
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_SCAN_ON_START= "scan_on_start";
+static const char *XML_MAX_EPS = "max_eps";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
 static const char *XML_SKIP_NFS = "skip_nfs";
+static const char *XML_SYNC = "synchronization";
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
@@ -78,6 +80,53 @@ static short eval_bool(const char *str)
     return !str ? OS_INVALID : !strcmp(str, "yes") ? 1 : !strcmp(str, "no") ? 0 : OS_INVALID;
 }
 
+static void parse_synchronization_section(wm_sca_t * sca, XML_NODE node)
+{
+    const char *XML_DB_SYNC_ENABLED = "enabled";
+    const char *XML_DB_SYNC_INTERVAL = "interval";
+    const char *XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
+    const char *XML_DB_SYNC_MAX_EPS = "max_eps";
+
+    for (int i = 0; node[i]; ++i) {
+        if (strcmp(node[i]->element, XML_DB_SYNC_ENABLED) == 0) {
+            int r = w_parse_bool(node[i]->content);
+
+            if (r < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                sca->sync.enable_synchronization = r;
+            }
+        } else if (strcmp(node[i]->element, XML_DB_SYNC_INTERVAL) == 0) {
+            long t = w_parse_time(node[i]->content);
+
+            if (t <= 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                sca->sync.sync_interval = t;
+            }
+        } else if (strcmp(node[i]->element, XML_DB_SYNC_RESPONSE_TIMEOUT) == 0) {
+            long response_timeout = w_parse_time(node[i]->content);
+
+            if (response_timeout < 0) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                sca->sync.sync_response_timeout = (uint32_t) response_timeout;
+            }
+        } else if (strcmp(node[i]->element, XML_DB_SYNC_MAX_EPS) == 0) {
+            char * end;
+            const long value = strtol(node[i]->content, &end, 10);
+
+            if (value < 0 || value > 1000000 || *end) {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            } else {
+                sca->sync.sync_max_eps = value;
+            }
+        } else {
+            mwarn(XML_INVELEM, node[i]->element);
+        }
+    }
+}
+
 // Reading function
 int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
 {
@@ -88,15 +137,19 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         os_calloc(1, sizeof(wm_sca_t), sca);
         sca->enabled = 1;
         sca->scan_on_start = 1;
+        sca->max_eps = 50;
         sched_scan_init(&(sca->scan_config));
-        sca->skip_nfs = 1;
-        sca->alert_msg = NULL;
-        sca->queue = -1;
         sca->policies = NULL;
         module->context = &WM_SCA_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = sca;
         policies_count = 0;
+
+        // Database synchronization config values
+        sca->sync.enable_synchronization = 1;
+        sca->sync.sync_interval = 300;
+        sca->sync.sync_response_timeout = 30;
+        sca->sync.sync_max_eps = 10;
     }
 
     sca = module->data;
@@ -181,11 +234,6 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         minfo("Could not open the default SCA ruleset folder '%s': %s", ruleset_path, strerror(open_dir_errno));
     }
 
-    if(!sca->alert_msg) {
-        /* We store up to 255 alerts */
-        os_calloc(256, sizeof(char *), sca->alert_msg);
-    }
-
     if (!nodes) {
         return 0;
     }
@@ -219,6 +267,17 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             }
 
             sca->scan_on_start = scan_on_start;
+        }
+        else if (!strcmp(nodes[i]->element, XML_MAX_EPS))
+        {
+            char * end;
+            long value = strtol(nodes[i]->content, &end, 10);
+
+            if (value < 0 || value > 1000000 || *end) {
+                mwarn(XML_VALUEERR, nodes[i]->element, nodes[i]->content);
+            } else {
+                sca->max_eps = value;
+            }
         }
         else if (!strcmp(nodes[i]->element, XML_POLICIES))
         {
@@ -321,14 +380,15 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
         }
         else if (!strcmp(nodes[i]->element, XML_SKIP_NFS))
         {
-            int skip_nfs = eval_bool(nodes[i]->content);
-
-            if(skip_nfs == OS_INVALID){
-                merror("Invalid content for tag '%s'", XML_SKIP_NFS);
-                return OS_INVALID;
+            mwarn("Detected a deprecated configuration for SCA: 'skip_nfs' is no longer available.");
+        }
+        else if (!strcmp(nodes[i]->element, XML_SYNC)) {
+            // Synchronization section - Let's get the children node and iterate the values
+            xml_node **children = OS_GetElementsbyNode(xml, nodes[i]);
+            if (children) {
+                parse_synchronization_section(sca, children);
+                OS_ClearNode(children);
             }
-
-            sca->skip_nfs = skip_nfs;
         }
         else if (is_sched_tag(nodes[i]->element)) {
             // Do nothing

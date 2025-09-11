@@ -140,7 +140,6 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddStringToObject(syscfg, "skip_dev", syscheck.skip_fs.dev ? "yes" : "no");
     cJSON_AddStringToObject(syscfg, "skip_sys", syscheck.skip_fs.sys ? "yes" : "no");
     cJSON_AddStringToObject(syscfg, "skip_proc", syscheck.skip_fs.proc ? "yes" : "no");
-    if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
     if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
     if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
     cJSON_AddNumberToObject(syscfg, "max_files_per_second", syscheck.max_files_per_second);
@@ -203,6 +202,9 @@ cJSON *getSyscheckConfig(void) {
             }
             if (dir_it->options & CHECK_INODE) {
                 cJSON_AddItemToArray(opts, cJSON_CreateString("check_inode"));
+            }
+            if (dir_it->options & CHECK_DEVICE) {
+                cJSON_AddItemToArray(opts, cJSON_CreateString("check_device"));
             }
             if (dir_it->options & REALTIME_ACTIVE) {
                 cJSON_AddItemToArray(opts, cJSON_CreateString("realtime"));
@@ -293,6 +295,8 @@ cJSON *getSyscheckConfig(void) {
         cJSON_AddStringToObject(whodata,"startup_healthcheck","no");
     }
     cJSON_AddNumberToObject(whodata, "queue_size", syscheck.queue_size);
+
+    cJSON_AddStringToObject(whodata, "provider", syscheck.whodata_provider == EBPF_PROVIDER ? "ebpf" : "audit");
 
     cJSON_AddItemToObject(syscfg,"whodata",whodata);
 #endif
@@ -464,39 +468,17 @@ cJSON *getSyscheckConfig(void) {
     }
 #endif
 
-    cJSON_AddStringToObject(syscfg, "allow_remote_prefilter_cmd", syscheck.allow_remote_prefilter_cmd ? "yes" : "no");
-
-    if (syscheck.prefilter_cmd) {
-        char *full_command;
-        os_strdup(syscheck.prefilter_cmd[0], full_command);
-        for (int i = 1; syscheck.prefilter_cmd[i]; i++) {
-            wm_strcat(&full_command, syscheck.prefilter_cmd[i], ' ');
-        }
-        cJSON_AddStringToObject(syscfg,"prefilter_cmd", full_command);
-        os_free(full_command);
-    }
-
     cJSON * synchronization = cJSON_CreateObject();
     cJSON_AddStringToObject(synchronization, "enabled", syscheck.enable_synchronization ? "yes" : "no");
-#ifdef WIN32
-    cJSON_AddStringToObject(synchronization, "registry_enabled",
-                            syscheck.enable_registry_synchronization ? "yes" : "no");
-#endif
-    cJSON_AddNumberToObject(synchronization, "queue_size", syscheck.sync_queue_size);
     cJSON_AddNumberToObject(synchronization, "interval", syscheck.sync_interval);
     cJSON_AddNumberToObject(synchronization, "max_eps", syscheck.sync_max_eps);
     cJSON_AddNumberToObject(synchronization, "response_timeout", syscheck.sync_response_timeout);
-    cJSON_AddNumberToObject(synchronization, "max_interval", syscheck.sync_max_interval);
-    cJSON_AddNumberToObject(synchronization, "thread_pool", syscheck.sync_thread_pool);
 
     cJSON_AddItemToObject(syscfg, "synchronization", synchronization);
 
     cJSON_AddNumberToObject(syscfg, "max_eps", syscheck.max_eps);
+    cJSON_AddStringToObject(syscfg, "notify_first_scan", syscheck.notify_first_scan ? "yes" : "no");
     cJSON_AddNumberToObject(syscfg, "process_priority", syscheck.process_priority);
-
-    // Add sql database information
-    cJSON_AddStringToObject(syscfg, "database", syscheck.database_store ? "memory" : "disk");
-
 
     cJSON_AddItemToObject(root,"syscheck",syscfg);
 

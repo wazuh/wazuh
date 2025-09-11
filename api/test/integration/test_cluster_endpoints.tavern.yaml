@@ -592,12 +592,10 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
               localfile: !anything
-              osquery: !anything
               remote: !anything
               rootcheck: !anything
               ruleset: !anything
@@ -625,12 +623,10 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
               localfile: !anything
-              osquery: !anything
               remote: !anything
               rootcheck: !anything
               ruleset: !anything
@@ -659,7 +655,6 @@ stages:
         data:
           affected_items:
             - alerts:
-                email_alert_level: !anystr
                 log_alert_level: !anystr
           failed_items: []
           total_affected_items: 1
@@ -740,7 +735,6 @@ stages:
         data:
           affected_items:
             - alerts:
-                email_alert_level: !anystr
                 log_alert_level: !anystr
           failed_items: []
           total_affected_items: 1
@@ -885,7 +879,6 @@ stages:
                   block_time: !anyint
                   max_request_per_minute: !anyint
                 drop_privileges: !anybool
-                experimental_features: !anybool
                 authentication_pool_size: !anyint
                 upload_configuration:
                   remote_commands:
@@ -903,11 +896,6 @@ stages:
                       allow: !anybool
                   indexer:
                     allow: !anybool
-                  integrations:
-                    virustotal:
-                      public_key:
-                        allow: !anybool
-                        minimum_quota: !anyint
             - node_name: "worker1"
               node_api_config:
                 <<: *default_api_config
@@ -966,13 +954,8 @@ stages:
         data:
           affected_items:
             - global:
-                alerts_log: !anystr
-                email_notification: !anystr
                 host_information: !anyint
                 integrity_checking: !anyint
-                jsonout_output: !anystr
-                logall: !anystr
-                logall_json: !anystr
                 max_output_size: !anyint
                 memory_size: !anyint
                 prelude_output: !anystr
@@ -2262,7 +2245,7 @@ stages:
       params:
         nodes_list: 'worker1,worker2'
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: 0
         data:
@@ -2282,7 +2265,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: 0
         data:

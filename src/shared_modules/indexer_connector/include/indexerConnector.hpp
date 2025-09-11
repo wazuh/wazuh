@@ -12,180 +12,178 @@
 #ifndef _INDEXER_CONNECTOR_HPP
 #define _INDEXER_CONNECTOR_HPP
 
-#include "rocksDBWrapper.hpp"
+#include <functional>
+#include <json.hpp>
+#include <memory>
+#include <mutex>
+#include <string_view>
+
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
 #else
 #define EXPORTED
 #endif
 
-static constexpr auto DEFAULT_INTERVAL = 60u;
-static constexpr auto IC_NAME {"indexer-connector"};
-
-class ServerSelector;
-class SecureCommunication;
-#include "threadDispatcher.h"
-#include "threadEventDispatcher.hpp"
-#include <json.hpp>
-#include <string>
-
-using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
-using ThreadSyncQueue = Utils::AsyncDispatcher<std::string, std::function<void(const std::string&)>>;
-
 /**
- * @brief IndexerConnector class.
+ * @brief IndexerConnectorSync class - Facade for IndexerConnectorSyncImpl.
  *
  */
-class EXPORTED IndexerConnector final
+
+constexpr auto IC_NAME {"IndexerConnector"};
+class EXPORTED IndexerConnectorSync final
 {
-    /**
-     * @brief Initialized status.
-     *
-     */
-    std::atomic<bool> m_initialized {false};
-    std::thread m_initializeThread;
-    std::condition_variable m_cv;
-    std::mutex m_mutex;
-    std::atomic<bool> m_stopping {false};
-    std::unique_ptr<Utils::RocksDBWrapper> m_db;
-    std::unique_ptr<ThreadSyncQueue> m_syncQueue;
-    std::string m_indexName;
-    std::mutex m_syncMutex;
-    std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
-    std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
-    uint32_t m_successCount {0};
-    bool m_error413FirstTime {false};
-    const bool m_useSeekDelete;
-
-    /**
-     * @brief Intialize method used to load template data and initialize the index.
-     *
-     * @param templateData Template data.
-     * @param updateMappingsData Create mappings data.
-     * @param indexName Index name.
-     * @param selector Server selector.
-     * @param secureCommunication Secure communication.
-     */
-    void initialize(const nlohmann::json& templateData,
-                    const nlohmann::json& updateMappingsData,
-                    const std::shared_ptr<ServerSelector>& selector,
-                    const SecureCommunication& secureCommunication);
-
-    /**
-     * @brief This method is used to calculate the diff between the inventory database and the indexer.
-     * @param responseJson Response JSON.
-     * @param agentId Agent ID.
-     * @param secureCommunication Secure communication.
-     * @param selector Server selector.
-     */
-    void diff(const nlohmann::json& responseJson,
-              const std::string& agentId,
-              const SecureCommunication& secureCommunication,
-              const std::shared_ptr<ServerSelector>& selector);
-
-    /**
-     * @brief Get agent ids of documents from the indexer.
-     * @param url Indexer URL.
-     * @param agentId Agent ID.
-     * @param secureCommunication Secure communication.
-     * @return Agent documents.
-     */
-    nlohmann::json getAgentDocumentsIds(const std::string& url,
-                                        const std::string& agentId,
-                                        const SecureCommunication& secureCommunication) const;
-
-    /**
-     * @brief Abuse control.
-     * @param agentId Agent ID.
-     * @return True if the agent is abusing the indexer, false otherwise.
-     */
-    bool abuseControl(const std::string& agentId);
-
-    /**
-     * @brief Initializing steps before the module starts.
-     *
-     * @param logFunction Callback function to be called when trying to log a message.
-     * @param config Indexer configuration, including database_path and servers.
-     */
-    void preInitialization(const std::function<void(const int,
-                                                    const std::string&,
-                                                    const std::string&,
-                                                    const int,
-                                                    const std::string&,
-                                                    const std::string&,
-                                                    va_list)>& logFunction,
-                           const nlohmann::json& config);
-
-    /*
-     * @brief Send bulk reactive, this method is used to send a bulk request to the indexer.
-     * @param actions Actions to be sent.
-     * @param url Indexer URL.
-     * @param secureCommunication Secure communication.
-     * @param depth Depth for recursive calls.
-     */
-    void sendBulkReactive(const std::vector<std::pair<std::string, bool>>& actions,
-                          const std::string& url,
-                          const SecureCommunication& secureCommunication,
-                          int depth = 1);
+private:
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
 
 public:
     /**
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including database_path and servers.
-     * @param templatePath Path to the template file.
-     * @param updateMappingsPath Path to the update mappings query.
-     * @param useSeekDelete If true, the connector will index the seek method to delete operation.
-     * @param logFunction Callback function to be called when trying to log a message.
-     * @param timeout Server selector time interval.
-     */
-    explicit IndexerConnector(const nlohmann::json& config,
-                              const std::string& templatePath,
-                              const std::string& updateMappingsPath,
-                              bool useSeekDelete = true,
-                              const std::function<void(const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       va_list)>& logFunction = {},
-                              const uint32_t& timeout = DEFAULT_INTERVAL);
-
-    /**
-     * @brief Class constructor that initializes the publisher in a simplified state that doesn't index the data and
-     * only keeps the local DB synced.
-     *
-     * @param config Indexer configuration, including database_path and servers.
-     * @param useSeekDelete If true, the connector will index the seek method to delete operation.
      * @param logFunction Callback function to be called when trying to log a message.
      */
-    explicit IndexerConnector(const nlohmann::json& config,
-                              bool useSeekDelete = true,
-                              const std::function<void(const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       va_list)>& logFunction = {});
+    explicit IndexerConnectorSync(
+        const nlohmann::json& config,
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction = {});
 
-    ~IndexerConnector();
+    ~IndexerConnectorSync();
 
     /**
      * @brief Publish a message into the queue map.
      *
      * @param message Message to be published.
+     * @param index Index name.
      */
-    void publish(const std::string& message);
+    void deleteByQuery(const std::string& index, const std::string& agentId);
 
     /**
-     * @brief Sync the inventory database with the indexer.
-     * This method is used to synchronize the inventory database to the indexer.
+     * @brief Bulk delete.
      *
-     * @param agentId Agent ID.
+     * @param id ID.
+     * @param index Index name.
      */
-    void sync(const std::string& agentId);
+    void bulkDelete(std::string_view id, std::string_view index);
+
+    /**
+     * @brief Bulk index.
+     *
+     * @param id ID.
+     * @param index Index name.
+     * @param data Data.
+     */
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data);
+
+    /**
+     * @brief Flush the bulk data.
+     */
+    void flush();
+
+    /**
+     * @brief Acquires and returns a unique lock on the internal mutex.
+     *
+     * This method encapsulates the synchronization mechanism of the class by
+     * returning a `std::unique_lock<std::mutex>` that locks the internal mutex
+     * upon creation and automatically releases it when the lock object goes out
+     * of scope.
+     *
+     * Using this method allows callers to perform multiple operations under a
+     * single critical section without directly accessing the internal mutex,
+     * preserving encapsulation while still enabling safe, multi-operation
+     * sequences.
+     *
+     * @note The returned `std::unique_lock` is movable but not copyable.
+     *       Callers should store it in a local variable for the duration of
+     *       the operations that require mutual exclusion.
+     *
+     * @return A `std::unique_lock<std::mutex>` object that owns a lock on the
+     *         internal mutex. The lock is released automatically when the
+     *         returned object is destroyed.
+     *
+     */
+    [[nodiscard]] std::unique_lock<std::mutex> scopeLock();
+
+    /**
+     * @brief Register a callback to be called when the indexer is flushed.
+     *
+     * @param callback Callback to be called when the indexer is flushed.
+     */
+    void registerNotify(std::function<void()> callback);
+
+    /**
+     * @brief Check have a server available.
+     *
+     * @return true if have a server available, false otherwise.
+     */
+    bool isAvailable() const;
+};
+
+/**
+ * @brief IndexerConnectorAsync class.
+ *
+ */
+class IndexerConnectorAsync final
+{
+private:
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
+
+public:
+    /**
+     * @brief Class constructor that initializes the publisher.
+     *
+     * @param config Indexer configuration, including database_path and servers.
+     * @param logFunction Callback function to be called when trying to log a message.
+     * @param timeout Server selector time interval.
+     */
+    explicit IndexerConnectorAsync(
+        const nlohmann::json& config,
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction = {});
+
+    ~IndexerConnectorAsync();
+
+    /**
+     * @brief Index a document.
+     *
+     * @param id ID of the document.
+     * @param index Index name.
+     * @param data Data.
+     */
+    void index(std::string_view id, std::string_view index, std::string_view data);
+
+    /**
+     * @brief Index a document.
+     *
+     * @param index Index name.
+     * @param data Data.
+     */
+    void index(std::string_view index, std::string_view data);
+
+    /**
+     * @brief Check have a server available.
+     *
+     * @return true if have a server available, false otherwise.
+     */
+    bool isAvailable() const;
+};
+
+class IndexerConnectorException : public std::exception
+{
+private:
+    std::string m_message;
+
+public:
+    explicit IndexerConnectorException(std::string message)
+        : m_message(std::move(message))
+    {
+    }
+
+    const char* what() const noexcept override
+    {
+        return m_message.c_str();
+    }
 };
 
 #endif // _INDEXER_CONNECTOR_HPP

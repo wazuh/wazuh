@@ -91,10 +91,17 @@ def get_package_name_from_path(package_path):
 
 def call_binary(binary_path, parameter):
     try:
-        command =  f"{binary_path}" if platform.system() == "Windows" else f"sudo {binary_path}"
-        # Run the binary and capture its output
+        # Use absolute path to avoid issues with shell execution
+        abs_binary_path = Path(binary_path).resolve()
+
+        if platform.system() == "Windows":
+            cmd = [str(abs_binary_path), parameter]
+        else:
+            cmd = ["sudo", str(abs_binary_path), parameter]
+
+        # Run the binary and capture its output - avoid shell=True for better reliability
         result = subprocess.run(
-            [command, parameter], capture_output=True, check=False, text=True, shell=True)
+            cmd, capture_output=True, check=False, text=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Error while executing the binary: {e}") from e
@@ -115,8 +122,8 @@ def validate_packages_json(json_data):
         # If the validation fails, print the error message
         if len(e.absolute_path) >= 3:
             pkg_name=json_data['packages'][e.absolute_path[1]]['name']
-            pkg_format=json_data['packages'][e.absolute_path[1]]['format']
-            pytest.fail(f"The output for package '{pkg_name}' with format '{pkg_format}' does not comply with the schema, in the field '{e.absolute_path[2]}': {e}")
+            pkg_format=json_data['packages'][e.absolute_path[1]]['type']
+            pytest.fail(f"The output for package '{pkg_name}' with type '{pkg_format}' does not comply with the schema, in the field '{e.absolute_path[2]}': {e}")
         else:
             pytest.fail(f"The output does not comply with the schema: {e}")
 

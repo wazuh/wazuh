@@ -1,0 +1,60 @@
+# Name of the helper function
+name: get_key_in
+
+metadata:
+  description: |
+    Maps target field value with the content of some key in the specified object.
+    Where the key is specified with a reference to another field.
+    The object parameter must be a definition object or a reference to a field containing the object.
+    This helper function is typically used in the map stage.
+
+  keywords:
+    - undefined
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  any_object:
+    type: object  # Accept only object
+    generate: object
+    source: both # Includes values or references (their names start with $)
+  key:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+# Key not found
+skipped:
+  - success_cases
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  - arguments:
+      any_object:
+        key: name
+        key2: surname
+      key: key2
+    target_field: name
+    should_pass: true
+    expected: surname
+    description: The value to replace was found
+  - arguments:
+      any_object:
+        key: name
+        key2:
+          age: 27
+          address: new york
+      key: key2
+    target_field: name
+    should_pass: true
+    expected:
+      age: 27
+      address: new york
+    description: The value to replace was found
