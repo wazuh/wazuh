@@ -367,7 +367,7 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
     }
 
     while (sync_module_running) {
-        mtdebug1(WM_SYS_LOGTAG, "Running inventory synchronization.");
+        minfo(WM_SYS_LOGTAG, "Running inventory synchronization.");
 
         if (syscollector_sync_module_ptr) {
             syscollector_sync_module_ptr(MODE_DELTA, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps);
@@ -375,7 +375,7 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
             mtdebug1(WM_SYS_LOGTAG, "Sync function not available");
         }
 
-        mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization finished, waiting for %d seconds before next run.", sync_interval);
+        minfo(WM_SYS_LOGTAG, "Inventory synchronization finished, waiting for %d seconds before next run.", sync_interval);
 
         // Sleep in small intervals to allow responsive stopping
         for (uint32_t i = 0; i < sync_interval && sync_module_running; i++) {
