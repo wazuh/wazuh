@@ -167,14 +167,14 @@ public:
 
         logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
-        m_store.put(std::format("{}_{}", session, seq),
+        m_store.put(fmt::format("{}_{}", session, seq),
                     rocksdb::Slice(reinterpret_cast<const char*>(dataRaw->data()), dataRaw->size()));
 
         m_gapSet->observe(data->seq());
 
         logDebug2(LOGGER_DEFAULT_TAG,
                   "Data received: %s %llu %llu %s",
-                  std::format("{}_{}", session, seq).c_str(),
+                  fmt::format("{}_{}", session, seq).c_str(),
                   m_context->sessionId,
                   m_context->agentId,
                   m_context->moduleName.c_str());

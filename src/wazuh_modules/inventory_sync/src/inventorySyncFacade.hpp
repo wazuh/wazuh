@@ -20,6 +20,7 @@
 #include "singleton.hpp"
 #include <asyncValueDispatcher.hpp>
 #include <filesystem>
+#include <fmt/format.h>
 #include <functional>
 #include <indexerConnector.hpp>
 #include <json.hpp>
@@ -287,7 +288,7 @@ public:
                         m_indexerConnector->deleteByQuery(res.context->moduleName, res.context->agentId);
                     }
 
-                    const auto prefix = std::format("{}_", res.context->sessionId);
+                    const auto prefix = fmt::format("{}_", res.context->sessionId);
 
                     // Lock indexer connector to avoid process with the timeout mechanism.
                     auto lock = m_indexerConnector->scopeLock();
