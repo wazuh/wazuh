@@ -227,6 +227,10 @@ if ! getent passwd wazuh > /dev/null 2>&1; then
   useradd -g wazuh -G wazuh -d %{_localstatedir} -r -s /sbin/nologin wazuh
 fi
 
+# Get version information
+OLD_VERSION=`%{_localstatedir}/bin/wazuh-control info -v`
+MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+
 # Stop the services to upgrade the package
 if [ $1 = 2 ]; then
   if [ ! -d "%{_localstatedir}" ]; then
@@ -247,6 +251,16 @@ if [ $1 = 2 ]; then
     touch %{_localstatedir}/tmp/wazuh.restart
   fi
   %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1 || %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+fi
+
+# Remove old databases if upgrading from 4.X to 5.X
+if [ $MAJOR = 4 ]; then
+  if [ -f %{_localstatedir}/queue/syscollector/db/local.db ]; then
+    rm -f %{_localstatedir}/queue/syscollector/db/local.db
+  fi
+  if [ -f %{_localstatedir}/queue/fim/db/fim.db ]; then
+    rm -f %{_localstatedir}/queue/fim/db/fim.db
+  fi
 fi
 
 %post
