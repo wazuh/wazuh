@@ -81,16 +81,6 @@ jobs:
               - 'packages/generate_package.sh'
               - 'packages/rpms/ppc64le/agent/**'
               - 'packages/rpms/utils/**'
-            pkg_rpm_legacy_builder_amd64:
-              - 'packages/build.sh'
-              - 'packages/generate_package.sh'
-              - 'packages/rpms/amd64/legacy/**'
-              - 'packages/rpms/utils/**'
-            pkg_rpm_legacy_builder_i386:
-              - 'packages/build.sh'
-              - 'packages/generate_package.sh'
-              - 'packages/rpms/i386/legacy/**'
-              - 'packages/rpms/utils/**'
             pkg_deb_agent_builder_arm64:
               - 'packages/build.sh'
               - 'packages/generate_package.sh'
@@ -191,20 +181,6 @@ jobs:
         if: steps.changes.outputs.pkg_rpm_agent_builder_ppc64le == 'true'
         run: |
           gh workflow run 5_builderpackage_upload-images-ppc.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
-
-      - name: Request pkg_rpm_legacy_builder_amd64 update
-        if: steps.changes.outputs.pkg_rpm_legacy_builder_amd64 == 'true'
-        run: |
-          gh workflow run 5_builderpackage_upload-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f legacy=true -f source_reference=${{ github.ref_name }}
-        env:
-          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
-
-      - name: Request pkg_rpm_legacy_builder_i386 update
-        if: steps.changes.outputs.pkg_rpm_legacy_builder_i386 == 'true'
-        run: |
-          gh workflow run 5_builderpackage_upload-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=i386 -f legacy=true -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 

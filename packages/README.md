@@ -8,7 +8,6 @@ This script automates the process of building Wazuh packages (manager or agent) 
 - Selectable architectures (amd64, i386, **ppc64le, arm64, armhf*).
 - Optional debug builds.
 - Generates checksums for built packages.
-- Builds legacy packages for CentOS 5 (RPM only).
 - Uses local source code or downloads from GitHub.
 - Builds future test packages (x.30.0).
 
@@ -37,10 +36,9 @@ wazuh# cd packages
 | -p, --path           | Installation path for the package (optional)                        | /var/ossec              |
 | -d, --debug          | Build binaries with debug symbols (optional)                        | no                      |
 | -c, --checksum       | Generate checksum on the same directory (optional)                  | no                      |
-| -l, --legacy         | Build package for CentOS 5 (RPM only) (optional)                    | no                      |
 | --dont-build-docker  | Use a locally built Docker image (optional)                         | no                      |
 | --tag                | Tag to use with the Docker image (optional)                         | -                       |
-| *--sources           | Path containing local Wazuh source code (optional)                  | script path            |
+| *--sources           | Path containing local Wazuh source code (optional)                  | script path             |
 | **--is_stage         | Use release name in package (optional)                              | no                      |
 | --src                | Generate the source package (optional)                              | no                      |
 | --system             | Package format to build (optional): rpm, deb (default)              | deb                     |
@@ -59,10 +57,7 @@ wazuh# cd packages
 2. Build a debug agent package for i386 architecture with checksum generation:
 ./wazuh_package_builder.sh -t agent -a i386 -s /tmp -d -c --system rpm
 
-3. Build a legacy RPM package for CentOS 5 (agent):
-./wazuh_package_builder.sh -t agent -l -s /tmp --system rpm
-
-4. Build a package using local Wazuh source code:
+3. Build a package using local Wazuh source code:
 ./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm
 
 
@@ -86,7 +81,7 @@ Where the JSON looks like this:
 ```json
 # cat wazuh-agent-test-amd64-rpm.json
 {
-    "ref":"4.9.0",
+    "ref":"5.0.0",
     "inputs":
         {
          "tag":"auto",
@@ -94,7 +89,6 @@ Where the JSON looks like this:
          "system":"rpm",
          "revision":"test",
          "is_stage":"false",
-         "legacy":"false"
         }
 }
 ```
@@ -109,7 +103,7 @@ Where the JSON looks like this:
 ```json
 # cat wazuh-agent-test-amd64-rpm.json
 {
-    "ref":"4.9.0",
+    "ref":"5.0.0",
     "inputs":
         {
          "docker_image_tag":"auto",
@@ -117,7 +111,6 @@ Where the JSON looks like this:
          "system":"deb",
          "revision":"test",
          "is_stage":"false",
-         "legacy":"false",
          "checksum":"false",
      }
 }
