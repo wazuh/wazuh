@@ -253,7 +253,7 @@ TEST_F(RouterCInterfaceTestNoSetUp, TestSendMessageAfterBrokerRestart)
 }
 
 // Global variables for integration testing callbacks
-static std::atomic<int> g_integration_callback_count{0};
+static std::atomic<int> g_integration_callback_count {0};
 static std::string g_integration_last_message;
 static std::mutex g_integration_message_mutex;
 
@@ -343,11 +343,14 @@ TEST_F(RouterCInterfaceTest, TestMultipleSubscribersSameTopic)
 
         // Create unique callback for each subscriber
         static std::vector<std::function<void(const char*)>> callbacks;
-        callbacks.push_back([&callback_counts, i](const char* message) {
-            if (message != nullptr) {
-                callback_counts[i]++;
-            }
-        });
+        callbacks.push_back(
+            [&callback_counts, i](const char* message)
+            {
+                if (message != nullptr)
+                {
+                    callback_counts[i]++;
+                }
+            });
 
         int result = router_subscriber_subscribe(handle, integration_test_callback);
         EXPECT_EQ(result, 0);
