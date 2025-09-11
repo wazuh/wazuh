@@ -821,24 +821,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_reference"]         = ext.value("update_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = ext.value("permissions",         UNKNOWN_VALUE);
             extensionItem["package_type"]              = UNKNOWN_VALUE;
-
-            if (ext.contains("state") && !ext["state"].get<std::string>().empty())
-            {
-                try
-                {
-                    int stateValue = std::stoi(ext["state"].get<std::string>());
-                    extensionItem["package_enabled"] = (stateValue == 1) ? 1 : 0;
-                }
-                catch (const std::exception&)
-                {
-                    extensionItem["package_enabled"] = -1;
-                }
-            }
-            else
-            {
-                extensionItem["package_enabled"] = -1;
-            }
-
+            extensionItem["package_enabled"]            = (ext.value("state", std::string("1")) == "1") ? 1 : 0;
             extensionItem["package_visible"]           = 0;
             extensionItem["package_autoupdate"]        = 0;
             extensionItem["package_persistent"]        = stringToInt("persistent");

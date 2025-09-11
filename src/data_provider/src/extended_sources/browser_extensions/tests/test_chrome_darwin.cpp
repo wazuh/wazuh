@@ -69,7 +69,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["profile_path"], Utils::joinPaths(mockHomePath, "mock-user/Library/Application Support/Google/Chrome/Profile 1"));
             EXPECT_EQ(jsonElement["referenced"], "1");
             EXPECT_EQ(jsonElement["referenced_identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
-            EXPECT_EQ(jsonElement["state"], "");
+            EXPECT_EQ(jsonElement["state"], "1");
             EXPECT_EQ(jsonElement["uid"], "123");
             EXPECT_EQ(jsonElement["update_url"], "https://clients2.google.com/service/update2/crx");
             EXPECT_EQ(jsonElement["version"], "1.0.0.6");
