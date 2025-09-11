@@ -31,6 +31,8 @@ RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
 ENV CPLUS_INCLUDE_PATH "/usr/local/gcc-9.4.0/include/c++/9.4.0/"
 ENV LD_LIBRARY_PATH "/usr/local/gcc-9.4.0/lib/"
 ENV PATH "/usr/local/gcc-9.4.0/bin:${PATH}"
+ENV CC="/usr/local/gcc-9.4.0/bin/gcc"
+ENV CXX="/usr/local/gcc-9.4.0/bin/g++"
 
 RUN curl -OL http://packages.wazuh.com/utils/cmake/cmake-3.18.3.tar.gz && \
     tar -zxvf cmake-3.18.3.tar.gz && cd cmake-3.18.3 && \
