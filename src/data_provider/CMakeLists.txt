@@ -74,11 +74,10 @@ include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
-if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
-  include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
-  include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
-  include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
-endif(NOT CMAKE_CHECK_CENTOS5)
+include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
+include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
+include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # Avoid download externals from http-request submodule
   set(EXTERNAL_RES "")
@@ -112,11 +111,9 @@ link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
 link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
 link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
-if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
 link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
 link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 link_directories(${SRC_FOLDER}/external/rpm/builddir/)
-endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
@@ -136,14 +133,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN32=1
                   -D_WIN32_WINNT=0x600
                   -DWIN_EXPORT)
-elseif(CMAKE_CHECK_CENTOS5)
-  file(GLOB SYSINFO_SRC
-      "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/src/network/*Linux.cpp"
-      "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParser.cpp"
-      "${CMAKE_SOURCE_DIR}/src/packages/packageLinuxParserRpmLegacy.cpp")
-  add_definitions(-DLINUX_TYPE=LinuxType::LEGACY) # Partial compilation in legacy systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   file(GLOB SYSINFO_SRC
       "${CMAKE_SOURCE_DIR}/src/*Linux.cpp"
@@ -227,9 +216,6 @@ target_link_libraries(sysinfo wazuhext FilesystemWrapper FileIO)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CURL_DEP "wazuhext")
   target_link_libraries(sysinfo urlrequest db groups users services dbus-1 browser_extensions)
-  if(CMAKE_CHECK_CENTOS5)
-      set(USE_HTTP 1)
-  endif(CMAKE_CHECK_CENTOS5)
   add_subdirectory(${SRC_FOLDER}/shared_modules/http-request ${SRC_FOLDER}/shared_modules/http-request/build)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 

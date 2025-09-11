@@ -40,7 +40,6 @@ endif
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
 CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
-CHECK_CENTOS5 := $(shell sh -c 'grep "CentOS release 5." /etc/redhat-release 2>&1 > /dev/null && echo YES || echo not')
 CHECK_ALPINE := $(shell sh -c 'grep "Alpine Linux" /etc/os-release 2>&1 > /dev/null && echo YES || echo not')
 
 ARCH_FLAGS =
@@ -191,11 +190,7 @@ ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
-ifeq (${CHECK_CENTOS5},YES)
-		OSSEC_CFLAGS+=-pthread
-else
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
-endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
 ifeq (${CHECK_ALPINE},YES)
@@ -299,9 +294,7 @@ endif
 
 # Check if symbol table should be included in release
 ifeq (${uname_S},Linux)
-	ifneq ($(CHECK_CENTOS5),YES)
-		SYMBOLS_IN_RELEASE = YES
-	endif
+	SYMBOLS_IN_RELEASE = YES
 else ifeq (${uname_S},Darwin)
 	SYMBOLS_IN_RELEASE = YES
 else ifeq (${TARGET},winagent)
@@ -804,19 +797,11 @@ ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
 ifeq (${uname_S},Linux)
-EXTERNAL_LIBS += ${DBUS_LIB}
-ifneq ($(CHECK_CENTOS5),YES)
-EXTERNAL_LIBS +=  ${LUA_LIB} ${RPM_LIB} ${POPT_LIB}
-endif
+EXTERNAL_LIBS += ${DBUS_LIB} ${LUA_LIB} ${RPM_LIB} ${POPT_LIB}
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
-
-ifeq ($(CHECK_CENTOS5),YES)
-EXTERNAL_LIBS += $(PROCPS_LIB)
-else
 EXTERNAL_LIBS += $(PROCPS_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
-endif
 endif
 endif
 ifeq (${uname_S},Darwin)
@@ -842,10 +827,8 @@ external: $(ROCKSDB_LIB) $(SIMDJSON_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_
 endif
 
 ifeq (${uname_S},Linux)
-ifneq ($(CHECK_CENTOS5),YES)
 ifneq (${TARGET},winagent)
 external: ${LIBBPF_LIB}
-endif
 endif
 endif
 
@@ -1172,11 +1155,7 @@ $(LIBPCRE2_LIB):
 ifeq (${TARGET},winagent)
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --enable-jit=no --host=${MINGW_HOST} --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
 else
-ifeq (${CHECK_CENTOS5},YES)
-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=no --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-else
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-endif
 endif
 
 ### popt lib ###
@@ -1314,13 +1293,6 @@ ifeq ($(PRECOMPILED_ARCH),/aarch64)
 	CPYTHON_ARCHIVE := cpython_arm64
 else
 	CPYTHON_ARCHIVE := cpython_x86_64
-endif
-
-ifeq ($(CHECK_CENTOS5),YES)
-PRECOMPILED_OS := el5
-# Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
-SYSINFO_OS+=-DCMAKE_CHECK_CENTOS5=1
-SYSCHECK_OS=-DCMAKE_CHECK_CENTOS5=1
 endif
 
 ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
