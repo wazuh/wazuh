@@ -262,7 +262,6 @@ STATIC void wm_agent_upgrade_router_callback(const char* message) {
 
         OS_SendSecureTCP(sock, strlen(message), message);
         os_free(message);
-
         close(sock);
     }
 }
@@ -286,7 +285,7 @@ STATIC bool initialize_router_functions(void) {
 }
 
 STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
-    merror(WM_AGENT_UPGRADE_LOGTAG, "Starting router subscriber thread for upgrade notifications");
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Starting router subscriber thread for upgrade notifications");
 
     if (!initialize_router_functions()) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, "Failed to initialize router functions");
@@ -314,7 +313,6 @@ STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
 
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Successfully subscribed to router topic '%s'", topic_name);
 
-    // TODO: add a shutdown mechanism, not processor consuming thread?
     while (1) {
         sleep(1);
         #ifdef WAZUH_UNIT_TESTING
@@ -322,7 +320,6 @@ STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
         #endif
     }
 
-    // TODO: check if this part is ever reached
     // Cleanup
     router_subscriber_unsubscribe_ptr(subscriber_handle);
     router_subscriber_destroy_ptr(subscriber_handle);

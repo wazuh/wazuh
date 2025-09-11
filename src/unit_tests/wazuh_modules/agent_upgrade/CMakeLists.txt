@@ -35,8 +35,9 @@ if(${TARGET} STREQUAL "server")
     list(APPEND upgrade_names "test_wm_agent_upgrade_manager")
     list(APPEND upgrade_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
                             -Wl,--wrap,wm_agent_upgrade_parse_message -Wl,--wrap,wm_agent_upgrade_process_upgrade_command -Wl,--wrap,wm_agent_upgrade_process_upgrade_custom_command -Wl,--wrap,wm_agent_upgrade_process_agent_result_command \
-                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_cancel_pending_upgrades -Wl,--wrap,wm_agent_upgrade_process_upgrade_result_command -Wl,--wrap,sleep -Wl,--wrap,CreateThread -Wl,--wrap,pthread_exit -Wl,--wrap,getpid \
-                            ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_cancel_pending_upgrades -Wl,--wrap,wm_agent_upgrade_process_upgrade_result_command -Wl,--wrap,sleep -Wl,--wrap,CreateThread \
+                            -Wl,--wrap,pthread_exit -Wl,--wrap,getpid -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_function_sym -Wl,--wrap,router_subscriber_create -Wl,--wrap,router_subscriber_subscribe \
+                            -Wl,--wrap,router_subscriber_unsubscribe -Wl,--wrap,router_subscriber_destroy ${DEBUG_OP_WRAPPERS}")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_parsing")
     list(APPEND upgrade_flags "-Wl,--wrap,OS_ReadXML -Wl,--wrap,OS_GetOneContentforElement -Wl,--wrap,OS_ClearXML ${DEBUG_OP_WRAPPERS}")

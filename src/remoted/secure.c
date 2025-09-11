@@ -246,11 +246,11 @@ void HandleSecure()
 
     // Router providers initialization
     if (router_upgrade_ack_handle = router_provider_create("upgrade_notifications", false), !router_upgrade_ack_handle) {
-        mdebug2("Failed to create router handle for 'upgrade_notifications'.");
+        mwarn("Failed to create router handle for 'upgrade_notifications'.");
     }
 
     if (router_sync_handle = router_provider_create("inventory-states", false), !router_sync_handle) {
-        mdebug2("Failed to create router handle for 'inventory synchronization'.");
+        mwarn("Failed to create router handle for 'inventory synchronization'.");
     }
 
     // Create upsert control message thread
@@ -1048,7 +1048,7 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
         size_t msg_size = strlen(upgrade_message) + 1; // +1 for null terminator
 
         if (router_provider_send(router_handle, upgrade_message, msg_size) != 0) {
-            mdebug2("Unable to forward upgrade-ack message '%s' for agent %s", msg_start, agent_id);
+            merror("Unable to forward upgrade-ack message '%s' for agent %s", msg_start, agent_id);
         }
 
         // Free the printed message and JSON object

@@ -13,18 +13,24 @@
 #include <cmocka.h>
 #include <stdio.h>
 
+#include "../../wrappers/common.h"
 #include "../../wrappers/posix/pthread_wrappers.h"
 #include "../../wrappers/posix/select_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
+#include "../../wrappers/wazuh/shared/sym_load_wrappers.h"
+#include "../../wrappers/wazuh/shared_modules/router_wrappers.h"
 
 #include "../../wazuh_modules/wmodules.h"
 #include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_manager.h"
 #include "../../headers/shared.h"
 
 void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs);
+void* wm_agent_upgrade_router_subscriber_thread(void);
+void wm_agent_upgrade_router_callback(const char* message);
+bool initialize_router_functions(void);
 
 // Setup / teardown
 
@@ -32,12 +38,14 @@ static int setup_group(void **state) {
     wm_manager_configs *config = NULL;
     os_calloc(1, sizeof(wm_manager_configs), config);
     *state = config;
+    test_mode = 1;
     return 0;
 }
 
 static int teardown_group(void **state) {
     wm_manager_configs *config = *state;
     os_free(config);
+    test_mode = 0;
     return 0;
 }
 
@@ -919,6 +927,275 @@ void test_wm_agent_upgrade_start_manager_module_disabled(void **state)
     wm_agent_upgrade_start_manager_module(config, 0);
 }
 
+void test_wm_agent_upgrade_router_callback_failed_connection(void **state)
+{
+    char *input_message = "{\"command\":\"upgrade_update_status\",\"parameters\":{\"agents\":[1],\"error\":0,\"message\":\"Success\",\"status\":\"Done\"}}";
+    short int type = WRITE;
+    char * path = "/queue";
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WM_UPGRADE_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, -6);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "Could not connect to upgrade module socket at 'queue/tasks/upgrade'. Error: Operation not permitted");
+
+    wm_agent_upgrade_router_callback(input_message);
+}
+
+void test_wm_agent_upgrade_router_callback_success(void **state)
+{
+    char *input_message = strdup("{\"command\":\"upgrade_update_status\",\"parameters\":{\"agents\":[1],\"error\":0,\"message\":\"Success\",\"status\":\"Done\"}}");
+    short int type = WRITE;
+    char * path = "/queue";
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WM_UPGRADE_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, 5);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Sending router-triggered upgrade message: '{\"command\":\"upgrade_update_status\",\"parameters\":{\"agents\":[1],\"error\":0,\"message\":\"Success\",\"status\":\"Done\"}}'");
+
+    expect_value(__wrap_OS_SendSecureTCP, sock, 5);
+    expect_value(__wrap_OS_SendSecureTCP, size, strlen(input_message));
+    expect_string(__wrap_OS_SendSecureTCP, msg, input_message);
+    will_return(__wrap_OS_SendSecureTCP, 0);
+
+    wm_agent_upgrade_router_callback(input_message);
+}
+
+void test_wm_agent_upgrade_router_callback_null_message(void **state)
+{
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Empty router message received");
+
+    wm_agent_upgrade_router_callback(NULL);
+}
+
+void test_wm_agent_upgrade_router_callback_socket_error(void **state)
+{
+    char *input_message = strdup("{\"command\":\"upgrade_update_status\",\"parameters\":{\"agents\":[1],\"error\":0,\"message\":\"Success\",\"status\":\"Done\"}}");
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, WM_UPGRADE_SOCK);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
+    will_return(__wrap_OS_ConnectUnixDomain, OS_SOCKTERR);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "Could not connect to upgrade module socket at 'queue/tasks/upgrade'. Error: Operation not permitted");
+
+    wm_agent_upgrade_router_callback(input_message);
+
+    os_free(input_message);
+}
+
+void test_initialize_router_functions_success(void **state)
+{
+    void *mock_handle = (void*)0x12345;
+
+    expect_string(__wrap_so_get_module_handle, so, "router");
+    will_return(__wrap_so_get_module_handle, mock_handle);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_create");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_create);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_subscribe");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_subscribe);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_unsubscribe");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_unsubscribe);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_destroy");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_destroy);
+
+    bool result = initialize_router_functions();
+    assert_true(result);
+}
+
+void test_initialize_router_functions_module_load_failure(void **state)
+{
+    expect_string(__wrap_so_get_module_handle, so, "router");
+    will_return(__wrap_so_get_module_handle, NULL);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:router");
+    expect_string(__wrap__mtwarn, formatted_msg, "Unable to load router module.");
+
+    bool result = initialize_router_functions();
+    assert_false(result);
+}
+
+void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
+{
+    void *mock_handle = (void*)0x12345;
+    void *mock_subscriber = (void*)0xABCDE;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+
+    // Mock initialize_router_functions success
+    expect_string(__wrap_so_get_module_handle, so, "router");
+    will_return(__wrap_so_get_module_handle, mock_handle);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_create");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_create);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_subscribe");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_subscribe);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_unsubscribe");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_unsubscribe);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_destroy");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_destroy);
+
+    // Mock router_subscriber_create
+    expect_string(__wrap_router_subscriber_create, topic_name, "upgrade_notifications");
+    expect_string(__wrap_router_subscriber_create, subscriber_id, "ack_upgrade");
+    expect_value(__wrap_router_subscriber_create, is_local, false);
+    will_return(__wrap_router_subscriber_create, mock_subscriber);
+
+    // Mock router_subscriber_subscribe
+    expect_value(__wrap_router_subscriber_subscribe, handle, mock_subscriber);
+    will_return(__wrap_router_subscriber_subscribe, 0);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "Successfully subscribed to router topic 'upgrade_notifications'");
+
+    expect_value(__wrap_sleep, seconds, 1);
+
+    // Mock cleanup functions
+    expect_value(__wrap_router_subscriber_unsubscribe, handle, mock_subscriber);
+    will_return(__wrap_router_subscriber_unsubscribe, 0);
+    expect_value(__wrap_router_subscriber_destroy, handle, mock_subscriber);
+    will_return(__wrap_router_subscriber_destroy, 0);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "Router subscriber thread stopped");
+
+    void* result = wm_agent_upgrade_router_subscriber_thread();
+    assert_null(result);
+}
+
+void test_wm_agent_upgrade_router_subscriber_thread_init_failure(void **state)
+{
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+
+    // Mock initialize_router_functions failure
+    expect_string(__wrap_so_get_module_handle, so, "router");
+    will_return(__wrap_so_get_module_handle, NULL);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:router");
+    expect_string(__wrap__mtwarn, formatted_msg, "Unable to load router module.");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "Failed to initialize router functions");
+
+    void* result = wm_agent_upgrade_router_subscriber_thread();
+    assert_null(result);
+}
+
+void test_wm_agent_upgrade_router_subscriber_thread_create_failure(void **state)
+{
+    void *mock_handle = (void*)0x12345;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+
+    // Mock initialize_router_functions success
+    expect_string(__wrap_so_get_module_handle, so, "router");
+    will_return(__wrap_so_get_module_handle, mock_handle);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_create");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_create);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_subscribe");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_subscribe);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_unsubscribe");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_unsubscribe);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_destroy");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_destroy);
+
+    // Mock router_subscriber_create failure
+    expect_string(__wrap_router_subscriber_create, topic_name, "upgrade_notifications");
+    expect_string(__wrap_router_subscriber_create, subscriber_id, "ack_upgrade");
+    expect_value(__wrap_router_subscriber_create, is_local, false);
+    will_return(__wrap_router_subscriber_create, NULL);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "Failed to create router subscriber for topic 'upgrade_notifications'");
+
+    void* result = wm_agent_upgrade_router_subscriber_thread();
+    assert_null(result);
+}
+
+void test_wm_agent_upgrade_router_subscriber_thread_subscribe_failure(void **state)
+{
+    void *mock_handle = (void*)0x12345;
+    void *mock_subscriber = (void*)0xABCDE;
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+
+    // Mock initialize_router_functions success
+    expect_string(__wrap_so_get_module_handle, so, "router");
+    will_return(__wrap_so_get_module_handle, mock_handle);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_create");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_create);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_subscribe");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_subscribe);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_unsubscribe");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_unsubscribe);
+
+    expect_value(__wrap_so_get_function_sym, handle, mock_handle);
+    expect_string(__wrap_so_get_function_sym, function_name, "router_subscriber_destroy");
+    will_return(__wrap_so_get_function_sym, __wrap_router_subscriber_destroy);
+
+    // Mock router_subscriber_create success
+    expect_string(__wrap_router_subscriber_create, topic_name, "upgrade_notifications");
+    expect_string(__wrap_router_subscriber_create, subscriber_id, "ack_upgrade");
+    expect_value(__wrap_router_subscriber_create, is_local, false);
+    will_return(__wrap_router_subscriber_create, mock_subscriber);
+
+    // Mock router_subscriber_subscribe failure
+    expect_value(__wrap_router_subscriber_subscribe, handle, mock_subscriber);
+    will_return(__wrap_router_subscriber_subscribe, -1);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "Failed to subscribe to router topic 'upgrade_notifications'");
+
+    // Mock cleanup function
+    expect_value(__wrap_router_subscriber_destroy, handle, mock_subscriber);
+    will_return(__wrap_router_subscriber_destroy, 0);
+
+    void* result = wm_agent_upgrade_router_subscriber_thread();
+    assert_null(result);
+}
+
+// Tests
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_agent_upgrade_listen_messages
@@ -939,7 +1216,18 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_listen_messages_bind_error),
         // wm_agent_upgrade_start_manager_module
         cmocka_unit_test(test_wm_agent_upgrade_start_manager_module_enabled),
-        cmocka_unit_test(test_wm_agent_upgrade_start_manager_module_disabled)
+        cmocka_unit_test(test_wm_agent_upgrade_start_manager_module_disabled),
+        // Router functionality tests
+        cmocka_unit_test(test_wm_agent_upgrade_router_callback_failed_connection),
+        cmocka_unit_test(test_wm_agent_upgrade_router_callback_success),
+        cmocka_unit_test(test_wm_agent_upgrade_router_callback_null_message),
+        cmocka_unit_test(test_wm_agent_upgrade_router_callback_socket_error),
+        cmocka_unit_test(test_initialize_router_functions_success),
+        cmocka_unit_test(test_initialize_router_functions_module_load_failure),
+        cmocka_unit_test(test_wm_agent_upgrade_router_subscriber_thread_success),
+        cmocka_unit_test(test_wm_agent_upgrade_router_subscriber_thread_init_failure),
+        cmocka_unit_test(test_wm_agent_upgrade_router_subscriber_thread_create_failure),
+        cmocka_unit_test(test_wm_agent_upgrade_router_subscriber_thread_subscribe_failure),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
