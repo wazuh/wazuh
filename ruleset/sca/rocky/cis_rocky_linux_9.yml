@@ -1504,7 +1504,7 @@ checks:
 
   # 2.1.1 Ensure autofs services are not in use (Automated)
   - id: 31672
-    title: "Ensure autofs services are not in usee."
+    title: "Ensure autofs services are not in use."
     description: "autofs allows automatic mounting of devices, typically including CD/DVDs and USB drives."
     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
     impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting. There may be packages that are dependent on the autofs package. If the autofs package is removed, these dependent packages will be removed as well. Before removing the autofs package, review any dependent packages to determine if they are required on the system."
@@ -3792,7 +3792,7 @@ checks:
       - "f:/etc/passwd -> r:^root:x:0:0"
 
   # 5.4.2.3 Ensure group root is the only GID 0 group. (Automated)
-  - id: 33217
+  - id: 31719
     title: "Ensure group root is the only GID 0 group."
     description: "The groupmod command can be used to specify which group the root group belongs to. This affects permissions of files that are group owned by the root group."
     rationale: "Using GID 0 for the root group helps prevent root group owned files from accidentally becoming accessible to non-privileged users."
@@ -3811,7 +3811,7 @@ checks:
         c:/bin/sh -c "awk -F: '$3==\"0\"{print $1\":\"$3}' /etc/group" -> r:^root\:0$
 
   # 5.4.2.4 Ensure root account access is controlled. (Automated)
-  - id: 33218
+  - id: 31720
     title: "Ensure root account access is controlled."
     description: "There are a number of methods to access the root account directly. Without a password set any user would be able to gain access and thus control over the entire system."
     rationale: "Access to root should be secured at all times."
