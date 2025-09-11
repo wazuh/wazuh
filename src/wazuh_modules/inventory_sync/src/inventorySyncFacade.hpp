@@ -297,7 +297,7 @@ public:
                         m_indexerConnector->deleteByQuery(res.context->moduleName, res.context->agentId);
                     }
 
-                    const auto prefix = fmt::format("{}_", res.context->sessionId);
+                    const auto prefix = "123";
 
                     // Lock indexer connector to avoid process with the timeout mechanism.
                     auto lock = m_indexerConnector->scopeLock();
