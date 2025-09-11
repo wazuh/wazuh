@@ -683,7 +683,8 @@ class APIRequestQueue(WazuhRequestQueue):
 
     async def run(self):
         while True:
-            await self.server.tasks_event.wait()
+            if self.server.configuration['node_type'] == 'master':
+                await self.server.tasks_event.wait()
 
             names, request = (await self.request_queue.get()).split(' ', 1)
             names = names.split('*', 1)
@@ -732,7 +733,8 @@ class SendSyncRequestQueue(WazuhRequestQueue):
 
     async def run(self):
         while True:
-            await self.server.tasks_event.wait()
+            if self.server.configuration['node_type'] == 'master':
+                await self.server.tasks_event.wait()
 
             names, request = (await self.request_queue.get()).split(' ', 1)
             names = names.split('*', 1)

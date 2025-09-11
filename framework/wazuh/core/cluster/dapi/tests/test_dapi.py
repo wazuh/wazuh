@@ -765,7 +765,8 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
 
     class ServerMock:
         def __init__(self):
-            self.clients = {"names": ["w1", "w2"]}
+            self.clients = {'names': ['w1', 'w2']}
+            self.configuration = {'node_type': 'master'}
             self.tasks_event = asyncio.Event()
             self.tasks_event.set()
 
@@ -814,7 +815,8 @@ async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
 
     class ServerMock:
         def __init__(self):
-            self.clients = {"names": ["w1", "w2"]}
+            self.clients = {'names': ['w1', 'w2']}
+            self.configuration = {'node_type': 'master'}
             self.tasks_event = asyncio.Event()
             self.tasks_event.set()
 
