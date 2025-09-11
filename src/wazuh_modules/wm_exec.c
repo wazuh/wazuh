@@ -146,7 +146,8 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
 
     if (!wCreateProcessW(NULL, wcommand, NULL, NULL, TRUE, dwCreationFlags, NULL, NULL, &sinfo, &pinfo)) {
         winerror = GetLastError();
-        merror("at wm_exec(): CreateProcess(%d): %s", winerror, win_strerror(winerror));
+        merror(
+            "at wm_exec(): CreateProcess(%d) failed for command '%s': %s", winerror, command, win_strerror(winerror));
         os_free(wcommand);
         return -1;
     }
