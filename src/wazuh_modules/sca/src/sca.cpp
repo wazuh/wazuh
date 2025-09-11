@@ -192,8 +192,9 @@ void SCA::setup(const struct wm_sca_t* sca_config)
         const bool remoteEnabled = sca_config->remote_commands != 0;
 
         // Extract scan interval from scan_config (default to 3600 seconds if not set)
-        const auto scanInterval = sca_config->scan_config.interval > 0 ?
-                                  static_cast<std::time_t>(sca_config->scan_config.interval) : 3600;
+        const auto scanIntervalInSeconds = sca_config->scan_config.interval > 0
+                                           ? std::chrono::seconds(sca_config->scan_config.interval)
+                                           : std::chrono::seconds(3600);
 
         // Extract policy paths if available
         std::vector<sca::PolicyData> policies;
@@ -212,7 +213,13 @@ void SCA::setup(const struct wm_sca_t* sca_config)
         }
 
         // Call Setup only once during initialization
-        m_sca->Setup(enabled, scan_on_start, scanInterval, commandsTimeout, remoteEnabled, policies, yaml_file_to_json_cpp);
+        m_sca->Setup(enabled,
+                     scan_on_start,
+                     scanIntervalInSeconds,
+                     commandsTimeout,
+                     remoteEnabled,
+                     policies,
+                     yaml_file_to_json_cpp);
     }
 }
 
