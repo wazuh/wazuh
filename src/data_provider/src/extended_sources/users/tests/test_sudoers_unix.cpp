@@ -102,7 +102,7 @@ TEST_F(SudoersProviderTest, CollectReturnsExpectedJson)
 
     EXPECT_EQ(result[2]["header"], "someuser");
     EXPECT_EQ(result[2]["source"], filePath);
-    EXPECT_EQ(result[2]["rule_details"], "ALL=(ALL) /dir/bin/apt update, \\/dir/bin/apt upgrade, \\/dir/bin/apt install somepackage, \\/dir/bin/systemctl restart someservice");
+    EXPECT_EQ(result[2]["rule_details"], "ALL=(ALL) /dir/bin/apt update, /dir/bin/apt upgrade, /dir/bin/apt install somepackage, /dir/bin/systemctl restart someservice");
 
     EXPECT_EQ(result[3]["header"], "@includedir");
     EXPECT_EQ(result[3]["source"], filePath);
