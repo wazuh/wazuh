@@ -113,6 +113,9 @@ static void sca_log_callback(const modules_log_level_t level, const char* log, _
         case LOG_DEBUG:
             mdebug1("%s", log);
             break;
+        case LOG_DEBUG_VERBOSE:
+            mdebug2("%s", log);
+            break;
         case LOG_INFO:
             minfo("%s", log);
             break;
