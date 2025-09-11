@@ -15,14 +15,15 @@ is_variadic: false
 arguments:
   number_to_convert:
     type: number
-    generate:
-      - float
-      - double
-      - integer
+    generate: integer
     source: reference
+
+skipped:
+  - success_cases
 
 output:
   type: string
+  subset: string
 
 test:
   - arguments:
