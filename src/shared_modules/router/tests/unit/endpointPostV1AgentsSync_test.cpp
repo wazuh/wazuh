@@ -181,7 +181,7 @@ TEST_F(EndpointPostV1AgentsSyncTest, LabelsSynchronizationError)
         .WillOnce(Return(SQLITE_DONE)) // UPDATE agent
         .WillOnce(Return(SQLITE_DONE)) // DELETE labels
         .WillOnce(testing::Throw(std::runtime_error("Database constraint violation"))); // INSERT labels (throws)
-    EXPECT_CALL(*stmt, reset()).Times(2); // Only for UPDATE and DELETE, not for INSERT due to exception
+    EXPECT_CALL(*stmt, reset()).Times(3); // Only for UPDATE and DELETE, not for INSERT due to exception
 
     req.body = R"(
     {
@@ -236,7 +236,7 @@ TEST_F(EndpointPostV1AgentsSyncTest, MultipleLabelsWithErrorBreaksLoop)
         .WillOnce(Return(SQLITE_DONE)) // DELETE labels
         .WillOnce(Return(SQLITE_DONE)) // INSERT first label
         .WillOnce(testing::Throw(std::runtime_error("Database constraint violation"))); // INSERT second label (throws)
-    EXPECT_CALL(*stmt, reset()).Times(3); // UPDATE, DELETE, and first INSERT
+    EXPECT_CALL(*stmt, reset()).Times(4); // UPDATE, DELETE, and first INSERT
 
     req.body = R"(
     {

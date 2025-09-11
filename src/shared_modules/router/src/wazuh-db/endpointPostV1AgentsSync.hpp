@@ -121,6 +121,7 @@ public:
                     {
                         for (const auto& label : agent.at("labels"))
                         {
+                            stmtInsertLabels.reset();
                             stmtInsertLabels.bind(1, idAgent);
                             stmtInsertLabels.bind(2, value<std::string_view>(label, "key"));
                             stmtInsertLabels.bind(3, value<std::string_view>(label, "value"));
@@ -134,8 +135,6 @@ public:
                                            "Cannot set label for agent: " + std::to_string(idAgent) + ", " + e.what());
                                 break;
                             }
-
-                            stmtInsertLabels.reset();
                         }
                     }
                 }
