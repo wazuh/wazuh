@@ -1,4 +1,4 @@
-name: 4_testunit_inventory-harvester
+name: 4.X - Inventory Harvester - Unit tests
 
 on:
   workflow_dispatch:
