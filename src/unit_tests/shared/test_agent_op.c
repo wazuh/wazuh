@@ -572,11 +572,42 @@ static void test_parse_agent_add_response(void **state) {
     assert_int_equal(err, -2);
     assert_string_equal(err_response, "ERROR: Invalid message format");
 }
+static void test_os_write_agent_info_success(void **state) {
+    File *fp = (FILE*)0x1234;
+    expect_string(__wrap_wfopen, path, "queue/sockets/.agent_info");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, fp);
+
+    expect_value(__wrap_fprintf, stream, fp);
+    expect_value(__wrap_fprintf, format, "agente\n 001\n default\n");
+    will_return(__wrap_fprintf, 0);
+
+    expect_value(__wrap_fclose, _File, fp);
+    will_return(__wrap_fclose, 0);
+
+    os_write_agent_info("agente","192.168.56.10","001","default");
+
+}
+
+static void test_os_write_agent_info_no_success(void **state) {
+    expect_string(__wrap_wfopen, path, "queue/sockets/.agent_info");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, NULL);
+
+    errno = 1;
+
+    expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file queue/sockets/.agent_info due to [(1)-(Operation not permitted)].");
+    os_write_agent_info("agente","192.168.56.10","001","default");
+
+
+}
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_create_agent_add_payload),
         cmocka_unit_test(test_parse_agent_add_response),
+        cmocka_unit_test(test_os_write_agent_info_success),
+        cmocka_unit_test(test_os_write_agent_info_no_success),
         #ifndef WIN32
         cmocka_unit_test(test_create_agent_remove_payload),
         cmocka_unit_test(test_create_sendsync_payload),
