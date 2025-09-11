@@ -331,7 +331,7 @@ namespace chrome
 
     void ChromeExtensionsProvider::parsePreferenceSettings(ChromeExtension& extension, const std::string& key, const nlohmann::json& value)
     {
-        extension.state = value.contains("state") ? std::to_string(value["state"].get<int>()) : "";
+        extension.state = value.contains("state") ? std::to_string(value["state"].get<int>()) : "1";
 
         if (value.contains("from_webstore"))
         {
