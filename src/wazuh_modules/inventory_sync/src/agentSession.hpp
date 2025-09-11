@@ -19,7 +19,6 @@
 #include "rocksDBWrapper.hpp"
 #include "threadDispatcher.h"
 #include <cctype>
-#include <fmt/format.h>
 #include <functional>
 #include <memory>
 #include <ranges>
@@ -168,7 +167,7 @@ public:
 
         logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
-        m_store.put(fmt::format("{}_{}", session, seq),
+        m_store.put("123_1"),
                     rocksdb::Slice(reinterpret_cast<const char*>(dataRaw->data()), dataRaw->size()));
 
         m_gapSet->observe(data->seq());
