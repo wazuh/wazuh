@@ -21,7 +21,6 @@
 #include "stringHelper.h"
 #include <asyncValueDispatcher.hpp>
 #include <filesystem>
-#include <fmt/format.h>
 #include <functional>
 #include <indexerConnector.hpp>
 #include <json.hpp>
