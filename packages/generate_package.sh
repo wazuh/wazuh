@@ -25,7 +25,6 @@ DOCKER_TAG="latest"
 INSTALLATION_PATH="/var/ossec"
 CHECKSUM="no"
 FUTURE="no"
-LEGACY="no"
 IS_STAGE="no"
 
 
@@ -55,23 +54,8 @@ download_file() {
 }
 
 build_pkg() {
-    if [ "$LEGACY" = "yes" ]; then
-        REVISION="${REVISION}.el5"
-        TAR_URL="https://packages-dev.wazuh.com/utils/centos-5-i386-build/centos-5-i386.tar.gz"
-        TAR_FILE="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy/centos-5-i386.tar.gz"
-        if [ ! -f "$TAR_FILE" ]; then
-            download_file ${TAR_URL} "${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy"
-        fi
-        DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy"
-        CONTAINER_NAME="pkg_${SYSTEM}_legacy_builder_${ARCHITECTURE}"
-        if [ "$SYSTEM" != "rpm" ]; then
-            echo "Legacy mode is only available for RPM packages."
-            clean 1
-        fi
-    else
-        CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
-        DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"
-    fi
+    CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
+    DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"
 
     # Copy the necessary files
     cp ${CURRENT_PATH}/build.sh ${DOCKERFILE_PATH}
@@ -94,7 +78,7 @@ build_pkg() {
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} \
         ${REVISION} ${JOBS} ${DEBUG} \
-        ${CHECKSUM} ${FUTURE} ${LEGACY} ${SRC}|| return 1
+        ${CHECKSUM} ${FUTURE} ${SRC}|| return 1
 
     return 0
 }
@@ -118,7 +102,6 @@ help() {
     echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
     echo "    -d, --debug                [Optional] Build the binaries with debug flags (without optimizations). By default: no."
     echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package. By default: no."
-    echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub. By default use the script path."
@@ -163,10 +146,6 @@ main() {
             else
                 help 1
             fi
-            ;;
-        "-l"|"--legacy")
-            LEGACY="yes"
-            shift 1
             ;;
         "-j"|"--jobs")
             if [ -n "$2" ]; then
