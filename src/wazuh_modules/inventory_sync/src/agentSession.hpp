@@ -167,9 +167,6 @@ public:
 
         logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%llu' for session '%llu'", seq, session);
 
-        m_store.put("123_1"),
-                    rocksdb::Slice(reinterpret_cast<const char*>(dataRaw->data()), dataRaw->size()));
-
         m_gapSet->observe(data->seq());
 
         if (m_endReceived)
