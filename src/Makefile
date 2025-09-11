@@ -926,7 +926,6 @@ else
 endif
 endif
 endif
-endif
 
 #### libbpf-bootstrap #########
 
@@ -1877,7 +1876,6 @@ endif
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-endif
 endif
 endif
 endif

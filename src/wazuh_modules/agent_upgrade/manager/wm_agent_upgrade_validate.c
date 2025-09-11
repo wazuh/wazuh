@@ -26,6 +26,7 @@ static const char* invalid_platforms[] = {
     "solaris",
     "sunos",
     "aix",
+    "hp-ux",
     "bsd"
 };
 
