@@ -579,13 +579,13 @@ static void test_os_write_agent_info_success(void **state) {
     will_return(__wrap_wfopen, fp);
 
     expect_value(__wrap_fprintf, stream, fp);
-    expect_value(__wrap_fprintf, format, "agente\n 001\n default\n");
+    expect_value(__wrap_fprintf, format, "agent\n 001\n default\n");
     will_return(__wrap_fprintf, 0);
 
     expect_value(__wrap_fclose, _File, fp);
     will_return(__wrap_fclose, 0);
 
-    os_write_agent_info("agente","192.168.56.10","001","default");
+    os_write_agent_info("agent","192.168.56.10","001","default");
 
 }
 
@@ -597,7 +597,7 @@ static void test_os_write_agent_info_no_success(void **state) {
     errno = 1;
 
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file queue/sockets/.agent_info due to [(1)-(Operation not permitted)].");
-    os_write_agent_info("agente","192.168.56.10","001","default");
+    os_write_agent_info("agent","192.168.56.10","001","default");
 
 
 }
