@@ -1,4 +1,4 @@
-name: Running RTR. Module syscheck for agent/winagent targets
+name: 5.X - Running RTR. Module syscheck for agent/winagent targets
 
 on:
   workflow_dispatch:

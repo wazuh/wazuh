@@ -1,4 +1,4 @@
-name: Build Binutils Packages
+name: 5.X - Build Binutils Packages
 
 on:
   workflow_dispatch:

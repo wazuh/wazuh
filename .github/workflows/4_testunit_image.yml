@@ -1,4 +1,4 @@
-name: Create and publish Unit Tests Docker image
+name: 4.X - Create and publish - Unit tests Docker image
 
 on:
   workflow_dispatch:

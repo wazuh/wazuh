@@ -1,4 +1,4 @@
-name: Legacy unit tests for wazuh
+name: 5.X - Wazuh - Legacy Unit tests
 
 on:
   workflow_dispatch:

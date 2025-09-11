@@ -1,4 +1,4 @@
-name: 5_testunit_contentmanager
+name: 5.X - Content Manager - Unit tests
 
 on:
   workflow_dispatch:

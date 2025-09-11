@@ -1,5 +1,5 @@
 run-name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }} ${{ inputs.id }}
-name: Build Wazuh server
+name: 6.X - Build Wazuh server
 
 on:
   workflow_dispatch:

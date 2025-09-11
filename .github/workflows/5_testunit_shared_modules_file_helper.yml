@@ -1,4 +1,4 @@
-name: 5_testunit_shared_modules_file_helper
+name: 5.X - Shared Modules - File Helper - Unit tests
 
 on:
   workflow_dispatch:
