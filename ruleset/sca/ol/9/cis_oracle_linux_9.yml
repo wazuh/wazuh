@@ -842,8 +842,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - f:/boot/grub2/user.cfg
-      - f:/boot/grub2/user.cfg -> r:^\s*GRUB2_PASSWORD=grub.pbkdf2.sha512'
+      - 'f:/boot/grub2/user.cfg'
+      - 'f:/boot/grub2/user.cfg -> r:^\s*GRUB2_PASSWORD=grub.pbkdf2.sha512'
 
   # 1.4.2 Ensure permissions on bootloader config are configured. (Automated)
   - id: 33532
@@ -4322,7 +4322,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- ->  r:\s0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- -> r:\s0 0/root 0/root'
 
   # 6.1.7 Ensure permissions on /etc/gshadow are configured. (Automated)
   - id: 33675
@@ -4346,7 +4346,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow ->  r:\s0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow -> r:\s0 0/root 0/root'
 
   # 6.1.8 Ensure permissions on /etc/gshadow- are configured. (Automated)
   - id: 33676
@@ -4370,7 +4370,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- ->  r:\s0 0/root 0/root'
+      - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- -> r:\s0 0/root 0/root'
 
   # 6.1.9 Ensure no world writable files exist. (Automated) - Not Implemented
   # 6.1.10 Ensure no unowned files or directories exist. (Automated) - Not Implemented
