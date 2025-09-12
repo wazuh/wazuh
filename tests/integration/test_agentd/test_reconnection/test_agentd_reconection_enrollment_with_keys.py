@@ -58,7 +58,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_keepalive, wait_enrollment_try
+from utils import wait_connect, wait_enrollment_try
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
@@ -72,7 +72,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -121,7 +121,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
 
     input_description: An external YAML file (wazuh_conf.yaml) includes configuration settings for the agent.
                        Two test cases are found in the test module and include parameters
-                       for the environment setup using the TCP and UDP protocols.
+                       for the environment setup using the TCP protocols.
 
     expected_output:
         - r'Valid key received'
@@ -132,37 +132,39 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         - ssl
         - keys
     '''
-    # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-    remoted_server.start()
 
-    # Wait until Agent is notifying Manager
-    wait_keepalive()
+    try:
+        # Start RemotedSimulator
+        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server.start()
 
-    # Reset simulator
-    remoted_server.destroy()
+        # Wait until Agent is connected
+        wait_connect()
 
-    # Start rejecting Agent
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'], mode = 'WRONG_KEY')
-    remoted_server.start()
+        # Reset simulator
+        remoted_server.destroy()
 
-    # Start AuthdSimulator
-    authd_server = AuthdSimulator()
-    authd_server.start()
+        # Start rejecting Agent
+        remoted_server = RemotedSimulator(protocol = 'tcp', mode = 'WRONG_KEY')
+        remoted_server.start()
 
-    # Wait until Agent asks a new key to enrollment
-    wait_enrollment_try()
+        # Start AuthdSimulator
+        authd_server = AuthdSimulator()
+        authd_server.start()
 
-    # Reset simulator
-    remoted_server.destroy()
+        # Wait until Agent asks a new key to enrollment
+        wait_enrollment_try()
 
-    # Start responding Agent
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-    remoted_server.start()
+        # Reset simulator
+        remoted_server.destroy()
 
-    # Wait until Agent is notifying Manager
-    wait_keepalive()
+        # Start responding Agent
+        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server.start()
 
-    # Reset simulator
-    remoted_server.destroy()
-    authd_server.destroy()
+        # Wait until Agent is connected
+        wait_connect()
+    finally:
+        # Reset simulator
+        remoted_server.destroy()
+        authd_server.destroy()

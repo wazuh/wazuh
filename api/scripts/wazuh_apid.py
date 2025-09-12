@@ -183,7 +183,7 @@ def start(params: dict):
     app.add_middleware(CheckExpectHeaderMiddleware)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
-    app.add_middleware(SecureHeadersMiddleware)
+    app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     if api_conf['max_upload_size']:
         app.add_middleware(ContentSizeLimitMiddleware, max_content_size=api_conf['max_upload_size'])
         app.add_error_handler(ContentSizeExceeded, error_handler.content_size_handler)

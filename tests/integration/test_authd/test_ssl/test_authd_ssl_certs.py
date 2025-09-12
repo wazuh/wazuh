@@ -10,7 +10,6 @@ type: integration
 brief: These tests will check if the 'wazuh-authd' daemon is able to handle secure connections using
        the 'SSL' (Secure Socket Layer) protocol. The 'wazuh-authd' daemon can automatically add
        a Wazuh agent to a Wazuh manager and provide the key to the agent.
-       It is used along with the 'agent-auth' application.
 
 components:
     - authd

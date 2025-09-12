@@ -74,8 +74,6 @@ echo 'USER_DELETE_DIR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_ACTIVE_RESPONSE="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_SYSCHECK="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_ROOTCHECK="y"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_OPENSCAP="n"' >> ./etc/preloaded-vars.conf
-echo 'USER_ENABLE_CISCAT="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_SYSCOLLECTOR="y"' >> ./etc/preloaded-vars.conf
 echo 'USER_UPDATE="n"' >> ./etc/preloaded-vars.conf
 echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
@@ -133,7 +131,7 @@ mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/su
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/windows
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/fedora/{29,30,31,32,33,34,41}
 mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/almalinux/{8,9,10}
-mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/{8,9}
+mkdir -p ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/{8,9,10}
 
 cp -r ruleset/sca/{applications,generic,mongodb,nginx,oracledb,centos,darwin,debian,ol,rhel,sles,sunos,windows,amazon,ubuntu,rocky,almalinux} ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
 
@@ -188,6 +186,7 @@ cp etc/templates/config/almalinux/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir
 cp etc/templates/config/rocky/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky
 cp etc/templates/config/rocky/8/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/8
 cp etc/templates/config/rocky/9/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/9
+cp etc/templates/config/rocky/10/sca.files ${RPM_BUILD_ROOT}%{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/10
 
 # Add SUSE initscript
 sed -i "s:WAZUH_HOME_TMP:%{_localstatedir}:g" src/init/templates/ossec-hids-suse.init
@@ -267,10 +266,6 @@ if [ -d %{_localstatedir}/queue/agent-info ]; then
   rm -rf %{_localstatedir}/queue/agent-info/* > /dev/null 2>&1
 fi
 
-if [ -d %{_localstatedir}/queue/rootcheck ]; then
-  rm -rf %{_localstatedir}/queue/rootcheck/* > /dev/null 2>&1
-fi
-
 # Delete old API backups
 if [ $1 = 2 ]; then
   if [ -d %{_localstatedir}/~api ]; then
@@ -345,11 +340,16 @@ if [ $1 = 1 ]; then
   %{_localstatedir}/packages_files/manager_installation_scripts/gen_ossec.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
 
   touch %{_localstatedir}/logs/active-responses.log
-  touch %{_localstatedir}/logs/integrations.log
   chown wazuh:wazuh %{_localstatedir}/logs/active-responses.log
-  chown wazuh:wazuh %{_localstatedir}/logs/integrations.log
   chmod 0660 %{_localstatedir}/logs/active-responses.log
-  chmod 0640 %{_localstatedir}/logs/integrations.log
+
+  touch %{_localstatedir}/logs/ossec.log
+  chown wazuh:wazuh %{_localstatedir}/logs/ossec.log
+  chmod 0660 %{_localstatedir}/logs/ossec.log
+
+  touch %{_localstatedir}/logs/ossec.json
+  chown wazuh:wazuh %{_localstatedir}/logs/ossec.json
+  chmod 0660 %{_localstatedir}/logs/ossec.json
 
   # Add default local_files to ossec.conf
   %{_localstatedir}/packages_files/manager_installation_scripts/add_localfiles.sh %{_localstatedir} >> %{_localstatedir}/etc/ossec.conf
@@ -582,6 +582,7 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/ruleset/
   rm -rf %{_localstatedir}/tmp
+  rm -rf %{_localstatedir}/engine
 fi
 
 # posttrans code is the last thing executed in a install/upgrade
@@ -634,7 +635,6 @@ rm -fr %{buildroot}
 /usr/lib/systemd/system/wazuh-manager.service
 %dir %attr(750, root, wazuh) %{_localstatedir}
 %attr(440, wazuh, wazuh) %{_localstatedir}/VERSION.json
-%attr(750, root, wazuh) %{_localstatedir}/agentless
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response
 %dir %attr(750, root, wazuh) %{_localstatedir}/active-response/bin
 %attr(750, root, wazuh) %{_localstatedir}/active-response/bin/*
@@ -653,25 +653,15 @@ rm -fr %{buildroot}
 %attr(750, root, root) %{_localstatedir}/bin/agent_control
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh) %{_localstatedir}/bin/agent_upgrade
-%attr(750, root, root) %{_localstatedir}/bin/clear_stats
 %attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
-%attr(750, root, root) %{_localstatedir}/bin/manage_agents
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-agentlessd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-analysisd
+%attr(750, wazuh, wazuh) %{_localstatedir}/bin/wazuh-forwarder
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-control
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-csyslogd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-dbd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-execd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-integratord
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-logcollector
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-logtest-legacy
-%attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-logtest
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-maild
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-monitord
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-regex
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-remoted
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-reportd
 %attr(750, root, root) %{_localstatedir}/bin/wazuh-syscheckd
 %attr(750, root, wazuh) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-apid
@@ -683,26 +673,24 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc
 %attr(660, root, wazuh) %config(noreplace) %{_localstatedir}/etc/ossec.conf
 %attr(640, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/client.keys
+%attr(640, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/alert_forwarder.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
 %attr(640, root, wazuh) %{_localstatedir}/etc/localtime
-%dir %attr(770, root, wazuh) %{_localstatedir}/etc/decoders
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/decoders/local_decoder.xml
-%dir %attr(770, root, wazuh) %{_localstatedir}/etc/lists
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/lists/amazon
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/amazon/*
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/audit-keys
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/lists/malicious-ioc
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/malicious-ioc/*
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/lists/security-eventchannel
 %dir %attr(770, root, wazuh) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh, wazuh) %{_localstatedir}/etc/shared/agent-template.conf
 %attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/shared/default/*
-%dir %attr(770, root, wazuh) %{_localstatedir}/etc/rootcheck
-%attr(660, root, wazuh) %{_localstatedir}/etc/rootcheck/*.txt
-%dir %attr(770, root, wazuh) %{_localstatedir}/etc/rules
-%attr(660, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/rules/local_rules.xml
+%dir %attr(770, root, wazuh) %{_localstatedir}/engine
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/kvdb
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/allowed-fields
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/allowed-fields/0
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/engine-schema
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/engine-schema/0
+%dir %attr(770, wazuh, wazuh) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides
+%attr(640, wazuh, wazuh) %{_localstatedir}/engine/store/schema/wazuh-logpar-overrides/0
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -717,14 +705,13 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/hap_helper/*.py
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/dapi
 %attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/dapi/*.py
-%dir %attr(750, root, wazuh) %{_localstatedir}/integrations
-%attr(750, root, wazuh) %{_localstatedir}/integrations/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/lib
 %attr(750, root, wazuh) %{_localstatedir}/lib/libwazuhext.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libwazuhshared.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libdbsync.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/librsync.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libagent_sync_protocol.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libsyscollector.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libsca.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libsysinfo.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libjemalloc.so.2
 %attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6
@@ -735,42 +722,18 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/lib/modern.bpf.o
 %attr(750, root, wazuh) %{_localstatedir}/lib/libcontent_manager.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/libindexer_connector.so
+%attr(750, root, wazuh) %{_localstatedir}/lib/libinventory_sync.so
 %attr(750, root, wazuh) %{_localstatedir}/lib/librocksdb.so.8
 %attr(750, root, wazuh) %{_localstatedir}/lib/librouter.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libvulnerability_scanner.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libinventory_harvester.so
 %{_localstatedir}/lib/libpython3.10.so.1.0
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/logs
 %attr(660, wazuh, wazuh)  %ghost %{_localstatedir}/logs/active-responses.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/api.log
-%attr(640, wazuh, wazuh) %ghost %{_localstatedir}/logs/integrations.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
 %dir %attr(440, root, wazuh) %{_localstatedir}/templates
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_template.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-packages.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-processes.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-system.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hardware.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-networks.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-protocols.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-interfaces.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-packages-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-processes-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-system-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hardware-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-networks-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-protocols-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-interfaces-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports-update.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/alerts
@@ -796,7 +759,6 @@ rm -fr %{buildroot}
 %attr(640, wazuh, wazuh) %missingok %{_localstatedir}/tmp/%{_vdfilename}
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %attr(600, root, wazuh) %{_localstatedir}/queue/agents-timestamp
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agentless
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/alerts
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/db
@@ -805,8 +767,9 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/fim/db
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/syscollector/db
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/sca/db
 %attr(640, root, wazuh) %{_localstatedir}/queue/syscollector/norm_config.json
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/fts
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
@@ -815,14 +778,12 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/router
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/keystore
+%dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/tzdb
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
-%dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/decoders
-%attr(640, root, wazuh) %{_localstatedir}/ruleset/decoders/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/rules
-%attr(640, root, wazuh) %{_localstatedir}/ruleset/rules/*
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/stats
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/applications
@@ -926,7 +887,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/rocky/*
 %dir %attr(750, root, wazuh) %{_localstatedir}/var
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/db
-%attr(660, root, wazuh) %{_localstatedir}/var/db/mitre.db
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/download
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/var/multigroups
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
@@ -948,6 +908,12 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
+* Thu Dec 18 2025 support <info@wazuh.com> - 5.0.0
+- More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
+* Wed Oct 01 2025 support <info@wazuh.com> - 4.14.1
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html
+* Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
 * Thu Sep 11 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0

@@ -11,7 +11,6 @@
 #include "shared.h"
 #include "os_net/os_net.h"
 #include "global-config.h"
-#include "mail-config.h"
 #include "config.h"
 #include "string_op.h"
 
@@ -20,6 +19,7 @@ int Read_Global_limits(const OS_XML *xml, XML_NODE node, _Config *Config);
 int Read_Global_limits_eps(XML_NODE node, _Config *Config);
 #endif
 
+//TODO: does it make any sense to change signature deleting mailp
 int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
@@ -122,67 +122,33 @@ int Read_GlobalSK(XML_NODE node, void *configp, __attribute__((unused)) void *ma
     return (0);
 }
 
-int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
+int Read_Global(__attribute__((unused)) const OS_XML *xml, XML_NODE node, void *configp, __attribute__((unused)) void *mailp)
 {
     int i = 0;
 
     /* Whitelist size */
     unsigned int white_size = 1;
     unsigned int hostname_white_size = 1;
-    unsigned int mailto_size = 1;
 
     /* XML definitions */
-    const char *xml_mailnotify = "email_notification";
-    const char *xml_logall = "logall";
-    const char *xml_logall_json = "logall_json";
     const char *xml_integrity = "integrity_checking";
     const char *xml_rootcheckd = "rootkit_detection";
     const char *xml_hostinfo = "host_information";
-    const char *xml_prelude = "prelude_output";
-    const char *xml_prelude_profile = "prelude_profile";
-    const char *xml_prelude_log_level = "prelude_log_level";
-    const char *xml_geoipdb_file = "geoipdb";
-    const char *xml_zeromq_output = "zeromq_output";
-    const char *xml_zeromq_output_uri = "zeromq_uri";
-    const char *xml_zeromq_output_server_cert = "zeromq_server_cert";
-    const char *xml_zeromq_output_client_cert = "zeromq_client_cert";
-    const char *xml_jsonout_output = "jsonout_output";
-    const char *xml_alerts_log = "alerts_log";
-    const char *xml_stats = "stats";
-    const char *xml_memorysize = "memory_size";
     const char *xml_white_list = "white_list";
     const char *xml_compress_alerts = "compress_alerts";
-    const char *xml_custom_alert_output = "custom_alert_output";
-    const char *xml_rotate_interval = "rotate_interval";
-    const char *xml_max_output_size = "max_output_size";
     const char *xml_agents_disconnection_time = "agents_disconnection_time";
     const char *xml_agents_disconnection_alert_time = "agents_disconnection_alert_time";
+#ifndef CLIENT
     const char *xml_limits = "limits";
     const char *xml_cti_url = "cti-url";
+#endif
     const char *xml_update_check = "update_check";
-
-
-    const char *xml_emailto = "email_to";
-    const char *xml_emailfrom = "email_from";
-    const char *xml_emailreplyto = "email_reply_to";
-    const char *xml_emailidsname = "email_idsname";
-    const char *xml_smtpserver = "smtp_server";
-    const char *xml_heloserver = "helo_server";
-    const char *xml_mailmaxperhour = "email_maxperhour";
-    const char *xml_maillogsource = "email_log_source";
     const char *xml_queue_size = "queue_size";
     const char *xml_forwardto = "forward_to";
 
-#ifdef LIBGEOIP_ENABLED
-    const char *xml_geoip_db_path = "geoip_db_path";
-    const char *xml_geoip6_db_path = "geoip6_db_path";
-#endif
 
     _Config *Config;
-    MailConfig *Mail;
-
     Config = (_Config *)configp;
-    Mail = (MailConfig *)mailp;
 
     /* Get right white_size */
     if (Config && Config->white_list) {
@@ -210,21 +176,11 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
         os_strdup(CTI_URL_DEFAULT, Config->cti_url);
     }
 
-    /* Get mail_to size */
-    if (Mail && Mail->to) {
-        char **ww;
-        ww = Mail->to;
-        while (*ww != NULL) {
-            mailto_size++;
-            ww++;
-        }
-    }
-
     /* Default values */
     if (Config) {
         Config->update_check = 1;
     }
-    
+
     while (node[i]) {
         if (!node[i]->element) {
             merror(XML_ELEMNULL);
@@ -232,11 +188,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
         } else if (!node[i]->content) {
             merror(XML_VALUENULL, node[i]->element);
             return (OS_INVALID);
-        } else if (strcmp(node[i]->element, xml_custom_alert_output) == 0) {
-            if (Config) {
-                Config->custom_alert_output = 1;
-                os_strdup(node[i]->content, Config->custom_alert_output_format);
-            }
         }
         /* Socket forwarding */
         else if (strcmp(node[i]->element, xml_forwardto) == 0) {
@@ -258,148 +209,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                         Config->forwarders_list[tgt_idx] = tmp;
                     }
                 }
-            }
-        }
-        /* Mail notification */
-        else if (strcmp(node[i]->element, xml_mailnotify) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->mailnotify = 1;
-                }
-                if (Mail) {
-                    Mail->mn = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->mailnotify = 0;
-                }
-                if (Mail) {
-                    Mail->mn = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        }
-        /* Prelude support */
-        else if (strcmp(node[i]->element, xml_prelude) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->prelude = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->prelude = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        /* GeoIP */
-        } else if(strcmp(node[i]->element, xml_geoipdb_file) == 0) {
-            if(Config)
-            {
-                Config->geoipdb_file = strdup(node[i]->content);
-            }
-        } else if (strcmp(node[i]->element, xml_prelude_profile) == 0) {
-            if (Config) {
-                Config->prelude_profile = strdup(node[i]->content);
-            }
-        } else if (strcmp(node[i]->element, xml_prelude_log_level) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-
-            if (Config) {
-                Config->prelude_log_level = (u_int8_t) atoi(node[i]->content);
-            }
-        }
-        /* ZeroMQ output */
-        else if (strcmp(node[i]->element, xml_zeromq_output) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->zeromq_output = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->zeromq_output = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        } else if (strcmp(node[i]->element, xml_zeromq_output_uri) == 0) {
-            if (Config) {
-                Config->zeromq_output_uri = strdup(node[i]->content);
-            }
-        } else if (strcmp(node[i]->element, xml_zeromq_output_server_cert) == 0) {
-            if (Config) {
-                Config->zeromq_output_server_cert = strdup(node[i]->content);
-            }
-        } else if (strcmp(node[i]->element, xml_zeromq_output_client_cert) == 0) {
-            if (Config) {
-                Config->zeromq_output_client_cert = strdup(node[i]->content);
-            }
-        }
-        /* jsonout output */
-        else if (strcmp(node[i]->element, xml_jsonout_output) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->jsonout_output = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->jsonout_output = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        }
-        /* Standard alerts output */
-        else if (strcmp(node[i]->element, xml_alerts_log) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->alerts_log = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->alerts_log = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        }
-        /* Log all */
-        else if (strcmp(node[i]->element, xml_logall) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->logall = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->logall = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-        }
-        /* Log all JSON*/
-        else if (strcmp(node[i]->element, xml_logall_json) == 0) {
-            if (strcmp(node[i]->content, "yes") == 0) {
-                if (Config) {
-                    Config->logall_json = 1;
-                }
-            } else if (strcmp(node[i]->content, "no") == 0) {
-                if (Config) {
-                    Config->logall_json = 0;
-                }
-            } else {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
             }
         }
         /* update check system */
@@ -449,24 +258,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
             }
             if (Config) {
                 Config->hostinfo = (u_int8_t) atoi(node[i]->content);
-            }
-        }
-        /* stats */
-        else if (strcmp(node[i]->element, xml_stats) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-            if (Config) {
-                Config->stats = (u_int8_t) atoi(node[i]->content);
-            }
-        } else if (strcmp(node[i]->element, xml_memorysize) == 0) {
-            if (!OS_StrIsNum(node[i]->content)) {
-                merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                return (OS_INVALID);
-            }
-            if (Config) {
-                Config->memorysize = atoi(node[i]->content);
             }
 #ifndef CLIENT
         } else if (strcmp(node[i]->element, xml_limits) == 0) {
@@ -538,182 +329,6 @@ int Read_Global(const OS_XML *xml, XML_NODE node, void *configp, void *mailp)
                 }
             }
 #endif
-
-        }
-
-        /* For the email now
-         * email_to, email_from, email_replyto, idsname, smtp_Server and maxperhour.
-         * We will use a separate structure for that.
-         */
-        else if (strcmp(node[i]->element, xml_emailto) == 0) {
-#ifndef WIN32
-            if (!OS_PRegex(node[i]->content, "[a-zA-Z0-9\\._-]+@[a-zA-Z0-9\\._-]")) {
-                merror("Invalid Email address: %s.", node[i]->content);
-                return (OS_INVALID);
-            }
-#endif
-            if (Mail) {
-                mailto_size++;
-                Mail->to = (char **) realloc(Mail->to, sizeof(char *)*mailto_size);
-                if (!Mail->to) {
-                    merror(MEM_ERROR, errno, strerror(errno));
-                    return (OS_INVALID);
-                }
-
-                os_strdup(node[i]->content, Mail->to[mailto_size - 2]);
-                Mail->to[mailto_size - 1] = NULL;
-            }
-        } else if (strcmp(node[i]->element, xml_emailfrom) == 0) {
-            if (Mail) {
-                if (Mail->from) {
-                    free(Mail->from);
-                }
-                os_strdup(node[i]->content, Mail->from);
-            }
-        } else if (strcmp(node[i]->element, xml_emailreplyto) == 0) {
-            if (Mail) {
-                if (Mail->reply_to) {
-                    free(Mail->reply_to);
-                }
-                os_strdup(node[i]->content, Mail->reply_to);
-            }
-        } else if (strcmp(node[i]->element, xml_emailidsname) == 0) {
-            if (Mail) {
-                if (Mail->idsname) {
-                    free(Mail->idsname);
-                }
-                os_strdup(node[i]->content, Mail->idsname);
-            }
-        } else if (strcmp(node[i]->element, xml_smtpserver) == 0) {
-#ifndef WIN32
-            if (Mail) {
-                os_strdup(node[i]->content, Mail->smtpserver);
-            }
-#endif
-        } else if (strcmp(node[i]->element, xml_heloserver) == 0) {
-            if (Mail) {
-                os_strdup(node[i]->content, Mail->heloserver);
-            }
-        } else if (strcmp(node[i]->element, xml_mailmaxperhour) == 0) {
-            if (Mail) {
-                if (!OS_StrIsNum(node[i]->content)) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-                Mail->maxperhour = atoi(node[i]->content);
-
-                if ((Mail->maxperhour <= 0) || (Mail->maxperhour > 1000000)) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-            }
-        } else if (strcmp(node[i]->element, xml_maillogsource) == 0) {
-            if (Mail) {
-                if (OS_StrIsNum(node[i]->content)) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-
-                if(strncmp(node[i]->content,"alerts.log",10) == 0){
-                    Mail->source = MAIL_SOURCE_LOGS;
-                }
-                else if(strncmp(node[i]->content,"alerts.json",11) == 0){
-                    Mail->source = MAIL_SOURCE_JSON;
-                }
-                else{
-                    Mail->source = MAIL_SOURCE_JSON;
-                }
-            }
-        }
-#ifdef LIBGEOIP_ENABLED
-        /* GeoIP v4 DB location */
-        else if (strcmp(node[i]->element, xml_geoip_db_path) == 0) {
-            if (Config) {
-                os_strdup(node[i]->content, Config->geoip_db_path);
-            }
-        }
-        /* GeoIP v6 DB location */
-        else if (strcmp(node[i]->element, xml_geoip6_db_path) == 0) {
-            if (Config) {
-                os_strdup(node[i]->content, Config->geoip6_db_path);
-            }
-        }
-#endif
-        else if (strcmp(node[i]->element, xml_rotate_interval) == 0) {
-            if (Config) {
-                char c;
-
-                switch (sscanf(node[i]->content, "%d%c", &Config->rotate_interval, &c)) {
-                case 1:
-                    break;
-
-                case 2:
-                    switch (c) {
-                    case 'd':
-                        Config->rotate_interval *= 86400;
-                        break;
-                    case 'h':
-                        Config->rotate_interval *= 3600;
-                        break;
-                    case 'm':
-                        Config->rotate_interval *= 60;
-                        break;
-                    case 's':
-                        break;
-                    default:
-                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                        return (OS_INVALID);
-                    }
-
-                    break;
-
-                default:
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-
-                if (Config->rotate_interval < 0) {
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-            }
-        } else if (strcmp(node[i]->element, xml_max_output_size) == 0) {
-            if (Config) {
-                char c;
-
-                switch (sscanf(node[i]->content, "%zd%c", &Config->max_output_size, &c)) {
-                case 1:
-                    break;
-
-                case 2:
-                    switch (c) {
-                    case 'G':
-                    case 'g':
-                        Config->max_output_size *= 1073741824;
-                        break;
-                    case 'M':
-                    case 'm':
-                        Config->max_output_size *= 1048576;
-                        break;
-                    case 'K':
-                    case 'k':
-                        Config->max_output_size *= 1024;
-                        break;
-                    case 'B':
-                    case 'b':
-                        break;
-                    default:
-                        merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                        return (OS_INVALID);
-                    }
-
-                    break;
-
-                default:
-                    merror(XML_VALUEERR, node[i]->element, node[i]->content);
-                    return (OS_INVALID);
-                }
-            }
         } else if (strcmp(node[i]->element, xml_queue_size) == 0) {
             if (Config) {
                 char * end;
@@ -778,30 +393,6 @@ void config_free(_Config *config) {
         return;
     }
 
-    if (config->prelude_profile) {
-        free(config->prelude_profile);
-    }
-
-    if (config->geoipdb_file) {
-        free(config->geoipdb_file);
-    }
-
-    if (config->zeromq_output_uri) {
-        free(config->zeromq_output_uri);
-    }
-
-    if (config->zeromq_output_server_cert) {
-        free(config->zeromq_output_server_cert);
-    }
-
-    if (config->zeromq_output_client_cert) {
-        free(config->zeromq_output_client_cert);
-    }
-
-    if (config->custom_alert_output_format) {
-        free(config->custom_alert_output_format);
-    }
-
     if (config->syscheck_ignore) {
         int i = 0;
         while (config->syscheck_ignore[i]) {
@@ -820,39 +411,9 @@ void config_free(_Config *config) {
         free(config->white_list);
     }
 
-    if (config->includes) {
-        int i = 0;
-        while (config->includes[i]) {
-            free(config->includes[i]);
-            i++;
-        }
-        free(config->includes);
-    }
-
-    if (config->lists) {
-        int i = 0;
-        while (config->lists[i]) {
-            free(config->lists[i]);
-            i++;
-        }
-        free(config->lists);
-    }
-
-    if (config->decoders) {
-        int i = 0;
-        while (config->decoders[i]) {
-            free(config->decoders[i]);
-            i++;
-        }
-        free(config->decoders);
-    }
 
     if (config->forwarders_list) {
       free_strarray(config->forwarders_list);
-    }
-
-    if (config->g_rules_hash) {
-        OSHash_Free(config->g_rules_hash);
     }
 
     if (config->hostname_white_list) {
@@ -863,15 +424,6 @@ void config_free(_Config *config) {
         }
         free(config->hostname_white_list);
     }
-
-#ifdef LIBGEOIP_ENABLED
-    if (config->geoip_db_path) {
-        free(config->geoip_db_path);
-    }
-    if (config->geoip6_db_path) {
-        free(config->geoip6_db_path);
-    }
-#endif
 
     labels_free(config->labels); /* null-ended label set */
 

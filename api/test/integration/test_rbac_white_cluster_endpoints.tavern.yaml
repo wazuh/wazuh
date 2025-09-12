@@ -335,12 +335,10 @@ stages:
           affected_items:
             - alerts: !anything
               auth: !anything
-              cis-cat: !anything
               cluster: !anything
               command: !anything
               global: !anything
               localfile: !anything
-              osquery: !anything
               remote: !anything
               rootcheck: !anything
               ruleset: !anything
@@ -379,7 +377,6 @@ stages:
         data:
           affected_items:
             - alerts:
-                email_alert_level: !anystr
                 log_alert_level: !anystr
           failed_items: []
           total_affected_items: 1
@@ -658,7 +655,7 @@ stages:
       params:
         nodes_list: 'worker1,worker2'
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: !anyint
         data:
@@ -680,8 +677,10 @@ stages:
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: 'worker2'
     response:
-      status_code: 200
+      status_code: 202
       json:
         error: !anyint
         data:

@@ -2,17 +2,6 @@ name: VD Scanner tools Delivery
 
 # Controls when the action will run.
 on:
-  # Triggers the workflow on pull request but only changes in src/wazuh_modules/vulnerability_scanner/{tools,src,include,schemas} directories.
-  # Trigger on pull request changes
-  pull_request:
-    types: [synchronize, opened, reopened, ready_for_review]
-    paths:
-      - "src/wazuh_modules/vulnerability_scanner/testtool/**"
-      - "src/wazuh_modules/vulnerability_scanner/src/**"
-      - "src/wazuh_modules/vulnerability_scanner/include/**"
-      - ".github/workflows/4_builderprecompiled_vdscanner-testtools.yml"
-      - "src/wazuh_modules/vulnerability_scanner/schemas/**"
-
   # Trigger when a pull request is merged into main
   push:
     branches:

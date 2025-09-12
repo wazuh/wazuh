@@ -1,0 +1,125 @@
+# Name of the helper function
+name: parse_key_value
+
+metadata:
+  description: |
+    This parser can be used to extract key-value pairs from a keys-values list.
+    If the parser succeeds, each value will be stored on a field named as its corresponding key.
+    Keys are linked to values by the “separator” token (may be multi-character).
+    Each key-value pair is split from others, given the “delimiting” token (may be multi-character).
+    Additionally, the user must define a “quoting” and “escaping” character.
+    All the characters contained between the “quoting” characters will be considered part of  a single value
+    even the “separator” and “delimiting” tokens. If the quoting is not correctly balanced, the parser will fail.
+    The “escaping” character is used to escape the “quoting” characters that are intended to be used as literal characters.
+    This helper function is typically used in the map stage.
+    Checks whether an input fits a keys-values list format and, if it does, such pairs of keys and values are stored as new fields of the event.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only values
+  sep_token:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+  delim_token:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+  quote_char:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+  esc_char:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+
+skipped:
+  - success_cases # parser failed - string generation is random
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input_field:  key1=value1 key2=value2 key3=value3
+      sep_token: "="
+      delim_token: " "
+      quote_char: "'"
+      esc_char: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      key1: value1
+      key2: value2
+      key3: value3
+    description: Success key value parse
+  - arguments:
+      input_field: "key1:value1"
+      sep_token: "="
+      delim_token: " "
+      quote_char: "'"
+      esc_char: "\\"
+    target_field: any_value
+    should_pass: false
+    description: Failure key value parse
+  - arguments:
+      input_field: "k1=v1 || k2=v2"
+      sep_token: "="
+      delim_token: " || "
+      quote_char: "'"
+      esc_char: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      k1: v1
+      k2: v2
+    description: Success with multi-char delimiter and single-char separator
+  - arguments:
+      input_field: "a::=x,b::=y"
+      sep_token: "::="
+      delim_token: ","
+      quote_char: "'"
+      esc_char: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      a: x
+      b: y
+    description: Success with single-char delimiter and multi-char separator
+  - arguments:
+      input_field: "k1::=v1 || k2::=v2"
+      sep_token: "::="
+      delim_token: " || "
+      quote_char: "\""
+      esc_char: "\\"
+    target_field: any_value
+    should_pass: true
+    expected:
+      k1: v1
+      k2: v2
+    description: Success multi-character tokens
+  - arguments:
+      input_field: "a=b=c"
+      sep_token: "="
+      delim_token: "="
+      quote_char: "'"
+      esc_char: "\\"
+    target_field: any_value
+    should_pass: false
+    description: Failure when separator and delimiter are the same

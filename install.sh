@@ -56,11 +56,6 @@ Install()
     echo "DIR=\"${INSTALLDIR}\""
 
     # Changing Config.OS with the new C flags
-    # Checking if debug is enabled
-    if [ "X${SET_DEBUG}" = "Xdebug" ]; then
-        CEXTRA="${CEXTRA} -DDEBUGAD"
-    fi
-
     echo "CEXTRA=${CEXTRA}" >> ./src/Config.OS
 
     MAKEBIN=make
@@ -131,11 +126,6 @@ Install()
     InstallWazuh
 
     cd ../
-
-    # Install Wazuh ruleset updater
-    if [ "X$INSTYPE" = "Xserver" ]; then
-        WazuhSetup
-    fi
 
     # Calling the init script to start Wazuh during boot
     runInit $INSTYPE ${update_only}
@@ -412,88 +402,6 @@ ConfigureServer()
 {
     echo ""
     echo "3- ${configuring} $NAME."
-
-
-    # Configuring e-mail notification
-    echo ""
-    $ECHO "  3.1- ${mailnotify} ($yes/$no) [$no]: "
-
-    if [ "X${USER_ENABLE_EMAIL}" = "X" ]; then
-        read ANSWER
-    else
-        ANSWER=${USER_ENABLE_EMAIL}
-    fi
-
-    case $ANSWER in
-        $yesmatch)
-            EMAILNOTIFY="yes"
-            $ECHO "   - ${whatsemail} "
-            if [ "X${USER_EMAIL_ADDRESS}" = "X" ]; then
-
-                read EMAIL
-                echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.+-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
-                # Ugly e-mail validation
-                while [ "$EMAIL" = "" -o ! ${RVAL} = 0 ] ; do
-                    $ECHO "   - ${whatsemail} "
-                    read EMAIL
-                    echo "${EMAIL}" | grep -E "^[a-zA-Z0-9_.+-]{1,36}@[a-zA-Z0-9_.-]{1,54}$" > /dev/null 2>&1 ;RVAL=$?;
-                done
-            else
-                EMAIL=${USER_EMAIL_ADDRESS}
-            fi
-
-            if [ -x "$HOST_CMD" ]; then
-              HOSTTMP=`${HOST_CMD} -W 5 -t mx wazuh.com 2>/dev/null`
-              if [ $? = 1 ]; then
-                 # Trying without the -W
-                 HOSTTMP=`${HOST_CMD} -t mx wazuh.com 2>/dev/null`
-              fi
-              echo "x$HOSTTMP" | grep "wazuh.com mail is handled" > /dev/null 2>&1
-              if [ $? = 0 ]; then
-                 # Breaking down the user e-mail
-                 EMAILHOST=`echo ${EMAIL} | cut -d "@" -f 2`
-                 if [ "X${EMAILHOST}" = "Xlocalhost" ]; then
-                    SMTPHOST="127.0.0.1"
-                 else
-                    HOSTTMP=`${HOST_CMD} -W 5 -t mx ${EMAILHOST}`
-                    SMTPHOST=`echo ${HOSTTMP} | cut -d " " -f 7`
-                 fi
-              fi
-            fi
-
-            if [ "X${USER_EMAIL_SMTP}" = "X" ]; then
-                if [ "X${SMTPHOST}" != "X" ]; then
-                    echo ""
-                    echo "   - ${yoursmtp}: ${SMTPHOST}"
-                    $ECHO "   - ${usesmtp} ($yes/$no) [$yes]: "
-                    read EMAIL2
-                    case ${EMAIL2} in
-                        $nomatch)
-                        echo ""
-                        SMTP=""
-                        ;;
-                    *)
-                        SMTP=${SMTPHOST}
-                        echo ""
-                        echo "   --- ${usingsmtp} ${SMTP}"
-                        ;;
-                    esac
-                fi
-
-                if [ "X${SMTP}" = "X" ]; then
-                    $ECHO "   - ${whatsmtp} "
-                    read SMTP
-                fi
-            else
-                SMTP=${USER_EMAIL_SMTP}
-            fi
-        ;;
-        *)
-            echo ""
-            echo "   --- ${nomail}."
-            EMAILNOTIFY="no"
-        ;;
-    esac
 
     # Checking if syscheck should run
     UseSyscheck

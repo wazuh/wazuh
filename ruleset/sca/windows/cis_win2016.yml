@@ -158,8 +158,8 @@ checks:
      - soc_2: ["CC6.3"]
     condition: any
     rules:
-      - 'c:net user guest -> r:Account active\s+No'
-      - 'c:net user guest -> r:The user name could not be found.'
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:TRUE'
+      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:No Instance\(s\) Available.'
 
   # 2.3.1.3 (L1) Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'. (Automated)
   - id: 16003
@@ -710,9 +710,9 @@ checks:
       - cis: ["2.3.9.2"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature -> 1'
 
   # 2.3.9.3 (L1) Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'. (Automated)
   - id: 16031
@@ -3356,11 +3356,11 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable NetBIOS name resolution on public networks: Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Configure NetBIOS settings."
     compliance:
       - cis: ["18.6.4.1"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios -> 1'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient -> EnableNetbios -> r:^0$|^2$'
 
   # 18.6.4.2 (L1) Ensure 'Turn off multicast name resolution' is set to 'Enabled'. (Automated)
   - id: 16160
@@ -3722,7 +3722,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcUseNamedPipeProtocol'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcUseNamedPipeProtocol -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcUseNamedPipeProtocol -> 0'
 
   # 18.7.4 (L1) Ensure 'Configure RPC connection settings: Use authentication for outgoing RPC connections' is set to 'Enabled: Default'. (Automated)
   - id: 16178
@@ -3739,7 +3739,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcAuthentication'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcAuthentication -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcAuthentication -> 0'
 
   # 18.7.5 (L1) Ensure 'Configure RPC listener settings: Protocols to allow for incoming RPC connections' is set to 'Enabled: RPC over TCP'. (Automated)
   - id: 16179
@@ -3754,7 +3754,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcProtocols'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcProtocols -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> RpcProtocols -> 5'
 
   # 18.7.6 (L1) Ensure 'Configure RPC listener settings: Authentication protocol to use for incoming RPC connections:' is set to 'Enabled: Negotiate' or higher (Automated)
   - id: 16180
@@ -3769,7 +3769,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC'
       - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> ForceKerberosForRpc'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> ForceKerberosForRpc -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows NT\Printers\RPC -> ForceKerberosForRpc -> r:^0$|^1$'
 
   # 18.7.7 (L1) Ensure 'Configure RPC over TCP port' is set to 'Enabled: 0'. (Automated)
   - id: 16181

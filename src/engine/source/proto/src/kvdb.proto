@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+import "google/protobuf/struct.proto"; // For Value
+
+package com.wazuh.api.engine.kvdb;
+
+/* Client-facing representation of a key-value exposed in APIs */
+message Entry
+{
+    optional string key = 1;                  // Key of the entry
+    optional google.protobuf.Value value = 2; // JSON value of the entry
+}
+
+/******************** Operation with a DB ********************/
+/***************************************************
+ * Get an entry from a DB
+ *
+ * command: kvdb.db/get (<resource>/<action>)
+ **************************************************/
+message dbGet_Request
+{
+    optional string name = 1; // Name of the db to get the entry
+    optional string key = 2;  // Key of the entry to get
+}
+
+message dbGet_Response
+{
+    ReturnStatus status = 1;                  // Status of the query
+    optional string error = 2;                // Error message if status is ERROR
+    optional google.protobuf.Value value = 3; // JSON value of the entry
+}
+
+/***************************************************
+ * Get an entries filtered from a DB
+ *
+ * command: kvdb.db/search (<resource>/<action>)
+ **************************************************/
+message dbSearch_Request
+{
+    optional string name = 1;   // Name of the db to get the entry
+    optional string prefix = 2; // prefix of the entries to get
+    optional uint32 page = 3;
+    optional uint32 records = 4;
+}
+
+message dbSearch_Response
+{
+    ReturnStatus status = 1;    // Status of the query
+    optional string error = 2;  // Error message if status is ERROR
+    repeated Entry entries = 3; // List of entries if status is OK (Empty on error)
+}
+
+/***************************************************
+ * Delete an entry from a DB
+ *
+ * command: kvdb.db/delete (<resource>/<action>)
+ **************************************************/
+message dbDelete_Request
+{
+
+    optional string name = 1; // Name of the db to delete the entry
+    optional string key = 2;  // Key of the entry to delete
+}
+
+// message dbDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Insert a new entry in a DB
+ *
+ * command: kvdb.db/put (<resource>/<action>)
+ **************************************************/
+message dbPut_Request
+{
+    optional string name = 1; // Name of the db to insert the entry
+    optional Entry entry = 2; // Entry to insert
+}
+
+// message dbPut_Response -> Return a GenericStatus_Response
+
+/******************** Operation with the DB Manager ********************/
+/***************************************************
+ * List all DBs
+ *
+ * command: kvdb.manager/get (<resource>/<action>)
+ **************************************************/
+message managerGet_Request
+{
+    bool must_be_loaded = 1;             // If true, only the loaded DBs will be returned
+    optional string filter_by_name = 16; // If not empty, only the DBs with this name will be returned
+}
+
+message managerGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    repeated string dbs = 3;   // List of DBs if status is OK (only the name)
+}
+
+/***************************************************
+ * Create a new DB
+ *
+ * command: kvdb.manager/post (<resource>/<action>)
+ **************************************************/
+message managerPost_Request
+{
+    optional string name = 1; // Name of the db to create
+    optional string path = 2; // Path of the json file used to create the db
+}
+// message managerPost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a DB
+ *
+ * command: kvdb.manager/delete (<resource>/<action>)
+ **************************************************/
+message managerDelete_Request
+{
+    // Name of the db to delete
+    optional string name = 1;
+}
+// message managerDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get all entries from a DB
+ *
+ * command: kvdb.manager/dump (<resource>/<action>)
+ **************************************************/
+message managerDump_Request
+{
+    // Name of the manager to get the entries
+    optional string name = 1;
+    optional uint32 page = 2;
+    optional uint32 records = 3;
+}
+
+message managerDump_Response
+{
+    ReturnStatus status = 1;    // Status of the query
+    optional string error = 2;  // Error message if status is ERROR
+    repeated Entry entries = 3; // List of entries if status is OK (Empty on error)
+}

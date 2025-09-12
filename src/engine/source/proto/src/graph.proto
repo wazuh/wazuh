@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.graph;
+
+/***************************************************
+ * Get a resource from graph
+ *
+ * command: graph.resource/get (<resource>/<action>)
+ **************************************************/
+message GraphGet_Request
+{
+    optional string policy = 1; // Name of the policy
+    optional string type = 2;   // Type of graph to get
+}
+
+message GraphGet_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string content = 3; // Content of the resource if status is OK
+}

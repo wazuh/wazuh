@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Id="*" Name="Wazuh Agent" Language="1033" Version="4.13.0" Manufacturer="Wazuh" UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
+    <Product Id="*" Name="Wazuh Agent" Language="1033" Version="5.0.0" Manufacturer="Wazuh, Inc." UpgradeCode="F495AC57-7BDE-4C4B-92D8-DBE40A9AA5A0">
         <Package Description="Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring" Comments="wazuh-agent" InstallerVersion="200" Compressed="yes" />
         <Media Id="1" Cabinet="simple.cab" EmbedCab="yes" CompressionLevel="high" />
 
@@ -9,7 +9,6 @@
         <!-- Default configuration values -->
         <Property Id="WAZUH_MANAGER" Secure="yes"/>
         <Property Id="WAZUH_MANAGER_PORT" Secure="yes"/>
-        <Property Id="WAZUH_PROTOCOL" Secure="yes"/>
         <Property Id="WAZUH_REGISTRATION_SERVER" Secure="yes"/>
         <Property Id="WAZUH_REGISTRATION_PORT" Secure="yes"/>
         <Property Id="WAZUH_REGISTRATION_PASSWORD" Secure="yes"/>
@@ -28,7 +27,6 @@
         <Property Id="TIME_RECONNECT" Secure="yes"/>
         <Property Id="AUTHD_SERVER" Secure="yes"/>
         <Property Id="AUTHD_PORT" Secure="yes"/>
-        <Property Id="PROTOCOL" Secure="yes"/>
         <Property Id="PASSWORD" Secure="yes"/>
         <Property Id="CERTIFICATE" Secure="yes"/>
         <Property Id="PEM" Secure="yes"/>
@@ -99,7 +97,6 @@
 
         <CustomAction Id="SetWazuhManager" Property="WAZUH_MANAGER" Value="&quot;[ADDRESS]&quot;" />
         <CustomAction Id="SetWazuhManagerPort" Property="WAZUH_MANAGER_PORT" Value="&quot;[SERVER_PORT]&quot;" />
-        <CustomAction Id="SetWazuhManagerProtocol" Property="WAZUH_PROTOCOL" Value="&quot;[PROTOCOL]&quot;" />
         <CustomAction Id="SetRegistrationServer" Property="WAZUH_REGISTRATION_SERVER" Value="&quot;[AUTHD_SERVER]&quot;" />
         <CustomAction Id="SetRegistrationPort" Property="WAZUH_REGISTRATION_PORT" Value="&quot;[AUTHD_PORT]&quot;" />
         <CustomAction Id="SetRegistrationPassword" Property="WAZUH_REGISTRATION_PASSWORD" Value="&quot;[PASSWORD]&quot;" />
@@ -115,7 +112,7 @@
 
         <CustomAction Id="CheckSvcRunning" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
 
-        <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[OS_VERSION]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[WAZUH_PROTOCOL]&quot;/+/&quot;[NOTIFY_TIME]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;" />
+        <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[OS_VERSION]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[NOTIFY_TIME]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;" />
         <CustomAction Id="SetCustomActionDataForSetWazuhPermissions" Return="check" Property="SetWazuhPermissions" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
         <CustomAction Id="SetWazuhPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetWazuhPermissions" Return="check" Execute="commit" Impersonate="no"/>
@@ -159,7 +156,6 @@
             <!-- Set deployment values -->
             <Custom Action="SetWazuhManager" Before="SetCustomActionDataValue">ADDRESS &lt;&gt; "" AND WAZUH_MANAGER = ""</Custom>
             <Custom Action="SetWazuhManagerPort" Before="SetCustomActionDataValue">SERVER_PORT &lt;&gt; "" AND WAZUH_MANAGER_PORT = ""</Custom>
-            <Custom Action="SetWazuhManagerProtocol" Before="SetCustomActionDataValue">PROTOCOL &lt;&gt; "" AND WAZUH_PROTOCOL = ""</Custom>
             <Custom Action="SetRegistrationServer" Before="SetCustomActionDataValue">AUTHD_SERVER &lt;&gt; "" AND WAZUH_REGISTRATION_SERVER = ""</Custom>
             <Custom Action="SetRegistrationPort" Before="SetCustomActionDataValue">AUTHD_PORT &lt;&gt; "" AND WAZUH_REGISTRATION_PORT = ""</Custom>
             <Custom Action="SetRegistrationPassword" Before="SetCustomActionDataValue">PASSWORD &lt;&gt; "" AND WAZUH_REGISTRATION_PASSWORD = ""</Custom>
@@ -201,10 +197,6 @@
                     <Component Id="REGISTRY_INSTALL_DIR" Guid="63E18998-4DBB-4C34-A1AD-09AA809A1C15" KeyPath="yes">
                         <RegistryValue Root="HKLM" Key="SOFTWARE\[Manufacturer]\[ProductName]" Id="WazuhInstallDirProperty" Name="WazuhInstallDir" Type="string" Value="[APPLICATIONFOLDER]" />
                     </Component>
-                    <Component Id="AGENT_AUTH.EXE" DiskId="1" Guid="F99FEE7C-A021-4D43-9119-98A8D72EAB65">
-                        <File Id="AGENT_AUTH.EXE" Name="agent-auth.exe" Source="agent-auth.exe" />
-                        <File Id="AGENT_AUTH.EXE.MANIFEST" Name="agent-auth.exe.manifest" Source="agent-auth.exe.manifest" />
-                    </Component>
                     <Component Id="LIBWAZUHEXT_DLL" DiskId="1" Guid="31F7B5FA-9678-427B-9536-88AAA897A82A">
                         <File Id="LIBWAZUHEXT_DLL" Name="libwazuhext.dll" Source="..\libwazuhext.dll" />
                     </Component>
@@ -214,14 +206,17 @@
                     <Component Id="DBSYNC_DLL" DiskId="1" Guid="E6DD27ED-1579-4369-B83D-FD618894B56C">
                         <File Id="DBSYNC_DLL" Name="dbsync.dll" Source="..\shared_modules\dbsync\build\bin\dbsync.dll" />
                     </Component>
-                    <Component Id="RSYNC_DLL" DiskId="1" Guid="9F23B2D8-609D-43F6-BB90-7C81A5DF5A67">
-                        <File Id="RSYNC_DLL" Name="rsync.dll" Source="..\shared_modules\rsync\build\bin\rsync.dll" />
+                    <Component Id="AGENT_SYNC_PROTOCOL_DLL" DiskId="1" Guid="0B6A98BA-DC42-4DD4-8F60-E18987A36A75">
+                        <File Id="AGENT_SYNC_PROTOCOL_DLL" Name="libagent_sync_protocol.dll" Source="..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll" />
                     </Component>
                     <Component Id="SYSINFO_DLL" DiskId="1" Guid="1D244B64-E1C3-4BED-A4CF-9C25E3B3BA0F">
                         <File Id="SYSINFO_DLL" Name="sysinfo.dll" Source="..\data_provider\build\bin\sysinfo.dll" />
                     </Component>
                     <Component Id="SYSCOLLECTOR_DLL" DiskId="1" Guid="7CE63D8B-C959-43CC-A7B6-4226414EBADB">
                         <File Id="SYSCOLLECTOR_DLL" Name="syscollector.dll" Source="..\wazuh_modules\syscollector\build\bin\syscollector.dll" />
+                    </Component>
+                    <Component Id="SCA_DLL" DiskId="1" Guid="2A4C3BF3-959F-440C-9B2B-3EF856C8D551">
+                        <File Id="SCA_DLL" Name="sca.dll" Source="..\wazuh_modules\sca\build\bin\sca.dll" />
                     </Component>
                     <Component Id="FIMDB_DLL" DiskId="1" Guid="15806BCA-876E-41D7-A82E-623EEEC63C3A">
                         <File Id="FIMDB_DLL" Name="libfimdb.dll" Source="..\syscheckd\build\bin\libfimdb.dll" />
@@ -286,7 +281,6 @@
                         <RemoveFile Id="NSIS_FAVICON_ICO" Name="favicon.ico" On="install" />
                         <RemoveFile Id="NSIS_DOC_HTML" Name="doc.html" On="install" />
                         <RemoveFile Id="NSIS_WIN32UI_EXE" Name="win32ui.exe" On="install" />
-                        <RemoveFile Id="NSIS_AGENT_AUTH_EXE" Name="agent-auth.exe" On="install" />
                         <RemoveFile Id="NSIS_LIBWINPTHREAD_1_DLL" Name="libwinpthread-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBGCC_S_SJLJ_1.DLL" Name="libgcc_s_sjlj-1.dll" On="install" />
                         <RemoveFile Id="NSIS_LIBGCC_S_DW2_1.DLL" Name="libgcc_s_dw2-1.dll" On="install" />
@@ -400,21 +394,6 @@
                         </Component>
                     </Directory>
                     <Directory Id="SHARED" Name="shared">
-                        <Component Id="ROOTKIT_FILES.TXT" DiskId="1" Guid="FE45C8B7-CD37-4E13-B6CA-5838771DF2C2">
-                            <File Id="ROOTKIT_FILES.TXT" Name="rootkit_files.txt" Source="..\..\ruleset\rootcheck\db\rootkit_files.txt" />
-                        </Component>
-                        <Component Id="ROOTKIT_TROJANS.TXT" DiskId="1" Guid="6A2D5202-A610-4E00-B6E3-41FA24EA8B88">
-                            <File Id="ROOTKIT_TROJANS.TXT" Name="rootkit_trojans.txt" Source="..\..\ruleset\rootcheck\db\rootkit_trojans.txt" />
-                        </Component>
-                        <Component Id="WIN_APPLICATIONS_RCL.TXT" DiskId="1" Guid="833B42BC-7BEF-4801-A91D-737774F05800">
-                            <File Id="WIN_APPLICATIONS_RCL.TXT" Name="win_applications_rcl.txt" Source="..\..\ruleset\rootcheck\db\win_applications_rcl.txt" />
-                        </Component>
-                        <Component Id="WIN_AUDIT_RCL.TXT" DiskId="1" Guid="DB5DA081-B508-43CF-B83B-97649697636D">
-                            <File Id="WIN_AUDIT_RCL.TXT" Name="win_audit_rcl.txt" Source="..\..\ruleset\rootcheck\db\win_audit_rcl.txt" />
-                        </Component>
-                        <Component Id="WIN_MALWARE_RCL.TXT" DiskId="1" Guid="8FFA7C93-43A4-4946-B3B6-2255D8BFEA11">
-                            <File Id="WIN_MALWARE_RCL.TXT" Name="win_malware_rcl.txt" Source="..\..\ruleset\rootcheck\db\win_malware_rcl.txt" />
-                        </Component>
                     </Directory>
                     <Directory Id="RULESET" Name="ruleset">
                         <Directory Id="SECURITY_CONFIGURATION_ASSESSMENT" Name="sca">
@@ -468,6 +447,9 @@
                             <Directory Id="SYSCOLLECTOR_DB" Name="db" />
                         </Directory>
                         <Directory Id="LOGCOLLECTOR" Name="logcollector" />
+                        <Directory Id="SCA" Name="sca">
+                            <Directory Id="SCA_DB" Name="db" />
+                        </Directory>
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
                     <Directory Id="LOGS" Name="logs" />
@@ -542,6 +524,15 @@
                 <CreateFolder />
                 <RemoveFile Id="purgue_syscollector_db" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_syscollector_db_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="SCA_DB">
+            <Component Id="CMP_SCA_DB" Guid="562a47a2-48ab-4b83-8303-2d8eff912970" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder>
+                    <Permission User="Everyone" GenericAll="yes" />
+                </CreateFolder>
+                <RemoveFile Id="purgue_sca_db" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_sca_db_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="LOGCOLLECTOR">
@@ -623,15 +614,15 @@
         </DirectoryRef>
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="REGISTRY_INSTALL_DIR" />
-            <ComponentRef Id="AGENT_AUTH.EXE" />
             <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
+            <ComponentRef Id="SCA_DLL" />
             <ComponentRef Id="FIMDB_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
             <ComponentRef Id="LIBWAZUHSHARED_DLL" />
-            <ComponentRef Id="RSYNC_DLL" />
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
+            <ComponentRef Id="AGENT_SYNC_PROTOCOL_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
             <ComponentRef Id="OSSEC.CONF" />
             <ComponentRef Id="INTERNAL_OPTIONS.CONF" />
@@ -647,11 +638,6 @@
             <ComponentRef Id="ROUTE_NULL.EXE" />
             <ComponentRef Id="NETSH.EXE" />
             <ComponentRef Id="ACTIVE_RESPONSES.LOG" />
-            <ComponentRef Id="ROOTKIT_FILES.TXT" />
-            <ComponentRef Id="ROOTKIT_TROJANS.TXT" />
-            <ComponentRef Id="WIN_APPLICATIONS_RCL.TXT" />
-            <ComponentRef Id="WIN_AUDIT_RCL.TXT" />
-            <ComponentRef Id="WIN_MALWARE_RCL.TXT" />
             <ComponentRef Id="StartMenuShortcuts" />
             <ComponentRef Id="WIN32UI.EXE" />
             <ComponentRef Id="CMP_ACTIVE_RESPONSE" />
@@ -662,6 +648,7 @@
             <ComponentRef Id="CMP_FIM_DB" />
             <ComponentRef Id="CMP_SYSCOLLECTOR" />
             <ComponentRef Id="CMP_SYSCOLLECTOR_DB" />
+            <ComponentRef Id="CMP_SCA_DB" />
             <ComponentRef Id="CMP_LOGCOLLECTOR" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />

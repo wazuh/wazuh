@@ -47,8 +47,7 @@ install:
 	[ ! -e ${INSTALLDIR}/bin/update_ruleset ] || $(RM_FILE) ${INSTALLDIR}/bin/update_ruleset
 #	Install scripts/%.py on $(INSTALLDIR)/bin/%
 	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
-#   Provisional name change for wazuh-logtest and wazuh-clusterd
-	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_logtest $(INSTALLDIR)/bin/wazuh-logtest
+#   Provisional name change for wazuh-clusterd
 	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_clusterd $(INSTALLDIR)/bin/wazuh-clusterd
 	$(RM_FILE) $(INSTALLDIR)/bin/__init__
 

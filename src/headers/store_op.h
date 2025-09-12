@@ -31,6 +31,8 @@ typedef struct _OSStore {
     int currently_size;
     int max_size;
 
+    pthread_rwlock_t wr_mutex; ///< RW for list (not the data inside the nodes)
+
     void (*free_data_function)(void *data);
 } OSStore;
 
@@ -38,10 +40,12 @@ OSStore *OSStore_Create(void);
 OSStore *OSStore_Free(OSStore *list) __attribute__((nonnull));
 
 int OSStore_Put(OSStore *list, const char *key, void *data) __attribute__((nonnull(1, 2)));
+int OSStore_Put_ex(OSStore *list, const char *key, void *data) __attribute__((nonnull(1, 2)));
 int OSStore_Check(OSStore *list, const char *key) __attribute__((nonnull));
 int OSStore_NCheck(OSStore *list, const char *key) __attribute__((nonnull));
 int OSStore_NCaseCheck(OSStore *list, const char *key) __attribute__((nonnull));
 int OSStore_GetPosition(OSStore *list, const char *key) __attribute__((nonnull));
+int OSStore_GetPosition_ex(OSStore *list, const char *key) __attribute__((nonnull));
 void *OSStore_Get(OSStore *list, const char *key) __attribute__((nonnull));
 OSStoreNode *OSStore_GetFirstNode(OSStore *list) __attribute__((nonnull));
 int OSStore_Sort(OSStore *list, void *(sort_data_function)(void *d1, void *d2)) __attribute__((nonnull));

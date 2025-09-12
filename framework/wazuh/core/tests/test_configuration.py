@@ -75,7 +75,6 @@ def test_read_option():
     """Checks insert_section function."""
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options.conf')) as f:
         data = fromstring(f.read())
-        assert configuration._read_option('open-scap', data)[0] == 'directories'
         assert configuration._read_option('syscheck', data)[0] == 'directories'
         assert configuration._read_option('labels', data)[0] == 'directories'
 
@@ -86,7 +85,6 @@ def test_read_option():
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:
         data = fromstring(f.read())
-        assert configuration._read_option('open-scap', data)[0] == 'synchronization'
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
@@ -227,11 +225,6 @@ def test_get_ossec_conf():
         configuration.get_ossec_conf(section='remote',
                                      conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
 
-    with pytest.raises(WazuhError, match=".* 1103 .*"):
-        configuration.get_ossec_conf(
-            section='integration', field='error',
-            conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
-
     assert configuration.get_ossec_conf(conf_file=os.path.join(
         parent_directory, tmp_path, 'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
 
@@ -244,11 +237,6 @@ def test_get_ossec_conf():
         section='cluster', field='name',
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
     )['cluster']['name'] == 'wazuh'
-
-    assert configuration.get_ossec_conf(
-        section='integration', field='node',
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
-    )['integration'][0]['node'] == 'wazuh-worker'
 
     assert configuration.get_ossec_conf(
         conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),
@@ -432,10 +420,8 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
     ('000', 'agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'agentless', 'agentless', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
     ('000', 'analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
     ('000', 'com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
-    ('000', 'csyslog', 'csyslog', 'sockets', 'ok {"csyslog": {"enabled": "yes"}}'),
     ('000', 'integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
     ('000', 'logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
     ('000', 'mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
@@ -448,10 +434,8 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
     ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {}}'),
     ('001', 'agent', 'remote', 'sockets', 'ok {"agent": {"enabled": "yes"}}'),
-    ('001', 'agentless', 'remote', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
     ('001', 'analysis', 'remote', 'sockets', 'ok {"analysis": {"enabled": "yes"}}'),
     ('001', 'com', 'remote', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
-    ('001', 'csyslog', 'remote', 'sockets', 'ok {"csyslog": {"enabled": "yes"}}'),
     ('001', 'integrator', 'remote', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
     ('001', 'logcollector', 'remote', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
     ('001', 'mail', 'remote', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),

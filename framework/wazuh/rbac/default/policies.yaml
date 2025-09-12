@@ -117,16 +117,6 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  ciscat_read:
-    description: Allow read agent's ciscat results information.
-    policies:
-      ciscat:
-        actions:
-          - ciscat:read
-        resources:
-          - agent:id:*
-        effect: allow
-
   decoders_read:
     description: Allow reading all decoder files in the system.
     policies:
@@ -201,18 +191,6 @@ default_policies:
           - agent:id:*
         effect: allow
 
-  rootcheck_all:
-    description: Allow read, run and clear rootcheck information.
-    policies:
-      rootcheck:
-        actions:
-          - rootcheck:clear
-          - rootcheck:read
-          - rootcheck:run
-        resources:
-          - agent:id:*
-        effect: allow
-
   rules_read:
     description: Allow reading all rule files in the system.
     policies:
@@ -256,18 +234,6 @@ default_policies:
       syscheck:
         actions:
           - syscheck:read
-        resources:
-          - agent:id:*
-        effect: allow
-
-  syscheck_all:
-    description: Allow read, run and clear syscheck information
-    policies:
-      syscheck:
-        actions:
-          - syscheck:clear
-          - syscheck:read
-          - syscheck:run
         resources:
           - agent:id:*
         effect: allow

@@ -1,0 +1,49 @@
+name: dev-env-engine
+
+services:
+  wazuh-indexer:
+    build:
+      context: ./wazuh-indexer
+    image: dev-wazuh-indexer
+    hostname: wazuh-indexer
+    # container_name: wazuh-indexer
+    volumes:
+      - ./certs/root-ca.pem:/usr/share/opensearch/config/root-ca.pem
+      - ./certs/wazuh-indexer.pem:/usr/share/opensearch/config/indexer.pem
+      - ./certs/wazuh-indexer.key:/usr/share/opensearch/config/indexer.key
+      - ./certs/wazuh-indexer-key.pem:/usr/share/opensearch/config/indexer-key.pem
+    ports:
+      - 9200:9200
+    environment:
+      - node.name=wazuh-indexer
+      - discovery.type=single-node
+      - plugins.security.ssl.transport.pemcert_filepath=indexer.pem
+      - plugins.security.ssl.transport.pemkey_filepath=indexer-key.pem
+      - plugins.security.ssl.transport.pemtrustedcas_filepath=root-ca.pem
+      - plugins.security.ssl.http.enabled=true
+      - plugins.security.ssl.http.pemcert_filepath=indexer.pem
+      - plugins.security.ssl.http.pemkey_filepath=indexer-key.pem
+      - plugins.security.ssl.http.pemtrustedcas_filepath=root-ca.pem
+      # Allow using server certificates to authenticate
+      - plugins.security.ssl.http.clientauth_mode=NONE
+      - plugins.security.allow_default_init_securityindex=true
+      - cluster.blocks.create_index=false
+      # Prevent execution of bundled demo script which installs demo certificates and security configurations to OpenSearch
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+
+  wazuh-dashboard:
+    build:
+        context: ./wazuh-dashboard
+    image: dev-wazuh-dashboard
+    hostname: wazuh-dashboard
+    # container_name: wazuh-dashboard
+    volumes:
+      - ./wazuh-dashboard/config.yml:/etc/wazuh-dashboard/opensearch_dashboards_custom.yml
+      # User worker 1 certificates
+      - ./certs/root-ca.pem:/etc/wazuh-dashboard/certs/root-ca.pem
+      - ./certs/wazuh-worker1.pem:/etc/wazuh-dashboard/certs/dashboard.pem
+      - ./certs/wazuh-worker1-key.pem:/etc/wazuh-dashboard/certs/dashboard-key.pem
+    ports:
+      - 4040:443
+    depends_on:
+      - wazuh-indexer

@@ -1,0 +1,84 @@
+run-name: Package - Upload pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
+name: Wazuh 6.0 Package - Upload server images 
+
+on:
+  workflow_dispatch:
+    inputs:
+      docker_image_tag:
+        description: |
+          Tag name of the Docker image to be uploaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          If using a custom tag, use only '-', '_', '.' and alphanumeric characters.
+          Default is 'auto'.
+        required: false
+        default: auto
+      system:
+        type: choice
+        description: |
+          System image to upload [deb, rpm].
+        options:
+          - deb
+          - rpm
+      architecture:
+        description: |
+          Architecture of the package [amd64, x86_64, arm64, aarch64]
+        type: choice
+        options:
+          - amd64
+          - x86_64
+          - arm64
+          - aarch64
+        required: true
+      source_reference:
+        description: |
+          Branch from wazuh/wazuh repository to use.
+        required: true
+
+jobs:
+  Upload-package-building-images:
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-24.04' }}
+    timeout-minutes: 140
+    name: Package - Upload pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
+
+    steps:
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
+        with:
+          repository: wazuh/wazuh
+          ref: ${{ inputs.source_reference }}
+
+      - name: Set ARCH
+        run: |
+            if [ ${{ inputs.architecture }} = 'x86_64' ]; then
+              arch="amd64"
+            elif [ ${{ inputs.architecture }} = 'aarch64' ]; then
+              arch="arm64"
+            else
+              arch=${{ inputs.architecture }}
+            fi
+            echo "ARCH=$arch" >> $GITHUB_ENV;
+
+      - name: Set TAG
+        run: |
+          VERSION="$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then
+            echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then
+            echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ inputs.source_reference }})" >> $GITHUB_ENV;
+          else
+            echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV;
+          fi
+
+      - name: Copy build.sh, vcpkg-configuration.json and utils to Dockerfile path
+        run: |
+          dockerfile_path="packages/${{ inputs.system }}s/${{ env.ARCH }}"
+          echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
+          cp packages/build.sh $dockerfile_path
+          cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
+          cp src/engine/vcpkg-configuration.json $dockerfile_path
+          cp src/engine/vcpkg.json $dockerfile_path
+
+      - name: Build and push image pkg_${{ inputs.system }}_server_builder_${{ env.ARCH }} with tag ${{ env.TAG }} to Github Container Registry
+        run:
+          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_server_builder_${{ env.ARCH }} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}

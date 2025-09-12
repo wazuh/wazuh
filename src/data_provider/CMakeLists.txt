@@ -19,19 +19,9 @@ if(COVERITY)
 endif(COVERITY)
 
 include(CheckCXXSourceCompiles)
-set(CMAKE_CXX_STANDARD 17)
-#Check if std::optional is available, therefore C++17 is available
-check_cxx_source_compiles("
-    #include <optional>
-    int main() {
-        std::optional<int> o;
-        return 0;
-    }
-" HAS_OPTIONAL)
 
-if(NOT HAS_OPTIONAL AND NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  set(CMAKE_CXX_STANDARD 14)
-endif()
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #Check if filesystem is available
 check_cxx_source_compiles("
@@ -48,8 +38,7 @@ else()
   add_definitions(-DHAS_STDFILESYSTEM=false)
 endif()
 
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -fPIC")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -68,6 +57,10 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(${CMAKE_SOURCE_DIR}/src/)
 include_directories(${CMAKE_SOURCE_DIR}/include/)
+include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/groups/include)
+include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/users/include)
+include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/services/include)
+include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/browser_extensions/include)
 include_directories(${SRC_FOLDER}/headers/)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/nlohmann/)
@@ -77,7 +70,8 @@ include_directories(${SRC_FOLDER}/external/bzip2/)
 include_directories(${SRC_FOLDER}/external/openssl/include/)
 include_directories(${SRC_FOLDER}/shared_modules/utils)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
-include_directories(${SRC_FOLDER}/external/openssl/include/)
+include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
+include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
 if(NOT CMAKE_CHECK_CENTOS5) # Avoid incompatible libraries in CentOS 5 and Red Hat 5
@@ -91,7 +85,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(PRECOMPILED_EXTERNAL_RES "")
   include_directories(${SRC_FOLDER}/shared_modules/http-request/include/)
   include_directories(${SRC_FOLDER}/shared_modules/http-request/shared/)
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/)
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/linux)
+  include_directories(${SRC_FOLDER}/external/dbus/include/dbus-1.0/)
+  include_directories(${SRC_FOLDER}/external/dbus/lib/dbus-1.0/include/)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/)
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/darwin)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+
 
 if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
   link_directories(${INSTALL_PREFIX}/lib)
@@ -99,7 +102,13 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   link_directories(${CMAKE_SOURCE_DIR}/lib/)
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/windows)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/)
+  include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/darwin)
+endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/sqlite/)
@@ -114,10 +123,13 @@ link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 endif(NOT CMAKE_CHECK_CENTOS5)
 link_directories(${SRC_FOLDER}/external/openssl/)
+link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
+link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   link_directories(${SRC_FOLDER}/shared_modules/http-request/build)
+  link_directories(${SRC_FOLDER}/external/dbus/lib/)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  link_directories(${SRC_FOLDER}/external/curl/lib/.libs/)
+link_directories(${SRC_FOLDER}/external/curl/lib/.libs/)
 
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -189,6 +201,11 @@ else()
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR
+   CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR
+   CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  add_subdirectory(src/extended_sources)
+endif()
 
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
@@ -196,7 +213,7 @@ add_library(sysinfo SHARED
     ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  target_link_libraries(sysinfo psapi iphlpapi ws2_32 wbemuuid uuid wuguid ole32 oleaut32)
+  target_link_libraries(sysinfo psapi iphlpapi ws2_32 wbemuuid uuid wuguid ole32 oleaut32 groups users services browser_extensions)
   set_target_properties(sysinfo PROPERTIES
       PREFIX ""
       SUFFIX ".dll"
@@ -223,14 +240,14 @@ elseif(APPLE)
   if(NOT corefoundation_lib)
     message(FATAL_ERROR "CoreFoundation library not found! Aborting...")
   endif()
-  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib})
+  target_link_libraries(sysinfo cjson ${SRC_FOLDER}/external/libplist/bin/lib/libplist-2.0.a ${iokit_lib} ${corefoundation_lib} groups users services browser_extensions)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
-target_link_libraries(sysinfo wazuhext)
+target_link_libraries(sysinfo wazuhext FilesystemWrapper FileIO)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CURL_DEP "wazuhext")
-  target_link_libraries(sysinfo urlrequest db)
+  target_link_libraries(sysinfo urlrequest db groups users services dbus-1 browser_extensions)
   if(CMAKE_CHECK_CENTOS5)
       set(USE_HTTP 1)
   endif(CMAKE_CHECK_CENTOS5)

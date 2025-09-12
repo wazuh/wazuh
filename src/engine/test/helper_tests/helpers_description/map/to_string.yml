@@ -1,0 +1,42 @@
+# Name of the helper function
+name: to_string
+
+metadata:
+  description: |
+    Transforms a number into a string with that number.
+    This helper function is typically used in the map stage
+  keywords:
+    - undefined
+
+helper_type: map
+
+# Arguments expected by the helper function
+arguments:
+  any_number:
+    type: number # Expected type is string
+    generate: integer
+    source: reference # Includes values or references (their names start with $)
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      any_number: 12345
+    should_pass: true
+    expected: "12345"
+    description: Success to_string
+  - arguments:
+      any_number: 23.565
+    should_pass: true
+    expected: "23.565000"
+    description: Success to_string
+  - arguments:
+      any_number: "12345"
+    should_pass: false
+    expected: "23.565000"
+    description: Failure to_string

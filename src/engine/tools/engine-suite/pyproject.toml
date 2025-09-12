@@ -1,0 +1,4 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+dependencies = ["api-communication"]
+build-backend = "setuptools.build_meta"

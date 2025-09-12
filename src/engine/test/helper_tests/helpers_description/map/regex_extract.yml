@@ -1,0 +1,52 @@
+# Name of the helper function
+name: regex_extract
+
+metadata:
+  description: |
+    Match and capture the regex expression against the indicated "fieldToMatch", saving the captured group in field.
+    Save in field the captured group if the regex expression matches, otherwise if "fieldToMatch"
+    is not found or is not of type string, or if the regex did not match, nothing is performed.
+    If the operation executes successfully the field is overridden, if it does not exist, it is created.
+    Keep in mind that we need to escape reserved Yaml characters depending on the string input mode of Yaml.
+    RE2 syntax: https://github.com/google/re2/wiki/Syntax
+    This helper function is used in the map stage
+  keywords:
+    - undefined
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  fieldToMatch:
+    type: string # Expected type is string
+    generate: string
+    source: reference # Includes only references (their names start with $)
+  regex:
+    type: string # Expected type is string
+    generate: regex
+    source: value # Includes only value
+
+# The database is not created
+skipped:
+  - success_cases
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      fieldToMatch: bye pcre2
+      regex: "^(bye pcre\\d)$"
+    should_pass: true
+    expected: bye pcre2
+    description: Match regular expression
+  - arguments:
+      fieldToMatch: ye pcre2
+      regex: "^(bye pcre\\d)$"
+    should_pass: false
+    expected: bye pcre2
+    description: Don't match regular expression

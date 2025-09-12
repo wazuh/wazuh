@@ -41,10 +41,7 @@ case "$1" in
       if [ -f ${DIR}/etc/ossec.conf ]; then
         cp -p ${DIR}/etc/ossec.conf ${DIR}/tmp/conffiles
       fi
-      # Save the lists
-      if [ -d ${DIR}/etc/lists ]; then
-        cp -pr ${DIR}/etc/lists ${DIR}/tmp/conffiles
-      fi
+
       # Save the rootcheck files
       if [ -d ${DIR}/etc/rootcheck ]; then
         cp -pr ${DIR}/etc/rootcheck ${DIR}/tmp/conffiles

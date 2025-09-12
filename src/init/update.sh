@@ -425,18 +425,6 @@ UpdateStopOSSEC()
 
 UpdateOldVersions()
 {
-    if [ "$INSTYPE" = "server" ]; then
-        # Delete deprecated rules & decoders
-        echo "Searching for deprecated rules and decoders..."
-        DEPRECATED=`cat ./src/init/wazuh/deprecated_ruleset.txt`
-        for i in $DEPRECATED; do
-            DEL_FILE="$INSTALLDIR/ruleset/$i"
-            if [ -f ${DEL_FILE} ]; then
-                echo "Deleting '${DEL_FILE}'."
-                rm -f ${DEL_FILE}
-            fi
-        done
-    fi
 
     # If it is Wazuh 2.0 or newer, exit
     if [ "X$USER_OLD_NAME" = "XWazuh" ]; then
@@ -459,53 +447,6 @@ UpdateOldVersions()
     fi
 
     if [ ! "$INSTYPE" = "agent" ]; then
-
-        # Delete old update ruleset
-        if [ -d "$PREINSTALLEDDIR/update" ]; then
-            rm -rf "$PREINSTALLEDDIR/update"
-        fi
-
-        ETC_DECODERS="$PREINSTALLEDDIR/etc/decoders"
-        ETC_RULES="$PREINSTALLEDDIR/etc/rules"
-
-        # Moving local_decoder
-        if [ -f "$PREINSTALLEDDIR/etc/local_decoder.xml" ]; then
-            if [ -s "$PREINSTALLEDDIR/etc/local_decoder.xml" ]; then
-                mv "$PREINSTALLEDDIR/etc/local_decoder.xml" $ETC_DECODERS
-            else
-                # it is empty
-                rm -f "$PREINSTALLEDDIR/etc/local_decoder.xml"
-            fi
-        fi
-
-        # Moving local_rules
-        if [ -f "$PREINSTALLEDDIR/rules/local_rules.xml" ]; then
-            mv "$PREINSTALLEDDIR/rules/local_rules.xml" $ETC_RULES
-        fi
-
-        # Creating backup directory
-        BACKUP_RULESET="$PREINSTALLEDDIR/etc/backup_ruleset"
-        mkdir $BACKUP_RULESET > /dev/null 2>&1
-        chmod 750 $BACKUP_RULESET > /dev/null 2>&1
-        chown root:wazuh $BACKUP_RULESET > /dev/null 2>&1
-
-        # Backup decoders: Wazuh v1.0.1 to v1.1.1
-        old_decoders="ossec_decoders wazuh_decoders"
-        for old_decoder in $old_decoders
-        do
-            if [ -d "$PREINSTALLEDDIR/etc/$old_decoder" ]; then
-                mv "$PREINSTALLEDDIR/etc/$old_decoder" $BACKUP_RULESET
-            fi
-        done
-
-        # Backup decoders: Wazuh v1.0 and OSSEC
-        if [ -f "$PREINSTALLEDDIR/etc/decoder.xml" ]; then
-            mv "$PREINSTALLEDDIR/etc/decoder.xml" $BACKUP_RULESET
-        fi
-
-        # Backup rules: All versions
-        mv "$PREINSTALLEDDIR/rules" $BACKUP_RULESET
-
         # New ossec.conf by default
         ./gen_ossec.sh conf "manager" $DIST_NAME $DIST_VER > $OSSEC_CONF_FILE
         ./add_localfiles.sh $PREINSTALLEDDIR >> $OSSEC_CONF_FILE

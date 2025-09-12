@@ -1,0 +1,17 @@
+# Name of the helper function
+name: get_date
+
+metadata:
+  description: |
+    Get the current date in the format "%Y-%m-%dT%H:%M:%SZ". The date is generated in UTC time zone.
+  keywords:
+    - time
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: False
+
+output:
+  type: string
+  subset: string

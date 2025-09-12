@@ -15,12 +15,15 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "../rootcheck/rootcheck.h"
+#include "file/file.h"
 #include "db/include/db.h"
 #include "db/include/fimCommonDefs.h"
 #include "ebpf/include/ebpf_whodata.h"
+#include "agent_sync_protocol_c_interface.h"
 
 // Global variables
 syscheck_config syscheck;
+int notify_scan = 0;
 int sys_debug_level;
 int audit_queue_full_reported = 0;
 
@@ -76,36 +79,28 @@ void read_internal(int debug_level)
     return;
 }
 
+static int fim_startmq(const char* key, short type, short attempts) {
+    return StartMQ(key, type, attempts);
+}
+
+static int fim_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
+    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+}
+
 
 void fim_initialize() {
     // Create store data
 #ifndef WIN32
-    FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
-                                         syscheck.sync_interval,
-                                         syscheck.sync_max_interval,
-                                         syscheck.sync_response_timeout,
-                                         fim_send_sync_state,
+    FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
                                          loggingFunction,
                                          syscheck.file_entry_limit,
                                          0,
-                                         false,
-                                         syscheck.sync_thread_pool,
-                                         syscheck.sync_queue_size,
-                                         NULL,
                                          NULL);
 #else
-    FIMDBErrorCode ret_val = fim_db_init(syscheck.database_store,
-                                         syscheck.sync_interval,
-                                         syscheck.sync_max_interval,
-                                         syscheck.sync_response_timeout,
-                                         fim_send_sync_state,
+    FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
                                          loggingFunction,
                                          syscheck.file_entry_limit,
                                          syscheck.db_entry_registry_limit,
-                                         syscheck.enable_registry_synchronization,
-                                         syscheck.sync_thread_pool,
-                                         syscheck.sync_queue_size,
-                                         loggingErrorFunction,
                                          loggingErrorFunction);
 #endif
 
@@ -119,6 +114,18 @@ void fim_initialize() {
 #ifndef WIN32
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL)
 #endif
+
+    notify_scan = syscheck.notify_first_scan;
+
+    MQ_Functions mq_funcs = {
+        .start = fim_startmq,
+        .send_binary = fim_send_binary_msg
+    };
+
+    syscheck.sync_handle = asp_create("fim", FIM_SYNC_PROTOCOL_DB_PATH, &mq_funcs, loggingFunction);
+    if (!syscheck.sync_handle) {
+        merror_exit("Failed to initialize AgentSyncProtocol");
+    }
 }
 
 

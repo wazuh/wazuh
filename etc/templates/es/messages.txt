@@ -58,11 +58,6 @@ runrootcheck="¿Desea agregar el sistema de detección de rootkit?"
 norootcheck="No se ejecutará rootcheck (sistema de detección de rootkit)"
 yesrootcheck="Ejecutando rootcheck (sistema de detección de rootkit)"
 
-# Part 3.4
-runopenscap="¿Desea activar OpenSCAP?"
-norunopenscap="No se activará OpenSCAP"
-yesrunopenscap="Activando OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="¿Desea habilitar respuesta activa?"
 noactive="Respuesta activa deshabilitada"

@@ -38,7 +38,7 @@ stages:
   - name: Request manager component configuration (Denied)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/agentless/agentless"
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/global"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

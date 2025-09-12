@@ -14,10 +14,6 @@
 #include "os_err.h"
 #include "wazuh_db/wdb.h"
 #include <time.h>
-#ifndef CLIENT
-#include "wazuh_db/helpers/wdb_global_helpers.h"
-#include "wazuhdb_op.h"
-#endif
 
 #define str_startwith(x, y) strncmp(x, y, strlen(y))
 #define str_endwith(x, y) (strlen(x) < strlen(y) || strcmp(x + strlen(x) - strlen(y), y))
@@ -68,135 +64,6 @@ int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char 
 
     return OS_AddKey(keys, id, name, ip ? ip : "any", key, time(NULL));
 }
-
-#ifndef CLIENT
-
-int OS_RemoveAgent(const char *u_id) {
-    FILE *fp;
-    File file;
-    int id_exist;
-    char *name;
-    long fp_seek;
-    size_t fp_read;
-    char *buffer;
-    char buf_curline[OS_BUFFER_SIZE];
-    struct stat fp_stat;
-    char wdbquery[OS_SIZE_128 + 1];
-    char *wdboutput;
-
-    id_exist = IDExist(u_id, 1);
-
-    if (!id_exist)
-        return 0;
-
-    fp = wfopen(KEYS_FILE, "r");
-
-    if (!fp)
-        return 0;
-
-    if (fstat(fileno(fp), &fp_stat) < 0) {
-        fclose(fp);
-        return 0;
-    }
-
-    buffer = malloc(fp_stat.st_size + 1);
-    if (!buffer) {
-        fclose(fp);
-        return 0;
-    }
-
-    if (fsetpos(fp, &fp_pos) < 0) {
-        fclose(fp);
-        free(buffer);
-        return 0;
-    }
-
-    if ((fp_seek = ftell(fp)) < 0) {
-        fclose(fp);
-        free(buffer);
-        return 0;
-    }
-
-    fseek(fp, 0, SEEK_SET);
-    fp_read = fread(buffer, sizeof(char), (size_t)fp_seek, fp);
-
-    if (!fgets(buf_curline, OS_BUFFER_SIZE - 2, fp)) {
-        free(buffer);
-        fclose(fp);
-        return 0;
-    }
-
-    char *ptr_name = strchr(buf_curline, ' ');
-
-    if (!ptr_name) {
-        free(buffer);
-        fclose(fp);
-        return 0;
-    }
-
-    ptr_name++;
-
-    memmove(ptr_name + 1, ptr_name, strlen(ptr_name) + 1);
-    *ptr_name = '!';
-    size_t curline_len = strlen(buf_curline);
-    memcpy(buffer + fp_read, buf_curline, curline_len);
-    fp_read += curline_len;
-
-    if (!feof(fp))
-        fp_read += fread(buffer + fp_read, sizeof(char), fp_stat.st_size, fp);
-
-    fclose(fp);
-
-    if (TempFile(&file, KEYS_FILE, 0) < 0) {
-        free(buffer);
-        return 0;
-    }
-
-    fwrite(buffer, sizeof(char), fp_read, file.fp);
-    fclose(file.fp);
-    name = getNameById(u_id);
-
-    if (OS_MoveFile(file.name, KEYS_FILE) < 0) {
-        free(file.name);
-        free(buffer);
-        free(name);
-        return 0;
-    }
-
-    free(file.name);
-    free(buffer);
-
-    if (name) {
-        delete_diff(name);
-        free(name);
-    }
-
-    // Remove DB from wazuh-db
-    int sock = -1;
-    int error;
-    snprintf(wdbquery, OS_SIZE_128, "wazuhdb remove %s", u_id);
-    os_calloc(OS_SIZE_6144, sizeof(char), wdboutput);
-    if (error = wdbc_query_ex(&sock, wdbquery, wdboutput, OS_SIZE_6144), !error) {
-        mdebug1("DB from agent %s was deleted '%s'", u_id, wdboutput);
-    } else {
-        merror("Could not remove the DB of the agent %s. Error: %d.", u_id, error);
-    }
-
-    os_free(wdboutput);
-
-    if (wdb_remove_agent(atoi(u_id), &sock) != OS_SUCCESS) {
-        mdebug1("Could not remove the information stored in Wazuh DB of the agent %s.", u_id);
-    }
-
-    wdbc_close(&sock);
-
-    /* Remove counter for ID */
-    OS_RemoveCounter(u_id);
-    OS_RemoveAgentTimestamp(u_id);
-    return 1;
-}
-
-#endif
 
 int OS_IsValidID(const char *id)
 {
@@ -525,39 +392,8 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
                     total++;
 
                     if (print_status) {
-                        #ifndef CLIENT //print_status is only available on servers
-                        // Within this context, line_read corresponds to the agent ID
-                        agent_status_t agt_status = get_agent_status(atoi(line_read));
-                        if (active_only && (agt_status != GA_STATUS_ACTIVE)) {
-                            continue;
-                        }
-
-                        if (inactive_only && agt_status != GA_STATUS_NACTIVE) {
-                            continue;
-                        }
-
-                        if (csv_output) {
-                            printf("%s,%s,%s,%s,\n", line_read, name, ip, print_agent_status(agt_status));
-                        } else if (json_output) {
-                            cJSON *json_agent = cJSON_CreateObject();
-
-                            if (!json_agent) {
-                                fclose(fp);
-                                return 0;
-                            }
-
-                            cJSON_AddStringToObject(json_agent, "id", line_read);
-                            cJSON_AddStringToObject(json_agent, "name", name);
-                            cJSON_AddStringToObject(json_agent, "ip", ip);
-                            cJSON_AddStringToObject(json_agent, "status", print_agent_status(agt_status));
-                            cJSON_AddItemToArray(json_output, json_agent);
-                        } else {
-                            printf(PRINT_AGENT_STATUS, line_read, name, ip, print_agent_status(agt_status));
-                        }
-                        #else
                         (void) inactive_only;
                         printf(PRINT_AGENT, line_read, name, ip);
-                        #endif
                     } else {
                         printf(PRINT_AGENT, line_read, name, ip);
                     }
@@ -566,40 +402,6 @@ int print_agents(int print_status, int active_only, int inactive_only, int csv_o
         }
     }
 
-    /* Only print agentless for non-active only searches */
-    if (!active_only && print_status) {
-        const char *aip = NULL;
-        DIR *dirp;
-        struct dirent *dp = NULL;
-
-        if (!csv_output && !json_output) {
-            printf("\nList of agentless devices:\n");
-        }
-
-        dirp = wopendir(AGENTLESS_ENTRYDIR);
-        if (dirp) {
-            while ((dp = readdir(dirp)) != NULL) {
-                if (strncmp(dp->d_name, ".", 1) == 0) {
-                    continue;
-                }
-
-                aip = strchr(dp->d_name, '@');
-                if (aip) {
-                    aip++;
-                } else {
-                    aip = "<na>";
-                }
-
-                if (csv_output) {
-                    printf("na,%s,%s,agentless,\n", dp->d_name, aip);
-                } else {
-                    printf("   ID: na, Name: %s, IP: %s, agentless\n",
-                           dp->d_name, aip);
-                }
-            }
-            closedir(dirp);
-        }
-    }
 
     fclose(fp);
     if (total) {

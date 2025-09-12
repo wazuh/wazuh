@@ -12,6 +12,7 @@
 #include "packagesWindows.h"
 #include "appxWindowsWrapper.h"
 #include "sharedDefs.h"
+#include "timeHelper.h"
 
 std::shared_ptr<IPackage> FactoryWindowsPackage::create(const HKEY key, const std::string& userId, const std::string& nameApp, const std::set<std::string>& cacheRegistry)
 {
@@ -27,13 +28,14 @@ void WindowsPackageImpl::buildPackageData(nlohmann::json& package)
     package["name"] = m_packageWrapper->name();
     package["version"] = m_packageWrapper->version();
     package["vendor"] = m_packageWrapper->vendor();
-    package["install_time"] = m_packageWrapper->install_time();
-    package["location"] = m_packageWrapper->location();
+    auto installed = m_packageWrapper->install_time();
+    package["installed"] = installed == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::timestampToISO8601(installed);
+    package["path"] = m_packageWrapper->location();
     package["architecture"] = m_packageWrapper->architecture();
-    package["groups"] = m_packageWrapper->groups();
+    package["category"] = m_packageWrapper->groups();
     package["description"] = m_packageWrapper->description();
     package["size"] = m_packageWrapper->size();
     package["priority"] = m_packageWrapper->priority();
     package["source"] = m_packageWrapper->source();
-    package["format"] = m_packageWrapper->format();
+    package["type"] = m_packageWrapper->format();
 }

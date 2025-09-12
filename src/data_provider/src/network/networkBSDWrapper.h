@@ -42,7 +42,6 @@ static const std::map<std::pair<int, int>, std::string> NETWORK_INTERFACE_TYPE =
 class NetworkBSDInterface final : public INetworkInterfaceWrapper
 {
         ifaddrs* m_interfaceAddress;
-        const std::string m_scanTime;
 
     public:
         explicit NetworkBSDInterface(ifaddrs* addrs)
@@ -169,9 +168,9 @@ class NetworkBSDInterface final : public INetworkInterfaceWrapper
             return "";
         }
 
-        std::string dhcp() const override
+        uint32_t dhcp() const override
         {
-            return "unknown";
+            return 0;
         }
 
         uint32_t mtu() const override

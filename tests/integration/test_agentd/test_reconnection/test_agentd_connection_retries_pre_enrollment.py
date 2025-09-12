@@ -58,7 +58,7 @@ from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import wait_keepalive
+from utils import wait_connect
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
@@ -72,7 +72,7 @@ config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_pat
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
 if sys.platform == WINDOWS:
-    local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
+    local_internal_options = {AGENTD_WINDOWS_DEBUG: '0'}
 else:
     local_internal_options = {AGENTD_DEBUG: '2'}
 local_internal_options.update({AGENTD_TIMEOUT: '5'})
@@ -125,10 +125,10 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
 
     input_description: An external YAML file (wazuh_conf.yaml) includes configuration settings for the agent.
                        Two test cases are found in the test module and include parameters
-                       for the environment setup using the TCP and UDP protocols.
+                       for the environment setup using the TCP protocols.
 
     expected_output:
-        - r'Sending keep alive'
+        - r'Connected to the server'
 
     tags:
         - simulator
@@ -136,11 +136,12 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
         - keys
     '''
     # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = test_metadata['PROTOCOL'])
-    remoted_server.start()
+    remoted_server = RemotedSimulator(protocol = 'tcp')
+    try:
+        remoted_server.start()
 
-    # Start hearing logs
-    wait_keepalive()
-
-    # Reset simulator
-    remoted_server.destroy()
+        # Wait until Agent is connected
+        wait_connect()
+    finally:
+        # Reset simulator
+        remoted_server.destroy()

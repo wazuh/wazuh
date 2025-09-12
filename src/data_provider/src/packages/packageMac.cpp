@@ -14,6 +14,7 @@
 #include "brewWrapper.h"
 #include "pkgWrapper.h"
 #include "macportsWrapper.h"
+#include "timeHelper.h"
 
 std::shared_ptr<IPackage> FactoryBSDPackage::create(const std::pair<PackageContext, int>& ctx)
 {
@@ -59,15 +60,16 @@ void BSDPackageImpl::buildPackageData(nlohmann::json& package)
 {
     package["name"] = m_packageWrapper->name();
     package["version"] = m_packageWrapper->version();
-    package["groups"] = m_packageWrapper->groups();
+    package["category"] = m_packageWrapper->groups();
     package["description"] = m_packageWrapper->description();
     package["architecture"] = m_packageWrapper->architecture();
-    package["format"] = m_packageWrapper->format();
+    package["type"] = m_packageWrapper->format();
     package["source"] = m_packageWrapper->source();
-    package["location"] = m_packageWrapper->location();
+    package["path"] = m_packageWrapper->location();
     package["priority"] = m_packageWrapper->priority();
     package["size"] = m_packageWrapper->size();
     package["vendor"] = m_packageWrapper->vendor();
-    package["install_time"] = m_packageWrapper->install_time();
+    auto installed = Utils::timestampToISO8601(m_packageWrapper->install_time());
+    package["installed"] = installed.empty() ? UNKNOWN_VALUE : installed;
     package["multiarch"] = m_packageWrapper->multiarch();
 }

@@ -6,9 +6,7 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-      - '.github/workflows/4_testunit_python-coverage.yml'
+
 jobs:
   build:
     env:
@@ -30,10 +28,13 @@ jobs:
 
       - name: Download integration tests framework
         run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
           if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
           elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
+              QA_BRANCH=${VERSION}
           else
               QA_BRANCH="main"
           fi

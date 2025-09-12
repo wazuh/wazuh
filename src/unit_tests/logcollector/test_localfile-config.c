@@ -36,6 +36,27 @@ void free_unit_filter(_w_journal_filter_unit_t * unit);
 cJSON * unit_filter_as_json(_w_journal_filter_unit_t * unit);
 cJSON * filter_as_json(w_journal_filter_t * filter);
 
+// Functions under test
+bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index);
+int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globs);
+
+// Mock for Remove_Localfile
+int __wrap_Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globs) {
+    // Simple mock: just free the source entry
+    if (logf && *logf && (*logf)[i].file) {
+        free((*logf)[i].file);
+        (*logf)[i].file = NULL;
+    }
+    return 0;
+}
+
+// Mock for w_journal_add_filter_to_list
+bool __wrap_w_journal_add_filter_to_list(w_journal_filter_t *** list, w_journal_filter_t ** filter) {
+    check_expected(list);
+    check_expected(filter);
+    return mock();
+}
+
 /* setup/teardown */
 static int setup_group(void **state) {
     test_mode = 1;
@@ -1003,6 +1024,162 @@ void test_w_multiline_log_config_clone_success(void ** state) {
 
 }
 
+/* Test w_logreader_journald_merge */
+
+void test_w_logreader_journald_merge_both_no_filters(void ** state) {
+    // Test case: Both source and destination have no filters
+    // Expected: disable_filters should be true (collect everything)
+
+    logreader *logr = NULL;
+    os_calloc(3, sizeof(logreader), logr);
+
+    // Setup destination journald (index 0)
+    os_strdup("journald", logr[0].file);
+    os_calloc(1, sizeof(w_journal_log_config_t), logr[0].journal_log);
+    logr[0].journal_log->filters = NULL; // No filters
+
+    // Setup source journald (index 1)
+    os_strdup("journald", logr[1].file);
+    os_calloc(1, sizeof(w_journal_log_config_t), logr[1].journal_log);
+    logr[1].journal_log->filters = NULL; // No filters
+
+    // Expect warning message when both blocks have no filters
+    expect_string(__wrap__mwarn, formatted_msg, 
+                  "(8022): The filters of the journald log will be disabled in the merge, because one of the configuration does not have filters.");
+
+    // Perform merge
+    bool result = w_logreader_journald_merge(&logr, 1);
+
+    assert_true(result);
+    assert_true(logr[0].journal_log->disable_filters); // Should be disabled (collect everything)
+    assert_null(logr[1].file); // Source should be removed
+
+    // Cleanup
+    free(logr[0].file);
+    free(logr[0].journal_log);
+    free(logr);
+}
+
+void test_w_logreader_journald_merge_dst_has_filters_src_no_filters(void ** state) {
+    // Test case: Destination has filters, source has no filters
+    // Expected: Keep destination filters, don't disable filters
+
+    logreader *logr = NULL;
+    os_calloc(3, sizeof(logreader), logr);
+
+    // Setup destination journald with filters (index 0)
+    os_strdup("journald", logr[0].file);
+    os_calloc(1, sizeof(w_journal_log_config_t), logr[0].journal_log);
+    os_calloc(2, sizeof(w_journal_filter_t*), logr[0].journal_log->filters);
+    os_calloc(1, sizeof(w_journal_filter_t), logr[0].journal_log->filters[0]);
+
+    // Setup source journald without filters (index 1)
+    os_strdup("journald", logr[1].file);
+    os_calloc(1, sizeof(w_journal_log_config_t), logr[1].journal_log);
+    logr[1].journal_log->filters = NULL; // No filters
+
+    // Perform merge
+    bool result = w_logreader_journald_merge(&logr, 1);
+
+    assert_true(result);
+    assert_false(logr[0].journal_log->disable_filters); // Should NOT be disabled
+    assert_non_null(logr[0].journal_log->filters); // Destination filters preserved
+    assert_null(logr[1].file); // Source should be removed
+
+    // Cleanup
+    free(logr[0].file);
+    free(logr[0].journal_log->filters[0]);
+    free(logr[0].journal_log->filters);
+    free(logr[0].journal_log);
+    free(logr);
+}
+
+void test_w_logreader_journald_merge_src_has_filters_dst_no_filters(void ** state) {
+    // Test case: Source has filters, destination has no filters
+    // Expected: Use source filters only, don't disable filters
+
+    logreader *logr = NULL;
+    os_calloc(3, sizeof(logreader), logr);
+
+    // Setup destination journald without filters (index 0)
+    os_strdup("journald", logr[0].file);
+    os_calloc(1, sizeof(w_journal_log_config_t), logr[0].journal_log);
+    logr[0].journal_log->filters = NULL; // No filters
+
+    // Setup source journald with filters (index 1)
+    os_strdup("journald", logr[1].file);
+    os_calloc(1, sizeof(w_journal_log_config_t), logr[1].journal_log);
+    os_calloc(2, sizeof(w_journal_filter_t*), logr[1].journal_log->filters);
+    os_calloc(1, sizeof(w_journal_filter_t), logr[1].journal_log->filters[0]);
+
+    // Perform merge
+    bool result = w_logreader_journald_merge(&logr, 1);
+
+    assert_true(result);
+    assert_false(logr[0].journal_log->disable_filters); // Should NOT be disabled
+    assert_null(logr[1].file); // Source should be removed after merge
+
+    // Cleanup (note: w_logreader_journald_merge moves filters and calls Remove_Localfile)
+    // The real Remove_Localfile frees journal_log, but our mock doesn't
+    // So we need to clean up what remains
+    free(logr[0].file);
+    if (logr[0].journal_log) {
+        if (logr[0].journal_log->filters) {
+            // The filter was moved from source, need to free it
+            free(logr[0].journal_log->filters[0]);
+            free(logr[0].journal_log->filters);
+        }
+        free(logr[0].journal_log);
+    }
+    // Source journal_log was freed by Remove_Localfile
+    free(logr);
+}
+
+void test_w_logreader_journald_merge_both_have_filters(void ** state) {
+    // Test case: Both source and destination have filters
+    // Expected: Union of filters, don't disable filters
+
+    logreader *logr = NULL;
+    os_calloc(3, sizeof(logreader), logr);
+
+    // Setup destination journald with filters (index 0)
+    os_strdup("journald", logr[0].file);
+    os_calloc(1, sizeof(w_journal_log_config_t), logr[0].journal_log);
+    os_calloc(2, sizeof(w_journal_filter_t*), logr[0].journal_log->filters);
+    os_calloc(1, sizeof(w_journal_filter_t), logr[0].journal_log->filters[0]);
+
+    // Setup source journald with filters (index 1)
+    os_strdup("journald", logr[1].file);
+    os_calloc(1, sizeof(w_journal_log_config_t), logr[1].journal_log);
+    os_calloc(2, sizeof(w_journal_filter_t*), logr[1].journal_log->filters);
+    os_calloc(1, sizeof(w_journal_filter_t), logr[1].journal_log->filters[0]);
+
+    // Perform merge
+    bool result = w_logreader_journald_merge(&logr, 1);
+
+    assert_true(result);
+    assert_false(logr[0].journal_log->disable_filters); // Should NOT be disabled
+    assert_non_null(logr[0].journal_log->filters); // Filters preserved
+    assert_null(logr[1].file); // Source should be removed
+
+    // Cleanup (note: w_logreader_journald_merge moves filters and calls Remove_Localfile)
+    free(logr[0].file);
+    if (logr[0].journal_log) {
+        if (logr[0].journal_log->filters) {
+            // Free the original destination filter
+            free(logr[0].journal_log->filters[0]);
+            // The source filter was moved, need to free it too
+            if (logr[0].journal_log->filters[1]) {
+                free(logr[0].journal_log->filters[1]);
+            }
+            free(logr[0].journal_log->filters);
+        }
+        free(logr[0].journal_log);
+    }
+    // Source journal_log was freed by Remove_Localfile
+    free(logr);
+}
+
 /* main */
 
 int main(void) {
@@ -1093,6 +1270,11 @@ int main(void) {
         cmocka_unit_test(test_journald_add_condition_to_filter_ingore_wrong),
         cmocka_unit_test(test_journald_add_condition_to_filter_ingore_yes),
         cmocka_unit_test(test_journald_add_condition_to_filter_fail_regex),
+        // Test w_logreader_journald_merge
+        cmocka_unit_test(test_w_logreader_journald_merge_both_no_filters),
+        cmocka_unit_test(test_w_logreader_journald_merge_dst_has_filters_src_no_filters),
+        cmocka_unit_test(test_w_logreader_journald_merge_src_has_filters_dst_no_filters),
+        cmocka_unit_test(test_w_logreader_journald_merge_both_have_filters),
         // Test w_multiline_log_config_free
         cmocka_unit_test(test_w_multiline_log_config_free_null),
         cmocka_unit_test(test_w_multiline_log_config_free_success),

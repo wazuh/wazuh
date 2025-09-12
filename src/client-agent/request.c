@@ -171,14 +171,6 @@ int req_push(char * buffer, size_t length) {
 
 #endif
 
-        // Send ACK, only in UDP mode
-        if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-            // Example: #!-req 16 ack
-            mdebug2("req_push(): Sending ack (%s).", counter);
-            snprintf(response, REQ_RESPONSE_LENGTH, CONTROL_HEADER HC_REQUEST "%s ack", counter);
-            send_msg(response, -1);
-        }
-
         // Create and insert node
         node = req_create(sock, counter, target, payload, length);
         w_mutex_lock(&mutex_table);
@@ -233,8 +225,6 @@ DWORD WINAPI req_receiver(__attribute__((unused)) LPVOID arg) {
 #else
 void * req_receiver(__attribute__((unused)) void * arg) {
 #endif
-    int attempts;
-    long nsec;
     ssize_t length = 0;
     req_node_t * node;
     char *buffer = NULL;
@@ -265,9 +255,9 @@ void * req_receiver(__attribute__((unused)) void * arg) {
         } else if (strncmp(node->target, "com", 3) == 0) {
             length = wcom_dispatch(node->buffer, &buffer);
         } else if (strncmp(node->target, "syscheck", 8) == 0) {
-            length = syscom_dispatch(node->buffer, &buffer);
+            length = syscom_dispatch(node->buffer, node->length, &buffer);
         } else if (strncmp(node->target, "wmodules", 8) == 0) {
-            length = wmcom_dispatch(node->buffer, &buffer);
+            length = wmcom_dispatch(node->buffer, node->length, &buffer);
         } else if (strncmp(node->target, "upgrade", 7) == 0) {
             length = wm_agent_upgrade_process_command(node->buffer, &buffer);
         } else {
@@ -336,38 +326,8 @@ void * req_receiver(__attribute__((unused)) void * arg) {
 
         mdebug2("req_receiver(): sending '%s' to server", buffer);
 
-        for (attempts = 0; attempts < max_attempts; attempts++) {
-            struct timespec timeout;
-            struct timeval now = { 0, 0 };
-
-            // Try to send message
-
-            if (send_msg(buffer, length)) {
-                merror("Sending response to manager.");
-                break;
-            }
-
-            // Wait for ACK, only in UDP mode
-
-            if (agt->server[agt->rip_id].protocol == IPPROTO_UDP) {
-                gettimeofday(&now, NULL);
-                nsec = now.tv_usec * 1000 + rto_msec * 1000000;
-                timeout.tv_sec = now.tv_sec + rto_sec + nsec / 1000000000;
-                timeout.tv_nsec = nsec % 1000000000;
-
-                if (pthread_cond_timedwait(&node->available, &node->mutex, &timeout) == 0 && IS_ACK(node->buffer)) {
-                    break;
-                }
-            } else {
-                // TCP handles ACK by itself
-                break;
-            }
-
-            mdebug2("Timeout for waiting ACK from manager, resending.");
-        }
-
-        if (attempts == max_attempts) {
-            merror("Couldn't send response to manager: number of attempts exceeded.");
+        if (send_msg(buffer, length)) {
+            merror("Sending response to manager.");
         }
 
         w_mutex_unlock(&node->mutex);

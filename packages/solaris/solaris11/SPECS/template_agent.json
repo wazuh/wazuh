@@ -151,110 +151,6 @@
         "type": "file",
         "user": "root"
     },
-    "/var/ossec/agentless": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "drwxr-x---",
-        "type": "directory",
-        "user": "root"
-    },
-    "/var/ossec/agentless/main.exp": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/register_host.sh": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/ssh.exp": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/ssh_asa-fwsmconfig_diff": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/ssh_foundry_diff": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/ssh_generic_diff": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/ssh_integrity_check_bsd": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/ssh_integrity_check_linux": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/ssh_nopass.exp": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/ssh_pixconfig_diff": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/sshlogin.exp": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/agentless/su.exp": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
     "/var/ossec/backup": {
         "class": "static",
         "group": "wazuh",
@@ -269,14 +165,6 @@
         "mode": "0750",
         "prot": "drwxr-x---",
         "type": "directory",
-        "user": "root"
-    },
-    "/var/ossec/bin/agent-auth": {
-        "class": "static",
-        "group": "root",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
         "user": "root"
     },
     "/var/ossec/bin/manage_agents": {
@@ -455,176 +343,8 @@
         "type": "file",
         "user": "root"
     },
-    "/var/ossec/etc/shared/cis_apache2224_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_debian_linux_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_mysql5-6_community_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_mysql5-6_enterprise_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_rhel5_linux_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_rhel6_linux_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_rhel7_linux_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_rhel_linux_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_sles11_linux_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_sles12_linux_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_win2012r2_domainL1_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_win2012r2_domainL2_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_win2012r2_memberL1_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/cis_win2012r2_memberL2_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
     "/var/ossec/etc/shared/merged.mg": {
         "class": "dynamic",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/rootkit_files.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/rootkit_trojans.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/system_audit_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/system_audit_ssh.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/win_applications_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/win_audit_rcl.txt": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0644",
-        "prot": "-rw-r--r--",
-        "type": "file",
-        "user": "wazuh"
-    },
-    "/var/ossec/etc/shared/win_malware_rcl.txt": {
-        "class": "static",
         "group": "wazuh",
         "mode": "0644",
         "prot": "-rw-r--r--",
@@ -671,7 +391,7 @@
         "type": "file",
         "user": "root"
     },
-    "/var/ossec/lib/librsync.so": {
+    "/var/ossec/lib/libagent_sync_protocol.so": {
         "class": "static",
         "group": "wazuh",
         "mode": "0750",
@@ -696,6 +416,14 @@
         "user": "root"
     },
     "/var/ossec/lib/libsyscollector.so": {
+        "class": "static",
+        "group": "wazuh",
+        "mode": "0750",
+        "prot": "-rwxr-x---",
+        "type": "file",
+        "user": "root"
+    },
+    "/var/ossec/lib/libsca.so": {
         "class": "static",
         "group": "wazuh",
         "mode": "0750",
@@ -1455,6 +1183,22 @@
         "type": "directory",
         "user": "wazuh"
     },
+    "/var/ossec/queue/sca": {
+        "class": "static",
+        "group": "wazuh",
+        "mode": "0750",
+        "prot": "drwxr-x---",
+        "type": "directory",
+        "user": "wazuh"
+    },
+    "/var/ossec/queue/sca/db": {
+        "class": "static",
+        "group": "wazuh",
+        "mode": "0750",
+        "prot": "drwxr-x---",
+        "type": "directory",
+        "user": "wazuh"
+    },
     "/var/ossec/queue/syscollector/norm_config.json": {
         "class": "static",
         "group": "wazuh",
@@ -1744,14 +1488,6 @@
         "user": "root"
     },
     "/var/ossec/var/run/wazuh-modulesd-*.pid": {
-        "class": "dynamic",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/var/run/agent-auth-*.pid": {
         "class": "dynamic",
         "group": "wazuh",
         "mode": "0640",
@@ -2224,150 +1960,6 @@
         "user": "root"
     },
     "/var/ossec/wodles/gcloud/pubsub/subscriber.py": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "drwxr-x---",
-        "type": "directory",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "drwxr-x---",
-        "type": "directory",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/cve-debian-8-oval.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/cve-debian-9-oval.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/cve-redhat-6-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/cve-redhat-7-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/cve-ubuntu-xenial-oval.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/ssg-centos-6-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/ssg-centos-7-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/ssg-debian-8-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/ssg-fedora-24-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/ssg-rhel-6-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/ssg-rhel-7-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/ssg-ubuntu-1404-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/content/ssg-ubuntu-1604-ds.xml": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0640",
-        "prot": "-rw-r-----",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/oscap.py": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/template_oval.xsl": {
-        "class": "static",
-        "group": "wazuh",
-        "mode": "0750",
-        "prot": "-rwxr-x---",
-        "type": "file",
-        "user": "root"
-    },
-    "/var/ossec/wodles/oscap/template_xccdf.xsl": {
         "class": "static",
         "group": "wazuh",
         "mode": "0750",

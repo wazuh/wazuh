@@ -1,0 +1,19 @@
+{
+    "steps": [
+        {
+            "description": "Build (ASAN flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_ASAN=ON",
+                "--log-name asan-build"
+            ]
+        },
+        {
+            "description": "Unit tests (ASAN)",
+            "parameters": [
+                "--test ut",
+                "--log-name asan"
+            ]
+        }
+    ]
+}

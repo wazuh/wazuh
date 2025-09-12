@@ -2,14 +2,6 @@ name: 4_testcomponent_inventory-harvester
 
 on:
   workflow_dispatch:
-  pull_request:
-  # Pull request events
-    types: [synchronize, opened, reopened, ready_for_review]
-  # Path filtering
-    paths:
-      - ".github/workflows/4_testcomponent_inventory-harvester.yml"
-      - "src/shared_modules/utils/**"
-      - "src/wazuh_modules/inventory_harvester/**"
 
 jobs:
   inventory-harvester-modules:

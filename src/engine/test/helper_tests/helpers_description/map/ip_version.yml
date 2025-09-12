@@ -1,0 +1,40 @@
+# Name of the helper function
+name: ip_version
+
+metadata:
+  description: |
+    Checks the protocol version of an IP. If the version is IPv4 then it maps the IPv4 value to field.
+    If the version is IPv6 then it maps the IPv6 value to field.
+    If the field field already exists, then it will be replaced. In case of errors target field will not be modified.
+      - IPv4: support address in dotted-decimal format, "ddd.ddd.ddd.ddd" where ddd is a decimal number of up to three digits in the range  0  to  255
+      - IPv6: support RFC 2373 representation of addresses
+  keywords:
+    - ip
+
+helper_type: map
+
+# Arguments expected by the helper function
+arguments:
+  ip:
+    type: string # Expected type is string
+    generate: ip
+    source: reference # Includes only references (their names start with $)
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: False
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      ip: 111.111.1.11
+    should_pass: true
+    expected: IPv4
+    description: Get the version type of an ip
+  - arguments:
+      ip: 3002:0bd6:0000:0000:0000:ee00:0033:6778
+    should_pass: true
+    expected: IPv6
+    description: Get the version type of an ip

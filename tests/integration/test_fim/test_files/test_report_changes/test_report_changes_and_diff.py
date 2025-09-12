@@ -100,7 +100,12 @@ if sys.platform == MACOS:
     cases_path = Path(TEST_CASES_PATH, 'cases_report_changes_and_diff_macos.yaml')
 else:
     cases_path = Path(TEST_CASES_PATH, 'cases_report_changes_and_diff.yaml')
-config_path = Path(CONFIGS_PATH, 'configuration_report_changes_and_diff.yaml')
+
+if sys.platform in (MACOS, WINDOWS):
+    config_path = Path(CONFIGS_PATH, 'configuration_report_changes_and_diff.yaml')
+else:
+    config_path = Path(CONFIGS_PATH, 'configuration_report_changes_and_diff_whodata.yaml')
+
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
@@ -112,7 +117,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: 2, RT_DELAY: 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_reports_file_and_nodiff(test_configuration, test_metadata, configure_local_internal_options,
-                        truncate_monitored_files, set_wazuh_configuration, create_paths_files, daemons_handler, detect_end_scan):
+                        truncate_monitored_files, set_wazuh_configuration, create_paths_files, clean_fim_sync_db, daemons_handler, detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon reports the file changes (or truncates if required)
                  in the generated events using the 'nodiff' tag and vice versa. For this purpose, the test
@@ -212,12 +217,12 @@ def test_reports_file_and_nodiff(test_configuration, test_metadata, configure_lo
 
     # Validate content_changes value is truncated if the file is set to no_diff
     if is_truncated:
-        assert "Diff truncated due to 'nodiff' configuration detected for this file." in event.get('content_changes'), \
+        assert "Diff truncated due to 'nodiff' configuration detected for this file." in event['file']['content_changes'], \
             'content_changes is not truncated'
     else:
-        assert 'test_string' in event.get('content_changes'), 'Wrong content_changes field'
+        assert 'test_string' in event['file']['content_changes'], 'Wrong content_changes field'
 
     truncate_file(WAZUH_LOG_PATH)
     delete_files_in_folder(folder)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
-    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == test_metadata.get('fim_mode')
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['file']['mode'] == test_metadata.get('fim_mode')

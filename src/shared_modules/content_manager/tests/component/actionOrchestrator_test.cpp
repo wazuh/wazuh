@@ -10,17 +10,18 @@
  */
 
 #include "actionOrchestrator_test.hpp"
-#include "actionOrchestrator.hpp"
-#include "stringHelper.h"
+
 #include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "actionOrchestrator.hpp"
+#include "stringHelper.h"
+
 namespace Log
 {
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 };
 

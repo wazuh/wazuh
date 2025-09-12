@@ -38,8 +38,7 @@ case "$1" in
             rm -rf ${DIR}/var
             rm -rf ${DIR}/logs
             rm -rf ${DIR}/etc/rootcheck
-            rm -rf ${DIR}/etc/rules
-            rm -rf ${DIR}/etc/decoders
+            rm -rf ${DIR}/engine
         fi
 
         # Delete old .save

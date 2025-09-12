@@ -295,6 +295,7 @@
       "data.ms-graph.freeStorageSpaceInBytes",
       "data.ms-graph.iccid",
       "data.ms-graph.imei",
+      "data.ms-graph.ipAddress",
       "data.ms-graph.isEncrypted",
       "data.ms-graph.isSupervised",
       "data.ms-graph.jailBroken",
@@ -350,20 +351,6 @@
       "data.os.display_version",
       "data.os.sysname",
       "data.os.version",
-      "data.oscap.check.description",
-      "data.oscap.check.id",
-      "data.oscap.check.identifiers",
-      "data.oscap.check.oval.id",
-      "data.oscap.check.rationale",
-      "data.oscap.check.references",
-      "data.oscap.check.result",
-      "data.oscap.check.severity",
-      "data.oscap.check.title",
-      "data.oscap.scan.benchmark.id",
-      "data.oscap.scan.content",
-      "data.oscap.scan.id",
-      "data.oscap.scan.profile.id",
-      "data.oscap.scan.profile.title",
       "data.osquery.columns.address",
       "data.osquery.columns.command",
       "data.osquery.columns.description",
@@ -446,16 +433,6 @@
       "data.tty",
       "data.uid",
       "data.url",
-      "data.virustotal.description",
-      "data.virustotal.error",
-      "data.virustotal.found",
-      "data.virustotal.permalink",
-      "data.virustotal.scan_date",
-      "data.virustotal.sha1",
-      "data.virustotal.source.alert_id",
-      "data.virustotal.source.file",
-      "data.virustotal.source.md5",
-      "data.virustotal.source.sha1",
       "data.vulnerability.cve",
       "data.vulnerability.cvss.cvss2.base_score",
       "data.vulnerability.cvss.cvss2.exploitability_score",
@@ -1180,9 +1157,6 @@
               }
             }
           },
-          "status": {
-            "type": "keyword"
-          },
           "data": {
             "type": "keyword"
           },
@@ -1194,78 +1168,6 @@
           },
           "url": {
             "type": "keyword"
-          },
-          "oscap": {
-            "properties": {
-              "check": {
-                "properties": {
-                  "description": {
-                    "type": "text"
-                  },
-                  "id": {
-                    "type": "keyword"
-                  },
-                  "identifiers": {
-                    "type": "text"
-                  },
-                  "oval": {
-                    "properties": {
-                      "id": {
-                        "type": "keyword"
-                      }
-                    }
-                  },
-                  "rationale": {
-                    "type": "text"
-                  },
-                  "references": {
-                    "type": "text"
-                  },
-                  "result": {
-                    "type": "keyword"
-                  },
-                  "severity": {
-                    "type": "keyword"
-                  },
-                  "title": {
-                    "type": "keyword"
-                  }
-                }
-              },
-              "scan": {
-                "properties": {
-                  "benchmark": {
-                    "properties": {
-                      "id": {
-                        "type": "keyword"
-                      }
-                    }
-                  },
-                  "content": {
-                    "type": "keyword"
-                  },
-                  "id": {
-                    "type": "keyword"
-                  },
-                  "profile": {
-                    "properties": {
-                      "id": {
-                        "type": "keyword"
-                      },
-                      "title": {
-                        "type": "keyword"
-                      }
-                    }
-                  },
-                  "return_code": {
-                    "type": "long"
-                  },
-                  "score": {
-                    "type": "double"
-                  }
-                }
-              }
-            }
           },
           "office365": {
             "properties": {
@@ -2309,53 +2211,6 @@
           },
           "uid": {
             "type": "keyword"
-          },
-          "virustotal": {
-            "properties": {
-              "description": {
-                "type": "keyword"
-              },
-              "error": {
-                "type": "keyword"
-              },
-              "found": {
-                "type": "keyword"
-              },
-              "malicious": {
-                "type": "keyword"
-              },
-              "permalink": {
-                "type": "keyword"
-              },
-              "positives": {
-                "type": "keyword"
-              },
-              "scan_date": {
-                "type": "keyword"
-              },
-              "sha1": {
-                "type": "keyword"
-              },
-              "source": {
-                "properties": {
-                  "alert_id": {
-                    "type": "keyword"
-                  },
-                  "file": {
-                    "type": "keyword"
-                  },
-                  "md5": {
-                    "type": "keyword"
-                  },
-                  "sha1": {
-                    "type": "keyword"
-                  }
-                }
-              },
-              "total": {
-                "type": "keyword"
-              }
-            }
           },
           "vulnerability": {
             "properties": {

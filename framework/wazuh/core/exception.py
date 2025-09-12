@@ -54,8 +54,7 @@ class WazuhException(Exception):
                'remediation': 'Please check `WAZUH_HOME/logs`'},
 
         # Configuration: 1100 - 1199
-        1101: {'message': 'Requested component does not exist',
-               'remediation': 'Run `WAZUH_PATH/bin/wazuh-logtest -t` to check your configuration'},
+        1101: {'message': 'Requested component does not exist'},
         1102: {'message': 'Invalid section',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
                               f'{DOCU_VERSION}/user-manual/reference/ossec-conf/index.html) '
@@ -97,8 +96,6 @@ class WazuhException(Exception):
         1119: "Directory '/tmp' needs read, write & execution permission for 'wazuh' user",
         1121: {'message': "Error connecting with socket",
                'remediation': "Please ensure the selected module is running and properly configured"},
-        1122: {'message': 'Experimental features are disabled',
-               'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml'},
         1123: {
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is "
                        f"{MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
@@ -121,15 +118,6 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#agents'},
-        1130: {'message': 'Public Virus Total API Key detected',
-               'remediation': 'To solve this, either use a premium VirusTotal API key or disable the public key'
-                              ' protection in the API settings: '
-                              f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
-        1131: {'message': 'Virus Total API request error',
-               'remediation': 'The use of Virus Total Public API keys is disabled but could not be checked. '
-                              'To solve this, check your connection to the Virus Total API or disable the public key'
-                              ' protection in the API settings: '
-                              f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
@@ -366,6 +354,8 @@ class WazuhException(Exception):
                },
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
+        1761: {'message': 'The next set of configuration values are no longer supported',
+               'remediation': 'Please choose supported values and try again'},
 
         # CDB List: 1800 - 1899
         1800: {'message': 'Bad format in CDB list {path}'},
@@ -442,6 +432,14 @@ class WazuhException(Exception):
         2015: {'message': 'Invalid request URL scheme'},
         2016: {'message': 'Invalid unix socket path'},
         2017: {'message': 'Could not retrieve agents synchronization information from wazuh-db'},
+
+        # Engine API client
+        2800: {'message': 'The engine client connection timeout has been exceeded'},
+        2801: {'message': 'Invalid request URL scheme'},
+        2802: {'message': 'Invalid unix socket path'},
+        2803: {'message': 'Error sending request to the engine'},
+        2804: {'message': 'Unexpected error sending request to the engine'},
+        2805: {'message': 'Error parsing response from the engine'},
 
         # External services
         2100: {'message': 'Error in CTI service request'},
@@ -812,6 +810,14 @@ class WazuhHAPHelperError(WazuhClusterError):
     """
     _default_type = "about:blank"
     _default_title = "HAProxy Helper Error"
+
+
+class WazuhEngineError(WazuhInternalError):
+    """
+    This type of exception is raised inside the engine client.
+    """
+    _default_type = "about:blank"
+    _default_title = "Wazuh Engine Error"
 
 
 class WazuhError(WazuhException):

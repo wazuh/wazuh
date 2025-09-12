@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "engine-test-utils"
+version = "0.0.1"
+authors = [{ name = "Wazuh, Inc." }]
+description = "Test utilities for Wazuh Engine"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = ["Programming Language :: Python :: 3"]
+
+dependencies = ["api-communication"]
+
+[project.urls]
+Homepage = "https://github.com/wazuh/wazuh/src/engine/tools/engine-updown"

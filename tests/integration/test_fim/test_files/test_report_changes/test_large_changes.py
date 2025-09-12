@@ -111,7 +111,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: 2}
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_large_changes(test_configuration, test_metadata, configure_local_internal_options,
-                        truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, daemons_handler, detect_end_scan):
+                        truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, clean_fim_sync_db, daemons_handler, detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon detects the character limit in the file changes is reached
                  showing the 'More changes' tag in the 'content_changes' field of the generated events. For this
@@ -194,13 +194,13 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
 
     # Assert 'More changes' is shown when the command returns more than 'limit' characters
     if test_metadata.get('has_more_changes'):
-        assert 'More changes' in event['content_changes'], 'Did not find event with "More changes" within content_changes.'
+        assert 'More changes' in event['file']['content_changes'], 'Did not find event with "More changes" within content_changes.'
     else:
-        assert 'More changes' not in event['content_changes'], '"More changes" found within content_changes.'
+        assert 'More changes' not in event['file']['content_changes'], '"More changes" found within content_changes.'
 
     # Assert old content is shown in content_changes
-    assert '0' in event['content_changes'], '"0" is the old value but it is not found within content_changes'
+    assert '0' in event['file']['content_changes'], '"0" is the old value but it is not found within content_changes'
 
     # Assert new content is shown when old content is lower than the limit or platform is Windows
     if test_metadata.get('original_size') < limit or sys.platform == WINDOWS:
-        assert '1' in event['content_changes'], '"1" is the new value but it is not found within content_changes'
+        assert '1' in event['file']['content_changes'], '"1" is the new value but it is not found within content_changes'

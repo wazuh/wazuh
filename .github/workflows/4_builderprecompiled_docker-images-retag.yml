@@ -27,6 +27,7 @@ on:
       - 'main'
     paths:
       - 'VERSION.json'
+      - 'src/VERSION'
 
 jobs:
   Upload-package-building-images:
@@ -51,9 +52,11 @@ jobs:
       - name: Get old version from VERSION.json
         run: |
           VERSION_FILE="$GITHUB_WORKSPACE/VERSION.json"
-
+          OLD_VERSION_FILE="$GITHUB_WORKSPACE/src/VERSION"
           if [[ -f "$VERSION_FILE" ]]; then
             VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          elif [[ -f "$OLD_VERSION_FILE" ]]; then
+            VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           else
             echo "Error: No version file found." >&2
             exit 1

@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.13.0"
-REVISION="rc4"
+VERSION="v5.0.0"
+REVISION="alpha0"
 TYPE="local"
 
 ###  Do not modify below here ###
@@ -26,7 +26,7 @@ if [ $? = 0 ]; then
 fi
 
 AUTHOR="Wazuh Inc."
-DAEMONS="wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
+DAEMONS="wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-syscheckd wazuh-analysisd wazuh-execd wazuh-db"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
@@ -218,14 +218,6 @@ testconfig()
 start_service()
 {
     echo "Starting Wazuh $VERSION..."
-    TEST=$(${DIR}/bin/wazuh-logtest-legacy -t  2>&1)
-    echo $TEST
-
-    if [ ! -z "$TEST" ]; then
-        echo "wazuh-analysisd: Configuration error. Exiting."
-        touch ${DIR}/var/run/wazuh-analysisd.failed
-        exit 1;
-    fi
 
     checkpid;
 

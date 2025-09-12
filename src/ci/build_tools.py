@@ -17,10 +17,12 @@ from ci import utils
 DELETE_FOLDER_DIC = {
     'wazuh_modules/syscollector':   ['build', 'smokeTests/output'],
     'shared_modules/dbsync':        ['build', 'smokeTests/output'],
-    'shared_modules/rsync':         ['build', 'smokeTests/output'],
+    'shared_modules/sync_protocol': ['build', 'smokeTests/output', 'coverage_report'],
+    'shared_modules/file_helper':   ['build'],
     'data_provider':                ['build', 'smokeTests/output'],
     'syscheckd':                    ['build', 'src/db/smokeTests/output',
                                      'coverage_report'],
+    'wazuh_modules/sca':            ['build'],
 }
 
 
@@ -359,7 +361,7 @@ def makeLib(moduleName):
     utils.printGreen(msg="[make: PASSED]")
 
 
-def makeTarget(targetName, tests, debug):
+def makeTarget(targetName, tests, debug, valgrind=False, fsanitize=False):
     """
     Build project with flags.
 
@@ -368,6 +370,8 @@ def makeTarget(targetName, tests, debug):
                            <agent, server, winagent>.
         - tests(bool): Build all tests.
         - debug(bool): Build with debug binaries.
+        - valgrind(bool): Build for valgrind (disables sanitizers).
+        - fsanitize(bool): Build with address sanitizers.
 
     Returns:
         None
@@ -385,6 +389,10 @@ def makeTarget(targetName, tests, debug):
         makeTargetCommand += " TEST=1"
     if debug:
         makeTargetCommand += " DEBUG=1"
+    if valgrind:
+        makeTargetCommand += " VALGRIND=1"
+    if fsanitize:
+        makeTargetCommand += " FSANITIZE=1"
     makeTargetCommand += " -j{}".format(utils.getCpuCores())
     out = subprocess.run(makeTargetCommand,
                          stdout=subprocess.PIPE,
@@ -395,7 +403,7 @@ def makeTarget(targetName, tests, debug):
         utils.printGreen(msg="[MakeTarget: PASSED]")
     else:
         print(makeTargetCommand)
-        print(out.stderr.decode('utf-8','replace'))
+        print(out.stderr.decode('utf-8', 'replace'))
         utils.printFail(msg="[MakeTarget: FAILED]")
         errorString = "Error Running MakeTarget: {}".format(out.returncode)
         raise ValueError(errorString)

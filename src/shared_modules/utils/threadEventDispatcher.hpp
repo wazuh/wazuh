@@ -34,10 +34,14 @@ public:
                                     const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    const size_t retryDelay = 1,
+                                    const size_t flushInterval = 20,
                                     bool useSharedBuffers = false)
         : m_functor {std::move(functor)}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_retryDelay {retryDelay}
+        , m_flushInterval {flushInterval}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, useSharedBuffers))}
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
@@ -45,9 +49,13 @@ public:
 
     explicit TThreadEventDispatcher(const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    const size_t retryDelay = 1,
+                                    const size_t flushInterval = 20)
         : m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_retryDelay {retryDelay}
+        , m_flushInterval {flushInterval}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
     {
     }
@@ -185,7 +193,7 @@ private:
             {
                 if constexpr (std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>)
                 {
-                    std::queue<U> data = m_queue->getBulk(m_bulkSize);
+                    std::queue<U> data = m_queue->getBulk(m_bulkSize, std::chrono::seconds(m_flushInterval));
                     const auto size = data.size();
 
                     if (!data.empty())
@@ -217,7 +225,7 @@ private:
                 // Sleep for a second to avoid busy loop
                 if (m_running)
                 {
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
                     std::cerr << "Dispatch handler error, " << ex.what() << "\n";
                 }
                 else
@@ -243,6 +251,8 @@ private:
     std::unique_ptr<TSafeQueueType> m_queue;
     std::thread m_thread;
     std::atomic_bool m_running = true;
+    const size_t m_retryDelay;
+    const size_t m_flushInterval;
 };
 
 template<typename Type, typename Functor>

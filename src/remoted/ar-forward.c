@@ -10,6 +10,7 @@
 
 #include <pthread.h>
 
+#include "defs.h"
 #include "shared.h"
 #include "remoted.h"
 #include "state.h"
@@ -28,6 +29,10 @@ void *AR_Forward(__attribute__((unused)) void *arg)
     os_calloc(OS_MAXSTR, sizeof(char), msg);
     char *ar_agent_id = NULL;
     char *tmp_str = NULL;
+    char *payload_size_offset = NULL;
+    ssize_t payload_size = 0;
+    ssize_t header_size = 0;
+    char *module_name = NULL;
 
     /* Create the unix queue */
     if ((arq = StartMQ(path, READ, 0)) < 0) {
@@ -72,6 +77,8 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             tmp_str++;
             if (*tmp_str == SPECIFIC_AGENT_C) {
                 ar_location |= SPECIFIC_AGENT;
+            } else if (*tmp_str == SPECIFIC_AGENT_SIZED_C) {
+                ar_location |= SPECIFIC_AGENT_SIZED;
             }
             tmp_str += 2;
 
@@ -85,11 +92,74 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             *tmp_str = '\0';
             tmp_str++;
 
+            /* Extract the payload size */
+            if (ar_location & SPECIFIC_AGENT_SIZED) {
+                payload_size_offset = tmp_str;
+                tmp_str = strchr(tmp_str, ' ');
+                if (!tmp_str) {
+                    mwarn(EXECD_INV_MSG, msg);
+                    continue;
+                }
+                *tmp_str = '\0';
+                char *endptr;
+                errno = 0;
+                payload_size = strtoll(payload_size_offset, &endptr, 10);
+                
+                /* Validate strtoll conversion */
+                if (errno == ERANGE) {
+                    mwarn("Payload size value out of range: %s. Dropping message.", payload_size_offset);
+                    continue;
+                }
+                if (errno != 0) {
+                    mwarn("Error converting payload size: %s. Dropping message.", payload_size_offset);
+                    continue;
+                }
+                if (endptr == payload_size_offset || *endptr != '\0') {
+                    mwarn("Invalid payload size format: %s. Dropping message.", payload_size_offset);
+                    continue;
+                }
+                
+                /* Validate payload size range */
+                if (payload_size < 0 || payload_size >= OS_MAXSTR) {
+                    mwarn("Invalid payload size: %ld. Must be between 0 and %d. Dropping message.", 
+                          payload_size, OS_MAXSTR - 1);
+                    continue;
+                }
+                tmp_str++;
+
+                /* Extract the module name */
+                module_name = tmp_str;
+                tmp_str = strchr(tmp_str, ' ');
+                if (!tmp_str) {
+                    mwarn(EXECD_INV_MSG, msg);
+                    continue;
+                }
+                *tmp_str = '\0';
+                tmp_str+=2;
+
+            }
+
             /* Create the new message */
             if (ar_location & NO_AR_MSG) {
-                snprintf(msg_to_send, OS_MAXSTR, "%s%s",
-                         CONTROL_HEADER,
-                         tmp_str);
+                if (ar_location & SPECIFIC_AGENT_SIZED) {
+                    header_size = snprintf(msg_to_send, OS_MAXSTR, "%s%s ",
+                             CONTROL_HEADER,
+                             module_name);
+                                               
+                    /* Validate payload size to prevent buffer overflow */
+                    if ((size_t)(header_size + payload_size) >= OS_MAXSTR) {
+                        mwarn("Message size (%ld + %ld) exceeds maximum allowed size (%d). Dropping message.", 
+                              header_size, payload_size, OS_MAXSTR);
+                        continue;
+                    }
+                    
+                    /* Copy the payload to the message */
+                    memcpy(msg_to_send + header_size, tmp_str, payload_size);
+                } else {
+                    snprintf(msg_to_send, OS_MAXSTR, "%s%s",
+                            CONTROL_HEADER,
+                            tmp_str);
+                }
             } else {
                 snprintf(msg_to_send, OS_MAXSTR, "%s%s%s",
                          CONTROL_HEADER,
@@ -123,6 +193,11 @@ void *AR_Forward(__attribute__((unused)) void *arg)
             /* Send to the remote agent that generated the event or to a pre-defined agent */
             else if (ar_location & (REMOTE_AGENT | SPECIFIC_AGENT)) {
                 if (send_msg(ar_agent_id, msg_to_send, -1) >= 0) {
+                    rem_inc_send_ar(ar_agent_id);
+                }
+            }
+            else if (ar_location & SPECIFIC_AGENT_SIZED) {
+                if (send_msg(ar_agent_id, msg_to_send, payload_size + header_size) >= 0) {
                     rem_inc_send_ar(ar_agent_id);
                 }
             }

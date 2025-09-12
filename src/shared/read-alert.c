@@ -21,14 +21,6 @@
 #define RULE_BEGIN_SZ   6
 #define SRCIP_BEGIN     "Src IP: "
 #define SRCIP_BEGIN_SZ  8
-
-#ifdef LIBGEOIP_ENABLED
-#define GEOIP_BEGIN_SRC     "Src Location: "
-#define GEOIP_BEGIN_SRC_SZ  14
-#define GEOIP_BEGIN_DST     "Dst Location: "
-#define GEOIP_BEGIN_DST_SZ  14
-#endif /* LIBGEOIP_ENABLED */
-
 #define SRCPORT_BEGIN     "Src Port: "
 #define SRCPORT_BEGIN_SZ  10
 #define DSTIP_BEGIN     "Dst IP: "
@@ -97,12 +89,7 @@ void FreeAlertData(alert_data *al_data) {
         }
         os_free(al_data->log);
     }
-#ifdef LIBGEOIP_ENABLED
 
-    os_free(al_data->srcgeoip);
-    os_free(al_data->dstgeoip);
-
-#endif
     // al_data can't be NULL
     free(al_data);
     al_data = NULL;
@@ -267,15 +254,6 @@ alert_data *GetAlertData(int flag, FILE *fp) {
                 os_free(al_data->srcip);
                 os_strdup(p,al_data->srcip);
             }
-#ifdef LIBGEOIP_ENABLED
-            /* GeoIP Source Location */
-            else if (strncmp(GEOIP_BEGIN_SRC, str, GEOIP_BEGIN_SRC_SZ) == 0) {
-                os_clearnl(str, p);
-                p = str + GEOIP_BEGIN_SRC_SZ;
-                os_free(al_data->srcgeoip);
-                os_strdup(p, al_data->srcgeoip);
-            }
-#endif
             /* srcport */
             else if (strncmp(SRCPORT_BEGIN, str, SRCPORT_BEGIN_SZ) == 0) {
                 os_clearnl(str, p);
@@ -291,15 +269,6 @@ alert_data *GetAlertData(int flag, FILE *fp) {
                 os_free(al_data->dstip);
                 os_strdup(p, al_data->dstip);
             }
-#ifdef LIBGEOIP_ENABLED
-            /* GeoIP Destination Location */
-            else if (strncmp(GEOIP_BEGIN_DST, str, GEOIP_BEGIN_DST_SZ) == 0) {
-                os_clearnl(str, p);
-                p = str + GEOIP_BEGIN_DST_SZ;
-                os_free(al_data->dstgeoip);
-                os_strdup(p, al_data->dstgeoip);
-            }
-#endif
             /* dstport */
             else if (strncmp(DSTPORT_BEGIN, str, DSTPORT_BEGIN_SZ) == 0) {
                 os_clearnl(str, p);

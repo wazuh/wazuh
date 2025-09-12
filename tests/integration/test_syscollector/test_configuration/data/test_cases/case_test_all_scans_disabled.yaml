@@ -2,7 +2,7 @@
   description: Verify that the scan starts after N seconds but no scan is triggered
   configuration_parameters:
     DISABLED: 'no'
-    INVERVAL_SCAN: 2s
+    INTERVAL_SCAN: 2s
     START_ON_START: 'no'
     HARDWARE_SCAN: 'no'
     OS_SCAN: 'no'
@@ -12,6 +12,10 @@
     ALL_PORTS: 'no'
     PROCESSES_SCAN: 'no'
     HOTFIXES_SCAN: 'no'
+    GROUPS_SCAN: 'no'
+    USERS_SCAN: 'no'
+    SERVICES_SCAN: 'no'
+    BROWSER_EXTENSIONS_SCAN: 'no'
   metadata:
     disabled: 'no'
     interval_scan: 2
@@ -24,3 +28,7 @@
     all_ports: 'no'
     processes_scan: 'no'
     hotfixes_scan: 'no'
+    groups_scan: 'no'
+    users_scan: 'no'
+    services_scan: 'no'
+    browser_extensions_scan: 'no'

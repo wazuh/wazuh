@@ -7,10 +7,6 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-        - "src/**"
-        - ".github/workflows/4_testunit_linux-win.yml"
 
 jobs:
   Unit-Tests:

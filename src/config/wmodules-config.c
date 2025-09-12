@@ -74,17 +74,11 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     // Select module by name
 
     //osQuery monitor module
-    if (!strcmp(node->values[0], WM_OSQUERYMONITOR_CONTEXT.name)) {
-        if (wm_osquery_monitor_read(children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+    if (!strcmp(node->values[0], "osquery")) {
+        mwarn("Deprecated module 'osquery' is no longer available.");
     }
-    else if (!strcmp(node->values[0], WM_OSCAP_CONTEXT.name)) {
-        if (wm_oscap_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+    else if (!strcmp(node->values[0], "open-scap")) {
+        mwarn("Deprecated module 'open-scap' is no longer available.");
     }
 #ifdef ENABLE_SYSC
     else if (!strcmp(node->values[0], WM_SYS_CONTEXT.name)) {
@@ -100,14 +94,9 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
             return OS_INVALID;
         }
     }
-#ifdef ENABLE_CISCAT
-    else if (!strcmp(node->values[0], WM_CISCAT_CONTEXT.name)) {
-        if (wm_ciscat_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
+    else if (!strcmp(node->values[0], "cis-cat")) {
+        mwarn("Deprecated module 'cis-cat' is no longer available.");
     }
-#endif
     else if (!strcmp(node->values[0], WM_AWS_CONTEXT.name) || !strcmp(node->values[0], "aws-cloudtrail")) {
 #ifndef WIN32
         if (!strcmp(node->values[0], "aws-cloudtrail")) mwarn("Module name 'aws-cloudtrail' is deprecated. Change it to '%s'", WM_AWS_CONTEXT.name);
@@ -432,63 +421,6 @@ int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1) {
     //Task Manager module
     if (!strcmp(node->element, WM_TASK_MANAGER_CONTEXT.name)) {
         if (wm_task_manager_read(xml, children, cur_wmodule) < 0) {
-            OS_ClearNode(children);
-            return OS_INVALID;
-        }
-    }
-
-    OS_ClearNode(children);
-    return 0;
-}
-#endif
-
-#ifndef WIN32
-int Read_Fluent_Forwarder(const OS_XML *xml, xml_node *node, void *d1)
-{
-    wmodule **wmodules = (wmodule**)d1;
-    wmodule *cur_wmodule;
-    xml_node **children = NULL;
-    wmodule *cur_wmodule_exists;
-
-    // Allocate memory
-    if ((cur_wmodule = *wmodules)) {
-        cur_wmodule_exists = *wmodules;
-        int found = 0;
-
-        while (cur_wmodule_exists) {
-            if(cur_wmodule_exists->tag) {
-                if(strcmp(cur_wmodule_exists->tag,node->element) == 0) {
-                    cur_wmodule = cur_wmodule_exists;
-                    found = 1;
-                    break;
-                }
-            }
-            cur_wmodule_exists = cur_wmodule_exists->next;
-        }
-
-        if(!found) {
-            while (cur_wmodule->next)
-                cur_wmodule = cur_wmodule->next;
-
-            os_calloc(1, sizeof(wmodule), cur_wmodule->next);
-            cur_wmodule = cur_wmodule->next;
-        }
-    } else
-        *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
-
-    if (!cur_wmodule) {
-        merror(MEM_ERROR, errno, strerror(errno));
-        return (OS_INVALID);
-    }
-
-    // Get children
-    if (children = OS_GetElementsbyNode(xml, node), !children) {
-        mdebug1("Empty configuration for module '%s'", node->element);
-    }
-
-    // Fluent Forwarder Module
-    if (!strcmp(node->element, WM_FLUENT_CONTEXT.name)) {
-        if (wm_fluent_read(xml, children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }

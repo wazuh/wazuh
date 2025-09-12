@@ -41,13 +41,15 @@ __attribute__((noreturn)) static void help_syscheckd()
 }
 
 extern bool is_fim_shutdown;
+extern volatile int fim_sync_module_running;
 
 /* Shut down syscheckd properly */
 static void fim_shutdown(int sig)
 {
-    /* Close sync thread and release dbsync and rsync */
+    /* Close sync thread and release dbsync */
     minfo(SK_SHUTDOWN);
     is_fim_shutdown = true;
+    fim_sync_module_running = 0;
     fim_db_teardown();
     HandleSIG(sig);
 }
@@ -120,7 +122,6 @@ int main(int argc, char **argv)
 
     /* Initialize error logging for shared modulesd */
     dbsync_initialize(loggingErrorFunction);
-    rsync_initialize(loggingErrorFunction);
 
     /* Read internal options */
     read_internal(debug_level);
@@ -191,7 +192,7 @@ int main(int argc, char **argv)
 
     /* Connect to the queue */
 
-    if ((syscheck.queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+    if ((syscheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
         merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
     }
 

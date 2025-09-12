@@ -17,6 +17,8 @@ w_queue_t * queue_init(size_t size) {
     os_malloc(size * sizeof(void *), queue->data);
     queue->size = size;
     queue->elements = 0;
+    queue->begin = 0;
+    queue->end = 0;
     w_mutex_init(&queue->mutex, NULL);
     w_cond_init(&queue->available, NULL);
     w_cond_init(&queue->available_not_empty, NULL);
@@ -37,6 +39,16 @@ int queue_full(const w_queue_t * queue) {
     return (queue->begin + 1) % queue->size == queue->end;
 }
 
+int queue_full_ex(const w_queue_t * queue) {
+    int is_full;
+
+    w_mutex_lock(&queue->mutex);
+    is_full = queue_full(queue);
+    w_mutex_unlock(&queue->mutex);
+
+    return is_full;
+}
+
 int queue_empty(const w_queue_t * queue) {
     return queue->begin == queue->end;
 }
@@ -46,6 +58,19 @@ int queue_empty_ex(w_queue_t * queue) {
     bool empty = queue->begin == queue->end;
     w_mutex_unlock(&queue->mutex);
     return empty;
+}
+
+float queue_get_percentage_ex(const w_queue_t * queue) {
+
+    if (queue == NULL) {
+        return -1;
+    }
+    w_mutex_lock(&queue->mutex);
+    size_t elements = queue->elements;
+    size_t size = queue->size;
+    w_mutex_unlock(&queue->mutex);
+
+    return (float) elements / (float) (size - 1);
 }
 
 int queue_push(w_queue_t * queue, void * data) {

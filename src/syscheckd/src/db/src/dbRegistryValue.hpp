@@ -12,9 +12,9 @@
 #ifndef _REGISTRYVALUE_HPP
 #define _REGISTRYVALUE_HPP
 
-#include "json.hpp"
 #include "dbItem.hpp"
 #include "fimDBSpecialization.h"
+#include "json.hpp"
 
 struct FimRegistryValueDeleter
 {
@@ -36,28 +36,24 @@ class RegistryValue final : public DBItem
 {
     public:
         RegistryValue(const fim_entry* const fim, bool oldData = false)
-            : DBItem(fim->registry_entry.value->name ? fim->registry_entry.value->name : ""
-                     , fim->registry_entry.value->scanned
-                     , fim->registry_entry.value->last_event
-                     , fim->registry_entry.value->checksum
-                     , fim->registry_entry.value->mode)
+            : DBItem(fim->registry_entry.value->value ? fim->registry_entry.value->value : "",
+                     fim->registry_entry.value->checksum)
         {
             m_oldData = oldData;
             m_path = fim->registry_entry.value->path ? fim->registry_entry.value->path : "";
             FIMDBCreator<OS_TYPE>::encodeString(m_path);
-            m_arch = fim->registry_entry.value->arch;
+            m_architecture = fim->registry_entry.value->architecture;
             m_size = fim->registry_entry.value->size;
             m_type = fim->registry_entry.value->type;
             m_md5 = fim->registry_entry.value->hash_md5;
             m_sha1 = fim->registry_entry.value->hash_sha1;
             m_sha256 = fim->registry_entry.value->hash_sha256;
-            m_hashpath = fim->registry_entry.value->hash_full_path;
             createJSON();
             createFimEntry();
         }
 
         RegistryValue(const nlohmann::json& fim, bool oldData = false)
-            : DBItem(fim.at("name"), fim.at("scanned"), fim.at("last_event"), fim.at("checksum"), fim.at("mode"))
+            : DBItem(fim.at("value"), fim.at("checksum"))
         {
             m_oldData = oldData;
             m_size = fim.at("size");
@@ -65,9 +61,8 @@ class RegistryValue final : public DBItem
             m_md5 = fim.at("hash_md5");
             m_sha1 = fim.at("hash_sha1");
             m_sha256 = fim.at("hash_sha256");
-            m_arch = fim.at("arch");
+            m_architecture = fim.at("architecture");
             m_path = fim.at("path");
-            m_hashpath = fim.at("hash_full_path");
             createFimEntry();
             createJSON();
         }
@@ -84,16 +79,15 @@ class RegistryValue final : public DBItem
         };
 
     private:
-        unsigned long long int                              m_size;
-        unsigned int                                        m_type;
-        std::string                                         m_path;
-        int                                                 m_arch;
-        std::string                                         m_md5;
-        std::string                                         m_sha1;
-        std::string                                         m_sha256;
+        unsigned long long int m_size;
+        unsigned int m_type;
+        std::string m_path;
+        int m_architecture;
+        std::string m_md5;
+        std::string m_sha1;
+        std::string m_sha256;
         std::unique_ptr<fim_entry, FimRegistryValueDeleter> m_fimEntry;
-        std::unique_ptr<nlohmann::json>                     m_statementConf;
-        std::string                                         m_hashpath;
+        std::unique_ptr<nlohmann::json> m_statementConf;
 
         void createFimEntry();
         void createJSON();

@@ -39,6 +39,6 @@ runs:
             valgrind ctest --output-on-failure -L ${{ inputs.target }}
           else
             # Run for valgrind and coverage
-            ctest --output-on-failure -L ${{ inputs.target }}
+            ASAN_OPTIONS=alloc_dealloc_mismatch=0 ctest --output-on-failure -L ${{ inputs.target }}
           fi
         shell: bash

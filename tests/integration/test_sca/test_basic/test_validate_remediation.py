@@ -38,6 +38,8 @@ import sys
 import os
 import pytest
 import re
+import time
+import stat
 import subprocess
 from pathlib import Path
 
@@ -67,16 +69,12 @@ test_folder = '/testfile'
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-# Callback functions
-def callback_scan_id_result(line):
-    '''Callback that returns the ID an result of a SCA check
-    Args:
-        line (str): line string to check for match.
-    '''
-    match = re.match(patterns.CB_SCAN_RULE_RESULT, line)
-    if match:
-        return [match.group(1), match.group(2)]
-
+# Helper to find the result for a given id in the accumulated results
+def find_result_for_a_given_id(id: int, results: list[tuple[str, str, str]]) -> tuple[str, str, str] | None:
+    for result in results:
+        if result[0] == str(id):
+            return result
+    return None
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(configurations, configuration_metadata), ids=case_ids)
@@ -141,21 +139,20 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         - The cis*.yaml files located in the policies folder provide the sca rules to check.
 
     expected_output:
-        - r".*sca.*wm_sca_hash_integrity.*DEBUG: ID: (\\d+); Result: '(.*)'"
+        - r".*sca.*DEBUG: Policy check \"(\d+)\" evaluation completed for policy \"(.*?)\", result: (Passed|Failed)"
     '''
 
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
+    expected_policy = Path(test_metadata['policy_file']).stem
+    # Wait for the SCA scan checks to start for the specific policy
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=30, only_new_events=True)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
+
     # Get the results for the checks obtained in the initial SCA scan
-    log_monitor.start(callback=callback_scan_id_result, timeout=20, \
-                      only_new_events=True, accumulations=3)
-
-    results = log_monitor.callback_result
-
-    # Assert the tested check has initial expected results (failed/passed)
-    check_result = results[test_metadata['check_id']-1][1]
-    assert check_result == test_metadata['initial_result'], f"Got unexcepted SCA result: {test_metadata['initial_result']},\
-                                                         got {check_result}"
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=30, only_new_events=True, accumulations=4)
+    assert log_monitor.callback_result is not None and find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result)[2] == test_metadata['initial_result'], \
+        f"Got unexpected SCA result: expected {test_metadata['initial_result']}, got {find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result)}"
 
     if sys.platform == WINDOWS:
         # Modify lockout duration
@@ -164,12 +161,12 @@ def test_validate_remediation_results(test_configuration, test_metadata, prepare
         # Modify the folder's permissions
         os.chmod(test_folder, test_metadata['perms'])
 
-    # Get the results for the checks obtained in the SCA scan
-    log_monitor.start(callback=callback_scan_id_result, timeout=20, \
-                      only_new_events=True, accumulations=3)
-    results = log_monitor.callback_result
+    # Wait for the SCA scan checks to start for the specific policy
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_STARTED_CHECK), timeout=30, only_new_events=True)
+    assert log_monitor.callback_result is not None and log_monitor.callback_result[0] == expected_policy
 
-    # Assert the tested check result changed as expected (passed to failed, and vice-versa)
-    check_result = results[test_metadata['check_id']-1][1]
-    assert check_result == test_metadata['final_result'], f"Got unexcepted SCA result: {test_metadata['final_result']},\
-                                                       got {check_result}"
+    # Get the results for the checks obtained in the SCA scan after change
+    log_monitor.start(callback=callbacks.generate_callback(patterns.SCA_SCAN_RESULT), timeout=30, only_new_events=True, accumulations=4)
+    assert log_monitor.callback_result is not None and find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result)[2] == test_metadata['final_result'], \
+        f"Got unexpected SCA result: expected {test_metadata['final_result']}, got {find_result_for_a_given_id(test_metadata['check_id'], log_monitor.callback_result)}"
+

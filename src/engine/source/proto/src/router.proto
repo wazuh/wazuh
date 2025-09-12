@@ -1,0 +1,192 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.router;
+
+enum State
+{
+    STATE_UNKNOWN = 0; ///< Unset state
+    DISABLED = 1;      ///< Entry is inactive, it's not being used or error
+    ENABLED = 2;       ///< Entry is active, it's being used
+}
+
+enum Sync
+{
+    SYNC_UNKNOWN = 0; ///< Unset state
+    UPDATED = 1;      ///< Policy is updated
+    OUTDATED = 2;     ///< Policy is outdated respect to the store
+    ERROR = 3;        ///< Error, can't get the policy status
+}
+
+/* Client representation of a post route */
+message EntryPost
+{
+    string name = 1;                 // Name of the route
+    string policy = 2;               // Policy to end of the route
+    string filter = 3;               // Filter to apply to the route
+    uint32 priority = 4;             // Priority of the route
+    optional string description = 5; // Description of the route
+}
+
+message Entry
+{
+    string name = 1;                 // Name of the route
+    string policy = 2;               // Policy to end of the route
+    string filter = 3;               // Filter to apply to the route
+    uint32 priority = 4;             // Priority of the route
+    optional string description = 5; // Description of the route
+
+    Sync policy_sync = 6;   // Status of the policy [updated|updated|error]
+    State entry_status = 7; // Status of the entry [INACTIVE|ACTIVE]
+    uint32 uptime = 8;      // Last update of the route
+}
+
+/***************************************************
+ * Post a route to the router
+ *
+ * command: router.route/post (<resource>/<action>)
+ **************************************************/
+message RoutePost_Request
+{
+    optional EntryPost route = 1; // Route to add
+}
+// message RoutePost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a route from the router
+ *
+ * command: router.route/delete (<resource>/<action>)
+ **************************************************/
+message RouteDelete_Request
+{
+    string name = 1; // Name of the route to delete
+}
+// message RouteDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get a route from the router
+ *
+ * command: router.route/get (<resource>/<action>)
+ **************************************************/
+message RouteGet_Request
+{
+    string name = 1; // Name of the route to get
+}
+
+message RouteGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    optional Entry route = 3;  // Route queried if status is OK
+}
+
+/***************************************************
+ * Reload a specific route from the router
+ *
+ * command: router.route/reload (<resource>/<action>)
+ **************************************************/
+message RouteReload_Request
+{
+    string name = 1; // Name of the route to reload
+}
+
+// message RouteReload_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Patch a route to the router (Parcial update route)
+ *
+ * Actually, it only supports the update of the priority (Name and priority are required)
+ *
+ * command: router.route/patchPriority (<resource>/<action>)
+ **************************************************/
+message RoutePatchPriority_Request
+{
+    string name = 1;     // Name of the route to update
+    uint32 priority = 2; // Priority of the route to update
+}
+// message RoutePatchPriority_Request -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get the table of routes from the router
+ * command: router.table/get (<resource>/<action>)
+ **************************************************/
+message TableGet_Request
+{
+    // Nothing
+}
+
+message TableGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    repeated Entry table = 3;  // Routes queried if status is OK and table is not empty
+}
+
+/***************************************************
+ * Send a event to queue of the router
+ *
+ * Send a Standard Wazuh event -> "<Queue>:<Location>:<Message>"
+ * Standard Wazuh event
+ * command: router.queue/post (<resource>/<action>)
+ **************************************************/
+message QueuePost_Request
+{
+    string wazuh_event = 1; // Event to send
+    reserved 2;             // Reserved for future use (event json position)
+    reserved "event";       // Reserved for event in json format for future use in the engine
+}
+// message QueuePost_Request -> Return a GenericStatus_Response
+
+/***************************************************
+ * Change the EPS limiter settings
+ *
+ * command: router.eps/update (<resource>/<action>)
+ **************************************************/
+message EpsUpdate_Request
+{
+    uint32 eps = 1;              // New EPS limit
+    uint32 refresh_interval = 2; // New refresh interval
+}
+// message EpsUpdate_Request -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get the EPS limiter settings
+ *
+ * command: router.eps/get (<resource>/<action>)
+ **************************************************/
+message EpsGet_Request
+{
+    // Nothing
+}
+
+message EpsGet_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    uint32 eps = 3;              // EPS limit
+    uint32 refresh_interval = 4; // Refresh interval
+    bool enabled = 5;            // EPS limiter status
+}
+
+/***************************************************
+ * Activate EPS limiter
+ *
+ * command: router.eps/activate (<resource>/<action>)
+ **************************************************/
+message EpsEnable_Request
+{
+    // Nothing
+}
+// message EpsActivate_Request -> Return a GenericStatus_Response
+
+/***************************************************
+ * Deactivate EPS limiter
+ *
+ * command: router.eps/deactivate (<resource>/<action>)
+ **************************************************/
+message EpsDisable_Request
+{
+    // Nothing
+}
+// message EpsDeactivate_Request -> Return a GenericStatus_Response

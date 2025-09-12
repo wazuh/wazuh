@@ -157,24 +157,24 @@ def test_restrict_value(test_configuration, test_metadata,configure_local_intern
         wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_MODIFIED))
         assert wazuh_log_monitor.callback_result
         event = get_fim_event_data(wazuh_log_monitor.callback_result)
-        assert event['type'] == 'modified', 'Key event not modified'
-        assert event['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Key event wrong path'
-        assert event['arch'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Key event arch not equal'
+        assert event['event']['type'] == 'modified', 'Key event not modified'
+        assert event['registry']['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Key event wrong path'
+        assert event['registry']['architecture'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Key event arch not equal'
 
         wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_ADDED))
         assert wazuh_log_monitor.callback_result
         event = get_fim_event_data(wazuh_log_monitor.callback_result)
-        assert event['type'] == 'added', 'Event type not equal'
-        assert event['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Event path not equal'
-        assert event['value_name'] == test_metadata['value_name'], 'Value name not equal'
-        assert event['arch'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Value event arch not equal'
+        assert event['event']['type'] == 'added', 'Event type not equal'
+        assert event['registry']['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Event path not equal'
+        assert event['registry']['value'] == test_metadata['value_name'], 'Value name not equal'
+        assert event['registry']['architecture'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Value event arch not equal'
     else:
         wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_MODIFIED))
         assert wazuh_log_monitor.callback_result
         event = get_fim_event_data(wazuh_log_monitor.callback_result)
-        assert event['type'] == 'modified', 'Key event not modified'
-        assert event['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Key event wrong path'
-        assert event['arch'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Key event arch not equal'
+        assert event['event']['type'] == 'modified', 'Key event not modified'
+        assert event['registry']['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Key event wrong path'
+        assert event['registry']['architecture'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Key event arch not equal'
 
     delete_registry_value(win32con.HKEY_LOCAL_MACHINE, test_metadata['sub_key'], test_metadata['value_name'], KEY_WOW64_64KEY if test_metadata['arch'] == 'x64' else KEY_WOW64_32KEY)
 
@@ -182,22 +182,22 @@ def test_restrict_value(test_configuration, test_metadata,configure_local_intern
         wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_MODIFIED))
         assert wazuh_log_monitor.callback_result
         event = get_fim_event_data(wazuh_log_monitor.callback_result)
-        assert event['type'] == 'modified', 'Key event not modified'
-        assert event['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Key event wrong path'
-        assert event['arch'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Key event arch not equal'
+        assert event['event']['type'] == 'modified', 'Key event not modified'
+        assert event['registry']['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Key event wrong path'
+        assert event['registry']['architecture'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Key event arch not equal'
 
         wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_DELETED))
         assert wazuh_log_monitor.callback_result
         event = get_fim_event_data(wazuh_log_monitor.callback_result)
-        assert event['type'] == 'deleted', 'Event type not equal'
-        assert event['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Event path not equal'
-        assert event['value_name'] == test_metadata['value_name'], 'Value name not equal'
-        assert event['arch'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Value event arch not equal'
+        assert event['event']['type'] == 'deleted', 'Event type not equal'
+        assert event['registry']['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Event path not equal'
+        assert event['registry']['value'] == test_metadata['value_name'], 'Value name not equal'
+        assert event['registry']['architecture'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Value event arch not equal'
     else:
         wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_MODIFIED))
         assert wazuh_log_monitor.callback_result
         event = get_fim_event_data(wazuh_log_monitor.callback_result)
         # After deleting the value, we don't expect any message of the value because it's not in the DB
-        assert event['type'] == 'modified', 'Key event not modified'
-        assert event['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Key event wrong path'
-        assert event['arch'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Key event arch not equal'
+        assert event['event']['type'] == 'modified', 'Key event not modified'
+        assert event['registry']['path'] == os.path.join(test_metadata['key'], test_metadata['sub_key']), 'Key event wrong path'
+        assert event['registry']['architecture'] == '[x32]' if test_metadata['arch'] == KEY_WOW64_32KEY else '[x64]', 'Key event arch not equal'

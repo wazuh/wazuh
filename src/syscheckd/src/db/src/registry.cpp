@@ -17,19 +17,20 @@
 #include "fimDB.hpp"
 #endif
 
-#include "dbRegistryValue.hpp"
-#include "dbRegistryKey.hpp"
-#include "fimCommonDefs.h"
 #include "db.h"
 #include "db.hpp"
+#include "dbRegistryKey.hpp"
+#include "dbRegistryValue.hpp"
+#include "fimCommonDefs.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 int fim_db_get_count_registry_key()
 {
-    auto count { 0 };
+    auto count {0};
 
     try
     {
@@ -48,7 +49,7 @@ int fim_db_get_count_registry_key()
 
 int fim_db_get_count_registry_data()
 {
-    auto count { 0 };
+    auto count {0};
 
     try
     {
