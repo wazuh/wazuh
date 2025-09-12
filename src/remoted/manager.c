@@ -18,7 +18,7 @@
 #include "../os_crypto/sha256/sha256_op.h"
 #include <pthread.h>
 
-#if defined(__FreeBSD__) || defined(__MACH__) || defined(__sun__)
+#if defined(__FreeBSD__) || defined(__MACH__)
 #define HOST_NAME_MAX 64
 #endif
 
