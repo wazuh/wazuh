@@ -1071,7 +1071,9 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
     expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:agent-upgrade");
     expect_string(__wrap__mtinfo, formatted_msg, "Successfully subscribed to router topic 'upgrade_notifications'");
 
+    will_return(__wrap_FOREVER, 1);
     expect_value(__wrap_sleep, seconds, 1);
+    will_return(__wrap_FOREVER, 0);
 
     // Mock cleanup functions
     expect_value(__wrap_router_subscriber_unsubscribe, handle, mock_subscriber);

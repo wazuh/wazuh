@@ -16,10 +16,7 @@
 #include "os_net/os_net.h"
 #include "router.h"
 #include "sym_load.h"
-
-#ifndef CLIENT
 #include "shared_modules/router/include/router.h"
-#endif
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -65,7 +62,6 @@ const char* upgrade_error_codes[] = {
  * */
 STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
-#ifndef CLIENT
 void* router_module_ptr = NULL;
 
 router_subscriber_create_func router_subscriber_create_ptr = NULL;
@@ -84,7 +80,6 @@ STATIC void* wm_agent_upgrade_router_subscriber_thread(void) __attribute__((nonn
  * @param message received message
  * */
 STATIC void wm_agent_upgrade_router_callback(const char* message);
-#endif
 
 void wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) {
 
@@ -130,10 +125,8 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
     // Start dispatch upgrades thread
     w_create_thread(wm_agent_upgrade_dispatch_upgrades, (void *)manager_configs);
 
-    #ifndef CLIENT
     // Start router subscriber thread
     w_create_thread(wm_agent_upgrade_router_subscriber_thread, NULL);
-    #endif
 
     while (1) {
         // listen - wait connection
@@ -244,7 +237,6 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
     close(sock);
 }
 
-#ifndef CLIENT
 STATIC void wm_agent_upgrade_router_callback(const char* message) {
 
     if (!message) {
@@ -313,18 +305,20 @@ STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
 
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Successfully subscribed to router topic '%s'", topic_name);
 
-    while (1) {
+    // Register cleanup handlers for thread cancellation/exit
+    pthread_cleanup_push((void(*)(void*))router_subscriber_destroy_ptr, subscriber_handle);
+    pthread_cleanup_push((void(*)(void*))router_subscriber_unsubscribe_ptr, subscriber_handle);
+
+    while (FOREVER()) {
         sleep(1);
-        #ifdef WAZUH_UNIT_TESTING
-        break;  // Exit in unit tests
-        #endif
+        pthread_testcancel();
     }
 
     // Cleanup
-    router_subscriber_unsubscribe_ptr(subscriber_handle);
-    router_subscriber_destroy_ptr(subscriber_handle);
+    // These will be called automatically via pthread_cleanup_push if thread is cancelled
+    pthread_cleanup_pop(1); // calls router_subscriber_unsubscribe_ptr
+    pthread_cleanup_pop(1); // calls router_subscriber_destroy_ptr
 
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Router subscriber thread stopped");
     return NULL;
 }
-#endif // SERVER
