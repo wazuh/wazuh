@@ -34,19 +34,16 @@ set_debug(){
 }
 
 build_deps(){
-    local legacy="$1"
-    if [ "${legacy}" = "no" ]; then
-        echo "%_source_filedigest_algorithm 8" >> /root/.rpmmacros
-        echo "%_binary_filedigest_algorithm 8" >> /root/.rpmmacros
-        if [ "${BUILD_TARGET}" = "agent" ]; then
-            echo " %rhel 6" >> /root/.rpmmacros
-            echo " %centos 6" >> /root/.rpmmacros
-            echo " %centos_ver 6" >> /root/.rpmmacros
-            echo " %dist .el6" >> /root/.rpmmacros
-            echo " %el6 1" >> /root/.rpmmacros
-        fi
-        rpmbuild="/usr/local/bin/rpmbuild"
+    echo "%_source_filedigest_algorithm 8" >> /root/.rpmmacros
+    echo "%_binary_filedigest_algorithm 8" >> /root/.rpmmacros
+    if [ "${BUILD_TARGET}" = "agent" ]; then
+        echo " %rhel 6" >> /root/.rpmmacros
+        echo " %centos 6" >> /root/.rpmmacros
+        echo " %centos_ver 6" >> /root/.rpmmacros
+        echo " %dist .el6" >> /root/.rpmmacros
+        echo " %el6 1" >> /root/.rpmmacros
     fi
+    rpmbuild="/usr/local/bin/rpmbuild"
 }
 
 build_package(){
@@ -93,7 +90,7 @@ get_package_and_checksum(){
 
     if [[ "${checksum}" == "yes" ]]; then
         cd "${rpm_build_dir}/RPMS" && sha512sum $RPM_NAME > /var/local/wazuh/$RPM_NAME.sha512
-        # Legacy RPMs do not have symbols
+
         if [ -n "${SYMBOLS_NAME}" ]; then
             sha512sum $SYMBOLS_NAME > /var/local/wazuh/$SYMBOLS_NAME.sha512
         fi

@@ -94,7 +94,6 @@ int wm_exec(char *command, char **output, int *status, int secs, const char * ad
             snprintf(new_path, OS_SIZE_6144 - 1, "PATH=%s;%s", add_path, env_path);
         }
 
-        // Using '_putenv' instead of '_putenv_s' for compatibility with Windows XP.
         if (_putenv(new_path) < 0) {
             merror("at wm_exec(): Unable to set new 'PATH' environment variable (%s).", strerror(errno));
             retval = -1;

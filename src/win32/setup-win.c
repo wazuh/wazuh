@@ -33,45 +33,43 @@ int main(int argc, char **argv)
     system("sc config WazuhSvc start= auto");
 
     /* Change permissions */
-    if (checkVista()) {
-        char cmd[OS_MAXSTR + 1];
+    char cmd[OS_MAXSTR + 1];
 
-        /* Copy some files to outside */
+    /* Copy some files to outside */
 
-        snprintf(cmd, OS_MAXSTR, "move win32ui.exe ../");
-        system(cmd);
+    snprintf(cmd, OS_MAXSTR, "move win32ui.exe ../");
+    system(cmd);
 
-        snprintf(cmd, OS_MAXSTR, "move uninstall.exe ../");
-        system(cmd);
+    snprintf(cmd, OS_MAXSTR, "move uninstall.exe ../");
+    system(cmd);
 
-        snprintf(cmd, OS_MAXSTR, "move doc.html ../");
-        system(cmd);
+    snprintf(cmd, OS_MAXSTR, "move doc.html ../");
+    system(cmd);
 
-        snprintf(cmd, OS_MAXSTR, "move help.txt ../");
-        system(cmd);
+    snprintf(cmd, OS_MAXSTR, "move help.txt ../");
+    system(cmd);
 
-        /* Change permissions */
+    /* Change permissions */
 
-        system("echo y|icacls .  /inheritancelevel:d ");
+    system("echo y|icacls .  /inheritancelevel:d ");
 
-        system("echo y|icacls .  /remove  \"*S-1-5-32-545\" ");
+    system("echo y|icacls .  /remove  \"*S-1-5-32-545\" ");
 
-        system("echo y|icacls ossec.conf  /remove  \"*S-1-1-0\" ");
+    system("echo y|icacls ossec.conf  /remove  \"*S-1-1-0\" ");
 
-        /* Copy them back */
+    /* Copy them back */
 
-        snprintf(cmd, OS_MAXSTR, "move ..\\win32ui.exe .");
-        system(cmd);
+    snprintf(cmd, OS_MAXSTR, "move ..\\win32ui.exe .");
+    system(cmd);
 
-        snprintf(cmd, OS_MAXSTR, "move ..\\uninstall.exe .");
-        system(cmd);
+    snprintf(cmd, OS_MAXSTR, "move ..\\uninstall.exe .");
+    system(cmd);
 
-        snprintf(cmd, OS_MAXSTR, "move ..\\doc.html .");
-        system(cmd);
+    snprintf(cmd, OS_MAXSTR, "move ..\\doc.html .");
+    system(cmd);
 
-        snprintf(cmd, OS_MAXSTR, "move ..\\help.txt .");
-        system(cmd);
-    }
+    snprintf(cmd, OS_MAXSTR, "move ..\\help.txt .");
+    system(cmd);
 
     return (1);
 }

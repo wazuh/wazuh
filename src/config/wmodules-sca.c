@@ -41,7 +41,7 @@ static unsigned int policies_count = 0;
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 
-static const size_t n_old_policies_filenames = 24;
+static const size_t n_old_policies_filenames = 22;
 
 static char * const old_policies_filenames[] = {
     "acsc_office2016_rcl.yml",
@@ -51,10 +51,8 @@ static char * const old_policies_filenames[] = {
     "cis_debianlinux7-8_L2_rcl.yml",
     "cis_mysql5-6_community_rcl.yml",
     "cis_mysql5-6_enterprise_rcl.yml",
-    "cis_rhel5_linux_rcl.yml",
     "cis_rhel6_linux_rcl.yml",
     "cis_rhel7_linux_rcl.yml",
-    "cis_sles11_linux_rcl.yml",
     "cis_sles12_linux_rcl.yml",
     "cis_solaris11_rcl.yml",
     "cis_win10_enterprise_L1_rcl.yml",

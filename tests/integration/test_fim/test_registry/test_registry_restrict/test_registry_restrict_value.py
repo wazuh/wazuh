@@ -35,8 +35,6 @@ os_version:
     - Windows Server 2019
     - Windows Server 2016
     - Windows Server 2012
-    - Windows Server 2003
-    - Windows XP
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
