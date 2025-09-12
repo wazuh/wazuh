@@ -472,7 +472,7 @@ TEST_F(DirRuleEvaluatorTest, InvalidRegexPatternHasReasonString)
 }
 
 
-TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndContent)
+TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndSimpleContentFound)
 {
     // Pattern starts with a regex for filename and then includes a content pattern after '->'.
     m_ctx.pattern = std::string("r:. -> r:hello world");
@@ -584,7 +584,7 @@ TEST_F(DirRuleEvaluatorTest, NegatedContentFilenameWithArrowAndComplexContentNot
 TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndNumericContentFound)
 {
     // Pattern starts with filename and then includes a content pattern after '->'.
-    m_ctx.pattern = std::string("r:. -> n:messi (\\d+) compare == 10");
+    m_ctx.pattern = std::string("r:. -> n:hola (\\d+) compare == 10");
     m_ctx.rule = "dir/";
 
     EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
@@ -597,7 +597,7 @@ TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndNumericContentFound)
     // For exact filename + content pattern, evaluator should read and evaluate file content.
     EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
     .WillOnce(::testing::Return(
-                  std::string("messi 10\n")
+                  std::string("hola 10\n")
               ));
 
     auto evaluator = CreateEvaluator();
@@ -607,7 +607,7 @@ TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndNumericContentFound)
 TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndComplexNumericContentFound)
 {
     // Pattern starts with filename and then includes a content pattern after '->'.
-    m_ctx.pattern = std::string("r:. -> r:lionel && n:messi (\\d+) compare == 10");
+    m_ctx.pattern = std::string("r:. -> r:hola && n:mundo (\\d+) compare == 10");
     m_ctx.rule = "dir/";
 
     EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("dir/"))).WillOnce(::testing::Return(true));
@@ -620,7 +620,7 @@ TEST_F(DirRuleEvaluatorTest, RegexFilenameWithArrowAndComplexNumericContentFound
     // For exact filename + content pattern, evaluator should read and evaluate file content.
     EXPECT_CALL(*m_rawIoMock, getFileContent("file"))
     .WillOnce(::testing::Return(
-                  std::string("lionel messi 10\n")
+                  std::string("hola mundo 10\n")
               ));
 
     auto evaluator = CreateEvaluator();
