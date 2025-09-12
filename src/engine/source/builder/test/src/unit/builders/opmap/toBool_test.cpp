@@ -51,10 +51,10 @@ namespace mapbuildtest
         Builders,
         MapBuilderTest,
         testing::Values(
-            MapT({}, opBuilderHelperToBoolStr, FAILURE()),
-            MapT({makeValue(R"("true")")}, opBuilderHelperToBoolStr, FAILURE()),
-            MapT({makeRef("ref")}, opBuilderHelperToBoolStr, SUCCESS()),
-            MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperToBoolStr, FAILURE())),
+            MapT({}, opBuilderHelperToBool, FAILURE()),
+            MapT({makeValue(R"("true")")}, opBuilderHelperToBool, FAILURE()),
+            MapT({makeRef("ref")}, opBuilderHelperToBool, SUCCESS()),
+            MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperToBool, FAILURE())),
         testNameFormatter<MapBuilderTest>("ToBool"));
 }
 
@@ -66,22 +66,24 @@ namespace mapoperatestest
         testing::Values(
             /*** to_bool ***/
             /*** invalid type reference field ***/
-            MapT(R"({"ref": "some"})", opBuilderHelperToBoolStr, {makeRef("ref")}, FAILURE(customRefExpected())),
-            MapT(R"({"ref": "[1,2,3,4]"})", opBuilderHelperToBoolStr, {makeRef("ref")}, FAILURE(customRefExpected())),
-            MapT(R"({"ref": {"key": "value"}})", opBuilderHelperToBoolStr, {makeRef("ref")}, FAILURE(customRefExpected())),
+            MapT(R"({"ref": "some"})", opBuilderHelperToBool, {makeRef("ref")}, FAILURE(customRefExpected())),
+            MapT(R"({"ref": "[1,2,3,4]"})", opBuilderHelperToBool, {makeRef("ref")}, FAILURE(customRefExpected())),
+            MapT(R"({"ref": {"key": "value"}})", opBuilderHelperToBool, {makeRef("ref")}, FAILURE(customRefExpected())),
             /*** success cases ***/
-            MapT(R"({"ref": 1})", opBuilderHelperToBoolStr, {makeRef("ref")},
-                SUCCESS(customRefExpected(json::Json(R"("true")")))),
-            MapT(R"({"ref": 1.0})", opBuilderHelperToBoolStr, {makeRef("ref")},
-                SUCCESS(customRefExpected(json::Json(R"("true")")))),
-            MapT(R"({"ref": 0})", opBuilderHelperToBoolStr, {makeRef("ref")},
-                SUCCESS(customRefExpected(json::Json(R"("false")")))),
-            MapT(R"({"ref": 0.0})", opBuilderHelperToBoolStr, {makeRef("ref")},
-                SUCCESS(customRefExpected(json::Json(R"("false")")))),
-            /*** unsupported numeric values -> failure ***/
-            MapT(R"({"ref": 2})", opBuilderHelperToBoolStr, {makeRef("ref")}, FAILURE(customRefExpected())),
-            MapT(R"({"ref": -1})", opBuilderHelperToBoolStr, {makeRef("ref")}, FAILURE(customRefExpected())),
-            MapT(R"({"ref": 0.5})", opBuilderHelperToBoolStr, {makeRef("ref")}, FAILURE(customRefExpected()))),
+            MapT(R"({"ref": 1})", opBuilderHelperToBool, {makeRef("ref")},
+                SUCCESS(customRefExpected(json::Json("true")))),
+            MapT(R"({"ref": 1.0})", opBuilderHelperToBool, {makeRef("ref")},
+                SUCCESS(customRefExpected(json::Json("true")))),
+            MapT(R"({"ref": 0})", opBuilderHelperToBool, {makeRef("ref")},
+                SUCCESS(customRefExpected(json::Json("false")))),
+            MapT(R"({"ref": 0.0})", opBuilderHelperToBool, {makeRef("ref")},
+                SUCCESS(customRefExpected(json::Json("false")))),
+            /*** additional numeric values now supported ***/
+            MapT(R"({"ref": 2})", opBuilderHelperToBool, {makeRef("ref")},
+                SUCCESS(customRefExpected(json::Json("true")))),
+            MapT(R"({"ref": -1})", opBuilderHelperToBool, {makeRef("ref")},
+                SUCCESS(customRefExpected(json::Json("false")))),
+            MapT(R"({"ref": 0.5})", opBuilderHelperToBool, {makeRef("ref")},
+                SUCCESS(customRefExpected(json::Json("true"))))),
         testNameFormatter<MapOperationTest>("ToBool"));
 }
-
