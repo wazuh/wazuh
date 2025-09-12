@@ -72,7 +72,7 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
 
     // Some helpers may indicate that the field is root element
     // In this case the path will be defined as "."
-    if ("." == ptrPath)
+    if (!skipDot && "." == ptrPath)
     {
         ptrPath = "";
     }
@@ -113,7 +113,11 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
         }
 
         // Add / at the beginning
-        if (ptrPath.front() != '/')
+        if (ptrPath.empty())
+        {
+            ptrPath = "/";
+        }
+        else if (ptrPath.front() != '/')
         {
             ptrPath.insert(0, "/");
         }
