@@ -288,6 +288,62 @@ fd756ba04d9c32c8848d4608bec41251 merged.mg\n#\"_agent_ip\":192.168.0.133\n";
     wdb_free_agent_info_data(agent_data);
 }
 
+void test_parse_agent_update_msg_missing_config_sum(void **state)
+{
+    char *msg = "Linux |ubuntu2204 |5.15.0-58-generic |#64-Ubuntu SMP Thu Jan 5 11:43:13 UTC 2023 |x86_64 [Ubuntu|ubuntu: 22.04 LTS (Jammy Jellyfish)] - Wazuh v3.13.2\n\
+fd756ba04d9c32c8848d4608bec41251 merged.mg\n#\"_agent_ip\":192.168.0.133\n";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_agent_update_msg(msg, agent_data);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("Wazuh v3.13.2", agent_data->version);
+    assert_string_equal("Ubuntu", agent_data->osd->os_name);
+    assert_string_equal("22", agent_data->osd->os_major);
+    assert_string_equal("04", agent_data->osd->os_minor);
+    assert_null(agent_data->osd->os_build);
+    assert_string_equal("22.04 LTS", agent_data->osd->os_version);
+    assert_string_equal("Jammy Jellyfish", agent_data->osd->os_codename);
+    assert_string_equal("ubuntu", agent_data->osd->os_platform);
+    assert_string_equal("x86_64", agent_data->osd->os_arch);
+    assert_string_equal("Linux |ubuntu2204 |5.15.0-58-generic |#64-Ubuntu SMP Thu Jan 5 11:43:13 UTC 2023 |x86_64", agent_data->osd->os_uname);
+    assert_null(agent_data->config_sum);
+    assert_string_equal("fd756ba04d9c32c8848d4608bec41251", agent_data->merged_sum);
+    assert_string_equal("192.168.0.133", agent_data->agent_ip);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
+void test_parse_agent_update_msg_missing_merged_sum(void **state)
+{
+    char *msg = "Linux |ubuntu2204 |5.15.0-58-generic |#64-Ubuntu SMP Thu Jan 5 11:43:13 UTC 2023 |x86_64 [Ubuntu|ubuntu: 22.04 LTS (Jammy Jellyfish)] - Wazuh v3.13.2\
+ / ab73af41699f13fdd81903b5f23d8d00\nx merged.mg\n#\"_agent_ip\":192.168.0.133\n";
+
+    agent_info_data *agent_data = NULL;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+
+    int result = parse_agent_update_msg(msg, agent_data);
+
+    assert_int_equal(OS_SUCCESS, result);
+    assert_string_equal("Wazuh v3.13.2", agent_data->version);
+    assert_string_equal("Ubuntu", agent_data->osd->os_name);
+    assert_string_equal("22", agent_data->osd->os_major);
+    assert_string_equal("04", agent_data->osd->os_minor);
+    assert_null(agent_data->osd->os_build);
+    assert_string_equal("22.04 LTS", agent_data->osd->os_version);
+    assert_string_equal("Jammy Jellyfish", agent_data->osd->os_codename);
+    assert_string_equal("ubuntu", agent_data->osd->os_platform);
+    assert_string_equal("x86_64", agent_data->osd->os_arch);
+    assert_string_equal("Linux |ubuntu2204 |5.15.0-58-generic |#64-Ubuntu SMP Thu Jan 5 11:43:13 UTC 2023 |x86_64", agent_data->osd->os_uname);
+    assert_string_equal("ab73af41699f13fdd81903b5f23d8d00", agent_data->config_sum);
+    assert_string_equal("x", agent_data->merged_sum);
+    assert_string_equal("192.168.0.133", agent_data->agent_ip);
+
+    wdb_free_agent_info_data(agent_data);
+}
+
 void test_parse_agent_update_msg_ok_debian(void **state)
 {
     char *msg = "Linux |debian10 |4.19.0-9-amd64 |#1 SMP Debian 4.19.118-2+deb10u1 (2020-06-07) |x86_64 \
@@ -485,6 +541,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_parse_uname_string_macos, setup_remoted_op, teardown_remoted_op),
         // Tests parse_agent_update_msg
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_missing_uname, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_missing_config_sum, setup_remoted_op, teardown_remoted_op),
+        cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_missing_merged_sum, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_debian, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_ubuntu, setup_remoted_op, teardown_remoted_op),
         cmocka_unit_test_setup_teardown(test_parse_agent_update_msg_ok_archlinux, setup_remoted_op, teardown_remoted_op),

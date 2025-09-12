@@ -41,7 +41,7 @@ static unsigned int policies_count = 0;
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
 
-static const size_t n_old_policies_filenames = 24;
+static const size_t n_old_policies_filenames = 23;
 
 static char * const old_policies_filenames[] = {
     "acsc_office2016_rcl.yml",
