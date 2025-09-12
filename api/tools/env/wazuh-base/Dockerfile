@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 ARG WAZUH_BRANCH
 ENV DEBIAN_FRONTEND="noninteractive"
