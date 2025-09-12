@@ -1,4 +1,4 @@
-name: Package - Build multiple Wazuh Manager Packages
+name: 4.X - Package - Build multiple Wazuh Manager Packages
 on:
   workflow_dispatch:
     inputs:

@@ -1,4 +1,4 @@
-name: 4_codelinter_clangformat
+name: 4.X - Code Linter - ClangFormat
 
 on:
   workflow_dispatch:

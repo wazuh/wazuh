@@ -1,4 +1,4 @@
-name: Integration tests for enrollment on Windows - Tier 0 and 1
+name: 4.X - Enrollment on Windows - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: macOS unit tests
+name: 4.X - macOS - Unit tests
 
 on:
   workflow_dispatch:

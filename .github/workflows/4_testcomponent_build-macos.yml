@@ -1,4 +1,4 @@
-name: macOS compilation test
+name: 4.X - macOS compilation test
 
 on:
   pull_request:

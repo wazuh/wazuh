@@ -1,4 +1,4 @@
-name: Integration tests for Authd - Tier 0 and 1
+name: 4.X - Authd - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:

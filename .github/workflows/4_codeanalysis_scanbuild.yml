@@ -1,4 +1,4 @@
-name: Scan build
+name: 4.X - Scan Build
 on:
   workflow_dispatch:
   pull_request:
