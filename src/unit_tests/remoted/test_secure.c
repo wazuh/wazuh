@@ -2189,7 +2189,7 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_invalid_json(void** 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
 
     // Expect error message for invalid JSON
-    expect_string(__wrap__merror, formatted_msg, "Failed to parse router message JSON: 'nvalid json'");  // Updated expected message
+    expect_string(__wrap__mwarn, formatted_msg, "Failed to parse router message JSON: 'nvalid json'");  // Updated expected message
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -2267,7 +2267,7 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_send_failed(void** s
     will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-    expect_string(__wrap__merror, formatted_msg, "Unable to forward upgrade-ack message '{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}' for agent 042");
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to forward upgrade-ack message '{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}' for agent 042");
 
     // Mock router provider send for upgrade ACK - simulate failure
     expect_string(__wrap_router_provider_send, message, "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\",\"agents\":[42]}}");
