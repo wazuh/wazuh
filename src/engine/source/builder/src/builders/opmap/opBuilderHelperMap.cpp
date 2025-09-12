@@ -820,8 +820,8 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
     };
 }
 
-// field: +to_bool_str/$ref
-MapOp opBuilderHelperToBoolStr(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+// field: +to_bool/$ref
+MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
     builder::builders::utils::assertSize(opArgs, 1);
@@ -848,9 +848,7 @@ MapOp opBuilderHelperToBoolStr(const std::vector<OpArg>& opArgs, const std::shar
     const std::string successTrace{fmt::format(TRACE_SUCCESS, name)};
     const std::string failureTrace1{fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
     const std::string failureTrace2{fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
-    const std::string failureTrace3{fmt::format("{} -> Reference '{}' is not a valid boolean value (0 or 1)", name, ref->dotPath())};
-
-    return [failureTrace1, failureTrace2, failureTrace3, successTrace, ref, runState = buildCtx->runState()](
+    return [failureTrace1, failureTrace2, successTrace, ref, runState = buildCtx->runState()](
                 base::ConstEvent event) -> MapResult {
         auto object = event->getJson(ref->jsonPath());
         if (!object.has_value())
@@ -882,22 +880,9 @@ MapOp opBuilderHelperToBoolStr(const std::vector<OpArg>& opArgs, const std::shar
             RETURN_FAILURE(runState, json::Json{}, failureTrace2);
         }
 
-        // Check if the value is exactly 0 or 1
-        if (numValue != 0.0 && numValue != 1.0)
-        {
-            RETURN_FAILURE(runState, json::Json{}, failureTrace3);
-        }
-
-        // Convert to boolean string
+        // Convert to JSON boolean: zero and negatives -> false; positives -> true
         json::Json result;
-        if (numValue == 1.0)
-        {
-            result.setString("true");
-        }
-        else
-        {
-            result.setString("false");
-        }
+        result.setBool(numValue > 0.0);
 
         RETURN_SUCCESS(runState, result, successTrace);
     };
