@@ -15,8 +15,9 @@
 
 namespace base::process
 {
-const uid_t INVALID_UID = static_cast<uid_t>(-1);
-const gid_t INVALID_GID = static_cast<gid_t>(-1);
+const uid_t INVALID_UID = static_cast<uid_t>(-1);                 ///< Invalid UID
+const gid_t INVALID_GID = static_cast<gid_t>(-1);                 ///< Invalid GID
+constexpr auto ENV_ENGINE_STANDALONE = "WAZUH_ENGINE_STANDALONE"; ///< Env var to indicate standalone mode
 
 /**
  * @brief Transforms the current process into a daemon (double fork + detach).
