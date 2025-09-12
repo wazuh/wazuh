@@ -24,6 +24,7 @@
 #include "../../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 #include "../../wrappers/wazuh/shared/syscheck_op_wrappers.h"
 #include "../../wrappers/wazuh/syscheckd/fim_diff_changes_wrappers.h"
+#include "../../wrappers/wazuh/shared/utf8_winapi_wrapper_wrappers.h"
 
 #include "test_fim.h"
 
@@ -86,11 +87,11 @@ void expect_fim_registry_get_key_data_call(LPSTR usid,
                                            FILETIME last_write_time) {
     expect_GetSecurityInfo_call((PSID) "userid", NULL, ERROR_SUCCESS);
     expect_ConvertSidToStringSid_call(usid, 1);
-    expect_LookupAccountSid_call((PSID)uname, "domain", 1);
+    expect_utf8_LookupAccountSid_call((PSID)uname, "domain", 1);
 
     expect_GetSecurityInfo_call(NULL, (PSID) "groupid", ERROR_SUCCESS);
     expect_ConvertSidToStringSid_call(gsid, 1);
-    expect_LookupAccountSid_call((PSID)gname, "domain", 1);
+    expect_utf8_LookupAccountSid_call((PSID)gname, "domain", 1);
 
     expect_get_registry_permissions(create_win_permissions_object(), ERROR_SUCCESS);
 
@@ -484,7 +485,7 @@ static void test_fim_registry_get_key_data_check_owner(void **state) {
 
     expect_GetSecurityInfo_call((PSID)"userid", NULL, ERROR_SUCCESS);
     expect_ConvertSidToStringSid_call((LPSTR)"userid", 1);
-    expect_LookupAccountSid_call((PSID)"username", "domain", 1);
+    expect_utf8_LookupAccountSid_call((PSID)"username", "domain", 1);
 
     ret_key = fim_registry_get_key_data(key_handle, path, configuration);
 
@@ -506,7 +507,7 @@ static void test_fim_registry_get_key_data_check_group(void **state) {
 
     expect_GetSecurityInfo_call((PSID)"groupid", NULL, ERROR_SUCCESS);
     expect_ConvertSidToStringSid_call((LPSTR)"groupid", 1);
-    expect_LookupAccountSid_call((PSID)"groupname", "domain", 1);
+    expect_utf8_LookupAccountSid_call((PSID)"groupname", "domain", 1);
 
     ret_key = fim_registry_get_key_data(key_handle, path, configuration);
 

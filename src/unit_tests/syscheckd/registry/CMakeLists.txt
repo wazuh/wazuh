@@ -26,7 +26,7 @@ target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
                                      -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                      -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
-                                     -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap,utf8_LookupAccountSid")
 
 if(${TARGET} STREQUAL "winagent")
     target_link_libraries(test_registry fimdb)

@@ -994,7 +994,7 @@ static void test_get_file_user_LookupAccountSid_error(void **state) {
 
     expect_ConvertSidToStringSid_call("sid", TRUE);
 
-    expect_LookupAccountSid_call("", "domainname", FALSE);
+    expect_utf8_LookupAccountSid_call("", "domainname", FALSE);
     expect_GetLastError_call(ERROR_ACCESS_DENIED);
     expect_FormatMessage_call("Access is denied.");
     expect_string(__wrap__mwarn, formatted_msg, "(6950): Error in LookupAccountSidW getting user. (5): Access is denied.");
@@ -1018,7 +1018,7 @@ static void test_get_file_user_LookupAccountSid_error_none_mapped(void **state) 
 
     expect_ConvertSidToStringSid_call("sid", TRUE);
 
-    expect_LookupAccountSid_call("", "domainname", FALSE);
+    expect_utf8_LookupAccountSid_call("", "domainname", FALSE);
     expect_GetLastError_call(ERROR_NONE_MAPPED);
 
     snprintf(error_msg,
@@ -1046,7 +1046,7 @@ static void test_get_file_user_success(void **state) {
 
     expect_ConvertSidToStringSid_call("sid", TRUE);
 
-    expect_LookupAccountSid_call("accountName", "domainname", TRUE);
+    expect_utf8_LookupAccountSid_call("accountName", "domainname", TRUE);
 
     array[0] = get_file_user("C:\\a\\path", &array[1]);
 
@@ -1059,11 +1059,7 @@ void test_w_get_account_info_LookupAccountSid_error_insufficient_buffer(void **s
     int ret;
     SID input;
 
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_LookupAccountSid, 0);
-
-    will_return(wrap_GetLastError, ERROR_INVALID_NAME);
+    expect_utf8_LookupAccountSid_call("", "", FALSE);
     will_return(wrap_GetLastError, ERROR_INVALID_NAME);
 
     ret = w_get_account_info(&input, &array[0], &array[1]);
@@ -1076,16 +1072,7 @@ void test_w_get_account_info_LookupAccountSid_error_second_call(void **state) {
     int ret;
     SID input;
 
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_LookupAccountSid, 0);
-
-    will_return(wrap_GetLastError, ERROR_INSUFFICIENT_BUFFER);
-
-    will_return(wrap_LookupAccountSid, "accountName");
-    will_return(wrap_LookupAccountSid, "domainName");
-    will_return(wrap_LookupAccountSid, 0);
-
+    expect_utf8_LookupAccountSid_call("", "", FALSE);
     will_return(wrap_GetLastError, ERROR_INSUFFICIENT_BUFFER);
 
     ret = w_get_account_info(&input, &array[0], &array[1]);
@@ -1098,13 +1085,7 @@ void test_w_get_account_info_success(void **state) {
     int ret;
     SID input;
 
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
-    will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
-    will_return(wrap_LookupAccountSid, 1);
-
-    will_return(wrap_LookupAccountSid, "accountName");
-    will_return(wrap_LookupAccountSid, "domainName");
-    will_return(wrap_LookupAccountSid, 1);
+    expect_utf8_LookupAccountSid_call("accountName", "domainName", 1);
 
     ret = w_get_account_info(&input, &array[0], &array[1]);
 
@@ -1330,13 +1311,7 @@ void test_w_get_file_permissions_success(void **state) {
         will_return(wrap_IsValidSid, 1);
 
         // Inside w_get_account_info
-        will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
-        will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
-        will_return(wrap_LookupAccountSid, 1);
-
-        will_return(wrap_LookupAccountSid, "accountName");
-        will_return(wrap_LookupAccountSid, "domainName");
-        will_return(wrap_LookupAccountSid, 1);
+        expect_utf8_LookupAccountSid_call("accountName", "domainName", 1);
 
         expect_ConvertSidToStringSid_call(BASE_WIN_SID, TRUE);
     }
@@ -1520,7 +1495,7 @@ void test_get_registry_group_ConvertSidToStringSid_fails(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "The user's SID could not be extracted.");
 
-    expect_LookupAccountSid_call("groupname", "domainname", TRUE);
+    expect_utf8_LookupAccountSid_call("groupname", "domainname", TRUE);
 
     group = get_registry_group(&group_id, hndl);
 
@@ -1538,7 +1513,7 @@ void test_get_registry_group_LookupAccountSid_fails(void **state) {
 
     expect_ConvertSidToStringSid_call("groupid", TRUE);
 
-    expect_LookupAccountSid_call("", "domainname", FALSE);
+    expect_utf8_LookupAccountSid_call("", "domainname", FALSE);
     expect_GetLastError_call(ERROR_ACCESS_DENIED);
     expect_FormatMessage_call("Access is denied.");
     expect_string(__wrap__mwarn, formatted_msg, "(6950): Error in LookupAccountSidW getting group. (5): Access is denied.");
@@ -1559,7 +1534,7 @@ void test_get_registry_group_LookupAccountSid_not_found(void **state) {
 
     expect_ConvertSidToStringSid_call("groupid", TRUE);
 
-    expect_LookupAccountSid_call("", "domainname", FALSE);
+    expect_utf8_LookupAccountSid_call("", "domainname", FALSE);
     expect_GetLastError_call(ERROR_NONE_MAPPED);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Group not found for registry key");
@@ -1580,7 +1555,7 @@ void test_get_registry_group_success(void **state) {
 
     expect_ConvertSidToStringSid_call("groupid", TRUE);
 
-    expect_LookupAccountSid_call("groupname", "domainname", TRUE);
+    expect_utf8_LookupAccountSid_call("groupname", "domainname", TRUE);
 
     group = get_registry_group(&group_id, hndl);
 
@@ -1742,13 +1717,7 @@ void test_get_registry_permissions_success(void **state) {
         will_return(wrap_IsValidSid, 1);
 
         // Inside w_get_account_info
-        will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Name size
-        will_return(wrap_LookupAccountSid, OS_SIZE_1024);   // Domain size
-        will_return(wrap_LookupAccountSid, 1);
-
-        will_return(wrap_LookupAccountSid, "accountName");
-        will_return(wrap_LookupAccountSid, "domainName");
-        will_return(wrap_LookupAccountSid, 1);
+        expect_utf8_LookupAccountSid_call("accountName", "domainName", 1);
 
         expect_ConvertSidToStringSid_call(BASE_WIN_SID, TRUE);
 
