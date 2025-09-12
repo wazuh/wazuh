@@ -1811,35 +1811,8 @@ $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS) win32/version-dll.o
 
 
 else
-<<<<<<< HEAD
-ifeq (${uname_S},SunOS)
-ifneq ($(uname_R),5.10)
-LIBGCC_FLAGS := -static-libgcc
-else
-LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
-endif
-ifeq (${uname_P},sparc)
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-else
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-endif
-=======
-ifeq (${uname_S},HP-UX)
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	mkdir -p libwazuhext;
-	find external/ -name \*.a -exec cp {} libwazuhext/ \;
-	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
-		ar -x libwazuhext/$$lib; \
-		mv *.o libwazuhext/; \
-	done
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc
->>>>>>> 7109889fe6 (clean: removed Solaris references in Makefile, CMakelists.txt and scripts)
-else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-endif
 endif
 endif
 
@@ -1986,9 +1959,6 @@ $(WAZUH_LIB): $(WAZUH_DLL) $(WAZUH_DEF)
 	$(DLLTOOL)  -D $(WAZUH_DLL) --def $(WAZUH_DEF) --output-delaylib $@
 
 else
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif

@@ -13,13 +13,8 @@
 #include "shared.h"
 #include "rootcheck.h"
 
-#if defined(sun) || defined(__sun__)
-#define NETSTAT         "netstat -an -P %s | "\
-                        "grep \"[^0-9]%d \" > /dev/null 2>&1"
-#else
 #define NETSTAT         "netstat -an | grep \"^%s\" | " \
                         "grep \"[^0-9]%d \" > /dev/null 2>&1"
-#endif
 
 /* Prototypes */
 static int  run_netstat(int proto, int port);
