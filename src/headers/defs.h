@@ -80,11 +80,7 @@ published by the Free Software Foundation. For more details, go to \n\
 https://www.gnu.org/licenses/gpl.html\n"
 
 /* Maximum allowed PID */
-#ifdef SOLARIS
-#define MAX_PID 29999
-#else
 #define MAX_PID 32768
-#endif
 
 /* First ID assigned by authd */
 #ifndef AUTHD_FIRST_ID

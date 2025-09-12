@@ -63,11 +63,4 @@ else()
         dl
         proc
     )
-
-    if(SOLARIS)
-        target_link_libraries(syscollector_test_tool
-            nsl
-            socket
-        )
-    endif(SOLARIS)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")

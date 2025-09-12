@@ -51,7 +51,6 @@ enum OSPlatformType
     LINUX,
     BSDBASED,
     WINDOWS,
-    SOLARIS
 };
 
 enum LinuxType

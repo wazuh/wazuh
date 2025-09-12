@@ -98,12 +98,6 @@ if [ ! -r "/etc/os-release" ] || [ "$DIST_NAME" = "centos" ]; then
         DIST_VER=$(uname -r | sed -En 's/[^0-9]*([0-9]+).*/\1/p')
         DIST_SUBVER=$(uname -r | sed -En 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
 
-    # Solaris / SunOS
-    elif [ "$(uname)" = "SunOS" ]; then
-        DIST_NAME="sunos"
-        DIST_VER=$(uname -r | cut -d\. -f1)
-        DIST_SUBVER=$(uname -r | cut -d\. -f2)
-
     # HP-UX
     elif [ "$(uname)" = "HP-UX" ]; then
         DIST_NAME="HP-UX"
