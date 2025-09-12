@@ -363,6 +363,20 @@ void applyLevelStandalone(logging::Level target, int debugCount);
  */
 void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared);
 
+/**
+ * @brief Creates a spdlog-based logging function compatible with GLOBAL_LOG_FUNCTION signature
+ *        for use in standalone mode.
+ *
+ * This function returns a logging function that uses spdlog internally and is compatible
+ * with the GLOBAL_LOG_FUNCTION signature used throughout the Wazuh codebase.
+ *
+ * @return A function that can be used to log messages using spdlog in standalone mode.
+ *         The returned function has the signature:
+ *         void(const int, const char*, const char*, const int, const char*, const char*, va_list)
+ */
+std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+createStandaloneLogFunction();
+
 } // namespace logging
 
 // TRACE

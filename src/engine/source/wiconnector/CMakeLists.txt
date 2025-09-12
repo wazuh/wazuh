@@ -11,7 +11,7 @@ add_library(wIndexerConnector::iwIndexerConnector ALIAS wIndexerConnector_iwInde
 
 # Implementation
 add_library(wIndexerConnector_wIndexerConnector STATIC
-    ${SRC_DIR}/wIndexerConnector.cpp
+    ${SRC_DIR}/windexerconnector.cpp
 )
 target_include_directories(wIndexerConnector_wIndexerConnector
     PUBLIC
@@ -20,6 +20,9 @@ target_include_directories(wIndexerConnector_wIndexerConnector
 target_link_libraries(wIndexerConnector_wIndexerConnector
     PUBLIC
     base
+    wIndexerConnector::iwIndexerConnector
+    PRIVATE
+    indexer_connector
 )
 add_library(wIndexerConnector::wIndexerConnector ALIAS wIndexerConnector_wIndexerConnector)
 

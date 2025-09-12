@@ -246,7 +246,7 @@ bool isStandaloneModeEnable()
 {
     static const bool enabled = []()
     {
-        const char* env = std::getenv("WAZUH_ENGINE_STANDALONE");
+        const char* env = std::getenv(ENV_ENGINE_STANDALONE);
         if (!env)
             return false;
 
