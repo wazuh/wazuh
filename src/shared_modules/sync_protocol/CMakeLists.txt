@@ -139,6 +139,7 @@ elseif(UNIX AND NOT APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
+  enable_testing()
   add_subdirectory(tests)
 endif()
 
