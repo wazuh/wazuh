@@ -14,6 +14,9 @@
 #include "wm_agent_upgrade_tasks.h"
 #include "wm_agent_upgrade_upgrades.h"
 #include "os_net/os_net.h"
+#include "router.h"
+#include "sym_load.h"
+#include "shared_modules/router/include/router.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -59,6 +62,25 @@ const char* upgrade_error_codes[] = {
  * */
 STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_configs) __attribute__((nonnull));
 
+void* router_module_ptr = NULL;
+
+router_subscriber_create_func router_subscriber_create_ptr = NULL;
+router_subscriber_subscribe_func router_subscriber_subscribe_ptr = NULL;
+router_subscriber_unsubscribe_func router_subscriber_unsubscribe_ptr = NULL;
+router_subscriber_destroy_func router_subscriber_destroy_ptr = NULL;
+
+/**
+ * Router subscriber thread that listens for router signals and forwards them to upgrade socket
+ * @return thread function
+ * */
+STATIC void* wm_agent_upgrade_router_subscriber_thread(void) __attribute__((nonnull));
+
+/**
+ * Callback function for router subscriber to handle incoming messages
+ * @param message received message
+ * */
+STATIC void wm_agent_upgrade_router_callback(const char* message);
+
 void wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) {
 
     // Check if module is enabled
@@ -102,6 +124,9 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
 
     // Start dispatch upgrades thread
     w_create_thread(wm_agent_upgrade_dispatch_upgrades, (void *)manager_configs);
+
+    // Start router subscriber thread
+    w_create_thread(wm_agent_upgrade_router_subscriber_thread, NULL);
 
     while (1) {
         // listen - wait connection
@@ -210,4 +235,90 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
     }
 
     close(sock);
+}
+
+STATIC void wm_agent_upgrade_router_callback(const char* message) {
+
+    if (!message) {
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Empty router message received");
+        return;
+    }
+
+    // Connect to upgrade socket
+    int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+    if (sock == OS_SOCKTERR) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
+    } else {
+        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Sending router-triggered upgrade message: '%s'", message);
+
+        OS_SendSecureTCP(sock, strlen(message), message);
+        os_free(message);
+        close(sock);
+    }
+}
+
+STATIC bool initialize_router_functions(void) {
+
+    if (router_module_ptr = so_get_module_handle("router"), router_module_ptr)
+    {
+        router_subscriber_create_ptr = so_get_function_sym(router_module_ptr, "router_subscriber_create");
+        router_subscriber_subscribe_ptr = so_get_function_sym(router_module_ptr, "router_subscriber_subscribe");
+        router_subscriber_unsubscribe_ptr = so_get_function_sym(router_module_ptr, "router_subscriber_unsubscribe");
+        router_subscriber_destroy_ptr = so_get_function_sym(router_module_ptr, "router_subscriber_destroy");
+
+    }
+    else
+    {
+        mtwarn(WM_ROUTER_LOGTAG, "Unable to load router module.");
+        return false;
+    }
+    return true;
+}
+
+STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Starting router subscriber thread for upgrade notifications");
+
+    if (!initialize_router_functions()) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "Failed to initialize router functions");
+        return NULL;
+    }
+
+    // Create router subscriber handle
+    const char* topic_name = "upgrade_notifications";
+    const char* subscriber_id = "ack_upgrade";
+    bool is_local = false;
+
+    ROUTER_SUBSCRIBER_HANDLE subscriber_handle = router_subscriber_create_ptr(topic_name, subscriber_id, is_local);
+
+    if (!subscriber_handle) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "Failed to create router subscriber for topic '%s'", topic_name);
+        return NULL;
+    }
+
+    // Subscribe to messages with our callback
+    if (router_subscriber_subscribe_ptr(subscriber_handle, wm_agent_upgrade_router_callback) != 0) {
+        mterror(WM_AGENT_UPGRADE_LOGTAG, "Failed to subscribe to router topic '%s'", topic_name);
+        router_subscriber_destroy_ptr(subscriber_handle);
+        return NULL;
+    }
+
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Successfully subscribed to router topic '%s'", topic_name);
+
+    // Register cleanup handlers for thread cancellation/exit
+    pthread_cleanup_push((void(*)(void*))router_subscriber_destroy_ptr, subscriber_handle);
+    pthread_cleanup_push((void(*)(void*))router_subscriber_unsubscribe_ptr, subscriber_handle);
+
+    while (FOREVER()) {
+        sleep(1);
+        pthread_testcancel();
+    }
+
+    // Cleanup
+    // These will be called automatically via pthread_cleanup_push if thread is cancelled
+    pthread_cleanup_pop(1); // calls router_subscriber_unsubscribe_ptr
+    pthread_cleanup_pop(1); // calls router_subscriber_destroy_ptr
+
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Router subscriber thread stopped");
+    return NULL;
 }
