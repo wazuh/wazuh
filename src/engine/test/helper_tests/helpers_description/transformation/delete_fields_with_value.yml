@@ -1,0 +1,162 @@
+name: delete_fields_with_value
+
+metadata:
+  description: |
+    Deletes all immediate children of “field” whose value equals the provided argument.
+    The argument may be any JSON value (string, number, boolean, null, array, object) or a reference ($ref).
+    Equality is type-aware and structural (objects/arrays compared by value).
+
+  keywords:
+    - delete
+
+helper_type: transformation
+
+# Single, required argument: any JSON value or a $ref(...)
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  any_object:
+    type:
+      - number
+      - string
+      - object
+      - boolean
+      - array
+    source: both # Includes values or references (their names start with $)
+
+skipped:
+  - success_cases
+
+target_field:
+  type: object
+  generate: object
+
+test:
+  # string by value
+  - arguments:
+      any_object:
+        source: value
+        value: "N/A"
+    target_field:
+      a: "N/A"
+      b: "ok"
+      c: "N/A"
+    should_pass: true
+    expected:
+      b: "ok"
+    description: Deletes children equal to the given string
+
+  # integer by value
+  - arguments:
+      any_object:
+        source: value
+        value: 1
+    target_field:
+      a: 1
+      b: 2
+      c: 1
+    should_pass: true
+    expected:
+      b: 2
+    description: Deletes children equal to integer 1
+
+  # double by value
+  - arguments:
+      any_object:
+        source: value
+        value: 1.0
+    target_field:
+      a: 1.0
+      b: 2.0
+      c: 1.0
+    should_pass: true
+    expected:
+      b: 2.0
+    description: Deletes children equal to the given double
+
+  # boolean by value (true)
+  - arguments:
+      any_object:
+        source: value
+        value: true
+    target_field:
+      a: true
+      b: false
+      c: true
+    should_pass: true
+    expected:
+      b: false
+    description: Deletes children equal to the given boolean
+
+  # object by value (structural equality)
+  - arguments:
+      any_object:
+        source: value
+        value: { k: 1 }
+    target_field:
+      a: { k: 1 }
+      b: { k: 2 }
+      c: { k: 1 }
+    should_pass: true
+    expected:
+      b: { k: 2 }
+    description: Deletes children equal to the given object
+
+  # array by value (structural equality)
+  - arguments:
+      any_object:
+        source: value
+        value: [1, 2]
+    target_field:
+      a: [1, 2]
+      b: [3]
+      c: [1, 2]
+    should_pass: true
+    expected:
+      b: [3]
+    description: Deletes children equal to the given array
+
+  # no-op (no matches)
+  - arguments:
+      any_object:
+        source: value
+        value: "Z"
+    target_field:
+      a: "foo"
+      b: 2
+    should_pass: true
+    expected:
+      a: "foo"
+      b: 2
+    description: No deletions when there are no matches
+
+  # missing reference (no-op; operation should not fail)
+  - arguments:
+      any_object:
+        source: reference
+        value: $target.missing
+    target_field:
+      a: "keep"
+      b: 1
+    should_pass: true
+    expected:
+      a: "keep"
+      b: 1
+    description: No deletions when reference path is not found
+
+  # null by value (no matches)
+  - arguments:
+      any_object:
+        source: value
+        value: null
+    target_field:
+      a: "keep"
+      b: 1
+      c: false
+    should_pass: true
+    expected:
+      a: "keep"
+      b: 1
+      c: false
+    description: No deletions when argument is null but target has no nulls

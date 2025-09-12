@@ -2394,6 +2394,86 @@ TEST_F(getJsonTest, invalidPath)
     ASSERT_THROW(j.getJson("key3~"), std::runtime_error);
 }
 
+TEST_F(getJsonTest, getFieldsAtRootPath)
+{
+    Json j {R"({
+        "key1": "value1",
+        "key5": { "key6": { "key7": "value7" } },
+        "key2": "value2",
+        "key3": { "key4": "value4" }
+    })"};
+
+    std::vector<std::string> expected = {"key1", "key5", "key2", "key3"};
+    ASSERT_TRUE(j.getFields("").has_value());
+    ASSERT_EQ(j.getFields("").value(), expected);
+}
+
+TEST_F(getJsonTest, getFieldsAtNestedObject)
+{
+    Json j {R"({
+        "key5": { "key6": { "key7": "value7" } }
+    })"};
+
+    std::vector<std::string> expected = {"key7"};
+    ASSERT_TRUE(j.getFields("/key5/key6").has_value());
+    ASSERT_EQ(j.getFields("/key5/key6").value(), expected);
+}
+
+TEST_F(getJsonTest, getFieldsAtScalarReturnsNullopt)
+{
+    Json j {R"({ "key1": "value1", "obj": { "a": 1 } })"};
+
+    ASSERT_FALSE(j.getFields("/key1").has_value());
+}
+
+TEST_F(getJsonTest, getFieldsAtArrayReturnsNullopt)
+{
+    Json j {R"({ "arr": [1,2,3] })"};
+    ASSERT_FALSE(j.getFields("/arr").has_value());
+}
+
+TEST_F(getJsonTest, getFieldsPathNotFoundReturnsNullopt)
+{
+    Json j {R"({ "a": { "b": 1 } })"};
+    ASSERT_FALSE(j.getFields("/missing").has_value());
+    ASSERT_FALSE(j.getFields("/a/missing").has_value());
+}
+
+TEST_F(getJsonTest, getFieldsInvalidPointerThrows)
+{
+    Json j {R"({ "a": 1 })"};
+    EXPECT_THROW(j.getFields("a"), std::runtime_error);
+}
+
+TEST_F(getJsonTest, getFieldsEmptyObjectAtPath)
+{
+    Json j {R"({ "empty": {} })"};
+    auto res = j.getFields("/empty");
+    ASSERT_TRUE(res.has_value());
+    ASSERT_TRUE(res->empty());
+}
+
+TEST_F(getJsonTest, getFieldsOnRootWhenRootIsArrayReturnsNullopt)
+{
+    Json j {R"([1,2,3])"};
+    ASSERT_FALSE(j.getFields("").has_value());
+}
+
+TEST_F(getJsonTest, getFieldsWithSpecialKeysTildeAndSlash)
+{
+    Json j {R"({
+        "o": {
+            "a~b": 1,
+            "c/d": 2
+        }
+    })"};
+
+    std::vector<std::string> expected = {"a~b", "c/d"};
+    auto res = j.getFields("/o");
+    ASSERT_TRUE(res.has_value());
+    ASSERT_EQ(res.value(), expected);
+}
+
 TEST_F(JsonSettersTest, MergeRecursiveObjRoot)
 {
     Json jObjDst {R"({

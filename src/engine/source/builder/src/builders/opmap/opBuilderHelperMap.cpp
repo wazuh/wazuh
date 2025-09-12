@@ -1722,6 +1722,93 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
     };
 }
 
+// field: +delete_fields_with_value/<value|$ref>
+TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
+                                                 const std::vector<OpArg>& opArgs,
+                                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    {
+        throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
+    }
+
+    builder::builders::utils::assertSize(opArgs, 1);
+
+    const bool argIsValue = opArgs[0]->isValue();
+
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    const auto failureTrace1 =
+        fmt::format("[{}] -> Failure: Target field '{}' type is not object or not exist", name, targetField.dotPath());
+    const auto failureTrace2 = fmt::format("[{}] -> Failure: ", name);
+
+    const auto runState = buildCtx->runState();
+    const auto tgtPath = targetField.jsonPath();
+
+    const std::optional<json::Json> capturedVal =
+        argIsValue ? std::optional<json::Json>(std::static_pointer_cast<Value>(opArgs[0])->value()) : std::nullopt;
+
+    const std::optional<std::string> refPath =
+        (!argIsValue) ? std::optional<std::string>(std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
+                      : std::nullopt;
+
+    return [runState, tgtPath, successTrace, failureTrace1, failureTrace2, capturedVal, refPath](
+               base::Event event) -> TransformResult
+    {
+        if (!event->isObject(tgtPath))
+        {
+            RETURN_FAILURE(runState, event, failureTrace1);
+        }
+
+        auto fieldsOpt = event->getFields(tgtPath);
+        if (!fieldsOpt)
+        {
+            RETURN_FAILURE(runState, event, failureTrace1);
+        }
+
+        std::optional<json::Json> cmpLocal = capturedVal;
+        if (!cmpLocal && refPath)
+        {
+            try
+            {
+                if (auto snapOpt = event->getJson(*refPath))
+                {
+                    cmpLocal = std::move(*snapOpt);
+                }
+            }
+            catch (const std::runtime_error& e)
+            {
+                RETURN_FAILURE(runState, event, failureTrace2 + e.what());
+            }
+        }
+
+        const auto& fields = *fieldsOpt;
+
+        std::string childPath;
+
+        for (const auto& k : fields)
+        {
+            childPath.assign(tgtPath);
+            childPath.append(json::Json::formatJsonPath(k, true));
+
+            try
+            {
+                if (cmpLocal && event->equals(childPath, *cmpLocal))
+                {
+                    (void)event->erase(childPath);
+                }
+            }
+            catch (const std::exception& e)
+            {
+                RETURN_FAILURE(runState, event, failureTrace2 + e.what());
+            }
+        }
+
+        RETURN_SUCCESS(runState, event, successTrace);
+    };
+}
+
 // field: +rename/$sourceField
 TransformOp opBuilderHelperRenameField(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
