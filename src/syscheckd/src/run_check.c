@@ -533,11 +533,11 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     }
 
     while (fim_sync_module_running) {
-        mdebug1("Running inventory synchronization.");
+        minfo("Running FIM synchronization.");
 
         asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
 
-        mdebug1("Inventory synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
+        minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
 
         for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
             sleep(1);
