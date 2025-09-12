@@ -22,7 +22,7 @@ requirements:
   condition: any
   rules:
     - 'c:sw_vers -> r:^ProductVersion:\t*\s*15[*!+.-]'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:\.*15[*!+.-]'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*15[*!+.-]'
     - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*15[*!+.-]'
 
 checks:
