@@ -46,10 +46,10 @@ runs:
             else
               # Compile for valgrind and coverage
               echo "Compiling for valgrind and coverage"
-              export COMPILATION_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
+              export COMPILATION_FLAGS="-g -O0 -fprofile-arcs -ftest-coverage -lgcov --coverage"
             fi
 
-            cmake -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" -DUNIT_TEST=ON -DVERSION="$VERSION" -DREVISION="$REVISION" ${{ inputs.flags }} .. && cmake --build . --target ${{ inputs.target }}
+            cmake -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" -DCMAKE_C_FLAGS="$COMPILATION_FLAGS" -DUNIT_TEST=ON -DVERSION="$VERSION" -DREVISION="$REVISION" ${{ inputs.flags }} .. && cmake --build . --target ${{ inputs.target }}
           fi
 
         shell: bash

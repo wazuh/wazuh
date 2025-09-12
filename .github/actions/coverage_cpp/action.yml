@@ -68,28 +68,52 @@ runs:
                 include_files+="--include=$(pwd)/$file "
               fi
             done
-          else
+          elif [[ ${{ inputs.path }} =~ "wazuh_modules/inventory_sync" ]]; then
+            # For inventory_sync module, include src/ and include/ directories
             paths="src/ include/"
+            for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
+            do
+              file=$(echo $file | sed 's/\.\///g')
+              # Exclude test files and generated files
+              if [[ ! "$file" =~ "_generated.h" ]] && [[ ! "$file" =~ "/tests/" ]] && [[ ! "$file" =~ "test\.(cpp|hpp|h|c)$" ]]; then
+                include_files+="--include=$(pwd)/$file "
+              fi
+            done
+          else
+            # Default case for other modules
+            paths="src/ include/"
+            for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
+            do
+              file=$(echo $file | sed 's/\.\///g')
+              if [[ ! "$file" =~ "_generated.h" ]]; then
+                include_files+="--include=$(pwd)/$file "
+              fi
+            done
           fi
-          for file in $(find $paths -type f -regextype posix-extended -regex ".*/*\.(hpp|cpp|h|c)")
-          do
-            file=$(echo $file | sed 's/\.\///g')
-            if [[ ! "$file" =~ "_generated.h" ]]; then
-              include_files+="--include=$(pwd)$dir/$file "
-            fi
-          done
           arguments+="$include_files"
-          echo "Executing: lcov $arguments"
-          lcov $arguments
 
-      # Generate the HTML coverage report
-      - name: Generate coverage report
+
+          echo "Executing: lcov $arguments"
+          echo "Include files: $include_files"
+          lcov $arguments --ignore-errors unused
+
+      # Generate the HTML coverage report and capture coverage data
+      - name: Generate coverage report and extract coverage data
         shell: bash
         run: |
           cd $(pwd)/src/build
 
-          # Generate HTML report
-          genhtml coverage.info --output-directory coverage_report
+          # Generate HTML report and capture the output to a file
+          genhtml coverage.info --output-directory coverage_report > genhtml_output.txt 2>&1
+          genhtml_output=$(cat genhtml_output.txt)
+          echo "$genhtml_output"
+          
+          # Extract coverage data from genhtml output using awk for more robust parsing
+          linesCoverage=$(echo "$genhtml_output" | awk '/lines.*:/ {gsub(/[^0-9.]/, "", $2); print $2}')
+          functionsCoverage=$(echo "$genhtml_output" | awk '/functions.*:/ {gsub(/[^0-9.]/, "", $2); print $2}')
+          
+          echo "Lines coverage is: '$linesCoverage' %"
+          echo "Functions coverage is: '$functionsCoverage' %"
 
       # Upload the coverage report as an artifact
       - name: Uploading coverage report
@@ -99,20 +123,19 @@ runs:
           name: Coverage Report - ${{ inputs.id }}
           path: ./src/build/coverage_report
           retention-days: 1
+        continue-on-error: true
 
       # Check whether the coverage is greater than 90% both for lines and functions
       - name: Validate coverage
         shell: bash
         run: |
 
-          cd $(pwd)/src/
+          cd $(pwd)/src/build
 
-          # Obtain the coverage data
-          coverageData=($(lcov --list build/coverage.info | tail -n1 | grep -oE '[0-9.]+%'))
-
-          # Check if lines the coverage is greater than the threadhold
-          linesCoverage=$(echo "${coverageData[0]}" | sed 's/%//')
-          echo "Lines coverage is: $linesCoverage %"
+          # Re-use the genhtml output file for validation
+          genhtml_output=$(cat genhtml_output.txt)
+          linesCoverage=$(echo "$genhtml_output" | awk '/lines.*:/ {gsub(/[^0-9.]/, "", $2); print $2}')
+          echo "Lines coverage is: '$linesCoverage' %"
           if ! (( $(echo "$linesCoverage > ${{ inputs.threshold }}" | bc -l) )); then
             echo "----------------------------------------"
             echo "FAILED: Lines coverage is lower than ${{ inputs.threshold }}%"
@@ -126,8 +149,8 @@ runs:
 
           # Check if functions coverage is greater than the threadhold (if enabled)
           if [[ "${{ inputs.validate_function_coverage }}" == "true" ]]; then
-            functionsCoverage=$(echo "${coverageData[1]}" | sed 's/%//')
-            echo "Functions coverage is: $functionsCoverage %"
+            functionsCoverage=$(echo "$genhtml_output" | awk '/functions.*:/ {gsub(/[^0-9.]/, "", $2); print $2}')
+            echo "Functions coverage is: '$functionsCoverage' %"
             if ! (( $(echo "$functionsCoverage > ${{ inputs.threshold }}" | bc -l) )); then
               echo "---------------------------------------------"
               echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
