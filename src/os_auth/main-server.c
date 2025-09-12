@@ -1201,16 +1201,6 @@ void* run_writer(__attribute__((unused)) void *arg) {
     return NULL;
 }
 
-/* To avoid hp-ux requirement of strsignal */
-#ifdef __hpux
-char* strsignal(int sig)
-{
-    static char str[12];
-    sprintf(str, "%d", sig);
-    return str;
-}
-#endif
-
 /* Signal handler */
 void handler(int signum) {
     char dummy = '\0';

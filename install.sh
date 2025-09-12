@@ -72,8 +72,6 @@ Install()
           MAKEBIN=gmake
     elif [ "X$NUNAME" = "XSunOS" ]; then
           MAKEBIN=gmake
-    elif [ "X$NUNAME" = "XHP-UX" ]; then
-          MAKEBIN=/usr/local/bin/gmake
     fi
     if [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
         ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"

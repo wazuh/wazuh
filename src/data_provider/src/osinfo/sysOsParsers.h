@@ -126,14 +126,6 @@ class SolarisOsParser : public ISysOsParser
         bool parseFile(std::istream& in, nlohmann::json& output) override;
 };
 
-class HpUxOsParser : public ISysOsParser
-{
-    public:
-        HpUxOsParser() = default;
-        ~HpUxOsParser() = default;
-        bool parseUname(const std::string& in, nlohmann::json& output) override;
-};
-
 class AlpineOsParser : public ISysOsParser
 {
     public:
@@ -215,11 +207,6 @@ class FactorySysOsParser final
             if (platform == "rhel")
             {
                 return std::make_unique<RedHatOsParser>();
-            }
-
-            if (platform == "hp-ux")
-            {
-                return std::make_unique<HpUxOsParser>();
             }
 
             if (platform == "alpine")

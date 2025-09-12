@@ -288,28 +288,7 @@ ifeq (${uname_S},OpenBSD)
 		AR_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../../lib'
 		PRECOMPILED_OS:=openbsd
 else
-ifeq (${uname_S},HP-UX)
-		DEFINES+=-DHPUX
-		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
-		DEFINES+=-DHIGHFIRST
-		DEFINES+=-DOS_BIG_ENDIAN
-		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext
-		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
-ifeq ($(INSTALLDIR),)
-	INSTALLDIR = /var/ossec
-endif
-		CMAKE_OPTS+=-DINSTALL_PREFIX=${INSTALLDIR}
-		OSSEC_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
-		AR_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
-		OSSEC_CFLAGS+=-pthread
-		PATH:=${PATH}:/usr/local/bin
-		CC=gcc
-		INSTALL=/usr/local/coreutils/bin/install
-		PRECOMPILED_OS:=hpux
-else
 	    # Unknow platform
-endif # HPUX
 endif # OpenBSD
 endif # NetBSD
 endif # FreeBSD
@@ -684,9 +663,7 @@ ifeq (${TARGET},server)
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
 endif
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-ifneq (${uname_S},HP-UX)
 BUILD_CMAKE_PROJECTS+=build_syscollector
-endif
 endif
 BUILD_CMAKE_PROJECTS+=build_sca
 
@@ -938,9 +915,6 @@ else
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
 endif
 else
-ifeq (${uname_S},HP-UX)
-	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
-else
 ifeq (${uname_S},SunOS)
 ifeq ($(uname_M),i86pc)
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-x86-gcc && ${MAKE} build_libs
@@ -949,7 +923,6 @@ else
 endif
 else
 	cd ${EXTERNAL_OPENSSL} && ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
-endif
 endif
 endif
 endif
@@ -1348,7 +1321,7 @@ CPYTHON := cpython
 PYTHON_SOURCE := no
 
 ifneq (${TARGET}, winagent)
-ifneq (,$(filter ${uname_S},Linux Darwin HP-UX))
+ifneq (,$(filter ${uname_S},Linux Darwin))
 	cpu_arch := ${uname_M}
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 	PRECOMPILED_ARCH := /amd64
@@ -1458,39 +1431,6 @@ external/$(CPYTHON).tar.gz:
 	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
 	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
 	rm $(patsubst %.gz,%,$@)
-endif
-
-ifeq (${uname_S},HP-UX)
-# nlohmann library
-RESOURCES_URL_BASE_NLOHMANN=$(subst https://,http://,$(RESOURCES_URL_BASE))
-ifeq ($(findstring $(RESOURCES_URL_BASE_NLOHMANN),$(RESOURCES_URL)),$(RESOURCES_URL_BASE_NLOHMANN))
-DEPS_VERSION_NLOHMANN_REQUESTED=$(subst $(RESOURCES_URL_BASE_NLOHMANN),,$(RESOURCES_URL))
-DEPS_VERSION_NLOHMANN_MAX=21
-ifeq ($(shell test $(DEPS_VERSION_NLOHMANN_REQUESTED) -gt $(DEPS_VERSION_NLOHMANN_MAX); echo $$?),0)
-DEPS_VERSION_NLOHMANN=$(DEPS_VERSION_NLOHMANN_MAX)
-else
-DEPS_VERSION_NLOHMANN=$(DEPS_VERSION_NLOHMANN_REQUESTED)
-endif
-RESOURCES_URL_NLOHMANN=$(RESOURCES_URL_BASE_NLOHMANN)$(DEPS_VERSION_NLOHMANN)
-ifneq (,$(PRECOMPILED_RES))
-external/nlohmann.tar.gz: external-precompiled/nlohmann.tar.gz
-	test -d $(patsubst %.tar.gz,%,$@) ||\
-	($(CURL) $@ $(RESOURCES_URL_NLOHMANN)/libraries/sources/$(patsubst external/%,%,$@) &&\
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@) && $(TAR) $(patsubst external/%.gz,%,$@) && rm $(patsubst external/%.gz,%,$@))
-
-external-precompiled/nlohmann.tar.gz:
-	-$(CURL) external/$(patsubst external-precompiled/%,%,$@) $(RESOURCES_URL_NLOHMANN)/libraries/$(PRECOMPILED_RES)/$(patsubst external-precompiled/%,%,$@) || true
-	-cd external && [ -f $(patsubst external-precompiled/%,%,$@) ] && $(GUNZIP) $(patsubst external-precompiled/%,%,$@) || true
-	-cd external && [ -f $(patsubst external-precompiled/%.gz,%,$@) ] && $(TAR) $(patsubst external-precompiled/%.gz,%,$@) || true
-	-[ -f external/$(patsubst external-precompiled/%.gz,%,$@) ] && rm external/$(patsubst external-precompiled/%.gz,%,$@) || true
-else
-external/nlohmann.tar.gz:
-	$(CURL) $@ $(RESOURCES_URL_NLOHMANN)/libraries/sources/$(patsubst external/%,%,$@)
-	cd external && $(GUNZIP) $(patsubst external/%,%,$@)
-	cd external && $(TAR) $(patsubst external/%.gz,%,$@)
-	rm $(patsubst %.gz,%,$@)
-endif
-endif
 endif
 
 # Remaining dependencies
@@ -1823,10 +1763,6 @@ wazuh_modules/%.o: wazuh_modules/%.c
 
 wmodules_dep := ${wmodules_o} ${wdbhelpers_c:.c=.o} wazuh_db/wdb_shared.o
 
-ifeq (${uname_S},HP-UX)
-	wmodules_dep := ${wmodules_dep} ${config_o}
-endif
-
 #### crypto ##########
 
 crypto_blowfish_c := os_crypto/blowfish/bf_op.c
@@ -1938,19 +1874,8 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 else
-ifeq (${uname_S},HP-UX)
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	mkdir -p libwazuhext;
-	find external/ -name \*.a -exec cp {} libwazuhext/ \;
-	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
-		ar -x libwazuhext/$$lib; \
-		mv *.o libwazuhext/; \
-	done
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc
-else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-endif
 endif
 endif
 endif

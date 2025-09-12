@@ -142,21 +142,6 @@ runInit()
         return 0;
     fi
 
-    if [ "X${UN}" = "XHP-UX" ]; then
-        echo " - ${systemis} HP-UX."
-        echo " - ${modifiedinit}"
-        GenerateService ossec-hids-hpux.init > /sbin/init.d/${service}
-        chmod 755 /sbin/init.d/${service}
-
-        if [ "X${update_only}" = "X" ]
-        then
-            ln -s /sbin/init.d/${service} /sbin/rc2.d/S97${service}
-            ln -s /sbin/init.d/${service} /sbin/rc3.d/S97${service}
-        fi
-
-        return 0;
-    fi
-
     if [ "X${UN}" = "XOpenBSD" -o "X${UN}" = "XNetBSD" -o "X${UN}" = "XFreeBSD" -o "X${UN}" = "XDragonFly" ]; then
         # Checking for the presence of wazuh-control on rc.local
         grep wazuh-control /etc/rc.local > /dev/null 2>&1

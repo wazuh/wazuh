@@ -53,10 +53,7 @@
 #include <sys/mount.h>
 #endif
 
-/* HPUX does not have select.h */
-#ifndef HPUX
 #include <sys/select.h>
-#endif
 
 #include <sys/utsname.h>
 #endif /* WIN32 */
@@ -99,11 +96,6 @@
 #ifdef __cplusplus
 #include <atomic>
 #define _Atomic(T) std::atomic<T>
-#else
-#ifdef hpux
-// TODO: remove this line after upgrading GCC on HP-UX
-#define _Atomic(T) T
-#endif
 #endif
 
 #include <time.h>
@@ -137,7 +129,7 @@ typedef uint8_t u_int8_t;
 
 #endif /* SOLARIS */
 
-#if defined(HPUX) || defined(DOpenBSD)
+#if defined(DOpenBSD)
 #include <limits.h>
 typedef uint64_t u_int64_t;
 typedef int int32_t;
