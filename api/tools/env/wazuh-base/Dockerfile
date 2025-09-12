@@ -2,6 +2,7 @@ FROM ubuntu:24.04
 
 ARG WAZUH_BRANCH
 ENV DEBIAN_FRONTEND="noninteractive"
+ENV LD_LIBRARY_PATH=/var/ossec/lib
 
 RUN apt update && \
     apt install -y wget python3 python3-pip git gnupg2 gcc g++ cmake make vim libc6-dev curl policycoreutils automake autoconf libtool apt-transport-https lsb-release python3-cryptography sqlite3
