@@ -77,7 +77,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [regex_extract](#regex_extract)
 - [sha1](#sha1)
 - [system_epoch](#system_epoch)
-- [to_bool_str](#to_bool_str)
+- [to_bool](#to_bool)
 - [to_int](#to_int)
 - [to_string](#to_string)
 - [upcase](#upcase)
@@ -8352,13 +8352,13 @@ If the “field” already exists, then it will be replaced.
 - `time` 
 
 ---
-# to_bool_str
+# to_bool
 
 ## Signature
 
 ```
 
-field: to_bool_str(number_to_convert)
+field: to_bool(number_to_convert)
 ```
 
 ## Arguments
@@ -8372,13 +8372,14 @@ field: to_bool_str(number_to_convert)
 
 | Type | Possible values |
 | ---- | --------------- |
-| string | Any string |
+| boolean |
 
 
 ## Description
 
-Converts a numeric boolean (0/1) to a string value "false"/"true".
-The result of the to_bool_str operation is mapped to “target_field”.
+Converts a number to a boolean value.
+Rule: values greater than 0 map to true; zero and negatives map to false.
+The result of the to_bool operation is mapped to “target_field”.
 In case of errors “target_field” will not be modified.
 This helper function is typically used in the map stage.
 
@@ -8389,20 +8390,18 @@ This helper function is typically used in the map stage.
 
 - `number` 
 
-- `string` 
-
 ## Examples
 
 ### Example 1
 
-Converts integer 1 to "true".
+Converts integer 1 to true.
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: to_bool_str($number_to_convert)
+      - target_field: to_bool($number_to_convert)
 ```
 
 #### Input Event
@@ -8418,7 +8417,7 @@ normalize:
 ```json
 {
   "number_to_convert": 1,
-  "target_field": "true"
+  "target_field": true
 }
 ```
 
@@ -8426,14 +8425,14 @@ normalize:
 
 ### Example 2
 
-Converts float 1.0 to "true".
+Converts float 1.0 to true.
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: to_bool_str($number_to_convert)
+      - target_field: to_bool($number_to_convert)
 ```
 
 #### Input Event
@@ -8449,7 +8448,7 @@ normalize:
 ```json
 {
   "number_to_convert": 1.0,
-  "target_field": "true"
+  "target_field": true
 }
 ```
 
@@ -8457,14 +8456,14 @@ normalize:
 
 ### Example 3
 
-Converts integer 0 to "false".
+Converts integer 0 to false.
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: to_bool_str($number_to_convert)
+      - target_field: to_bool($number_to_convert)
 ```
 
 #### Input Event
@@ -8480,7 +8479,7 @@ normalize:
 ```json
 {
   "number_to_convert": 0,
-  "target_field": "false"
+  "target_field": false
 }
 ```
 
@@ -8488,14 +8487,14 @@ normalize:
 
 ### Example 4
 
-Converts float 0.0 to "false".
+Converts float 0.0 to false.
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: to_bool_str($number_to_convert)
+      - target_field: to_bool($number_to_convert)
 ```
 
 #### Input Event
@@ -8511,7 +8510,7 @@ normalize:
 ```json
 {
   "number_to_convert": 0.0,
-  "target_field": "false"
+  "target_field": false
 }
 ```
 
@@ -8519,14 +8518,14 @@ normalize:
 
 ### Example 5
 
-Fails because only exact 0/1 are accepted.
+Converts integer 2 to true (positive numbers are true).
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: to_bool_str($number_to_convert)
+      - target_field: to_bool($number_to_convert)
 ```
 
 #### Input Event
@@ -8541,22 +8540,23 @@ normalize:
 
 ```json
 {
-  "number_to_convert": 2
+  "number_to_convert": 2,
+  "target_field": true
 }
 ```
 
-*The operation was performed with errors*
+*The operation was successful*
 
 ### Example 6
 
-Fails because only exact 0/1 are accepted.
+Converts integer -1 to false (non-positives are false).
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: to_bool_str($number_to_convert)
+      - target_field: to_bool($number_to_convert)
 ```
 
 #### Input Event
@@ -8571,22 +8571,23 @@ normalize:
 
 ```json
 {
-  "number_to_convert": -1
+  "number_to_convert": -1,
+  "target_field": false
 }
 ```
 
-*The operation was performed with errors*
+*The operation was successful*
 
 ### Example 7
 
-Fails because only exact 0/1 are accepted.
+Converts float 0.5 to true (positive numbers are true).
 
 #### Asset
 
 ```yaml
 normalize:
   - map:
-      - target_field: to_bool_str($number_to_convert)
+      - target_field: to_bool($number_to_convert)
 ```
 
 #### Input Event
@@ -8601,11 +8602,12 @@ normalize:
 
 ```json
 {
-  "number_to_convert": 0.5
+  "number_to_convert": 0.5,
+  "target_field": true
 }
 ```
 
-*The operation was performed with errors*
+*The operation was successful*
 
 
 
