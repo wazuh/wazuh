@@ -230,9 +230,9 @@ public:
             throw InventorySyncException("clusterName not found in configuration");
         }
 
-        static std::string clusterName = Utils::toLowerCase(configuration.at("clusterName"));
+        m_clusterName = Utils::toLowerCase(configuration.at("clusterName").get_ref<const std::string&>());
 
-        logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", clusterName.c_str());
+        logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 
         m_workersQueue = std::make_unique<WorkersQueue>(
             [this](const std::vector<char>& dataRaw)
@@ -327,7 +327,7 @@ public:
                             index.clear();
                             index.append(data->index()->string_view());
                             index.append("-");
-                            index.append(clusterName);
+                            index.append(m_clusterName);
 
                             if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                             {
@@ -341,7 +341,7 @@ public:
                                 dataString.append(R"(", "version":")");
                                 dataString.append(res.context->agentVersion);
                                 dataString.append(R"("},"wazuh":{"cluster":{"name":")");
-                                dataString.append(clusterName);
+                                dataString.append(m_clusterName);
                                 dataString.append(R"("}},)");
                                 dataString.append(
                                     std::string_view((const char*)data->data()->data() + 1, data->data()->size() - 1));
@@ -470,6 +470,7 @@ public:
 
 private:
     InventorySyncFacadeImpl() = default;
+    std::string m_clusterName;
     std::shared_mutex m_agentSessionsMutex;
     std::mutex m_sessionTimeoutMutex;
     std::condition_variable m_sessionTimeoutCv;

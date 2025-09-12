@@ -93,7 +93,7 @@ runs:
           arguments+="$include_files"
           echo "Executing: lcov $arguments"
           echo "Include files: $include_files"
-          lcov $arguments
+          lcov $arguments --ignore-errors unused
 
       # Generate the HTML coverage report
       - name: Generate coverage report
