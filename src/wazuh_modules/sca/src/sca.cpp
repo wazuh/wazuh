@@ -37,12 +37,27 @@ static const char* g_module_name = NULL;
 static const char* g_sync_db_path = NULL;
 static const MQ_Functions* g_mq_functions = NULL;
 
+/// @brief Sets the message pushing functions for SCA module.
+///
+/// Configures the callback functions used to send stateless and stateful
+/// messages from the SCA module to other Wazuh components.
+///
+/// @param stateless_func Function pointer for sending stateless messages
+/// @param stateful_func Function pointer for sending stateful messages with persistence
 void sca_set_push_functions(push_stateless_func stateless_func, push_stateful_func stateful_func)
 {
     g_push_stateless_func = stateless_func;
     g_push_stateful_func = stateful_func;
 }
 
+/// @brief Sets synchronization parameters for the SCA module.
+///
+/// Configures the module name, database path, and message queue functions
+/// required for database synchronization operations.
+///
+/// @param module_name Name identifier for the SCA module
+/// @param sync_db_path Path to the synchronization database file
+/// @param mq_funcs Pointer to message queue function structure for communication
 void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs)
 {
     g_module_name = module_name;
@@ -50,6 +65,13 @@ void sca_set_sync_parameters(const char* module_name, const char* sync_db_path, 
     g_mq_functions = mq_funcs;
 }
 
+/// @brief Starts the SCA module with the given configuration.
+///
+/// Initializes, configures, and starts the SCA module execution using the
+/// provided configuration structure. Handles exceptions by logging errors.
+///
+/// @param sca_config Pointer to the SCA configuration structure containing
+///                   module settings, policies, and scan parameters
 void sca_start(const struct wm_sca_t* sca_config)
 {
     try
@@ -64,11 +86,22 @@ void sca_start(const struct wm_sca_t* sca_config)
     }
 }
 
+/// @brief Stops the SCA module execution.
+///
+/// Cleanly shuts down the SCA module, stopping all assessments and
+/// releasing allocated resources.
 void sca_stop()
 {
     SCA::instance().destroy();
 }
 
+/// @brief Sets the logging callback function for the SCA module.
+///
+/// Configures the logging mechanism by providing a callback function that
+/// will be used to output log messages with appropriate level and tagging.
+///
+/// @param log_callback Function pointer to the logging callback that accepts
+///                     log level, message data, and log tag parameters
 void sca_set_log_function(log_callback_t log_callback)
 {
     std::function<void(const modules_log_level_t, const std::string&)> logWrapper
@@ -82,16 +115,38 @@ void sca_set_log_function(log_callback_t log_callback)
     LoggingHelper::setLogCallback(logWrapper);
 }
 
+/// @brief Sets the command execution callback function for the SCA module.
+///
+/// Configures the callback function used to execute system commands during
+/// security configuration assessments. This allows the SCA module to run
+/// policy checks that require command execution.
+///
+/// @param wm_exec_callback Function pointer to the command execution callback
 void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback)
 {
     SecurityConfigurationAssessment::SetGlobalWmExecFunction(wm_exec_callback);
 }
 
+/// @brief Sets the YAML to cJSON conversion function for the SCA module.
+///
+/// Configures the callback function used to parse YAML policy files and
+/// convert them to cJSON format for processing by the SCA module.
+///
+/// @param yaml_func Function pointer to the YAML parsing callback that
+///                  converts YAML files to cJSON structures
 void sca_set_yaml_to_cjson_func(yaml_to_cjson_func yaml_func)
 {
     g_yaml_to_cjson_func = yaml_func;
 }
 
+/// @brief Converts a cJSON object to an nlohmann::json object.
+///
+/// Helper function that converts cJSON structures to nlohmann::json format
+/// for use with modern C++ JSON processing. Handles memory management and
+/// error cases gracefully.
+///
+/// @param cjson_obj Pointer to the cJSON object to convert
+/// @return nlohmann::json object containing the converted data, or empty JSON on error
 nlohmann::json cjson_to_nlohmann(cJSON* cjson_obj)
 {
     if (!cjson_obj)
@@ -119,6 +174,14 @@ nlohmann::json cjson_to_nlohmann(cJSON* cjson_obj)
     }
 }
 
+/// @brief Converts a YAML file to nlohmann::json format.
+///
+/// Loads and parses a YAML file using the configured YAML parsing function,
+/// then converts the result to nlohmann::json format for C++ processing.
+/// Used primarily for loading SCA policy files.
+///
+/// @param yaml_path Path to the YAML file to parse and convert
+/// @return nlohmann::json object containing the parsed YAML data, or empty JSON on error
 nlohmann::json yaml_file_to_json_cpp(const std::string& yaml_path)
 {
     if (!g_yaml_to_cjson_func)
@@ -272,12 +335,31 @@ bool SCA::parseResponseBuffer(const uint8_t* data, size_t length)
     return false;
 }
 
+/// @brief C-style wrapper for SCA module synchronization.
+///
+/// Provides a C-compatible interface for triggering database synchronization
+/// of the SCA module with configurable parameters.
+///
+/// @param mode Synchronization mode (MODE_FULL or MODE_DELTA)
+/// @param timeout Timeout value in seconds for synchronization operations
+/// @param retries Number of retry attempts on synchronization failure
+/// @param max_eps Maximum events per second during synchronization
+/// @return true if synchronization succeeds, false otherwise
 bool sca_sync_module(Mode_t mode, unsigned int timeout, unsigned int retries, unsigned int max_eps)
 {
     Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
     return SCA::instance().syncModule(syncMode, std::chrono::seconds(timeout), retries, max_eps);
 }
 
+/// @brief C-style wrapper for persisting SCA differences.
+///
+/// Provides a C-compatible interface for recording changes in SCA state
+/// that need to be synchronized with the central database.
+///
+/// @param id Unique identifier for the difference entry
+/// @param operation Type of operation performed (CREATE, MODIFY, DELETE)
+/// @param index Index or key associated with the change
+/// @param data Serialized data content of the change
 void sca_persist_diff(const char* id, Operation_t operation, const char* index, const char* data)
 {
     if (id && index && data)
@@ -289,6 +371,14 @@ void sca_persist_diff(const char* id, Operation_t operation, const char* index, 
     }
 }
 
+/// @brief C-style wrapper for parsing SCA response buffers.
+///
+/// Provides a C-compatible interface for processing binary response data
+/// received during database synchronization operations.
+///
+/// @param data Pointer to the binary response data buffer
+/// @param length Size of the response data buffer in bytes
+/// @return true if parsing succeeds, false on error or invalid data
 bool sca_parse_response(const unsigned char* data, size_t length)
 {
     if (data)
