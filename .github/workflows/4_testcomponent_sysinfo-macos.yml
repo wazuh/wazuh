@@ -1,4 +1,4 @@
-name: Syscollector test on macOS
+name: 4.X - Syscollector test on macOS
 
 on:
   workflow_dispatch:

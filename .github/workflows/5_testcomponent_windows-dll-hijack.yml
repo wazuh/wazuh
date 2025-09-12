@@ -1,4 +1,4 @@
-name: Testing DLL search order to prevent hijack
+name: 5.X - Testing DLL search order to prevent hijack
 
 on:
   workflow_dispatch:

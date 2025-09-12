@@ -1,4 +1,4 @@
-name: Python unit tests coverage
+name: 5.X - Unit tests coverage - Python
 on:
   workflow_dispatch:
     inputs:

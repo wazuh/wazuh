@@ -1,4 +1,4 @@
-name: 4_testcomponent_inventory-harvester
+name: 4.X - Inventory Harvester - Component tests
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: Integration tests for Wazuh_db - Tier 0 and 1
+name: 4.X - Wazuh_db - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:

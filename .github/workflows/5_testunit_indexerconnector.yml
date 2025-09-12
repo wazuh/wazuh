@@ -1,4 +1,4 @@
-name: 5_testunit_indexerconnector
+name: 5.X - Indexer Connector - Unit tests
 
 on:
   workflow_dispatch:

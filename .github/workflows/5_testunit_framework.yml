@@ -1,4 +1,4 @@
-name: Framework unit tests
+name: 5.X - Framework - Unit tests
 
 on:
   workflow_dispatch:

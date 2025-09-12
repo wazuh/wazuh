@@ -1,4 +1,4 @@
-name: Running RTR. Module SCA for Agent/Winagent targets
+name: 5.X - Running RTR. Module SCA for Agent/Winagent targets
 
 on:
   workflow_dispatch:

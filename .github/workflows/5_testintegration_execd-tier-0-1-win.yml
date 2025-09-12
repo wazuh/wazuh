@@ -1,4 +1,4 @@
-name: Integration tests for Execd on Windows - Tier 0 and 1
+name: 5.X - Execd on Windows - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:

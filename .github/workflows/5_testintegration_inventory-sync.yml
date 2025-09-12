@@ -1,5 +1,5 @@
 run-name: Inventory Sync Integration Tests - ${{ github.event.pull_request.number || github.sha }}
-name: Inventory Sync Integration Tests
+name: 5.X - Inventory Sync - Integration tests
 
 on:
   workflow_dispatch:
