@@ -227,6 +227,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     // Transform helpers: Event Field functions
     registry->template add<builders::OpBuilderEntry>(
         "delete", {schemf::runtimeValidation(), builders::opBuilderHelperDeleteField});
+    registry->template add<builders::OpBuilderEntry>(
+        "delete_fields_with_value", {schemf::runtimeValidation(), builders::opBuilderHelperDeleteFieldsWithValue});
     // TODO: this builders should check that the field is an array or an object
     registry->template add<builders::OpBuilderEntry>("merge",
                                                      {schemf::runtimeValidation(), builders::opBuilderHelperMerge});
