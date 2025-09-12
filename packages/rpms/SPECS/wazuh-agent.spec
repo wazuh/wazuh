@@ -790,7 +790,7 @@ rm -fr %{buildroot}
 %endif
 
 %changelog
-* Thu Sep 11 2025 support <info@wazuh.com> - 4.13.0
+* Thu Sep 18 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html
