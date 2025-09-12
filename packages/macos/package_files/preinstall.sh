@@ -47,6 +47,10 @@ if [ -d "${DIR}" ]; then
         rm -f "${DIR}/WAZUH_RESTART"
     fi
 
+    # Get version information
+    OLD_VERSION=`${DIR}/bin/wazuh-control info -v`
+    MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+
     # Stops the agent before upgrading it
     if ${DIR}/bin/wazuh-control status | grep "is running" > /dev/null 2>&1; then
         touch "${DIR}/WAZUH_RESTART"
@@ -56,6 +60,16 @@ if [ -d "${DIR}" ]; then
         touch "${DIR}/WAZUH_RESTART"
         ${DIR}/bin/ossec-control stop
         restart="true"
+    fi
+
+    # Remove old databases if upgrading from 4.X to 5.X
+    if [ $MAJOR = 4 ]; then
+        if [ -f ${DIR}/queue/syscollector/db/local.db ]; then
+          rm -f ${DIR}/queue/syscollector/db/local.db
+        fi
+        if [ -f ${DIR}/queue/fim/db/fim.db ]; then
+          rm -f ${DIR}/queue/fim/db/fim.db
+        fi
     fi
 
     echo "Backing up configuration files to ${DIR}/config_files/"

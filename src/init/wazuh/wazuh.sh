@@ -192,6 +192,16 @@ WazuhUpgrade()
         rm -f /etc/ossec-init.conf
     fi
 
+    # Remove old databases if upgrading from 4.X
+    if [ $MAJOR = 4 ]; then
+        if [ -f $PREINSTALLEDDIR/queue/syscollector/db/local.db ]; then
+            rm -f $PREINSTALLEDDIR/queue/syscollector/db/local.db
+        fi
+        if [ -f $PREINSTALLEDDIR/queue/fim/db/fim.db ]; then
+            rm -f $PREINSTALLEDDIR/queue/fim/db/fim.db
+        fi
+    fi
+
     # Replace and delete ossec group along with ossec users
     OSSEC_GROUP=ossec
     if (grep "^ossec:" /etc/group > /dev/null 2>&1) || (dscl . -read /Groups/ossec > /dev/null 2>&1)  ; then

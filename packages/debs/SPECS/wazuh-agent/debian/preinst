@@ -20,6 +20,10 @@ case "$1" in
                 exit 1
             fi
 
+            # Get version information
+            OLD_VERSION=`${DIR}/bin/wazuh-control info -v`
+            MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
                 systemctl stop wazuh-agent.service > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
@@ -32,6 +36,16 @@ case "$1" in
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
             fi
             ${DIR}/bin/ossec-control stop > /dev/null 2>&1 || ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
+
+            # Remove old databases if upgrading from 4.X to 5.X
+            if [ $MAJOR = 4 ]; then
+                if [ -f ${DIR}/queue/syscollector/db/local.db ]; then
+                    rm -f ${DIR}/queue/syscollector/db/local.db
+                fi
+                if [ -f ${DIR}/queue/fim/db/fim.db ]; then
+                    rm -f ${DIR}/queue/fim/db/fim.db
+                fi
+            fi
 
             if [ -d ${DIR}/logs/ossec ]; then
                 mv ${DIR}/logs/ossec ${DIR}/logs/wazuh

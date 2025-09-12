@@ -173,6 +173,13 @@ function Get-MSIProductVersion {
 
 # Stop UI and launch the MSI installer
 function install {
+    $major = $current_version.Split('.')[0]
+    # Remove old databases if upgrading from 4.X to 5.X
+    if ($major -eq 4) {
+        Remove-Item -Path ".\queue\syscollector\db\local.db" -ErrorAction SilentlyContinue
+        Remove-Item -Path ".\queue\fim\db\fim.db" -ErrorAction SilentlyContinue
+    }
+
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Stop-Service -Name "Wazuh"
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
