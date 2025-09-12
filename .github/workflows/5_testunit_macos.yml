@@ -35,6 +35,8 @@ jobs:
           ctest -V
           cd ../../../wazuh_modules/syscollector/build
           ctest -V
+          cd ../../../shared_modules/sync_protocol/build
+          ctest -V
   build-sonoma:
     runs-on: macos-14
     steps:
@@ -61,4 +63,6 @@ jobs:
           cd ../../shared_modules/dbsync/build
           ctest -V
           cd ../../../wazuh_modules/syscollector/build
+          ctest -V
+          cd ../../../shared_modules/sync_protocol/build
           ctest -V
