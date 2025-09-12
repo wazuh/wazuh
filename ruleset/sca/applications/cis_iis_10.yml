@@ -392,7 +392,7 @@ checks:
       - http://www.iis.net/learn/manage/configuring-security/configure-request-filtering-in-iis
     condition: all
     rules:
-      - 'c:%systemroot%\system32\inetsrv\appcmd listconfig /section:requestfiltering -> r:fileExtensions\.+allowUnlisted="false"'
+      - 'c:%systemroot%\system32\inetsrv\appcmd listconfig /section:requestfiltering -> r:fileExtensions.+allowUnlisted="false"'
 
   - id: 22022
     title: "Ensure Handler is not granted Write and Script/Execute"
