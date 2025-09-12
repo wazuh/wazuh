@@ -1470,6 +1470,9 @@ stages:
               tz_offset: !anystr
               tz_name: !anystr
               uuid: !anything
+              wazuh_cti_auth:
+                status: !anystr
+                details: !anystr
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
