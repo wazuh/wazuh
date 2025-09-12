@@ -442,7 +442,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list autofs -> r:^\s*\t*autofs\.*on'
+      - 'c:chkconfig --list autofs -> r:^\s*\t*autofs.*on'
 
   ###############################################
   # 1.2 Configure Software Updates
@@ -521,7 +521,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/menu.lst -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /boot/grub/menu.lst -> r:Access:\s*\(0\d00/-[\w@-][\w@-][\w@-]------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.4.2 Single user authentication
   - id: 20029
@@ -570,8 +570,8 @@ checks:
     condition: all
     rules:
       - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
-      - 'c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable\s*=\s*0\s*$'
-      - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
+      - 'c:sysctl fs.suid_dumpable -> r:^fs\.suid_dumpable\s*=\s*0\s*$'
+      - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs\.suid_dumpable\s*=\s*0\s*$'
 
   # 1.5.2 XD/NX enabled
   - id: 20032
@@ -603,8 +603,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
-      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel\.randomize_va_space\s*=\s*2$'
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel\.randomize_va_space\s*=\s*2'
 
   # 1.5.4 Disable prelink
   - id: 20034
@@ -640,7 +640,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'f:/boot/grub/menu.lst -> r:^\s*\t*kernel\.*selinux=0|^\s*\t*kernel\.*enforcing=0'
+      - 'f:/boot/grub/menu.lst -> r:^\s*\t*kernel.*selinux=0|^\s*\t*kernel.*enforcing=0'
 
   # 1.6.1.2 Set selinux state
   - id: 20036
@@ -1064,7 +1064,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list xinetd -> r:^\s*\t*xinetd\.*on'
+      - 'c:chkconfig --list xinetd -> r:^\s*\t*xinetd.*on'
 
   ##############################################
   # 2.2 Remove Legacy Services
@@ -1103,7 +1103,7 @@ checks:
     rules:
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod\s+ && r:\s+nomodify\s+ && r:\s+notrap\s+ && r:\s+nopeer\s+ && r:\s+noquery'
-      - 'f:/etc/ntp.conf -> r:^server\.+|^pool\.+'
+      - 'f:/etc/ntp.conf -> r:^server.+|^pool.+'
       - 'f:/etc/init.d/ntpd -> r:daemon\s*=\s* && r:-u ntp:ntp'
 
   # 2.2.1.3 Configure Network Time Protocol (Chrony) (Scored)
@@ -1120,7 +1120,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'f:/etc/chrony.conf -> r:^server\.+|^pool\.+'
+      - 'f:/etc/chrony.conf -> r:^server.+|^pool.+'
       - 'f:/etc/sysconfig/chronyd -> r:^OPTIONS\s*=\s* && r:-u chrony'
 
   # 2.2.2 Remove X Windows (Scored)
@@ -1153,7 +1153,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list avahi-daemon -> r:^\s*\t*avahi-daemon\.*on'
+      - 'c:chkconfig --list avahi-daemon -> r:^\s*\t*avahi-daemon.*on'
 
   # 2.2.4 Ensure CUPS is not enabled (Scored)
   - id: 20065
@@ -1169,7 +1169,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list cups -> r:^\s*\t*cups\.*on'
+      - 'c:chkconfig --list cups -> r:^\s*\t*cups.*on'
 
   # 2.2.5 Remove DHCP Server (Scored)
   - id: 20066
@@ -1187,7 +1187,7 @@ checks:
       - More detailed documentation on DHCP is available at https://www.isc.org/software/dhcp
     condition: none
     rules:
-      - 'c:chkconfig --list dhcpd -> r:^\s*\t*dhcpd\.*on'
+      - 'c:chkconfig --list dhcpd -> r:^\s*\t*dhcpd.*on'
 
   # 2.2.6 Remove LDAP Server (Scored)
   - id: 20067
@@ -1205,7 +1205,7 @@ checks:
       - More detailed documentation on OpenLDAP is available at https://www.openldap.org
     condition: none
     rules:
-      - 'c:chkconfig --list slapd -> r:^\s*\t*slapd\.*on'
+      - 'c:chkconfig --list slapd -> r:^\s*\t*slapd.*on'
 
   # 2.2.7 Disable NFS and RPC (Scored)
   - id: 20068
@@ -1221,8 +1221,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list nfs -> r:^\s*\t*nfs\.*on'
-      - 'c:chkconfig --list rpcbind -> r:^\s*\t*rpcbind\.*on'
+      - 'c:chkconfig --list nfs -> r:^\s*\t*nfs.*on'
+      - 'c:chkconfig --list rpcbind -> r:^\s*\t*rpcbind.*on'
 
   # 2.2.8 Ensure DNS Server is not enabled (Scored)
   - id: 20069
@@ -1238,7 +1238,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list named -> r:^\s*\t*named\.*on'
+      - 'c:chkconfig --list named -> r:^\s*\t*named.*on'
 
   # 2.2.9 Remove FTP Server (Scored)
   - id: 20070
@@ -1254,7 +1254,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list vsftpd -> r:^\s*\t*vsftpd\.*on'
+      - 'c:chkconfig --list vsftpd -> r:^\s*\t*vsftpd.*on'
 
   # 2.2.10 Remove HTTP Server (Scored)
   - id: 20071
@@ -1270,7 +1270,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list httpd -> r:^\s*\t*httpd\.*on'
+      - 'c:chkconfig --list httpd -> r:^\s*\t*httpd.*on'
 
   # 2.2.11 Remove Dovecot (IMAP and POP3 services) (Scored)
   - id: 20072
@@ -1286,7 +1286,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list dovecot -> r:^\s*\t*dovecot\.*on'
+      - 'c:chkconfig --list dovecot -> r:^\s*\t*dovecot.*on'
 
   # 2.2.12 Remove Samba (Scored)
   - id: 20073
@@ -1302,7 +1302,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list smb -> r:^\s*\t*smb\.*on'
+      - 'c:chkconfig --list smb -> r:^\s*\t*smb.*on'
 
   # 2.2.13 Remove HTTP Proxy Server (Scored)
   - id: 20074
@@ -1318,7 +1318,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list squid -> r:^\s*\t*squid\.*on'
+      - 'c:chkconfig --list squid -> r:^\s*\t*squid.*on'
 
   # 2.2.14 Remove SNMP Server (Not Scored)
   - id: 20075
@@ -1334,7 +1334,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list snmpd -> r:^\s*\t*snmpd\.*on'
+      - 'c:chkconfig --list snmpd -> r:^\s*\t*snmpd.*on'
 
   # 2.2.15 Ensure mail transfer agent is configured for local-only mode (Scored)
   - id: 20076
@@ -1350,7 +1350,7 @@ checks:
       - tsc: ["CC5.2", "CC6.4", "CC6.6", "CC6.7"]
     condition: none
     rules:
-      - 'c:netstat -an -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.+LISTEN'
+      - 'c:netstat -an -> r:.*:25.*LISTEN && !r:127\.0\.0\.1:25.+LISTEN|::1:25.+LISTEN'
 
   # 2.2.16 Remove NIS Server (Scored)
   - id: 20077
@@ -1369,7 +1369,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:chkconfig --list ypserv -> r:^\s*\t*ypserv\.*on'
+      - 'c:chkconfig --list ypserv -> r:^\s*\t*ypserv.*on'
 
   ###############################################
   # 2.3 Service Clients
@@ -1489,8 +1489,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.ip_forward -> r:^net.ipv4.ip_forward\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.ip_forward\s*=\s*0$'
+      - 'c:sysctl net.ipv4.ip_forward -> r:^net\.ipv4\.ip_forward\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.ip_forward\s*=\s*0$'
 
   # 3.1.2 Disable Send Packet Redirects (Scored)
   - id: 20084
@@ -1506,10 +1506,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
 
   ###############################################
   # 3.2 Modify Network Parameters (Host and Router)
@@ -1528,10 +1528,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
-      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
 
   # 3.2.2 Disable ICMP Redirect Acceptance (Scored)
   - id: 20086
@@ -1547,10 +1547,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net\.ipv4\.conf\.all\.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^net\.ipv4\.conf\.default\.accept_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.accept_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.accept_redirects\s*=\s*0$'
 
   # 3.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
   - id: 20087
@@ -1566,10 +1566,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
 
   # 3.2.4 Log Suspicious Packets (Scored)
   - id: 20088
@@ -1585,10 +1585,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
-      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
 
   # 3.2.5 Enable Ignore Broadcast Requests (Scored)
   - id: 20089
@@ -1604,8 +1604,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
   # 3.2.6 Enable Bad Error Message Protection (Scored)
   - id: 20090
@@ -1621,8 +1621,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
   # 3.2.7 Enable RFC-recommended Source Route Validation (Scored)
   - id: 20091
@@ -1638,10 +1638,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
-      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^net\.ipv4\.conf\.default\.rp_filter\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.rp_filter\s*=\s*1$'
 
   # 3.2.8 Enable TCP SYN Cookies (Scored)
   - id: 20092
@@ -1657,8 +1657,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
 
   ###############################################
   # 3.3 IPv6
@@ -1680,10 +1680,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.all.accept_ra -> r:^net\.ipv6\.conf\.all\.accept_ra\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_ra -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv6\.conf\.all\.accept_ra\s*=\s*0'
+      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv6\.conf\.default\.accept_ra\s*=\s*0'
 
   # 3.3.2 Ensure IPv6 redirects are not accepted (Not Scored)
   - id: 20094
@@ -1702,10 +1702,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_redirect /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0'
-      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_redirect /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0'
+      - 'c:sysctl net.ipv6.conf.all.accept_redirects -> r:^net\.ipv6\.conf\.all\.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv6.conf.default.accept_redirects -> r:^net\.ipv6\.conf\.default\.accept_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_redirect /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv6\.conf\.all\.accept_redirects\s*=\s*0'
+      - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_redirect /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv6\.conf\.default\.accept_redirects\s*=\s*0'
 
   # 3.3.3 Ensure IPv6 is disabled (Not Scored)
   - id: 20095
@@ -1724,7 +1724,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'f:/boot/grub/grub.conf -> r:^\s*\t*kernel && !r:ipv6.disable=1'
+      - 'f:/boot/grub/grub.conf -> r:^\s*\t*kernel && !r:ipv6\.disable=1'
 
   ###############################################
   # 3.4 TCP Wrappers
@@ -1917,9 +1917,9 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
-      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
-      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*\*.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*DROP.*all.*\*.*\*.*127\.0\.0\.0/8.*0\.0\.0\.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*\*.*lo.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
 
   ###############################################
   # 4 Logging and Auditing
@@ -2071,7 +2071,7 @@ checks:
     rules:
       - "f:/etc/audit/audit.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale"
       - "f:/etc/audit/audit.rules -> r:-w /etc/issue && r:-p wa && r:-k system-locale"
-      - "f:/etc/audit/audit.rules -> r:-w /etc/issue.net && r:-p wa && r:-k system-locale"
+      - "f:/etc/audit/audit.rules -> r:-w /etc/issue\\.net && r:-p wa && r:-k system-locale"
       - "f:/etc/audit/audit.rules -> r:-w /etc/hosts && r:-p wa && r:-k system-locale"
       - "f:/etc/audit/audit.rules -> r:-w /etc/sysconfig/network && r:-p wa && r:-k system-locale"
       - "f:/etc/audit/audit.rules -> r:-w /etc/sysconfig/network-scripts/ && r:-p wa && r:-k system-locale"
@@ -2224,7 +2224,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/audit/audit.rules -> r:-w /etc/sudoers && r:-p wa && r:-k scope"
-      - "f:/etc/audit/audit.rules -> r:-w /etc/sudoers.d/ && r:-p wa && r:-k scope"
+      - "f:/etc/audit/audit.rules -> r:-w /etc/sudoers\\.d/ && r:-p wa && r:-k scope"
 
   # 4.1.16 Ensure system administrator actions (sudolog) are collected (Scored)
   - id: 20123
@@ -2243,7 +2243,7 @@ checks:
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - "f:/etc/audit/audit.rules -> r:-w /var/log/sudo.log && r:-p wa && r:-k actions"
+      - "f:/etc/audit/audit.rules -> r:-w /var/log/sudo\\.log && r:-p wa && r:-k actions"
 
   # 4.1.17 Ensure kernel module loading and unloading is collected (Scored)
   - id: 20124
@@ -2313,7 +2313,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
-      - 'd:/etc/rsyslog.d/ -> r:\. -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d/ -> r:. -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
 
   # 4.2.1.4 Ensure rsyslog is configured to send logs to a remote log host (Scored)
   - id: 20128
@@ -2328,7 +2328,7 @@ checks:
       - tsc: ["CC6.1", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'c:grep *.*[^I][^I]*@ /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> !r:# && r:*.* @@\.+'
+      - 'c:grep *.*[^I][^I]*@ /etc/rsyslog.conf /etc/rsyslog.d/*.conf -> !r:# && r:\*\.\* @@.+'
 
   # 4.2.2.1 Ensure syslog-ng service is enabled (Scored)
   - id: 20129
@@ -2374,7 +2374,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/syslog-ng/syslog-ng.conf -> !r:^# && r:destination logserver"
-      - 'f:/etc/syslog-ng/syslog-ng.conf -> !r:^# && r:log\.+source\.+destination'
+      - 'f:/etc/syslog-ng/syslog-ng.conf -> !r:^# && r:log.+source.+destination'
 
   # 4.2.3 Ensure rsyslog or syslog-ng is installed (Scored)
   - id: 20132
@@ -2405,7 +2405,7 @@ checks:
       - tsc: ["CC6.1", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
+      - 'c:find /var/log -type f -ls -> r:-[\w@-][\w@-][\w@-][\w@-]w[\w@-][\w@-][\w@-][\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-]x[\w@-][\w@-][\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-][\w@-][\w@-]w[\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-][\w@-]r[\w@-][\w@-]|-[\w@-][\w@-][\w@-][\w@-][\w@-][\w@-][\w@-][\w@-]x'
 
   ###############################################
   # 5 System Access, Authentication and Authorization
@@ -2444,7 +2444,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/crontab -> r:^Access: \(0\d00/-[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Scored)
   - id: 20136
@@ -2460,7 +2460,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.hourly -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Scored)
   - id: 20137
@@ -2476,7 +2476,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.daily -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Scored)
   - id: 20138
@@ -2492,7 +2492,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.weekly -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Scored)
   - id: 20139
@@ -2508,7 +2508,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.monthly -> r:^Access: \(0\w00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.monthly -> r:^Access: \(0[\w@-]00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.7 Ensure permissions on /etc/cron.d are configured (Scored)
   - id: 20140
@@ -2524,7 +2524,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.d -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.1.8 Ensure at/cron is restricted to authorized users (Scored)
   - id: 20141
@@ -2542,8 +2542,8 @@ checks:
     rules:
       - "c:stat /etc/cron.deny -> r:No such file or directory$"
       - "c:stat /etc/at.deny -> r:No such file or directory$"
-      - 'c:stat /etc/cron.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
-      - 'c:stat /etc/at.allow -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/cron.allow -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/at.allow -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   ###############################################
   # 5.2 Configure SSH
@@ -2562,7 +2562,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat /etc/ssh/sshd_config -> r:^Access: \(0\d00/[\w@-][\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 5.2.2 Set SSH Protocol to 2 (Scored)
   - id: 20143
@@ -2758,7 +2758,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'f:$sshd_file -> r:^\s*Banner\s*\t*/etc/issue.net'
+      - 'f:$sshd_file -> r:^\s*Banner\s*\t*/etc/issue\.net'
 
   ###############################################
   # 5.3 Configure PAM
@@ -2797,8 +2797,8 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/password-auth -> n:^password\s+sufficient\s+pam_unix.so\.+remember=(\d+)|^password\s+required\s+pam_pwhistory.so\.+remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/system-auth -> n:^password\s+sufficient\s+pam_unix.so\.+remember=(\d+)|^password\s+required\s+pam_pwhistory.so\.+remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/password-auth -> n:^password\s+sufficient\s+pam_unix\.so.+remember=(\d+)|^password\s+required\s+pam_pwhistory\.so.+remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> n:^password\s+sufficient\s+pam_unix\.so.+remember=(\d+)|^password\s+required\s+pam_pwhistory\.so.+remember=(\d+) compare >= 5'
 
   # 5.3.4 Ensure password hashing algorithm is SHA-512 (Scored)
   - id: 20157
@@ -2813,8 +2813,8 @@ checks:
       - tsc: ["CC6.1", "CC6.7"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/password-auth -> r:^password\s*sufficient\s*pam_unix.so\s*sha512'
-      - 'f:/etc/pam.d/system-auth -> r:^password\s*sufficient\s*pam_unix.so\s*sha512'
+      - 'f:/etc/pam.d/password-auth -> r:^password\s*sufficient\s*pam_unix\.so\s*sha512'
+      - 'f:/etc/pam.d/system-auth -> r:^password\s*sufficient\s*pam_unix\.so\s*sha512'
 
   ###############################################
   # 5.4 User Accounts and Environment
@@ -2895,7 +2895,7 @@ checks:
       - tsc: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> r:^root:\w:\w:0'
+      - 'f:/etc/passwd -> r:^root:[\w@-]:[\w@-]:0'
 
   # 5.4.4 Ensure default user umask is 027 or more restrictive (Scored)
   - id: 20163
@@ -2915,7 +2915,7 @@ checks:
       - 'f:/etc/profile -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
       - 'f:/etc/profile -> !r:^\s*\t*# && n:umask \d\d(\d) compare != 7'
       - 'd:/etc/profile.d -> .sh -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
-      - 'd:/etc/profile.d -> .sh -> !r:^\s*t*# && n:umask \d\d(\d) compare != 7'
+      - 'd:/etc/profile.d -> .sh -> !r:^\s*t\*# && n:umask \d\d(\d) compare != 7'
 
   # 5.4.5 Ensure default user shell timeout is 900 seconds or less (Scored)
   - id: 20164
@@ -2951,7 +2951,7 @@ checks:
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel.so\s*\t*use_uid'
+      - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel\.so\s*\t*use_uid'
 
   ###############################################
   # 6 System Maintenance
@@ -3038,7 +3038,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/passwd- -> r:Access:\s*\(0\d\d\d/-[\w@-][\w@-]-[\w@-]--[\w@-]--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.7 Configure /etc/shadow- permissions (Scored)
   - id: 20171
@@ -3070,7 +3070,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat /etc/group- -> r:Access:\s*\(0\d\d\d/-\w\w-\w--\w--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /etc/group- -> r:Access:\s*\(0\d\d\d/-[\w@-][\w@-]-[\w@-]--[\w@-]--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 6.1.9 Configure /etc/gshadow- permissions (Scored)
   - id: 20173
@@ -3104,7 +3104,7 @@ checks:
       - tsc: ["CC6.1"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> !r:^# && r:^\w+::'
+      - 'f:/etc/shadow -> !r:^# && r:^[\w@-]+::'
 
   # 6.2.2 Delete legacy entries in /etc/passwd (Scored)
   - id: 20175
@@ -3123,7 +3123,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - "f:/etc/passwd -> !r:^# && r:^+:"
+      - "f:/etc/passwd -> !r:^# && r:^\\+:"
 
   # 6.2.3 Delete legacy entries in /etc/shadow (Scored)
   - id: 20176
@@ -3142,7 +3142,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - "f:/etc/shadow -> !r:^# && r:^+:"
+      - "f:/etc/shadow -> !r:^# && r:^\\+:"
 
   # 6.2.4 Delete legacy entries in /etc/group (Scored)
   - id: 20177
@@ -3161,7 +3161,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - "f:/etc/group -> !r:^# && r:^+:"
+      - "f:/etc/group -> !r:^# && r:^\\+:"
 
   # 6.2.5 Verify No UID 0 Accounts Exist Other Than root (Scored)
   - id: 20178
@@ -3180,4 +3180,4 @@ checks:
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^[\w@-]+:[\w@-]+:0:'

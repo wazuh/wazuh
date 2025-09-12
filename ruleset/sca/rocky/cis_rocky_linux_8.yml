@@ -23,7 +23,7 @@ requirements:
   description: "Requirements for running the policy against RL 8 family."
   condition: any
   rules:
-    - 'f:/etc/redhat-release -> r:^Rocky Linux && r:release 8\p*'
+    - 'f:/etc/redhat-release -> r:^Rocky Linux && r:release 8'
 
 variables:
   $sshd_file: /etc/ssh/sshd_config
@@ -58,7 +58,7 @@ checks:
     rules:
       - "c:modprobe -n -v cramfs -> r:install /bin/false|Module cramfs not found"
       - "not c:lsmod -> r:cramfs"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+cramfs'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+cramfs'
 
   # 1.1.1.2 Ensure mounting of squashfs filesystems is disabled. (Automated)
   - id: 30501
@@ -80,7 +80,7 @@ checks:
     rules:
       - "c:modprobe -n -v squashfs -> r:install /bin/false|Module squashfs not found"
       - "not c:lsmod -> r:squashfs"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+squashfs'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+squashfs'
 
   # 1.1.1.3 Ensure mounting of udf filesystems is disabled. (Automated)
   - id: 30502
@@ -102,7 +102,7 @@ checks:
     rules:
       - "c:modprobe -n -v udf -> r:install /bin/false|Module udf not found"
       - "not c:lsmod -> r:udf"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+udf'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+udf'
 
   # 1.1.2.1 Ensure /tmp is a separate partition. (Automated)
   - id: 30503
@@ -742,7 +742,7 @@ checks:
       - nist_sp_800-53: ["SC-18(4)"]
     condition: all
     rules:
-      - "c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs.service"
+      - "c:systemctl is-enabled autofs -> r:Failed to get unit file state for autofs\\.service"
       - "not c:systemctl is-enabled autofs -> r:enabled"
 
   # 1.1.10 Disable USB Storage. (Automated)
@@ -862,7 +862,7 @@ checks:
     condition: all
     rules:
       - "f:/usr/lib/systemd/system/rescue.service -> r:ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue"
-      - 'd:/etc/systemd/system/rescue.service.d/ -> r:\.*.conf -> r:ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue'
+      - 'd:/etc/systemd/system/rescue.service.d/ -> r:.*\.conf -> r:ExecStart=-/usr/lib/systemd/systemd-sulogin-shell rescue'
 
   ###############################################
   # 1.5 Additional Process Hardening
@@ -944,8 +944,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'f:/boot/grub2/grubenv -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
-      - 'f:/boot/grub2/grub.cfg -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
+      - 'f:/boot/grub2/grubenv -> r:kernelopts=.*selinux=0|kernelopts=.*enforcing=0'
+      - 'f:/boot/grub2/grub.cfg -> r:kernelopts=.*selinux=0|kernelopts=.*enforcing=0'
 
   # 1.6.1.3 Ensure SELinux policy is configured. (Automated)
   - id: 30541
@@ -1223,7 +1223,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/dconf/profile/gdm -> r:^user-db:user\s*system-db:gdm\s*file-db:/usr/share/gdm/greeter-dconf-defaults$'
-      - 'd:/etc/dconf/db/gdm.d/ -> r:\.* -> r:s*\[org/gnome/login-screen\]\s*banner-message-enable=true\s*banner-message-text=\w+'
+      - 'd:/etc/dconf/db/gdm.d/ -> r:.* -> r:s\*\[org/gnome/login-screen\]\s*banner-message-enable=true\s*banner-message-text=[\w@-]+'
 
   # 1.8.3 Ensure last logged in user display is disabled. (Automated)
   - id: 30555
@@ -1244,7 +1244,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/dconf/profile/gdm -> r:^user-db:user\s*system-db:gdm\s*file-db:/usr/share/gdm/greeter-dconf-defaults$'
-      - 'd:/etc/dconf/db/gdm.d/ -> r:\.* -> r:s*\[org/gnome/login-screen\]\s*disable-user-list=true'
+      - 'd:/etc/dconf/db/gdm.d/ -> r:.* -> r:s\*\[org/gnome/login-screen\]\s*disable-user-list=true'
 
   # 1.8.4 Ensure XDMCP is not enabled. (Automated)
   - id: 30556
@@ -1358,7 +1358,7 @@ checks:
     rules:
       - "f:/etc/chrony.conf"
       - 'f:/etc/chrony.conf -> r:^\s*\t*server|^\s*\t*pool'
-      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS\.*-u chrony'
+      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS.*-u chrony'
 
   ###############################################
   # 2.2 Special Purpose Services
@@ -1707,7 +1707,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:ss -lntu -> r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
+      - 'not c:ss -lntu -> r:\s*127\.0\.0\.1:25\s*|\s*::1:25\s*'
 
   # 2.2.18 Ensure nfs-utils is not installed or the nfs-server service is masked. (Automated)
   - id: 30579
@@ -1988,7 +1988,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:rpm -q firewalld iptables -> r:firewalld\w*|iptables\w*'
+      - 'c:rpm -q firewalld iptables -> r:firewalld[\w@-]*|iptables[\w@-]*'
 
   # 3.4.1.2 Ensure iptables-services not installed with firewalld. (Automated)
   - id: 30591
@@ -2280,7 +2280,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:rpm -q iptables iptables-services -> r:/iptables\w*|iptables-services\w*'
+      - 'c:rpm -q iptables iptables-services -> r:/iptables[\w@-]*|iptables-services[\w@-]*'
 
   # 3.4.3.1.2 Ensure nftables is not installed with iptables. (Automated)
   - id: 30604
@@ -2415,9 +2415,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:ip6tables -L INPUT -v -n -> r:ACCEPT && r:all && r:lo\s*\t**'
-      - 'c:ip6tables -L INPUT -v -n -> r:DROP && r:all && r:*\s*\t** && r:::1'
-      - 'c:ip6tables -L OUTPUT -v -n -> r:ACCEPT && r:all && r:*\s*\t*lo'
+      - 'c:ip6tables -L INPUT -v -n -> r:ACCEPT && r:all && r:lo\s*\t*\*'
+      - 'c:ip6tables -L INPUT -v -n -> r:DROP && r:all && r:\*\s*\t*\* && r:::1'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:ACCEPT && r:all && r:\*\s*\t*lo'
 
   # 3.4.3.3.2 Ensure ip6tables outbound and established connections are configured. (Manual) - Not Implemented
   # 3.4.3.3.3 Ensure ip6tables firewall rules exist for all open ports. (Automated) - Not Implemented
@@ -2553,7 +2553,7 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:grubby --info=ALL -> n:^args=\.*\saudit_backlog_limit=(\d+) compare >= 8192'
+      - 'c:grubby --info=ALL -> n:^args=.*\saudit_backlog_limit=(\d+) compare >= 8192'
 
   ############################################################
   # 4.1.2 Configure Data Retention
@@ -2637,10 +2637,10 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - d:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
-      - d:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers.d -p wa -k scope|-w /etc/sudoers.d -p wa key=scope
+      - d:/etc/audit/rules.d/ -> r:.*\.rules -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
+      - d:/etc/audit/rules.d/ -> r:.*\.rules -> r:-w /etc/sudoers\.d -p wa -k scope|-w /etc/sudoers\.d -p wa key=scope
       - c:auditctl -l -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
-      - c:auditctl -l -> r:-w /etc/sudoers.d -p wa -k scope|-w /etc/sudoers.d -p wa key=scope
+      - c:auditctl -l -> r:-w /etc/sudoers\.d -p wa -k scope|-w /etc/sudoers\.d -p wa key=scope
 
   # 4.1.3.2 Ensure actions as another user are always logged. (Automated) - Not Implemented
   # 4.1.3.3 Ensure events that modify the sudo log file are collected. (Automated) - Not Implemented
@@ -2680,7 +2680,7 @@ checks:
     condition: any
     rules:
       - "f:/etc/audit/audit.rules -> r:^-e 2"
-      - 'd:/etc/audit/rules.d -> r:\.*.rules -> r:^-e 2'
+      - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-e 2'
 
   # 4.1.3.21 Ensure the running and on disk configuration is the same. (Manual)
   - id: 30621
@@ -2788,7 +2788,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
-      - 'd:/etc/rsyslog.d -> r:\.*.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
+      - 'd:/etc/rsyslog.d -> r:.*\.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode && r:0640|0600|0400'
 
   # 4.2.1.5 Ensure logging is configured. (Manual) - Not Implemented
@@ -2810,10 +2810,10 @@ checks:
       - pci_dss_v4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: any
     rules:
-      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* @@\.+'
-      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* action && r:target="'
-      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* @@\.+'
-      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:# && r:^*.* action && r:target="'
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^\*\.\* @@.+'
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^\*\.\* action && r:target="'
+      - 'd:/etc/rsyslog.d/ -> r:\*\.conf -> !r:# && r:^\*\.\* @@.+'
+      - 'd:/etc/rsyslog.d/ -> r:\*\.conf -> !r:# && r:^\*\.\* action && r:target="'
 
   # 4.2.1.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated)
   - id: 30627
@@ -2835,7 +2835,7 @@ checks:
     condition: none
     rules:
       - 'f:/etc/rsyslog.conf -> !r:^\s*# && r:ModLoad imtcp|InputTCPServerRun|load="imtcp"|type="imtcp"'
-      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:\s*# && r:ModLoad imtcp|InputTCPServerRun|load="imtcp"|type="imtcp"'
+      - 'd:/etc/rsyslog.d/ -> r:\*\.conf -> !r:\s*# && r:ModLoad imtcp|InputTCPServerRun|load="imtcp"|type="imtcp"'
 
   ###############################################
   # 4.2.2 Configure journald
@@ -3183,8 +3183,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+[\w@-]*|^\s*AllowGroups\s+[\w@-]*|^\s*DenyUsers\s+[\w@-]*|^\s*DenyGroups\s+[\w@-]*'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+[\w@-]*|^\s*AllowGroups\s+[\w@-]*|^\s*DenyUsers\s+[\w@-]*|^\s*DenyGroups\s+[\w@-]*'
 
   # 5.2.5 Ensure SSH LogLevel is appropriate. (Automated)
   - id: 30644
@@ -3416,7 +3416,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*Banner\s*/\w+'
+      - 'c:sshd -T -C user=root -> r:^\s*Banner\s*/[\w@-]+'
 
   # 5.2.16 Ensure SSH MaxAuthTries is set to 4 or less. (Automated)
   - id: 30655
@@ -3570,7 +3570,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^\s*Defaults\s+use_pty'
-      - 'd:/etc/sudoers.d -> r:\. -> r:^\s*Defaults\s+use_pty'
+      - 'd:/etc/sudoers.d -> r:. -> r:^\s*Defaults\s+use_pty'
 
   # 5.3.3 Ensure sudo log file exists. (Automated)
   - id: 30662
@@ -3592,7 +3592,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^Defaults logfile="'
-      - 'd:/etc/sudoers.d -> r:\. -> r:^Defaults\s+logfile="'
+      - 'd:/etc/sudoers.d -> r:. -> r:^Defaults\s+logfile="'
 
   # 5.3.4 Ensure users must provide password for escalation. (Automated)
   - id: 30663
@@ -3613,7 +3613,7 @@ checks:
     condition: none
     rules:
       - 'f:/etc/sudoers -> !r:^\s*# && r:NOPASSWD'
-      - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:. -> !r:^\s*# && r:NOPASSWD'
 
   # 5.3.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
   - id: 30664
@@ -3633,7 +3633,7 @@ checks:
     condition: none
     rules:
       - 'f:/etc/sudoers -> !r:^\s*# && r:!authenticate'
-      - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:!authenticate'
+      - 'd:/etc/sudoers.d -> r:. -> !r:^\s*# && r:!authenticate'
 
   # 5.3.6 Ensure sudo authentication timeout is configured correctly. (Automated)
   - id: 30665
@@ -3655,9 +3655,9 @@ checks:
     condition: all
     rules:
       - 'not f:/etc/sudoers -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
-      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not d:/etc/sudoers.d -> r:.+ -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
       - 'not f:/etc/sudoers -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
-      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
+      - 'not d:/etc/sudoers.d -> r:.+ -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
 
   # 5.3.7 Ensure access to the su command is restricted. (Automated)
   - id: 30666
@@ -3678,7 +3678,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel.so\s*\t*use_uid'
+      - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel\.so\s*\t*use_uid'
 
   ###############################################
   # 5.4 Configure authselect
@@ -3699,7 +3699,7 @@ checks:
       - pci_dss_v4.0: ["6.3.1"]
     condition: all
     rules:
-      - 'c:authselect list -> r:^\w*\s*custom'
+      - 'c:authselect list -> r:^[\w@-]*\s*custom'
       - "f:/etc/authselect/authselect.conf -> r:custom"
 
   # 5.4.2 Ensure authselect includes with-faillock. (Automated)
@@ -3720,8 +3720,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "f:/etc/pam.d/password-auth -> r:required && r:pam_faillock.so"
-      - "f:/etc/pam.d/system-auth -> r:required && r:pam_faillock.so"
+      - "f:/etc/pam.d/password-auth -> r:required && r:pam_faillock\\.so"
+      - "f:/etc/pam.d/system-auth -> r:required && r:pam_faillock\\.so"
 
   ###############################################
   # 5.5 Configure PAM
@@ -3742,8 +3742,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "f:/etc/pam.d/password-auth -> r:pam_pwquality.so && r:try_first_pass && r:retry="
-      - "f:/etc/pam.d/system-auth -> r:pam_pwquality.so && r:try_first_pass && r:retry="
+      - "f:/etc/pam.d/password-auth -> r:pam_pwquality\\.so && r:try_first_pass && r:retry="
+      - "f:/etc/pam.d/system-auth -> r:pam_pwquality\\.so && r:try_first_pass && r:retry="
       - 'f:/etc/security/pwquality.conf -> n:^\s*minlen\s+\t*=\s+\t*(\d+) compare >= 14'
       - 'f:/etc/security/pwquality.conf -> r:^\s*minclass|^\s*\Scredit'
 
@@ -3786,8 +3786,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+requisite\.+pam_pwhistory\.so\.+ && n:remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password.+requisite.+pam_pwhistory.so.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password.+sufficient.+pam_unix.so.+ && n:remember=(\d+) compare >= 5'
 
   # 5.5.4 Ensure password hashing algorithm is SHA-512. (Automated)
   - id: 30672
@@ -3810,8 +3810,8 @@ checks:
     rules:
       - 'f:/etc/libuser.conf -> r:^\s*\t*crypt_style\s*\t*=\s*\t*sha512'
       - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD SHA512'
-      - 'f:/etc/pam.d/password-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*\t*password.+sufficient.+pam_unix.so'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*\t*password.+sufficient.+pam_unix.so'
 
   ###############################################
   # 5.6 User Accounts and Environment
@@ -3838,7 +3838,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
+      - 'not f:/etc/shadow -> !r:^[\w@-]+:!|^[\w@-]+:[*!+-]: && n:^[\w@-]+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.6.1.2 Ensure minimum days between password changes is 7 or more. (Automated)
   - id: 30674
@@ -3859,8 +3859,8 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 7'
-      - 'not f:/etc/shadow -> n:^\w+:\S*:\S*:(\d+):\S*:\S*:\S*:\S*:\S* compare < 7'
-      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*::\S*:\S*:\S*:\S*:\S*'
+      - 'not f:/etc/shadow -> n:^[\w@-]+:\S*:\S*:(\d+):\S*:\S*:\S*:\S*:\S* compare < 7'
+      - 'not f:/etc/shadow -> r:^[\w@-]+:\S*:\S*::\S*:\S*:\S*:\S*:\S*'
 
   # 5.6.1.3 Ensure password expiration warning days is 7 or more. (Automated)
   - id: 30675
@@ -3881,8 +3881,8 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
-      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
-      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
+      - 'f:/etc/shadow -> n:^[\w@-]+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
+      - 'not f:/etc/shadow -> r:^[\w@-]+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
 
   # 5.6.1.4 Ensure inactive password lock is 30 days or less. (Automated)
   - id: 30676
@@ -3901,8 +3901,8 @@ checks:
     condition: all
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*\t*(\d+) compare <= 30'
-      - 'f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
-      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
+      - 'f:/etc/shadow -> !r:^[\w@-]+:!|^[\w@-]+:[*!+-]: && n:^[\w@-]+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
+      - 'not f:/etc/shadow -> !r:^[\w@-]+:!|^[\w@-]+:[*!+-]: && r:^[\w@-]+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
   # 5.6.1.5 Ensure all users last password change date is in the past. (Automated) - Not Implemented
   # 5.6.2 Ensure system accounts are secured. (Automated) - Not Implemented
@@ -4129,7 +4129,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> !r:^# && r:^\w+::'
+      - 'f:/etc/shadow -> !r:^# && r:^[\w@-]+::'
 
   # 6.2.2 Ensure all groups in /etc/passwd exist in /etc/group. (Automated) - Not Implemented
   # 6.2.3 Ensure no duplicate UIDs exist. (Automated) - Not Implemented
@@ -4155,7 +4155,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
+      - 'f:/etc/passwd -> !r:^\s*root && n:^[\w@-]+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
 
   # 6.2.9 Ensure all users' home directories exist. (Automated) - Not Implemented
   # 6.2.10 Ensure users own their home directories. (Automated) - Not Implemented

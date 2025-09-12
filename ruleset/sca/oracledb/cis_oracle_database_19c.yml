@@ -58,7 +58,7 @@ checks:
       - cis_csc: ["5.1", "4.3"]
     condition: any
     rules:
-      - 'f:$listener_file -> r:\.+admin_restrictions_\.+ ON'
+      - 'f:$listener_file -> r:.+admin_restrictions_.+ ON'
 
   ###############################################
   # 2.2 Database Settings

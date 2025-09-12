@@ -114,7 +114,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - "c:findmnt -> r:/var/tmp && r:[/tmp]"
+      - "c:findmnt -> r:/var/tmp && r:\\[/tmp\\]"
       - 'f:/etc/fstab -> r:^/tmp && r:\s*/var/tmp\s* && r:bind'
 
   - id: 1006
@@ -324,7 +324,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *autofs* -> r:/etc/rc\d+.d/S\d+autofs'
+      - 'c:find /etc/ -name *autofs* -> r:/etc/rc\d+\.d/S\d+autofs'
 
   # 3 Secure Boot Settings
 
@@ -354,7 +354,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /boot/grub/grub.cfg -> r:^Access: \(0\d00/-\w\w\w------\)'
+      - 'c:stat -L /boot/grub/grub.cfg -> r:^Access: \(0\d00/-[\w@-][\w@-][\w@-]------\)'
 
   - id: 1023
     title: "Set Boot Loader Password"
@@ -383,7 +383,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - "f:/etc/shadow -> r:^root:*:|^root:!:"
+      - "f:/etc/shadow -> r:^root:\\*:|^root:!:"
   ###########################################
   # 4 Additional Process Hardening
   ###########################################
@@ -431,7 +431,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:sysctl kernel.randomize_va_space -> r:^kernel.randomize_va_space\s*\t*=\s*\t*2'
+      - 'c:sysctl kernel.randomize_va_space -> r:^kernel\.randomize_va_space\s*\t*=\s*\t*2'
 
   # 4.4 Disable prelink
   - id: 1028
@@ -607,7 +607,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *xinetd* -> r:/etc/rc\d+.d/S\d+xinetd'
+      - 'c:find /etc/ -name *xinetd* -> r:/etc/rc\d+\.d/S\d+xinetd'
 
   # 5.2 Ensure chargen is not enabled (Scored)
   - id: 1038
@@ -717,7 +717,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:dpkg -l xserver-xorg-core* -> r:^\wi\s*xserver-xorg'
+      - 'c:dpkg -l xserver-xorg-core* -> r:^[\w@-]i\s*xserver-xorg'
 
   # 6.2 Ensure Avahi Server is not enabled (Scored)
   - id: 1044
@@ -733,7 +733,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *avahi-daemon* -> r:/etc/rc\d+.d/S\d+avahi-daemon'
+      - 'c:find /etc/ -name *avahi-daemon* -> r:/etc/rc\d+\.d/S\d+avahi-daemon'
 
   # 6.3 Ensure print server is not enabled (Scored)
   - id: 1045
@@ -749,7 +749,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *cups* -> r:/etc/rc\d+.d/S\d+cups'
+      - 'c:find /etc/ -name *cups* -> r:/etc/rc\d+\.d/S\d+cups'
 
   # 6.4 Ensure DHCP Server is not enabled (Scored)
   - id: 1046
@@ -767,7 +767,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *isc-dhcp-server* -> r:/etc/rc\d+.d/S\d+isc-dhcp-server'
+      - 'c:find /etc/ -name *isc-dhcp-server* -> r:/etc/rc\d+\.d/S\d+isc-dhcp-server'
 
   # 6.5 Configure Network Time Protocol (Scored)
   - id: 1047
@@ -788,7 +788,7 @@ checks:
       - "c:dpkg -s ntp -> r:install ok installed"
       - "f:/etc/ntp.conf -> r:^restrict -4 default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
       - "f:/etc/ntp.conf -> r:^restrict -6 default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
-      - 'f:/etc/ntp.conf -> r:^server\s\.+'
+      - 'f:/etc/ntp.conf -> r:^server\s.+'
       - 'f:/etc/init.d/ntp -> r:^RUNASUSER\s*\t*=\s*\t*ntp'
 
   # 6.6 Ensure LDAP is not enabled (Scored)
@@ -823,8 +823,8 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *rpcbind* -> r:/etc/rc\d+.d/S\d+rpcbind'
-      - 'c:find /etc/ -name *nfs-kernel-server* -> r:/etc/rc\d+.d/S\d+nfs-kernel-server'
+      - 'c:find /etc/ -name *rpcbind* -> r:/etc/rc\d+\.d/S\d+rpcbind'
+      - 'c:find /etc/ -name *nfs-kernel-server* -> r:/etc/rc\d+\.d/S\d+nfs-kernel-server'
 
   # 6.8 Ensure DNS Server is not enabled (Scored)
   - id: 1050
@@ -840,7 +840,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *bind9* -> r:/etc/rc\d+.d/S\d+bind9'
+      - 'c:find /etc/ -name *bind9* -> r:/etc/rc\d+\.d/S\d+bind9'
 
   # 6.9 Ensure FTP Server is not enabled (Scored)
   - id: 1051
@@ -856,7 +856,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *vsftpd* -> r:/etc/rc\d+.d/S\d+vsftp'
+      - 'c:find /etc/ -name *vsftpd* -> r:/etc/rc\d+\.d/S\d+vsftp'
 
   # 6.10 Ensure HTTP Server is not enabled (Scored)
   - id: 1052
@@ -872,7 +872,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *apache2* -> r:/etc/rc\d+.d/S\d+apache2'
+      - 'c:find /etc/ -name *apache2* -> r:/etc/rc\d+\.d/S\d+apache2'
 
   # 6.11 Ensure IMAP and POP Server is not enabled (Scored)
   - id: 1053
@@ -888,7 +888,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *dovecot* -> r:/etc/rc\d+.d/S\d+dovecot'
+      - 'c:find /etc/ -name *dovecot* -> r:/etc/rc\d+\.d/S\d+dovecot'
 
   # 6.12 Ensure Samba is not enabled (Scored)
   - id: 1054
@@ -904,7 +904,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *samba* -> r:/etc/rc\d+.d/S\d+samba'
+      - 'c:find /etc/ -name *samba* -> r:/etc/rc\d+\.d/S\d+samba'
 
   # 6.13 Ensure HTTP Proxy Server is not enabled (Scored)
   - id: 1055
@@ -920,7 +920,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *squid3* -> r:/etc/rc\d+.d/S\d+squid3'
+      - 'c:find /etc/ -name *squid3* -> r:/etc/rc\d+\.d/S\d+squid3'
 
   # 6.14 Ensure SNMP Server is not enabled (Scored)
   - id: 1056
@@ -936,7 +936,7 @@ checks:
       - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:find /etc/ -name *snmpd* -> r:/etc/rc\d+.d/S\d+snmpd'
+      - 'c:find /etc/ -name *snmpd* -> r:/etc/rc\d+\.d/S\d+snmpd'
 
   # 6.15 Ensure Mail Transfer Agent for Local-Only Mode (Scored)
   - id: 1057
@@ -952,7 +952,7 @@ checks:
       - tsc: ["CC5.2", "CC6.4", "CC6.6", "CC6.7", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
-      - 'c:netstat -an -> r:\.*25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
+      - 'c:netstat -an -> r:.*25.*LISTEN && !r:127\.0\.0\.1:25.+LISTEN|::1:25.*LISTEN'
 
   # 6.16 Ensure rsync service is not enabled (Scored)
   - id: 1058
@@ -1389,10 +1389,10 @@ checks:
     rules:
       - "c:dpkg -s iptables -> r:install ok installed"
       - "c:dpkg -s iptables-persistent -> r:install ok installed"
-      - 'c:find /etc/rc2.d -name *iptables-persistent* -> r:/etc/rc2.d/S\d+iptables-persistent'
-      - 'c:find /etc/rc3.d -name *iptables-persistent* -> r:/etc/rc3.d/S\d+iptables-persistent'
-      - 'c:find /etc/rc4.d -name *iptables-persistent* -> r:/etc/rc4.d/S\d+iptables-persistent'
-      - 'c:find /etc/rc5.d -name *iptables-persistent* -> r:/etc/rc5.d/S\d+iptables-persistent'
+      - 'c:find /etc/rc2.d -name *iptables-persistent* -> r:/etc/rc2\.d/S\d+iptables-persistent'
+      - 'c:find /etc/rc3.d -name *iptables-persistent* -> r:/etc/rc3\.d/S\d+iptables-persistent'
+      - 'c:find /etc/rc4.d -name *iptables-persistent* -> r:/etc/rc4\.d/S\d+iptables-persistent'
+      - 'c:find /etc/rc5.d -name *iptables-persistent* -> r:/etc/rc5\.d/S\d+iptables-persistent'
 
   ###############################################
   # 8 Logging and Auditing
@@ -1466,10 +1466,10 @@ checks:
     condition: all
     rules:
       - "c:dpkg -s auditd -> r:install ok installed"
-      - 'c:find /etc/rc2.d -name *auditd* -> r:/etc/rc2.d/S\d+auditd'
-      - 'c:find /etc/rc3.d -name *auditd* -> r:/etc/rc3.d/S\d+auditd'
-      - 'c:find /etc/rc4.d -name *auditd* -> r:/etc/rc4.d/S\d+auditd'
-      - 'c:find /etc/rc5.d -name *auditd* -> r:/etc/rc5.d/S\d+auditd'
+      - 'c:find /etc/rc2.d -name *auditd* -> r:/etc/rc2\.d/S\d+auditd'
+      - 'c:find /etc/rc3.d -name *auditd* -> r:/etc/rc3\.d/S\d+auditd'
+      - 'c:find /etc/rc4.d -name *auditd* -> r:/etc/rc4\.d/S\d+auditd'
+      - 'c:find /etc/rc5.d -name *auditd* -> r:/etc/rc5\.d/S\d+auditd'
 
   # 8.1.3 Enable Auditing for Processes That Start Prior to auditd (Scored)
   - id: 1087
@@ -1486,7 +1486,7 @@ checks:
       - gdpr_IV: ["35.7.d", "32.2"]
     condition: all
     rules:
-      - 'f:/etc/default/grub -> r:^GRUB_CMDLINE_LINUX\s*=\s*\p*audit\s*=\s*1\p*'
+      - 'f:/etc/default/grub -> r:^GRUB_CMDLINE_LINUX\s*=\s*[*!+-]*audit\s*=\s*1[*!+-]*'
 
   # 8.1.4 Record Events That Modify Date and Time Information (Scored)
   - id: 1088
@@ -1557,7 +1557,7 @@ checks:
       - "f:/etc/audit/audit.rules"
       - "f:/etc/audit/audit.rules -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname -k system-locale"
       - "f:/etc/audit/audit.rules -> r:^-w /etc/issue && r:-p wa && r:-k system-locale"
-      - "f:/etc/audit/audit.rules -> r:^-w /etc/issue.net && r:-p wa && r:-k system-locale"
+      - "f:/etc/audit/audit.rules -> r:^-w /etc/issue\\.net && r:-p wa && r:-k system-locale"
       - "f:/etc/audit/audit.rules -> r:^-w /etc/hosts && r:-p wa && r:-k system-locale"
       - "f:/etc/audit/audit.rules -> r:^-w /etc/network && r:-p wa && r:-k system-locale"
 
@@ -1745,7 +1745,7 @@ checks:
     rules:
       - "d:/etc/audit"
       - "f:/etc/audit/audit.rules"
-      - "f:/etc/audit/audit.rules -> r:^-w /var/log/sudo.log && r:-p wa && r:-k actions"
+      - "f:/etc/audit/audit.rules -> r:^-w /var/log/sudo\\.log && r:-p wa && r:-k actions"
 
   # 8.1.17 Collect Kernel Module Loading and Unloading (Scored)
   - id: 1100
@@ -1815,10 +1815,10 @@ checks:
       - cis_csc: ["6.2"]
     condition: all
     rules:
-      - 'c:find /etc/rc2.d -name *rsyslog* -> r:/etc/rc2.d/S\d+rsyslog'
-      - 'c:find /etc/rc3.d -name *rsyslog* -> r:/etc/rc3.d/S\d+rsyslog'
-      - 'c:find /etc/rc4.d -name *rsyslog* -> r:/etc/rc4.d/S\d+rsyslog'
-      - 'c:find /etc/rc5.d -name *rsyslog* -> r:/etc/rc5.d/S\d+rsyslog'
+      - 'c:find /etc/rc2.d -name *rsyslog* -> r:/etc/rc2\.d/S\d+rsyslog'
+      - 'c:find /etc/rc3.d -name *rsyslog* -> r:/etc/rc3\.d/S\d+rsyslog'
+      - 'c:find /etc/rc4.d -name *rsyslog* -> r:/etc/rc4\.d/S\d+rsyslog'
+      - 'c:find /etc/rc5.d -name *rsyslog* -> r:/etc/rc5\.d/S\d+rsyslog'
 
   # 8.2.5 Configure rsyslog to send logs to a Remote Log Host (Scored)
   - id: 1104
@@ -1833,7 +1833,7 @@ checks:
       - rsyslog.conf(5) man page
     condition: all
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\s*\t**.* @@\.+'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*\*\.\* @@.+'
 
   # 8.2.6 Accept remote rsyslog messages only on designated log hosts (Not Scored)
   - id: 1105
@@ -1848,7 +1848,7 @@ checks:
       - rsyslog.conf(8) man page
     condition: all
     rules:
-      - 'f:/etc/rsyslog.conf -> r:^\s*\t*\$ModLoad\s*\t*imtcp.so'
+      - 'f:/etc/rsyslog.conf -> r:^\s*\t*\$ModLoad\s*\t*imtcp\.so'
       - 'f:/etc/rsyslog.conf -> r:^\s*\t*\$InputTCPServerRun\s*\t*514'
 
   ###############################################
@@ -1900,14 +1900,14 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:find /etc/rc2.d -name *cron* -> r:/etc/rc2.d/S\d+cron'
-      - 'c:find /etc/rc3.d -name *cron* -> r:/etc/rc3.d/S\d+cron'
-      - 'c:find /etc/rc4.d -name *cron* -> r:/etc/rc4.d/S\d+cron'
-      - 'c:find /etc/rc5.d -name *cron* -> r:/etc/rc5.d/S\d+cron'
-      - 'c:find /etc/rc2.d -name *anacron* -> r:/etc/rc2.d/S\d+anacron'
-      - 'c:find /etc/rc3.d -name *anacron* -> r:/etc/rc3.d/S\d+anacron'
-      - 'c:find /etc/rc4.d -name *anacron* -> r:/etc/rc4.d/S\d+anacron'
-      - 'c:find /etc/rc5.d -name *anacron* -> r:/etc/rc5.d/S\d+anacron'
+      - 'c:find /etc/rc2.d -name *cron* -> r:/etc/rc2\.d/S\d+cron'
+      - 'c:find /etc/rc3.d -name *cron* -> r:/etc/rc3\.d/S\d+cron'
+      - 'c:find /etc/rc4.d -name *cron* -> r:/etc/rc4\.d/S\d+cron'
+      - 'c:find /etc/rc5.d -name *cron* -> r:/etc/rc5\.d/S\d+cron'
+      - 'c:find /etc/rc2.d -name *anacron* -> r:/etc/rc2\.d/S\d+anacron'
+      - 'c:find /etc/rc3.d -name *anacron* -> r:/etc/rc3\.d/S\d+anacron'
+      - 'c:find /etc/rc4.d -name *anacron* -> r:/etc/rc4\.d/S\d+anacron'
+      - 'c:find /etc/rc5.d -name *anacron* -> r:/etc/rc5\.d/S\d+anacron'
 
   # 9.1.2 Set User/Group Owner and Permission on /etc/crontab (Scored)
   - id: 1109
@@ -1924,7 +1924,7 @@ checks:
       - gdpr_IV: ["35.7", "32.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/crontab -> r:^Access: \(0\d00/-[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 9.1.3 Set User/Group Owner and Permission on /etc/cron.hourly (Scored)
   - id: 1110
@@ -1939,7 +1939,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/d[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 9.1.4 Set User/Group Owner and Permission on /etc/cron.daily (Scored)
   - id: 1111
@@ -1954,7 +1954,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/d[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 9.1.5 Set User/Group Owner and Permission on /etc/cron.weekly (Scored)
   - id: 1112
@@ -1969,7 +1969,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/d[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 9.1.6 Set User/Group Owner and Permission on /etc/cron.monthly (Scored)
   - id: 1113
@@ -1984,7 +1984,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\d00/d[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 9.1.7 Set User/Group Owner and Permission on /etc/cron.d (Scored)
   - id: 1114
@@ -1999,7 +1999,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/d\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/d[\w@-][\w@-][\w@-]------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 9.1.8 Restrict at/cron to Authorized Users (Scored)
   - id: 1115
@@ -2037,7 +2037,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg -s libpam-cracklib -> r:install ok installed"
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_cracklib.so && r:retry=\d && n:minlen=(\d+) compare >= 14 && r:dcredit=-\d+ && r:ucredit=-\d+ && r:ocredit=-\d+ && r:lcredit=-\d+'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_cracklib\.so && r:retry=\d && n:minlen=(\d+) compare >= 14 && r:dcredit=-\d+ && r:ucredit=-\d+ && r:ocredit=-\d+ && r:lcredit=-\d+'
 
   # 9.2.2 Set Lockout for Failed Password Attempts (Not Scored)
   - id: 1117
@@ -2050,7 +2050,7 @@ checks:
       - pci_dss: ["8.2.5"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/login -> !r:^# && r:auth\s*\t*required\s*\t*pam_tally2.so && r:onerr=fail && r:audit && r:silent && r:deny=\d && r:unlock_time=\d\d\d+'
+      - 'f:/etc/pam.d/login -> !r:^# && r:auth\s*\t*required\s*\t*pam_tally2\.so && r:onerr=fail && r:audit && r:silent && r:deny=\d && r:unlock_time=\d\d\d+'
 
   # 9.2.3 Limit Password Reuse (Scored)
   - id: 1118
@@ -2063,7 +2063,7 @@ checks:
       - pci_dss: ["8.2.5"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:pam_unix.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-password -> !r:^# && r:password && r:pam_unix\.so && n:remember\s*\t*=\s*\t*(\d+) compare >= 5'
 
   ###########################################
   # 9.3 Configure SSH
@@ -2111,7 +2111,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/-\w\w-------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
+      - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/-[\w@-][\w@-]-------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
   # 9.3.4 Disable SSH X11 Forwarding (Scored)
   - id: 1122
@@ -2231,9 +2231,9 @@ checks:
       - cis: ["9.3.11"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Ciphers\.+aes128-ctr'
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Ciphers\.+aes192-ctr'
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Ciphers\.+aes256-ctr'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Ciphers.+aes128-ctr'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Ciphers.+aes192-ctr'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Ciphers.+aes256-ctr'
 
   # 9.3.12 Set Idle Timeout Interval for User Login (Scored)
   - id: 1130
@@ -2260,10 +2260,10 @@ checks:
       - pci_dss: ["8.1"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:AllowUsers\s+\w+'
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:AllowGroups\s+\w+'
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:DenyUsers\s+\w+'
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:DenyGroups\s+\w+'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:AllowUsers\s+[\w@-]+'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:AllowGroups\s+[\w@-]+'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:DenyUsers\s+[\w@-]+'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:DenyGroups\s+[\w@-]+'
 
   # 9.3.14 Set SSH Banner (Scored)
   - id: 1132
@@ -2278,7 +2278,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Banner\s*\t*/etc/issue.net|Banner\s\t*/etc/issue'
+      - 'f:/etc/ssh/sshd_config -> !r:^# && r:Banner\s*\t*/etc/issue\.net|Banner\s\t*/etc/issue'
 
   # 9.5 Restrict Access to the su Command (Scored)
   - id: 1133
@@ -2295,7 +2295,7 @@ checks:
       - gdpr_IV: ["35.7", "32.2"]
     condition: all
     rules:
-      - "f:/etc/pam.d/su -> !r:^# && r:auth && r:required && r:pam_wheel.so && r:use_uid"
+      - "f:/etc/pam.d/su -> !r:^# && r:auth && r:required && r:pam_wheel\\.so && r:use_uid"
       - "f:/etc/group -> !r:^# && r:wheel:"
 
   ######################################
@@ -2351,7 +2351,7 @@ checks:
       - pci_dss: ["3.6.1"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> !r:^# && r:root:\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^# && r:root:[\w@-]+:[\w@-]+:0:'
 
   # 10.4 Set Default umask for Users (Scored)
   - id: 1138
@@ -2437,7 +2437,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/gdm3/greeter.gsettings -> !r:^# && r:banner-message-enable=true"
-      - 'f:/etc/gdm3/greeter.gsettings -> !r:^# && r:banner-message-text=\.+'
+      - 'f:/etc/gdm3/greeter.gsettings -> !r:^# && r:banner-message-text=.+'
 
   ###############################################
   # 12 Verify System File Permissions
@@ -2555,7 +2555,7 @@ checks:
       - pci_dss: ["8.2"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> r:^\w+::'
+      - 'f:/etc/shadow -> r:^[\w@-]+::'
 
   # 13.2 Verify No Legacy "+" Entries Exist in /etc/passwd File
   - id: 1150
@@ -2574,7 +2574,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: none
     rules:
-      - "f:/etc/passwd -> !r:^# && r:^+:"
+      - "f:/etc/passwd -> !r:^# && r:^\\+:"
 
   # 13.3 Verify No Legacy "+" Entries Exist in /etc/shadow File
   - id: 1151
@@ -2593,7 +2593,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: none
     rules:
-      - "f:/etc/shadow -> !r:^# && r:^+:"
+      - "f:/etc/shadow -> !r:^# && r:^\\+:"
 
   # 13.4 Verify No Legacy "+" Entries Exist in /etc/group File
   - id: 1152
@@ -2612,7 +2612,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: none
     rules:
-      - "f:/etc/group -> !r:^# && r:^+:"
+      - "f:/etc/group -> !r:^# && r:^\\+:"
 
   # 13.5 Verify No UID 0 Accounts Exist Other Than root
   - id: 1153
@@ -2631,7 +2631,7 @@ checks:
       - gdpr_IV: ["35.7", "32.2"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^[\w@-]+:[\w@-]+:0:'
 
   # 13.20 Ensure shadow group is empty
   - id: 1154
@@ -2647,4 +2647,4 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\S+'
+      - 'f:/etc/group -> !r:^# && r:shadow:[\w@-]*:[\w@-]*:\S+'

@@ -61,7 +61,7 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/mod_dav.html
     condition: none
     rules:
-      - 'c:$enabled-modules -> r:dav_\.+module'
+      - 'c:$enabled-modules -> r:dav_.+module'
 
   #2.4 Disable Status Module
   - id: 10001
@@ -214,7 +214,7 @@ checks:
     rules:
       - "d:/var/www -> index.html"
       - "d:/var/www/html -> index.html"
-      - "d:$conf-dirs -> r:manual.conf|apache2-doc.conf"
+      - "d:$conf-dirs -> r:manual\\.conf|apache2-doc\\.conf"
       - "d:$conf-dirs -> conf -> !r:^# && r:sethandler|SetHandler && r:server"
       - "f:$main-conf -> !r:^# && r:sethandler|SetHandler && r:server"
       - "d:$conf-dirs -> conf -> !r:^# && r:sethandler|SetHandler && r:perl"
@@ -278,9 +278,9 @@ checks:
     condition: none
     rules:
       - 'd:$conf-dirs -> conf -> !r:^# && r:listen\s*\t*\d+$|Listen\s*\t*\d+$'
-      - "d:$conf-dirs -> conf -> !r:^# && r:listen|Listen && r:0.0.0.0"
+      - "d:$conf-dirs -> conf -> !r:^# && r:listen|Listen && r:0\\.0\\.0\\.0"
       - 'f:$main-conf -> !r:^# && r:listen\s*\t*\d+$|Listen\s*\t*\d+$'
-      - "f:$main-conf -> !r:^# && r:listen|Listen && r:0.0.0.0"
+      - "f:$main-conf -> !r:^# && r:listen|Listen && r:0\\.0\\.0\\.0"
 
   #5.14 Restrict Browser Frame Options
   - id: 10015
@@ -439,7 +439,7 @@ checks:
     condition: any
     rules:
       - 'f:$main-conf -> !r:^# && r:loadmodule|LoadModule && r:\s+mod_reqtimeout'
-      - 'f:$request-confs -> !r:^# && r:requestreadtimeout|RequestReadTimeout && n:header=\d+\p(\d+) compare <= 40'
+      - 'f:$request-confs -> !r:^# && r:requestreadtimeout|RequestReadTimeout && n:header=\d+[*!+-](\d+) compare <= 40'
 
   #9.6 Set Timeout Limits for Request Body
   - id: 10025

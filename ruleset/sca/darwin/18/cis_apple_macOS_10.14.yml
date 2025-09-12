@@ -23,9 +23,9 @@ requirements:
   description: "Requirements for running the SCA scan against macOS 10.14 (Mojave)."
   condition: any
   rules:
-    - 'c:sw_vers -> r:^ProductVersion:\t*\s*10\p14'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:\.*10\p14'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*10\p14'
+    - 'c:sw_vers -> r:^ProductVersion:\t*\s*10[*!+.-]14'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*10[*!+.-]14'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*10[*!+.-]14'
 
 checks:
   # 1.1 Verify all Apple provided software is current (Automated) - Not Implemented
@@ -426,8 +426,8 @@ checks:
       - cis: ["2.12"]
     condition: all
     rules:
-      - "c:/usr/libexec/firmwarecheckers/eficheck/eficheck --integrity-check -> r:Primary allowlist version match found. No changes detected in primary hashes"
-      - 'c:launchctl list -> r:^-\s*\t*0\s*\t*com.apple.driver.eficheck$'
+      - "c:/usr/libexec/firmwarecheckers/eficheck/eficheck --integrity-check -> r:Primary allowlist version match found\\. No changes detected in primary hashes"
+      - 'c:launchctl list -> r:^-\s*\t*0\s*\t*com\.apple\.driver\.eficheck$'
 
   # 3.1 Enable security auditing (Automated)
   - id: 17034
@@ -439,7 +439,7 @@ checks:
       - cis: ["3.1"]
     condition: all
     rules:
-      - "c:launchctl list -> r:com.apple.auditd"
+      - "c:launchctl list -> r:com\\.apple\\.auditd"
 
   # 3.3 Retain install.log for 365 or more days with no maximum size (Automated)
   - id: 17035
@@ -451,7 +451,7 @@ checks:
       - cis: ["3.3"]
     condition: all
     rules:
-      - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl\w+(\d+) compare > 365'
+      - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl[\w@-]+(\d+) compare > 365'
 
   # 3.5 Control access to audit records (Automated)
   - id: 17037

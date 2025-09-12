@@ -23,7 +23,7 @@ requirements:
   description: "Requirements for running the CIS benchmark against Solaris 11"
   condition: all
   rules:
-    - 'f:/etc/release -> r:^\s*Oracle\s+Solaris\s+11\p'
+    - 'f:/etc/release -> r:^\s*Oracle\s+Solaris\s+11'
 
 checks:
   # 2 Disable Unnecessary Services
@@ -47,7 +47,7 @@ checks:
       - cis: ["2.2"]
     condition: none
     rules:
-      - 'c:netstat -an -> r:.25\s*\t*|:25\s*\t* && !r:127.0.0.1|::1'
+      - 'c:netstat -an -> r:\.25\s*\t*|:25\s*\t* && !r:127\.0\.0\.1|::1'
 
   - id: 8002
     title: "Disable RPC Encryption Key"
@@ -240,11 +240,11 @@ checks:
       - cis: ["4.2"]
     condition: all
     rules:
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_ACCEPT:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_CONNECT:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SOCKACCEPT:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SOCKCONNECT:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_inetd_connect:\.+cis\.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_ACCEPT:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_CONNECT:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SOCKACCEPT:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SOCKCONNECT:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_inetd_connect:.+cis.*'
 
   - id: 8018
     title: "Enable Auditing of File Metadata Modification Events"
@@ -255,13 +255,13 @@ checks:
       - cis: ["4.3"]
     condition: all
     rules:
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_CHMOD:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_CHOWN:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_FCHOWN:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_FCHMOD:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_LCHOWN:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_ACLSET:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_FACLSET:\.+cis\.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_CHMOD:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_CHOWN:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_FCHOWN:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_FCHMOD:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_LCHOWN:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_ACLSET:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_FACLSET:.+cis.*'
 
   - id: 8019
     title: "Enable Auditing of Process and Privilege Events"
@@ -272,20 +272,20 @@ checks:
       - cis: ["4.4"]
     condition: all
     rules:
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_CHROOT:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETREUID:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETREGID:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_FCHROOT:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_PFEXEC:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETUID:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_NICE:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETGID:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_PRIOCNTLSYS:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETEGID:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETEUID:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETPPRIV:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETSID:\.+cis\.*'
-      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETPGID:\.+cis\.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_CHROOT:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETREUID:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETREGID:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_FCHROOT:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_PFEXEC:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETUID:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_NICE:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETGID:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_PRIOCNTLSYS:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETEGID:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETEUID:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETPPRIV:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETSID:.+cis.*'
+      - 'f:/etc/security/audit_event -> r:^\d+:AUE_SETPGID:.+cis.*'
 
   - id: 8020
     title: "Configure Solaris Auditing"
@@ -393,8 +393,8 @@ checks:
       - cis: ["6.8"]
     condition: all
     rules:
-      - 'f:/etc/pam.conf -> r:^#\s*\t*rlogin && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
-      - 'f:/etc/pam.conf -> r:^#\s*\t*rsh && r:auth && r:sufficient && r:pam_rhosts_auth.so.1'
+      - 'f:/etc/pam.conf -> r:^#\s*\t*rlogin && r:auth && r:sufficient && r:pam_rhosts_auth\.so\.1'
+      - 'f:/etc/pam.conf -> r:^#\s*\t*rsh && r:auth && r:sufficient && r:pam_rhosts_auth\.so\.1'
 
   - id: 8029
     title: "Set Delay between Failed Login Attempts to 4"
@@ -428,9 +428,9 @@ checks:
     condition: all
     rules:
       - "f:/usr/share/X11/app-defaults/XScreensaver"
-      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*timeout:\s*\t*\d+:\d+:\d+'
-      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*locktimeout:\s*\t*\d+:\d+:\d+'
-      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^*lock:\s*\t*true'
+      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^\*timeout:\s*\t*\d+:\d+:\d+'
+      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^\*locktimeout:\s*\t*\d+:\d+:\d+'
+      - 'f:/usr/share/X11/app-defaults/XScreensaver -> r:^\*lock:\s*\t*true'
 
   - id: 8032
     title: "Restrict at/cron to Authorized Users"
@@ -563,8 +563,8 @@ checks:
       - cis: ["8.1"]
     condition: all
     rules:
-      - "f:/etc/issue -> r:Authorized users only. All activity may be monitored and reported"
-      - "f:/etc/motd -> r:Authorized users only. All activity may be monitored and reported"
+      - "f:/etc/issue -> r:Authorized users only\\. All activity may be monitored and reported"
+      - "f:/etc/motd -> r:Authorized users only\\. All activity may be monitored and reported"
       - "c:stat -L -c%u-%g-%a /etc/issue -> r:^0-0-644"
 
   - id: 8042
@@ -587,7 +587,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/gdm/Init/Default"
-      - 'f:/etc/gdm/Init/Default -> r:^/usr/bin/zenity\s\.'
+      - 'f:/etc/gdm/Init/Default -> r:^/usr/bin/zenity\s.'
 
   - id: 8044
     title: "Enable a Warning Banner for the FTP service"
@@ -609,7 +609,7 @@ checks:
       - cis: ["8.5"]
     condition: none
     rules:
-      - 'f:/etc/default/telnetd -> !r:^# && r:BANNER\s*\t*=\s*\t*\.'
+      - 'f:/etc/default/telnetd -> !r:^# && r:BANNER\s*\t*=\s*\t*.'
 
   # 9 System Maintenance
   - id: 8046
@@ -625,28 +625,28 @@ checks:
       - "f:/etc/shadow -> r:^lp: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^adm: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^bin: && !r::NL:|:NP:"
-      - 'f:/etc/shadow -> r:^gdm: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^noaccess: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^nobody: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^nobody4: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^openldap: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^unknown: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^webservd: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^gdm: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^noaccess: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^nobody: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^nobody4: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^openldap: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^unknown: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^webservd: && !r::[*!+-]*LK[*!+-]*:'
       - "f:/etc/shadow -> r:^mysql: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^nuuc: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^postgres: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^smmsp: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^sys: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^uucp: && !r::NL:|:NP:"
-      - 'f:/etc/shadow -> r:^aiuser: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^dhcpserv: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^dladm: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^ftp: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^netadm: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^netcfg: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^pkg5srv: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^svctag: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^xvm: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^aiuser: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^dhcpserv: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^dladm: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^ftp: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^netadm: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^netcfg: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^pkg5srv: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^svctag: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^xvm: && !r::[*!+-]*LK[*!+-]*:'
       - "f:/etc/shadow -> r:^upnp: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^zfssnap: && !r::NL:|:NP:"
 
@@ -659,7 +659,7 @@ checks:
       - cis: ["9.4"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> r:^\w+::'
+      - 'f:/etc/shadow -> r:^[\w@-]+::'
 
   - id: 8048
     title: "Verify No UID 0 Accounts Exist Other than root"
@@ -670,7 +670,7 @@ checks:
       - cis: ["9.5"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^[\w@-]+:[\w@-]+:0:'
 
   - id: 8049
     title: "Ensure root PATH Integrity"
@@ -681,9 +681,9 @@ checks:
       - cis: ["9.6"]
     condition: none
     rules:
-      - "f:/etc/profile -> r::."
-      - "f:/root/.profile -> r::."
-      - "f:/root/.bashrc -> r::."
+      - "f:/etc/profile -> r::\\."
+      - "f:/root/.profile -> r::\\."
+      - "f:/root/.bashrc -> r::\\."
       - "f:/etc/profile -> r:::"
       - "f:/root/.profile -> r:::"
       - "f:/root/.bashrc -> r:::"
@@ -700,4 +700,4 @@ checks:
       - cis: ["9.12"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> r:\w+:\.*:\d*:\d*:\.*::\.*'
+      - 'f:/etc/passwd -> r:[\w@-]+:.*:\d*:\d*:.*::.*'
