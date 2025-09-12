@@ -34,7 +34,4 @@ char* get_node_name(void);
 // Returns the name of the manager in cluster. The memory should be freed by the caller.
 char* get_cluster_name(void);
 
-// Returns the cluster status. 1 if the cluster is enabled, 0 if it isn't.
-bool get_cluster_status(void);
-
 #endif
