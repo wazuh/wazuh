@@ -57,14 +57,6 @@ case "$1" in
         rm -f ${DIR}/bin/agent-auth
     fi
 
-    # Remove old databases
-    if [ -f ${DIR}/queue/syscollector/db/local.db ]; then
-      rm -f ${DIR}/queue/syscollector/db/local.db
-    fi
-    if [ -f ${DIR}/queue/fim/db/fim.db ]; then
-      rm -f ${DIR}/queue/fim/db/fim.db
-    fi
-
     # Restore the local rules, client.keys and local_decoder
     if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
         cp ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
