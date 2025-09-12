@@ -350,6 +350,41 @@ INSTANTIATE_TEST_SUITE_P(
                    {makeValue("true")},
                    SUCCESS(makeEvent(R"({"target":{"x":false}})"))),
 
+        // Deletes only the dotted key "a.b"
+        TransformT(R"({"target":{"a.b":10,"x":11}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("10")},
+                   SUCCESS(makeEvent(R"({"target":{"x":11}})"))),
+
+        // Deletes "a.b" but keeps nested a/b
+        TransformT(R"({"target":{"a":{"b":999},"a.b":10,"x":0}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("10")},
+                   SUCCESS(makeEvent(R"({"target":{"a":{"b":999},"x":0}})"))),
+
+        // Deletes the literal key "."
+        TransformT(R"({"target":{".":10,"x":11}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("10")},
+                   SUCCESS(makeEvent(R"({"target":{"x":11}})"))),
+
+        // Deletes the empty-string key ""
+        TransformT(R"({"target":{"":10,"x":11}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("10")},
+                   SUCCESS(makeEvent(R"({"target":{"x":11}})"))),
+
+        // Deletes dotted ".", and "" keys; keeps escaped names and others
+        TransformT(R"({"target":{"a.b":10,".":10,"":10,"a/b":10,"a~b":10,"keep":1}})",
+                   opBuilderHelperDeleteFieldsWithValue,
+                   "target",
+                   {makeValue("10")},
+                   SUCCESS(makeEvent(R"({"target":{"keep":1}})"))),
+
         /*** Rename Field ***/
         TransformT(R"({"ref": "value"})",
                    opBuilderHelperRenameField,

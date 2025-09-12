@@ -1740,38 +1740,31 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
     const auto name = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace1 =
-        fmt::format("[{}] -> Failure: Target field '{}' reference not found", name, targetField.dotPath());
-    const auto failureTrace2 =
-        fmt::format("[{}] -> Failure: Target field '{}' type is not object", name, targetField.dotPath());
-    const auto failureTrace3 = fmt::format("[{}] -> Failure: ", name);
+        fmt::format("[{}] -> Failure: Target field '{}' type is not object or not exist", name, targetField.dotPath());
+    const auto failureTrace2 = fmt::format("[{}] -> Failure: ", name);
 
     const auto runState = buildCtx->runState();
     const auto tgtPath = targetField.jsonPath();
 
     const std::optional<json::Json> capturedVal =
-        argIsValue ? std::optional<json::Json>(std::static_pointer_cast<Value>(opArgs[0])->value())
-                   : std::optional<json::Json> {};
+        argIsValue ? std::optional<json::Json>(std::static_pointer_cast<Value>(opArgs[0])->value()) : std::nullopt;
 
     const std::optional<std::string> refPath =
         (!argIsValue) ? std::optional<std::string>(std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
-                      : std::optional<std::string> {};
+                      : std::nullopt;
 
-    return [runState, tgtPath, successTrace, failureTrace1, failureTrace2, failureTrace3, capturedVal, refPath](
+    return [runState, tgtPath, successTrace, failureTrace1, failureTrace2, capturedVal, refPath](
                base::Event event) -> TransformResult
     {
-        if (!event->exists(tgtPath))
-        {
-            RETURN_FAILURE(runState, event, failureTrace1);
-        }
         if (!event->isObject(tgtPath))
         {
-            RETURN_FAILURE(runState, event, failureTrace2);
+            RETURN_FAILURE(runState, event, failureTrace1);
         }
 
         auto fieldsOpt = event->getFields(tgtPath);
         if (!fieldsOpt)
         {
-            RETURN_FAILURE(runState, event, failureTrace2);
+            RETURN_FAILURE(runState, event, failureTrace1);
         }
 
         std::optional<json::Json> cmpLocal = capturedVal;
@@ -1786,38 +1779,18 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
             }
             catch (const std::runtime_error& e)
             {
-                RETURN_FAILURE(runState, event, failureTrace3 + e.what());
+                RETURN_FAILURE(runState, event, failureTrace2 + e.what());
             }
         }
 
         const auto& fields = *fieldsOpt;
 
-        std::string pathPrefix;
-        pathPrefix.reserve(tgtPath.size() + 1);
-        pathPrefix.append(tgtPath);
-        pathPrefix.push_back('/');
-
-        auto encodePtrToken = [](std::string_view s)
-        {
-            std::string out;
-            out.reserve(s.size() + 2);
-            for (char ch : s)
-            {
-                if (ch == '~')
-                    out += "~0";
-                else if (ch == '/')
-                    out += "~1";
-                else
-                    out += ch;
-            }
-            return out;
-        };
-
         std::string childPath;
+
         for (const auto& k : fields)
         {
-            childPath.assign(pathPrefix);
-            childPath.append(encodePtrToken(k));
+            childPath.assign(tgtPath);
+            childPath.append(json::Json::formatJsonPath(k, true));
 
             try
             {
@@ -1828,7 +1801,7 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
             }
             catch (const std::exception& e)
             {
-                RETURN_FAILURE(runState, event, failureTrace3 + e.what());
+                RETURN_FAILURE(runState, event, failureTrace2 + e.what());
             }
         }
 
