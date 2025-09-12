@@ -64,6 +64,15 @@ static int setup_config(void** state)
     w_linked_queue_t* queue = linked_queue_init();
     keys.opened_fp_queue = queue;
     test_mode = 1;
+
+    // Dummy variables to simulate non-NULL handlers
+    static char syscollector_dummy = 1;
+    static char rsync_dummy = 1;
+    static char hash_dummy = 1;
+
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)&syscollector_dummy;
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)&rsync_dummy;
+    agent_data_hash = (OSHash*)&hash_dummy;
     return 0;
 }
 
@@ -71,6 +80,9 @@ static int teardown_config(void** state)
 {
     linked_queue_free(keys.opened_fp_queue);
     test_mode = 0;
+    router_syscollector_handle = NULL;
+    router_rsync_handle = NULL;
+    agent_data_hash = NULL;
     return 0;
 }
 
@@ -148,6 +160,15 @@ void __wrap_key_lock_read()
 int __wrap_close(int __fd)
 {
     return mock();
+}
+
+int __wrap_router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle, const char* msg, 
+                                        void* agent_ctx, int schema_type) {
+    check_expected_ptr(handle);
+    check_expected_ptr(msg);
+    check_expected_ptr(agent_ctx);
+    check_expected(schema_type);
+    return mock_type(int);
 }
 
 /*****************WRAPS********************/
@@ -2369,6 +2390,142 @@ void test_handle_outgoing_data_to_tcp_socket_success(void** state)
     handle_outgoing_data_to_tcp_socket(sock_client);
 }
 
+void test_router_message_forward_fim_syscheck_header(void** state) {
+    char msg[] = "8:syscheck: test message";
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.1";
+    const char* agent_name = "test-agent";
+    
+    expect_string(__wrap__mdebug2, formatted_msg, "FIM event detected, not forwarding to Inventory Harvester.");
+    
+    router_message_forward(msg, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_fim_dbsync_file(void** state) {
+    char msg[] = "5:fim_file: test message";
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.1";
+    const char* agent_name = "test-agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "FIM event detected, not forwarding to Inventory Harvester.");
+
+    router_message_forward(msg, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_syscollector_no_handle(void** state) {
+    char msg[] = "d:syscollector: test delta";
+    router_syscollector_handle = NULL;
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.1";
+    const char* agent_name = "test-agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "Router handle for 'syscollector' not available.");
+
+    router_message_forward(msg, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_syscollector_with_handle(void** state) {
+    char msg[] = "d:syscollector: valid";
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.1";
+    const char* agent_name = "test-agent";
+
+    // Mock OSHash_Get_ex call
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, "001");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    // Mock router_provider_send_fb_json call
+    expect_any(__wrap_router_provider_send_fb_json, handle);
+    expect_string(__wrap_router_provider_send_fb_json, msg, " valid");  // after stripping header
+    expect_any(__wrap_router_provider_send_fb_json, agent_ctx);
+    expect_value(__wrap_router_provider_send_fb_json, schema_type, MT_SYS_DELTAS);
+
+    will_return(__wrap_router_provider_send_fb_json, 1);
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "Unable to forward message ' valid' for agent '001'.");
+
+    router_message_forward(msg, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_dbsync_no_handle(void** state) {
+    char msg[] = "5:dbsync:syscollector sync";
+    router_rsync_handle = NULL;
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.1";
+    const char* agent_name = "test-agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "Router handle for 'rsync' not available.");
+
+    router_message_forward(msg, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_dbsync_with_handle(void** state) {
+    char msg[64] = "5:syscollector:syscollector sync valid";
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.1";
+    const char* agent_name = "test-agent";
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, "001");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_any(__wrap_router_provider_send_fb_json, handle);
+    expect_string(__wrap_router_provider_send_fb_json, msg, "syscollector sync valid");
+    expect_any(__wrap_router_provider_send_fb_json, agent_ctx);
+    expect_value(__wrap_router_provider_send_fb_json, schema_type, MT_SYNC);
+    will_return(__wrap_router_provider_send_fb_json, 0);
+
+    router_message_forward(msg, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_dbsync_unrecognized_subheader(void** state) {
+    char msg[64] = "5:dbsync:unknown_subheader";
+    router_rsync_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.1";
+    const char* agent_name = "test-agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "DBSYNC message not recognized 5:dbsync:unknown_subheader");
+
+    router_message_forward(msg, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_unrecognized_header(void** state) {
+    char msg[64] = "unknownheader: some message";
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.1";
+    const char* agent_name = "test-agent";
+
+    expect_string(__wrap__mdebug2, formatted_msg,
+        "001 message not recognized unknownheader: some message");
+
+    router_message_forward(msg, agent_id, agent_ip, agent_name);
+}
+
+void test_router_message_forward_too_large(void** state) {
+    char msg[OS_MAXSTR + 32];
+    memset(msg, 'A', sizeof(msg));
+    memcpy(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE);
+    msg[sizeof(msg)-1] = '\0';
+    router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)1;
+    const char* agent_id = "001";
+    const char* agent_ip = "192.168.1.1";
+    const char* agent_name = "test-agent";
+
+    // Should NOT call router_provider_send_fb_json
+    router_message_forward(msg, agent_id, agent_ip, agent_name);
+}
+
+
+
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2379,6 +2536,15 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_first_queue_2, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_first_queue_2_close_2, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_close_fp_main_close_fp_null, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_fim_syscheck_header, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_fim_dbsync_file, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_syscollector_no_handle, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_syscollector_with_handle, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_dbsync_no_handle, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_dbsync_unrecognized_subheader, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_unrecognized_header, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_too_large, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_router_message_forward_dbsync_with_handle, setup_config, teardown_config),
         // Tests HandleSecureMessage
         cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_af_unspec),
         cmocka_unit_test(test_HandleSecureMessage_invalid_family_address_af_netlink),

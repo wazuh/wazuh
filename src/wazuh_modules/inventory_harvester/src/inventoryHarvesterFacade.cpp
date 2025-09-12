@@ -79,21 +79,23 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                 auto data = Synchronization::GetSyncMsg(message.data());
                 if (data->data_type() == Synchronization::DataUnion_state)
                 {
-                    if (data->data_as_state()->attributes_as_fim_file() ||
-                        data->data_as_state()->attributes_as_fim_registry_key() ||
-                        data->data_as_state()->attributes_as_fim_registry_value())
-                    {
-                        pushFimEvent(message, BufferType::BufferType_RSync);
-                    }
-                    else if (data->data_as_state()->attributes_as_syscollector_packages() ||
-                             data->data_as_state()->attributes_as_syscollector_processes() ||
-                             data->data_as_state()->attributes_as_syscollector_osinfo() ||
-                             data->data_as_state()->attributes_as_syscollector_ports() ||
-                             data->data_as_state()->attributes_as_syscollector_hotfixes() ||
-                             data->data_as_state()->attributes_as_syscollector_hwinfo() ||
-                             data->data_as_state()->attributes_as_syscollector_network_protocol() ||
-                             data->data_as_state()->attributes_as_syscollector_network_iface() ||
-                             data->data_as_state()->attributes_as_syscollector_network_address())
+                    // DISABLED: FIM events are no longer processed from rsync messages.
+                    // if (data->data_as_state()->attributes_as_fim_file() ||
+                    //     data->data_as_state()->attributes_as_fim_registry_key() ||
+                    //     data->data_as_state()->attributes_as_fim_registry_value())
+                    // {
+                    //     pushFimEvent(message, BufferType::BufferType_RSync);
+                    // }
+
+                    if (data->data_as_state()->attributes_as_syscollector_packages() ||
+                        data->data_as_state()->attributes_as_syscollector_processes() ||
+                        data->data_as_state()->attributes_as_syscollector_osinfo() ||
+                        data->data_as_state()->attributes_as_syscollector_ports() ||
+                        data->data_as_state()->attributes_as_syscollector_hotfixes() ||
+                        data->data_as_state()->attributes_as_syscollector_hwinfo() ||
+                        data->data_as_state()->attributes_as_syscollector_network_protocol() ||
+                        data->data_as_state()->attributes_as_syscollector_network_iface() ||
+                        data->data_as_state()->attributes_as_syscollector_network_address())
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -107,20 +109,21 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                         return;
                     }
                     auto attributesType = data->data_as_integrity_clear()->attributes_type()->string_view();
-                    if (attributesType.compare("fim_file") == 0 || attributesType.compare("fim_registry_key") == 0 ||
-                        attributesType.compare("fim_registry_value") == 0)
-                    {
-                        pushFimEvent(message, BufferType::BufferType_RSync);
-                    }
-                    else if (attributesType.compare("syscollector_packages") == 0 ||
-                             attributesType.compare("syscollector_processes") == 0 ||
-                             attributesType.compare("syscollector_osinfo") == 0 ||
-                             attributesType.compare("syscollector_ports") == 0 ||
-                             attributesType.compare("syscollector_hotfixes") == 0 ||
-                             attributesType.compare("syscollector_hwinfo") == 0 ||
-                             attributesType.compare("syscollector_network_protocol") == 0 ||
-                             attributesType.compare("syscollector_network_iface") == 0 ||
-                             attributesType.compare("syscollector_network_address") == 0)
+                    // DISABLED: FIM events are no longer processed from rsync messages.
+                    // if (attributesType.compare("fim_file") == 0 || attributesType.compare("fim_registry_key") == 0 ||
+                    //     attributesType.compare("fim_registry_value") == 0)
+                    // {
+                    //     pushFimEvent(message, BufferType::BufferType_RSync);
+                    // }
+                    if (attributesType.compare("syscollector_packages") == 0 ||
+                        attributesType.compare("syscollector_processes") == 0 ||
+                        attributesType.compare("syscollector_osinfo") == 0 ||
+                        attributesType.compare("syscollector_ports") == 0 ||
+                        attributesType.compare("syscollector_hotfixes") == 0 ||
+                        attributesType.compare("syscollector_hwinfo") == 0 ||
+                        attributesType.compare("syscollector_network_protocol") == 0 ||
+                        attributesType.compare("syscollector_network_iface") == 0 ||
+                        attributesType.compare("syscollector_network_address") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -134,20 +137,21 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                         return;
                     }
                     auto attributesType = data->data_as_integrity_check_global()->attributes_type()->string_view();
-                    if (attributesType.compare("fim_file") == 0 || attributesType.compare("fim_registry_key") == 0 ||
-                        attributesType.compare("fim_registry_value") == 0)
-                    {
-                        pushFimEvent(message, BufferType::BufferType_RSync);
-                    }
-                    else if (attributesType.compare("syscollector_packages") == 0 ||
-                             attributesType.compare("syscollector_processes") == 0 ||
-                             attributesType.compare("syscollector_osinfo") == 0 ||
-                             attributesType.compare("syscollector_ports") == 0 ||
-                             attributesType.compare("syscollector_hotfixes") == 0 ||
-                             attributesType.compare("syscollector_hwinfo") == 0 ||
-                             attributesType.compare("syscollector_network_protocol") == 0 ||
-                             attributesType.compare("syscollector_network_iface") == 0 ||
-                             attributesType.compare("syscollector_network_address") == 0)
+                    // DISABLED: FIM events are no longer processed from rsync messages.
+                    // if (attributesType.compare("fim_file") == 0 || attributesType.compare("fim_registry_key") == 0 ||
+                    //     attributesType.compare("fim_registry_value") == 0)
+                    // {
+                    //     pushFimEvent(message, BufferType::BufferType_RSync);
+                    // }
+                    if (attributesType.compare("syscollector_packages") == 0 ||
+                        attributesType.compare("syscollector_processes") == 0 ||
+                        attributesType.compare("syscollector_osinfo") == 0 ||
+                        attributesType.compare("syscollector_ports") == 0 ||
+                        attributesType.compare("syscollector_hotfixes") == 0 ||
+                        attributesType.compare("syscollector_hwinfo") == 0 ||
+                        attributesType.compare("syscollector_network_protocol") == 0 ||
+                        attributesType.compare("syscollector_network_iface") == 0 ||
+                        attributesType.compare("syscollector_network_address") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
                     }
@@ -166,7 +170,7 @@ void InventoryHarvesterFacade::initWazuhDBAgentEventSubscription()
             // Push to both system and fim events, because the agent is being deleted and we need to remove all
             // elements from all indices.
             pushSystemEvent(message, BufferType::BufferType_JSON);
-            pushFimEvent(message, BufferType::BufferType_JSON);
+            // pushFimEvent(message, BufferType::BufferType_JSON);
         });
 }
 
@@ -305,14 +309,14 @@ void InventoryHarvesterFacade::start(
 
         // Initialize all subscriptions.
         initInventoryDeltasSubscription();
-        initFimDeltasSubscription();
+        // initFimDeltasSubscription(); // DISABLED: FIM events are no longer processed.
         initRsyncSubscription();
         initWazuhDBAgentEventSubscription();
         initWazuhDBInventoryEventSubscription();
-        initWazuhDBFimEventSubscription();
+        // initWazuhDBFimEventSubscription(); // DISABLED: FIM events are no longer processed.
 
         initSystemEventDispatcher();
-        initFimEventDispatcher();
+        // initFimEventDispatcher(); // DISABLED: FIM events are no longer processed.
 
         // Socket client initialization to send vulnerability reports.
 
