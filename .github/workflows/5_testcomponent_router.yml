@@ -1,4 +1,4 @@
-name: 5_testcomponent_router
+name: 5.X - Router - Component tests
 
 on:
   workflow_dispatch:

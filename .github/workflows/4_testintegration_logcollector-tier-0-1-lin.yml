@@ -1,4 +1,4 @@
-name: Integration tests for logcollector on Linux - Tier 0 and 1
+name: 4.X - Logcollector on Linux - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -56,10 +56,13 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
           if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
           elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
+              QA_BRANCH=${VERSION}
           else
               QA_BRANCH="main"
           fi

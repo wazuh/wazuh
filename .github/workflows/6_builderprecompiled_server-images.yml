@@ -1,5 +1,5 @@
 run-name: Package - Upload pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
-name: Wazuh 6.0 Package - Upload server images 
+name: 6.X - Wazuh 6.0 Package - Upload server images
 
 on:
   workflow_dispatch:

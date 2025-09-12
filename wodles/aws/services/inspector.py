@@ -95,39 +95,6 @@ class AWSInspector(aws_service.AWSService):
                 self.send_msg(self.format_message(elem))
                 self.sent_events += 1
 
-    def send_describe_findings_v2(self, client, finding_arns: list):
-        """
-        Collect and send to analysisd the requested findings from Inspector v2.
-
-        Parameters
-        ----------
-        finding_arns : list[str]
-            The ARNs of the findings that should be requested to AWS and sent to analysisd.
-        """
-        if not finding_arns:
-            return
-        # Split into chunks of 10 (Inspector v2 API limit)
-        chunk_size = 10
-        aws_tools.debug(f"+++ [InspectorV2] Processing {len(finding_arns)} events", 3)
-        for i in range(0, len(finding_arns), chunk_size):
-            chunk = finding_arns[i:i + chunk_size]
-
-            try:
-                response = client.batch_get_finding_details(findingArns=chunk)
-                findings = response.get('findingDetails', [])
-
-                for finding in findings:
-                    if self.event_should_be_skipped(finding):
-                        aws_tools.debug(f'+++ [InspectorV2] The "{self.discard_regex.pattern}" regex found a match in the '
-                                        f'"{self.discard_field}" field. The event will be skipped.', 2)
-                        continue
-                    formatted = self.format_message(finding)
-                    self.send_msg(formatted)
-                    self.sent_events += 1
-
-            except Exception as e:
-                aws_tools.debug(f"+++ Error processing findings: {str(e)}", 1)
-
     def get_alerts(self):
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
         try:
@@ -219,32 +186,50 @@ class AWSInspector(aws_service.AWSService):
             iam_role_duration=self.iam_role_duration
         )
 
+        def process_page(resp):
+            """
+            Process a single page of Inspector v2 findings.
+
+            Parameters
+            ----------
+            resp : dict
+                AWS Inspector2 list_findings response containing a 'findings' list.
+            """
+            findings = resp.get('findings', [])
+            aws_tools.debug(f"+++ [InspectorV2] Processing {len(findings)} events", 3)
+            for finding in findings:
+                if self.event_should_be_skipped(finding):
+                    aws_tools.debug(
+                        f'+++ [InspectorV2] The "{self.discard_regex.pattern}" regex found a match in the '
+                        f'"{self.discard_field}" field. The event will be skipped.', 2
+                    )
+                    continue
+                self.send_msg(self.format_message(finding))
+                self.sent_events += 1
+
         response = client.list_findings(
             maxResults=100,
             filterCriteria={
-                'firstObservedAt': [{
+                'updatedAt': [{
                     'startInclusive': date_scan.isoformat(),
                     'endInclusive': date_current.isoformat()
                 }]
             }
         )
-
-        finding_arns = [f['findingArn'] for f in response.get('findings', [])]
-        self.send_describe_findings_v2(client, finding_arns)
+        process_page(response)
 
         while 'nextToken' in response:
             response = client.list_findings(
                 maxResults=100,
                 nextToken=response['nextToken'],
                 filterCriteria={
-                    'firstObservedAt': [{
+                    'updatedAt': [{
                         'startInclusive': date_scan.isoformat(),
                         'endInclusive': date_current.isoformat()
                     }]
                 }
             )
-            finding_arns = [f['findingArn'] for f in response.get('findings', [])]
-            self.send_describe_findings_v2(client, finding_arns)
+            process_page(response)
 
     @staticmethod
     def check_region(region: str) -> None:

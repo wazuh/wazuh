@@ -23,12 +23,6 @@ RUN yum-builddep python34 -y
 RUN curl --silent --location https://rpm.nodesource.com/setup_8.x | bash -
 RUN yum install -y nodejs
 
-RUN curl -OL http://packages.wazuh.com/utils/perl/perl-5.10.1.tar.gz && \
-    gunzip perl-5.10.1.tar.gz && tar -xf perl*.tar && \
-    cd /perl-5.10.1 && ./Configure -des -Dcc='gcc' -Dusethreads && \
-    make -j2 && make install && ln -fs /usr/local/bin/perl /bin/perl && \
-    cd / && rm -rf /perl-5.10.1*
-
 # Update rpmbuild, rpm and autoconf
 RUN curl -O http://packages.wazuh.com/utils/autoconf/autoconf-2.69.tar.gz && \
     gunzip autoconf-2.69.tar.gz && tar xvf autoconf-2.69.tar && \
@@ -46,29 +40,75 @@ RUN mkdir -p /usr/local/var/lib/rpm && \
     cp /var/lib/rpm/Packages /usr/local/var/lib/rpm/Packages && \
     /usr/local/bin/rpm --rebuilddb && rm -rf /root/rpmbuild
 
+# -------------------------------------------------------------------
+# GCC 9.4.0 (bootstrap only)
+# -------------------------------------------------------------------
 RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
-    tar xzf gcc-9.4.0.tar.gz  && cd gcc-9.4.0/ && \
+    tar xzf gcc-9.4.0.tar.gz && cd gcc-9.4.0 && \
     ./contrib/download_prerequisites && \
-    ./configure --prefix=/usr/local/gcc-9.4.0 --enable-languages=c,c++ \
-        --disable-multilib --disable-libsanitizer && \
+    ./configure --prefix=/usr/local/gcc-9.4.0 \
+        --enable-languages=c,c++ \
+        --disable-multilib \
+        --disable-bootstrap \
+        --disable-libsanitizer && \
     make -j$(nproc) && make install && \
-    ln -fs /usr/local/gcc-9.4.0/bin/g++ /usr/bin/c++ && \
-    ln -fs /usr/local/gcc-9.4.0/bin/gcc /usr/bin/cc && cd / && rm -rf gcc-*
+    cd / && rm -rf gcc-9.4.0*
 
-ENV CPLUS_INCLUDE_PATH "/usr/local/gcc-9.4.0/include/c++/9.4.0/"
-ENV LD_LIBRARY_PATH "/usr/local/gcc-9.4.0/lib64/"
-ENV PATH "/usr/local/gcc-9.4.0/bin:${PATH}"
+# -------------------------------------------------------------------
+# Binutils
+# -------------------------------------------------------------------
+RUN yum install -y flex && \
+    curl -OL https://github.com/bminor/binutils-gdb/archive/refs/tags/binutils-2_41.zip && \
+    unzip binutils-2_41.zip && rm -f binutils-2_41.zip && \
+    cd binutils-gdb-binutils-2_41 && mkdir build && cd build && \
+    ../configure --disable-gdb --disable-werror --disable-zlib \
+        --disable-gprofng --disable-gdbserver --disable-gdbsupport \
+        --disable-gnulib --disable-gold --disable-gprof --disable-texinfo \
+        --disable-binutils --disable-sim && \
+    make MAKEINFO=true -j$(nproc) && make MAKEINFO=true install && \
+    cd / && rm -rf binutils-gdb-binutils-2_41 && \
+    ln -fs /usr/local/bin/ld /usr/bin/ld
 
-RUN curl -OL http://packages.wazuh.com/utils/cmake/cmake-3.18.3.tar.gz && \
-    tar -zxf cmake-3.18.3.tar.gz && cd cmake-3.18.3 && \
-    ./bootstrap --no-system-curl CC=/usr/local/gcc-9.4.0/bin/gcc \
-        CXX=/usr/local/gcc-9.4.0/bin/g++ && \
-    make -j$(nproc) && make install && cd / && rm -rf cmake-*
+# -------------------------------------------------------------------
+# CMake 3.22
+# -------------------------------------------------------------------
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.22.0/cmake-3.22.0-Linux-x86_64.sh && \
+    bash cmake-3.22.0-Linux-x86_64.sh --skip-license --prefix=/usr/local && \
+    rm -f cmake-3.22.0-Linux-x86_64.sh
 
-# Add the scripts to build the RPM package
+# -------------------------------------------------------------------
+# GCC 14.3.0 (set as final compiler)
+# -------------------------------------------------------------------
+RUN curl -OL https://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-14.3.0/gcc-14.3.0.tar.gz && \
+    tar xzf gcc-14.3.0.tar.gz && cd gcc-14.3.0 && ./contrib/download_prerequisites && \
+    mkdir build && cd build && \
+    CC=/usr/local/gcc-9.4.0/bin/gcc \
+    CXX=/usr/local/gcc-9.4.0/bin/g++ \
+    ../configure --prefix=/usr/local/gcc-14.3.0 \
+        --enable-languages=c,c++ \
+        --disable-multilib \
+        --disable-libsanitizer \
+        --disable-bootstrap && \
+    make -j$(nproc) && make install && \
+    cd / && rm -rf gcc-14.3.0* && \
+    rm -rf /usr/local/gcc-9.4.0   # limpiar bootstrap
+
+# -------------------------------------------------------------------
+# Environment variables → only GCC 14.3
+# -------------------------------------------------------------------
+ENV PATH="/usr/local/gcc-14.3.0/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/usr/local/gcc-14.3.0/lib64"
+ENV CC="/usr/local/gcc-14.3.0/bin/gcc"
+ENV CXX="/usr/local/gcc-14.3.0/bin/g++"
+
+# -------------------------------------------------------------------
+# Add the script and helper_functions to build the Debian package
+# -------------------------------------------------------------------
 ADD build.sh /usr/local/bin/build_package
 RUN chmod +x /usr/local/bin/build_package
 ADD helper_function.sh /usr/local/bin/helper_function.sh
 
-# Set the entrypoint
+# -------------------------------------------------------------------
+# Set entrypoint
+# -------------------------------------------------------------------
 ENTRYPOINT ["/usr/local/bin/build_package"]

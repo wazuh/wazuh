@@ -25,6 +25,7 @@
 #include <iostream>
 #include <set>
 #include <unordered_set>
+#include <filesystem>
 
 const static std::map<std::string, std::string> FILE_MAPPING_PYPI {{"egg-info", "PKG-INFO"}, {"dist-info", "METADATA"}};
 

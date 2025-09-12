@@ -12,7 +12,7 @@ def call_binary(binary_path):
     try:
         # Run the binary and capture its output
         result = subprocess.run(
-            [binary_path], capture_output=True, check=True, text=True)
+            [binary_path, "--hardware"], capture_output=True, check=True, text=True)
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Error while executing the binary: {e}") from e

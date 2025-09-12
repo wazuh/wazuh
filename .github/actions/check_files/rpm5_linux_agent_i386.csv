@@ -80,7 +80,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,10625929,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,549908,0.1
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,1294624,0.1
-/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2363264,0.1
+/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2612536,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,226860,0.1
 /var/ossec/lib/libstdc++.so.6,root,wazuh,750,file,-rwxr-x---,2606103,0.1
 /var/ossec/lib/libsyscollector.so,root,wazuh,750,file,-rwxr-x---,616832,0.1
@@ -136,7 +136,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/wodles/aws/buckets_s3/waf.py,root,wazuh,750,file,-rwxr-x---,3012,0.1
 /var/ossec/wodles/aws/services/__init__.py,root,wazuh,750,file,-rwxr-x---,344,0.1
 /var/ossec/wodles/aws/services/cloudwatchlogs.py,root,wazuh,750,file,-rwxr-x---,24992,0.1
-/var/ossec/wodles/aws/services/inspector.py,root,wazuh,750,file,-rwxr-x---,10880,0.1
+/var/ossec/wodles/aws/services/inspector.py,root,wazuh,750,file,-rwxr-x---,10084,0.1
 /var/ossec/wodles/aws/services/aws_service.py,root,wazuh,750,file,-rwxr-x---,6222,0.1
 /var/ossec/wodles/aws/subscribers/sqs_message_processor.py,root,wazuh,750,file,-rwxr-x---,1825,0.1
 /var/ossec/wodles/aws/subscribers/__init__.py,root,wazuh,750,file,-rwxr-x---,380,0.1

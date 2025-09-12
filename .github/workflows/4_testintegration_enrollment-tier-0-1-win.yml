@@ -1,4 +1,4 @@
-name: Integration tests for enrollment on Windows - Tier 0 and 1
+name: 4.X - Enrollment on Windows - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -90,17 +90,22 @@ jobs:
           .\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
+        shell: pwsh
         run: |
+          # Read version from VERSION.json
+          $VERSION = (Get-Content -Raw VERSION.json | ConvertFrom-Json).version
           if (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_NAME) {
               $QA_BRANCH = $env:BRANCH_NAME
           } elseif (git ls-remote https://github.com/wazuh/qa-integration-framework.git $env:BRANCH_BASE) {
               $QA_BRANCH = $env:BRANCH_BASE
+          } elseif (git ls-remote https://github.com/wazuh/qa-integration-framework.git $VERSION) {
+              $QA_BRANCH = $VERSION
           } else {
               $QA_BRANCH = "main"
           }
           git clone -b $QA_BRANCH --single-branch https://github.com/wazuh/qa-integration-framework.git
           pip install qa-integration-framework/
-          rm qa-integration-framework/ -r -force
+          Remove-Item qa-integration-framework -Recurse -Force
       # Run enrollment integration tests.
       - name: Run enrollment integration tests
         run: |

@@ -27,6 +27,11 @@ namespace file_system
         return std::filesystem::is_symlink(path);
     }
 
+    bool FileSystemWrapper::is_absolute(const std::filesystem::path& path) const
+    {
+        return path.is_absolute();
+    }
+
     std::filesystem::path FileSystemWrapper::canonical(const std::filesystem::path& path) const
     {
         return std::filesystem::canonical(path);

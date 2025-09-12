@@ -1,4 +1,4 @@
-name: Wodles unit tests
+name: 4.X - Wodles - Unit tests
 
 on:
   workflow_dispatch:

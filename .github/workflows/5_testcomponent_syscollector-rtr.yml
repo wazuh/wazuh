@@ -1,4 +1,4 @@
-name: Running RTR. Module syscollector and its dependencies for agent/winagent targets
+name: 5.X - Running RTR. Module syscollector and its dependencies for agent/winagent targets
 
 on:
   workflow_dispatch:

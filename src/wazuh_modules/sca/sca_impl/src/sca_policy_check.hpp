@@ -180,8 +180,8 @@ class RegistryRuleEvaluator : public RuleEvaluator
         RuleResult CheckKeyExistence();
 
         IsValidKeyFunc m_isValidKey = nullptr;
-        EnumValuesFunc m_enumValues = nullptr;
         EnumKeysFunc m_enumKeys = nullptr;
+        EnumValuesFunc m_enumValues = nullptr;
         GetValueFunc m_getValue = nullptr;
 };
 

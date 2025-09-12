@@ -243,6 +243,8 @@ void* wm_sys_main(wm_sys_t *sys) {
                                sys->flags.hotfixinfo,
                                sys->flags.groups,
                                sys->flags.users,
+                               sys->flags.services,
+                               sys->flags.browser_extensions,
                                sys->flags.notify_first_scan);
     } else {
         mterror(WM_SYS_LOGTAG, "Can't get syscollector_start_ptr.");
@@ -313,6 +315,8 @@ cJSON *wm_sys_dump(const wm_sys_t *sys) {
     if (sys->flags.procinfo) cJSON_AddStringToObject(wm_sys,"processes","yes"); else cJSON_AddStringToObject(wm_sys,"processes","no");
     if (sys->flags.groups) cJSON_AddStringToObject(wm_sys,"groups","yes"); else cJSON_AddStringToObject(wm_sys,"groups","no");
     if (sys->flags.users) cJSON_AddStringToObject(wm_sys,"users","yes"); else cJSON_AddStringToObject(wm_sys,"users","no");
+    if (sys->flags.services) cJSON_AddStringToObject(wm_sys,"services","yes"); else cJSON_AddStringToObject(wm_sys,"services","no");
+    if (sys->flags.browser_extensions) cJSON_AddStringToObject(wm_sys,"browser_extensions","yes"); else cJSON_AddStringToObject(wm_sys,"browser_extensions","no");
 #ifdef WIN32
     if (sys->flags.hotfixinfo) cJSON_AddStringToObject(wm_sys,"hotfixes","yes"); else cJSON_AddStringToObject(wm_sys,"hotfixes","no");
 #endif
@@ -358,7 +362,7 @@ DWORD WINAPI wm_sync_module(__attribute__((unused)) void * args) {
 void * wm_sync_module(__attribute__((unused)) void * args) {
 #endif
     // Initial wait until syscollector is started
-    for (int i = 0; i < sync_interval && sync_module_running; i++) {
+    for (uint32_t i = 0; i < sync_interval && sync_module_running; i++) {
         sleep(1);
     }
 
@@ -374,7 +378,7 @@ void * wm_sync_module(__attribute__((unused)) void * args) {
         mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization finished, waiting for %d seconds before next run.", sync_interval);
 
         // Sleep in small intervals to allow responsive stopping
-        for (int i = 0; i < sync_interval && sync_module_running; i++) {
+        for (uint32_t i = 0; i < sync_interval && sync_module_running; i++) {
             sleep(1);
         }
     }

@@ -1,4 +1,4 @@
-name: Syscollector test on Windows
+name: 5.X - Syscollector test on Windows
 
 on:
   workflow_dispatch:

@@ -781,6 +781,8 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/tzdb
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb
 %dir %attr(770, root, wazuh) %{_localstatedir}/.ssh
 %dir %attr(1770, root, wazuh) %{_localstatedir}/tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
@@ -912,7 +914,7 @@ rm -fr %{buildroot}
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html
 * Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
-* Tue Aug 05 2025 support <info@wazuh.com> - 4.13.0
+* Thu Sep 11 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html

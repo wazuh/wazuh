@@ -28,6 +28,9 @@ namespace file_system
         /// @copydoc IFileSystemWrapper::is_symlink
         bool is_symlink(const std::filesystem::path& path) const override;
 
+        /// @copydoc IFileSystemWrapper::is_absolute
+        bool is_absolute(const std::filesystem::path& path) const override;
+
         /// @copydoc IFileSystemWrapper::canonical
         std::filesystem::path canonical(const std::filesystem::path& path) const override;
 

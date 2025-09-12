@@ -42,6 +42,11 @@ public:
     /// @return Returns true if the path is a symbolic link, otherwise false.
     virtual bool is_symlink(const std::filesystem::path& path) const = 0;
 
+    /// @brief Checks if the specified path is absolute.
+    /// @param path The path to check.
+    /// @return Returns true if the path is absolute, otherwise false.
+    virtual bool is_absolute(const std::filesystem::path& path) const = 0;
+
     /// @brief Converts the specified path to a canonical absolute path, i.e. an absolute path that has no dot, dot-dot
     /// elements or symbolic links in its generic format representation.
     /// @param path The path to convert.

@@ -1,4 +1,4 @@
-name: Build GCC Packages
+name: 5.X - Build GCC Packages
 
 on:
   workflow_dispatch:

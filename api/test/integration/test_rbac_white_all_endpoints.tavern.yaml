@@ -907,6 +907,32 @@ stages:
       <<: *permission_denied
 
 ---
+test_name: PUT /cluster/analysisd/reload
+
+stages:
+  - name: Try to reload all nodes analysisd (generic)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/analysisd/reload"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *empty_response
+
+  - name: Try to reload master-node analysisd (specific)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/analysisd/reload"
+      method: PUT
+      params:
+        nodes_list: master-node
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
 test_name: GET /cluster/configuration/validation
 
 stages:
@@ -1533,6 +1559,20 @@ stages:
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied
+
+---
+test_name: PUT /manager/analysisd/reload
+
+stages:
+  - name: Try to reload manager analysisd
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/analysisd/reload"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"

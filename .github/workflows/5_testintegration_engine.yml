@@ -1,4 +1,4 @@
-name: Engine Integration Tests
+name: 5.X - Engine - Integration tests - Helper functions and API endpoints
 
 on:
   # Triggers the workflow on pull request but only changes in the src/engine/ directory.

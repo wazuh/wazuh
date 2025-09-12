@@ -41,6 +41,7 @@ __attribute__((noreturn)) static void help_syscheckd()
 }
 
 extern bool is_fim_shutdown;
+extern volatile int fim_sync_module_running;
 
 /* Shut down syscheckd properly */
 static void fim_shutdown(int sig)
@@ -48,6 +49,7 @@ static void fim_shutdown(int sig)
     /* Close sync thread and release dbsync */
     minfo(SK_SHUTDOWN);
     is_fim_shutdown = true;
+    fim_sync_module_running = 0;
     fim_db_teardown();
     HandleSIG(sig);
 }

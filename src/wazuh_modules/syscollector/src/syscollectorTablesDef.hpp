@@ -205,14 +205,84 @@ constexpr auto GROUPS_SQL_STATEMENT
     PRIMARY KEY (group_name)) WITHOUT ROWID;)"
 };
 
-constexpr auto NET_IFACE_TABLE    { "dbsync_network_iface"    };
-constexpr auto NET_PROTOCOL_TABLE { "dbsync_network_protocol" };
-constexpr auto NET_ADDRESS_TABLE  { "dbsync_network_address"  };
-constexpr auto PACKAGES_TABLE     { "dbsync_packages"         };
-constexpr auto HOTFIXES_TABLE     { "dbsync_hotfixes"         };
-constexpr auto PORTS_TABLE        { "dbsync_ports"            };
-constexpr auto PROCESSES_TABLE    { "dbsync_processes"        };
-constexpr auto OS_TABLE           { "dbsync_osinfo"           };
-constexpr auto HW_TABLE           { "dbsync_hwinfo"           };
-constexpr auto USERS_TABLE        { "dbsync_users"            };
-constexpr auto GROUPS_TABLE       { "dbsync_groups"           };
+constexpr auto SERVICES_SQL_STATEMENT
+{
+    R"(CREATE TABLE dbsync_services (
+        service_id TEXT,
+        service_name TEXT,
+        service_description TEXT,
+        service_type TEXT,
+        service_state TEXT,
+        service_sub_state TEXT,
+        service_enabled TEXT,
+        service_start_type TEXT,
+		service_restart TEXT,
+		service_frequency BIGINT,
+		service_starts_on_mount INTEGER,
+		service_starts_on_path_modified TEXT,
+		service_starts_on_not_empty_directory TEXT,
+		service_inetd_compatibility INTEGER,
+        process_pid BIGINT,
+        process_executable TEXT,
+        process_args TEXT,
+		process_user_name TEXT,
+		process_group_name TEXT,
+		process_working_dir TEXT,
+		process_root_dir TEXT,
+        file_path TEXT,
+        service_address TEXT,
+        log_file_path TEXT,
+        error_log_file_path TEXT,
+        service_exit_code INTEGER,
+        service_win32_exit_code INTEGER,
+        service_following TEXT,
+        service_object_path TEXT,
+        service_target_ephemeral_id BIGINT,
+        service_target_type TEXT,
+        service_target_address TEXT,
+        checksum TEXT,
+        PRIMARY KEY (service_id, file_path)) WITHOUT ROWID;)"
+};
+
+constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
+{
+    R"(CREATE TABLE dbsync_browser_extensions (
+        browser_name TEXT,
+        user_id TEXT,
+        package_name TEXT,
+        package_id TEXT,
+        package_version TEXT,
+        package_description TEXT,
+        package_vendor TEXT,
+        package_build_version TEXT,
+        package_path TEXT,
+        browser_profile_name TEXT,
+        browser_profile_path TEXT,
+        package_reference TEXT,
+        package_permissions TEXT,
+        package_type TEXT,
+        package_enabled INTEGER,
+        package_visible INTEGER,
+        package_autoupdate INTEGER,
+        package_persistent INTEGER,
+        package_from_webstore INTEGER,
+        browser_profile_referenced INTEGER,
+        package_installed TEXT,
+        file_hash_sha256 TEXT,
+        checksum TEXT,
+        PRIMARY KEY (browser_name,user_id,browser_profile_name,package_name,package_version)) WITHOUT ROWID;)"
+};
+
+constexpr auto NET_IFACE_TABLE              { "dbsync_network_iface"        };
+constexpr auto NET_PROTOCOL_TABLE           { "dbsync_network_protocol"     };
+constexpr auto NET_ADDRESS_TABLE            { "dbsync_network_address"      };
+constexpr auto PACKAGES_TABLE               { "dbsync_packages"             };
+constexpr auto HOTFIXES_TABLE               { "dbsync_hotfixes"             };
+constexpr auto PORTS_TABLE                  { "dbsync_ports"                };
+constexpr auto PROCESSES_TABLE              { "dbsync_processes"            };
+constexpr auto OS_TABLE                     { "dbsync_osinfo"               };
+constexpr auto HW_TABLE                     { "dbsync_hwinfo"               };
+constexpr auto USERS_TABLE                  { "dbsync_users"                };
+constexpr auto GROUPS_TABLE                 { "dbsync_groups"               };
+constexpr auto SERVICES_TABLE               { "dbsync_services"             };
+constexpr auto BROWSER_EXTENSIONS_TABLE     { "dbsync_browser_extensions"   };

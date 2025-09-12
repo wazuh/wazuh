@@ -22,13 +22,15 @@
 
 #include "sudoers_unix.hpp"
 
-SudoersProvider::SudoersProvider(std::string fileName)
+SudoersProvider::SudoersProvider(std::string fileName, std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_sudoFile(std::move(fileName))
+    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>())
 {
 }
 
 SudoersProvider::SudoersProvider()
     : m_sudoFile("/etc/sudoers")
+    , m_fileSystemWrapper(std::make_unique<file_system::FileSystemWrapper>())
 {
 }
 
@@ -55,7 +57,15 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         return;
     }
 
-    if (!std::filesystem::is_regular_file(fileName))
+    try
+    {
+        if (!m_fileSystemWrapper->is_regular_file(fileName))
+        {
+            // std::cout << "sudoers file doesn't exists: " << fileName << std::endl;
+            return;
+        }
+    }
+    catch (const std::filesystem::filesystem_error&)
     {
         // std::cout << "sudoers file doesn't exists: " << fileName << std::endl;
         return;
@@ -164,7 +174,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
 
             try
             {
-                inc_files = file_system::FileSystemWrapper().list_directory(ruleDetails);
+                inc_files = m_fileSystemWrapper->list_directory(ruleDetails);
             }
             catch (const std::filesystem::filesystem_error&)
             {
