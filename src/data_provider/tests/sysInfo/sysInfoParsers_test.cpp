@@ -525,23 +525,6 @@ TEST_F(SysInfoParsersTest, Solaris2)
     EXPECT_EQ("10", output["os_major"]);
 }
 
-TEST_F(SysInfoParsersTest, HPUX)
-{
-    // https://docstore.mik.ua/manuals/hp-ux/en/5992-4826/pr01s02.html
-    constexpr auto HPUX_UNAME
-    {
-        "B.11.23"
-    };
-    nlohmann::json output;
-    const auto spParser{FactorySysOsParser::create("hp-ux")};
-    EXPECT_TRUE(spParser->parseUname(HPUX_UNAME, output));
-    EXPECT_EQ("11.23", output["os_version"]);
-    EXPECT_EQ("HP-UX", output["os_name"]);
-    EXPECT_EQ("hp-ux", output["os_platform"]);
-    EXPECT_EQ("11", output["os_major"]);
-    EXPECT_EQ("23", output["os_minor"]);
-}
-
 TEST_F(SysInfoParsersTest, Alpine)
 {
     constexpr auto ALPINE_RELEASE_FILE

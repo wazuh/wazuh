@@ -95,11 +95,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/unix/darwin)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 
-
-if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  link_directories(${INSTALL_PREFIX}/lib)
-endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   link_directories(${CMAKE_SOURCE_DIR}/lib/)
   include_directories(${CMAKE_SOURCE_DIR}/src/extended_sources/wrappers/windows)
@@ -222,15 +217,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
       # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    string(REPLACE ";" ":" CXX_IMPLICIT_LINK_DIRECTORIES_STR "${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES}")
-    string(REPLACE ";" ":" PLATFORM_REQUIRED_RUNTIME_PATH_STR "${CMAKE_PLATFORM_REQUIRED_RUNTIME_PATH}")
-    target_link_libraries(sysinfo -Wl,-blibpath:${INSTALL_PREFIX}/lib:${CXX_IMPLICIT_LINK_DIRECTORIES_STR}:${PLATFORM_REQUIRED_RUNTIME_PATH_STR})
-  elseif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    # Do nothing for HP-UX
-  else()
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
 elseif(APPLE)
   find_library(iokit_lib IOKit)
   if(NOT iokit_lib)

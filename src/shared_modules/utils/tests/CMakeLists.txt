@@ -80,11 +80,7 @@ file(COPY input_files DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 link_directories(${SRC_FOLDER}/external/googletest/lib)
 link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
-else()
-  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
-endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     add_executable(utils_utest

@@ -12,10 +12,7 @@
 
 #include "shared.h"
 #include "agentd.h"
-
-#if !defined(HPUX) && !defined(AIX) && !defined(SOLARIS)
 #include <getopt.h>
-#endif
 
 #ifndef ARGV0
 #define ARGV0 "wazuh-agentd"
@@ -77,7 +74,6 @@ int main(int argc, char **argv)
 
     agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
-#if !defined(HPUX) && !defined(AIX) && !defined(SOLARIS)
     struct option long_opts[] = {
         {"uninstall-auth-login", required_argument, NULL, 1},
         {"uninstall-auth-token", required_argument, NULL, 2},
@@ -87,9 +83,6 @@ int main(int argc, char **argv)
     };
 
     while ((c = getopt_long(argc, argv, "Vtdfhu:g:D:c:", long_opts, NULL)) != -1) {
-#else
-    while ((c = getopt(argc, argv, "Vtdfhu:g:D:c:")) != -1) {
-#endif
         switch (c) {
             case 'V':
                 print_version();
@@ -131,7 +124,6 @@ int main(int argc, char **argv)
                 }
                 cfg = optarg;
                 break;
-#if !defined(HPUX) && !defined(AIX) && !defined(SOLARIS)
             case 1:
                 if (!optarg) {
                     merror_exit("--uninstall-auth-login needs an argument");
@@ -159,19 +151,16 @@ int main(int argc, char **argv)
                     merror_exit("--uninstall-ssl-verify accepts 'true'/'false' or '1'/'0' as arguments");
                 }
                 break;
-#endif
             default:
                 help_agentd(home_path);
                 break;
         }
     }
 
-#if !defined(HPUX) && !defined(AIX) && !defined(SOLARIS)
     /* Anti tampering functionality */
     if ((uninstall_auth_token || uninstall_auth_login) && uninstall_auth_host) {
         exit(package_uninstall_validation(uninstall_auth_token, uninstall_auth_login, uninstall_auth_host, ssl_verify));
     }
-#endif
 
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {

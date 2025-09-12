@@ -343,24 +343,6 @@ bool SolarisOsParser::parseFile(std::istream& in, nlohmann::json& output)
     return std::string::npos == pos ? false : true;
 }
 
-bool HpUxOsParser::parseUname(const std::string& in, nlohmann::json& output)
-{
-    constexpr auto PATTERN_MATCH{R"(B\.([0-9].*\.[0-9]*))"};
-    std::string match;
-    std::regex pattern{PATTERN_MATCH};
-    const auto ret {Utils::findRegexInString(in, match, pattern, 1)};
-
-    if (ret)
-    {
-        output["os_version"] = match;
-        findMajorMinorVersionInString(match, output);
-    }
-
-    output["os_name"] = "HP-UX";
-    output["os_platform"] = "hp-ux";
-    return ret;
-}
-
 bool AlpineOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
     constexpr auto PATTERN_MATCH{R"((?:[0-9]+\.)?(?:[0-9]+\.)?(?:[0-9]+))"};

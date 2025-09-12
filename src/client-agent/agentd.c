@@ -81,14 +81,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         merror_exit(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
     }
 
-#ifdef HPUX
-    {
-        int flags;
-        flags = fcntl(agt->m_queue, F_GETFL, 0);
-        fcntl(agt->m_queue, F_SETFL, flags | O_NONBLOCK);
-    }
-#endif
-
     maxfd = agt->m_queue;
     agt->sock = -1;
 
@@ -255,7 +247,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     }
 }
 
-#if !defined(HPUX) && !defined(AIX) && !defined(SOLARIS)
 bool check_uninstall_permission(const char *token, const char *host, bool ssl_verify) {
     char url[OS_SIZE_8192];
     snprintf(url, sizeof(url), "https://%s/agents/uninstall", host);
@@ -331,4 +322,3 @@ bool package_uninstall_validation(const char *uninstall_auth_token, const char *
     }
     return validate_result;
 }
-#endif
