@@ -11,12 +11,14 @@
 #include "shared.h"
 #include "../os_net/os_net.h"
 #include "remoted.h"
+#include "remoted_op.h"
 #include "state.h"
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "router.h"
 #include "sym_load.h"
 #include "indexed_queue_op.h"
-
+#include "batch_queue_op.h"
+#include "http_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -28,6 +30,7 @@
 /* Global variables */
 int sender_pool;
 w_indexed_queue_t *control_msg_queue = NULL;
+w_rr_queue_t *events_queue = NULL;
 
 netbuffer_t netbuffer_recv;
 netbuffer_t netbuffer_send;
@@ -37,8 +40,9 @@ wnotify_t * notify = NULL;
 size_t global_counter;
 
 _Atomic (time_t) current_ts;
-
 OSHash *remoted_agents_state;
+static OSHash *agent_meta_map = NULL;
+static pthread_rwlock_t agent_meta_lock;
 
 extern remoted_state_t remoted_state;
 ROUTER_PROVIDER_HANDLE router_upgrade_ack_handle = NULL;
@@ -66,7 +70,7 @@ static void * rem_handler_main(void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue);
+STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -162,6 +166,146 @@ static char *w_ctrl_msg_get_key(void *data) {
  */
 void * save_control_thread(void * queue);
 
+typedef struct {
+    char  *raw;
+    size_t len;
+} evt_item_t;
+
+typedef struct {
+    char  *buf;
+    size_t len;
+    size_t cap;
+} bulk_t;
+
+static int bulk_reserve(bulk_t *b, size_t add) {
+    size_t need = b->len + add;
+    if (need <= b->cap) return 0;
+    size_t ncap = b->cap ? b->cap : 4096;
+    while (ncap < need) ncap *= 2;
+    char *nb = (char*)realloc(b->buf, ncap);
+    if (!nb) return -1;
+    b->buf = nb; b->cap = ncap;
+    return 0;
+}
+void bulk_init(bulk_t *b, size_t cap_hint) { b->buf = NULL; b->len = 0; b->cap = 0; if (cap_hint) bulk_reserve(b, cap_hint); }
+void bulk_free(bulk_t *b) { free(b->buf); b->buf = NULL; b->len = b->cap = 0; }
+int bulk_append(bulk_t *b, const void *p, size_t n) { if (bulk_reserve(b, n) < 0) return -1; memcpy(b->buf + b->len, p, n); b->len += n; return 0; }
+int bulk_append_fmt(bulk_t *b, const char *fmt, ...) {
+    char tmp[512];
+    va_list ap; va_start(ap, fmt);
+    int n = vsnprintf(tmp, sizeof(tmp), fmt, ap);
+    va_end(ap);
+    if (n < 0) return -1;
+    if ((size_t)n < sizeof(tmp)) return bulk_append(b, tmp, (size_t)n);
+    // chain larger than tmp: book exactly
+    char *big = (char*)malloc((size_t)n + 1);
+    if (!big) return -1;
+    va_start(ap, fmt);
+    vsnprintf(big, (size_t)n + 1, fmt, ap);
+    va_end(ap);
+    int rc = bulk_append(b, big, (size_t)n);
+    free(big);
+    return rc;
+}
+
+typedef struct {
+    const char *agent_key;   // set por batch_queue_drain_next_ex
+    char *agent_id;
+    char *agent_name;
+    char *agent_ip;
+
+    int   header_added;
+    bulk_t bulk;             // body to send (header + events)
+} dispatch_ctx_t;
+
+static void dispose_evt_item(void *p) {
+    evt_item_t *e = (evt_item_t*)p;
+    if (!e) return;
+    os_free(e->raw);
+    os_free(e);
+}
+
+void * dispach_events_thread(void * queue);
+
+typedef struct {
+    w_indexed_queue_t *control_msg_queue; // the indexed control queue
+    w_rr_queue_t      *events_queue;      // round robbin event ring
+} rem_handler_args_t;
+
+typedef struct agent_meta {
+    int agent_id;     // "002"
+    char *agent_ip;     // "192.168.1.34"
+    char *version;      // "v4.12.0"
+    // OS
+    char *os_name;      // "Ubuntu"
+    char *os_version;   // "20.04.6 LTS"
+    char *os_codename;  // "Focal Fossa"
+    char *os_platform;  // "ubuntu"
+    char *os_build;     // build
+    char *os_kernel;    // "5.4.0-169-generic"
+    char *arch;         // "x86_64"
+} agent_meta_t;
+
+static void agent_meta_free(agent_meta_t *m) {
+    if (!m) return;
+    free(m->agent_ip);
+    free(m->version);
+    free(m->os_name);
+    free(m->os_version);
+    free(m->os_codename);
+    free(m->os_platform);
+    free(m->os_build);
+    free(m->os_kernel);
+    free(m->arch);
+    free(m);
+}
+
+// Build meta from agent_info_data (manager.c parse_agent_update_msg already populated it)
+static agent_meta_t *agent_meta_from_agent_info(const char *id, const agent_info_data *ai) {
+    if (!id || !ai) return NULL;
+    agent_meta_t *m = calloc(1, sizeof(*m));
+    if (!m) return NULL;
+
+    // Basic fields
+    if (id)                m->agent_id   = ai->id;
+    if (ai->version)       m->version    = strdup(ai->version);
+    if (ai->agent_ip)      m->agent_ip   = strdup(ai->agent_ip);
+
+    // OS
+    if (ai->osd) {
+        if (ai->osd->os_name)     m->os_name    = strdup(ai->osd->os_name);
+        if (ai->osd->os_version)  m->os_version = strdup(ai->osd->os_version);
+        if (ai->osd->os_codename) m->os_codename= strdup(ai->osd->os_codename);
+        if (ai->osd->os_platform) m->os_platform= strdup(ai->osd->os_platform);
+        if (ai->osd->os_build)    m->os_build   = strdup(ai->osd->os_build);
+        if (ai->osd->os_uname)    m->os_kernel  = strdup(ai->osd->os_uname);
+        if (ai->osd->os_arch)     m->arch       = strdup(ai->osd->os_arch);
+    }
+    return m;
+}
+
+static int agent_meta_upsert_locked(const char *agent_id, agent_meta_t *fresh) {
+    if (!agent_id || !fresh) return -1;
+
+    // Write lock global
+    pthread_rwlock_wrlock(&agent_meta_lock);
+
+    agent_meta_t *old = (agent_meta_t*)OSHash_Get(agent_meta_map, agent_id);
+
+    int rc = OSHash_Add(agent_meta_map, agent_id, fresh);
+    if (rc == 1) { // duplicate -> not added
+        // Replace manually: delete and add again
+        (void)OSHash_Delete(agent_meta_map, agent_id);
+        rc = OSHash_Add(agent_meta_map, agent_id, fresh);
+    }
+
+    pthread_rwlock_unlock(&agent_meta_lock);
+
+    // release the old one (if it existed)
+    if (old && old != fresh) agent_meta_free(old);
+
+    return (rc == 2) ? 0 : -1; // 0 OK, -1 error
+}
 
 /* Handle secure connections */
 void HandleSecure()
@@ -169,11 +313,21 @@ void HandleSecure()
     const int protocol = logr.proto[logr.position];
     int n_events = 0;
 
+    agent_meta_map = OSHash_Create();
+    if (!agent_meta_map) merror_exit("agent_meta_map create failed");
+    if (!OSHash_setSize(agent_meta_map, 2048)) merror_exit("agent_meta_map set size failed");
+    pthread_rwlock_init(&agent_meta_lock, NULL);
 
     size_t ctrl_msg_queue_size = (size_t) getDefine_Int("remoted", "control_msg_queue_size", 4096, 0x1 << 20); // 1MB
     control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
     indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
+
+    //size_t events_queue_size = (size_t)getDefine_Int("remoted", "events_queue_size", 65536, 0x1<<26); // 1MB
+    events_queue = batch_queue_init(ctrl_msg_queue_size);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    uhttp_global_init();
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
@@ -256,6 +410,12 @@ void HandleSecure()
     // Create upsert control message thread
     w_create_thread(save_control_thread, (void *) control_msg_queue);
 
+    // Create upsert control message thread
+    w_create_thread(dispach_events_thread, (void *) events_queue);
+
+    rem_handler_args_t *worker_args = malloc(sizeof(*worker_args));
+    worker_args->control_msg_queue = control_msg_queue;
+    worker_args->events_queue      = events_queue;
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
@@ -263,7 +423,7 @@ void HandleSecure()
         global_counter = 0;
         rem_initList(FD_LIST_INIT_VALUE);
         while (worker_pool > 0) {
-            w_create_thread(rem_handler_main, control_msg_queue);
+            w_create_thread(rem_handler_main, worker_args);
             worker_pool--;
         }
     }
@@ -462,12 +622,15 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
 // Message handler thread
 void * rem_handler_main(void * args) {
     message_t * message;
-    w_indexed_queue_t * control_msg_queue = (w_indexed_queue_t *) args;
+    rem_handler_args_t *queues = (rem_handler_args_t*)args;
+    w_indexed_queue_t *control_msg_queue = queues->control_msg_queue;
+    w_rr_queue_t      *events_queue      = queues->events_queue;
+
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
-        HandleSecureMessage(message, control_msg_queue);
+        HandleSecureMessage(message, control_msg_queue, events_queue);
         rem_msgfree(message);
     }
 
@@ -537,7 +700,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue) {
+STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -545,8 +708,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
     char *agentid_str = NULL;
-    char *agent_ip = NULL;
-    char *agent_name = NULL;
     char buffer[OS_MAXSTR + 1] = "";
     char *tmp_msg;
     size_t msg_length;
@@ -841,6 +1002,22 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 w_ctrl_msg_data_t * ctrl_msg_data;
                 os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
 
+                /* Parsing msg */
+                agent_info_data *agent_data;
+                os_calloc(1, sizeof(agent_info_data), agent_data);
+                int result = parse_agent_update_msg(tmp_msg, agent_data);
+
+                if (OS_SUCCESS == result) {
+                    agent_meta_t *fresh = agent_meta_from_agent_info(key->id, agent_data);
+                    if (fresh) {
+                        if (agent_meta_upsert_locked(key->id, fresh) != 0) {
+                            agent_meta_free(fresh); // en caso de fallo de insert
+                        }
+                    }
+                }
+
+                wdb_free_agent_info_data(agent_data);
+
                 ctrl_msg_data->key = key;
 
                 os_calloc(msg_length, sizeof(char), ctrl_msg_data->message);
@@ -888,14 +1065,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
-    /* Generate srcmsg */
-
-    snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
-             keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
-
     os_strdup(keys.keyentries[agentid]->id, agentid_str);
-    os_strdup(keys.keyentries[agentid]->name, agent_name);
-    os_strdup(keys.keyentries[agentid]->ip->ip, agent_ip);
 
     key_unlock();
 
@@ -903,42 +1073,18 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         _close_sock(&keys, sock_idle);
     }
 
-    /* If we can't send the message, try to connect to the
-     * socket again. If it not exit.
-     */
-    if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
-        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+    evt_item_t *e; os_calloc(1, sizeof(*e), e);
+    os_calloc(msg_length, sizeof(char), e->raw);
+    memcpy(e->raw, tmp_msg, msg_length);
+    e->len = msg_length;
 
-        // Try to reconnect infinitely
-        logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-
-        minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
-
-        if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
-            // Something went wrong sending a message after an immediate reconnection...
-            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-        } else {
-            rem_inc_recv_evt(agentid_str);
-        }
-    } else {
-        rem_inc_recv_evt(agentid_str);
+    int rc = batch_queue_enqueue_ex(batch_queue, agent_key, e);
+    if (rc < 0) {
+        dispose_evt_item(e);
+        mwarn("Dropping event for agent '%s' (rc=%d)", agent_key, rc);
     }
 
-    if(getDefine_Int("remoted", "router_forwarding_disabled", 0, 1) == 1) {
-        // If router forwarding is disabled, do not forward events to subscribers
-        mdebug2("Router forwarding is disabled, not forwarding message from agent '%s'.", agentid_str);
-        os_free(agentid_str);
-        os_free(agent_ip);
-        os_free(agent_name);
-        return;
-    }
-
-    // Forwarding events to subscribers
-    router_message_forward(tmp_msg, msg_length, agentid_str, agent_ip, agent_name);
-
-    os_free(agentid_str);
-    os_free(agent_ip);
-    os_free(agent_name);
+    os_free(agentid_str);;
 }
 
 void router_message_forward(char* msg, size_t msg_length, const char* agent_id, const char* agent_ip, const char* agent_name) {
@@ -1208,5 +1354,180 @@ void * save_control_thread(void * control_msg_queue)
         }
     }
 
+    return NULL;
+}
+
+// Encode the header ONLY once above the body
+static int append_header(dispatch_ctx_t *ctx) {
+    if (ctx->header_added) return 0;
+
+    // --- snapshot of meta from OSHash (own strings are copied) ---
+    char *id = NULL, *name = NULL, *ip = NULL, *version = NULL;
+    char *os_name = NULL, *os_version = NULL, *os_codename = NULL;
+    char *os_platform = NULL, *os_build = NULL, *os_kernel = NULL, *arch = NULL;
+
+    pthread_rwlock_rdlock(&agent_meta_lock);
+    agent_meta_t *m = (agent_meta_t *)OSHash_Get(agent_meta_map, ctx->agent_key);
+    if (m) {
+        if (m->agent_id)   m->agent_id, id;
+        if (m->agent_ip)   os_strdup(m->agent_ip, ip);
+        if (m->version)    os_strdup(m->version, version);
+        if (m->os_name)     os_strdup(m->os_name, os_name);
+        if (m->os_version)  os_strdup(m->os_version, os_version);
+        if (m->os_codename) os_strdup(m->os_codename, os_codename);
+        if (m->os_platform) os_strdup(m->os_platform, os_platform);
+        if (m->os_build)    os_strdup(m->os_build, os_build);
+        if (m->os_kernel)   os_strdup(m->os_kernel, os_kernel);
+        if (m->arch)        os_strdup(m->arch, arch);
+    }
+    pthread_rwlock_unlock(&agent_meta_lock);
+
+    key_lock_read();
+    int idx = OS_IsAllowedID(&keys, ctx->agent_key);
+    if (idx >= 0 && idx < (int)keys.keysize) {
+        if (!name) os_strdup(keys.keyentries[idx]->name, name);
+    }
+    key_unlock();
+
+    // defaults
+    if (!name) os_strdup("-", name);
+    if (!ip)   os_strdup("-", ip);
+
+    // Also save in context (for router_message_forward and metrics)
+    if (!ctx->agent_id)   id = ctx->agent_id;
+    if (!ctx->agent_name) os_strdup(name, ctx->agent_name);
+    if (!ctx->agent_ip)   os_strdup(ip,   ctx->agent_ip);
+
+    // --- Construct JSON from the header with nested objects ---
+    cJSON *root = cJSON_CreateObject();
+    if (!root) goto fail;
+
+    // agent{ id, name, version }
+    cJSON *agent = cJSON_CreateObject();
+    if (!agent) { cJSON_Delete(root); goto fail; }
+    cJSON_AddStringToObject(agent, "id", id);
+    cJSON_AddStringToObject(agent, "name", name);
+    if (version) cJSON_AddStringToObject(agent, "version", version);
+    cJSON_AddItemToObject(root, "agent", agent);
+
+    // host{ ip[], architecture, os{...} }
+    cJSON *host = cJSON_CreateObject();
+    if (!host) { cJSON_Delete(root); goto fail; }
+
+    // host.ip (array)
+    cJSON *ips = cJSON_CreateArray();
+    if (!ips) { cJSON_Delete(root); goto fail; }
+    if (ip && *ip) cJSON_AddItemToArray(ips, cJSON_CreateString(ip));
+    cJSON_AddItemToObject(host, "ip", ips);
+
+    // host.architecture
+    if (arch) cJSON_AddStringToObject(host, "architecture", arch);
+
+    // host.os{ name, version, full(codename), platform, build, kernel }
+    cJSON *os = cJSON_CreateObject();
+    if (!os) { cJSON_Delete(root); goto fail; }
+    if (os_name)     cJSON_AddStringToObject(os, "name",     os_name);
+    if (os_version)  cJSON_AddStringToObject(os, "version",  os_version);
+    if (os_codename) cJSON_AddStringToObject(os, "full",     os_codename);
+    if (os_platform) cJSON_AddStringToObject(os, "platform", os_platform);
+    if (os_build)    cJSON_AddStringToObject(os, "build",    os_build);
+    if (os_kernel)   cJSON_AddStringToObject(os, "kernel",   os_kernel);
+    cJSON_AddItemToObject(host, "os", os);
+
+    cJSON_AddItemToObject(root, "host", host);
+
+    // Serializes and outputs as "H\t<json>\n"
+    char *json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (!json) goto fail;
+
+    if (bulk_append_fmt(&ctx->bulk, "H\t%s\n", json) < 0) {
+        free(json);
+        goto fail;
+    }
+    free(json);
+
+    ctx->header_added = 1;
+
+    // clean local snapshots
+    os_free(id); os_free(name); os_free(ip); os_free(version);
+    os_free(os_name); os_free(os_version); os_free(os_codename);
+    os_free(os_platform); os_free(os_build); os_free(os_kernel); os_free(arch);
+    return 0;
+
+fail:
+    os_free(id); os_free(name); os_free(ip); os_free(version);
+    os_free(os_name); os_free(os_version); os_free(os_codename);
+    os_free(os_platform); os_free(os_build); os_free(os_kernel); os_free(arch);
+    return -1;
+}
+
+// Consumer: Only accumulates in ctx->bulk. Releases each item individually.
+static void rr_collect_one(void *data, void *user) {
+    evt_item_t *e = (evt_item_t*)data;
+    dispatch_ctx_t *ctx = (dispatch_ctx_t*)user;
+
+    // Ensure header at the top of the body
+    if (!ctx->header_added) {
+        if (append_header(ctx) < 0) {
+            mwarn("Unable to append header for agent '%s'", ctx->agent_key ?: "?");
+        }
+    }
+
+    // Event Framing: "E\t<payload>\n"
+    if (bulk_append_fmt(&ctx->bulk, "E\t") < 0 ||
+        bulk_append(&ctx->bulk, e->raw, e->len) < 0 ||
+        bulk_append(&ctx->bulk, "\n", 1) < 0) {
+        mwarn("Unable to append event for agent '%s'", ctx->agent_key ?: "?");
+    }
+
+    // In parallel you can continue forwarding to the router:
+    router_message_forward(e->raw, e->len,
+                           ctx->agent_id ? ctx->agent_id : (ctx->agent_key ?: "?"),
+                           ctx->agent_ip, ctx->agent_name);
+
+    dispose_evt_item(e);
+}
+
+// Thread that dispatches each ring turn as a single POST
+void *dispach_events_thread(void *arg) {
+    w_rr_queue_t *q = (w_rr_queue_t*)arg;
+
+    uhttp_options_t opt = {
+        .unix_socket_path   = ANLSYS_ENRICH_SOCK,           // "/path/al/socket"
+        .url                = "http://localhost/events/enriched",
+        .content_type       = "application/x-wev1",         // o "application/json"
+        .user_agent         = "wazuh-remoted/1.0",
+        .timeout_ms         = 5000,
+        .connect_timeout_ms = 2000,
+        .keepalive          = true
+    };
+    uhttp_client_t *cli = uhttp_client_new(&opt);
+    if (!cli) { merror("uhttp_client_new failed"); return NULL; }
+
+    for (;;) {
+        dispatch_ctx_t ctx = {
+            .agent_key    = NULL,
+            .agent_id     = NULL, .agent_name = NULL, .agent_ip = NULL,
+            .header_added = 0
+        };
+        bulk_init(&ctx.bulk, 8192);
+
+        size_t drained = batch_queue_drain_next_ex(q, /*abstime=*/NULL,
+                                                   rr_collect_one, &ctx, &ctx.agent_key);
+
+        if (drained > 0 && ctx.bulk.len > 0) {
+            uhttp_result_t res;
+            int rc = uhttp_post(cli, ctx.bulk.buf, ctx.bulk.len, &res);
+            if (rc != 0) {
+                mwarn("POST failed (rc=%d, http=%ld, curl=%d)", rc, res.http_status, res.curl_code);
+            }
+        }
+
+        bulk_free(&ctx.bulk);
+        os_free(ctx.agent_id); os_free(ctx.agent_name); os_free(ctx.agent_ip);
+    }
+
+    uhttp_client_free(cli);
     return NULL;
 }
