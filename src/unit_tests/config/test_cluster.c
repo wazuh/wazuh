@@ -199,6 +199,32 @@ void test_read_invalid_node_type(void **state) {
     assert_int_equal(Read_Cluster(&test_data->xml, test_data->nodes, &test_data->config, NULL), OS_INVALID);
 }
 
+void test_read_deprecated_client_value(void **state) {
+    const char * configuration =
+        "<name>wazuh</name>"
+        "<node_name>node01</node_name>"
+        "<node_type>client</node_type>"
+        "<key></key>"
+        "<port>1516</port>"
+        "<bind_addr>localhost</bind_addr>"
+        "<nodes>"
+            "<node>NODE_IP</node>"
+        "</nodes>"
+        "<haproxy_helper>"
+            "<haproxy_disabled>no</haproxy_disabled>"
+            "<haproxy_address>wazuh-proxy</haproxy_address>"
+            "<haproxy_user>haproxy</haproxy_user>"
+            "<haproxy_password>haproxy</haproxy_password>"
+        "</haproxy_helper>"
+        "<hidden>no</hidden>";
+
+    test_structure *test_data = *state;
+    test_data->nodes = string_to_xml_node(configuration, &(test_data->xml));
+    expect_string(__wrap__mwarn, formatted_msg, "Deprecated node type 'client'. Using 'worker' instead.");
+    assert_int_equal(Read_Cluster(&test_data->xml, test_data->nodes, &test_data->config, NULL), OS_SUCCESS);
+    assert_string_equal(test_data->config.node_type, "worker");
+}
+
 void test_read_deprecated_disabled_option(void **state) {
     const char * configuration =
         "<disabled>yes</disabled>"
@@ -422,6 +448,13 @@ void test_read_valid_configuration_haproxy_empty_password(void **state) {
 int main(void) {
     const struct CMUnitTest tests_config[] = {
         // Cluster config tests
+        cmocka_unit_test_setup_teardown(test_read_empty_cluster_name, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_invalid_characters_in_cluster_name, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_empty_node_name, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_invalid_characters_in_node_name, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_empty_node_type, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_invalid_node_type, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_deprecated_client_value, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_deprecated_disabled_option, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_deprecated_interval_option, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_valid_configuration, setup_test_read, teardown_test_read),
@@ -431,12 +464,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_valid_configuration_haproxy_empty_address, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_valid_configuration_haproxy_empty_user, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_valid_configuration_haproxy_empty_password, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_empty_cluster_name, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_invalid_characters_in_cluster_name, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_empty_node_name, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_invalid_characters_in_node_name, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_empty_node_type, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_invalid_node_type, setup_test_read, teardown_test_read),
     };
     return cmocka_run_group_tests(tests_config, NULL, NULL);
 }
