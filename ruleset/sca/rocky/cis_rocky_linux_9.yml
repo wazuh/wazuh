@@ -1299,11 +1299,114 @@ checks:
     rules:
       - 'not f:/etc/sysconfig/sshd -> r:^\s*CRYPTO_POLICY='
 
-  # 1.6.3 Ensure system wide crypto policy disables sha1 hash and signature support (Automated) - Not Implemented
-  # 1.6.4 Ensure system wide crypto policy disables macs less than 128 bits (Automated) - Not Implemented
-  # 1.6.5 Ensure system wide crypto policy disables cbc for ssh (Automated) - Not Implemented
-  # 1.6.6 Ensure system wide crypto policy disables chacha20-poly1305 for ssh (Manual) - Not Implemented
-  # 1.6.7 Ensure system wide crypto policy disables EtM for ssh (Manual) - Not Implemented
+  # 1.6.3 Ensure system wide crypto policy disables sha1 hash and signature support (Automated)
+  - id: 31727
+    title: "Ensure system wide crypto policy disables sha1 hash and signature support."
+    description: "SHA-1 (Secure Hash Algorithm) is a cryptographic hash function that produces a 160 bit hash value."
+    rationale: "The SHA-1 hash function has an inherently weak design, and advancing cryptanalysis has made it vulnerable to attacks. The most significant danger for a hash algorithm is when a 'collision' which happens when two different pieces of data produce the same hash value occurs. This hashing algorithm has been considered weak since 2005."
+    remediation: "Create or edit a file in /etc/crypto-policies/policies/modules/ ending in .pmod and add or modify the following lines: hash = -SHA1 sign = -*-SHA1 sha1_in_certs = 0"
+    references:
+      - "https://www.redhat.com/en/blog/how-customize-crypto-policies-rhel-82"
+      - "https://access.redhat.com/articles/3642912"
+    compliance:
+      - cis: ["1.6.3"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - mitre_mitigations: ["M1041"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1557"]
+      - nist_sp_800-53: ["SC-8"]
+    condition: all
+    rules:
+      - 'f:/etc/crypto-policies/state/CURRENT.pol -> r:^sha1_in_certs\s*=\s*0'
+      - 'not f:/etc/crypto-policies/state/CURRENT.pol -> r:^(hash|sign)\s*=\s*SHA1'
+
+  # 1.6.4 Ensure system wide crypto policy disables macs less than 128 bits (Automated)
+  - id: 31728
+    title: "Ensure system wide crypto policy disables macs less than 128 bits."
+    description: "Message Authentication Code (MAC) algorithm is a family of cryptographic functions that is parameterized by a symmetric key. Each of the functions can act on input data (called a message) of variable length to produce an output value of a specified length. The output value is called the MAC of the input message. A MAC algorithm can be used to provide data-origin authentication and data-integrity protection"
+    rationale: "Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the tunnel and capture credentials and information. A MAC algorithm must be computationally infeasible to determine the MAC of a message without knowledge of the key, even if one has already seen the results of using that key to compute the MAC's of other messages."
+    remediation: "Create or edit a file in /etc/crypto-policies/policies/modules/ ending in .pmod and add or modify one of the following lines: mac = -*-64* # Disables weak macs"
+    references:
+      - "https://nvd.nist.gov/vuln/detail/CVE-2008-5161"
+      - "https://www.redhat.com/en/blog/how-customize-crypto-policies-rhel-82"
+      - "https://csrc.nist.gov/glossary/term/message_authentication_code_algorithm"
+    compliance:
+      - cis: ["1.6.4"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - mitre_mitigations: ["M1041"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1557"]
+      - nist_sp_800-53: ["SC-8"]
+    condition: all
+    rules:
+      - 'f:/etc/crypto-policies/state/CURRENT.pol -> n:^mac\s*=\s*(\d+) compare >= 128'
+
+  # 1.6.5 Ensure system wide crypto policy disables cbc for ssh (Automated)
+  - id: 31729
+    title: "Ensure system wide crypto policy disables cbc for ssh."
+    description: "Cypher Block Chaining (CBC) is an algorithm that uses a block cipher."
+    rationale: "A vulnerability exists in SSH messages that employ CBC mode that may allow an attacker to recover plaintext from a block of ciphertext. If exploited, this attack can potentially allow an attacker to recover up to 32 bits of plaintext from an arbitrary block of ciphertext from a connection secured using the SSH protocol."
+    impact: "CBC ciphers might be the only common cyphers when connecting to older SSH clients and servers"
+    remediation: "Create or edit a file in /etc/crypto-policies/policies/modules/ ending in .pmod and add or modify one of the the following lines: cipher@SSH = -*-CBC # Disables the CBC cipher for SSH"
+    references:
+      - "https://nvd.nist.gov/vuln/detail/CVE-2008-5161"
+      - "https://www.redhat.com/en/blog/how-customize-crypto-policies-rhel-82"
+    compliance:
+      - cis: ["1.6.5"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - mitre_mitigations: ["M1041"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1557"]
+      - nist_sp_800-53: ["SC-8"]
+    condition: none
+    rules:
+      - 'f:/etc/crypto-policies/state/CURRENT.pol -> r:^cipher@(lib|open)ssh(-server|-client)?\s*=\s*([^#\n\r]+)?-CBC\b'
+
+  # 1.6.6 Ensure system wide crypto policy disables chacha20-poly1305 for ssh (Manual)
+  - id: 31730
+    title: "Ensure system wide crypto policy disables chacha20-poly1305 for ssh."
+    description: "ChaCha20-Poly1305 is an authenticated encryption with additional data (AEAD) algorithm, that combines the ChaCha20 stream cipher with the Poly1305 message authentication code. Its usage in IETF protocols is standardized in RFC 8439."
+    rationale: "A vulnerability exists in ChaCha20-Poly1305 as referenced in CVE-2023-48795"
+    remediation: "Create or edit a file in /etc/crypto-policies/policies/modules/ ending in .pmod and add or modify one of the the following lines: cipher@SSH = -CHACHA20-POLY1305 # Disables the chacha20-poly1305 cipher for SSH"
+    references:
+      - "https://nvd.nist.gov/vuln/detail/CVE-2023-48795"
+      - "https://www.redhat.com/en/blog/how-customize-crypto-policies-rhel-82"
+    compliance:
+      - cis: ["1.6.6"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - mitre_mitigations: ["M1041"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1557"]
+      - nist_sp_800-53: ["SC-8"]
+    condition: none
+    rules:
+      - 'f:/etc/crypto-policies/state/CURRENT.pol -> r:^cipher@(lib|open)ssh(-server|-client)?\s*=\s*([^#\n\r]+)?-chacha-poly1305\b'
+
+  # 1.6.7 Ensure system wide crypto policy disables EtM for ssh (Manual)
+  - id: 31731
+    title: "Ensure system wide crypto policy disables EtM for ssh."
+    description: "Encrypt-then-MAC (EtM) - The ciphertext is generated by encrypting the plaintext and then appending a MAC of the encrypted plaintext"
+    rationale: "There is an effective attack against SSH's use of Cypher-Block-Chaining (CBC) with Encrypt-then-MAC as referenced in CVE-2023-48795"
+    remediation: "Create or edit a file in /etc/crypto-policies/policies/modules/ ending in .pmod and add or modify the following line: etm@SSH = DISABLE_ETM # This disables EtM for openSSH and libssh"
+    references:
+      - "https://nvd.nist.gov/vuln/detail/CVE-2023-48795"
+      - "https://www.redhat.com/en/blog/how-customize-crypto-policies-rhel-82"
+      - "https://access.redhat.com/errata/RHSA-2024:0499"
+    compliance:
+      - cis: ["1.6.7"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - mitre_mitigations: ["M1041"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1557"]
+      - nist_sp_800-53: ["SC-8"]
+    condition: all
+    rules:
+      - 'f:/etc/crypto-policies/state/CURRENT.pol -> r:^etm\s*=\s*DISABLE_ETM'
 
   ###############################################
   # 1.7 Configure Command Line Warning Banners
@@ -2125,7 +2228,18 @@ checks:
       - 'f:/etc/chrony.conf -> r:^\s*\t*server|^\s*\t*pool'
       - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS\.*-u chrony'
 
-  # 2.3.3 Ensure chrony is not run as the root user (Automated) - Not Implemented
+  # 2.3.3 Ensure chrony is not run as the root user (Automated)
+  - id: 31732
+    title: "Ensure chrony is not run as the root user."
+    description: "The file /etc/sysconfig/chronyd allows configuration of options for chrony to include the user chrony is run as. By default, this is set to the user chrony."
+    rationale: "Services should not be set to run as the root user."
+    remediation: 'Edit the file /etc/sysconfig/chronyd and add or modify the following line to remove "-u root" from any OPTIONS= argument'
+    compliance:
+      - cis: ["2.3.3"]
+    condition: all
+    rules:
+      - 'f:/etc/sysconfig/chronyd -> r:^OPTIONS=".*-u chrony.*"'
+      - 'not f:/etc/sysconfig/chronyd -> r:^OPTIONS=".*-u root.*"'
 
   ###############################################
   # 2.4 Job Schedulers
@@ -2914,8 +3028,46 @@ checks:
     rules:
       - "c:sshd -T -> r:^ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc"
 
-  # 5.1.5 Ensure sshd KexAlgorithms is configured (Automated) - Not Implemented
-  # 5.1.6 Ensure sshd MACs are configured (Automated) - Not Implemented
+  # 5.1.5 Ensure sshd KexAlgorithms is configured (Automated)
+  - id: 31733
+    title: "Ensure sshd KexAlgorithms is configured."
+    description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received."
+    rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
+    remediation: 'Though key_exchange may be configured through the KexAlgorithms option in the /etc/ssh/sshd_config file, it is recommended that the key_exchange available to openSSH server are configured through system-wide-crypto-policy.'
+    references:
+      - "https://ubuntu.com/server/docs/openssh-crypto-configuration"
+    compliance:
+      - cis: ["5.1.5"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_mitigations: ["M1041"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1557", "T1557.000"]
+      - nist_sp_800-53: ["SC-8"]
+    condition: none
+    rules:
+      - "c:sshd -T -> r:^kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
+
+  # 5.1.6 Ensure sshd MACs are configured (Automated)
+  - id: 31734
+    title: "Ensure sshd MACs are configured."
+    description: "This variable limits the types of MAC algorithms that SSH can use during communication."
+    rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
+    remediation: 'Though MACs may be configured through the MACs option in the /etc/ssh/sshd_config file, it is recommended that the MACs available to openSSH server are configured through system-wide-crypto-policy.'
+    references:
+      - "https://nvd.nist.gov/vuln/detail/CVE-2023-48795"
+      - "http://www.mitls.org/pages/attacks/SLOTH"
+    compliance:
+      - cis: ["5.1.6"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4", "16.5"]
+      - mitre_mitigations: ["M1041"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1557", "T1557.000"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: none
+    rules:
+      - "c:sshd -T -> r:^macs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1-96|umac-64@openssh\\.com|hmac-md5-etm@openssh\\.com|hmac-md5-96-etm@openssh\\.com|hmac-ripemd160-etm@openssh\\.com|hmac-sha1-96-etm@openssh\\.com|umac-64-etm@openssh\\.com|umac-128-etm@openssh\\.com"
 
   # 5.1.7 Ensure sshd access is configured (Automated)
   - id: 31621
@@ -4133,7 +4285,18 @@ checks:
 
   # 6.2.1.2 Ensure journald log file access is configured (Manual) - Not Implemented
   # 6.2.1.3 Ensure journald log file rotation is configured (Manual) - Not Implemented
-  # 6.2.1.4 Ensure only one logging system is in use (Automated) - Not Implemented
+
+  # 6.2.1.4 Ensure only one logging system is in use (Automated)
+  - id: 31736
+    title: "Ensure only one logging system is in use."
+    description: "Best practices recommend that a single centralized logging system be used for log management, choose a single service either rsyslog - OR - journald to be used as a single centralized logging system."
+    rationale: "Configuring only one logging service either rsyslog - OR - journald avoids redundancy, optimizes resources, simplifies configuration and management, and ensures consistency."
+    remediation: "Configure only ONE either journald - OR - rsyslog and complete the recommendations in that subsection"
+    compliance:
+      - cis: ["6.2.1.4"]
+    condition: none
+    rules:
+      - 'c:/bin/sh -c "comm -12 <( systemctl is-active systemd-journald.service ) <( systemctl is-active rsyslog.service )" -> r:active'
 
   ###############################################
   # 6.2.2 Configure journald
@@ -4442,7 +4605,25 @@ checks:
   # 6.2.4 Configure Logfiles
   ###############################################
 
-  # 6.2.4.1 Ensure access to all logfiles has been configured (Automated) - Not Implemented
+  # 6.2.4.1 Ensure access to all logfiles has been configured (Automated)
+  - id: 31735
+    title: "Ensure access to all logfiles has been configured."
+    description: "Log files contain information from many services on the the local system, or in the event of a centralized log server, others systems logs as well. In general log files are found in /var/log/, although application can be configured to store logs elsewhere. Should your application store logs in another, ensure to run the same test on that location."
+    rationale: "It is important that log files have the correct permissions to ensure that sensitive data is protected and that only the appropriate users / groups have access to them."
+    remediation: "Update permissions and ownership on files in /var/log."
+    compliance:
+      - cis: ["6.2.4.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_mitigations: ["M1028"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1070", "T1070.002", "T1083", "T1083.000"]
+      - nist_sp_800-53: ["AC-3", "CM-2"]
+    condition: all
+    rules:
+      - 'c:/bin/sh -c "find /var/log/ -type f -perm /g+x,o+wx -exec ls -l \"{}\" + | grep -E \"[b,u,w]tmp.*|lastllog\" | wc -l" -> r:^0$'
+      - 'c:/bin/sh -c "find /var/log/ -type f -perm /g+wx,o+wx -exec ls -l \"{}\" + | grep -E \"auth|secure|syslog|messages|journal|auth\" | wc -l" -> r:^0$'
+      - 'c:/bin/sh -c "find /var/log/ -type f -perm /g+x,o+rwx -exec ls -l \"{}\" + | grep -Ei \"ssd|gdm\" | wc -l" -> r:^0$'
 
   ###############################################
   # 6.3.1 Configure auditd Service
