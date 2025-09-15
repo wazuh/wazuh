@@ -2379,7 +2379,25 @@ checks:
     rules:
       - 'not c:find /sys/class/net/*/ -type d -name wireless -> r:wireless'
 
-  # 3.1.3 Ensure bluetooth services are not in use (Automated) - Not Implemented
+  # 3.1.3 Ensure bluetooth services are not in use. (Automated)
+  - id: 31721
+    title: "Ensure bluetooth services are not in use."
+    description: "Bluetooth is a short-range wireless technology standard that is used for exchanging data between devices over short distances. It employs UHF radio waves in the ISM bands, from 2.402 GHz to 2.48 GHz. It is mainly used as an alternative to wire connections."
+    rationale: "An attacker may be able to find a way to access or corrupt your data. One example of this type of activity is bluesnarfing, which refers to attackers using a Bluetooth connection to steal information off of your Bluetooth device. Also, viruses or other malicious code can take advantage of Bluetooth technology to infect other devices. If you are infected, your data may be corrupted, compromised, stolen, or lost."
+    impact: "Many personal electronic devices (PEDs) use Bluetooth technology. For example, you may be able to operate your computer with a wireless keyboard. Disabling Bluetooth will prevent these devices from connecting to the system. There may be packages that are dependent on the bluez package. If the bluez package is removed, these dependent packages will be removed as well. Before removing the bluez package, review any dependent packages to determine if they are required on the system."
+    remediation: "Run the following commands to stop bluetooth.service, and remove the bluez package: # systemctl stop bluetooth.service # dnf remove bluez"
+    compliance:
+      - cis: ["3.1.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - mitre_mitigations: ["M1042"]
+      - mitre_tactics: ["TA0010"]
+      - mitre_techniques: ["T1011", "T1011.001"]
+      - nist_sp_800-53: ["CM-7"]
+    condition: any
+    rules:
+      - "c:rpm -q bluez -> r:^package bluez is not installed"
+      - 'not c:sh -c "systemctl is-enabled bluetooth.service & systemctl is-active bluetooth.service" -> r:^active$|^enabled$'
 
   ###############################################
   # 3.2 Configure Network Kernel Modules
@@ -2872,7 +2890,30 @@ checks:
       - 'c:/bin/sh -c "find /etc/ssh/ -name *_key.pub -type f ! -group root | wc -l" -> r:^0$'
       - 'c:/bin/sh -c "find /etc/ssh/ -name *_key.pub -type f -perm /133 | wc -l" -> r:^0$'
 
-  # 5.1.4 Ensure sshd Ciphers are configured (Automated) - Not Implemented
+  # 5.1.4 Ensure sshd Ciphers are configured. (Automated)
+  - id: 31722
+    title: "Ensure sshd Ciphers are configured."
+    description: 'This variable limits the ciphers that SSH can use during communication.'
+    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack. Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors.'
+    remediation: "Create or edit a file in /etc/crypto-policies/policies/modules/ ending in .pmod and add or modify the the following line: cipher@SSH = -3DES-CBC -AES-128-CBC -AES-192-CBC -AES-256-CBC -CHACHA20-POLY1305 Run the following command to update the system-wide cryptographic policy # update-crypto-policies --set <CRYPTO_POLICY>:<CRYPTO_SUBPOLICY1>:<CRYPTO_SUBPOLICY2>:<CRYPTO_SUBPOLICY3> Run the following command to reload the openSSH server to make your cryptographic settings effective: # systemctl reload-or-restart sshd"
+    references:
+      - "https://nvd.nist.gov/vuln/detail/CVE-2023-48795"
+      - "https://nvd.nist.gov/vuln/detail/CVE-2019-1543"
+      - "https://nvd.nist.gov/vuln/detail/CVE-2016-2183"
+      - "https://nvd.nist.gov/vuln/detail/CVE-2008-5161"
+      - "https://www.openssh.com/txt/cbc.adv"
+    compliance:
+      - cis: ["5.1.4"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - mitre_mitigations: ["M1041"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1040", "T1040.000", "T1557"]
+      - nist_sp_800-53: ["SC-8"]
+    condition: none
+    rules:
+      - "c:sshd -T -> r:^ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc"
+
   # 5.1.5 Ensure sshd KexAlgorithms is configured (Automated) - Not Implemented
   # 5.1.6 Ensure sshd MACs are configured (Automated) - Not Implemented
 
@@ -2962,7 +3003,23 @@ checks:
       - 'c:sshd -T -C user=root -> r:^\s*disableforwarding\s*yes'
       - 'f:/etc/ssh/sshd_config -> !r:^# && r:DisableForwarding\s+yes'
 
-  # 5.1.11 Ensure sshd GSSAPIAuthentication is disabled (Automated) - Not Implemented
+  # 5.1.11 Ensure sshd GSSAPIAuthentication is disabled. (Automated)
+  - id: 31723
+    title: "Ensure sshd GSSAPIAuthentication is disabled."
+    description: "The GSSAPIAuthentication parameter specifies whether user authentication based on GSSAPI is allowed."
+    rationale: "Allowing GSSAPI authentication through SSH exposes the system's GSSAPI to remote hosts, and should be disabled to reduce the attack surface of the system."
+    remediation: "Edit the /etc/ssh/sshd_config file to set the GSSAPIAuthentication parameter to no above any Include and Match entries as follows: GSSAPIAuthentication no"
+    compliance:
+      - cis: ["5.1.11"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - mitre_mitigations: ["M1042"]
+      - mitre_tactics: ["TA0001"]
+      - mitre_techniques: ["T1078", "T1078.001", "T1078.003"]
+      - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
+    condition: all
+    rules:
+      - 'c:sshd -T -> r:^gssapiauthentication\s+no'
 
   # 5.1.12 Ensure sshd HostbasedAuthentication is disabled (Automated)
   - id: 31625
@@ -3709,7 +3766,23 @@ checks:
       - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
       - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
 
-  # 5.4.1.4 Ensure strong password hashing algorithm is configured (Automated) - Not Implemented
+  # 5.4.1.4 Ensure strong password hashing algorithm is configured. (Automated)
+  - id: 31724
+    title: "Ensure strong password hashing algorithm is configured."
+    description: "A cryptographic hash function converts an arbitrary-length input into a fixed length output. Password hashing performs a one-way transformation of a password, turning the password into another string, called the hashed password."
+    rationale: "The SHA-512 and yescrypt algorithms provide a stronger hash than other algorithms used by Linux for password hash generation. A stronger hash provides additional protection to the system by increasing the level of effort needed for an attacker to successfully determine local group passwords."
+    remediation: "Edit /etc/login.defs and set the ENCRYPT_METHOD to SHA512 or YESCRYPT: ENCRYPT_METHOD <HASHING_ALGORITHM> Example: ENCRYPT_METHOD YESCRYPT Note: - This only effects local groups' passwords created after updating the file to use - - sha512 or yescrypt. If it is determined that the password algorithm being used is not sha512 or yescrypt, once it is changed, it is recommended that all group passwords be updated to use the stronger hashing algorithm. It is recommended that the chosen hashing algorithm is consistent across /etc/login.defs and the PAM configuration."
+    compliance:
+      - cis: ["5.4.1.4"]
+      - cis_csc_v8: ["3.11"]
+      - cis_csc_v7: ["16.4"]
+      - mitre_mitigations: ["M1041"]
+      - mitre_tactics: ["TA0006"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1110", "T1110.002"]
+      - nist_sp_800-53: ["IA-5"]
+    condition: all
+    rules:
+      - 'f:/etc/login.defs -> r:ENCRYPT_METHOD\s*\t*SHA512 | r:ENCRYPT_METHOD\s*\t*YESCRYPT'
 
   # 5.4.1.5 Ensure inactive password lock is configured (Automated)
   - id: 31654
@@ -4986,8 +5059,43 @@ checks:
     rules:
       - 'c:stat /etc/gshadow- -> r:Access:\s*\(0000/----------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-  # 7.1.9 Ensure permissions on /etc/shells are configured (Automated) - Not Implemented
-  # 7.1.10 Ensure permissions on /etc/security/opasswd are configured (Automated) - Not Implemented
+  # 7.1.9 Ensure permissions on /etc/shells are configured. (Automated)
+  - id: 31725
+    title: "Ensure permissions on /etc/shells are configured."
+    description: "/etc/shells is a text file which contains the full pathnames of valid login shells. This file is consulted by chsh and available to be queried by other programs."
+    rationale: "It is critical to ensure that the /etc/shells file is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: "Run the following commands to remove excess permissions, set owner, and set group on /etc/shells: # chmod u-x,go-wx /etc/shells # chown root:root /etc/shells."
+    compliance:
+      - cis: ["7.1.9"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/shells -> r:^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+
+  # 7.1.10 Ensure permissions on /etc/security/opasswd are configured. (Automated)
+  - id: 31726
+    title: "Ensure permissions on /etc/security/opasswd are configured."
+    description: "/etc/security/opasswd and it's backup /etc/security/opasswd.old hold user's previous passwords if pam_unix or pam_pwhistory is in use on the system."
+    rationale: "It is critical to ensure that /etc/security/opasswd is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
+    remediation: 'Run the following commands to remove excess permissions, set owner, and set group on /etc/security/opasswd and /etc/security/opasswd.old is they exist: # [ -e "/etc/security/opasswd" ] && chmod u-x,go-rwx /etc/security/opasswd # [ -e "/etc/security/opasswd" ] && chown root:root /etc/security/opasswd # [ -e "/etc/security/opasswd.old" ] && chmod u-x,go-rwx /etc/security/opasswd.old # [ -e "/etc/security/opasswd.old" ] && chown root:root /etc/security/opasswd.old.'
+    compliance:
+      - cis: ["7.1.10"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1003", "T1003.008", "T1222", "T1222.002"]
+      - nist_sp_800-53: ["AC-3", "MP-2"]
+    condition: all
+    rules:
+      - 'c:stat -L /etc/security/opasswd -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+      - 'c:stat -L /etc/security/opasswd.old -> r:^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*0/\s*root\)$|^Access: \(0600/-rw-------\)\s*Uid:\s*\(\s*0/\s*root\)\s*Gid:\s*\(\s*\d+/\s*shadow\)$'
+
   # 7.1.11 Ensure world writable files and directories are secured (Automated) - Not Implemented
   # 7.1.12 Ensure no files or directories without an owner and a group exist (Automated) - Not Implemented
   # 7.1.13 Ensure SUID and SGID files are reviewed (Manual) - Not Implemented
