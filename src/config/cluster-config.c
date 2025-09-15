@@ -92,7 +92,13 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 merror("Detected a not allowed node type '%s'. Valid types are 'master' and 'worker'.", node[i]->content);
                 return OS_INVALID;
             }
-            os_strdup(node[i]->content, Config->node_type);
+            os_free(Config->node_type);
+            if (strcmp(node[i]->content, "client") == 0) {
+                mwarn("Deprecated node type 'client'. Using 'worker' instead.");
+                os_strdup("worker", Config->node_type);
+            } else {
+                os_strdup(node[i]->content, Config->node_type);
+            }
         } else if (!strcmp(node[i]->element, key)) {
         } else if (!strcmp(node[i]->element, socket_timeout)) {
         } else if (!strcmp(node[i]->element, connection_timeout)) {
@@ -168,7 +174,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     return OS_INVALID;
                 }
             }
-        OS_ClearNode(child);
+            OS_ClearNode(child);
         } else {
             merror(XML_INVELEM, node[i]->element);
             return OS_INVALID;
