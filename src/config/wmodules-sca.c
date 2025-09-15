@@ -14,6 +14,7 @@
 
 static const char *XML_ENABLED = "enabled";
 static const char *XML_SCAN_ON_START= "scan_on_start";
+static const char* XML_INTERVAL = "interval";
 static const char *XML_MAX_EPS = "max_eps";
 static const char *XML_POLICIES = "policies";
 static const char *XML_POLICY = "policy";
@@ -278,6 +279,33 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
             } else {
                 sca->max_eps = value;
             }
+        }
+        else if (!strcmp(nodes[i]->element, XML_INTERVAL))
+        {
+            if (!nodes[i]->content || !strlen(nodes[i]->content))
+            {
+                merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
+                return OS_INVALID;
+            }
+            char* endptr;
+            unsigned int interval = strtoul(nodes[i]->content, &endptr, 0);
+
+            if (interval == 0 || interval == UINT_MAX)
+            {
+                merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name);
+                return OS_INVALID;
+            }
+
+            switch (*endptr)
+            {
+                case 'd': interval *= W_DAY_SECONDS; break;
+                case 'h': interval *= W_HOUR_SECONDS; break;
+                case 'm': interval *= W_MINUTE_SECONDS; break;
+                case 's':
+                case '\0': break;
+                default: merror("Invalid interval at module '%s'", WM_SCA_CONTEXT.name); return OS_INVALID;
+            }
+            sca->scan_config.interval = interval;
         }
         else if (!strcmp(nodes[i]->element, XML_POLICIES))
         {

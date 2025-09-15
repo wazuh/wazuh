@@ -597,7 +597,7 @@ checks:
     rules:
       - "f:/boot/grub/grub.cfg"
       - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*set superusers="
-      - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*password_pbkdf2\\s*\\t*\\w+"
+      - "f:/boot/grub/grub.cfg -> r:^\\s*\\t*password_pbkdf2\\s*\\t*[\\w@-]+"
 
   # 1.4.3 Ensure authentication required for single user mode. (Scored) - Not Implemented
   # 1.4.4 Ensure interactive boot is not enabled. (Not Scored) - Not Implemented
@@ -631,9 +631,9 @@ checks:
       - nist_sp_800-53: ["SC-39", "SI-16"]
     condition: any
     rules:
-      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
-      - 'f:/etc/sysctl.conf -> r:^\s*kernel.randomize_va_space\s*=\s*2'
-      - 'd:/etc/sysctl.d/ -> r:\.+ -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel\.randomize_va_space\s*=\s*2'
+      - 'f:/etc/sysctl.conf -> r:^\s*kernel\.randomize_va_space\s*=\s*2'
+      - 'd:/etc/sysctl.d/ -> r:.+ -> r:^\s*kernel\.randomize_va_space\s*=\s*2'
 
   # 1.5.4 Ensure prelink is disabled. (Scored)
   - id: 36032
@@ -915,10 +915,10 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: any
     rules:
-      - "f:/etc/gdm3/greeter.dconf-defaults -> r:^[org/gnome/login-screen]"
+      - "f:/etc/gdm3/greeter.dconf-defaults -> r:^\\[org/gnome/login-screen\\]"
       - "f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-enable=true"
-      - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-text=\.+'
-      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:[org/gnome/login-screen]"
+      - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-text=.+'
+      - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:\\[org/gnome/login-screen\\]"
       - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-enable=true"
       - "f:/etc/dconf/db/gdm.d/01-banner-message -> r:banner-message-text="
 
@@ -940,7 +940,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:inetd.\w+ -> r:^chargen'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^chargen'
 
   # 2.1.2 Ensure daytime services are not enabled. (Scored)
   - id: 36048
@@ -958,7 +958,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:inetd.\w+ -> r:^daytime'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^daytime'
 
   # 2.1.3 Ensure discard services are not enabled. (Scored)
   - id: 36049
@@ -976,7 +976,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:inetd.\w+ -> r:^discard'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^discard'
 
   # 2.1.4 Ensure echo services are not enabled. (Scored)
   - id: 36050
@@ -994,7 +994,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:inetd.\w+ -> r:^echo'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^echo'
 
   # 2.1.5 Ensure time services are not enabled. (Scored)
   - id: 36051
@@ -1012,7 +1012,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:inetd.\w+ -> r:^time'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^time'
 
   # 2.1.6 Ensure rsh server is not enabled. (Scored)
   - id: 36052
@@ -1027,9 +1027,9 @@ checks:
       - pci_dss_v3.2.1: ["2.2.2"]
     condition: none
     rules:
-      - 'd:/etc -> r:inetd.\w+ -> r:^shell'
-      - 'd:/etc -> r:inetd.\w+ -> r:^login'
-      - 'd:/etc -> r:inetd.\w+ -> r:^exec'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^shell'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^login'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^exec'
 
   # 2.1.7 Ensure talk server is not enabled. (Scored)
   - id: 36053
@@ -1047,8 +1047,8 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:inetd.\w+ -> r:^talk'
-      - 'd:/etc -> r:inetd.\w+ -> r:^ntalk'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^talk'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^ntalk'
 
   # 2.1.8 Ensure telnet server is not enabled. (Scored)
   - id: 36054
@@ -1063,7 +1063,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2.2"]
     condition: none
     rules:
-      - 'd:/etc -> r:inetd.\w+ -> r:^telnet'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^telnet'
 
   # 2.1.9 Ensure tftp server is not enabled. (Scored)
   - id: 36055
@@ -1081,7 +1081,7 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: none
     rules:
-      - 'd:/etc -> r:inetd.\w+ -> r:^tftp'
+      - 'd:/etc -> r:inetd\.[\w@-]+ -> r:^tftp'
 
   # 2.1.10 Ensure xinetd is not enabled. (Scored)
   - id: 36056
@@ -1136,7 +1136,7 @@ checks:
     rules:
       - "f:/etc/ntp.conf"
       - 'f:/etc/ntp.conf -> r:^\s*\t*server|^\s*\t*pool'
-      - "f:/etc/ntp.conf -> r:restrict -(d+) && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
+      - "f:/etc/ntp.conf -> r:restrict -(\\d+) && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
       - "f:/etc/ntp.conf -> r:restrict -6 && r:default && r:kod && r:nomodify && r:notrap && r:nopeer && r:noquery"
 
   # 2.2.1.3 Ensure chrony is configured. (Scored)
@@ -1433,8 +1433,8 @@ checks:
       - pci_dss_v3.2.1: ["1.2.1", "2.2.2", "2.2.5"]
     condition: any
     rules:
-      - 'c:ss -lntu -> r:\.*:25\.* && !r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
-      - 'not c:ss -lntu -> r::25\s|:465\s|:587\s && r:\s+127.0.0.\d+:|\s+[::1]:'
+      - 'c:ss -lntu -> r:.*:25.* && !r:\s*127\.0\.0\.1:25\s*|\s*::1:25\s*'
+      - 'not c:ss -lntu -> r::25\s|:465\s|:587\s && r:\s+127\.0\.0\.\d+:|\s+\[::1\]:'
 
   # 2.2.16 Ensure rsync service is not enabled. (Scored)
   - id: 36075
@@ -1897,9 +1897,9 @@ checks:
       - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
-      - 'c:ip6tables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.*\p\.*::/0\.*::/0'
-      - 'c:ip6tables -L INPUT -v -n -> r:\.*DROP\.*all\.*\p\.*\p\.*::1\.*::/0'
-      - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.*\p\.*lo\.*::/0\.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*[*!+-].*::/0.*::/0'
+      - 'c:ip6tables -L INPUT -v -n -> r:.*DROP.*all.*[*!+-].*[*!+-].*::1.*::/0'
+      - 'c:ip6tables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*[*!+-].*lo.*::/0.*::/0'
 
   # 3.5.1.3 Ensure IPv6 outbound and established connections are configured. (Not Scored) - Not Implemented
   # 3.5.1.4 Ensure IPv6 firewall rules exist for all open ports. (Not Scored) -  Not Implemented
@@ -1936,9 +1936,9 @@ checks:
       - pci_dss_v3.2.1: ["1.4"]
     condition: all
     rules:
-      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.*\p\.*0.0.0.0/0\.*0.0.0.0/0'
-      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.*\p\.*\p\.*127.0.0.0/8\.*0.0.0.0/0'
-      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.*\p\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*[*!+-].*0\.0\.0\.0/0.*0\.0\.0\.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*DROP.*all.*[*!+-].*[*!+-].*127\.0\.0\.0/8.*0\.0\.0\.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*[*!+-].*lo.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
 
   # 3.5.2.3 Ensure outbound and established connections are configured. (Not Scored) - Not Implemented
   # 3.5.2.4 Ensure firewall rules exist for all open ports. (Scored) - Not Implemented
@@ -2100,11 +2100,11 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F a0=0x0'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-F a0=0x0'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k time-change|-F key=time-change && r:^-w && r:/etc/localtime && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F a0=0x0'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-F a0=0x0'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k time-change|-F key=time-change && r:^-w && r:/etc/localtime && r:-p wa'
       - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex"
       - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:adjtimex,settimeofday|settimeofday,adjtimex"
       - "c:auditctl -l -> r:-k time-change|-F key=time-change && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S clock_settime && r:-F a0=0x0"
@@ -2127,22 +2127,22 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/group && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/passwd && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/gshadow && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/shadow && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/security/opasswd && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/nsswitch.conf && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam.conf && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam.d && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/group && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/passwd && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/gshadow && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/shadow && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/security/opasswd && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/nsswitch\.conf && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam\.conf && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam\.d && r:-p wa'
       - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/group && r:-p wa"
       - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/passwd && r:-p wa"
       - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/gshadow && r:-p wa"
       - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/shadow && r:-p wa"
       - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/security/opasswd && r:-p wa"
-      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/nsswitch.conf && r:-p wa"
-      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam.conf && r:-p wa"
-      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam.d && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/nsswitch\\.conf && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam\\.conf && r:-p wa"
+      - "c:auditctl -l -> r:-k identity|-F key=identity && r:^-w && r:/etc/pam\\.d && r:-p wa"
 
   # 4.1.8 Ensure events that modify the system's Mandatory Access Controls are collected. (Scored)
   - id: 36115
@@ -2160,12 +2160,12 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor.d && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor\.d && r:-p wa'
       - "c:auditctl -l -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor && r:-p wa"
-      - "c:auditctl -l -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor.d && r:-p wa"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /etc/selinux/ -p wa -k MAC-policy'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-w /usr/share/selinux/ -p wa -k MAC-policy'
+      - "c:auditctl -l -> r:-k MAC-policy|-F key=MAC-policy && r:^-w && r:/etc/apparmor\\.d && r:-p wa"
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-w /etc/selinux/ -p wa -k MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-w /usr/share/selinux/ -p wa -k MAC-policy'
       - "c:auditctl -l -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
       - "c:auditctl -l -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
 
@@ -2184,8 +2184,8 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/run/faillock && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k logins|-F key=logins && r:^-w && r:/var/run/faillock && r:-p wa'
       - "c:auditctl -l -> r:-k logins|-F key=logins && r:^-w && r:/var/log/lastlog && r:-p wa"
       - "c:auditctl -l -> r:-k logins|-F key=logins && r:^-w && r:/var/run/faillock && r:-p wa"
 
@@ -2204,9 +2204,9 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/run/utmp && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/wtmp && r:-p wa'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/btmp && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/run/utmp && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/wtmp && r:-p wa'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k session|-F key=session && r:^-w && r:/var/log/btmp && r:-p wa'
       - "c:auditctl -l -> r:-k session|-F key=session && r:^-w && r:/var/run/utmp && r:-p wa"
       - "c:auditctl -l -> r:-k session|-F key=session && r:^-w && r:/var/log/wtmp && r:-p wa"
       - "c:auditctl -l -> r:-k session|-F key=session && r:^-w && r:/var/log/btmp && r:-p wa"
@@ -2227,12 +2227,12 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:lchown && r:fchown && r:chown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:lchown && r:fchown && r:chown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:setxattr && r:lsetxattr && r:fsetxattr && r:removexattr && r:lremovexattr && r:fremovexattr && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:chown && r:fchown && r:lchown && r:fchownat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k perm_mod|-F key=perm_mod && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:chmod && r:fchmod && r:fchmodat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -2256,10 +2256,10 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EACCES && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k access|-F key=access && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:creat && r:open && r:openat && r:truncate && r:ftruncate && r:-F exit=-EPERM && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
@@ -2284,8 +2284,8 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k mounts|-F key=mounts && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
@@ -2301,8 +2301,8 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
       - 'c:auditctl -l -> r:-k delete|-F key=delete && r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=unset|-F auid!=-1'
 
@@ -2322,10 +2322,10 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/sudoers\.d && r:-p wa && r:-k scope'
       - "c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope"
-      - "c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope"
+      - "c:auditctl -l -> r:^-w && r:/etc/sudoers\\.d && r:-p wa && r:-k scope"
 
   # 4.1.17 Ensure system administrator actions (sudolog) are collected. (Scored) - Not Implemented
 
@@ -2346,11 +2346,11 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules'
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules"
       - "c:auditctl -l -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules"
       - "c:auditctl -l -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules"
@@ -2368,8 +2368,8 @@ checks:
     condition: any
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-e\s*\t*2'
-      - 'not d:/etc/audit/rules.d -> r:\.+.rules$ -> !r:\s*\t*-e 2$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-e\s*\t*2'
+      - 'not d:/etc/audit/rules.d -> r:.+\.rules$ -> !r:\s*\t*-e 2$'
 
   # 4.2.1.1 Ensure rsyslog is installed. (Scored)
   - id: 36125
@@ -2846,7 +2846,7 @@ checks:
       - pci_dss_v3.2.1: ["4.1"]
     condition: none
     rules:
-      - "c:sshd -T -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
+      - "c:sshd -T -> r:^Ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator\\.liu\\.se"
 
   # 5.2.14 Ensure only strong MAC algorithms are used. (Scored)
   - id: 36151
@@ -2865,7 +2865,7 @@ checks:
       - pci_dss_v3.2.1: ["4.1"]
     condition: none
     rules:
-      - "c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh\\.com|umac-128@openssh\\.com|hmac-md5-etm@openssh\\.com|hmac-md5-96-etm@openssh\\.com|hmac-ripemd160-etm@openssh\\.com|hmac-sha1-etm@openssh\\.com|hmac-sha1-96-etm@openssh\\.com|umac-64-etm@openssh\\.com|umac-128-etm@openssh\\.com"
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used. (Scored)
   - id: 36152
@@ -2951,7 +2951,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*Banner\s*\t*/etc/issue.net'
+      - 'c:sshd -T -> r:^\s*Banner\s*\t*/etc/issue\.net'
 
   # 5.2.20 Ensure SSH PAM is enabled. (Scored)
   - id: 36157
@@ -3046,8 +3046,8 @@ checks:
     condition: any
     rules:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
-      - 'f:/etc/pam.d/system-auth -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
-      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
+      - 'f:/etc/pam.d/system-auth -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality\.so\s*\t*retry=(\d+) compare <=3'
+      - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality\.so\s*\t*retry=(\d+) compare <=3'
 
   # 5.3.2 Ensure lockout for failed password attempts is configured (Not Scored)
 
@@ -3062,12 +3062,12 @@ checks:
       - cis_csc_v7: ["16"]
     condition: any
     rules:
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/common-auth -> r:^\s*password && r:pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/common-auth -> r:^\s*password && r:pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:pam_pwquality\.so\.+ && n:remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_pwquality.so.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_unix.so.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-auth -> r:^\s*password && r:pam_pwquality.so.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-auth -> r:^\s*password && r:pam_unix.so.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:pam_pwquality.so.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*password && r:pam_unix.so.+ && n:remember=(\d+) compare >= 5'
 
   # 5.3.4 Ensure password hashing algorithm is SHA-512. (Not Scored)
   - id: 36163
@@ -3084,8 +3084,8 @@ checks:
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
     condition: any
     rules:
-      - 'f:/etc/pam.d/common-password -> r:^\s*password && r:pam_unix\.so && r:sha512'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_unix\.so && r:sha512'
+      - 'f:/etc/pam.d/common-password -> r:^\s*password && r:pam_unix.so && r:sha512'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password && r:pam_unix.so && r:sha512'
 
   # 5.4.1.1 Ensure password expiration is 365 days or less. (Scored)
   - id: 36164
@@ -3174,7 +3174,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> r:^root:\w:\w:0'
+      - 'f:/etc/passwd -> r:^root:[\w@-]:[\w@-]:0'
 
   # 5.4.4 Ensure default user umask is 027 or more restrictive. (Scored) - Not Implemented
   # 5.4.5 Ensure default user shell timeout is 900 seconds or less. (Scored) - Not Implemented
@@ -3196,7 +3196,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/su -> !r:# && r:auth && r:required && r:pam_wheel.so\s*\t*use_uid'
+      - 'f:/etc/pam.d/su -> !r:# && r:auth && r:required && r:pam_wheel\.so\s*\t*use_uid'
 
   # 6.1.1 Audit system file permissions. (Not Scored) - Not Implemented
 
@@ -3361,7 +3361,7 @@ checks:
       - nist_sp_800-53: ["IA-5 (1)"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> !r:^# && r:^\w+::'
+      - 'f:/etc/shadow -> !r:^# && r:^[\w@-]+::'
 
   # 6.2.2 Ensure no legacy "+" entries exist in /etc/passwd. (Scored)
   - id: 36179
@@ -3418,7 +3418,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
+      - 'not f:/etc/passwd -> !r:^# && !r:^root: && r:^[\w@-]+:[\w@-]+:0:'
 
   # 6.2.6 Ensure root PATH Integrity. (Scored)
   - id: 36183
@@ -3458,7 +3458,7 @@ checks:
       - cis_csc_v7: ["16"]
     condition: all
     rules:
-      - 'f:/etc/group -> !r:^# && r:shadow:\w*:\d+:$'
+      - 'f:/etc/group -> !r:^# && r:shadow:[\w@-]*:\d+:$'
 
   # 6.2.16 Ensure no duplicate UIDs exist. (Scored)
   - id: 36185
@@ -3471,7 +3471,7 @@ checks:
       - cis_csc_v7: ["16"]
     condition: all
     rules:
-      - 'c:sh -c "cut -f3 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
+      - 'c:sh -c "cut -f3 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 6.2.17 Ensure no duplicate GIDs exist. (Scored)
   - id: 36186
@@ -3484,7 +3484,7 @@ checks:
       - cis_csc_v7: ["16"]
     condition: all
     rules:
-      - 'c:sh -c "cut -f3 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
+      - 'c:sh -c "cut -f3 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 6.2.18 Ensure no duplicate user names exist. (Scored)
   - id: 36187
@@ -3497,7 +3497,7 @@ checks:
       - cis_csc_v7: ["16"]
     condition: all
     rules:
-      - 'c:sh -c "cut -f1 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
+      - 'c:sh -c "cut -f1 -d\":\" /etc/passwd | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 6.2.19 Ensure no duplicate group names exist. (Scored)
   - id: 36188
@@ -3510,7 +3510,7 @@ checks:
       - cis_csc_v7: ["16"]
     condition: all
     rules:
-      - 'c:sh -c "cut -f1 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\p*\d+)$ compare == 0'
+      - 'c:sh -c "cut -f1 -d\":\" /etc/group | sort | uniq -dc | wc -l" -> n:^(\d+)$ compare == 0'
 
   # 6.2.20 Ensure shadow group is empty. (Scored)
   - id: 36189
@@ -3528,4 +3528,4 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'f:/etc/group -> !r:^# && r:^shadow:\w*:\d+:$'
+      - 'f:/etc/group -> !r:^# && r:^shadow:[\w@-]*:\d+:$'

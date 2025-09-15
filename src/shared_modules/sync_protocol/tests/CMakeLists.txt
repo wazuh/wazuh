@@ -45,3 +45,5 @@ target_link_libraries(agent_sync_protocol_tests
     optimized gmock
     pthread
 )
+
+add_test(NAME agent_sync_protocol_tests COMMAND agent_sync_protocol_tests)

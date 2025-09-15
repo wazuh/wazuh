@@ -23,9 +23,9 @@ requirements:
   description: "Requirements for running the SCA scan against macOS 10.15 (Catalina)."
   condition: any
   rules:
-    - 'c:sw_vers -> r:^ProductVersion:\t*\s*10\p15'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:\.*10\p15'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*10\p15'
+    - 'c:sw_vers -> r:^ProductVersion:\t*\s*10[*!+.-]15'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*10[*!+.-]15'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*10[*!+.-]15'
 
 checks:
   # 1.1 Verify all Apple provided software is current (Automated) - Not Implemented
@@ -463,8 +463,8 @@ checks:
       - cis: ["2.12"]
     condition: all
     rules:
-      - "c:/usr/libexec/firmwarecheckers/eficheck/eficheck --integrity-check -> r:Primary allowlist version match found. No changes detected in primary hashes"
-      - 'c:launchctl list -> r:^-\s*\t*0\s*\t*com.apple.driver.eficheck$'
+      - "c:/usr/libexec/firmwarecheckers/eficheck/eficheck --integrity-check -> r:Primary allowlist version match found\\. No changes detected in primary hashes"
+      - 'c:launchctl list -> r:^-\s*\t*0\s*\t*com\.apple\.driver\.eficheck$'
 
   # 3.1 Enable security auditing (Automated)
   - id: 17535
@@ -476,7 +476,7 @@ checks:
       - cis: ["3.1"]
     condition: all
     rules:
-      - "c:launchctl list -> r:com.apple.auditd"
+      - "c:launchctl list -> r:com\\.apple\\.auditd"
 
   # not implemented - process -> 3.2 Configure Security Auditing Flags per local organizational requirements (Manual)
 
@@ -490,7 +490,7 @@ checks:
       - cis: ["3.3"]
     condition: all
     rules:
-      - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl\w+(\d+) compare > 365'
+      - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl[\w@-]+(\d+) compare > 365'
 
   # not implemented - SCA Limit -> 3.4 Ensure security auditing retention (Automated)
 

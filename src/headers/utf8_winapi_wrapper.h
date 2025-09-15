@@ -84,6 +84,15 @@ DWORD utf8_SetNamedSecurityInfo(const char* utf8_path,
                                 PACL dacl,
                                 PACL sacl);
 
+/// Lookup account SID and return UTF-8 strings
+BOOL utf8_LookupAccountSid(LPCSTR lpSystemName,
+                           PSID lpSid,
+                           char **lpName,
+                           LPDWORD cchName,
+                           char **lpReferencedDomainName,
+                           LPDWORD cchReferencedDomainName,
+                           PSID_NAME_USE peUse);
+
 #endif
 
 #endif // UTF8_WINAPI_WRAPPER_H

@@ -260,16 +260,25 @@ char *get_user(const char *path, char **sid, HANDLE hndl, SE_OBJECT_TYPE object_
         goto end;
     }
 
-    // Second call to LookupAccountSid to get the account name.
-    bRtnBool = LookupAccountSid(NULL,                   // Name of local or remote computer
-                                pSidOwner,              // Security identifier
-                                AcctName,               // Account name buffer
-                                (LPDWORD)&dwAcctName,   // Size of account name buffer
-                                DomainName,             // Domain name
-                                (LPDWORD)&dwDomainName, // Size of domain name buffer
-                                &eUse);                 // SID type
+    char *utf8_name = NULL;
+    char *utf8_domain = NULL;
+    bRtnBool = utf8_LookupAccountSid(NULL,              // Name of local or remote computer
+                                     pSidOwner,         // Security identifier
+                                     &utf8_name,        // Account name buffer
+                                     NULL,              // Size of account name buffer
+                                     &utf8_domain,      // Domain name
+                                     NULL,              // Size of domain name buffer
+                                     &eUse);            // SID type
 
-    // Check GetLastError for LookupAccountSid error condition.
+    if (bRtnBool && utf8_name) {
+        snprintf(AcctName, BUFFER_LEN, "%s", utf8_name);
+        snprintf(DomainName, BUFFER_LEN, "%s", utf8_domain);
+    }
+
+    os_free(utf8_name);
+    os_free(utf8_domain);
+
+    // Check GetLastError for LookupAccountSidW error condition.
     if (bRtnBool == FALSE) {
         DWORD dwErrorCode = 0;
 
@@ -512,21 +521,10 @@ end:
 
 int w_get_account_info(SID *sid, char **account_name, char **account_domain) {
     SID_NAME_USE snu;
-    unsigned long a_name_size = 0;
-    unsigned long a_domain_size = 0;
-    int error;
 
-    if (error = LookupAccountSid(0, sid, NULL, &a_name_size, NULL, &a_domain_size, &snu), !error) {
-        // We must have this error at this point
-        if (error = GetLastError(), error != ERROR_INSUFFICIENT_BUFFER) {
-            return GetLastError();
-        }
-    }
+    BOOL result = utf8_LookupAccountSid(NULL, sid, account_name, NULL, account_domain, NULL, &snu);
 
-    os_calloc(a_name_size, sizeof(char), *account_name);
-    os_calloc(a_domain_size, sizeof(char), *account_domain);
-
-    if (error = LookupAccountSid(0, sid, *account_name, &a_name_size, *account_domain, &a_domain_size, &snu), !error) {
+    if (!result) {
         return GetLastError();
     }
 
@@ -597,20 +595,29 @@ char *get_registry_group(char **sid, HANDLE hndl) {
         goto end;
     }
 
-    // Second call to LookupAccountSid to get the account name.
-    bRtnBool = LookupAccountSid(NULL,                   // Name of local or remote computer
-                                pSidGroup,              // Security identifier
-                                GrpName,                // Group name buffer
-                                (LPDWORD)&dwGrpName,    // Size of group name buffer
-                                DomainName,             // Domain name
-                                (LPDWORD)&dwDomainName, // Size of domain name buffer
-                                &eUse);                 // SID type
+    char *utf8_name = NULL;
+    char *utf8_domain = NULL;
+    bRtnBool = utf8_LookupAccountSid(NULL,              // Name of local or remote computer
+                                     pSidGroup,         // Security identifier
+                                     &utf8_name,        // Group name buffer
+                                     NULL,              // Size of group name buffer
+                                     &utf8_domain,      // Domain name
+                                     NULL,              // Size of domain name buffer
+                                     &eUse);            // SID type
+
+    if (bRtnBool && utf8_name) {
+        snprintf(GrpName, BUFFER_LEN, "%s", utf8_name);
+        snprintf(DomainName, BUFFER_LEN, "%s", utf8_domain);
+    }
+
+    os_free(utf8_name);
+    os_free(utf8_domain);
 
     if (strncmp(GrpName, "None", 4) == 0) {
         *GrpName = '\0';
     }
 
-    // Check GetLastError for LookupAccountSid error condition.
+    // Check GetLastError for LookupAccountSidW error condition.
     if (bRtnBool == FALSE) {
         DWORD dwErrorCode = 0;
 

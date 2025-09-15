@@ -114,7 +114,7 @@ checks:
       - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'd:$web_dirs -> ^version.php$ -> r:^\.wp_version && r:4.4.2'
+      - 'd:$web_dirs -> ^version.php$ -> r:^.wp_version && r:4\.4\.2'
 
   - id: 14010
     title: "Web vulnerability - Outdated Joomla installation"
@@ -124,7 +124,7 @@ checks:
       - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'd:$web_dirs -> ^version.php$ -> r:var \.RELEASE && r:3.4.8'
+      - 'd:$web_dirs -> ^version.php$ -> r:var .RELEASE && r:3\.4\.8'
 
   - id: 14011
     title: "Web vulnerability - Outdated osCommerce (v2.2) installation"
@@ -134,7 +134,7 @@ checks:
       - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - "d:$web_dirs -> ^application_top.php$ -> r:osCommerce && r:2.2-"
+      - "d:$web_dirs -> ^application_top.php$ -> r:osCommerce && r:2\\.2-"
 
   # Known backdoors
   - id: 14012
@@ -145,7 +145,7 @@ checks:
       - tsc: ["CC6.6", "CC7.1", "CC8.1", "CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\(\paWYo'
+      - 'd:$web_dirs -> .php$ -> r:eval\(base64_decode\([*!+-]aWYo'
 
   - id: 14013
     title: "Web vulnerability - Backdoors / Web based malware found - eval(base64_decode(POST))"

@@ -23,9 +23,9 @@ requirements:
   description: "Requirements for running the SCA scan against macOS 10.11 (El Capitan)."
   condition: any
   rules:
-    - 'c:sw_vers -> r:^ProductVersion:\t*\s*10\p11'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*10\p11'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*10\p11'
+    - 'c:sw_vers -> r:^ProductVersion:\t*\s*10[*!+.-]11'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*10[*!+.-]11'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*10[*!+.-]11'
 
 checks:
   # 1.1 Verify all Apple provided software is current (Scored) - Not Implemented
@@ -246,7 +246,7 @@ checks:
       - cis: ["2.11"]
     condition: none
     rules:
-      - "c:/usr/libexec/java_home -> r:1.6.0"
+      - "c:/usr/libexec/java_home -> r:1\\.6\\.0"
 
   # 3.2 Enable security auditing (Scored)
   - id: 8518
@@ -258,7 +258,7 @@ checks:
       - cis: ["3.2"]
     condition: all
     rules:
-      - "c:launchctl list -> r:com.apple.auditd"
+      - "c:launchctl list -> r:com\\.apple\\.auditd"
 
   # 3.3 Configure Security Auditing Flags (Scored)
   - id: 8519
@@ -307,7 +307,7 @@ checks:
       - cis: ["4.5"]
     condition: none
     rules:
-      - "c:launchctl list -> r:com.apple.ftpd"
+      - "c:launchctl list -> r:com\\.apple\\.ftpd"
 
   # 4.6 Ensure nfs server is not running (Scored)
   - id: 8523

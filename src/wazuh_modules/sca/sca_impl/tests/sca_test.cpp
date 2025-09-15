@@ -168,7 +168,7 @@ TEST_F(ScaTest, ConstructorInitializesCorrectly)
 TEST_F(ScaTest, Setup_WithEmptyPolicies_CreatesNoPolicies)
 {
     SCAMock scm;
-    scm.Setup(true, true, 1000, 30, false, {});
+    scm.Setup(true, true, std::chrono::seconds(1000), 30, false, {});
 
     // Verify no policies were created
     auto& policiesRef = scm.GetPolicies();
@@ -188,7 +188,7 @@ TEST_F(ScaTest, Setup_WithFakePolicies_LoadsNothing)
     auto mockDBSync = std::make_shared<MockDBSync>();
 
     SCAMock scm(mockDBSync, mockFileSystem);
-    scm.Setup(true, true, 100, 30, false, policyData);
+    scm.Setup(true, true, std::chrono::seconds(100), 30, false, policyData);
 
     // Mock filesystem exists() to call Stop() when called, then return true
     EXPECT_CALL(*mockFileSystem, exists(testing::_))
@@ -208,7 +208,7 @@ TEST_F(ScaTest, Setup_WithFakePolicies_LoadsNothing)
 
 TEST_F(ScaTest, RunDoesNothingWhenDisabled)
 {
-    m_sca->Setup(false, true, 1000, 30, false, {});
+    m_sca->Setup(false, true, std::chrono::seconds(1000), 30, false, {});
 
     m_sca->Run();
     EXPECT_NE(m_logOutput.find("SCA module is disabled"), std::string::npos);
@@ -237,7 +237,7 @@ TEST_F(ScaTest, SetGlobalWmExecFunctionStoresPointer)
 TEST_F(ScaTest, RunExecutesPoliciesWhenEnabled)
 {
     // Use disabled module to test that Run() doesn't hang
-    m_sca->Setup(false, false, 100, 30, false, {});
+    m_sca->Setup(false, false, std::chrono::seconds(100), 30, false, {});
 
     // Run() should exit immediately since the module is disabled
     m_sca->Run();

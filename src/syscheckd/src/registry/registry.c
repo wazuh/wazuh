@@ -203,8 +203,10 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
     cJSON* registry_stateful = cJSON_Duplicate(registry_stateless, 1);
     cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
 
-    cJSON_AddStringToObject(registry_stateless, "path", path);
-    cJSON_AddStringToObject(registry_stateful, "path", path);
+    char *utf8_path = auto_to_utf8(path);
+    cJSON_AddStringToObject(registry_stateless, "path", utf8_path ? utf8_path : path);
+    cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
+    os_free(utf8_path);
 
     const char *hive = get_registry_hive_abbreviation(path);
     const char *key = get_registry_key(path);
@@ -214,12 +216,16 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         char *full_key = NULL;
         os_malloc(full_key_len, full_key);
         snprintf(full_key, full_key_len, "%s\\%s", hive, key);
-        cJSON_AddStringToObject(registry_stateless, "key", full_key);
-        cJSON_AddStringToObject(registry_stateful, "key", full_key);
+        char *utf8_full_key = auto_to_utf8(full_key);
+        cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
+        os_free(utf8_full_key);
         os_free(full_key);
     } else {
-        cJSON_AddStringToObject(registry_stateless, "key", path);
-        cJSON_AddStringToObject(registry_stateful, "key", path);
+        char *utf8_key_path = auto_to_utf8(path);
+        cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
+        os_free(utf8_key_path);
     }
     cJSON_AddStringToObject(registry_stateless, "hive", hive);
     cJSON_AddStringToObject(registry_stateful, "hive", hive);
@@ -406,8 +412,10 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
     cJSON* registry_stateful = cJSON_Duplicate(registry_stateless, 1);
     cJSON_AddItemToObject(stateful_event, "registry", registry_stateful);
 
-    cJSON_AddStringToObject(registry_stateless, "path", path);
-    cJSON_AddStringToObject(registry_stateful, "path", path);
+    char *utf8_path = auto_to_utf8(path);
+    cJSON_AddStringToObject(registry_stateless, "path", utf8_path ? utf8_path : path);
+    cJSON_AddStringToObject(registry_stateful, "path", utf8_path ? utf8_path : path);
+    os_free(utf8_path);
 
     const char *hive = get_registry_hive_abbreviation(path);
     const char *key = get_registry_key(path);
@@ -417,20 +425,26 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         char *full_key = NULL;
         os_malloc(full_key_len, full_key);
         snprintf(full_key, full_key_len, "%s\\%s", hive, key);
-        cJSON_AddStringToObject(registry_stateless, "key", full_key);
-        cJSON_AddStringToObject(registry_stateful, "key", full_key);
+        char *utf8_full_key = auto_to_utf8(full_key);
+        cJSON_AddStringToObject(registry_stateless, "key", utf8_full_key ? utf8_full_key : full_key);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_full_key ? utf8_full_key : full_key);
+        os_free(utf8_full_key);
         os_free(full_key);
     } else {
-        cJSON_AddStringToObject(registry_stateless, "key", path);
-        cJSON_AddStringToObject(registry_stateful, "key", path);
+        char *utf8_key_path = auto_to_utf8(path);
+        cJSON_AddStringToObject(registry_stateless, "key", utf8_key_path ? utf8_key_path : path);
+        cJSON_AddStringToObject(registry_stateful, "key", utf8_key_path ? utf8_key_path : path);
+        os_free(utf8_key_path);
     }
     cJSON_AddStringToObject(registry_stateless, "hive", hive);
     cJSON_AddStringToObject(registry_stateful, "hive", hive);
 
     cJSON_AddStringToObject(registry_stateless, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
     cJSON_AddStringToObject(registry_stateful, "architecture", arch == ARCH_32BIT ? "[x32]" : "[x64]");
-    cJSON_AddStringToObject(registry_stateless, "value", value);
-    cJSON_AddStringToObject(registry_stateful, "value", value);
+    char *utf8_value = auto_to_utf8(value);
+    cJSON_AddStringToObject(registry_stateless, "value", utf8_value ? utf8_value : value);
+    cJSON_AddStringToObject(registry_stateful, "value", utf8_value ? utf8_value : value);
+    os_free(utf8_value);
 
     cJSON_AddStringToObject(registry_stateless, "mode", FIM_EVENT_MODE[event_data->evt_data->mode]);
 
