@@ -73,6 +73,7 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
+          sudo /var/ossec/bin/cluster_control -l
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
@@ -95,6 +96,7 @@ jobs:
           mkdir -p /tmp/wazuh-logs
           sudo tail -F /var/ossec/logs/api.log >> /tmp/wazuh-logs/api.log 2>/dev/null &
           sudo tail -F /var/ossec/logs/ossec.log >> /tmp/wazuh-logs/ossec.log 2>/dev/null &
+          sudo tail -F /var/ossec/logs/cluster.log >> /tmp/wazuh-logs/cluster.log 2>/dev/null &
           cd tests/integration
           sudo python -m pytest --tier 0 --tier 1 test_api/
       # Collect logs if tests fail
