@@ -323,12 +323,6 @@ public:
                             elementId.append("_");
                             elementId.append(data->id()->string_view());
 
-                            thread_local std::string index;
-                            index.clear();
-                            index.append(data->index()->string_view());
-                            index.append("-");
-                            index.append(m_clusterName);
-
                             if (data->operation() == Wazuh::SyncSchema::Operation_Upsert)
                             {
                                 logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Upserting data...");
@@ -345,12 +339,12 @@ public:
                                 dataString.append(R"("}},)");
                                 dataString.append(
                                     std::string_view((const char*)data->data()->data() + 1, data->data()->size() - 1));
-                                m_indexerConnector->bulkIndex(elementId, index, dataString);
+                                m_indexerConnector->bulkIndex(elementId, data->index()->string_view(), dataString);
                             }
                             else if (data->operation() == Wazuh::SyncSchema::Operation_Delete)
                             {
                                 logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting data...");
-                                m_indexerConnector->bulkDelete(elementId, index);
+                                m_indexerConnector->bulkDelete(elementId, data->index()->string_view());
                             }
                             else
                             {
