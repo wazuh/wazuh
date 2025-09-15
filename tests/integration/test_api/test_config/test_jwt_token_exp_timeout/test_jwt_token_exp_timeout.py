@@ -57,7 +57,7 @@ from pathlib import Path
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 from wazuh_testing import session_parameters
-from wazuh_testing.constants.api import CONFIGURATION_TYPES, MANAGER_INFORMATION_ROUTE
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.utils import get_base_url, login
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -148,7 +148,7 @@ def test_jwt_token_exp_timeout(test_configuration, test_metadata, add_configurat
     # Fix to minimum time to avoid waiting longer than necessary
     token_timeout = min(token_timeout + 1, 8)
     expected_code_after_expiration = test_metadata['expected_code']
-    url = get_base_url() + MANAGER_INFORMATION_ROUTE
+    url = get_base_url() + '/cluster/node01/info'
 
     # Get token
     authenticator_headers, _ = login(backoff_factor=session_parameters.default_timeout/2, login_attempts=2)
