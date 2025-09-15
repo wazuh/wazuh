@@ -2,8 +2,8 @@
   description: Inspector only logs after configurations
   configuration_parameters:
     SERVICE_TYPE: inspector
-    ONLY_LOGS_AFTER: 2023-JAN-30
+    ONLY_LOGS_AFTER: 2025-SEP-15
   metadata:
     service_type: inspector
-    only_logs_after: 2023-JAN-30
-    expected_results: 11
+    only_logs_after: 2025-SEP-15
+    expected_results: 106

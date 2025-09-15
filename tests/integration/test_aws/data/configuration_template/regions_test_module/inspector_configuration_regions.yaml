@@ -10,6 +10,6 @@
               - type: SERVICE_TYPE
             elements:
               - only_logs_after:
-                  value: 2023-JAN-12
+                  value: 2025-SEP-15
               - regions:
                   value: REGIONS

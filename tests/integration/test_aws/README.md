@@ -120,7 +120,8 @@ The provided credentials must have the following set of minimum permissions defi
     "sqs:GetQueueUrl"
 
     "inspector:ListFindings",
-    "inspector:DescribeFindings"
+    "inspector:DescribeFindings",
+    "inspector2:ListFindings"
 ```
 
 ## Setting up a test environment
