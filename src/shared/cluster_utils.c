@@ -17,7 +17,6 @@ int w_is_worker(void) {
     OS_XML xml;
     const char * xmlf[] = {"ossec_config", "cluster", NULL};
     const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
-    const char * xmlf3[] = {"ossec_config", "cluster", "disabled", NULL};
     const char *cfgfile = OSSECCONF;
     int is_worker = OS_INVALID;
 
@@ -27,28 +26,14 @@ int w_is_worker(void) {
         char * cl_config = OS_GetOneContentforElement(&xml, xmlf);
         if (cl_config && cl_config[0] != '\0') {
             char * cl_type = OS_GetOneContentforElement(&xml, xmlf2);
-                if (cl_type && cl_type[0] != '\0') {
-                    char * cl_status = OS_GetOneContentforElement(&xml, xmlf3);
-                    if(cl_status && cl_status[0] != '\0'){
-                        if (!strcmp(cl_status, "no")) {
-                            if (!strcmp(cl_type, "client") || !strcmp(cl_type, "worker")) {
-                                is_worker = 1;
-                            } else {
-                                is_worker = 0;
-                            }
-                        } else {
-                            is_worker = 0;
-                        }
-                    } else {
-                        if (!strcmp(cl_type, "client") || !strcmp(cl_type, "worker")) {
-                            is_worker = 1;
-                        } else {
-                            is_worker = 0;
-                        }
-                    }
-                    free(cl_status);
-                    free(cl_type);
+            if (cl_type && cl_type[0] != '\0') {
+                if (!strcmp(cl_type, "worker")) {
+                    is_worker = 1;
+                } else {
+                    is_worker = 0;
                 }
+                free(cl_type);
+            }
             free(cl_config);
         } else {
             is_worker = 0;
@@ -63,7 +48,6 @@ int w_is_single_node(int* is_worker) {
     OS_XML xml;
     const char * xmlf[] = {"ossec_config", "cluster", NULL};
     const char * xmlf2[] = {"ossec_config", "cluster", "node_type", NULL};
-    const char * xmlf3[] = {"ossec_config", "cluster", "disabled", NULL};
     const char *cfgfile = OSSECCONF;
     int _is_worker = OS_INVALID;
     int is_single_node = OS_INVALID;
@@ -75,22 +59,13 @@ int w_is_single_node(int* is_worker) {
         if (cl_config && cl_config[0] != '\0') {
             char * cl_type = OS_GetOneContentforElement(&xml, xmlf2);
             if (cl_type && cl_type[0] != '\0') {
-                char * cl_status = OS_GetOneContentforElement(&xml, xmlf3);
-                if(cl_status && cl_status[0] != '\0'){
-                    if (!strcmp(cl_status, "no")) {
-                        is_single_node = 0;
-                        if (!strcmp(cl_type, "client") || !strcmp(cl_type, "worker")) {
-                            _is_worker = 1;
-                        } else {
-                            _is_worker = 0;
-                        }
-                    } else {
-                        is_single_node = 1;
-                    }
+                // Since cluster is always enabled, if we have cluster config with node_type, it's not a single node
+                is_single_node = 0;
+                if (!strcmp(cl_type, "worker")) {
+                    _is_worker = 1;
                 } else {
-                    is_single_node = 1;
+                    _is_worker = 0;
                 }
-                free(cl_status);
                 free(cl_type);
             } else {
                 is_single_node = 1;
