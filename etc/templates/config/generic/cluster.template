@@ -9,4 +9,5 @@
         <node>NODE_IP</node>
     </nodes>
     <hidden>no</hidden>
+    <disabled>no</disabled>
   </cluster>
