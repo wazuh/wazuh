@@ -54,7 +54,7 @@ checks:
     rules:
       - "c:modprobe -n -v cramfs -> r:install /bin/false|install /bin/true|Module cramfs not found"
       - "not c:lsmod -> r:cramfs"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+cramfs'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+cramfs'
 
   # 1.1.1.2 Ensure freevxfs kernel module is not available (Automated)
   - id: 31668
@@ -74,7 +74,7 @@ checks:
     rules:
       - "c:modprobe -n -v freevxfs -> r:install /bin/false|install /bin/true|Module freevxfs not found"
       - "not c:lsmod -> r:freevxfs"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+freevxfs'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+freevxfs'
 
   # 1.1.1.3 Ensure hfs kernel module is not available (Automated)
   - id: 31669
@@ -94,7 +94,7 @@ checks:
     rules:
       - "c:modprobe -n -v hfs -> r:install /bin/false|install /bin/true|Module hfs not found"
       - "not c:lsmod -> r:hfs"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+hfs'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+hfs'
 
   # 1.1.1.4 Ensure hfsplus kernel module is not available (Automated)
   - id: 31670
@@ -114,7 +114,7 @@ checks:
     rules:
       - "c:modprobe -n -v hfsplus -> r:install /bin/false|install /bin/true|Module hfsplus not found"
       - "not c:lsmod -> r:hfsplus"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+hfsplus'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+hfsplus'
 
   # 1.1.1.5 Ensure jffs2 kernel module is not available (Automated)
   - id: 31671
@@ -134,7 +134,7 @@ checks:
     rules:
       - "c:modprobe -n -v jffs2 -> r:install /bin/false|install /bin/true|Module jffs2 not found"
       - "not c:lsmod -> r:jffs2"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+jffs2'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+jffs2'
 
   # 1.1.1.6 Ensure squashfs kernel module is not available (Automated)
   - id: 31500
@@ -159,7 +159,7 @@ checks:
     rules:
       - "c:modprobe -n -v squashfs -> r:install /bin/false|install /bin/true|Module squashfs not found"
       - "not c:lsmod -> r:squashfs"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+squashfs'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+squashfs'
 
   # 1.1.1.7 Ensure udf kernel module is not available (Automated)
   - id: 31501
@@ -184,7 +184,7 @@ checks:
     rules:
       - "c:modprobe -n -v udf -> r:install /bin/false|install /bin/true|Module udf not found"
       - "not c:lsmod -> r:udf"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+udf'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+udf'
 
   # 1.1.1.8 Ensure usb-storage kernel module is not available (Automated)
   - id: 31528
@@ -207,7 +207,7 @@ checks:
     rules:
       - "c:modprobe -n -v usb-storage -> r:install /bin/true|install /bin/false"
       - "not c:lsmod -> r:usb-storage"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+usb-storage'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+usb-storage'
 
   # 1.1.1.9 Ensure unused filesystems kernel modules are not available (Manual)
   - id: 31714
@@ -1022,8 +1022,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - 'f:/boot/grub2/grubenv -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
-      - 'f:/boot/grub2/grub.cfg -> r:kernelopts=\.*selinux=0|kernelopts=\.*enforcing=0'
+      - 'f:/boot/grub2/grubenv -> r:kernelopts=.*selinux=0|kernelopts=.*enforcing=0'
+      - 'f:/boot/grub2/grub.cfg -> r:kernelopts=.*selinux=0|kernelopts=.*enforcing=0'
 
   # 1.3.1.3 Ensure SELinux policy is configured. (Automated)
   - id: 31537
@@ -1568,7 +1568,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/dconf/profile/gdm -> r:^user-db:user\s*system-db:gdm\s*file-db:/usr/share/gdm/greeter-dconf-defaults$'
-      - 'd:/etc/dconf/db/gdm.d/ -> r:\.* -> r:s*\[org/gnome/login-screen\]\s*banner-message-enable=true\s*banner-message-text=\w+'
+      - 'd:/etc/dconf/db/gdm.d/ -> r:.* -> r:s\*\[org/gnome/login-screen\]\s*banner-message-enable=true\s*banner-message-text=[\w@-]+'
 
   # 1.8.3 Ensure GDM disable-user-list option is enabled. (Automated) - Not Implemented
   # 1.8.4 Ensure GDM screen locks when the user is idle. (Automated) - Not Implemented
@@ -2062,7 +2062,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:ss -lntu -> r:\s*127.0.0.1:25\s*|\s*::1:25\s*'
+      - 'not c:ss -lntu -> r:\s*127\.0\.0\.1:25\s*|\s*::1:25\s*'
 
   # 2.1.22 Ensure only approved services are listening on a network interface (Manual) - Not Implemented
 
@@ -2226,7 +2226,6 @@ checks:
     rules:
       - "f:/etc/chrony.conf"
       - 'f:/etc/chrony.conf -> r:^\s*\t*server|^\s*\t*pool'
-      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS\.*-u chrony'
 
   # 2.3.3 Ensure chrony is not run as the root user (Automated)
   - id: 31732
@@ -2238,8 +2237,8 @@ checks:
       - cis: ["2.3.3"]
     condition: all
     rules:
-      - 'f:/etc/sysconfig/chronyd -> r:^OPTIONS=".*-u chrony.*"'
-      - 'not f:/etc/sysconfig/chronyd -> r:^OPTIONS=".*-u root.*"'
+      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS.*-u chrony'
+      - 'not f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS.*-u root'
 
   ###############################################
   # 2.4 Job Schedulers
@@ -2535,7 +2534,7 @@ checks:
     rules:
       - "c:modprobe -n -v dccp -> r:install /bin/true|install /bin/false"
       - "not c:lsmod -> r:dccp"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+dccp'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+dccp'
 
   # 3.2.2 Ensure tipc kernel module is not available (Automated)
   - id: 31578
@@ -2556,7 +2555,7 @@ checks:
     rules:
       - "c:modprobe -n -v tipc -> r:install /bin/true|install /bin/false"
       - "not c:lsmod -> r:tipc"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+tipc'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+tipc'
 
   # 3.2.3 Ensure rds kernel module is not available (Automated)
   - id: 31684
@@ -2576,7 +2575,7 @@ checks:
     rules:
       - "c:modprobe -n -v rds -> r:install /bin/true|install /bin/false"
       - "not c:lsmod -> r:rds"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+rds'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+rds'
 
   # 3.2.4 Ensure sctp kernel module is not available (Automated)
   - id: 31685
@@ -2596,7 +2595,7 @@ checks:
     rules:
       - "c:modprobe -n -v sctp -> r:install /bin/true|install /bin/false"
       - "not c:lsmod -> r:sctp"
-      - 'd:/etc/modprobe.d/ -> r:\.*.conf -> r:^blacklist\s+sctp'
+      - 'd:/etc/modprobe.d/ -> r:.*\.conf -> r:^blacklist\s+sctp'
 
   ###############################################
   # 3.3 Configure Network Kernel Parameters
@@ -3091,8 +3090,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: any
     rules:
-      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w*|^\s*AllowGroups\s+\w*|^\s*DenyUsers\s+\w*|^\s*DenyGroups\s+\w*'
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+[\w@-]*|^\s*AllowGroups\s+[\w@-]*|^\s*DenyUsers\s+[\w@-]*|^\s*DenyGroups\s+[\w@-]*'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+[\w@-]*|^\s*AllowGroups\s+[\w@-]*|^\s*DenyUsers\s+[\w@-]*|^\s*DenyGroups\s+[\w@-]*'
 
   # 5.1.8 Ensure sshd Banner is configured (Automated)
   - id: 31632
@@ -3107,7 +3106,7 @@ checks:
       - nist_sp_800-53: ["CM-1", "CM-2", "CM-6", "CM-7", "IA-5"]
     condition: all
     rules:
-      - 'c:sshd -T -C user=root -> r:^\s*Banner\s*/\w+'
+      - 'c:sshd -T -C user=root -> r:^\s*Banner\s*/[\w@-]+'
 
   # 5.1.9 Ensure sshd ClientAliveInterval and ClientAliveCountMax are configured (Automated)
   - id: 31637
@@ -3453,7 +3452,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^\s*Defaults\s+use_pty'
-      - 'd:/etc/sudoers.d -> r:\. -> r:^\s*Defaults\s+use_pty'
+      - 'd:/etc/sudoers.d -> r:. -> r:^\s*Defaults\s+use_pty'
 
   # 5.2.3 Ensure sudo log file exists. (Automated)
   - id: 31640
@@ -3478,7 +3477,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^Defaults logfile="'
-      - 'd:/etc/sudoers.d -> r:\. -> r:^Defaults\s+logfile="'
+      - 'd:/etc/sudoers.d -> r:. -> r:^Defaults\s+logfile="'
 
   # 5.2.4 Ensure users must provide password for escalation. (Automated)
   - id: 31641
@@ -3499,7 +3498,7 @@ checks:
     condition: none
     rules:
       - 'f:/etc/sudoers -> !r:^\s*# && r:NOPASSWD'
-      - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:NOPASSWD'
+      - 'd:/etc/sudoers.d -> r:. -> !r:^\s*# && r:NOPASSWD'
 
   # 5.2.5 Ensure re-authentication for privilege escalation is not disabled globally. (Automated)
   - id: 31642
@@ -3519,7 +3518,7 @@ checks:
     condition: none
     rules:
       - 'f:/etc/sudoers -> !r:^\s*# && r:!authenticate'
-      - 'd:/etc/sudoers.d -> r:\. -> !r:^\s*# && r:!authenticate'
+      - 'd:/etc/sudoers.d -> r:. -> !r:^\s*# && r:!authenticate'
 
   # 5.2.6 Ensure sudo authentication timeout is configured correctly. (Automated)
   - id: 31643
@@ -3541,9 +3540,9 @@ checks:
     condition: all
     rules:
       - 'not f:/etc/sudoers -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
-      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
+      - 'not d:/etc/sudoers.d -> r:.+ -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
       - 'not f:/etc/sudoers -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
-      - 'not d:/etc/sudoers.d -> r:\.+ -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
+      - 'not d:/etc/sudoers.d -> r:.+ -> !r:^\s*\t*# && n:timestamp_timeout\s*\t*=\s*\t*(\d+) compare > 15'
 
   # 5.2.7 Ensure access to the su command is restricted. (Automated)
   - id: 31644
@@ -3567,7 +3566,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel.so\s*\t*use_uid'
+      - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel\.so\s*\t*use_uid'
 
   ###############################################
   # 5.3 Pluggable Authentication Modules
@@ -3600,7 +3599,7 @@ checks:
       - pci_dss_4.0: ["6.3.1"]
     condition: all
     rules:
-      - 'c:authselect list -> r:^\w*\s*custom'
+      - 'c:authselect list -> r:^[\w@-]*\s*custom'
       - "f:/etc/authselect/authselect.conf -> r:custom"
 
   # 5.3.2.2 Ensure pam_faillock module is enabled (Automated)
@@ -3621,8 +3620,8 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "f:/etc/pam.d/password-auth -> r:required && r:pam_faillock.so"
-      - "f:/etc/pam.d/system-auth -> r:required && r:pam_faillock.so"
+      - "f:/etc/pam.d/password-auth -> r:required && r:pam_faillock\\.so"
+      - "f:/etc/pam.d/system-auth -> r:required && r:pam_faillock\\.so"
 
   # 5.3.2.3 Ensure pam_pwquality module is enabled (Automated) - Not Implemented
   # 5.3.2.4 Ensure pam_pwhistory module is enabled (Automated) - Not Implemented
@@ -3800,8 +3799,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+requisite\.+pam_pwhistory\.so\.+ && n:remember=(\d+) compare >= 5'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*password\.+sufficient\.+pam_unix\.so\.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password.+requisite.+pam_pwhistory.so.+ && n:remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*password.+sufficient.+pam_unix.so.+ && n:remember=(\d+) compare >= 5'
 
   # 5.3.3.3.2 Ensure password history is enforced for the root user (Automated) - Not Implemented
   # 5.3.3.3.3 Ensure pam_pwhistory includes use_authtok (Automated) - Not Implemented
@@ -3837,8 +3836,8 @@ checks:
     rules:
       - 'f:/etc/libuser.conf -> r:^\s*\t*crypt_style\s*\t*=\s*\t*sha512'
       - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD SHA512'
-      - 'f:/etc/pam.d/password-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
-      - 'f:/etc/pam.d/system-auth -> r:^\s*\t*password\.+sufficient\.+pam_unix\.so'
+      - 'f:/etc/pam.d/password-auth -> r:^\s*\t*password.+sufficient.+pam_unix.so'
+      - 'f:/etc/pam.d/system-auth -> r:^\s*\t*password.+sufficient.+pam_unix.so'
 
   # 5.3.3.4.4 Ensure pam_unix includes use_authtok (Automated) - Not Implemented
 
@@ -3869,7 +3868,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
+      - 'not f:/etc/shadow -> !r:^[\w@-]+:!|^[\w@-]+:[*!+-]: && n:^[\w@-]+:\S*:\S*:\S*:(\d+):\S*:\S*:\S*:\S* compare > 365'
 
   # 5.4.1.2 Ensure minimum password days is configured. (Automated)
   - id: 31652
@@ -3891,7 +3890,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS^\s*\t*(\d+) compare >=1'
-      - 'f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:(\d+): compare < 1'
+      - 'f:/etc/shadow -> !r:^[\w@-]+:[*!+-]: && n:^[\w@-]+:\S*:\d*:(\d+): compare < 1'
 
   # 5.4.1.3 Ensure password expiration warning days is configured (Automated)
   - id: 31653
@@ -3915,8 +3914,8 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
-      - 'f:/etc/shadow -> n:^\w+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
-      - 'not f:/etc/shadow -> r:^\w+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
+      - 'f:/etc/shadow -> n:^[\w@-]+:\S*:\S*:\S*:\S*:(\d+):\S*:\S*:\S* compare >= 7'
+      - 'not f:/etc/shadow -> r:^[\w@-]+:\S*:\S*:\S*:\S*::\S*:\S*:\S*'
 
   # 5.4.1.4 Ensure strong password hashing algorithm is configured. (Automated)
   - id: 31724
@@ -3956,8 +3955,8 @@ checks:
     condition: all
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*\t*(\d+) compare <= 30'
-      - 'f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && n:^\w+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
-      - 'not f:/etc/shadow -> !r:^\w+:!|^\w+:\p: && r:^\w+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
+      - 'f:/etc/shadow -> !r:^[\w@-]+:!|^[\w@-]+:[*!+-]: && n:^[\w@-]+:\S*:\S*:\S*:\S*:\S*:(\d+):\S*:\S* compare <= 30'
+      - 'not f:/etc/shadow -> !r:^[\w@-]+:!|^[\w@-]+:[*!+-]: && r:^[\w@-]+:\S*:\S*:\S*:\S*:\S*::\S*:\S*'
 
   # 5.4.1.6 Ensure all users last password change date is in the past. (Automated)
   - id: 31711
@@ -3991,7 +3990,7 @@ checks:
       - mitre_techniques: ["T1548"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^\s*root && n:^\w+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
+      - 'f:/etc/passwd -> !r:^\s*root && n:^[\w@-]+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'
 
   # 5.4.2.2 Ensure root is the only GID 0 account (Automated)
   - id: 31655
@@ -4246,12 +4245,12 @@ checks:
     condition: all
     rules:
       - "f:/etc/aide.conf"
-      - 'f:/etc/aide.conf -> r:/sbin/auditctl\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide.conf -> r:/sbin/auditd\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide.conf -> r:/sbin/ausearch\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide.conf -> r:/sbin/aureport\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide.conf -> r:/sbin/autrace\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
-      - 'f:/etc/aide.conf -> r:/sbin/augenrules\s*\t*p\pi\pn\pu\pg\ps\pb\pacl\pxattrs\psha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditctl\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/auditd\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/ausearch\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/aureport\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/autrace\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
+      - 'f:/etc/aide/aide.conf -> r:/sbin/augenrules\s*\t*p[*!+-]i[*!+-]n[*!+-]u[*!+-]g[*!+-]s[*!+-]b[*!+-]acl[*!+-]xattrs[*!+-]sha512'
 
   ###############################################
   # 6.2 System Logging
@@ -4569,10 +4568,10 @@ checks:
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: any
     rules:
-      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* @@\.+'
-      - 'f:/etc/rsyslog.conf -> !r:# && r:^*.* action && r:target="'
-      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> !r:# && r:^*.* @@\.+'
-      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> !r:# && r:^*.* action && r:target="'
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^\*\.\* @@.+'
+      - 'f:/etc/rsyslog.conf -> !r:# && r:^\*\.\* action && r:target="'
+      - 'd:/etc/rsyslog.d/ -> r:\*\.conf -> !r:# && r:^\*\.\* @@.+'
+      - 'd:/etc/rsyslog.d/ -> r:\*\.conf -> !r:# && r:^\*\.\* action && r:target="'
 
   # 6.2.3.7 Ensure rsyslog is not configured to receive logs from a remote client. (Automated)
   - id: 31605
@@ -4597,7 +4596,7 @@ checks:
     condition: none
     rules:
       - 'f:/etc/rsyslog.conf -> !r:^\s*# && r:ModLoad imtcp|InputTCPServerRun|load="imtcp"|type="imtcp"'
-      - 'd:/etc/rsyslog.d/ -> r:*.conf -> !r:\s*# && r:ModLoad imtcp|InputTCPServerRun|load="imtcp"|type="imtcp"'
+      - 'd:/etc/rsyslog.d/ -> r:\*\.conf -> !r:\s*# && r:ModLoad imtcp|InputTCPServerRun|load="imtcp"|type="imtcp"'
 
   # 6.2.3.8 Ensure rsyslog logrotate is configured (Manual) - Not Implemented
 
@@ -4695,7 +4694,7 @@ checks:
       - pci_dss_4.0: ["10.2.1", "10.2.1.1", "10.2.1.2", "10.2.1.3", "10.2.1.4", "10.2.1.5", "10.2.1.6", "10.2.1.7", "10.2.2", "5.3.4", "6.4.1", "6.4.2"]
     condition: all
     rules:
-      - 'c:grubby --info=ALL -> n:^args=\.*\saudit_backlog_limit=(\d+) compare >= 8192'
+      - 'c:grubby --info=ALL -> n:^args=.*\saudit_backlog_limit=(\d+) compare >= 8192'
 
   # 6.3.1.4 Ensure auditd service is enabled and active (Automated)
   - id: 31587
@@ -4815,10 +4814,10 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - d:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
-      - d:/etc/audit/rules.d/ -> r:\.*.rules -> r:-w /etc/sudoers.d -p wa -k scope|-w /etc/sudoers.d -p wa key=scope
+      - d:/etc/audit/rules.d/ -> r:.*\.rules -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
+      - d:/etc/audit/rules.d/ -> r:.*\.rules -> r:-w /etc/sudoers\.d -p wa -k scope|-w /etc/sudoers\.d -p wa key=scope
       - c:auditctl -l -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
-      - c:auditctl -l -> r:-w /etc/sudoers.d -p wa -k scope|-w /etc/sudoers.d -p wa key=scope
+      - c:auditctl -l -> r:-w /etc/sudoers\.d -p wa -k scope|-w /etc/sudoers\.d -p wa key=scope
 
   # 6.3.3.2 Ensure actions as another user are always logged. (Automated) - Not Implemented
   # 6.3.3.3 Ensure events that modify the sudo log file are collected. (Automated) - Not Implemented
@@ -4912,7 +4911,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: none
     rules:
-      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> r:\\w+ -> !r:000|040|200|400|600|240|440|640"
+      - "c:find /etc/audit/ -type f \\( -name '*.conf' -o -name '*.rules' \\) -exec stat -Lc \"%n %a\" {} + -> r:[\\w@-]+ -> !r:000|040|200|400|600|240|440|640"
 
   # 6.3.4.6 Ensure audit configuration files owner is configured (Automated)
   - id: 31595
@@ -4981,12 +4980,12 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -c "%n %a" /sbin/auditctl -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
-      - 'c:stat -c "%n %a" /sbin/aureport -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
-      - 'c:stat -c "%n %a" /sbin/ausearch -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
-      - 'c:stat -c "%n %a" /sbin/autrace -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
-      - 'c:stat -c "%n %a" /sbin/auditd -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
-      - 'c:stat -c "%n %a" /sbin/augenrules -> r:\w+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/auditctl -> r:[\w@-]+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/aureport -> r:[\w@-]+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/ausearch -> r:[\w@-]+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/autrace -> r:[\w@-]+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/auditd -> r:[\w@-]+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
+      - 'c:stat -c "%n %a" /sbin/augenrules -> r:[\w@-]+ && r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
 
   # 6.3.4.9 Ensure audit tools owner is configured (Automated)
   - id: 31598
@@ -5307,7 +5306,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^\w+:x:'
+      - 'f:/etc/passwd -> !r:^[\w@-]+:x:'
 
   # 7.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
   - id: 31665
@@ -5328,7 +5327,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> r:^\w+::'
+      - 'f:/etc/shadow -> r:^[\w@-]+::'
 
   # 7.2.3 Ensure all groups in /etc/passwd exist in /etc/group (Automated)
   - id: 31697
