@@ -54,8 +54,8 @@ checks:
       - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitRootLogin no'
       - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitEmptyPasswords no'
       - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Banner /etc/issue'
-      - 'not c:sh -c "ls -la /opt/ssh/etc/sshd_config | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
-      - 'not c:sh -c "ls -la /opt/ssh/etc/ssh_config | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /opt/ssh/etc/sshd_config | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
+      - 'not c:sh -c "ls -la /opt/ssh/etc/ssh_config | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
 
   #################################################################
   # 1.2 Minimize inetd network services
@@ -80,9 +80,9 @@ checks:
       - 'not f:/etc/inetd.conf -> r:^\s*dtspc'
       - 'not f:/etc/inetd.conf -> r:^\s*exec'
       - 'not f:/etc/inetd.conf -> r:^\s*ntalk'
-      - 'not f:/etc/inetd.conf -> r:^\s*rpc.rwalld'
-      - 'not f:/etc/inetd.conf -> r:^\s*rpc.sprayd'
-      - 'not f:/etc/inetd.conf -> r:^\s*rpc.cmsd'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.rwalld'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.sprayd'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.cmsd'
       - 'not f:/etc/inetd.conf -> r:^\s*kcms_server'
       - 'not f:/etc/inetd.conf -> r:^\s*printer'
       - 'not f:/etc/inetd.conf -> r:^\s*shell'
@@ -94,17 +94,17 @@ checks:
       - 'not f:/etc/inetd.conf -> r:^\s*instl_boots'
       - 'not f:/etc/inetd.conf -> r:^\s*registrar'
       - 'not f:/etc/inetd.conf -> r:^\s*recserv'
-      - 'not f:/etc/inetd.conf -> r:^\s*rpc.rstatd'
-      - 'not f:/etc/inetd.conf -> r:^\s*rpc.rusersd'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.rstatd'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.rusersd'
       - 'not f:/etc/inetd.conf -> r:^\s*telnet'
       - 'not f:/etc/inetd.conf -> r:^\s*ftp'
       - 'not f:/etc/inetd.conf -> r:^\s*tftp'
       - 'not f:/etc/inetd.conf -> r:^\s*bootps'
       - 'not f:/etc/inetd.conf -> r:^\s*kshell'
       - 'not f:/etc/inetd.conf -> r:^\s*klogin'
-      - 'not f:/etc/inetd.conf -> r:^\s*rpc.rquotad'
-      - 'not f:/etc/inetd.conf -> r:^\s*rpc.ttdbserver'
-      - 'not c:sh -c "ls -la /etc/inetd.conf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.rquotad'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.ttdbserver'
+      - 'not c:sh -c "ls -la /etc/inetd.conf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
 
   - id: 25003
     title: "Only enable telnet if absolutely necessary."
@@ -182,7 +182,7 @@ checks:
       - cis: ["1.2.8"]
     condition: all
     rules:
-      - 'not f:/etc/inetd.conf -> r:^\s*rpc.ttdbserver'
+      - 'not f:/etc/inetd.conf -> r:^\s*rpc\.ttdbserver'
 
   - id: 25010
     title: "Only enable Kerberos-related daemons if absolutely necessary."
@@ -279,7 +279,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/rc.config.d/mailservs -> r:SENDMAIL_SERVER=0"
-      - 'c:crontab -l -> r:^\d+\.*sendmail -q'
+      - 'c:crontab -l -> r:^\d+.*sendmail -q'
 
   - id: 25017
     title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed."
@@ -450,7 +450,7 @@ checks:
       - "c:ndd -get /dev/ip ip_respond_to_timestamp_broadcast -> r:^0$"
       - "c:ndd -get /dev/ip ip_respond_to_address_mask_broadcast -> r:^0$"
       - "c:ndd -get /dev/ip ip_respond_to_echo_broadcast -> r:^0$"
-      - 'not c:sh -c "ls -la /etc/rc.config.d/nddconf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /etc/rc.config.d/nddconf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
 
   - id: 25028
     title: "Use more random TCP sequence numbers."
@@ -462,8 +462,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "not c:ndd -get /dev/tcp tcp_isn_passphrase -> r:^\\w+$"
-      - 'not c:sh -c "ls -la /sbin/rc2.d/S999tcpisn | grep -v -e ^-r-xr-xr-x.*root.*bin | grep -v -e ^d | grep -v total" -> r:^\w'
+      - "not c:ndd -get /dev/tcp tcp_isn_passphrase -> r:^[\\w@-]+$"
+      - 'not c:sh -c "ls -la /sbin/rc2.d/S999tcpisn | grep -v -e ^-r-xr-xr-x.*root.*bin | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
 
   - id: 25029
     title: "Additional network parameter modifications."
@@ -477,7 +477,7 @@ checks:
     rules:
       - "c:ndd -get /dev/ip ip_forwarding -> r:^0$"
       - "c:ndd -get /dev/ip ip_send_redirects -> r:^0$"
-      - 'not c:sh -c "ls -la /etc/rc.config.d/nddconf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /etc/rc.config.d/nddconf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
 
   #################################################################
   # 1.5 File/Directory Permissions/Access
@@ -494,20 +494,20 @@ checks:
       - cis_level: ["1"]
     condition: none
     rules:
-      - 'c:find /bin \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /diskaldata \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /lib \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /opt \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /tmp \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /core \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /etc \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /sbin \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /usr \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /dev \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /home \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /net \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /stand \( -nouser -o -nogroup \) -> r:\w'
-      - 'c:find /var \( -nouser -o -nogroup \) -> r:\w'
+      - 'c:find /bin \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /diskaldata \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /lib \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /opt \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /tmp \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /core \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /etc \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /sbin \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /usr \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /dev \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /home \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /net \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /stand \( -nouser -o -nogroup \) -> r:[\w@-]'
+      - 'c:find /var \( -nouser -o -nogroup \) -> r:[\w@-]'
 
   #################################################################
   # 1.6 System Access, Authentication, and Authorization
@@ -546,7 +546,7 @@ checks:
       - "f:/etc/ftpd/ftpusers -> r:^nobody$"
       - "f:/etc/ftpd/ftpusers -> r:^hpdb$"
       - "f:/etc/ftpd/ftpusers -> r:^useradm$"
-      - 'not c:sh -c "ls -la /etc/ftpd/ftpusers | grep -v -e ^-rw-------.*bin.*bin | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /etc/ftpd/ftpusers | grep -v -e ^-rw-------.*bin.*bin | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
 
   - id: 25033
     title: "Prevent Syslog from accepting messages from the network."
@@ -571,7 +571,7 @@ checks:
     condition: all
     rules:
       - "f:/etc/dt/config/Xconfig"
-      - 'f:/etc/dt/config/Xconfig -> r:Dtlogin.requestPort:\s*0'
+      - 'f:/etc/dt/config/Xconfig -> r:Dtlogin\.requestPort:\s*0'
 
   - id: 25035
     title: "Configure IPFilter to allow only select communication."
@@ -602,8 +602,8 @@ checks:
       - "f:/var/adm/cron/at.allow"
       - "f:/var/adm/cron/cron.allow -> r:root"
       - "f:/var/adm/cron/at.allow -> r:root"
-      - 'not c:sh -c "ls -la /var/adm/cron/cron.allow | grep -v -e ^-r--------.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
-      - 'not c:sh -c "ls -la /var/adm/cron/at.allow | grep -v -e ^-r--------.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /var/adm/cron/cron.allow | grep -v -e ^-r--------.*root.*sys | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
+      - 'not c:sh -c "ls -la /var/adm/cron/at.allow | grep -v -e ^-r--------.*root.*sys | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
 
   - id: 25037
     title: "Restrict crontab file permissions."
@@ -615,7 +615,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'not c:sh -c "ls -la /var/spool/cron/crontabs | grep -v -e ^-rwxrwx---.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /var/spool/cron/crontabs | grep -v -e ^-rwxrwx---.*root.*sys | grep -v -e ^d | grep -v total" -> r:^[\w@-]'
 
   - id: 25038
     title: "Restrict root logins to system console."
@@ -715,7 +715,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'not c:logins -p -> r:^\w'
+      - 'not c:logins -p -> r:^[\w@-]'
 
   - id: 25044
     title: "Set account expiration parameters on active accounts."
@@ -758,8 +758,8 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - "not f:/etc/passwd -> r:^+:"
-      - "not f:/etc/group -> r:^+:"
+      - "not f:/etc/passwd -> r:^\\+:"
+      - "not f:/etc/group -> r:^\\+:"
 
   - id: 25047
     title: "Set default umask for users."
@@ -808,8 +808,8 @@ checks:
     rules:
       - "f:/etc/motd"
       - "f:/etc/issue"
-      - 'c:ls -la /etc/motd -> r:^-rw-r--r--\.*root\.*sys'
-      - 'c:ls -la /etc/issue -> r:^-rw-r--r--\.*root\.*root'
+      - 'c:ls -la /etc/motd -> r:^-rw-r--r--.*root.*sys'
+      - 'c:ls -la /etc/issue -> r:^-rw-r--r--.*root.*root'
 
   - id: 25050
     title: "Create warning banners for FTP daemon."
@@ -823,6 +823,6 @@ checks:
     rules:
       - "d:/etc/ftpd"
       - "f:/etc/ftpd/ftpaccess -> r:^banner /etc/issue"
-      - 'f:/etc/issue -> r:\w'
+      - 'f:/etc/issue -> r:[\w@-]'
       - 'c:sh -c "ls -la /etc/ftpd | grep -e ^-rw-------.*root.*sys | grep -v total" -> r:ftpd'
       - 'c:sh -c "ls -la /etc/ftpd/ftpaccess | grep -e ^-rw-------.*root.*sys | grep -v total" -> r:ftpaccess'

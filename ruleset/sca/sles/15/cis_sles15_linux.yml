@@ -528,7 +528,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/zypp/zypp.conf -> r:^gpgcheck\s*\t*=\s*\t*1'
-      - 'not d:/etc/zypp/repos.d/ -> r:\.+.repo -> n:^gpgcheck\s*\t*=\s*\t*(\d+) compare \!= 1'
+      - 'not d:/etc/zypp/repos.d/ -> r:.+\.repo -> n:^gpgcheck\s*\t*=\s*\t*(\d+) compare \!= 1'
 
   # 1.3.1 Ensure sudo is installed. (Automated)
   - id: 21023
@@ -567,7 +567,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*use_pty'
-      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:.* -> r:^\s*\t*Defaults\s*\t*use_pty'
 
   # 1.3.3 Ensure sudo log file exists. (Automated)
   - id: 21025
@@ -589,7 +589,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
-      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
+      - 'd:/etc/sudoers.d -> r:.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
   # 1.4.1 Ensure AIDE is installed. (Automated)
   - id: 21026
@@ -680,7 +680,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:stat /boot/grub2/grub.cfg -> r:Access:\s*\(0\d00/-\w\w\w------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /boot/grub2/grub.cfg -> r:Access:\s*\(0\d00/-[\w@-][\w@-][\w@-]------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
   # 1.5.3 Ensure authentication required for single user mode. (Automated)
   - id: 21030
@@ -721,9 +721,9 @@ checks:
       - soc_2: ["CC6.8"]
     condition: any
     rules:
-      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
-      - 'f:/etc/sysctl.conf -> r:^\s*kernel.randomize_va_space\s*=\s*2'
-      - 'd:/etc/sysctl.d/ -> r:\.+ -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel\.randomize_va_space\s*=\s*2'
+      - 'f:/etc/sysctl.conf -> r:^\s*kernel\.randomize_va_space\s*=\s*2'
+      - 'd:/etc/sysctl.d/ -> r:.+ -> r:^\s*kernel\.randomize_va_space\s*=\s*2'
 
   # 1.6.4 Ensure prelink is disabled. (Automated)
   - id: 21032
@@ -984,9 +984,9 @@ checks:
       - "f:/etc/dconf/profile/gdm -> r:user-db:user"
       - "f:/etc/dconf/profile/gdm -> r:system-db:gdm"
       - "f:/etc/dconf/profile/gdm -> r:file-db:/usr/share/gdm/greeter-dconf-defaults"
-      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-enable=true'
-      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:banner-message-text='
-      - 'd:/etc/dconf/db/gdm.d -> r:\.+ -> r:disable-user-list=true'
+      - 'd:/etc/dconf/db/gdm.d -> r:.+ -> r:banner-message-enable=true'
+      - 'd:/etc/dconf/db/gdm.d -> r:.+ -> r:banner-message-text='
+      - 'd:/etc/dconf/db/gdm.d -> r:.+ -> r:disable-user-list=true'
 
   # 2.1.1 Ensure xinetd is not installed. (Automated)
   - id: 21044
@@ -1061,7 +1061,7 @@ checks:
     rules:
       - "f:/etc/chrony.conf"
       - 'f:/etc/chrony.conf -> r:^\s*\t*server|^\s*\t*pool'
-      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS\.*-u chrony'
+      - 'f:/etc/sysconfig/chronyd -> r:^\s*\t*OPTIONS.*-u chrony'
 
   # 2.2.2 Ensure X11 Server components are not installed. (Automated)
   - id: 21048
@@ -1338,7 +1338,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - 'not c:ss -lntu -> r:\.*:25\s* && !r:127.0.0.1:25\.*|::1:25\.*'
+      - 'not c:ss -lntu -> r:.*:25\s* && !r:127\.0\.0\.1:25.*|::1:25.*'
 
   # 2.2.17 Ensure rsync is not installed or the rsyncd service is masked. (Automated)
   - id: 21062
@@ -1528,9 +1528,9 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
-      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
-      - 'f:/etc/sysctl.conf -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
   # 3.3.6 Ensure bogus ICMP responses are ignored. (Automated)
   - id: 21071
@@ -1550,9 +1550,9 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
-      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'f:/etc/sysctl.conf -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
   # 3.3.7 Ensure Reverse Path Filtering is enabled. (Automated) - Not Implemented
 
@@ -1574,9 +1574,9 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: any
     rules:
-      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
-      - 'f:/etc/sysctl.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
-      - 'd:->/etc/sysctl.d/ -> r:\.*.conf -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'c:sysctl net.ipv4.tcp_syncookies -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
+      - 'f:/etc/sysctl.conf -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
+      - 'd:->/etc/sysctl.d/ -> r:.*\.conf -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
 
   # 3.3.9 Ensure IPv6 router advertisements are not accepted. (Automated) - Not Implemented
 
@@ -1735,7 +1735,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:nft list tables -> r:\w+'
+      - 'c:nft list tables -> r:[\w@-]+'
 
   # 3.5.2.5 Ensure base chains exist. (Automated)
   - id: 21080
@@ -1844,7 +1844,7 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - "f:/etc/nftables.conf -> r:include *"
+      - "f:/etc/nftables.conf -> r:include \\*"
 
   # 3.5.3.1.1 Ensure iptables package is installed. (Automated)
   - id: 21085
@@ -1948,9 +1948,9 @@ checks:
       - soc_2: ["CC6.6"]
     condition: all
     rules:
-      - 'c:iptables -L INPUT -v -n -> r:\.*ACCEPT\.*all\.*lo\.**\.*0.0.0.0/0\.*0.0.0.0/0'
-      - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
-      - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*ACCEPT.*all.*lo.*\*.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
+      - 'c:iptables -L INPUT -v -n -> r:.*DROP.*all.*\*.*\*.*127\.0\.0\.0/8.*0\.0\.0\.0/0'
+      - 'c:iptables -L OUTPUT -v -n -> r:.*ACCEPT.*all.*\*.*lo.*0\.0\.0\.0/0.*0\.0\.0\.0/0'
 
   # 3.5.3.2.3 Ensure outbound and established connections are configured. (Manual) - Not Implemented
 
@@ -2162,10 +2162,10 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday|settimeofday -S stime && r:-k time-change|key=time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:clock_settime && r:-k time-change|key=time-change'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday|settimeofday -S stime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:clock_settime && r:-k time-change|key=time-change'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change'
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:adjtimex && r:settimeofday|settimeofday -S stime && r:-k time-change|key=time-change"
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S && r:clock_settime && r:-k time-change|key=time-change"
       - "c:auditctl -l -> r:^-w && r:/etc/localtime && r:-p wa && r:-k time-change|key=time-change"
@@ -2188,12 +2188,12 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/shadow && r:-p wa && r:-k identity|key=identity'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/security/opasswd && r:-p wa && r:-k identity|key=identity'
       - "c:auditctl -l -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity"
       - "c:auditctl -l -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity|key=identity"
       - "c:auditctl -l -> r:^-w && r:/etc/gshadow && r:-p wa && r:-k identity|key=identity"
@@ -2218,15 +2218,15 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sysconfig/network && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/issue\.net && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/sysconfig/network && r:-p wa && r:-k system-locale|key=system-locale'
       - "c:auditctl -l -> r:^-a && r:exit,always|always,exit && r:-F arch=b64|-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|-F key=system-locale"
       - "c:auditctl -l -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale|key=system-locale"
-      - "c:auditctl -l -> r:^-w && r:/etc/issue.net && r:-p wa && r:-k system-locale|key=system-locale"
+      - "c:auditctl -l -> r:^-w && r:/etc/issue\\.net && r:-p wa && r:-k system-locale|key=system-locale"
       - "c:auditctl -l -> r:^-w && r:/etc/hosts && r:-p wa && r:-k system-locale|key=system-locale"
       - "c:auditctl -l -> r:^-w && r:/etc/sysconfig/network && r:-p wa && r:-k system-locale|key=system-locale"
 
@@ -2248,9 +2248,9 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy'
       - "c:auditctl -l -> r:^-w && r:/etc/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
       - "c:auditctl -l -> r:^-w && r:/usr/share/selinux && r:-p wa && r:-k MAC-policy|key=MAC-policy"
 
@@ -2272,10 +2272,10 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins|key=logins'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins|key=logins'
       - "c:auditctl -l -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins"
       - "c:auditctl -l -> r:^-w && r:/var/run/faillock && r:-p wa && r:-k logins|key=logins"
       - "c:auditctl -l -> r:^-w && r:/var/log/tallylog && r:-p wa && r:-k logins|key=logins"
@@ -2298,10 +2298,10 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session'
       - "c:auditctl -l -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session"
       - "c:auditctl -l -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k session|key=session"
       - "c:auditctl -l -> r:^-w && r:/var/log/btmp && r:-p wa && r:-k session|key=session"
@@ -2328,8 +2328,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
       - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b32|-F arch=b64 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
 
   # 4.1.13 Ensure file deletion events by users are collected. (Automated)
@@ -2350,8 +2350,8 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
       - 'c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
 
   # 4.1.14 Ensure changes to system administration scope (sudoers) is collected. (Automated)
@@ -2373,11 +2373,11 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\\s*\t*scope'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/sudoers\.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
       - 'c:auditctl -l -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope|key=\\s*\t*scope'
-      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
+      - 'c:auditctl -l -> r:^-w && r:/etc/sudoers\.d && r:-p wa && r:-k scope|key=\\s*\t*scope'
 
   # 4.1.15 Ensure system administrator actions (sudolog) are collected. (Automated) - Not Implemented
 
@@ -2399,11 +2399,11 @@ checks:
       - soc_2: ["CC5.2", "CC7.2"]
     condition: all
     rules:
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules'
-      - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/sbin/modprobe && r:-p x && r:-k modules|-F key=modules'
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:-k modules|-F key=modules"
       - "c:auditctl -l -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules|-F key=modules"
       - "c:auditctl -l -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules|-F key=modules"
@@ -2429,8 +2429,8 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit"
-      - "d:/etc/audit/rules.d -> r:^99-finalize.rules$"
-      - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$ -> r:^\s*\t*-e 2$'
+      - "d:/etc/audit/rules.d -> r:^99-finalize\\.rules$"
+      - 'd:/etc/audit/rules.d -> r:^99-finalize\.rules$ -> r:^\s*\t*-e 2$'
 
   # 4.2.1.1 Ensure rsyslog is installed. (Automated)
   - id: 21110
@@ -2493,7 +2493,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
-      - 'd:/etc/rsyslog.d/ -> r:\.*.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
+      - 'd:/etc/rsyslog.d/ -> r:.*\.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0 && r:^\$FileCreateMode 0\d40|^\$FileCreateMode 0\d00'
 
   # 4.2.1.4 Ensure logging is configured. (Manual) - Not Implemented
   # 4.2.1.5 Ensure rsyslog is configured to send logs to a remote log host. (Automated) - Not Implemented
@@ -2838,8 +2838,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1", "CC6.3"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
-      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+\w+|^\s*AllowGroups\s+\w+|^\s*DenyUsers\s+\w+|^\s*DenyGroups\s+\w+'
+      - 'c:sshd -T -> r:^\s*AllowUsers\s+[\w@-]+|^\s*AllowGroups\s+[\w@-]+|^\s*DenyUsers\s+[\w@-]+|^\s*DenyGroups\s+[\w@-]+'
+      - 'f:/etc/ssh/sshd_config -> r:^\s*AllowUsers\s+[\w@-]+|^\s*AllowGroups\s+[\w@-]+|^\s*DenyUsers\s+[\w@-]+|^\s*DenyGroups\s+[\w@-]+'
 
   # 5.2.5 Ensure SSH LogLevel is appropriate. (Automated)
   - id: 21129
@@ -3044,7 +3044,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - "not c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
+      - "not c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh\\.com|umac-128@openssh\\.com|hmac-md5-etm@openssh\\.com|hmac-md5-96-etm@openssh\\.com|hmac-ripemd160-etm@openssh\\.com|hmac-sha1-etm@openssh\\.com|hmac-sha1-96-etm@openssh\\.com|umac-64-etm@openssh\\.com|umac-128-etm@openssh\\.com"
 
   # 5.2.15 Ensure only strong Key Exchange algorithms are used. (Automated)
   - id: 21139
@@ -3129,7 +3129,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'c:sshd -T -> r:^\s*banner\s*\t*/etc/issue.net'
+      - 'c:sshd -T -> r:^\s*banner\s*\t*/etc/issue\.net'
 
   # 5.2.19 Ensure SSH PAM is enabled. (Automated)
   - id: 21143
@@ -3233,8 +3233,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^\s*# && r:password && r:requisite|required && r:pam_cracklib.so && n:minlen\s*=\s*(\d+) compare >= 14'
-      - 'f:/etc/pam.d/common-password -> !r:^\s*# && r:password && r:requisite|required && r:pam_cracklib.so && r:dcredit\s*=\s*-1 && r:ucredit\s*=\s*-1 && r:ocredit\s*=\s*-1 && r:lcredit\s*=\s*-1'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*# && r:password && r:requisite|required && r:pam_cracklib\.so && n:minlen\s*=\s*(\d+) compare >= 14'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*# && r:password && r:requisite|required && r:pam_cracklib\.so && r:dcredit\s*=\s*-1 && r:ucredit\s*=\s*-1 && r:ocredit\s*=\s*-1 && r:lcredit\s*=\s*-1'
 
   # 5.3.2 Ensure lockout for failed password attempts is configured. (Automated)
   - id: 21148
@@ -3254,9 +3254,9 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/login -> !r:^\s*\t*# && r:auth && r:required|requisite && r:pam_tally2.so && n:deny\s*\t*=\s*\t*(\d+) compare <= 5 && r:onerr\s*\t*=\s*\t*fail && r:unlock_time='
-      - 'f:/etc/pam.d/login -> !r:^\s*\t*# && r:auth && r:required|requisite && r:pam_unix.so && r:try_first_pass'
-      - 'f:/etc/pam.d/common-account -> !r:^\s*\t*# && r:account && r:required|requisite && r:pam_tally2.so'
+      - 'f:/etc/pam.d/login -> !r:^\s*\t*# && r:auth && r:required|requisite && r:pam_tally2\.so && n:deny\s*\t*=\s*\t*(\d+) compare <= 5 && r:onerr\s*\t*=\s*\t*fail && r:unlock_time='
+      - 'f:/etc/pam.d/login -> !r:^\s*\t*# && r:auth && r:required|requisite && r:pam_unix\.so && r:try_first_pass'
+      - 'f:/etc/pam.d/common-account -> !r:^\s*\t*# && r:account && r:required|requisite && r:pam_tally2\.so'
 
   # 5.3.3 Ensure password reuse is limited. (Automated)
   - id: 21149
@@ -3273,7 +3273,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:password && r:required|requisite && r:pam_pwhistory.so && n:deny\s*\t*=\s*\t*(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:password && r:required|requisite && r:pam_pwhistory\.so && n:deny\s*\t*=\s*\t*(\d+) compare >= 5'
 
   # 5.4.1.1 Ensure password hashing algorithm is SHA-512. (Automated)
   - id: 21150
@@ -3315,7 +3315,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
-      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:\d+:(\d+): compare > 365'
+      - 'not f:/etc/shadow -> n:^[\w@-]+:\$.*:\d+:\d+:(\d+): compare > 365'
 
   # 5.4.1.3 Ensure minimum days between password changes is configured. (Automated)
   - id: 21152
@@ -3336,7 +3336,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
-      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:(\d+): compare < 1'
+      - 'not f:/etc/shadow -> n:^[\w@-]+:\$.*:\d+:(\d+): compare < 1'
 
   # 5.4.1.4 Ensure password expiration warning days is 7 or more. (Automated)
   - id: 21153
@@ -3357,7 +3357,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
-      - 'not f:/etc/shadow -> n:^\w+:\$\.*:\d+:\d+:\d+:(\d+): compare < 7'
+      - 'not f:/etc/shadow -> n:^[\w@-]+:\$.*:\d+:\d+:\d+:(\d+): compare < 7'
 
   # 5.4.1.5 Ensure inactive password lock is 30 days or less. (Automated)
   - id: 21154
@@ -3378,8 +3378,8 @@ checks:
     rules:
       - "not c:useradd -D -> r:^INACTIVE=-1"
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
-      - 'not f:/etc/shadow -> n:^\w+:\w+:\w+:\w+:\w+:\w+:(\d+): compare > 30'
-      - 'not f:/etc/shadow -> r:^\w+:\w+:\w+:\w+:\w+:\w+:-1:'
+      - 'not f:/etc/shadow -> n:^[\w@-]+:[\w@-]+:[\w@-]+:[\w@-]+:[\w@-]+:[\w@-]+:(\d+): compare > 30'
+      - 'not f:/etc/shadow -> r:^[\w@-]+:[\w@-]+:[\w@-]+:[\w@-]+:[\w@-]+:[\w@-]+:-1:'
 
   # 5.4.1.6 Ensure all users last password change date is in the past. (Automated) - Not Implemented
   # 5.4.2 Ensure system accounts are secured. (Automated) - Not Implemented
@@ -3402,7 +3402,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> !r:^\s*\t*# && r:root:\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^\s*\t*# && r:root:[\w@-]+:[\w@-]+:0:'
 
   # 5.4.4 Ensure default user shell timeout is configured. (Automated) - Not Implemented
   # 5.4.5 Ensure default user umask is configured. (Automated) - Not Implemented
@@ -3427,7 +3427,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/pam.d/su -> !r:^\s*\t*# && r:auth && r:required && r:pam_wheel.so && r:use_uid && r:group=\w+'
+      - 'f:/etc/pam.d/su -> !r:^\s*\t*# && r:auth && r:required && r:pam_wheel\.so && r:use_uid && r:group=[\w@-]+'
 
   # 6.1.1 Audit system file permissions. (Manual) - Not Implemented
 
@@ -3582,7 +3582,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'not f:/etc/passwd -> !r:^\w+:x:'
+      - 'not f:/etc/passwd -> !r:^[\w@-]+:x:'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
   - id: 21164
@@ -3600,7 +3600,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'not f:/etc/shadow -> r:^\w+::'
+      - 'not f:/etc/shadow -> r:^[\w@-]+::'
 
   # 6.2.3 Ensure root is the only UID 0 account. (Automated)
   - id: 21165
@@ -3620,7 +3620,7 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'not f:/etc/passwd -> !r:^\s*\t*# && !r:^root: && r:^\w+:\w+:0:'
+      - 'not f:/etc/passwd -> !r:^\s*\t*# && !r:^root: && r:^[\w@-]+:[\w@-]+:0:'
 
   # 6.2.4 Ensure root PATH Integrity. (Automated) - Not Implemented
   # 6.2.5 Ensure all users' home directories exist. (Automated) - Not Implemented
@@ -3655,4 +3655,4 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'f:/etc/group -> r:shadow:\w*:\d+:$'
+      - 'f:/etc/group -> r:shadow:[\w@-]*:\d+:$'

@@ -1,4 +1,4 @@
-name: Syscollector test on Ubuntu
+name: 5.X - Syscollector test on Ubuntu
 
 on:
   workflow_dispatch:

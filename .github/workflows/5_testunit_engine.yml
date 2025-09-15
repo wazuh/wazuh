@@ -1,4 +1,4 @@
-name: Engine Unit Tests
+name: 5.X - Engine - Unit tests
 
 on:
   # Triggers the workflow on pull request but only changes in the src/engine/ directory.

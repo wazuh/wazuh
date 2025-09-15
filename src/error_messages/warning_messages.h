@@ -65,7 +65,7 @@
 #define FIM_WARN_FORMAT_PATH                    "(6947): Error formatting path: '%s'"
 #define FIM_DATABASE_NODES_COUNT_FAIL           "(6948): Unable to get the number of entries in database."
 #define FIM_CJSON_ERROR_CREATE_ITEM             "(6949): Cannot create a cJSON item"
-#define FIM_REGISTRY_ACC_SID                    "(6950): Error in LookupAccountSid getting %s. (%ld): %s"
+#define FIM_REGISTRY_ACC_SID                    "(6950): Error in LookupAccountSidW getting %s. (%ld): %s"
 #define FIM_WHODATA_ERROR_CHECKING_POL          "(6951): Unable to check the necessary policies for whodata: %s (%lu)."
 #define FIM_WHODATA_POLICY_CHANGE_CHECKER       "(6952): Audit policy change detected. Switching directories to realtime."
 #define FIM_WHODATA_POLICY_CHANGE_CHANNEL       "(6953): Event 4719 received due to changes in audit policy. Switching directories to realtime."

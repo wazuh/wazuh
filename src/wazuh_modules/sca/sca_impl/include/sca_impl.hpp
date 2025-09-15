@@ -10,6 +10,7 @@
 #include <json.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <string>
@@ -44,7 +45,7 @@ class SecurityConfigurationAssessment
         /// @copydoc IModule::Setup
         void Setup(bool enabled,
                    bool scanOnStart,
-                   std::time_t scanInterval,
+                   std::chrono::seconds scanInterval,
                    const int commandsTimeout,
                    const bool remoteEnabled,
                    const std::vector<sca::PolicyData>& policies,
@@ -129,7 +130,7 @@ class SecurityConfigurationAssessment
         bool m_scanOnStart = true;
 
         /// @brief Scan interval in seconds
-        std::time_t m_scanInterval = 3600;
+        std::chrono::seconds m_scanInterval = std::chrono::seconds(3600);
 
         /// @brief Flag to keep the module running
         std::atomic<bool> m_keepRunning {true};

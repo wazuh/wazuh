@@ -23,7 +23,7 @@ requirements:
   description: "Requirements for running the CIS benchmark against Solaris 11"
   condition: all
   rules:
-    - 'f:/etc/release -> r:^\s*Oracle\s+Solaris\s+11.4\s+'
+    - 'f:/etc/release -> r:^\s*Oracle\s+Solaris\s+11\.4\s+'
 
 checks:
   # 2 Disable Unnecessary Services
@@ -60,7 +60,7 @@ checks:
       - cis: ["2.3"]
     condition: none
     rules:
-      - 'c:netstat -an -> r:.25\s*\t*|:25\s*\t* && !r:127.0.0.1|::1'
+      - 'c:netstat -an -> r:\.25\s*\t*|:25\s*\t* && !r:127\.0\.0\.1|::1'
 
   - id: 23503
     title: "Disable RPC Encryption Key."
@@ -266,8 +266,8 @@ checks:
       - cis: ["3.7"]
     condition: all
     rules:
-      - "c:sxadm status -po extension,status,configuration nxheap -> r:nxheap:enabled.tagged-files:default.default"
-      - "c:sxadm status -po extension,status,configuration nxstack -> r:nxstack:enabled.all:default.default"
+      - "c:sxadm status -po extension,status,configuration nxheap -> r:nxheap:enabled\\.tagged-files:default\\.default"
+      - "c:sxadm status -po extension,status,configuration nxstack -> r:nxstack:enabled\\.all:default\\.default"
 
   - id: 23521
     title: "Restrict Core Dumps to Protected Directory."
@@ -497,7 +497,7 @@ checks:
       - 'c:auditconfig -getplugin audit_binfile -> r:Plugin: audit_binfile \(active\)'
       - "c:auditconfig -getplugin audit_binfile -> r:Attributes: p_age=0h;p_dir=/var/audit;p_flags=all;p_fsize=0;p_minfree=1"
       - "c:userattr audit_flags root -> r:lo,ad,ft,ex,cis:no"
-      - "c:ls -l /var/share/audit/*.not_terminated.* -> r:.not_terminated."
+      - "c:ls -l /var/share/audit/*.not_terminated.* -> r:\\.not_terminated\\."
 
   # 5 File/Directory Permissions/Access
   - id: 23536
@@ -604,7 +604,7 @@ checks:
       - cis: ["6.10"]
     condition: all
     rules:
-      - 'c:grep pam_rhosts_auth /etc/pam.conf -> !r:\.+'
+      - 'c:grep pam_rhosts_auth /etc/pam.conf -> !r:.+'
       - "c:grep pam_rhosts_auth /etc/pam.d/rlogin -> r:^#"
       - "c:grep pam_rhosts_auth.so.1 /etc/pam.d/rsh -> r:^#"
 
@@ -662,7 +662,7 @@ checks:
     condition: all
     rules:
       - "c:psrinfo -pv -> r:GenuineIntel"
-      - "c:grep password.cfg /rpool/boot/grub/grub.cfg -> r:source /@/boot/grub/password.cfg"
+      - "c:grep password.cfg /rpool/boot/grub/grub.cfg -> r:source /@/boot/grub/password\\.cfg"
 
   - id: 23552
     title: "Restrict root Login to System Console."
@@ -767,9 +767,9 @@ checks:
       - cis: ["8.1"]
     condition: all
     rules:
-      - "c:cat /etc/motd -> r:Authorized users only. All activity may be monitored and reported"
+      - "c:cat /etc/motd -> r:Authorized users only\\. All activity may be monitored and reported"
       - 'c:ls -l /etc/motd -> r:^-rw-r--r--\s+1\s+root\s+sys'
-      - "c:cat /etc/issue -> r:Authorized users only. All activity may be monitored and reported"
+      - "c:cat /etc/issue -> r:Authorized users only\\. All activity may be monitored and reported"
       - 'c:ls -l /etc/issue -> r:^-rw-r--r--\s+1\s+root\s+root'
 
   - id: 23561
@@ -781,7 +781,7 @@ checks:
       - cis: ["8.2"]
     condition: all
     rules:
-      - 'c:grep DisplayConnect /etc/proftpd.conf -> r:^DisplayConnect\.+/etc/issue'
+      - 'c:grep DisplayConnect /etc/proftpd.conf -> r:^DisplayConnect.+/etc/issue'
 
   - id: 23562
     title: "Enable a Warning Banner for the SSH Service."
@@ -841,26 +841,26 @@ checks:
       - "f:/etc/shadow -> r:^lp: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^adm: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^bin: && !r::NL:|:NP:"
-      - 'f:/etc/shadow -> r:^gdm: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^noaccess: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^nobody: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^nobody4: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^openldap: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^unknown: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^webservd: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^gdm: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^noaccess: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^nobody: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^nobody4: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^openldap: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^unknown: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^webservd: && !r::[*!+-]*LK[*!+-]*:'
       - "f:/etc/shadow -> r:^mysql: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^postgres: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^smmsp: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^sys: && !r::NL:|:NP:"
-      - 'f:/etc/shadow -> r:^aiuser: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^dhcpserv: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^dladm: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^ftp: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^netadm: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^netcfg: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^pkg5srv: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^svctag: && !r::\p*LK\p*:'
-      - 'f:/etc/shadow -> r:^xvm: && !r::\p*LK\p*:'
+      - 'f:/etc/shadow -> r:^aiuser: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^dhcpserv: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^dladm: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^ftp: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^netadm: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^netcfg: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^pkg5srv: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^svctag: && !r::[*!+-]*LK[*!+-]*:'
+      - 'f:/etc/shadow -> r:^xvm: && !r::[*!+-]*LK[*!+-]*:'
       - "f:/etc/shadow -> r:^upnp: && !r::NL:|:NP:"
       - "f:/etc/shadow -> r:^zfssnap: && !r::NL:|:NP:"
 
@@ -895,7 +895,7 @@ checks:
       - cis: ["9.7"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^[\w@-]+:[\w@-]+:0:'
 
   - id: 23572
     title: "Ensure root PATH Integrity."
@@ -906,9 +906,9 @@ checks:
       - cis: ["9.8"]
     condition: all
     rules:
-      - "f:/etc/profile -> r::."
-      - "f:/root/.profile -> r::."
-      - "f:/root/.bashrc -> r::."
+      - "f:/etc/profile -> r::\\."
+      - "f:/root/.profile -> r::\\."
+      - "f:/root/.bashrc -> r::\\."
       - "f:/etc/profile -> r:::"
       - "f:/root/.profile -> r:::"
       - "f:/root/.bashrc -> r:::"
@@ -925,7 +925,7 @@ checks:
       - cis: ["9.14"]
     condition: all
     rules:
-      - 'f:/etc/passwd -> r:\w+:\.*:\d*:\d*:\.*::\.*'
+      - 'f:/etc/passwd -> r:[\w@-]+:.*:\d*:\d*:.*::.*'
 
   - id: 23580
     title: "Check for Duplicate UIDs."
@@ -958,7 +958,7 @@ checks:
       - cis: ["9.22"]
     condition: all
     rules:
-      - "c:elfsign verify -e /usr/bin/su -> r:passed."
+      - "c:elfsign verify -e /usr/bin/su -> r:passed\\."
 
   - id: 23587
     title: "Find Un-owned Files and Directories."

@@ -75,7 +75,7 @@ std::vector<std::unique_ptr<ISCAPolicy>> SCAPolicyLoader::LoadPolicies(const int
         }
         else
         {
-            LoggingHelper::getInstance().log(LOG_INFO, "Policy " + pol.path + " is disabled");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Policy " + pol.path + " is disabled");
         }
     }
 

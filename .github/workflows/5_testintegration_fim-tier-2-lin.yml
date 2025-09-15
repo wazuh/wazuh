@@ -1,4 +1,4 @@
-name: Integration tests for FIM on Linux - Tier 2
+name: 5.X - FIM on Linux - Integration tests - Tier 2
 
 on:
   workflow_dispatch:

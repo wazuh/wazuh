@@ -1,5 +1,5 @@
 run-name: Build ${{ inputs.system }} filebeat on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.id }}
-name: Build Filebeat
+name: 4.X - Build Filebeat
 
 on:
   workflow_dispatch:

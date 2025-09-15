@@ -1,4 +1,4 @@
-name: Integration tests for API - Tier 2
+name: 5.X - API - Integration tests - Tier 2
 
 on:
   workflow_dispatch:

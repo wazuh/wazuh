@@ -7,9 +7,8 @@
 #include <dbsync.hpp>
 #include <filesystem_wrapper.hpp>
 
-#include <thread>
 #include <iostream>
-#include <chrono>
+#include <thread>
 
 #include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
@@ -83,7 +82,7 @@ void SecurityConfigurationAssessment::Run()
         // Otherwise, wait for the scan interval before scanning
         if (!m_scanOnStart || !firstScan)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(m_scanInterval));
+            std::this_thread::sleep_for(m_scanInterval);
         }
 
         if (!m_keepRunning)
@@ -134,7 +133,7 @@ void SecurityConfigurationAssessment::Run()
 
 void SecurityConfigurationAssessment::Setup(bool enabled,
                                             bool scanOnStart,
-                                            std::time_t scanInterval,
+                                            std::chrono::seconds scanInterval,
                                             const int commandsTimeout,
                                             const bool remoteEnabled,
                                             const std::vector<sca::PolicyData>& policies,

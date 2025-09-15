@@ -1,4 +1,4 @@
-name: Python code analysis
+name: 4.X - Python - Code analysis
 
 on:
   workflow_dispatch:

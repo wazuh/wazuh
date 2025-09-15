@@ -23,9 +23,9 @@ requirements:
   description: "Requirements for running the SCA scan against macOS 11.x (Big Sur)."
   condition: any
   rules:
-    - 'c:sw_vers -> r:^ProductVersion:\t*\s*11\p'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:\.*11\p'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*11\p'
+    - 'c:sw_vers -> r:^ProductVersion:\t*\s*11[*!+.-]'
+    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*11[*!+.-]'
+    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*11[*!+.-]'
 
 checks:
   ############################################################
@@ -558,7 +558,7 @@ checks:
     condition: all
     rules:
       - 'c:sh -c "system_profiler SPiBridgeDataType | grep \"T2\"" -> r:Model Name: Apple T2 Security Chip'
-      - 'c:sh -c "launchctl list | grep com.apple.driver.eficheck" -> r:^-\s*\t*0\s*\t*com.apple.driver.eficheck$'
+      - 'c:sh -c "launchctl list | grep com.apple.driver.eficheck" -> r:^-\s*\t*0\s*\t*com\.apple\.driver\.eficheck$'
 
   # not implemented - requires supervision -> 2.12 Automatic Actions for Optical Media (Manual)
   # not implemented - requires supervision -> 2.13 Review Siri Settings (Manual)
@@ -578,7 +578,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -i auditd" -> r:com.apple.auditd'
+      - 'c:sh -c "launchctl list | grep -i auditd" -> r:com\.apple\.auditd'
 
   # not implemented - process -> 3.2 Configure Security Auditing Flags per local organizational requirements (Manual)
 
@@ -593,7 +593,7 @@ checks:
       - cis_level: ["1"]
     condition: all
     rules:
-      - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl\w+(\d+) compare > 365'
+      - 'c:grep -i ttl /etc/asl/com.apple.install -> n:ttl[\w@-]+(\d+) compare > 365'
       - "c:grep -i all_max= /etc/asl/com.apple.install -> r:^$"
 
   # not implemented - SCA Limit -> 3.4 Ensure security auditing retention (Automated)

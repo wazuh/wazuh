@@ -1,4 +1,4 @@
-name: 5_testcomponent_contentmanager
+name: 5.X - Content Manager - Component tests
 
 on:
   workflow_dispatch:

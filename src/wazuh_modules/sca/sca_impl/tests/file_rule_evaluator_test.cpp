@@ -277,3 +277,17 @@ TEST_F(FileRuleEvaluatorTest, FileSystemAccessErrorHasReasonString)
     EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("some/file"));
     EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("access error"));
 }
+
+TEST_F(FileRuleEvaluatorTest, NegatedPatternRegexMatchesContentReturnsNotFound)
+{
+    m_ctx.pattern = std::string("r:hello");
+    m_ctx.rule = "some/file";
+    m_ctx.isNegated = true;
+
+    EXPECT_CALL(*m_rawFsMock, exists(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawFsMock, is_regular_file(std::filesystem::path("some/file"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*m_rawIoMock, getFileContent("some/file")).WillOnce(::testing::Return(std::string("hello world\n")));
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}

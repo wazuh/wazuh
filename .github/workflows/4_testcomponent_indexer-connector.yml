@@ -1,4 +1,4 @@
-name: Indexer connector
+name: 4.X - Indexer connector - Component tests
 
 on:
   workflow_dispatch:

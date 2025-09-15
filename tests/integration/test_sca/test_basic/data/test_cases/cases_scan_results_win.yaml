@@ -2,7 +2,7 @@
   description: Run a SCA scan and check regex engine used and results
   configuration_parameters:
     ENABLED: 'yes'
-    INTERVAL: 1000
+    INTERVAL: 5
     POLICY_FILE: cis_win_pcre2.yaml
   metadata:
     policy_file: cis_win_pcre2.yaml

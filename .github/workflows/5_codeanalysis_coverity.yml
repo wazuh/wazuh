@@ -1,4 +1,4 @@
-name: Coverity Scan
+name: 5.X - Coverity Scan
 
 on:
   workflow_dispatch:

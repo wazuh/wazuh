@@ -1,4 +1,4 @@
-name: 5_testunit_router
+name: 5.X - Router - Unit tests
 
 on:
   workflow_dispatch:

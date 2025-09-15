@@ -1,4 +1,4 @@
-name: External integrations unit tests
+name: 4.X - External integrations - Unit tests
 
 on:
   workflow_dispatch:

@@ -65,7 +65,7 @@ checks:
       - https://dev.mysql.com/doc/refman/5.6/en/environment-variables.html
     condition: none
     rules:
-      - "c:find /home -maxdepth 2 -type f -exec grep MYSQL_PWD {} + -> r:.profile|.bashrc|.bash_profile && r:$MYSQL_PWD"
+      - "c:find /home -maxdepth 2 -type f -exec grep MYSQL_PWD {} + -> r:\\.profile|\\.bashrc|\\.bash_profile && r:$MYSQL_PWD"
 
   #4 General
   - id: 10503
@@ -134,7 +134,7 @@ checks:
       - https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html#sysvar_secure_file_priv
     condition: all
     rules:
-      - 'c:grep -Rh secure_file_priv /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:secure_file_priv\s*=\s*\.'
+      - 'c:grep -Rh secure_file_priv /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:secure_file_priv\s*=\s*.'
 
   - id: 10508
     title: "Ensure 'sql_mode' Contains 'STRICT_ALL_TABLES'"
@@ -173,7 +173,7 @@ checks:
       - https://dev.mysql.com/doc/refman/5.6/en/replication-options-binary-log.html
     condition: none
     rules:
-      - 'c:grep -Rh log_bin /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:log_bin\s*\t*/+$|log_bin\s*\t*/+var/*$|log_bin\s*\t*/+usr/*$'
+      - 'c:grep -Rh log_bin /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:log_bin\s*\t*/\+$|log_bin\s*\t*/\+var/\*$|log_bin\s*\t*/\+usr/\*$'
 
   - id: 10511
     title: "Ensure 'log_warning' is set to 2"
@@ -244,7 +244,7 @@ checks:
       - https://dev.mysql.com/doc/refman/5.6/en/mysql-config-editor.html
     condition: none
     rules:
-      - 'c:grep -Rh password /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:^\s*password\.*'
+      - 'c:grep -Rh password /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> !r:^\s*\t*# && r:^\s*password.*'
 
   - id: 10516
     title: "Ensure 'sql_mode' Contains 'NO_AUTO_CREATE_USER'"
@@ -268,7 +268,7 @@ checks:
       - https://dev.mysql.com/doc/refman/5.6/en/validate-password-plugin.html
     condition: all
     rules:
-      - 'c:grep -Rh plugin-load /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:plugin-load\s*=\s*validate_password.so\s*$'
+      - 'c:grep -Rh plugin-load /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:plugin-load\s*=\s*validate_password\.so\s*$'
       - 'c:grep -Rh validate-password /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> r:validate-password\s*=\s*force_plus_permanent\s*$'
       - 'c:grep -Rh validate_password_length /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> n:validate_password_length\s*=\s*(\d+)\s$ compare >= 14'
       - 'c:grep -Rh validate_password_mixed_case_count /etc/mysql/my.cnf /etc/mysql/mariadb.cnf /etc/mysql/conf.d /etc/mysql/mariadb.conf.d -> n:validate_password_mixed_case_count\s*=\s*(\d+)\s*$ compare >= 1'

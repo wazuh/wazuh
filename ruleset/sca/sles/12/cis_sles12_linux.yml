@@ -214,7 +214,7 @@ checks:
     rules:
       - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
       - 'c:sysctl fs.suid_dumpable -> r:\s0$'
-      - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
+      - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs\.suid_dumpable\s*=\s*0\s*$'
 
   # 1.5.3 Enable Randomized Virtual Memory Region Placement (Scored)
   - id: 7513
@@ -227,7 +227,7 @@ checks:
       - cis_csc: ["8.4"]
     condition: all
     rules:
-      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
+      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel\.randomize_va_space\s*=\s*2$'
       - 'c:sysctl kernel.randomize_va_space -> r:\s2$|\t2$'
 
   ###############################################
@@ -395,7 +395,7 @@ checks:
     rules:
       - 'f:/etc/ntp.conf -> r:^restrict\s+-4\s+default|^restrict\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
       - 'f:/etc/ntp.conf -> r:^restrict\s+-6\s+default && r:\s+kod && r:\s+nomodify && r:\s+notrap && r:\s+nopeer && r:\s+noquery'
-      - 'f:/etc/ntp.conf -> r:^server\.+$|^pool\.+$'
+      - 'f:/etc/ntp.conf -> r:^server.+$|^pool.+$'
       - "f:/etc/sysconfig/ntp -> r:NTPD_OPTIONS= && r:-u && r:ntp:ntp"
 
   # 2.2.2 Remove X Windows (Scored)
@@ -603,7 +603,7 @@ checks:
     condition: all
     rules:
       - 'c:sysctl net.ipv4.ip_forward -> r:\s0$'
-      - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.ip_forward\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.ip_forward /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.ip_forward\s*=\s*0$'
 
   # 3.1.2 Disable Send Packet Redirects (Scored)
   - id: 7540
@@ -618,10 +618,10 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.send_redirects -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.send_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.send_redirects\s*=\s*0$'
 
   ###############################################
   # 3.2 Modify Network Parameters (Host and Router)
@@ -639,10 +639,10 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
-      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_source_route\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.accept_source_route -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_source_route -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.accept_source_route\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.accept_source_route\s*=\s*0$'
 
   # 3.2.2 Disable ICMP Redirect Acceptance (Scored)
   - id: 7542
@@ -657,10 +657,10 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.accept_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.accept_redirects -> r:^net\.ipv4\.conf\.all\.accept_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.accept_redirects -> r:^net\.ipv4\.conf\.default\.accept_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.accept_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.accept_redirects\s*=\s*0$'
 
   # 3.2.3 Disable Secure ICMP Redirect Acceptance (Scored)
   - id: 7543
@@ -675,10 +675,10 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
-      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.all.secure_redirects -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
+      - 'c:sysctl net.ipv4.conf.default.secure_redirects -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.secure_redirects\s*=\s*0$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.secure_redirects\s*=\s*0$'
 
   - id: 7544
     title: "Ensure suspicious packets are logged"
@@ -692,10 +692,10 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
-      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.all.log_martians -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.default.log_martians -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.log_martians\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.log_martians\s*=\s*1$'
 
   # 3.2.5 Enable Ignore Broadcast Requests (Scored)
   - id: 7545
@@ -710,8 +710,8 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
   # 3.2.6 Enable Bad Error Message Protection (Scored)
   - id: 7546
@@ -726,8 +726,8 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
   # 3.2.7 Ensure Reverse Path Filtering is enabled (Scored)
   - id: 7547
@@ -742,10 +742,10 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
-      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
-      - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.all.rp_filter -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
+      - 'c:sysctl net.ipv4.conf.default.rp_filter -> r:^net\.ipv4\.conf\.default\.rp_filter\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.all\.rp_filter\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.conf\.default\.rp_filter\s*=\s*1$'
 
   # 3.2.8 Enable TCP SYN Cookies (Scored)
   - id: 7548
@@ -760,8 +760,8 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: all
     rules:
-      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
-      - 'c:/sbin/sysctl net.ipv4.tcp_syncookies -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
+      - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
+      - 'c:/sbin/sysctl net.ipv4.tcp_syncookies -> r:^net\.ipv4\.tcp_syncookies\s*=\s*1$'
 
   ###############################################
   # 5 System Access, Authentication and Authorization
@@ -907,7 +907,7 @@ checks:
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^\s*\t*# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^\s*\t*# && !r:^\s*\t*root: && r:^[\w@-]+:[\w@-]+:0:'
 
   - id: 7557
     title: "Ensure password fields are not empty"
@@ -923,4 +923,4 @@ checks:
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> r:^\w+::'
+      - 'f:/etc/shadow -> r:^[\w@-]+::'

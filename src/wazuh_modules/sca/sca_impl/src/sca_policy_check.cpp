@@ -66,7 +66,7 @@ namespace
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' " + (matchFound ? "was" : "was not") + " found in file '" + filePath + "'");
-        return (matchFound != ctx.isNegated) ? RuleResult::Found : RuleResult::NotFound;
+        return matchFound ? RuleResult::Found : RuleResult::NotFound;
     }
 
     RuleResult FindContentInFile(const std::unique_ptr<IFileIOUtils>& fileUtils,
@@ -132,7 +132,14 @@ RuleResult FileRuleEvaluator::CheckFileForContents()
 
     if (result.has_value())
     {
-        return result.value();
+        const auto value = result.value();
+
+        if (value == RuleResult::Invalid)
+        {
+            return RuleResult::Invalid;
+        }
+
+        return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : value;
     }
     else
     {
@@ -400,7 +407,21 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
             if (isRegex)
             {
-                const auto patternMatch = sca::PatternMatches(file.filename().string(), pattern, m_ctx.regexEngine);
+                // For regex patterns, we need to extract the filename part (before "->")
+                auto filenamePattern = pattern;
+
+                if (content.has_value())
+                {
+                    const auto arrowPos = pattern.find(" -> ");
+
+                    if (arrowPos != std::string::npos)
+                    {
+                        filenamePattern = pattern.substr(0, arrowPos);
+                    }
+                }
+
+                const auto patternMatch =
+                    sca::PatternMatches(file.filename().string(), filenamePattern, m_ctx.regexEngine);
 
                 if (patternMatch.has_value())
                 {
@@ -408,8 +429,38 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                     if (patternMatch.value())
                     {
-                        LoggingHelper::getInstance().log(LOG_DEBUG, "Pattern '" + pattern + "' was found in directory '" + rootPath.string() + "'");
-                        return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
+                        // If we have content pattern, check file contents; otherwise just return found
+                        if (content.has_value())
+                        {
+                            const auto result = TryFunc(
+                                                    [&] { return FindContentInFile(m_fileUtils, file.string(), content.value(), m_ctx); });
+
+                            if (result.has_value())
+                            {
+                                if (result.value() == RuleResult::Found)
+                                {
+                                    LoggingHelper::getInstance().log(
+                                        LOG_DEBUG,
+                                        "Pattern '" + pattern + "' was found in directory '" + rootPath.string() + "'");
+                                    return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
+                                }
+
+                                // If content doesn't match, continue to check other files
+                            }
+                            else
+                            {
+                                m_lastInvalidReason = "Failed to read contents of file '" + file.string() +
+                                                      "' in directory '" + rootPath.string() + "'";
+                                return RuleResult::Invalid;
+                            }
+                        }
+                        else
+                        {
+                            LoggingHelper::getInstance().log(LOG_DEBUG,
+                                                             "Pattern '" + pattern + "' was found in directory '" +
+                                                             rootPath.string() + "'");
+                            return m_ctx.isNegated ? RuleResult::NotFound : RuleResult::Found;
+                        }
                     }
                 }
             }
@@ -423,7 +474,14 @@ RuleResult DirRuleEvaluator::CheckDirectoryForContents()
 
                     if (result.has_value())
                     {
-                        return result.value();
+                        const auto value = result.value();
+
+                        if (value == RuleResult::Invalid)
+                        {
+                            return RuleResult::Invalid;
+                        }
+
+                        return m_ctx.isNegated ? (value == RuleResult::Found ? RuleResult::NotFound : RuleResult::Found) : value;
                     }
                     else
                     {

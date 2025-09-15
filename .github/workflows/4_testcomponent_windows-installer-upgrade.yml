@@ -1,4 +1,4 @@
-name: Windows upgrade test
+name: 4.X - Windows upgrade test
 
 on:
   workflow_dispatch:

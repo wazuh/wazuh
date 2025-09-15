@@ -231,8 +231,8 @@ checks:
     condition: all
     rules:
       - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
-      - 'c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable\s*=\s*0\s*$'
-      - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs.suid_dumpable\s*=\s*0\s*$'
+      - 'c:sysctl fs.suid_dumpable -> r:^fs\.suid_dumpable\s*=\s*0\s*$'
+      - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> r:^\s*fs\.suid_dumpable\s*=\s*0\s*$'
 
   # 1.5.3 Enable Randomized Virtual Memory Region Placement (Scored)
   - id: 7014
@@ -245,8 +245,8 @@ checks:
       - cis_csc: ["8.4"]
     condition: all
     rules:
-      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel.randomize_va_space\s*=\s*2$'
-      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel.randomize_va_space\s*=\s*2'
+      - 'c:grep -Rh ^kernel\.randomize_va_space /etc/sysctl.conf /etc/sysctl.d -> r:^\s*kernel\.randomize_va_space\s*=\s*2$'
+      - 'c:sysctl kernel.randomize_va_space -> r:^\s*kernel\.randomize_va_space\s*=\s*2'
 
   ###############################################
   # 2 OS Services
@@ -806,7 +806,7 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
-      - 'f:$sshd_file -> !r:^# && r:LogLevel\.+INFO'
+      - 'f:$sshd_file -> !r:^# && r:LogLevel.+INFO'
 
   # 5.2.5 Set SSH MaxAuthTries to 4 or Less (Scored)
   - id: 7051
@@ -838,7 +838,7 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
-      - 'f:$sshd_file -> !r:^# && r:IgnoreRhosts\.+yes'
+      - 'f:$sshd_file -> !r:^# && r:IgnoreRhosts.+yes'
 
   # 5.2.7 Set SSH HostbasedAuthentication to No (Scored)
   - id: 7053
@@ -855,7 +855,7 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
-      - 'f:$sshd_file -> r:^\s*\t*HostbasedAuthentication\.+no'
+      - 'f:$sshd_file -> r:^\s*\t*HostbasedAuthentication.+no'
 
   # 5.2.8 Disable SSH Root Login (Scored)
   - id: 7054
@@ -872,7 +872,7 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
-      - 'f:$sshd_file -> r:^\s*\t*PermitRootLogin\.+no'
+      - 'f:$sshd_file -> r:^\s*\t*PermitRootLogin.+no'
 
   # 5.2.9 Set SSH PermitEmptyPasswords to No (Scored)
   - id: 7055
@@ -889,7 +889,7 @@ checks:
       - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     condition: all
     rules:
-      - 'f:$sshd_file -> r:^\s*\t*PermitEmptyPasswords\.+no'
+      - 'f:$sshd_file -> r:^\s*\t*PermitEmptyPasswords.+no'
 
   ###############################################
   # 6 System Maintenance
@@ -912,7 +912,7 @@ checks:
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^\w+:\w+:0:'
+      - 'f:/etc/passwd -> !r:^# && !r:^\s*\t*root: && r:^[\w@-]+:[\w@-]+:0:'
 
   - id: 7057
     title: "Ensure password fields are not empty"
@@ -928,4 +928,4 @@ checks:
       - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> r:^\w+::'
+      - 'f:/etc/shadow -> r:^[\w@-]+::'
