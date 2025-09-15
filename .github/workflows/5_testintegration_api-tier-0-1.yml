@@ -73,7 +73,7 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
-          sudo /var/ossec/bin/cluster_control -l
+          sudo cat /var/ossec/etc/ossec.conf
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
