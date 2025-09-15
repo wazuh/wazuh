@@ -28,12 +28,10 @@ fi
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-execd wazuh-db wazuh-authd wazuh-apid"
-OP_DAEMONS="wazuh-clusterd"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-OP_SDAEMONS=$(echo $OP_DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -362,22 +360,6 @@ start_service()
             fi
             if [ $? != 0 ]; then
                 failed=true
-            else
-                is_optional ${i};
-                if [ $? = 0 ]; then
-                    j=0;
-                    while [ $failed = false ]; do
-                        pstatus ${i};
-                        if [ $? = 1 ]; then
-                            break;
-                        fi
-                        sleep 1;
-                        j=`expr $j + 1`;
-                        if [ "$j" -ge "${MAX_ITERATION}" ]; then
-                            failed=true
-                        fi
-                    done
-                fi
             fi
             if [ $failed = true ]; then
                 if [ $USE_JSON = true ]; then
@@ -416,18 +398,6 @@ start_service()
         echo "Completed."
     fi
     rm -f ${DIR}/var/run/*.start
-}
-
-is_optional()
-{
-    daemon=$1
-    for op in ${OP_SDAEMONS}; do
-        # If the daemon is optional, don't check if it is running in background.
-        if [ X"$op" = X"$daemon" ]; then
-            return 1;
-        fi
-    done
-    return 0;
 }
 
 pstatus()
