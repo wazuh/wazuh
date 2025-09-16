@@ -510,7 +510,7 @@
                         }
                     ]
                 },
-                "path": "efaidnbmnnnibpcajpcglclefindmkaj\\25.7.2.1_0",
+                "path": "ext1\\1.2.3",
                 "preferences": {},
                 "regular_only_preferences": {},
                 "service_worker_registration_info": {
@@ -950,7 +950,7 @@
                         }
                     ]
                 },
-                "path": "ghbmnnjooekpmoecnnnilnnbdlolhkhi\\1.94.1_0",
+                "path": "ext2\\1.2.3",
                 "preferences": {},
                 "regular_only_preferences": {},
                 "service_worker_registration_info": {
@@ -1191,7 +1191,7 @@
                     "update_url": "https://clients2.google.com/service/update2/crx",
                     "version": "1.0.0.6"
                 },
-                "path": "nmmhkkegccagdldgiimedpiccmgmieda\\1.0.0.6_0",
+                "path": "ext3\\1.2.3",
                 "preferences": {},
                 "regular_only_preferences": {},
                 "running": false,
