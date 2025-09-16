@@ -97,6 +97,12 @@ void IndexerConnectorTest::SetUp()
     m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, A_PORT, "green", INDEXER_NAME));
     m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, B_PORT, "red", INDEXER_NAME));
     m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, C_PORT, "red", INDEXER_NAME));
+
+    // Start fake indexers.
+    for (auto& server : m_indexerServers)
+    {
+        server->start();
+    }
 }
 
 void IndexerConnectorTest::TearDown()
@@ -276,7 +282,7 @@ TEST_F(IndexerConnectorTest, ConnectionInvalidServer)
 TEST_F(IndexerConnectorTest, ConnectionInitTemplateErrorFromServer)
 {
     // Callback function that checks if the callback was executed or not.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto forceErrorCallback {[&callbackCalled](const std::string& data)
                                    {
                                        std::ignore = data;
@@ -301,7 +307,7 @@ TEST_F(IndexerConnectorTest, ConnectionInitTemplateErrorFromServer)
 TEST_F(IndexerConnectorTest, ConnectionInitIndexErrorFromServer)
 {
     // Callback function that checks if the callback was executed or not.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto forceErrorCallback {[&callbackCalled](const std::string& data)
                                    {
                                        std::ignore = data;
@@ -335,7 +341,7 @@ TEST_F(IndexerConnectorTest, Publish)
     // First line: JSON data with the metadata (indexer name, index ID)
     // Second line: Index data.
     constexpr auto INDEX_DATA {"content"};
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
                                    {
                                        const auto splitData {Utils::split(data, '\n')};
@@ -358,7 +364,7 @@ TEST_F(IndexerConnectorTest, Publish)
     publishData["operation"] = "INSERT";
     publishData["data"] = INDEX_DATA;
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
 
 /**
@@ -378,7 +384,7 @@ TEST_F(IndexerConnectorTest, NoPublish)
     // First line: JSON data with the metadata (indexer name, index ID)
     // Second line: Index data.
     constexpr auto INDEX_DATA {"content"};
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
                                    {
                                        const auto splitData {Utils::split(data, '\n')};
@@ -409,7 +415,7 @@ TEST_F(IndexerConnectorTest, NoPublish)
     publishData["operation"] = "INSERT";
     publishData["data"] = INDEX_DATA;
     ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
-    EXPECT_ANY_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    EXPECT_ANY_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
     ASSERT_FALSE(callbackCalled);
 
     // Now we create the normal object and check the data is synced without pushing it again
@@ -428,7 +434,7 @@ TEST_F(IndexerConnectorTest, NoPublish)
             return R"({"hits": {"total" : {"value": 0}, "hits": []}})";
         });
     indexerConnector->sync(agentId);
-    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
     ASSERT_TRUE(callbackCalled);
     ASSERT_TRUE(searchCallbackCalled);
 }
@@ -448,7 +454,7 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
     // The format of the data published is divided in two lines:
     // First line: JSON data with the metadata (indexer name, index ID)
     // Second line: Index data. When the operation is DELETED, no data is present.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data)
                                    {
                                        const auto splitData {Utils::split(data, '\n')};
@@ -469,7 +475,7 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
     publishData["id"] = INDEX_ID_A;
     publishData["operation"] = "DELETED";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
 
 /**
@@ -488,7 +494,7 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
     // The format of the data published is divided in two lines:
     // First line: JSON data with the metadata (indexer name, index ID)
     // Second line: Index data. When the operation is DELETED, no data is present.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data)
                                    {
                                        ASSERT_EQ(nlohmann::json::parse(data), expectedMetadata);
@@ -508,7 +514,7 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
     publishData["id"] = INDEX_ID_A;
     publishData["operation"] = "DELETED_BY_QUERY";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
 
 /**
@@ -518,7 +524,7 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
 TEST_F(IndexerConnectorTest, PublishUnavailableServer)
 {
     // Callback function that checks if the callback was executed or not.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkPublishedData {[&callbackCalled](const std::string& data)
                                    {
                                        std::ignore = data;
@@ -535,7 +541,7 @@ TEST_F(IndexerConnectorTest, PublishUnavailableServer)
     // Trigger publication and expect that it is not made.
     const auto publishData = R"({"dummy":true})"_json;
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
+    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS),
                  std::runtime_error);
 }
 
@@ -546,7 +552,7 @@ TEST_F(IndexerConnectorTest, PublishUnavailableServer)
 TEST_F(IndexerConnectorTest, PublishInvalidNoOperation)
 {
     // Callback function that checks if the callback was executed or not.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
                                     {
                                         std::ignore = data;
@@ -565,7 +571,7 @@ TEST_F(IndexerConnectorTest, PublishInvalidNoOperation)
     nlohmann::json publishData;
     publishData["id"] = "111";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
+    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS),
                  std::runtime_error);
     ASSERT_EQ(callbackCalled, false);
 }
@@ -577,7 +583,7 @@ TEST_F(IndexerConnectorTest, PublishInvalidNoOperation)
 TEST_F(IndexerConnectorTest, PublishInvalidNoID)
 {
     // Callback function that checks if the callback was executed or not.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
                                     {
                                         std::ignore = data;
@@ -596,7 +602,7 @@ TEST_F(IndexerConnectorTest, PublishInvalidNoID)
     nlohmann::json publishData;
     publishData["operation"] = "DELETED";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
+    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS),
                  std::runtime_error);
     ASSERT_EQ(callbackCalled, false);
 }
@@ -608,7 +614,7 @@ TEST_F(IndexerConnectorTest, PublishInvalidNoID)
 TEST_F(IndexerConnectorTest, PublishNoInsertData)
 {
     // Callback function that checks if the callback was executed or not.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
                                     {
                                         std::ignore = data;
@@ -628,7 +634,7 @@ TEST_F(IndexerConnectorTest, PublishNoInsertData)
     publishData["id"] = INDEX_ID_A;
     publishData["operation"] = "INSERT";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS),
+    ASSERT_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS),
                  std::runtime_error);
     ASSERT_EQ(callbackCalled, false);
 }
@@ -646,7 +652,7 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
     // The format of the data published is divided in two lines:
     // First line: JSON data with the metadata (indexer name, index ID).
     // Second line: Index data.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto checkPublishedData {[&callbackCalled, &publishedData](const std::string& data)
                                    {
                                        const auto splitData {Utils::split(data, '\n')};
@@ -672,7 +678,7 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
     publishData["operation"] = "INSERT";
     publishData["data"] = INDEX_DATA_A;
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 
     // Publish content to INDEX_ID_B and wait until is finished.
     const auto INDEX_DATA_B = R"({"contentB":true})"_json;
@@ -680,7 +686,7 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
     publishData["data"] = INDEX_DATA_B;
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
     callbackCalled = false;
-    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 
     // Check expected data.
     nlohmann::json expectedDataA;
@@ -702,7 +708,7 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
 TEST_F(IndexerConnectorTest, PublishErrorFromServer)
 {
     // Callback function that checks if the callback was executed or not.
-    auto callbackCalled {false};
+    std::atomic<bool> callbackCalled {false};
     const auto forceErrorCallback {[&callbackCalled](const std::string& data)
                                    {
                                        std::ignore = data;
@@ -723,7 +729,7 @@ TEST_F(IndexerConnectorTest, PublishErrorFromServer)
     publishData["id"] = INDEX_ID_A;
     publishData["operation"] = "DELETED";
     ASSERT_NO_THROW(indexerConnector.publish(publishData.dump()));
-    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled; }, MAX_INDEXER_PUBLISH_TIME_MS));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
 }
 
 /**
