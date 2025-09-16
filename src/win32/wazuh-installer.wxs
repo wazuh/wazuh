@@ -126,6 +126,9 @@
         <CustomAction Id="CloseGUI" BinaryKey="InstallerScripts" VBScriptCall="KillGUITask" Return="check" Execute="deferred" Impersonate="no"/>
 
         <CustomAction Id="CreateDumpRegistryKey" BinaryKey="InstallerScripts" VBScriptCall="CreateDumpRegistryKey" Return="check" Execute="deferred" Impersonate="yes" />
+        
+        <CustomAction Id="SetCustomActionDataForCleanupDatabases" Return="check" Property="CleanupDatabasesOnMajorUpgrade" Value="&quot;[APPLICATIONFOLDER]&quot;" />
+        <CustomAction Id="CleanupDatabasesOnMajorUpgrade" BinaryKey="InstallerScripts" VBScriptCall="CleanupDatabasesOnMajorUpgrade" Return="check" Execute="deferred" Impersonate="no" />
         <UI>
             <UIRef Id="WixUI_Advanced" />
             <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="CustomCheckDialog" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
@@ -179,6 +182,10 @@
             <!-- Set Wazuh permissions on upgrade -->
             <Custom Action="SetCustomActionDataForSetWazuhPermissions" After="InstallInitialize">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
             <Custom Action="SetWazuhPermissions" After="SetCustomActionDataForSetWazuhPermissions">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
+            
+            <!-- Cleanup database files on major version upgrade from 4.X to 5.X -->
+            <Custom Action="SetCustomActionDataForCleanupDatabases" After="SetWazuhPermissions">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
+            <Custom Action="CleanupDatabasesOnMajorUpgrade" After="SetCustomActionDataForCleanupDatabases">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
 
             <!-- Start services if necessary -->
             <Custom Action="StartWazuhSvc" After="InstallFinalize">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>

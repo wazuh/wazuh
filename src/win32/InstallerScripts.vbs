@@ -441,3 +441,82 @@ Public Function CreateDumpRegistryKey()
 
     CreateDumpRegistryKey = 0
 End Function
+
+Private Function GetInstalledVersion()
+    On Error Resume Next
+    Dim oReg, strKeyPath, installedVersion
+    Const HKEY_LOCAL_MACHINE = &H80000002
+
+    Set oReg = GetObject("winmgmts:root\default:StdRegProv")
+    
+    strKeyPath = "SOFTWARE\Wazuh, Inc.\Wazuh Agent"
+    oReg.GetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DisplayVersion", installedVersion
+    
+    If Err.Number <> 0 Or IsEmpty(installedVersion) Then
+        strKeyPath = "SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent"
+        oReg.GetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DisplayVersion", installedVersion
+        
+        If Err.Number <> 0 Or IsEmpty(installedVersion) Then
+            strKeyPath = "SOFTWARE\ossec"
+            oReg.GetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "version", installedVersion
+            
+            If Err.Number <> 0 Or IsEmpty(installedVersion) Then
+                strKeyPath = "SOFTWARE\WOW6432Node\ossec"
+                oReg.GetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "version", installedVersion
+            End If
+        End If
+    End If
+    
+    Set oReg = Nothing
+    GetInstalledVersion = installedVersion
+End Function
+
+Private Function ExtractMajorVersion(versionString)
+    On Error Resume Next
+    Dim parts
+    If IsEmpty(versionString) Or versionString = "" Then
+        ExtractMajorVersion = 0
+        Exit Function
+    End If
+    
+    versionString = Replace(versionString, "v", "")
+    parts = Split(versionString, ".")
+    If UBound(parts) >= 0 Then
+        ExtractMajorVersion = CInt(parts(0))
+    Else
+        ExtractMajorVersion = 0
+    End If
+End Function
+
+Public Function CleanupDatabasesOnMajorUpgrade()
+    On Error Resume Next
+    Dim objFSO, installedVersion, newVersion, installedMajor, newMajor
+    Dim home_dir, syscollectorDbFile, fimDbFile
+    
+    strArgs = Session.Property("CustomActionData")
+    home_dir = Replace(strArgs, Chr(34), "")
+    
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    
+    installedVersion = GetInstalledVersion()
+    newVersion = Session.Property("ProductVersion")
+    
+    installedMajor = ExtractMajorVersion(installedVersion)
+    newMajor = ExtractMajorVersion(newVersion)
+    
+    If installedMajor = 4 And newMajor = 5 Then
+        syscollectorDbFile = home_dir & "queue\syscollector\db\local.db"
+        fimDbFile = home_dir & "queue\fim\db\fim.db"
+        
+        If objFSO.FileExists(syscollectorDbFile) Then
+            objFSO.DeleteFile syscollectorDbFile, True
+        End If
+        
+        If objFSO.FileExists(fimDbFile) Then
+            objFSO.DeleteFile fimDbFile, True
+        End If
+    End If
+    
+    Set objFSO = Nothing
+    CleanupDatabasesOnMajorUpgrade = 0
+End Function
