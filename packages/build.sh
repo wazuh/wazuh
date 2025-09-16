@@ -109,6 +109,7 @@ set_debug $debug $sources_dir
 
 # Installing build dependencies
 cd $sources_dir
+build_deps
 build_package $package_name $debug "$short_commit_hash" "$wazuh_version"
 
 # Post-processing
