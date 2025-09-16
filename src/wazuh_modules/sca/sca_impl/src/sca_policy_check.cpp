@@ -558,6 +558,16 @@ ProcessRuleEvaluator::ProcessRuleEvaluator(PolicyEvaluationContext ctx,
         {
             processNames.emplace_back(procJson["name"]);
         }
+
+        if (procJson.contains("command_line") && procJson["command_line"].is_string())
+        {
+            const auto & cmd = procJson["command_line"].get_ref<const std::string&>();
+
+            if (!cmd.empty() && cmd != "none")
+            {
+                processNames.emplace_back(cmd);
+            }
+        }
     });
 
     return processNames;
