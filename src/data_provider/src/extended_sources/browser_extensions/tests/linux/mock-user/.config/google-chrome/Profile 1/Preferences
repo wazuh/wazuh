@@ -14,7 +14,7 @@
             "ghbmnnjooekpmoecnnnilnnbdlolhkhi": {
                 "first_install_time": "13394392373134705",
                 "from_webstore": true,
-                "path": "ghbmnnjooekpmoecnnnilnnbdlolhkhi/1.94.1_0"
+                "path": "ext1/1.2.3"
             },
             "mhjfbmdgcfjbbpaeojofohoefgiehjai": {
                 "first_install_time": "13394392372574836",
@@ -34,7 +34,7 @@
             "nmmhkkegccagdldgiimedpiccmgmieda": {
                 "first_install_time": "13394392373345452",
                 "from_webstore": true,
-                "path": "nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0"
+                "path": "ext2/1.2.3"
             }
         }
     },

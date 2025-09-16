@@ -30,7 +30,7 @@
             "installDate": 1754999546237,
             "updateDate": 1754999546237,
             "applyBackgroundUpdates": 1,
-            "path": "/linux_mock_home/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi",
+            "path": "/linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi",
             "skinnable": false,
             "sourceURI": null,
             "releaseNotesURI": null,
@@ -175,7 +175,7 @@
                 "source": "distribution"
             },
             "recommendationState": null,
-            "rootURI": "jar:file:///linux_mock_home/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi!/",
+            "rootURI": "jar:file:///linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi!/",
             "location": "app-profile"
         },
         {
