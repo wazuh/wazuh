@@ -18,6 +18,7 @@
 #include "loggerHelper.h"
 #include "routerSubscriber.hpp"
 #include "singleton.hpp"
+#include "stringHelper.h"
 #include <asyncValueDispatcher.hpp>
 #include <filesystem>
 #include <format>
@@ -210,6 +211,8 @@ public:
               logFunction,
           const nlohmann::json& configuration)
     {
+        Log::assignLogFunction(logFunction);
+
         std::error_code errorCodeFS;
         std::filesystem::remove_all(INVENTORY_SYNC_PATH, errorCodeFS);
         if (errorCodeFS)
@@ -219,10 +222,17 @@ public:
         m_dataStore = std::make_unique<TRocksDBWrapper>(INVENTORY_SYNC_PATH);
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
 
-        logDebug2(LOGGER_DEFAULT_TAG, "Indexer connector configuration: %s", configuration.dump().c_str());
+        logDebug2(LOGGER_DEFAULT_TAG, "Configuration: %s", configuration.dump().c_str());
         m_indexerConnector = std::make_unique<TIndexerConnector>(configuration.at("indexer"), logFunction);
 
-        Log::assignLogFunction(logFunction);
+        if (!configuration.contains("clusterName"))
+        {
+            throw InventorySyncException("clusterName not found in configuration");
+        }
+
+        m_clusterName = Utils::toLowerCase(configuration.at("clusterName").get_ref<const std::string&>());
+
+        logDebug2(LOGGER_DEFAULT_TAG, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 
         m_workersQueue = std::make_unique<WorkersQueue>(
             [this](const std::vector<char>& dataRaw)
@@ -309,6 +319,9 @@ public:
 
                             thread_local std::string elementId;
                             elementId.clear();
+
+                            elementId.append(m_clusterName);
+                            elementId.append("_");
                             elementId.append(res.context->agentId);
                             elementId.append("_");
                             elementId.append(data->id()->string_view());
@@ -324,7 +337,9 @@ public:
                                 dataString.append(res.context->agentName);
                                 dataString.append(R"(", "version":")");
                                 dataString.append(res.context->agentVersion);
-                                dataString.append(R"("},)");
+                                dataString.append(R"("},"wazuh":{"cluster":{"name":")");
+                                dataString.append(m_clusterName);
+                                dataString.append(R"("}},)");
                                 dataString.append(
                                     std::string_view((const char*)data->data()->data() + 1, data->data()->size() - 1));
                                 m_indexerConnector->bulkIndex(elementId, data->index()->string_view(), dataString);
@@ -452,6 +467,7 @@ public:
 
 private:
     InventorySyncFacadeImpl() = default;
+    std::string m_clusterName;
     std::shared_mutex m_agentSessionsMutex;
     std::mutex m_sessionTimeoutMutex;
     std::condition_variable m_sessionTimeoutCv;
