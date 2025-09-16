@@ -34,10 +34,8 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 #ifndef WIN32
 
 /* UNIX SOCKET */
-#ifndef SUN_LEN
 #define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)        \
                      + strlen ((ptr)->sun_path))
-#endif /* Sun_LEN */
 
 #else /* WIN32 */
 /*int ENOBUFS = 0;*/

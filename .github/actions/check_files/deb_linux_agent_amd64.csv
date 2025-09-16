@@ -29,10 +29,10 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/active-response/bin/firewalld-drop,root,wazuh,750,file,-rwxr-x---,19304,0.1
 /var/ossec/active-response/bin/host-deny,root,wazuh,750,file,-rwxr-x---,19864,0.1
 /var/ossec/active-response/bin/kaspersky,root,wazuh,750,file,-rwxr-x---,17144,0.1
-/var/ossec/active-response/bin/firewall-drop,root,wazuh,750,file,-rwxr-x---,21656,0.1
+/var/ossec/active-response/bin/firewall-drop,root,wazuh,750,file,-rwxr-x---,19400,0.1
 /var/ossec/active-response/bin/ipfw,root,wazuh,750,file,-rwxr-x---,19296,0.1
 /var/ossec/active-response/bin/restart-wazuh,root,wazuh,750,file,-rwxr-x---,16896,0.1
-/var/ossec/active-response/bin/default-firewall-drop,root,wazuh,750,file,-rwxr-x---,21656,0.1
+/var/ossec/active-response/bin/default-firewall-drop,root,wazuh,750,file,-rwxr-x---,19400,0.1
 /var/ossec/active-response/bin/wazuh-slack,root,wazuh,750,file,-rwxr-x---,19280,0.1
 /var/ossec/active-response/bin/ip-customblock,root,wazuh,750,file,-rwxr-x---,17896,0.1
 /var/ossec/active-response/bin/restart.sh,root,wazuh,750,file,-rwxr-x---,691,0.1

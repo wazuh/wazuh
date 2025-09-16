@@ -16,7 +16,7 @@
 #define STATIC static
 #endif
 
-#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
+#if defined (__linux__) || defined (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
 #include "wm_control.h"
 #include "sysInfo.h"
 #include "sym_load.h"
