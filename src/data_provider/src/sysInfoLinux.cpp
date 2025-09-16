@@ -859,7 +859,7 @@ nlohmann::json SysInfo::getServices() const
 
         // ECS mapping based on the provided table
         serviceItem["service_id"]                            = (svc.contains("id") && !svc["id"].get<std::string>().empty()) ? svc["id"] : UNKNOWN_VALUE;
-        serviceItem["service_name"]                          = UNKNOWN_VALUE;
+        serviceItem["service_name"]                          = serviceItem["service_id"];
         serviceItem["service_description"]                   = svc.value("description",       UNKNOWN_VALUE);
         serviceItem["service_type"]                          = UNKNOWN_VALUE;
         serviceItem["service_state"]                         = svc.value("active_state",      UNKNOWN_VALUE);
