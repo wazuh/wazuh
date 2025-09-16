@@ -88,6 +88,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [array_append_unique](#array_append_unique)
 - [array_append_unique_any](#array_append_unique_any)
 - [delete](#delete)
+- [delete_fields_with_value](#delete_fields_with_value)
 - [erase_custom_fields](#erase_custom_fields)
 - [get_key_in](#get_key_in)
 - [kvdb_decode_bitmask](#kvdb_decode_bitmask)
@@ -9750,6 +9751,391 @@ normalize:
 ```json
 {
   "target_field": ""
+}
+```
+
+*The operation was successful*
+
+
+
+---
+# delete_fields_with_value
+
+## Signature
+
+```
+
+field: delete_fields_with_value(any_object)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| any_object | number, string, object, boolean, array | value or reference | Any object |
+
+
+## Target Field
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Deletes all immediate children of “field” whose value equals the provided argument.
+The argument may be any JSON value (string, number, boolean, null, array, object) or a reference ($ref).
+Equality is type-aware and structural (objects/arrays compared by value).
+
+
+## Keywords
+
+- `delete` 
+
+## Examples
+
+### Example 1
+
+Deletes children equal to the given string
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value('N/A')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": "N/A",
+    "b": "ok",
+    "c": "N/A"
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "b": "ok"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Deletes children equal to integer 1
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value(1)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": 1,
+    "b": 2,
+    "c": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "b": 2
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Deletes children equal to the given double
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value(1.0)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": 1.0,
+    "b": 2.0,
+    "c": 1.0
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "b": 2.0
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+Deletes children equal to the given boolean
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value(True)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": true,
+    "b": false,
+    "c": true
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "b": false
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Deletes children equal to the given object
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value({'k': 1})
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": {
+      "k": 1
+    },
+    "b": {
+      "k": 2
+    },
+    "c": {
+      "k": 1
+    }
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "b": {
+      "k": 2
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 6
+
+Deletes children equal to the given array
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value([1, 2])
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": [
+      1,
+      2
+    ],
+    "b": [
+      3
+    ],
+    "c": [
+      1,
+      2
+    ]
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "b": [
+      3
+    ]
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 7
+
+No deletions when there are no matches
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value('Z')
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": "foo",
+    "b": 2
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "a": "foo",
+    "b": 2
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 8
+
+No deletions when reference path is not found
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value($any_object)
+```
+
+#### Input Event
+
+```json
+{
+  "any_object": "$target.missing",
+  "target_field": {
+    "a": "keep",
+    "b": 1
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "any_object": "$target.missing",
+  "target_field": {
+    "a": "keep",
+    "b": 1
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 9
+
+No deletions when argument is null but target has no nulls
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: delete_fields_with_value(null)
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": {
+    "a": "keep",
+    "b": 1,
+    "c": false
+  }
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "target_field": {
+    "a": "keep",
+    "b": 1,
+    "c": false
+  }
 }
 ```
 
