@@ -441,3 +441,25 @@ Public Function CreateDumpRegistryKey()
 
     CreateDumpRegistryKey = 0
 End Function
+
+' Deletes legacy DBs when upgrading from pre-5.x; WiX filters the version.
+Public Function CleanupLegacyDatabases()
+    On Error Resume Next
+    Dim strArgs, args, home_dir
+    Dim fso
+
+    ' Read CustomActionData: "[APPLICATIONFOLDER]"
+    strArgs = Session.Property("CustomActionData")
+    args = Split(strArgs, "/+/")
+    home_dir = Replace(args(0), Chr(34), "")
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+
+    ' Remove legacy DB files
+    fso.DeleteFile home_dir & "queue\syscollector\db\local.db", True
+    fso.DeleteFile home_dir & "queue\fim\db\fim.db", True
+
+    Set fso = Nothing
+
+    CleanupLegacyDatabases = 0
+End Function
