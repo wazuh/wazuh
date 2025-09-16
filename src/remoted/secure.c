@@ -1040,20 +1040,27 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
 
         cJSON* parameters_obj = cJSON_GetObjectItem(upgrade_ack_json, "parameters");
 
-        int agent = atoi(agent_id);
-        cJSON* agents = cJSON_CreateIntArray(&agent, 1);
-        cJSON_AddItemToObject(parameters_obj, "agents", agents);
+        if (parameters_obj && cJSON_IsObject(parameters_obj)) {
+            int agent = atoi(agent_id);
+            cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+            cJSON_AddItemToObject(parameters_obj, "agents", agents);
 
-        char *upgrade_message = cJSON_PrintUnformatted(upgrade_ack_json);
-        size_t msg_size = strlen(upgrade_message) + 1; // +1 for null terminator
+            char *upgrade_message = cJSON_PrintUnformatted(upgrade_ack_json);
+            size_t msg_size = strlen(upgrade_message) + 1; // +1 for null terminator
 
-        if (router_provider_send(router_handle, upgrade_message, msg_size) != 0) {
-            mwarn("Unable to forward upgrade-ack message '%s' for agent %s", msg_start, agent_id);
+            if (router_provider_send(router_handle, upgrade_message, msg_size) != 0) {
+                mwarn("Unable to forward upgrade-ack message '%s' for agent %s", msg_start, agent_id);
+            }
+
+            // Free the printed message and JSON object
+            cJSON_free(upgrade_message);
+        }
+        else {
+            mwarn("Could not get parameters from upgrade message: '%s'", msg_start);
         }
 
-        // Free the printed message and JSON object
-        cJSON_free(upgrade_message);
         cJSON_Delete(upgrade_ack_json);
+
     }
 }
 
