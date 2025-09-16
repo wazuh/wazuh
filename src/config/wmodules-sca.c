@@ -41,9 +41,6 @@ static unsigned int policies_count = 0;
 #define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
-
-static const size_t n_old_policies_filenames = 21;
-
 static char * const old_policies_filenames[] = {
     "acsc_office2016_rcl.yml",
     "cis_apache2224_rcl.yml",
@@ -67,6 +64,8 @@ static char * const old_policies_filenames[] = {
     "system_audit_ssh.yml",
     "win_audit_rcl.yml"
 };
+
+static const size_t n_old_policies_filenames = sizeof old_policies_filenames / sizeof old_policies_filenames[0];
 
 static int is_policy_old (char * const file_list[], const size_t file_list_len, const char * const policy_filename)
 {
