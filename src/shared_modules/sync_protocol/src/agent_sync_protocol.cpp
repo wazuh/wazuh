@@ -158,8 +158,8 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
         // Translate DB mode to Schema mode
         const auto protocolMode = (mode == Mode::FULL)
-                                  ? Wazuh::SyncSchema::Mode::Full
-                                  : Wazuh::SyncSchema::Mode::Delta;
+                                  ? Wazuh::SyncSchema::Mode::ModuleFull
+                                  : Wazuh::SyncSchema::Mode::ModuleDelta;
 
         startBuilder.add_mode(protocolMode);
         startBuilder.add_size(static_cast<uint64_t>(dataSize));
@@ -234,22 +234,22 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
             auto idxStr = builder.CreateString(item.index);
             auto dataVec = builder.CreateVector(reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
 
-            Wazuh::SyncSchema::DataBuilder dataBuilder(builder);
-            dataBuilder.add_seq(item.seq);
-            dataBuilder.add_session(session);
-            dataBuilder.add_id(idStr);
-            dataBuilder.add_index(idxStr);
+            Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(builder);
+            dataValueBuilder.add_seq(item.seq);
+            dataValueBuilder.add_session(session);
+            dataValueBuilder.add_id(idStr);
+            dataValueBuilder.add_index(idxStr);
 
             // Translate DB operation to Schema operation
             const auto protocolOperation = (item.operation == Operation::DELETE_)
                                            ? Wazuh::SyncSchema::Operation::Delete
                                            : Wazuh::SyncSchema::Operation::Upsert;
 
-            dataBuilder.add_operation(protocolOperation);
-            dataBuilder.add_data(dataVec);
-            auto dataOffset = dataBuilder.Finish();
+            dataValueBuilder.add_operation(protocolOperation);
+            dataValueBuilder.add_data(dataVec);
+            auto dataValueOffset = dataValueBuilder.Finish();
 
-            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::Data, dataOffset.Union());
+            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::DataValue, dataValueOffset.Union());
             builder.Finish(message);
 
             const uint8_t* buffer_ptr = builder.GetBufferPointer();
