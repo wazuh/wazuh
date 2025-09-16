@@ -14,11 +14,7 @@ endif()
 
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
-else()
-  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
-endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
 
 if(COVERITY)
   add_definitions(-D__GNUC__=8)
@@ -90,9 +86,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
                # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
-    string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)

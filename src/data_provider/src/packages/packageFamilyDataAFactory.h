@@ -15,7 +15,6 @@
 #include <memory>
 #include "json.hpp"
 #include "packageMac.h"
-#include "packageSolaris.h"
 #include "sharedDefs.h"
 
 template <OSPlatformType osType>
@@ -50,16 +49,6 @@ class FactoryPackageFamilyCreator<OSPlatformType::BSDBASED> final
         static std::shared_ptr<IPackage> create(const std::pair<SQLite::IStatement&, const int>& ctx)
         {
             return FactoryBSDPackage::create(ctx);
-        }
-};
-
-template <>
-class FactoryPackageFamilyCreator<OSPlatformType::SOLARIS> final
-{
-    public:
-        static std::shared_ptr<IPackage> create(const std::shared_ptr<IPackageWrapper>& packageWrapper)
-        {
-            return FactorySolarisPackage::create(packageWrapper);
         }
 };
 

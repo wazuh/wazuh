@@ -650,30 +650,22 @@ WriteLocal()
 InstallCommon()
 {
 
-    WAZUH_GROUP='wazuh'
-    WAZUH_USER='wazuh'
-    INSTALL="install"
+  WAZUH_GROUP='wazuh'
+  WAZUH_USER='wazuh'
+  INSTALL="install"
 
-    if [ ${INSTYPE} = 'server' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
-        OSSEC_CONF_SRC='../etc/ossec-server.conf'
-    elif [ ${INSTYPE} = 'agent' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
-        OSSEC_CONF_SRC='../etc/ossec-agent.conf'
-    elif [ ${INSTYPE} = 'local' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
-        OSSEC_CONF_SRC='../etc/ossec-local.conf'
-    fi
+  if [ ${INSTYPE} = 'server' ]; then
+      OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
+      OSSEC_CONF_SRC='../etc/ossec-server.conf'
+  elif [ ${INSTYPE} = 'agent' ]; then
+      OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
+      OSSEC_CONF_SRC='../etc/ossec-agent.conf'
+  elif [ ${INSTYPE} = 'local' ]; then
+      OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
+      OSSEC_CONF_SRC='../etc/ossec-local.conf'
+  fi
 
-    if [ ${DIST_NAME} = "sunos" ]; then
-        INSTALL="ginstall"
-    elif [ ${DIST_NAME} = "HP-UX" ]; then
-        INSTALL="/usr/local/coreutils/bin/install"
-   elif [ ${DIST_NAME} = "AIX" ]; then
-        INSTALL="/opt/freeware/bin/install"
-    fi
-
-    ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
+  ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/
 
@@ -859,34 +851,22 @@ InstallCommon()
         fi
     fi
 
-    if [ ${DIST_NAME} = 'AIX' ]
+
+    if [ -f libstdc++.so.6 ]
     then
-        if [ -f libstdc++.a ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.a ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
         fi
+    fi
 
-        if [ -f libgcc_s.a ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.a ${INSTALLDIR}/lib
-        fi
-    else
-        if [ -f libstdc++.so.6 ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
+    if [ -f libgcc_s.so.1 ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
 
-            if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
-            fi
-        fi
-
-        if [ -f libgcc_s.so.1 ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
-
-            if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
-            fi
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
         fi
     fi
 
@@ -925,14 +905,6 @@ InstallCommon()
 
     if [ -f /etc/TIMEZONE ]; then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
-    fi
-    # Solaris Needs some extra files
-    if [ ${DIST_NAME} = "SunOS" ]; then
-      ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/
-        cp -rf /usr/share/lib/zoneinfo/* ${INSTALLDIR}/usr/share/lib/zoneinfo/
-        chown root:${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/*
-        find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type d -exec chmod 0750 {} +
-        find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
     fi
 
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/

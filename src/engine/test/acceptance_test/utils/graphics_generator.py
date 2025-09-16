@@ -10,16 +10,11 @@ import pandas as pd
 import numpy as np
 import re
 
-if platform == "sunos5":
-    import matplotlib
-
-    matplotlib.use('Agg')
-else:
-    import seaborn as sns
+import seaborn as sns
 
 
 def get_color_palette(size):
-    return sns.hls_palette(size - 1, h=.5) if platform != 'sunos5' else None
+    return sns.hls_palette(size - 1, h=.5)
 
 
 def get_daemons(dataframe):
@@ -429,7 +424,7 @@ def main():
     start_range = args.start_range if args.start_range is not None else start_range
     end_range = args.end_range if args.end_range is not None else end_range
     interval = args.interval if args.interval is not None else interval
-   
+
     if (start_range != "-" and end_range == "-") or (start_range == "-" and end_range != "-"):
         print("Parameters -sr and -er must be used together if any of them are defined")
         exit(1)

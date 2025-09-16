@@ -53,10 +53,7 @@
 #include <sys/mount.h>
 #endif
 
-/* HPUX does not have select.h */
-#ifndef HPUX
 #include <sys/select.h>
-#endif
 
 #include <sys/utsname.h>
 #endif /* WIN32 */
@@ -99,11 +96,6 @@
 #ifdef __cplusplus
 #include <atomic>
 #define _Atomic(T) std::atomic<T>
-#else
-#ifdef hpux
-// TODO: remove this line after upgrading GCC on HP-UX
-#define _Atomic(T) T
-#endif
 #endif
 
 #include <time.h>
@@ -124,20 +116,7 @@
 #endif /* FILE_OFFSET_BITS */
 
 /* Global portability code */
-
-#ifdef SOLARIS
-#include <limits.h>
-typedef uint32_t u_int32_t;
-typedef uint16_t u_int16_t;
-typedef uint8_t u_int8_t;
-
-#ifndef va_copy
-#define va_copy __va_copy
-#endif
-
-#endif /* SOLARIS */
-
-#if defined(HPUX) || defined(DOpenBSD)
+#if defined(DOpenBSD)
 #include <limits.h>
 typedef uint64_t u_int64_t;
 typedef int int32_t;
@@ -170,10 +149,6 @@ typedef uint8_t u_int8_t;
 #define PROCESSOR_ARCHITECTURE_AMD64 9
 #endif
 #endif /* WIN32 */
-
-#ifdef AIX
-#define MSG_DONTWAIT MSG_NONBLOCK
-#endif
 
 #if defined(__GNUC__) && __GNUC__ >= 7
 #define WFALLTHROUGH __attribute__ ((fallthrough))

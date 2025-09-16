@@ -16,7 +16,7 @@
 #define STATIC static
 #endif
 
-#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
+#if defined (__linux__) || defined (__MACH__) || defined(FreeBSD) || defined(OpenBSD)
 #include "wm_control.h"
 #include "sysInfo.h"
 #include "sym_load.h"
@@ -53,7 +53,7 @@ char* getPrimaryIP(){
      /* Get Primary IP */
     char * agent_ip = NULL;
 
-#if defined __linux__ || defined __MACH__ || defined(FreeBSD) || defined(OpenBSD) || defined(sun)
+#if defined __linux__ || defined __MACH__ || defined(FreeBSD) || defined(OpenBSD)
     cJSON *object;
     if (sysinfo_network_ptr && sysinfo_free_result_ptr) {
         const int error_code = sysinfo_network_ptr(&object);

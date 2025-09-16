@@ -78,8 +78,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
     _host_types = set(["server", "agent"])
     _platforms = set([platforms.LINUX,
                       platforms.WINDOWS,
-                      platforms.MACOS,
-                      platforms.SOLARIS])
+                      platforms.MACOS])
 
     for item in items:
         supported_platforms = _platforms.intersection(

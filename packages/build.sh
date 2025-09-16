@@ -74,8 +74,7 @@ export JOBS="$2"
 debug="$3"
 checksum="$4"
 future="$5"
-legacy="$6"
-src="$7"
+src="$6"
 
 build_dir="/build_wazuh"
 
@@ -91,14 +90,7 @@ if [ ! -d "/wazuh-local-src" ] ; then
     short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${WAZUH_BRANCH} \
                           | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
 else
-    if [ "${legacy}" = "no" ]; then
       short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short=7 HEAD)"
-    else
-      # Git package is not available in the CentOS 5 repositories.
-      head=$(cat /wazuh-local-src/.git/HEAD)
-      hash_commit=$(echo "$head" | grep "ref: " >/dev/null && cat /wazuh-local-src/.git/$(echo $head | cut -d' ' -f2) || echo $head)
-      short_commit_hash="$(cut -c 1-7 <<< $hash_commit)"
-    fi
 fi
 
 # Build directories
@@ -117,7 +109,7 @@ set_debug $debug $sources_dir
 
 # Installing build dependencies
 cd $sources_dir
-build_deps $legacy
+build_deps
 build_package $package_name $debug "$short_commit_hash" "$wazuh_version"
 
 # Post-processing

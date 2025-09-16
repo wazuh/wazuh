@@ -42,12 +42,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
     target_link_libraries(sysinfo_test_tool
         sysinfo
         pthread)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "AIX" OR CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
-    target_link_libraries(sysinfo_test_tool
-        sysinfo
-        dl
-        pthread
-    )
 else()
     target_link_libraries(sysinfo_test_tool
         sysinfo
@@ -56,13 +50,6 @@ else()
         proc
     )
 
-    if(SOLARIS)
-        target_link_libraries(sysinfo_test_tool
-            sysinfo
-            nsl
-            socket
-        )
-    endif(SOLARIS)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(APPLE)

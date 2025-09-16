@@ -34,10 +34,8 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 #ifndef WIN32
 
 /* UNIX SOCKET */
-#ifndef SUN_LEN
 #define SUN_LEN(ptr) ((size_t) (((struct sockaddr_un *) 0)->sun_path)        \
                      + strlen ((ptr)->sun_path))
-#endif /* Sun_LEN */
 
 #else /* WIN32 */
 /*int ENOBUFS = 0;*/
@@ -369,14 +367,6 @@ int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6, uint32_t network_i
 {
     int sock = OS_Connect(_port, IPPROTO_UDP, _ip, ipv6, network_interface);
 
-#ifdef HPUX
-    if (sock >= 0) {
-        int flags;
-        flags = fcntl(sock, F_GETFL, 0);
-        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-    }
-#endif
-
     return sock;
 }
 
@@ -618,7 +608,7 @@ int OS_SetKeepalive(int socket)
 void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int intvl, int cnt)
 {
     if (cnt > 0) {
-#if !defined(sun) && !defined(WIN32) && !defined(OpenBSD)
+#if !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
         }
@@ -628,17 +618,7 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
     }
 
     if (idle > 0) {
-#ifdef sun
-#ifdef TCP_KEEPALIVE_THRESHOLD
-        idle *= 1000;
-
-        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPALIVE_THRESHOLD, (void *)&idle, sizeof(idle)) < 0) {
-            merror("OS_SetKeepalive_Options(TCP_KEEPALIVE_THRESHOLD) failed with error '%s'", strerror(errno));
-        }
-#else
-        mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
-#endif
-#elif !defined(WIN32) && !defined(OpenBSD)
+#if !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
             merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
         }
@@ -648,17 +628,7 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
     }
 
     if (intvl > 0) {
-#ifdef sun
-#ifdef TCP_KEEPALIVE_ABORT_THRESHOLD
-        intvl *= 1000;
-
-        if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPALIVE_ABORT_THRESHOLD, (void *)&intvl, sizeof(intvl)) < 0) {
-            merror("OS_SetKeepalive_Options(TCP_KEEPALIVE_ABORT_THRESHOLD) failed with error '%s'", strerror(errno));
-        }
-#else
-        mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
-#endif
-#elif !defined(WIN32) && !defined(OpenBSD)
+#if !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
         }
@@ -991,21 +961,15 @@ int get_ipv4_numeric(const char *address, struct in_addr *addr) {
     int ret = OS_INVALID;
 
 #ifdef WIN32
-    if (checkVista()) {
-        typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
-        inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
+    typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+    inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
 
-        if (NULL != InetPton) {
-            if (InetPton(AF_INET, address, addr) == 1) {
-                ret = OS_SUCCESS;
-            }
-        } else {
-            mwarn("It was not possible to convert IPv4 address");
-        }
-    } else {
-        if ((addr->s_addr = inet_addr(address)) > 0) {
+    if (NULL != InetPton) {
+        if (InetPton(AF_INET, address, addr) == 1) {
             ret = OS_SUCCESS;
         }
+    } else {
+        mwarn("It was not possible to convert IPv4 address");
     }
 #else
     if (inet_pton(AF_INET, address, addr) == 1) {
@@ -1020,19 +984,15 @@ int get_ipv6_numeric(const char *address, struct in6_addr *addr6) {
     int ret = OS_INVALID;
 
 #ifdef WIN32
-    if (checkVista()) {
-        typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
-        inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
+    typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
+    inet_pton_t InetPton = (inet_pton_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_pton");
 
-        if (NULL != InetPton) {
-            if (InetPton(AF_INET6, address, addr6) == 1) {
-                ret = OS_SUCCESS;
-            }
-        } else {
-            mwarn("It was not possible to convert IPv6 address");
+    if (NULL != InetPton) {
+        if (InetPton(AF_INET6, address, addr6) == 1) {
+            ret = OS_SUCCESS;
         }
     } else {
-        mwarn("IPv6 in Windows XP is not supported");
+        mwarn("It was not possible to convert IPv6 address");
     }
 #else
     if (inet_pton(AF_INET6, address, addr6) == 1) {
@@ -1047,23 +1007,15 @@ int get_ipv4_string(struct in_addr addr, char *address, size_t address_size) {
     int ret = OS_INVALID;
 
 #ifdef WIN32
-    if (checkVista()) {
-        typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
-        inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
+    typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
+    inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
 
-        if (NULL != InetNtop) {
-            if (InetNtop(AF_INET, &addr, address, address_size)) {
-                ret = OS_SUCCESS;
-            }
-        } else {
-            mwarn("It was not possible to convert IPv4 address");
-        }
-    } else {
-        char *aux = inet_ntoa(addr);
-        if (aux) {
-            strncpy(address, aux, address_size);
+    if (NULL != InetNtop) {
+        if (InetNtop(AF_INET, &addr, address, address_size)) {
             ret = OS_SUCCESS;
         }
+    } else {
+        mwarn("It was not possible to convert IPv4 address");
     }
 #else
     if (inet_ntop(AF_INET, &addr, address, address_size)) {
@@ -1078,19 +1030,15 @@ int get_ipv6_string(struct in6_addr addr6, char *address, size_t address_size) {
     int ret = OS_INVALID;
 
 #ifdef WIN32
-    if (checkVista()) {
-        typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
-        inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
+    typedef PCSTR (WINAPI * inet_ntop_t)(INT, PVOID, PSTR, size_t);
+    inet_ntop_t InetNtop = (inet_ntop_t)GetProcAddress(GetModuleHandle("ws2_32.dll"), "inet_ntop");
 
-        if (NULL != InetNtop) {
-            if (InetNtop(AF_INET6, &addr6, address, address_size)) {
-                ret = OS_SUCCESS;
-            }
-        } else {
-            mwarn("It was not possible to convert IPv6 address");
+    if (NULL != InetNtop) {
+        if (InetNtop(AF_INET6, &addr6, address, address_size)) {
+            ret = OS_SUCCESS;
         }
     } else {
-        mwarn("IPv6 in Windows XP is not supported");
+        mwarn("It was not possible to convert IPv6 address");
     }
 #else
     if (inet_ntop(AF_INET6, &addr6, address, address_size)) {

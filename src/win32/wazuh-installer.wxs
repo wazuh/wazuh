@@ -81,19 +81,16 @@
         <!-- Especially, "ossec.conf" and "client.keys" will be kept, and a couple of other files too. -->
         <Binary Id="RemoveAllScript" SourceFile="RemoveAllScript.vbs" />
 
-        <CustomAction Id="SetOSVersion0" Property="OS_VERSION" Value="xp"/>
-        <CustomAction Id="SetOSVersion1" Property="OS_VERSION" Value="2003"/>
-        <CustomAction Id="SetOSVersion2" Property="OS_VERSION" Value="Vista"/>
-        <CustomAction Id="SetOSVersion3" Property="OS_VERSION" Value="2008"/>
-        <CustomAction Id="SetOSVersion4" Property="OS_VERSION" Value="7"/>
-        <CustomAction Id="SetOSVersion5" Property="OS_VERSION" Value="2008R2"/>
-        <CustomAction Id="SetOSVersion6" Property="OS_VERSION" Value="8"/>
-        <CustomAction Id="SetOSVersion7" Property="OS_VERSION" Value="2012"/>
-        <CustomAction Id="SetOSVersion8" Property="OS_VERSION" Value="8.1"/>
-        <CustomAction Id="SetOSVersion9" Property="OS_VERSION" Value="2012R2"/>
-        <CustomAction Id="SetOSVersion10" Property="OS_VERSION" Value="10"/>
-        <CustomAction Id="SetOSVersion11" Property="OS_VERSION" Value="2016"/>
-        <CustomAction Id="SetOSVersion12" Property="OS_VERSION" Value="2019"/>
+        <CustomAction Id="SetOSVersion0" Property="OS_VERSION" Value="2008"/>
+        <CustomAction Id="SetOSVersion1" Property="OS_VERSION" Value="7"/>
+        <CustomAction Id="SetOSVersion2" Property="OS_VERSION" Value="2008R2"/>
+        <CustomAction Id="SetOSVersion3" Property="OS_VERSION" Value="8"/>
+        <CustomAction Id="SetOSVersion4" Property="OS_VERSION" Value="2012"/>
+        <CustomAction Id="SetOSVersion5" Property="OS_VERSION" Value="8.1"/>
+        <CustomAction Id="SetOSVersion6" Property="OS_VERSION" Value="2012R2"/>
+        <CustomAction Id="SetOSVersion7" Property="OS_VERSION" Value="10"/>
+        <CustomAction Id="SetOSVersion8" Property="OS_VERSION" Value="2016"/>
+        <CustomAction Id="SetOSVersion9" Property="OS_VERSION" Value="2019"/>
 
         <CustomAction Id="SetWazuhManager" Property="WAZUH_MANAGER" Value="&quot;[ADDRESS]&quot;" />
         <CustomAction Id="SetWazuhManagerPort" Property="WAZUH_MANAGER_PORT" Value="&quot;[SERVER_PORT]&quot;" />
@@ -136,19 +133,16 @@
         </UI>
         <InstallExecuteSequence>
             <!-- Set OS VERSION -->
-            <Custom Action="SetOSVersion0" Before="SetCustomActionDataValue">( VersionNT = 501 OR VersionNT64 = 501 )</Custom>
-            <Custom Action="SetOSVersion1" Before="SetCustomActionDataValue">( VersionNT = 502 OR VersionNT64 = 502 )</Custom>
-            <Custom Action="SetOSVersion2" Before="SetCustomActionDataValue">( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType = 1</Custom>
-            <Custom Action="SetOSVersion3" Before="SetCustomActionDataValue">( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType &gt; 1</Custom>
-            <Custom Action="SetOSVersion4" Before="SetCustomActionDataValue">( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType = 1</Custom>
-            <Custom Action="SetOSVersion5" Before="SetCustomActionDataValue">( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType &gt; 1</Custom>
-            <Custom Action="SetOSVersion6" Before="SetCustomActionDataValue">( VersionNT = 602 OR VersionNT64 = 602 ) AND  MsiNTProductType = 1</Custom>
-            <Custom Action="SetOSVersion7" Before="SetCustomActionDataValue">( VersionNT = 602 OR VersionNT64 = 602 ) AND  MsiNTProductType &gt; 1</Custom>
-            <Custom Action="SetOSVersion8" Before="SetCustomActionDataValue">( VersionNT = 603 OR VersionNT64 = 603 ) AND MAJORVERSION &lt;&gt; "#10" AND  MsiNTProductType = 1</Custom>
-            <Custom Action="SetOSVersion9" Before="SetCustomActionDataValue">( VersionNT = 603 OR VersionNT64 = 603 ) AND MAJORVERSION &lt;&gt; "#10" AND  MsiNTProductType &gt; 1</Custom>
-            <Custom Action="SetOSVersion10" Before="SetCustomActionDataValue">MAJORVERSION = "#10" AND MsiNTProductType = 1</Custom>
-            <Custom Action="SetOSVersion11" Before="SetCustomActionDataValue">BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Custom>
-            <Custom Action="SetOSVersion12" Before="SetCustomActionDataValue">BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Custom>
+            <Custom Action="SetOSVersion0" Before="SetCustomActionDataValue">( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType &gt; 1</Custom>
+            <Custom Action="SetOSVersion1" Before="SetCustomActionDataValue">( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType = 1</Custom>
+            <Custom Action="SetOSVersion2" Before="SetCustomActionDataValue">( VersionNT = 601 OR VersionNT64 = 601 ) AND  MsiNTProductType &gt; 1</Custom>
+            <Custom Action="SetOSVersion3" Before="SetCustomActionDataValue">( VersionNT = 602 OR VersionNT64 = 602 ) AND  MsiNTProductType = 1</Custom>
+            <Custom Action="SetOSVersion4" Before="SetCustomActionDataValue">( VersionNT = 602 OR VersionNT64 = 602 ) AND  MsiNTProductType &gt; 1</Custom>
+            <Custom Action="SetOSVersion5" Before="SetCustomActionDataValue">( VersionNT = 603 OR VersionNT64 = 603 ) AND MAJORVERSION &lt;&gt; "#10" AND  MsiNTProductType = 1</Custom>
+            <Custom Action="SetOSVersion6" Before="SetCustomActionDataValue">( VersionNT = 603 OR VersionNT64 = 603 ) AND MAJORVERSION &lt;&gt; "#10" AND  MsiNTProductType &gt; 1</Custom>
+            <Custom Action="SetOSVersion7" Before="SetCustomActionDataValue">MAJORVERSION = "#10" AND MsiNTProductType = 1</Custom>
+            <Custom Action="SetOSVersion8" Before="SetCustomActionDataValue">BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Custom>
+            <Custom Action="SetOSVersion9" Before="SetCustomActionDataValue">BUILDVERSION = "17763" AND MsiNTProductType &gt; 1</Custom>
 
             <!-- Close the GUI -->
             <Custom Action="CloseGUI" Before="InstallFinalize"></Custom>
@@ -301,34 +295,6 @@
                     </Component>
                     <Component Id="WPK_ROOT.PEM" DiskId="1" Guid="EABF8773-57B9-4CD8-A862-87B0E060DBF8">
                         <File Id="WPK_ROOT.PEM" Name="wpk_root.pem" Source="..\..\etc\wpk_root.pem" />
-                    </Component>
-                    <Component Id="WXP_CONF_LOCALFILE" DiskId="1" Guid="F2258AB6-A976-4333-A957-3CD0662C82D2">
-                        <File Id="WXP_LOCALFILE.TEMPLATE" Name="localfile-events-xp.template" Source="..\..\etc\templates\config\windows\xp\localfile-events.template"/>
-                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
-                    </Component>
-                    <Component Id="WXP_CONF_PROFILE" DiskId="1" Guid="31F19F56-4549-4D80-924E-ED2F7B0CA74E">
-                        <File Id="WXP_PROFILE.TEMPLATE" Name="profile-xp.template" Source="..\..\etc\templates\config\windows\xp\profile.template"/>
-                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
-                    </Component>
-                    <Component Id="WXP_CONF_SYSCHECK" DiskId="1" Guid="EFE11D65-FF03-41B8-B4FE-82BDC522F0E9">
-                        <File Id="WXP_SYSCHECK.TEMPLATE" Name="syscheck-xp.template" Source="..\..\etc\templates\config\windows\xp\syscheck.template"/>
-                        <Condition>( VersionNT = 501 OR VersionNT64 = 501 )</Condition>
-                    </Component>
-                    <Component Id="W2003_CONF_LOCALFILE" DiskId="1" Guid="D0CCDE58-2593-48FF-85CC-E681B78DCEFE">
-                        <File Id="W2003_LOCALFILE.TEMPLATE" Name="localfile-events-2003.template" Source="..\..\etc\templates\config\windows\2003\localfile-events.template"/>
-                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
-                    </Component>
-                    <Component Id="W2003_CONF_PROFILE" DiskId="1" Guid="5F70333D-BA3F-4722-BE78-3FF67FE216F9">
-                        <File Id="W2003_PROFILE.TEMPLATE" Name="profile-2003.template" Source="..\..\etc\templates\config\windows\2003\profile.template"/>
-                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
-                    </Component>
-                    <Component Id="W2003_CONF_SYSCHECK" DiskId="1" Guid="B89F2D95-F0FA-4B51-B680-42F430F2EB82">
-                        <File Id="W2003_SYSCHECK.TEMPLATE" Name="syscheck-2003.template" Source="..\..\etc\templates\config\windows\2003\syscheck.template"/>
-                        <Condition>( VersionNT = 502 OR VersionNT64 = 502 )</Condition>
-                    </Component>
-                    <Component Id="WVISTA_CONF_PROFILE" DiskId="1" Guid="06CBBBCB-0D20-4EEA-9E5A-854A9A34DEFE">
-                        <File Id="WVISTA_LOCALFILE.TEMPLATE" Name="profile-Vista.template" Source="..\..\etc\templates\config\windows\Vista\profile.template"/>
-                        <Condition>( VersionNT = 600 OR VersionNT64 = 600 ) AND  MsiNTProductType = 1</Condition>
                     </Component>
                     <Component Id="W2008_CONF_PROFILE" DiskId="1" Guid="89BC9CB1-065E-4808-8B8F-70C22F500B4A">
                         <File Id="W2008_LOCALFILE.TEMPLATE" Name="profile-2008.template" Source="..\..\etc\templates\config\windows\2008\profile.template"/>
@@ -674,13 +640,6 @@
             <ComponentRef Id="HELP_WIN.TXT" />
             <ComponentRef Id="VERSION.JSON" />
             <ComponentRef Id="WPK_ROOT.PEM" />
-            <ComponentRef Id="WXP_CONF_SYSCHECK" />
-            <ComponentRef Id="WXP_CONF_LOCALFILE" />
-            <ComponentRef Id="WXP_CONF_PROFILE" />
-            <ComponentRef Id="W2003_CONF_PROFILE" />
-            <ComponentRef Id="W2003_CONF_LOCALFILE" />
-            <ComponentRef Id="W2003_CONF_SYSCHECK" />
-            <ComponentRef Id="WVISTA_CONF_PROFILE" />
             <ComponentRef Id="W2008_CONF_PROFILE" />
             <ComponentRef Id="W7_CONF_PROFILE" />
             <ComponentRef Id="W2008R2_CONF_PROFILE" />

@@ -346,9 +346,7 @@ static void test_get_user_success(void **state) {
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, 1);
-#ifndef SOLARIS
     will_return(__wrap_getpwuid_r, 0);
-#endif
 
     user = get_user(1);
 
@@ -364,9 +362,7 @@ static void test_get_user_uid_not_found(void **state) {
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);
-#ifndef SOLARIS
     will_return(__wrap_getpwuid_r, 0);
-#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "User with uid '1' not found.\n");
 
@@ -384,9 +380,7 @@ static void test_get_user_error(void **state) {
 
     will_return(__wrap_getpwuid_r, "user_name");
     will_return(__wrap_getpwuid_r, NULL);
-#ifndef SOLARIS
     will_return(__wrap_getpwuid_r, ENOENT);
-#endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "Failed getting user_name for uid 1: (2): 'No such file or directory'\n");
 

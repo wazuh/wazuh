@@ -40,8 +40,6 @@ os_version:
     - Red Hat 8
     - macOS Catalina
     - macOS Server
-    - Solaris 10
-    - Solaris 11
     - macOS Catalina
     - macOS Server
     - Ubuntu Focal

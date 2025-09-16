@@ -26,16 +26,6 @@
 
 static const char *pidfile = NULL;
 
-/* To avoid hp-ux requirement of strsignal */
-#ifdef __hpux
-char* strsignal(int sig)
-{
-    static char str[12];
-    sprintf(str, "%d", sig);
-    return str;
-}
-#endif
-
 void HandleExit() {
     DeletePID(pidfile);
 

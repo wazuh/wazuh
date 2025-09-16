@@ -4,7 +4,7 @@
      firewall-drop responses funkciókat.
      Az első hozzá fog adni egy hosztot az /etc/hosts.deny
      fájlhoz, és a második pedig blokkolni fogja a hosztot
-     (linux esetében) az iptables vagy (Solaris, FreeBSD
+     (linux esetében) az iptables vagy (FreeBSD
      vagy NetBSD esetében) az ipfilter tűzfalakban.
    - Ezek a funkciók az SSHD brute force scan-ek,
      a portscan-ek és néhány egyéb támadási forma

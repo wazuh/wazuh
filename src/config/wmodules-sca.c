@@ -41,9 +41,6 @@ static unsigned int policies_count = 0;
 #define mdebug1(msg, ...) _mtdebug1(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_SCA_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
-
-static const size_t n_old_policies_filenames = 24;
-
 static char * const old_policies_filenames[] = {
     "acsc_office2016_rcl.yml",
     "cis_apache2224_rcl.yml",
@@ -52,12 +49,9 @@ static char * const old_policies_filenames[] = {
     "cis_debianlinux7-8_L2_rcl.yml",
     "cis_mysql5-6_community_rcl.yml",
     "cis_mysql5-6_enterprise_rcl.yml",
-    "cis_rhel5_linux_rcl.yml",
     "cis_rhel6_linux_rcl.yml",
     "cis_rhel7_linux_rcl.yml",
-    "cis_sles11_linux_rcl.yml",
     "cis_sles12_linux_rcl.yml",
-    "cis_solaris11_rcl.yml",
     "cis_win10_enterprise_L1_rcl.yml",
     "cis_win10_enterprise_L2_rcl.yml",
     "cis_win2012r2_domainL1_rcl.yml",
@@ -70,6 +64,8 @@ static char * const old_policies_filenames[] = {
     "system_audit_ssh.yml",
     "win_audit_rcl.yml"
 };
+
+static const size_t n_old_policies_filenames = sizeof old_policies_filenames / sizeof old_policies_filenames[0];
 
 static int is_policy_old (char * const file_list[], const size_t file_list_len, const char * const policy_filename)
 {

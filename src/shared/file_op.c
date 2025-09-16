@@ -395,10 +395,6 @@
 #define mkdir(x, y) mkdir(x)
 #endif /* WIN32 */
 
-#ifdef WIN32
-int isVista;
-#endif
-
 const char *__local_name = "unset";
 
 int waccess(const char *path, int mode) {
@@ -1293,31 +1289,6 @@ bool is_program_available(const char *program) {
 }
 
 #else /* WIN32 */
-
-int checkVista()
-{
-    /* Check if the system is Vista (must be called during the startup) */
-    isVista = 0;
-
-    OSVERSIONINFOEX osvi = { .dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX) };
-    BOOL bOsVersionInfoEx;
-
-    if (bOsVersionInfoEx = GetVersionEx ((OSVERSIONINFO *) &osvi), !bOsVersionInfoEx) {
-        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-        if (!GetVersionEx((OSVERSIONINFO *)&osvi)) {
-            merror("Cannot get Windows version number.");
-            return -1;
-        }
-    }
-
-    if (osvi.dwMajorVersion >= 6) {
-        isVista = 1;
-    }
-
-    return (isVista);
-}
-
-
 int get_creation_date(char *dir, SYSTEMTIME *utc) {
     HANDLE hdle;
     FILETIME creation_date;

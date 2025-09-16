@@ -20,14 +20,6 @@ if [ ! "X$hs" = "Xa" ]; then
     fi
 fi
 
-# For solaris
-echo "xxxx" | grep -E "xxx" > /dev/null 2>&1
-if [ ! $? = 0 ]; then
-    if [ -x /usr/xpg4/bin/grep ]; then
-        PATH=/usr/xpg4/bin:$PATH
-    fi
-fi
-
 # Initializing vars
 SET_DEBUG=""
 
@@ -70,12 +62,6 @@ Install()
           MAKEBIN=gmake
     elif [ "X$NUNAME" = "XBitrig" ]; then
           MAKEBIN=gmake
-    elif [ "X$NUNAME" = "XSunOS" ]; then
-          MAKEBIN=gmake
-    elif [ "X$NUNAME" = "XHP-UX" ]; then
-          MAKEBIN=/usr/local/bin/gmake
-    elif [ "X$NUNAME" = "XAIX" ]; then
-          MAKEBIN=/opt/freeware/bin/gmake
     fi
     if [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
         ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
@@ -545,26 +531,6 @@ askForDelete()
 }
 
 ##########
-# checkDependencies()
-# Thanks to gabriel@macacos.org
-##########
-checkDependencies()
-{
-    echo ""
-    OLDOPATH=$PATH
-    if [ "X$NUNAME" = "XSunOS" ]; then
-        PATH=$PATH:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
-        export  PATH
-    elif [ "X$NUNAME" = "XAIX" ]; then
-        PATH=$PATH:/usr/vac/bin
-        export  PATH
-    fi
-
-    PATH=$OLDOPATH
-    export PATH
-}
-
-##########
 # AddWhite()
 ##########
 AddWhite()
@@ -759,9 +725,6 @@ main()
     if [ ! "X$ME" = "Xroot" ]; then
         catError "0x2-beroot";
     fi
-
-    # Checking dependencies
-    checkDependencies
 
     if [ "X$USER_NO_STOP" = "X" ]; then
         clear 2> /dev/null

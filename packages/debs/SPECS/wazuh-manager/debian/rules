@@ -116,7 +116,6 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/amzn/1
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/amzn/2
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/amzn/2023
-	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/5
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/6
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/7
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/8
@@ -140,16 +139,12 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/12
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ol/9
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ol/10
-	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/5
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/6
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/7
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/8
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/9
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/10
-	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles/11
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles/12
-	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sunos
-	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/suse/11
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/suse/12
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/12/04
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/14/04
@@ -164,14 +159,12 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/almalinux/8
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/almalinux/9
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/almalinux/10
-	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sunos/5/11
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rocky/8
 
 	cp -r ruleset/sca/* ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca
 
 	cp etc/templates/config/generic/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/generic
 	cp etc/templates/config/generic/sca.manager.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/generic
-	cp etc/templates/config/sunos/5/11/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sunos/5/11
 
 	cp etc/templates/config/amzn/1/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/amzn/1
 	cp etc/templates/config/amzn/2/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/amzn/2
@@ -197,7 +190,6 @@ override_dh_install:
 	cp etc/templates/config/debian/12/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/debian/12
 
 	cp etc/templates/config/centos/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos
-	cp etc/templates/config/centos/5/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/5
 	cp etc/templates/config/centos/6/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/6
 	cp etc/templates/config/centos/7/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/7
 	cp etc/templates/config/centos/8/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/centos/8
@@ -208,7 +200,6 @@ override_dh_install:
 	cp etc/templates/config/ol/10/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ol/10
 
 	cp etc/templates/config/rhel/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel
-	cp etc/templates/config/rhel/5/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/5
 	cp etc/templates/config/rhel/6/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/6
 	cp etc/templates/config/rhel/7/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/7
 	cp etc/templates/config/rhel/8/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/8
@@ -216,10 +207,8 @@ override_dh_install:
 	cp etc/templates/config/rhel/9/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/rhel/10
 
 	cp etc/templates/config/sles/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles
-	cp etc/templates/config/sles/11/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/sles/11
 
 	cp etc/templates/config/suse/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/suse
-	cp etc/templates/config/suse/11/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/suse/11
 
 	cp etc/templates/config/ubuntu/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu
 	cp etc/templates/config/ubuntu/12/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/12/04

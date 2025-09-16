@@ -185,7 +185,7 @@ def compute_diff(check_results, process):
     logger.debug("Getting CPU, memory and FDs data.")
     # Load cpu, memory data
     cpu_data = process.cpu_percent(0.1)
-    if platform == 'darwin' or platform == 'sunos5':
+    if platform == 'darwin':
         memory_data = process.memory_info()
         mem_percent = process.memory_percent()
         fds = process.num_fds()

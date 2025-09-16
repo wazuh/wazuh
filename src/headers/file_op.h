@@ -36,7 +36,6 @@
 #ifdef WIN32
 #define PATH_SEP '\\'
 typedef uint64_t wino_t;
-extern int isVista;
 #else
 #define PATH_SEP '/'
 typedef ino_t wino_t;
@@ -546,14 +545,6 @@ void w_descriptor_cloexec(int fd);
 
 
 #ifdef WIN32
-/**
- * @brief Check if the Windows version is Vista or newer. (Windows)
- *
- * @return 1 if version is 6.0 or newer, 0 otherwise.
- */
-int checkVista();
-
-
 /**
  * @brief Get the creation date object. (Windows)
  *

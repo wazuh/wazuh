@@ -44,9 +44,7 @@
 #include <unistd.h>
 #include <netinet/in.h>
 
-#ifdef SOLARIS
-#include <sys/exechdr.h>
-#elif defined Darwin || defined HPUX || defined ALPINE
+#if defined Darwin || defined ALPINE
 
 /* For some reason darwin does not have that */
 struct exec {
@@ -83,15 +81,8 @@ struct exec {
 #endif
 
 #ifndef N_BADMAG
-
-#ifdef AIX
-#define       N_BADMAG(x) \
-    (((x).magic)!=U802TOCMAGIC && ((x).magic)!=U803TOCMAGIC && ((x).magic)!=U803XTOCMAGIC && ((x).magic)!=U64_TOCMAGIC)
-#else /* non AIX */
 #define       N_BADMAG(x) \
     (((x).a_magic)!=OMAGIC && ((x).a_magic)!=NMAGIC && ((x).a_magic)!=ZMAGIC)
-#endif
-
 #endif  /* N_BADMAG */
 
 #ifndef N_PAGSIZ
@@ -100,19 +91,11 @@ struct exec {
 #endif
 
 #ifndef N_TXTOFF
-
-#ifdef AIX
-#define         N_TXTOFF(x) \
-        /* text segment */ \
-            ((x).magic==U64_TOCMAGIC ? 0 : sizeof (struct aouthdr))
-#else /* non AIX */
 #define       N_TXTOFF(x) \
         /* text segment */ \
     ((x).a_machtype == M_OLDSUN2 \
            ? ((x).a_magic==ZMAGIC ? N_PAGSIZ(x) : sizeof (struct exec)) \
            : ((x).a_magic==ZMAGIC ? 0 : sizeof (struct exec)) )
-#endif
-
 #endif /* N_TXTOFF */
 
 #include "headers/defs.h"
@@ -126,11 +109,7 @@ struct exec {
 
 #define ISSTR(ch)   (isascii(ch) && (isprint(ch) || ch == '\t'))
 
-#ifdef AIX
-typedef struct aouthdr EXEC;
-#else
 typedef struct exec EXEC;
-#endif
 
 typedef struct _os_strings {
     int head_len;
@@ -192,11 +171,7 @@ int os_string(char *file, char *regex)
         if (fseek(stdin, oss.foff, SEEK_SET) == -1) {
             oss.read_len = -1;
         } else {
-#ifdef AIX
-            oss.read_len = head->tsize + head->dsize;
-#else
             oss.read_len = head->a_text + head->a_data;
-#endif
         }
 
         oss.head_len = 0;
