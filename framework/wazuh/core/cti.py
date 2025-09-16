@@ -3,7 +3,9 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+from contextlib import contextmanager
 from enum import Enum
+from wazuh.core.exception import WazuhInternalError
 
 
 class CTIAuthTokenStatus(Enum):
@@ -41,13 +43,12 @@ class CTIAuthTokenStatus(Enum):
         self.short_desc = short_desc
         self.long_desc = long_desc
 
-
 class CTI:
-    """Client that manages the CTI authentication token process."""
+    """Wazuh CTI client."""
 
-    def __init__(self):
-        """Initialize CTI."""
-        self.status = CTIAuthTokenStatus.PENDING
+    def __init__(self) -> None:
+        # TODO initialize communication with wazuh-modulesd
+        pass
 
     def get_auth_token_status(self) -> CTIAuthTokenStatus:
         """Get the current authentication token status.
@@ -57,6 +58,29 @@ class CTI:
         CTIAuthTokenStatus
             Current authentication token status.
         """
-        return self.status
 
-cti = CTI()
+        # TODO Request to wazuh-modulesd
+        return CTIAuthTokenStatus.PENDING
+
+    async def close(self):
+        # TODO close communication with wazuh-modulesd
+        pass
+
+@contextmanager
+def get_cti_client():
+    """Create and return the CTI client.
+
+    Returns
+    -------
+    AsyncIterator[CTI]
+        CTI client iterator.
+    """
+    client = CTI()
+
+    try:
+        yield client
+    # TODO add exceptions based on CTI token retrieval mechanism
+    except Exception:
+        raise WazuhInternalError(1000)
+    finally:
+        client.close()
