@@ -283,14 +283,14 @@ namespace chrome
         {
             if (webkit_timestamp.empty() || !std::all_of(webkit_timestamp.begin(), webkit_timestamp.end(), ::isdigit))
             {
-                return "0";
+                return "";
             }
 
             int64_t timestamp = std::stoll(webkit_timestamp);
 
             if (timestamp < 11644473600000000LL || timestamp > 253402300799000000LL)
             {
-                return "0";
+                return "";
             }
 
             std::time_t unix_timestamp = (timestamp - 11644473600000000LL) / 1000000;
@@ -298,7 +298,7 @@ namespace chrome
         }
         catch (const std::exception& e)
         {
-            return "0";
+            return "";
         }
     }
 
@@ -342,7 +342,7 @@ namespace chrome
             extension.from_webstore = "0";
         }
 
-        extension.install_time = value.contains("first_install_time") ? value["first_install_time"].get<std::string>() : "0";
+        extension.install_time = value.contains("first_install_time") ? value["first_install_time"].get<std::string>() : "";
         extension.install_timestamp = webkitToUnixTime(extension.install_time);
         extension.referenced_identifier = key;
     }
@@ -578,7 +578,7 @@ namespace chrome
                     extension.profile_path = profilePath;
                     extension.path = std::move(subSubDir);
                     extension.referenced = "0";
-                    extension.install_timestamp = "0";
+                    extension.install_timestamp = "";
 
                     getCommonSettings(extension, manifestPath);
 
