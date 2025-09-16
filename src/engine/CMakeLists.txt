@@ -186,6 +186,8 @@ if (NOT SHARED_MODULES)
 endif()
 include_directories(${SHARED_MODULES}/utils)
 
+# Set de indexer connector build directory
+set(INDEXERCONNECTOR_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/build/shared_modules/indexer_connector")
 
 ####################################################################################################
 # Rocksdb dynamic link
@@ -211,8 +213,9 @@ if(NOT _orig_rpath)
 endif()
 
 set(_new_paths
-  ${CMAKE_SOURCE_DIR}       # For shared libwazuhext.so
-  ${ROCKSDB_LIB_BUILD_DIR}
+  ${CMAKE_SOURCE_DIR}               # For shared libwazuhext.so
+  ${ROCKSDB_LIB_BUILD_DIR}          # External precompiled rocksdb lib
+  ${INDEXERCONNECTOR_LIB_BUILD_DIR} # Internal precompiled indexer connector lib
   "$ORIGIN/../lib"
   "$ORIGIN/lib"
 )
@@ -318,7 +321,7 @@ target_link_libraries(wazuh-engine
     geo::igeo
     scheduler::scheduler
     streamlogger::streamlogger
-    # indexerconnector # TODO: Comment until indexerconnector is unified with the old one
+    wIndexerConnector::wIndexerConnector
     httpsrv
     udgramsrv::udgramsrv
     api::event

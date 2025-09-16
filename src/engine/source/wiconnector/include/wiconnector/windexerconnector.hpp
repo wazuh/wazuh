@@ -55,7 +55,7 @@ private:
 public:
     WIndexerConnector() = delete;
     WIndexerConnector(const Config&, const LogFunctionType& logFunction);
-    explicit WIndexerConnector(std::string_view jsonOssecConfig);
+    WIndexerConnector(std::string_view jsonOssecConfig);
     ~WIndexerConnector();
 
     void index(std::string_view index, std::string_view data) override;

@@ -38,8 +38,7 @@ add_library(builder STATIC
     ${SRC_DIR}/builders/stage/normalize.cpp
     ${SRC_DIR}/builders/stage/outputs.cpp
     ${SRC_DIR}/builders/stage/fileOutput.cpp
-    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
-    # ${SRC_DIR}/builders/stage/indexerOutput.cpp
+    ${SRC_DIR}/builders/stage/indexerOutput.cpp
 
     # Map
     ${SRC_DIR}/builders/opmap/map.cpp
@@ -71,8 +70,7 @@ target_link_libraries(builder
     kvdb::ikvdb
     geo::igeo
     streamlogger::istreamlogger
-    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
-    # indexerconnector::iindexerconnector
+    wIndexerConnector::iwIndexerConnector
     logpar
 
     PRIVATE

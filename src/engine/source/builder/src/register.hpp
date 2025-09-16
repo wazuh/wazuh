@@ -26,8 +26,7 @@
 // Stage builders
 #include "builders/stage/check.hpp"
 #include "builders/stage/fileOutput.hpp"
-// TODO: Until the indexer connector is unified with the rest of wazuh-manager
-// #include "builders/stage/indexerOutput.hpp"
+#include "builders/stage/indexerOutput.hpp"
 #include "builders/stage/map.hpp"
 #include "builders/stage/normalize.hpp"
 #include "builders/stage/outputs.hpp"
@@ -367,11 +366,9 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
     registry->template add<builders::StageBuilder>(syntax::asset::PARSE_KEY,
                                                    builders::getParseBuilder(deps.logpar, deps.logparDebugLvl));
     registry->template add<builders::StageBuilder>(syntax::asset::OUTPUTS_KEY, builders::outputsBuilder);
-    registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY,
-                                                   builders::getFileOutputBuilder(deps.logManager));
-    // TODO: Until the indexer connector is unified with the rest of wazuh-manager
-    // registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,
-    //                                                builders::getIndexerOutputBuilder(deps.iConnector));
+    registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY, builders::getFileOutputBuilder(deps.logManager));
+    registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,
+                                                   builders::getIndexerOutputBuilder(deps.iConnector));
 }
 
 } // namespace builder::detail

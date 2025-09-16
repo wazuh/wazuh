@@ -31,8 +31,7 @@
 #include <streamlog/logger.hpp>
 #include <httpsrv/server.hpp>
 #include <udgramsrv/udsrv.hpp>
-// TODO: Until the indexer connector is unified with the rest of wazuh-manager
-// #include <indexerConnector/indexerConnector.hpp>
+#include <wiconnector/windexerconnector.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
@@ -211,7 +210,7 @@ int main(int argc, char* argv[])
     }
 
     // Engine start - Init modules
-    
+
     std::shared_ptr<store::Store> store;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
@@ -223,7 +222,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<api::policy::IPolicy> policyManager;
-    // std::shared_ptr<IIndexerConnector> iConnector;
+    std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
@@ -368,54 +367,26 @@ int main(int argc, char* argv[])
         }
 
         // Indexer Connector
-        /*
-        TODO: Until the indexer connector is unified with the rest of wazuh-manager
         {
-            IndexerConnectorOptions icConfig {};
-            icConfig.name = confManager.get<std::string>(conf::key::INDEXER_INDEX);
-            icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-            icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
-            icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
-            if (confManager.get<bool>(conf::key::INDEXER_SSL_USE_SSL))
+
+            const std::string jsonCnf = [&]() -> std::string
             {
-                icConfig.sslOptions.cacert = confManager.get<std::string>(conf::key::INDEXER_SSL_CA_BUNDLE);
-                icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
-                icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
-                icConfig.sslOptions.skipVerifyPeer = !confManager.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTS);
-            }
-            else
-            {
-                // If not use SSL, check if url start with https
-                for (const auto& host : icConfig.hosts)
+                wiconnector::Config icConfig {};
+                icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
+                icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
+                icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
+                // SSL config
                 {
-                    if (base::utils::string::startsWith(host, "https://"))
-                    {
-                        throw std::runtime_error(fmt::format(
-                            "The host '{}' for indexer connector is using HTTPS but the SSL options are not "
-                            "enabled.",
-                            host));
-                    }
+                    icConfig.ssl.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
+                    icConfig.ssl.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_BUNDLE);
+                    icConfig.ssl.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
                 }
-            }
+                return icConfig.toJson();
+            }();
 
-            icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
-            const auto to = confManager.get<int>(conf::key::INDEXER_TIMEOUT);
-            if (to < 0)
-            {
-                throw std::runtime_error("Invalid indexer timeout value.");
-            }
-            icConfig.timeout = to;
-            const auto wt = confManager.get<int>(conf::key::INDEXER_THREADS);
-            if (wt < 0)
-            {
-                throw std::runtime_error("Invalid indexer threads value.");
-            }
-            icConfig.workingThreads = wt;
-
-            iConnector = std::make_shared<IndexerConnector>(icConfig);
+            indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
             LOG_INFO("Indexer Connector initialized.");
         }
-        */
 
         // Scheduler
         {
@@ -479,7 +450,7 @@ int main(int argc, char* argv[])
             builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
-            // builderDeps.iConnector = iConnector;
+            builderDeps.iConnector = indexerConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
             // Build allowed fields
