@@ -13,19 +13,12 @@ constexpr std::string_view STORE_PATH = "analysisd.store_path";
 
 constexpr std::string_view KVDB_PATH = "analysisd.kvdb_path";
 
-constexpr std::string_view INDEXER_INDEX = "indexer.index";
-constexpr std::string_view INDEXER_HOST = "indexer.hosts";
-constexpr std::string_view INDEXER_USER = "indexer.username";
-constexpr std::string_view INDEXER_PASSWORD = "indexer.password";
-constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "indexer.ssl_certificate_authorities_bundle";
-constexpr std::string_view INDEXER_SSL_CERTIFICATE = "indexer.ssl_certificate";
-constexpr std::string_view INDEXER_SSL_KEY = "indexer.ssl_key";
-constexpr std::string_view INDEXER_SSL_USE_SSL = "indexer.ssl_use_ssl";
-constexpr std::string_view INDEXER_SSL_VERIFY_CERTS = "indexer.ssl_verify_certificates";
-
-constexpr std::string_view INDEXER_TIMEOUT = "indexer.timeout";
-constexpr std::string_view INDEXER_THREADS = "indexer.threads";
-constexpr std::string_view INDEXER_DB_PATH = "indexer.db_path";
+constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
+constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";
+constexpr std::string_view INDEXER_PASSWORD = "analysisd.indexer_password";
+constexpr std::string_view INDEXER_SSL_CA_BUNDLE = "analysisd.indexer_ssl_certificate_authorities";
+constexpr std::string_view INDEXER_SSL_CERTIFICATE = "analysisd.indexer_ssl_certificate";
+constexpr std::string_view INDEXER_SSL_KEY = "analysisd.indexer_ssl_key";
 
 constexpr std::string_view QUEUE_SIZE = "analysisd.queue_size";
 constexpr std::string_view QUEUE_FLOOD_FILE = "analysisd.queue_flood_file";

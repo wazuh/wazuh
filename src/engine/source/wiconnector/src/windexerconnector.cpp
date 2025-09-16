@@ -67,16 +67,17 @@ WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig)
 {
     if (jsonOssecConfig.empty())
     {
-        throw std::invalid_argument("Empty JSON configuration");
+        throw std::runtime_error("Empty JSON configuration for IndexerConnector");
     }
 
     const auto jsonParsed = nlohmann::json::parse(jsonOssecConfig, nullptr, false);
     if (jsonParsed.is_discarded())
     {
-        throw std::invalid_argument("Invalid JSON configuration");
+        throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
-    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed);
+    const auto logFunction = logging::createStandaloneLogFunction();
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonParsed, logFunction);
 }
 
 WIndexerConnector::WIndexerConnector(const Config& config, const LogFunctionType& logFunction)
@@ -84,7 +85,7 @@ WIndexerConnector::WIndexerConnector(const Config& config, const LogFunctionType
     nlohmann::json jsonConfig = nlohmann::json::parse(config.toJson(), nullptr, false);
     if (jsonConfig.is_discarded())
     {
-        throw std::invalid_argument("Invalid JSON configuration");
+        throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
     }
 
     m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsync>(jsonConfig, logFunction);
