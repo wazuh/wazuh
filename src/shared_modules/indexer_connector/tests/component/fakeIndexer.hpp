@@ -136,7 +136,7 @@ public:
      */
     bool initialized() const
     {
-    return m_indexerInitialized.load();
+        return m_indexerInitialized.load();
     }
 
     /**
