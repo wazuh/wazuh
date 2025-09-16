@@ -319,6 +319,9 @@ public:
 
                             thread_local std::string elementId;
                             elementId.clear();
+
+                            elementId.append(m_clusterName);
+                            elementId.append("_");
                             elementId.append(res.context->agentId);
                             elementId.append("_");
                             elementId.append(data->id()->string_view());
