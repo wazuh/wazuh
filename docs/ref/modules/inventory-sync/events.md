@@ -14,12 +14,12 @@ Initiates a new synchronization session. The agent sends this message to begin i
 // Flatbuffer schema structure
 message Start {
   mode: Mode;           // Full or Delta sync mode
-  agent_id: uint64;     // Agent identifier  
-  module_name: string;  // Source module name (e.g., "syscollector", "fim")
+  size: uint64;        // Amount messages to sent
 }
 ```
 
 **Synchronization Modes:**
+
 - **Full Mode**: Complete inventory replacement - triggers delete-by-query before indexing new data
 - **Delta Mode**: Incremental updates - only processes changes without clearing existing data
 
@@ -34,11 +34,12 @@ message Data {
   operation: Operation; // Upsert or Delete operation
   index: string;        // Target index name
   id: string;          // Document identifier
-  data: bytes;         // JSON document payload
+  data: [byte];        // JSON document payload
 }
 ```
 
 **Operations:**
+
 - **Upsert**: Insert or update document in the index
 - **Delete**: Remove document from the index
 
@@ -47,7 +48,7 @@ message Data {
 Signals the completion of data transmission and triggers the indexing process.
 
 ```cpp
-// Flatbuffer schema structure  
+// Flatbuffer schema structure
 message End {
   session: uint64;      // Session identifier
 }
@@ -58,7 +59,7 @@ message End {
 A complete synchronization session follows this sequence:
 
 1. **Agent** → **Manager**: Start message (creates session)
-2. **Agent** → **Manager**: Data message(s) (stored in local RocksDB)  
+2. **Agent** → **Manager**: Data message(s) (stored in local RocksDB)
 3. **Agent** → **Manager**: End message (triggers indexing)
 4. **Manager** → **Agent**: ACK response (confirms completion)
 
@@ -66,11 +67,17 @@ A complete synchronization session follows this sequence:
 
 The actual inventory data carried in Data messages is JSON-formatted and follows the Wazuh Common Schema (WCS).
 
+```console
+2025/09/16 19:18:48 logger-helper[275809] inventorySyncFacade.hpp:331 at operator()(): DEBUG: InventorySyncFacade::start: Upserting data...
+{"agent":{"id":"002","name":"Agent5", "version":"v5.0.0"},"wazuh":{"cluster":{"name":"cluster"}},"checksum":{"hash":{"sha1":"864d1e848ea2fc1f31a01c119812e08d523ded09"}},"package":{"architecture":"amd64","category":"libs","description":"X11 Session Management library","installed":null,"multiarch":"same","name":"libsm6","path":null,"priority":"optional","size":56320,"source":"libsm","type":"deb","vendor":"Ubuntu Developers","version":"2:1.2.3-1build2"},"state":{"modified_at":"2025-09-16T19:13:26.068Z"}}
+```
+
 ## Response Messages
 
 The module sends response messages back to agents through the Router system:
 
 ### Success Response
+
 ```cpp
 message EndAck {
   status: Status_Ok;
@@ -78,7 +85,8 @@ message EndAck {
 }
 ```
 
-### Error Response  
+### Error Response
+
 ```cpp
 message EndAck {
   status: Status_Error;
