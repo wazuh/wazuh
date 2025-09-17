@@ -1,5 +1,6 @@
 
 #include "hashmap_op.h"
+#include "shared.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
@@ -41,7 +42,8 @@ static int hm_rehash(hashmap_t *hm, size_t new_cap) {
     hm_entry_t *old = hm->entries;
     size_t old_cap = hm->capacity;
 
-    hm_entry_t *neu = (hm_entry_t*)calloc(new_cap, sizeof(hm_entry_t));
+    hm_entry_t *neu;
+    os_calloc(new_cap, sizeof(hm_entry_t), neu);
     if (!neu) return -1;
 
     hm->entries = neu;
@@ -66,7 +68,7 @@ static int hm_rehash(hashmap_t *hm, size_t new_cap) {
                 hm->size++;
             }
         }
-        free(old);
+        os_free(old);
     }
     return 0;
 }
@@ -75,7 +77,7 @@ int hm_init(hashmap_t *hm, size_t initial_capacity) {
     // Initialize map with capacity rounded up to power-of-two
     if (!hm) return -1;
     size_t cap = next_pow2(initial_capacity ? initial_capacity : HM_MIN_CAP);
-    hm->entries = (hm_entry_t*)calloc(cap, sizeof(hm_entry_t));
+    os_calloc(cap, sizeof(hm_entry_t), hm->entries);
     if (!hm->entries) return -1;
     hm->capacity = cap;
     hm->size = 0;
@@ -89,10 +91,10 @@ void hm_destroy(hashmap_t *hm) {
     if (hm->entries) {
         for (size_t i = 0; i < hm->capacity; ++i) {
             if (is_occupied(&hm->entries[i])) {
-                free(hm->entries[i].key);
+                os_free(hm->entries[i].key);
             }
         }
-        free(hm->entries);
+        os_free(hm->entries);
     }
     hm->entries = NULL;
     hm->capacity = hm->size = hm->tombstones = 0;
@@ -145,7 +147,7 @@ int hm_put(hashmap_t *hm, const char *key, void *value) {
             // insert into empty slot (reuse tombstone if found earlier)
             hm_entry_t *target = first_tomb ? first_tomb : e;
             if (first_tomb) hm->tombstones--;
-            target->key   = strdup(key);
+            os_strdup(key, target->key);
             if (!target->key) return -1;
             target->value = value;
             hm->size++;
@@ -174,7 +176,7 @@ int hm_del(hashmap_t *hm, const char *key) {
         hm_entry_t *e = &hm->entries[idx];
         if (is_empty(e)) return 0; // not found
         if (is_occupied(e) && strcmp(e->key, key) == 0) {
-            free(e->key);
+            os_free(e->key);
             e->key = (char*)-1; // tombstone marker
             e->value = NULL;
             hm->size--;

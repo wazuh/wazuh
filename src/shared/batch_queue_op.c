@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "shared.h"
 #include "batch_queue_op.h"
 #include "hashmap_op.h"
 #include "queue_linked_op.h"
@@ -140,12 +141,13 @@ static size_t steal_chain(w_linked_queue_t *q, w_linked_queue_node_t **out_first
  * @return New slot pointer or NULL on failure.
  */
 static w_rr_agent_slot_t *make_slot(const char *agent_key) {
-    w_rr_agent_slot_t *s = (w_rr_agent_slot_t *)calloc(1, sizeof(*s));
+    w_rr_agent_slot_t *s;
+    os_calloc(1, sizeof(*s), s);
     if (!s) return NULL;
-    s->key = strdup(agent_key);                 // slot owns its key
-    if (!s->key) { free(s); return NULL; }
+    os_strdup(agent_key, s->key);                 // slot owns its key
+    if (!s->key) { os_free(s); return NULL; }
     s->q = linked_queue_init();
-    if (!s->q) { free(s->key); free(s); return NULL; }
+    if (!s->q) { os_free(s->key); os_free(s); return NULL; }
     s->in_ring = 0;
     s->next = NULL;
     return s;
@@ -165,7 +167,7 @@ static void free_slot(w_rr_queue_t *sched, w_rr_agent_slot_t *s, int adjust_glob
     while (chain) {
         w_linked_queue_node_t *nx = chain->next;
         if (sched->dispose) sched->dispose(chain->data);
-        free(chain);
+        os_free(chain);
         chain = nx;
     }
     if (adjust_global && n) {
@@ -173,8 +175,8 @@ static void free_slot(w_rr_queue_t *sched, w_rr_agent_slot_t *s, int adjust_glob
     }
 
     linked_queue_free(s->q);
-    free(s->key);
-    free(s);
+    os_free(s->key);
+    os_free(s);
 }
 
 // ======================= API: init / free / config =======================
@@ -185,7 +187,8 @@ static void free_slot(w_rr_queue_t *sched, w_rr_agent_slot_t *s, int adjust_glob
  * @return Initialized scheduler or NULL on error.
  */
 w_rr_queue_t *batch_queue_init(size_t max_items_global) {
-    w_rr_queue_t *q = (w_rr_queue_t *)calloc(1, sizeof(*q));
+    w_rr_queue_t *q;
+    os_calloc(1, sizeof(*q), q);
     if (!q) return NULL;
 
     q->ring_head = q->ring_tail = q->cursor = q->prev_cursor = NULL;
@@ -225,7 +228,7 @@ void batch_queue_free(w_rr_queue_t *sched) {
     hm_destroy(&sched->agent_index);
     pthread_cond_destroy(&sched->any_available);
     pthread_mutex_destroy(&sched->ring_mu);
-    free(sched);
+    os_free(sched);
 }
 
 /**
@@ -314,7 +317,8 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
     if (sched->max_items_per_agent && slot->q->elements >= sched->max_items_per_agent) {
         reject = 1;
     } else {
-        w_linked_queue_node_t *n = (w_linked_queue_node_t *)malloc(sizeof(*n));
+        w_linked_queue_node_t *n;
+        os_malloc(sizeof(*n), n);
         if (!n) {
             pthread_mutex_unlock(&slot->q->mutex);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
@@ -355,14 +359,8 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
 /**
  * @brief Drain the next agent in round-robin order, consuming all its items.
  *
- * Blocks until an agent is available or until @p abstime expires (if provided).
- *
- * @param sched   Scheduler
- * @param abstime Optional absolute timeout for waiting (or NULL to wait forever)
- * @param consume Callback invoked for each dequeued item
- * @param user    Opaque user pointer passed to @p consume
- * @param out_agent_key Optional: set to the drained agent key (owned by scheduler)
- * @return Number of items drained (0 if none or timeout)
+ * Snapshot-drain: detach the entire per-agent queue once (under its mutex),
+ * release all locks, and process the detached chain without further locking.
  */
 size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
                                  const struct timespec *abstime,
@@ -373,6 +371,7 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
 
     pthread_mutex_lock(&sched->ring_mu);
 
+    // Wait until there is at least one active slot in the ring
     while (!sched->cursor) {
         if (abstime) {
             int r = pthread_cond_timedwait(&sched->any_available, &sched->ring_mu, abstime);
@@ -383,44 +382,46 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
         }
     }
 
+    // Select next slot and advance RR cursor
     w_rr_agent_slot_t *slot = sched->cursor;
     w_rr_agent_slot_t *prev = sched->prev_cursor ? sched->prev_cursor : sched->ring_tail;
 
-    sched->prev_cursor = slot;       // after advancing, the previous of the new cursor will be 'slot'
+    sched->prev_cursor = slot;     // the new "previous" of the next cursor will be this slot
     sched->cursor      = slot->next;
 
+    // Remove from ring for this turn
     ring_remove_node(sched, slot, prev);
     if (out_agent_key) *out_agent_key = slot->key;
 
-    // Handover: lock the queue BEFORE releasing ring_mu to avoid life/death races
+    // Queue handover: lock per-queue BEFORE releasing ring_mu (lock order respected)
     pthread_mutex_lock(&slot->q->mutex);
     pthread_mutex_unlock(&sched->ring_mu);
 
-    // Drain outside the global monitor
-    size_t drained = 0;
-    for (;;) {
-        w_linked_queue_node_t *n = slot->q->first;
-        if (!n) break;
-        // pop_nolock
-        slot->q->first = n->next;
-        if (!slot->q->first) slot->q->last = NULL;
-        slot->q->elements--;
-        pthread_mutex_unlock(&slot->q->mutex);
-
-        drained++;
-        consume(n->data, user);
-        free(n);
-
-        pthread_mutex_lock(&slot->q->mutex);
-    }
+    // Snapshot-detach the whole queue in O(1)
+    w_linked_queue_node_t *head = slot->q->first;
+    size_t local_count = slot->q->elements;
+    slot->q->first = NULL;
+    slot->q->last  = NULL;
+    slot->q->elements = 0;
     pthread_mutex_unlock(&slot->q->mutex);
 
+    // Process detached chain without any locks
+    size_t drained = 0;
+    for (w_linked_queue_node_t *n = head; n; ) {
+        w_linked_queue_node_t *next = n->next;
+        drained++;
+        consume(n->data, user);
+        os_free(n);
+        n = next;
+    }
+
+    // Adjust global items metric
     if (drained) {
         atomic_fetch_sub_explicit(&sched->items_global, drained, memory_order_relaxed);
     }
 
-    // If new items arrived during draining, producers have already reinserted the slot.
-    // If it ended empty and was not reinserted, it stays out of the ring but remains in the index.
+    // If new items arrived meanwhile, producers have already re-appended this slot
+    // to the ring (because in_ring==0). They will be picked up next turn.
     return drained;
 }
 
