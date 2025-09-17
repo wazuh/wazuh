@@ -15,7 +15,5 @@ For a quick reference, the table below lists the component and its specific quer
 | Inventory Network Addresses  | GET /wazuh-states-inventory-networks-*/_search   |
 | Inventory Network Protocols  | GET /wazuh-states-inventory-protocols-*/_search  |
 | Inventory Network Interfaces | GET /wazuh-states-inventory-interfaces-*/_search |
-| FIM Files                    | GET /wazuh-states-fim-files-*/_search            |
-| FIM Registries               | GET /wazuh-states-fim-registries-*/_search       |
 
 Refer to [Description](description.md) to visualize the retrieved document format for each request.

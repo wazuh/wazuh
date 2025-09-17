@@ -758,8 +758,6 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-packages-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-processes-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-system-update.json

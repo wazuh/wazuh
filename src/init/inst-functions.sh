@@ -1177,8 +1177,6 @@ InstallLocal()
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports.json
 
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json ${INSTALLDIR}/templates/vd_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-files-update.json ${INSTALLDIR}/templates/wazuh-states-fim-files-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-fim-registries-update.json ${INSTALLDIR}/templates/wazuh-states-fim-registries-update.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-packages-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-packages-update.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-processes-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-processes-update.json
     ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-system-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-system-update.json

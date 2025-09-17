@@ -568,8 +568,6 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/templates/wazuh-states-inventory-hotfixes.json,root,wazuh,440,file,-r--r-----,,
 /var/ossec/templates/wazuh-states-inventory-ports.json,root,wazuh,440,file,-r--r-----,,
 /var/ossec/templates/vd_states_update_mappings.json,root,wazuh,440,file,-r--r-----,,
-/var/ossec/templates/wazuh-states-fim-files-update.json,root,wazuh,440,file,-r--r-----,,
-/var/ossec/templates/wazuh-states-fim-registries-update.json,root,wazuh,440,file,-r--r-----,,
 /var/ossec/templates/wazuh-states-inventory-packages-update.json,root,wazuh,440,file,-r--r-----,,
 /var/ossec/templates/wazuh-states-inventory-processes-update.json,root,wazuh,440,file,-r--r-----,,
 /var/ossec/templates/wazuh-states-inventory-system-update.json,root,wazuh,440,file,-r--r-----,,
