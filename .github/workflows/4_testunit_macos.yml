@@ -13,15 +13,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
-      - name: Install compatible CMake version
-        run: |
-          cmake --version || echo "CMake not found"
-          brew uninstall --ignore-dependencies cmake || true
-          wget https://github.com/Kitware/CMake/releases/download/v3.31.6/cmake-3.31.6-macos-universal.tar.gz
-          tar -xzf cmake-3.31.6-macos-universal.tar.gz
-          sudo cp -R cmake-3.31.6-macos-universal/CMake.app/Contents/bin/* /usr/local/bin/
-          sudo cp -R cmake-3.31.6-macos-universal/CMake.app/Contents/share/* /usr/local/share/
-          cmake --version
       - name: Install cmocka 1.1.7 and lcov
         run: |
           brew install lcov
@@ -33,6 +24,8 @@ jobs:
           make -j$(sysctl -n hw.ncpu)
           sudo make install
       - name: Build wazuh agent for macOS 13 with tests flags
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: 3.5
         run: |
           make deps -C src TARGET=agent -j4
           LIBRARY_PATH=/usr/local/lib make -C src TARGET=agent -j4 DEBUG=1 TEST=1
