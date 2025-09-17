@@ -256,7 +256,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     // Register the to_bool helper (boolean result)
     registry->template add<builders::OpBuilderEntry>(
         "to_bool", {schemf::STypeToken::create(schemf::Type::BOOLEAN), builders::opBuilderHelperToBool});
-        // Transform helpers: Definition functions
+    // Transform helpers: Definition functions
     registry->template add<builders::OpBuilderEntry>(
         "get_key_in", {schemf::runtimeValidation(), builders::opBuilderHelperGetValue}); // TODO: add validation
     registry->template add<builders::OpBuilderEntry>(
