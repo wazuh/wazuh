@@ -24,7 +24,7 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 TEST(FirefoxAddonsTests, NumberOfExtensions)
 {
     auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin_mock_home");
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin");
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return("123"));
@@ -37,7 +37,7 @@ TEST(FirefoxAddonsTests, NumberOfExtensions)
 TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
 {
     auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin_mock_home");
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin");
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return("123"));
