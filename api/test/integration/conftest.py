@@ -36,25 +36,9 @@ environment_status = None
 env_cluster_nodes = ['master', 'worker1', 'worker2']
 agent_names = ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8']
 
-cluster_env_mode = 'cluster'
-
 
 def pytest_addoption(parser):
     parser.addoption('--nobuild', action='store_false', help='Do not run docker compose build.')
-
-
-def pytest_collection_modifyitems(items: list):
-    """Pytest hook used to add cluster marks to tests having none of them.
-
-    Parameters
-    ----------
-    items : list[pytest.Item]
-        List of pytest items collected in the pytest session.
-    """
-    for item in items:
-        test_name = item.nodeid.split('::')[0]
-        if 'rbac' not in test_name and not {cluster_env_mode} & {m.name for m in item.own_markers}:
-            item.add_marker(cluster_env_mode)
 
 
 def get_token_login_api():
@@ -113,13 +97,12 @@ def build_and_up(interval: int = 10, build: bool = True):
     with open(docker_log_path, mode='w') as f_docker:
         while retries < max_retries:
             if build:
-                build_process = subprocess.Popen(["docker", "compose", "--profile", cluster_env_mode,
-                    "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", "--no-cache"],
+                build_process = subprocess.Popen(["docker", "compose", "build",
+                    "--build-arg", f"WAZUH_BRANCH={current_branch}", "--no-cache"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 build_process.wait()
             up_process = subprocess.Popen(
-                ["docker", "compose", "--profile", cluster_env_mode, "up", "-d"],
-                env=dict(os.environ, ENV_MODE=cluster_env_mode),
+                ["docker", "compose", "up", "-d"],
                 stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
             up_process.wait()
 
@@ -136,7 +119,7 @@ def down_env():
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker", "compose", "--profile", cluster_env_mode, "down"],
+        current_process = subprocess.Popen(["docker", "compose", "down"],
                                            stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
