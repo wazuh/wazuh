@@ -62,18 +62,6 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
         return;
     }
 
-    // Early return for FIM components
-    switch (component) {
-        case WDB_FIM:
-        case WDB_FIM_FILE:
-        case WDB_FIM_REGISTRY:
-        case WDB_FIM_REGISTRY_KEY:
-        case WDB_FIM_REGISTRY_VALUE:
-            return;
-        default:
-            break;
-    }
-
     cJSON* j_msg_to_send = NULL;
     cJSON* j_agent_info = NULL;
     cJSON* j_data = NULL;
@@ -81,6 +69,14 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
     int result = SQLITE_ERROR;
 
     do{
+        // Skip JSON creation for disabled FIM events but still step through rows
+        if (component == WDB_FIM || component == WDB_FIM_FILE ||
+            component == WDB_FIM_REGISTRY || component == WDB_FIM_REGISTRY_KEY ||
+            component == WDB_FIM_REGISTRY_VALUE) {
+            result = wdb_step(stmt);
+            continue;
+        }
+        
         ROUTER_PROVIDER_HANDLE router_handle = NULL;
         j_msg_to_send = cJSON_CreateObject();
         j_agent_info = cJSON_CreateObject();
