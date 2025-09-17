@@ -2518,7 +2518,7 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
     condition: all
     rules:
-      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare compare > 0'
+      - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare > 0'
       - 'c:sshd -T -> n:ClientAliveCountMax\s*\t*(\d+) compare > 0'
 
   # 5.1.8 Ensure sshd DisableForwarding is enabled. (Automated)

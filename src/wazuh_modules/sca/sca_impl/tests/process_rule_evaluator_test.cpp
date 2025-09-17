@@ -122,3 +122,43 @@ TEST_F(ProcessRuleEvaluatorTest, NegatedProcessFoundReturnsNotFound)
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
 }
+TEST_F(ProcessRuleEvaluatorTest, FullPathMatchReturnsFound)
+{
+    m_ctx.rule = "/usr/sbin/httpd";
+
+    m_processesMock = []
+    {
+        return std::vector<std::string>{"init", "/usr/sbin/httpd", "sshd"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, NegatedFullPathPresentReturnsNotFound)
+{
+    m_ctx.rule = "/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent";
+    m_ctx.isNegated = true;
+
+    m_processesMock = []
+    {
+        return std::vector<std::string>{"ARDAgent", "/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::NotFound);
+}
+
+TEST_F(ProcessRuleEvaluatorTest, NegatedFullPathAbsentReturnsFound)
+{
+    m_ctx.rule = "/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent";
+    m_ctx.isNegated = true;
+
+    m_processesMock = []
+    {
+        return std::vector<std::string>{"launchd", "WindowServer"};
+    };
+
+    auto evaluator = CreateEvaluator();
+    EXPECT_EQ(evaluator.Evaluate(), RuleResult::Found);
+}
