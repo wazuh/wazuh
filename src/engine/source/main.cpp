@@ -18,6 +18,7 @@
 #include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
+#include <base/libwazuhshared.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
@@ -109,7 +110,6 @@ int main(int argc, char* argv[])
     const auto opts = parseOptions(argc, argv);
     const bool standalone = base::process::isStandaloneModeEnable();
     const bool cliDebug = (opts.debugCount > 0);
-    void* libwazuhshared = nullptr;
 
     // Loggin initialization
     if (standalone)
@@ -129,13 +129,13 @@ int main(int argc, char* argv[])
     else
     {
         // Use wazuh-shared logging
-        libwazuhshared = dlopen("libwazuhshared.so", RTLD_NOW | RTLD_GLOBAL);
-        if (!libwazuhshared)
-        {
-            fprintf(stderr, "dlopen libwazuhshared.so failed: %s\n", dlerror());
+        try {
+            base::libwazuhshared::init();
+            exitHandler.add([]() { base::libwazuhshared::shutdown(); });
+        } catch (const std::exception& e) {
+            fprintf(stderr, "Error initializing wazuh-shared: %s\n", e.what());
             return EXIT_FAILURE;
         }
-        exitHandler.add([libwazuhshared]() { dlclose(libwazuhshared); });
 
         if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
         {
@@ -145,26 +145,26 @@ int main(int argc, char* argv[])
 
         if (opts.testConfig)
         {
-            using os_logging_config_fn = void (*)();
-            auto* pReadXML = reinterpret_cast<os_logging_config_fn>(dlsym(libwazuhshared, "os_logging_config"));
-            if (!pReadXML)
-            {
-                fprintf(stderr, "dlsym os_logging_config failed: %s\n", dlerror());
+
+            try {
+                auto ReadXML = base::libwazuhshared::getFunction<void (*)()>("os_logging_config");
+                ReadXML();
+            } catch (const std::exception& e) {
+                fprintf(stderr, "Error loading configuration: %s\n", e.what());
                 return EXIT_FAILURE;
             }
-
-            pReadXML();
             return EXIT_SUCCESS;
         }
 
-        using log_fn_t = void (*)(int, const char*, const char*, int, const char*, const char*, va_list);
-        auto* wrapper = reinterpret_cast<log_fn_t>(dlsym(libwazuhshared, "mtLoggingFunctionsWrapper"));
-        if (!wrapper)
+        try
         {
-            fprintf(stderr, "dlsym mtLoggingFunctionsWrapper failed: %s\n", dlerror());
+            logging::init();
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
             return EXIT_FAILURE;
         }
-        logging::init(wrapper);
     }
 
     // Daemonize the process
@@ -268,7 +268,7 @@ int main(int argc, char* argv[])
             {
                 auto verbosity = confManager.get<int>(conf::key::LOGGING_LEVEL);
                 auto level = logging::verbosityToLevel(verbosity);
-                logging::applyLevelWazuh(level, opts.debugCount, libwazuhshared);
+                logging::applyLevelWazuh(level, opts.debugCount);
             }
         }
 
@@ -383,6 +383,9 @@ int main(int argc, char* argv[])
                 }
                 return icConfig.toJson();
             }();
+
+            // char* read_engine_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size);
+            // using load_fn_t = char* (*)(const char*, char*, size_t);
 
             indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
             LOG_INFO("Indexer Connector initialized.");

@@ -177,14 +177,6 @@ void Conf::validate(const OptionMap& config) const
                         valueStr));
                 }
 
-                if (valueStr.find(',') == std::string::npos)
-                {
-                    throw std::runtime_error(
-                        fmt::format("Invalid configuration type for key '{}'. Expected comma-separated list, got '{}'.",
-                                    key,
-                                    valueStr));
-                }
-
                 break;
             }
 
