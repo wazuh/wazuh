@@ -59,6 +59,7 @@ stages:
               tz_offset: !anystr
               version: !anystr
               uuid: !anystr
+              wazuh_cti_auth: !anything #Will be removed at https://github.com/wazuh/wazuh/issues/31295.
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
