@@ -633,10 +633,13 @@ def test_inspector_with_only_logs_after(
     service_type = metadata['service_type']
     only_logs_after = metadata['only_logs_after']
     expected_results = metadata['expected_results']
+    aws_profile = metadata['aws_profile']
+
 
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
+        '--aws_profile', aws_profile,
         '--only_logs_after', only_logs_after,
         '--regions', 'us-east-2',
         '--debug', '2'
@@ -906,9 +909,11 @@ def test_inspector_multiple_calls(
     """
 
     service_type = metadata['service_type']
+    aws_profile = metadata['aws_profile']
 
     base_parameters = [
         '--service', service_type,
+        '--aws_profile', aws_profile,
         '--regions', 'us-east-2',
         '--debug', '2'
     ]

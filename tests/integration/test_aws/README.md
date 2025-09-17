@@ -70,6 +70,21 @@ For a step-by-step example guide using linux go to the [test setup section](#lin
 [default]
 aws_access_key_id = <access-key-value>
 aws_secret_access_key = <secret-key-value>
+
+[inspector_tests]
+aws_access_key_id = <access-key-value>
+aws_secret_access_key = <secret-key-value>
+```
+
+Set the configurations at `$HOME/.aws/config` (being `HOME` the home directory of the user who runs the tests, 
+ more information [here](https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html#profiles) with the content:
+
+ ```ini
+[default]
+region=us-east-1
+
+[profile inspector_tests]
+region=us-east-2
 ```
 
 The provided credentials must have the following set of minimum permissions defined in AWS:

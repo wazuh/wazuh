@@ -5,5 +5,6 @@
     ONLY_LOGS_AFTER: 2025-SEP-15
   metadata:
     service_type: inspector
+    aws_profile: inspector_tests
     only_logs_after: 2025-SEP-15
     expected_results: 106

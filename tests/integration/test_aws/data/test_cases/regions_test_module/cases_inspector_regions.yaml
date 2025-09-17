@@ -5,6 +5,7 @@
     REGIONS: us-east-2
   metadata:
     service_type: inspector
+    aws_profile: inspector_tests
     only_logs_after: 2025-SEP-15
     regions: us-east-2
     expected_results: 106
@@ -16,6 +17,7 @@
     REGIONS: us-fake-1
   metadata:
     service_type: inspector
+    aws_profile: inspector_tests
     only_logs_after: 2025-SEP-15
     regions: us-fake-1
     expected_results: 0

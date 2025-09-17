@@ -399,6 +399,7 @@ def test_inspector_regions(
     """
     service_type = metadata['service_type']
     only_logs_after = metadata['only_logs_after']
+    aws_profile = metadata['aws_profile']
     regions: str = metadata['regions']
     expected_results = metadata['expected_results']
     regions_list = regions.split(",")
@@ -406,6 +407,7 @@ def test_inspector_regions(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
+        '--aws_profile', aws_profile,
         '--only_logs_after', only_logs_after,
         '--regions', regions,
         '--debug', '2'
