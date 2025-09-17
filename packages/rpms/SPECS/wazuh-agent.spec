@@ -1,4 +1,6 @@
+%if !(0%{?el} >= 6 || 0%{?rhel} >= 6)
 %global debug_package %{nil}
+%endif
 
 %if %{_isstage} == no
   %define _rpmfilename %%{NAME}_%%{VERSION}-%%{RELEASE}_%%{ARCH}_%{_hashcommit}.rpm
@@ -12,7 +14,7 @@ Version:     %{_version}
 Release:     %{_release}
 License:     GPL
 Group:       System Environment/Daemons
-Source0:     %{name}-%{version}.tar.gz
+Source:     %{name}-%{version}.tar.gz
 URL:         https://www.wazuh.com/
 BuildRoot:   %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Vendor:      Wazuh <info@wazuh.com>
@@ -672,17 +674,6 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/
 %dir %attr(750, root, wazuh) %{_localstatedir}/ruleset/sca
-%attr(750, root, wazuh) %{_localstatedir}/lib/libdbsync.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libagent_sync_protocol.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libsyscollector.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libsca.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libsysinfo.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libstdc++.so.6
-%attr(750, root, wazuh) %{_localstatedir}/lib/libgcc_s.so.1
-%attr(750, root, wazuh) %{_localstatedir}/lib/libfimdb.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libfimebpf.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/libbpf.so
-%attr(750, root, wazuh) %{_localstatedir}/lib/modern.bpf.o
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp
 %dir %attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic
 %attr(640, root, wazuh) %config(missingok) %{_localstatedir}/tmp/sca-%{version}-%{release}-tmp/generic/*
@@ -748,14 +739,6 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/wodles
 %dir %attr(750, root, wazuh) %{_localstatedir}/wodles
 %attr(750, root, wazuh) %{_localstatedir}/wodles/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/wodles/aws
-%attr(750, root, wazuh) %{_localstatedir}/wodles/aws/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/wodles/azure
-%attr(750, root, wazuh) %{_localstatedir}/wodles/azure/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/wodles/docker
-%attr(750, root, wazuh) %{_localstatedir}/wodles/docker/*
-%dir %attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud
-%attr(750, root, wazuh) %{_localstatedir}/wodles/gcloud/*
 
 %ifnarch ppc64le
 %files -n wazuh-agent-debuginfo -f debugfiles.list
