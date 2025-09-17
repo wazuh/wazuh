@@ -66,6 +66,7 @@ public:
         options.write_buffer_size = 64 * 1024 * 1024;
         options.max_write_buffer_number = 4;
         options.max_background_jobs = 8;
+        options.min_write_buffer_number_to_merge = 2;
 
         rocksdb::DB* db;
 
