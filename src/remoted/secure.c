@@ -9,6 +9,8 @@
  */
 
 #include "shared.h"
+#include "bulk.h"
+#include "agent_metadata.h"
 #include "../os_net/os_net.h"
 #include "remoted.h"
 #include "remoted_op.h"
@@ -41,8 +43,6 @@ size_t global_counter;
 
 _Atomic (time_t) current_ts;
 OSHash *remoted_agents_state;
-static OSHash *agent_meta_map = NULL;
-static pthread_rwlock_t agent_meta_lock;
 
 extern remoted_state_t remoted_state;
 ROUTER_PROVIDER_HANDLE router_upgrade_ack_handle = NULL;
@@ -172,43 +172,6 @@ typedef struct {
 } evt_item_t;
 
 typedef struct {
-    char  *buf;
-    size_t len;
-    size_t cap;
-} bulk_t;
-
-static int bulk_reserve(bulk_t *b, size_t add) {
-    size_t need = b->len + add;
-    if (need <= b->cap) return 0;
-    size_t ncap = b->cap ? b->cap : 4096;
-    while (ncap < need) ncap *= 2;
-    char *nb = (char*)realloc(b->buf, ncap);
-    if (!nb) return -1;
-    b->buf = nb; b->cap = ncap;
-    return 0;
-}
-void bulk_init(bulk_t *b, size_t cap_hint) { b->buf = NULL; b->len = 0; b->cap = 0; if (cap_hint) bulk_reserve(b, cap_hint); }
-void bulk_free(bulk_t *b) { free(b->buf); b->buf = NULL; b->len = b->cap = 0; }
-int bulk_append(bulk_t *b, const void *p, size_t n) { if (bulk_reserve(b, n) < 0) return -1; memcpy(b->buf + b->len, p, n); b->len += n; return 0; }
-int bulk_append_fmt(bulk_t *b, const char *fmt, ...) {
-    char tmp[512];
-    va_list ap; va_start(ap, fmt);
-    int n = vsnprintf(tmp, sizeof(tmp), fmt, ap);
-    va_end(ap);
-    if (n < 0) return -1;
-    if ((size_t)n < sizeof(tmp)) return bulk_append(b, tmp, (size_t)n);
-    // chain larger than tmp: book exactly
-    char *big = (char*)malloc((size_t)n + 1);
-    if (!big) return -1;
-    va_start(ap, fmt);
-    vsnprintf(big, (size_t)n + 1, fmt, ap);
-    va_end(ap);
-    int rc = bulk_append(b, big, (size_t)n);
-    free(big);
-    return rc;
-}
-
-typedef struct {
     const char *agent_key;   // set por batch_queue_drain_next_ex
     char *agent_id;
     char *agent_name;
@@ -232,91 +195,13 @@ typedef struct {
     w_rr_queue_t      *events_queue;      // round robbin event ring
 } rem_handler_args_t;
 
-typedef struct agent_meta {
-    int agent_id;     // "002"
-    char *agent_ip;     // "192.168.1.34"
-    char *version;      // "v4.12.0"
-    // OS
-    char *os_name;      // "Ubuntu"
-    char *os_version;   // "20.04.6 LTS"
-    char *os_codename;  // "Focal Fossa"
-    char *os_platform;  // "ubuntu"
-    char *os_build;     // build
-    char *os_kernel;    // "5.4.0-169-generic"
-    char *arch;         // "x86_64"
-} agent_meta_t;
-
-static void agent_meta_free(agent_meta_t *m) {
-    if (!m) return;
-    free(m->agent_ip);
-    free(m->version);
-    free(m->os_name);
-    free(m->os_version);
-    free(m->os_codename);
-    free(m->os_platform);
-    free(m->os_build);
-    free(m->os_kernel);
-    free(m->arch);
-    free(m);
-}
-
-// Build meta from agent_info_data (manager.c parse_agent_update_msg already populated it)
-static agent_meta_t *agent_meta_from_agent_info(const char *id, const agent_info_data *ai) {
-    if (!id || !ai) return NULL;
-    agent_meta_t *m = calloc(1, sizeof(*m));
-    if (!m) return NULL;
-
-    // Basic fields
-    if (id)                m->agent_id   = ai->id;
-    if (ai->version)       m->version    = strdup(ai->version);
-    if (ai->agent_ip)      m->agent_ip   = strdup(ai->agent_ip);
-
-    // OS
-    if (ai->osd) {
-        if (ai->osd->os_name)     m->os_name    = strdup(ai->osd->os_name);
-        if (ai->osd->os_version)  m->os_version = strdup(ai->osd->os_version);
-        if (ai->osd->os_codename) m->os_codename= strdup(ai->osd->os_codename);
-        if (ai->osd->os_platform) m->os_platform= strdup(ai->osd->os_platform);
-        if (ai->osd->os_build)    m->os_build   = strdup(ai->osd->os_build);
-        if (ai->osd->os_uname)    m->os_kernel  = strdup(ai->osd->os_uname);
-        if (ai->osd->os_arch)     m->arch       = strdup(ai->osd->os_arch);
-    }
-    return m;
-}
-
-static int agent_meta_upsert_locked(const char *agent_id, agent_meta_t *fresh) {
-    if (!agent_id || !fresh) return -1;
-
-    // Write lock global
-    pthread_rwlock_wrlock(&agent_meta_lock);
-
-    agent_meta_t *old = (agent_meta_t*)OSHash_Get(agent_meta_map, agent_id);
-
-    int rc = OSHash_Add(agent_meta_map, agent_id, fresh);
-    if (rc == 1) { // duplicate -> not added
-        // Replace manually: delete and add again
-        (void)OSHash_Delete(agent_meta_map, agent_id);
-        rc = OSHash_Add(agent_meta_map, agent_id, fresh);
-    }
-
-    pthread_rwlock_unlock(&agent_meta_lock);
-
-    // release the old one (if it existed)
-    if (old && old != fresh) agent_meta_free(old);
-
-    return (rc == 2) ? 0 : -1; // 0 OK, -1 error
-}
-
 /* Handle secure connections */
 void HandleSecure()
 {
     const int protocol = logr.proto[logr.position];
     int n_events = 0;
 
-    agent_meta_map = OSHash_Create();
-    if (!agent_meta_map) merror_exit("agent_meta_map create failed");
-    if (!OSHash_setSize(agent_meta_map, 2048)) merror_exit("agent_meta_map set size failed");
-    pthread_rwlock_init(&agent_meta_lock, NULL);
+    agent_metadata_init();
 
     size_t ctrl_msg_queue_size = (size_t) getDefine_Int("remoted", "control_msg_queue_size", 4096, 0x1 << 20); // 1MB
     control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
@@ -413,7 +298,8 @@ void HandleSecure()
     // Create upsert control message thread
     w_create_thread(dispach_events_thread, (void *) events_queue);
 
-    rem_handler_args_t *worker_args = malloc(sizeof(*worker_args));
+    rem_handler_args_t *worker_args;
+    os_malloc(sizeof(*worker_args), worker_args);
     worker_args->control_msg_queue = control_msg_queue;
     worker_args->events_queue      = events_queue;
     // Create message handler thread pool
@@ -708,6 +594,8 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
     char *agentid_str = NULL;
+    char *agent_ip = NULL;
+    char *agent_name = NULL;
     char buffer[OS_MAXSTR + 1] = "";
     char *tmp_msg;
     size_t msg_length;
@@ -1000,7 +888,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             if (validation_result == 1) {
                 // Message should be queued for database processing
                 w_ctrl_msg_data_t * ctrl_msg_data;
-                os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
+                os_calloc(1, sizeof(w_ctrl_msg_data_t), ctrl_msg_data);
 
                 /* Parsing msg */
                 agent_info_data *agent_data;
@@ -1008,10 +896,12 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 int result = parse_agent_update_msg(tmp_msg, agent_data);
 
                 if (OS_SUCCESS == result) {
+                    // Build metadata from parsed agent_info_data and upsert in the global map
                     agent_meta_t *fresh = agent_meta_from_agent_info(key->id, agent_data);
                     if (fresh) {
                         if (agent_meta_upsert_locked(key->id, fresh) != 0) {
-                            agent_meta_free(fresh); // en caso de fallo de insert
+                            mwarn("Error upsert metadata from agent ID '%s'.", key->id);
+                            agent_meta_free(fresh);
                         }
                     }
                 }
@@ -1066,6 +956,8 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     }
 
     os_strdup(keys.keyentries[agentid]->id, agentid_str);
+    os_strdup(keys.keyentries[agentid]->name, agent_name);
+    os_strdup(keys.keyentries[agentid]->ip->ip, agent_ip);
 
     key_unlock();
 
@@ -1078,13 +970,27 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     memcpy(e->raw, tmp_msg, msg_length);
     e->len = msg_length;
 
-    int rc = batch_queue_enqueue_ex(batch_queue, agent_key, e);
+    int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
     if (rc < 0) {
         dispose_evt_item(e);
-        mwarn("Dropping event for agent '%s' (rc=%d)", agent_key, rc);
+        mwarn("Dropping event for agent '%s' (rc=%d)", agentid_str, rc);
     }
 
-    os_free(agentid_str);;
+    if(getDefine_Int("remoted", "router_forwarding_disabled", 0, 1) == 1) {
+        // If router forwarding is disabled, do not forward events to subscribers
+        mdebug2("Router forwarding is disabled, not forwarding message from agent '%s'.", agentid_str);
+        os_free(agentid_str);
+        os_free(agent_ip);
+        os_free(agent_name);
+        return;
+    }
+
+    // Forwarding events to subscribers
+    router_message_forward(tmp_msg, msg_length, agentid_str, agent_ip, agent_name);
+
+    os_free(agentid_str);
+    os_free(agent_ip);
+    os_free(agent_name);
 }
 
 void router_message_forward(char* msg, size_t msg_length, const char* agent_id, const char* agent_ip, const char* agent_name) {
@@ -1360,83 +1266,82 @@ void * save_control_thread(void * control_msg_queue)
 // Encode the header ONLY once above the body
 static int append_header(dispatch_ctx_t *ctx) {
     if (ctx->header_added) return 0;
+    if (!ctx || !ctx->agent_key) return -1;
 
-    // --- snapshot of meta from OSHash (own strings are copied) ---
-    char *id = NULL, *name = NULL, *ip = NULL, *version = NULL;
-    char *os_name = NULL, *os_version = NULL, *os_codename = NULL;
-    char *os_platform = NULL, *os_build = NULL, *os_kernel = NULL, *arch = NULL;
+    // Snapshot metadata for this agent (copies strings into 'snap')
+    agent_meta_t snap = {0};
+    int have_meta = (agent_meta_snapshot_str(ctx->agent_key, &snap) == 0);
 
-    pthread_rwlock_rdlock(&agent_meta_lock);
-    agent_meta_t *m = (agent_meta_t *)OSHash_Get(agent_meta_map, ctx->agent_key);
-    if (m) {
-        if (m->agent_id)   m->agent_id, id;
-        if (m->agent_ip)   os_strdup(m->agent_ip, ip);
-        if (m->version)    os_strdup(m->version, version);
-        if (m->os_name)     os_strdup(m->os_name, os_name);
-        if (m->os_version)  os_strdup(m->os_version, os_version);
-        if (m->os_codename) os_strdup(m->os_codename, os_codename);
-        if (m->os_platform) os_strdup(m->os_platform, os_platform);
-        if (m->os_build)    os_strdup(m->os_build, os_build);
-        if (m->os_kernel)   os_strdup(m->os_kernel, os_kernel);
-        if (m->arch)        os_strdup(m->arch, arch);
+    // Fallbacks
+    char *agent_name = NULL;
+    char *agent_ip   = NULL;
+
+    // Prefer metadata snapshot
+    if (have_meta) {
+        if (snap.agent_ip) os_strdup(snap.agent_ip, agent_ip);
     }
-    pthread_rwlock_unlock(&agent_meta_lock);
 
+    // Fallback name from keystore (never deref without lock)
     key_lock_read();
     int idx = OS_IsAllowedID(&keys, ctx->agent_key);
     if (idx >= 0 && idx < (int)keys.keysize) {
-        if (!name) os_strdup(keys.keyentries[idx]->name, name);
+        if (!agent_name && keys.keyentries[idx]->name) {
+            os_strdup(keys.keyentries[idx]->name, agent_name);
+        }
+        if (!agent_ip && keys.keyentries[idx]->ip && keys.keyentries[idx]->ip->ip) {
+            os_strdup(keys.keyentries[idx]->ip->ip, agent_ip);
+        }
     }
     key_unlock();
 
-    // defaults
-    if (!name) os_strdup("-", name);
-    if (!ip)   os_strdup("-", ip);
+    if (!agent_name) os_strdup("-", agent_name);
+    if (!agent_ip)   os_strdup("-", agent_ip);
 
-    // Also save in context (for router_message_forward and metrics)
-    if (!ctx->agent_id)   id = ctx->agent_id;
-    if (!ctx->agent_name) os_strdup(name, ctx->agent_name);
-    if (!ctx->agent_ip)   os_strdup(ip,   ctx->agent_ip);
+    // Also keep these in ctx for router / metrics
+    if (!ctx->agent_id) {
+        // agent_id is the string key (e.g. "002"); keep a borrowed pointer or duplicate:
+        os_strdup(ctx->agent_key, ctx->agent_id);
+    }
+    if (!ctx->agent_name) os_strdup(agent_name, ctx->agent_name);
+    if (!ctx->agent_ip)   os_strdup(agent_ip,   ctx->agent_ip);
 
-    // --- Construct JSON from the header with nested objects ---
+    // --- Build nested JSON: { "agent": {...}, "host": { "ip":[...], "os": {...}, "architecture": ... } } ---
     cJSON *root = cJSON_CreateObject();
     if (!root) goto fail;
 
-    // agent{ id, name, version }
     cJSON *agent = cJSON_CreateObject();
-    if (!agent) { cJSON_Delete(root); goto fail; }
-    cJSON_AddStringToObject(agent, "id", id);
-    cJSON_AddStringToObject(agent, "name", name);
-    if (version) cJSON_AddStringToObject(agent, "version", version);
-    cJSON_AddItemToObject(root, "agent", agent);
+    cJSON *host  = cJSON_CreateObject();
+    cJSON *os    = cJSON_CreateObject();
+    if (!agent || !host || !os) { cJSON_Delete(root); goto fail; }
 
-    // host{ ip[], architecture, os{...} }
-    cJSON *host = cJSON_CreateObject();
-    if (!host) { cJSON_Delete(root); goto fail; }
+    cJSON_AddItemToObject(root, "agent", agent);
+    cJSON_AddItemToObject(root, "host",  host);
+    cJSON_AddItemToObject(host, "os",    os);
+
+    // agent.*
+    cJSON_AddStringToObject(agent, "name", agent_name ? agent_name : "-");
+    if (have_meta && snap.version) {
+        cJSON_AddStringToObject(agent, "version", snap.version);
+    }
 
     // host.ip (array)
     cJSON *ips = cJSON_CreateArray();
     if (!ips) { cJSON_Delete(root); goto fail; }
-    if (ip && *ip) cJSON_AddItemToArray(ips, cJSON_CreateString(ip));
+    if (agent_ip && *agent_ip) cJSON_AddItemToArray(ips, cJSON_CreateString(agent_ip));
     cJSON_AddItemToObject(host, "ip", ips);
 
+    // host.os.*
+    if (have_meta && snap.os_name)     cJSON_AddStringToObject(os, "name",     snap.os_name);
+    if (have_meta && snap.os_version)  cJSON_AddStringToObject(os, "version",  snap.os_version);
+    if (have_meta && snap.os_codename) cJSON_AddStringToObject(os, "full",     snap.os_codename);
+    if (have_meta && snap.os_platform) cJSON_AddStringToObject(os, "platform", snap.os_platform);
+    if (have_meta && snap.os_build)    cJSON_AddStringToObject(os, "build",    snap.os_build);
+    if (have_meta && snap.os_kernel)   cJSON_AddStringToObject(os, "kernel",   snap.os_kernel);
+
     // host.architecture
-    if (arch) cJSON_AddStringToObject(host, "architecture", arch);
+    if (have_meta && snap.arch) cJSON_AddStringToObject(host, "architecture", snap.arch);
 
-    // host.os{ name, version, full(codename), platform, build, kernel }
-    cJSON *os = cJSON_CreateObject();
-    if (!os) { cJSON_Delete(root); goto fail; }
-    if (os_name)     cJSON_AddStringToObject(os, "name",     os_name);
-    if (os_version)  cJSON_AddStringToObject(os, "version",  os_version);
-    if (os_codename) cJSON_AddStringToObject(os, "full",     os_codename);
-    if (os_platform) cJSON_AddStringToObject(os, "platform", os_platform);
-    if (os_build)    cJSON_AddStringToObject(os, "build",    os_build);
-    if (os_kernel)   cJSON_AddStringToObject(os, "kernel",   os_kernel);
-    cJSON_AddItemToObject(host, "os", os);
-
-    cJSON_AddItemToObject(root, "host", host);
-
-    // Serializes and outputs as "H\t<json>\n"
+    // Emit header line
     char *json = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     if (!json) goto fail;
@@ -1449,17 +1354,30 @@ static int append_header(dispatch_ctx_t *ctx) {
 
     ctx->header_added = 1;
 
-    // clean local snapshots
-    os_free(id); os_free(name); os_free(ip); os_free(version);
-    os_free(os_name); os_free(os_version); os_free(os_codename);
-    os_free(os_platform); os_free(os_build); os_free(os_kernel); os_free(arch);
+    os_free(agent_name);
+    os_free(agent_ip);
+    agent_meta_clear(&snap);
     return 0;
 
 fail:
-    os_free(id); os_free(name); os_free(ip); os_free(version);
-    os_free(os_name); os_free(os_version); os_free(os_codename);
-    os_free(os_platform); os_free(os_build); os_free(os_kernel); os_free(arch);
+    // Free local fallbacks
+    os_free(agent_name);
+    os_free(agent_ip);
+    agent_meta_clear(&snap);
+    // If you duplicated strings inside 'snap' with snapshot API, free them (see below).
     return -1;
+}
+
+// --- helper: monotonic ms ---
+static uint64_t mono_ms(void) {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000ull + ts.tv_nsec / 1000000ull;
+}
+
+// Drop-only consumer: free each queued item without building a bulk
+static void drop_consumer(void *data, void *user) {
+    (void)user;
+    dispose_evt_item((evt_item_t *)data);
 }
 
 // Consumer: Only accumulates in ctx->bulk. Releases each item individually.
@@ -1481,11 +1399,6 @@ static void rr_collect_one(void *data, void *user) {
         mwarn("Unable to append event for agent '%s'", ctx->agent_key ?: "?");
     }
 
-    // In parallel you can continue forwarding to the router:
-    router_message_forward(e->raw, e->len,
-                           ctx->agent_id ? ctx->agent_id : (ctx->agent_key ?: "?"),
-                           ctx->agent_ip, ctx->agent_name);
-
     dispose_evt_item(e);
 }
 
@@ -1494,18 +1407,58 @@ void *dispach_events_thread(void *arg) {
     w_rr_queue_t *q = (w_rr_queue_t*)arg;
 
     uhttp_options_t opt = {
-        .unix_socket_path   = ANLSYS_ENRICH_SOCK,           // "/path/al/socket"
+        .unix_socket_path   = ANLSYS_ENRICH_SOCK,           // analysisd unix socket
         .url                = "http://localhost/events/enriched",
-        .content_type       = "application/x-wev1",         // o "application/json"
+        .content_type       = "application/x-wev1",
         .user_agent         = "wazuh-remoted/1.0",
         .timeout_ms         = 5000,
         .connect_timeout_ms = 2000,
         .keepalive          = true
     };
-    uhttp_client_t *cli = uhttp_client_new(&opt);
-    if (!cli) { merror("uhttp_client_new failed"); return NULL; }
+
+    uhttp_client_t *cli = NULL;
+    int    fail_streak = 0;
+    uint64_t reopen_at = 0; // circuit breaker reopen time (ms monotonic)
 
     for (;;) {
+        uint64_t now = mono_ms();
+
+        // Try to (re)open client if breaker is closed or backoff elapsed
+        if (!cli && now >= reopen_at) {
+            cli = uhttp_client_new(&opt);
+            if (!cli) {
+                // Still offline: increase backoff (cap ~30s) and drain+drop one turn
+                fail_streak++;
+                uint64_t backoff = 500u << (fail_streak > 6 ? 6 : fail_streak); // 0.5s .. 32s
+                if (backoff > 30000u) backoff = 30000u;
+                reopen_at = now + backoff;
+
+                // Drain one agent turn and DROP items (do not build a bulk)
+                size_t dropped = batch_queue_drain_next_ex(q, /*abstime=*/NULL,
+                                                           drop_consumer, /*user=*/NULL,
+                                                           /*out_agent_key=*/NULL);
+                if (dropped == 0) {
+                    // Nothing to drain: small nap to avoid busy loop while offline
+                    struct timespec ts = { .tv_sec = 0, .tv_nsec = 200 * 1000 * 1000 };
+                    nanosleep(&ts, NULL);
+                }
+                continue;
+            } else {
+                // Back online
+                fail_streak = 0;
+                reopen_at = 0;
+            }
+        }
+
+        // If still offline, keep draining and dropping
+        if (!cli) {
+            (void)batch_queue_drain_next_ex(q, /*abstime=*/NULL,
+                                            drop_consumer, /*user=*/NULL,
+                                            /*out_agent_key=*/NULL);
+            continue;
+        }
+
+        // Online path: build one agent batch and POST it
         dispatch_ctx_t ctx = {
             .agent_key    = NULL,
             .agent_id     = NULL, .agent_name = NULL, .agent_ip = NULL,
@@ -1517,10 +1470,23 @@ void *dispach_events_thread(void *arg) {
                                                    rr_collect_one, &ctx, &ctx.agent_key);
 
         if (drained > 0 && ctx.bulk.len > 0) {
-            uhttp_result_t res;
+            uhttp_result_t res = {0};
             int rc = uhttp_post(cli, ctx.bulk.buf, ctx.bulk.len, &res);
             if (rc != 0) {
-                mwarn("POST failed (rc=%d, http=%ld, curl=%d)", rc, res.http_status, res.curl_code);
+                // POST failed: discard this batch (already in ctx.bulk) and go offline
+                mwarn("analysisd offline? POST failed (rc=%d, http=%ld, curl=%d). "
+                      "Dropping events until recovery.",
+                      rc, res.http_status, res.curl_code);
+
+                uhttp_client_free(cli);
+                cli = NULL;
+
+                fail_streak++;
+                uint64_t backoff = 500u << (fail_streak > 6 ? 6 : fail_streak);
+                if (backoff > 30000u) backoff = 30000u;
+                reopen_at = mono_ms() + backoff;
+
+                // From now on (until reopened), the loop will drain with drop_consumer.
             }
         }
 
@@ -1528,6 +1494,6 @@ void *dispach_events_thread(void *arg) {
         os_free(ctx.agent_id); os_free(ctx.agent_name); os_free(ctx.agent_ip);
     }
 
-    uhttp_client_free(cli);
+    if (cli) uhttp_client_free(cli);
     return NULL;
 }

@@ -86,6 +86,13 @@ typedef struct {
     int  curl_code;    /**< libcurl `CURLE_*` result code from the transfer. */
 } uhttp_result_t;
 
+enum uhttp_init_state {
+    UHTTP_UNINIT = 0,
+    UHTTP_INITING,
+    UHTTP_INITED,
+    UHTTP_FAILED
+};
+
 /**
  * @brief Initialize global HTTP state (libcurl).
  * @return 0 on success; non-zero on failure.

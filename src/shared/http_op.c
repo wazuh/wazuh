@@ -1,5 +1,6 @@
 #include "http_op.h"
-
+#include "shared.h"
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,16 +10,10 @@
 
 /* ------------------------------- Global state ------------------------------- */
 /* Thread-safe, one-time libcurl initialization using pthread_once. */
+static _Atomic int g_curl_state = UHTTP_UNINIT;
 
-static pthread_once_t g_curl_once = PTHREAD_ONCE_INIT;
-static int g_init_rc = -1;  // 0 = OK, -1 = failed
-
-static void uhttp_once_body(void) {
-    CURLcode rc = curl_global_init(CURL_GLOBAL_DEFAULT);
-    g_init_rc = (rc == CURLE_OK) ? 0 : -1;
-    if (rc == CURLE_OK) {
-        atexit(curl_global_cleanup);  // ensure cleanup exactly once at process exit
-    }
+static void uhttp_atexit_cleanup(void) {
+    curl_global_cleanup();
 }
 
 /**
@@ -26,8 +21,32 @@ static void uhttp_once_body(void) {
  * @return 0 on success, -1 on failure.
  */
 int uhttp_global_init(void) {
-    (void)pthread_once(&g_curl_once, uhttp_once_body);
-    return g_init_rc;
+    int expected = UHTTP_UNINIT;
+
+    // If it is the first thread, it goes to INITING atomically.
+    if (atomic_compare_exchange_strong_explicit(
+            &g_curl_state, &expected, UHTTP_INITING,
+            memory_order_acq_rel, memory_order_acquire)) {
+
+        // Only this thread executes the actual init
+        CURLcode rc = curl_global_init(CURL_GLOBAL_DEFAULT);
+        if (rc == CURLE_OK) {
+            atexit(uhttp_atexit_cleanup);          // Cleanup only once per process
+            atomic_store_explicit(&g_curl_state, UHTTP_INITED, memory_order_release);
+            return 0;
+        } else {
+            atomic_store_explicit(&g_curl_state, UHTTP_FAILED, memory_order_release);
+            return -1;
+        }
+    }
+
+    // Another thread is initializing or has already initialized: wait without blocking.
+    for (;;) {
+        int s = atomic_load_explicit(&g_curl_state, memory_order_acquire);
+        if (s == UHTTP_INITED) return 0;
+        if (s == UHTTP_FAILED) return -1;
+        sched_yield();
+    }
 }
 
 /**
@@ -86,7 +105,7 @@ static void uhttp_client_free_partial(uhttp_client_t *c, struct curl_slist *hdrs
     if (hdrs) curl_slist_free_all(hdrs);
     if (c) {
         if (c->easy) curl_easy_cleanup(c->easy);
-        free(c);
+        os_free(c);
     }
 }
 
@@ -97,11 +116,12 @@ uhttp_client_t* uhttp_client_new(const uhttp_options_t *opt) {
     if (!opt || !opt->unix_socket_path || !opt->url) return NULL;
     if (uhttp_global_init() != 0) return NULL;
 
-    uhttp_client_t *c = (uhttp_client_t*)calloc(1, sizeof(*c));
+    uhttp_client_t *c;
+    os_calloc(1, sizeof(*c), c);
     if (!c) return NULL;
 
     c->easy = curl_easy_init();
-    if (!c->easy) { free(c); return NULL; }
+    if (!c->easy) { os_free(c); return NULL; }
 
     snprintf(c->sock, sizeof(c->sock), "%s", opt->unix_socket_path);
     snprintf(c->url,  sizeof(c->url),  "%s", opt->url);
@@ -168,7 +188,7 @@ void uhttp_client_free(uhttp_client_t *c) {
     if (!c) return;
     if (c->headers) curl_slist_free_all(c->headers);
     if (c->easy)    curl_easy_cleanup(c->easy);
-    free(c);
+    os_free(c);
 }
 
 /* -------------------------------- Headers API -------------------------------- */
