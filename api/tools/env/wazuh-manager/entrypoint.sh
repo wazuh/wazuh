@@ -13,9 +13,7 @@ sed -i "s:wazuh_db.debug=0:wazuh_db.debug=2:g" /var/ossec/etc/internal_options.c
 sed -i "s:authd.debug=0:authd.debug=2:g" /var/ossec/etc/internal_options.conf
 sed -i "s:remoted.debug=0:remoted.debug=2:g" /var/ossec/etc/internal_options.conf
 
-sleep 1
-
-service wazuh-manager start
+/var/ossec/bin/wazuh-control start
 
 # Keep the container running
 while true; do
