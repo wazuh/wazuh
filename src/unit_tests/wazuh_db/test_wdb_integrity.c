@@ -1851,7 +1851,7 @@ void test_wdbi_report_removed_packages_success(void **state) {
     wdb_component_t component = WDB_SYSCOLLECTOR_PACKAGES;
     sqlite3_stmt* stmt = NULL;
     router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
-    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    // router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1; // DISABLED
 
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deletePackage\","
                                    "\"data\":{\"name\":\"name\",\"version\":\"version\",\"architecture\":\"architecture\",\"format\":\"format\",\"location\":\"location\",\"item_id\":\"item_id\"}}";
@@ -1884,7 +1884,7 @@ void test_wdbi_report_removed_hotfixes_success(void **state) {
     wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
     sqlite3_stmt* stmt = NULL;
     router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
-    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    // router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1; // DISABLED
 
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteHotfix\","
                                    "\"data\":{\"hotfix\":\"hotfix\"}}";
@@ -1907,7 +1907,7 @@ void test_wdbi_report_removed_hotfixes_success_multiple_steps(void **state) {
     wdb_component_t component = WDB_SYSCOLLECTOR_HOTFIXES;
     sqlite3_stmt* stmt = NULL;
     router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
-    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    // router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1; // DISABLED
 
     const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteHotfix\","
                                      "\"data\":{\"hotfix\":\"hotfix1\"}}";
@@ -1946,7 +1946,7 @@ void test_wdbi_report_removed_network_protocol_success(void **state)
     wdb_component_t component = WDB_SYSCOLLECTOR_NETPROTO;
     sqlite3_stmt* stmt = NULL;
     router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
-    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    // router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1; // DISABLED
 
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteNetProto\","
                                      "\"data\":{\"item_id\":\"networkProtocolItemId\"}}";
@@ -1970,7 +1970,7 @@ void test_wdbi_report_removed_network_protocol_success_multiple_steps(void **sta
     wdb_component_t component = WDB_SYSCOLLECTOR_NETPROTO;
     sqlite3_stmt* stmt = NULL;
     router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
-    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    // router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1; // DISABLED
 
     const char* expected_message_1 = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteNetProto\","
                                      "\"data\":{\"item_id\":\"networkProtocolItemId1\"}}";
@@ -2007,7 +2007,7 @@ void test_wdbi_report_removed_netifaces_success(void **state) {
     wdb_component_t component = WDB_SYSCOLLECTOR_NETINFO;
     sqlite3_stmt* stmt = NULL;
     router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
-    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    // router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1; // DISABLED
 
     expect_value(__wrap_sqlite3_column_text, iCol, 0);
     will_return(__wrap_sqlite3_column_text, "item_id");
@@ -2027,7 +2027,7 @@ void test_wdbi_report_removed_os_success(void **state) {
     wdb_component_t component = WDB_SYSCOLLECTOR_OSINFO;
     sqlite3_stmt* stmt = NULL;
     router_inventory_events_handle = (ROUTER_PROVIDER_HANDLE)1;
-    router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1;
+    // router_fim_events_handle = (ROUTER_PROVIDER_HANDLE)1; // DISABLED
 
     const char* expected_message = "{\"agent_info\":{\"agent_id\":\"001\"},\"action\":\"deleteOs\","
                                    "\"data\":{\"os_name\":\"windows_server\"}}";
