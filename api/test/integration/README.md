@@ -70,12 +70,10 @@ The following table shows how these marks must be used with the `pytest` command
 | Command                          | Environment                                          |  
 |----------------------------------|------------------------------------------------------|
 | `pytest TEST_NAME`               | Wazuh cluster environment                            |  
-| `pytest -m cluster TEST_NAME`    | Wazuh cluster environment                            |
 
 Apart from choosing the environment to be built, marks are also used to filter the API integration test cases.
 Marks are only used to select or filter tests, not to switch environments.
-Tests explicitly marked with **`cluster`** will be collected with `-m cluster`.
-Tests without a mark run in the default (cluster) environment.
+Tests run in the cluster environment.
 
 Talking about [RBAC API integration tests](#RBAC-API-integration-tests), they don't have any marks, so there is no need
 to specify one when running them. If a mark is specified, no tests will be run due to the filters. In other words,

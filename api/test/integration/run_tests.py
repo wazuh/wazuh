@@ -11,9 +11,6 @@ import subprocess
 
 PYTEST_COMMAND = 'pytest -vv'
 
-PYTEST_MARK_CLUSTER = '-m cluster'
-CLUSTER_SUFFIX = '_cluster'
-
 RESULTS_FOLDER = '_test_results'
 TESTS_PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -106,7 +103,6 @@ def collect_non_excluded_tests() -> list:
     done_tests = glob.glob(f'test_*')
     os.chdir(TESTS_PATH)
     collected_tests = sorted([test for test in glob.glob('test_*') if
-                              f"{test.rstrip('.tavern.yaml')}{CLUSTER_SUFFIX}" not in done_tests or
                               f"{test.rstrip('.tavern.yaml')}" not in done_tests])
     print(f'Collected tests [{len(collected_tests)}]:')
     print('{}\n\n'.format(", ".join(collected_tests)))
@@ -125,7 +121,7 @@ def run_tests(collected_tests: list, n_iterations: int = 1):
         Number of iterations for the API integration tests to be run.
     """
 
-    def run_test(test: str, iteration: int, pytest_mark: str = None):
+    def run_test(test: str, iteration: int):
         """Run a single API integration test once.
 
         Parameters
@@ -134,18 +130,13 @@ def run_tests(collected_tests: list, n_iterations: int = 1):
             API integration test to be run.
         iteration : int
             Number indicating the iteration to be run.
-        pytest_mark : str
-            Extra mark used to pass the API integration test in a cluster.
         """
         test_name = \
             f'{test.rsplit(".")[0]}' \
-            f'{CLUSTER_SUFFIX if pytest_mark == PYTEST_MARK_CLUSTER else ""}' \
             f'{iteration if iteration != 1 else ""}'
         html_params = [f"--html={RESULTS_FOLDER}/html_reports/{test_name}.html", '--self-contained-html']
         with open(os.path.join(RESULTS_FOLDER, test_name), 'w') as f:
             command = PYTEST_COMMAND.split(' ') + html_params + [test]
-            if pytest_mark:
-                command += pytest_mark.split(' ')
             subprocess.call(command, stdout=f)
         get_results(filename=os.path.join(RESULTS_FOLDER, test_name))
 
@@ -153,14 +144,8 @@ def run_tests(collected_tests: list, n_iterations: int = 1):
     for test in collected_tests:
         for i in range(1, n_iterations + 1):
             iteration_info = f'[{i}/{n_iterations}]' if n_iterations > 1 else ''
-            if 'rbac' not in test:
-                    # Run test with a cluster environment
-                    print(f'{test} - Cluster environment {iteration_info}')
-                    run_test(test=test, iteration=i, pytest_mark=PYTEST_MARK_CLUSTER)
-            else:
-                # Run test with the default environment
-                print(f'{test} {iteration_info}')
-                run_test(test=test, iteration=i)
+            print(f'{test} {iteration_info}')
+            run_test(test=test, iteration=i)
 
 
 def get_results(filename: str = None):
@@ -175,10 +160,7 @@ def get_results(filename: str = None):
         calculate_result(filename)
     else:
         os.chdir(RESULTS_FOLDER)
-        for file in sorted(glob.glob('test_*_cluster*')):
-            print(f"{file} - Cluster environment")
-            calculate_result(file)
-        for file in sorted(glob.glob('test_rbac*')):
+        for file in sorted(glob.glob('test_*')):
             print(file)
             calculate_result(file)
 
