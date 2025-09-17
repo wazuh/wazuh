@@ -739,11 +739,7 @@ namespace Utils
          */
         ColumnFamilyRAII& getColumnFamilyBasedOnName(const std::string& columnName)
         {
-            auto columnNameFind {columnName};
-            if (columnName.empty())
-            {
-                columnNameFind = rocksdb::kDefaultColumnFamilyName;
-            }
+            auto& columnNameFind = columnName.empty() ? rocksdb::kDefaultColumnFamilyName : columnName;
 
             if (const auto it {std::find_if(m_columnsInstances.begin(),
                                             m_columnsInstances.end(),
