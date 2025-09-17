@@ -1,12 +1,14 @@
 #ifndef BPF_HELPERS_TEST_H
 #define BPF_HELPERS_TEST_H
 #include <cstring>
+#include <future>
 #include "ebpf_whodata.hpp"
 #include "bpf_helpers.h"
 #include "dynamic_library_wrapper.h"
 
 extern std::unique_ptr<w_bpf_helpers_t> bpf_helpers;
-
+inline std::shared_ptr<std::promise<void>> g_pop_started_promise;
+inline std::shared_future<void> g_pop_started_future;
 
 class MockFimebpf : public fimebpf {
 public:
@@ -19,7 +21,6 @@ public:
     MOCK_METHOD(bool, mock_fim_shutdown_process_on, ());
     MOCK_METHOD(void, m_fim_whodata_event, (whodata_evt*), ());
     MOCK_METHOD(void, m_free_whodata_event, (whodata_evt*), ());
-
 
     static MockFimebpf& GetInstance() {
         static MockFimebpf instance;
@@ -35,10 +36,10 @@ public:
         fimebpf::instance().m_fim_shutdown_process_on = []() {
             return MockFimebpf::GetInstance().mock_fim_shutdown_process_on();
         };
-	    fimebpf::instance().m_fim_whodata_event = [](whodata_evt* event) {
+        fimebpf::instance().m_fim_whodata_event = [](whodata_evt* event) {
             MockFimebpf::GetInstance().m_fim_whodata_event(event);
         };
-	    fimebpf::instance().m_free_whodata_event = [](whodata_evt* event) {
+        fimebpf::instance().m_free_whodata_event = [](whodata_evt* event) {
             if (event == NULL) return;
             if (event->user_name) free(event->user_name);
             if (event->cwd) free(event->cwd);
@@ -57,7 +58,6 @@ public:
             if (event->process_name) free(event->process_name);
             free(event);
         };
-
     }
 };
 
@@ -74,6 +74,7 @@ directory_t* mock_fim_conf_success([[maybe_unused]] const char* config_path, [[m
     mockDirectory.options = WHODATA_ACTIVE;
     return &mockDirectory;
 }
+
 char* mock_get_user([[maybe_unused]] int uid) { return strdup("mock_user"); }
 char* mock_get_group([[maybe_unused]] int gid) { return strdup("mock_group"); }
 void mock_fim_whodata_event([[maybe_unused]] whodata_evt* event) { return; }
@@ -82,17 +83,20 @@ char* mock_abspath([[maybe_unused]] const char* path, char* buffer, [[maybe_unus
     std::strcpy(buffer, "/tmp/ebpf_hc");
     return buffer;
 }
-void* mock_bpf_object_open_file_success([[maybe_unused]] const char* filename, [[maybe_unused]] void* opts) { return (void*)1; }
-void* mock_bpf_object_open_file_failure([[maybe_unused]] const char* filename, [[maybe_unused]] void* opts) { return nullptr; }
-int mock_bpf_object_load_success([[maybe_unused]] void* obj) { return 0; }
-int mock_bpf_object_load_failure([[maybe_unused]] void* obj) { return 1; }
-void mock_bpf_object_close_called([[maybe_unused]] void* obj) { return; }
-bpf_program* mock_bpf_object_next_program([[maybe_unused]] void* obj, [[maybe_unused]] bpf_program* pos) { return nullptr; }
-bpf_program* mock_bpf_object_next_program_in([[maybe_unused]] void* obj, [[maybe_unused]] bpf_program* pos) { return (bpf_program *)1; }
-int mock_bpf_program_attach_success([[maybe_unused]] void* prog) { return 1; }
-int mock_bpf_program_attach_failure([[maybe_unused]] void* prog) { return 0; }
-int mock_bpf_object_find_map_fd_by_name_success([[maybe_unused]] void* obj, [[maybe_unused]] const char* name) { return 1; }
-int mock_bpf_object_find_map_fd_by_name_failure([[maybe_unused]] void* obj, [[maybe_unused]] const char* name) { return -1; }
+
+void mock_ebpf_pop_events([[maybe_unused]] fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& kernel_queue) { return; }
+struct bpf_object* mock_bpf_object_open_file_success([[maybe_unused]] const char* filename, [[maybe_unused]] const struct bpf_object_open_opts* opts) { return (struct bpf_object*)1; }
+struct bpf_object* mock_bpf_object_open_file_failure([[maybe_unused]] const char* filename, [[maybe_unused]] const struct bpf_object_open_opts* opts) { return nullptr; }
+int mock_bpf_object_load_success([[maybe_unused]] struct bpf_object* obj) { return 0; }
+int mock_bpf_object_load_failure([[maybe_unused]] struct bpf_object* obj) { return 1; }
+void mock_bpf_object_close_called([[maybe_unused]] struct bpf_object* obj) { return; }
+void mock_bpf_object_close([[maybe_unused]] struct bpf_object* obj) { return; }
+bpf_program* mock_bpf_object_next_program([[maybe_unused]] const struct bpf_object* obj, [[maybe_unused]] struct bpf_program* pos) { return nullptr; }
+bpf_program* mock_bpf_object_next_program_in([[maybe_unused]] const struct bpf_object* obj, [[maybe_unused]] struct bpf_program* pos) { return (bpf_program*)1; }
+int mock_bpf_program_attach_success([[maybe_unused]] struct bpf_program* prog) { return 1; }
+int mock_bpf_program_attach_failure([[maybe_unused]] struct bpf_program* prog) { return 0; }
+int mock_bpf_object_find_map_fd_by_name_success([[maybe_unused]] struct bpf_object* obj, [[maybe_unused]] const char* name) { return 1; }
+int mock_bpf_object_find_map_fd_by_name_failure([[maybe_unused]] struct bpf_object* obj, [[maybe_unused]] const char* name) { return -1; }
 
 ring_buffer* mock_ring_buffer_new_success([[maybe_unused]] int fd, [[maybe_unused]] ring_buffer_sample_fn sample_cb, [[maybe_unused]] void* ctx, [[maybe_unused]] void* consumer_ctx) {
     return (ring_buffer*)1;
@@ -102,17 +106,34 @@ ring_buffer* mock_ring_buffer_new_failure([[maybe_unused]] int fd, [[maybe_unuse
     return nullptr;
 }
 
-int mock_ring_buffer_poll_success([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms) { return 1; }
-int mock_ring_buffer_poll_failure([[maybe_unused]]ring_buffer* rb, [[maybe_unused]]int timeout_ms) { return -1; }
-void mock_ring_buffer_free([[maybe_unused]]ring_buffer* rb) {}
-void mock_bpf_object_close([[maybe_unused]]void* obj) {}
-void mock_w_bpf_deinit([[maybe_unused]]void* helpers) {}
-int mock_init_ring_buffer_success([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb) { return 0; }
-int mock_init_ring_buffer_failure([[maybe_unused]]ring_buffer** rb, [[maybe_unused]]ring_buffer_sample_fn sample_cb) { return 1; }
-void mock_ebpf_pop_events() { return; }
+void mock_ring_buffer_free([[maybe_unused]] ring_buffer* rb) {}
+void mock_w_bpf_deinit([[maybe_unused]] void* helpers) {}
+int mock_init_ring_buffer_success([[maybe_unused]] ring_buffer** rb, [[maybe_unused]] ring_buffer_sample_fn sample_cb) { return 0; }
+int mock_init_ring_buffer_failure([[maybe_unused]] ring_buffer** rb, [[maybe_unused]] ring_buffer_sample_fn sample_cb) { return 1; }
 int mock_check_invalid_kernel_version() { return 0; }
-int mock_init_libbpf([[maybe_unused]]std::unique_ptr<DynamicLibraryWrapper> sym_load) { return 0; }
+int mock_init_libbpf([[maybe_unused]] std::unique_ptr<DynamicLibraryWrapper> sym_load) { return 0; }
 int mock_init_bpfobj() { return 0; }
 
+void reset_pop_barrier() {
+    g_pop_started_promise = std::make_shared<std::promise<void>>();
+    g_pop_started_future  = g_pop_started_promise->get_future().share();
+}
+
+void mock_ebpf_pop_events_barrier([[maybe_unused]] fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& kernel_queue) {
+    if (g_pop_started_promise) {
+        try { g_pop_started_promise->set_value(); } catch (...) {}
+    }
+    return;
+}
+
+int mock_ring_buffer_poll_success_barrier([[maybe_unused]] ring_buffer* rb, [[maybe_unused]] int timeout_ms) {
+    if (g_pop_started_future.valid()) { g_pop_started_future.wait(); }
+    return 1;
+}
+
+int mock_ring_buffer_poll_failure_barrier([[maybe_unused]] ring_buffer* rb, [[maybe_unused]] int timeout_ms) {
+    if (g_pop_started_future.valid()) { g_pop_started_future.wait(); }
+    return -1;
+}
 
 #endif // BPF_HELPERS_TEST_H
