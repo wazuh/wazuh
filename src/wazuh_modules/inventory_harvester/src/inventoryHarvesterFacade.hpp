@@ -62,18 +62,18 @@ public:
      * @param message event message.
      * @param type event type.
      */
-    void pushFimEvent(const std::vector<char>& message, BufferType type) const
-    {
-        flatbuffers::FlatBufferBuilder builder;
-        auto object = CreateMessageBufferDirect(
-            builder, reinterpret_cast<const std::vector<uint8_t>*>(&message), type, Utils::getSecondsFromEpoch());
-
-        builder.Finish(object);
-        auto bufferData = reinterpret_cast<const char*>(builder.GetBufferPointer());
-        size_t bufferSize = builder.GetSize();
-        const rocksdb::Slice messageSlice(bufferData, bufferSize);
-        m_eventFimInventoryDispatcher->push(messageSlice);
-    }
+    //  void pushFimEvent(const std::vector<char>& message, BufferType type) const
+    // {
+    //      flatbuffers::FlatBufferBuilder builder;
+    //      auto object = CreateMessageBufferDirect(
+    //          builder, reinterpret_cast<const std::vector<uint8_t>*>(&message), type, Utils::getSecondsFromEpoch());
+    //
+    //     builder.Finish(object);
+    //     auto bufferData = reinterpret_cast<const char*>(builder.GetBufferPointer());
+    //     size_t bufferSize = builder.GetSize();
+    //     const rocksdb::Slice messageSlice(bufferData, bufferSize);
+    //     m_eventFimInventoryDispatcher->push(messageSlice);
+    // }
 
     /**
      * @brief push event to the event dispatcher.
@@ -102,22 +102,22 @@ private:
     // void processEvent(ScanOrchestrator& scanOrchestrator, const MessageBuffer* message) const;
     std::unique_ptr<RouterSubscriber> m_inventoryDeltasSubscription;
     std::unique_ptr<RouterSubscriber> m_harvesterRsyncSubscription;
-    std::unique_ptr<RouterSubscriber> m_fimDeltasSubscription;
+    // std::unique_ptr<RouterSubscriber> m_fimDeltasSubscription; // DISABLED: FIM events are no longer processed.
     std::unique_ptr<RouterSubscriber> m_wdbAgentEventsSubscription;
     std::unique_ptr<RouterSubscriber> m_wdbFimEventsSubscription;
     std::unique_ptr<RouterSubscriber> m_wdbInventoryEventsSubscription;
     bool m_noWaitToStop {true};
     std::shared_ptr<EventDispatcher> m_eventSystemInventoryDispatcher;
-    std::shared_ptr<EventDispatcher> m_eventFimInventoryDispatcher;
+    // std::shared_ptr<EventDispatcher> m_eventFimInventoryDispatcher; // DISABLED: FIM events are no longer processed.
 
     void initInventoryDeltasSubscription();
     void initRsyncSubscription();
-    void initFimDeltasSubscription();
+    // void initFimDeltasSubscription(); // DISABLED: FIM events are no longer processed.
     void initWazuhDBAgentEventSubscription();
-    void initWazuhDBFimEventSubscription();
+    // void initWazuhDBFimEventSubscription(); // DISABLED: FIM events are no longer processed.
     void initWazuhDBInventoryEventSubscription();
     void initSystemEventDispatcher() const;
-    void initFimEventDispatcher() const;
+    // void initFimEventDispatcher() const; // DISABLED: FIM events are no longer processed.
 };
 
 #endif // _INVENTORY_ORCHESTRATOR_FACADE_HPP

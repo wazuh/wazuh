@@ -32,7 +32,7 @@
 
 // Router provider variables
 ROUTER_PROVIDER_HANDLE router_agent_events_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_fim_events_handle = NULL;
+// ROUTER_PROVIDER_HANDLE router_fim_events_handle = NULL; // DISABLED: FIM events are no longer processed.
 ROUTER_PROVIDER_HANDLE router_inventory_events_handle = NULL;
 
 static const char *SQL_CREATE_TEMP_TABLE = "CREATE TEMP TABLE IF NOT EXISTS s(rowid INTEGER PRIMARY KEY, pageno INT);";

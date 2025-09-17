@@ -57,9 +57,21 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
-    if (!router_fim_events_handle || !router_inventory_events_handle) {
+    if (!router_inventory_events_handle) {
         mdebug2("Router handle not available.");
         return;
+    }
+
+    // Early return for FIM components
+    switch (component) {
+        case WDB_FIM:
+        case WDB_FIM_FILE:
+        case WDB_FIM_REGISTRY:
+        case WDB_FIM_REGISTRY_KEY:
+        case WDB_FIM_REGISTRY_VALUE:
+            return;
+        default:
+            break;
     }
 
     cJSON* j_msg_to_send = NULL;

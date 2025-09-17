@@ -44,20 +44,20 @@ void InventoryHarvesterFacade::initInventoryDeltasSubscription()
  * @brief Start the fim deltas subscription
  *
  */
-void InventoryHarvesterFacade::initFimDeltasSubscription()
-{
-    logDebug2(LOGGER_DEFAULT_TAG,
-              "InventoryHarvesterFacade::initFimDeltasSubscription: Initializing fim deltas subscription.");
-    // Subscription to syscollector delta events.
-    m_fimDeltasSubscription = std::make_unique<RouterSubscriber>("deltas-syscheck", "inventory_harvester_deltas");
-    m_fimDeltasSubscription->subscribe(
-        // coverity[copy_constructor_call]
-        [this](const std::vector<char>& message)
-        {
-            logDebug2(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initFimDeltasSubscription: pushEvent");
-            pushFimEvent(message, BufferType::BufferType_DBSync);
-        });
-}
+// void InventoryHarvesterFacade::initFimDeltasSubscription()
+// {
+//     logDebug2(LOGGER_DEFAULT_TAG,
+//               "InventoryHarvesterFacade::initFimDeltasSubscription: Initializing fim deltas subscription.");
+//     // Subscription to syscollector delta events.
+//     m_fimDeltasSubscription = std::make_unique<RouterSubscriber>("deltas-syscheck", "inventory_harvester_deltas");
+//     m_fimDeltasSubscription->subscribe(
+//         // coverity[copy_constructor_call]
+//         [this](const std::vector<char>& message)
+//         {
+//             logDebug2(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initFimDeltasSubscription: pushEvent");
+//             pushFimEvent(message, BufferType::BufferType_DBSync);
+//         });
+// }
 
 /**
  * @brief Start the inventory rsync events subscription.
@@ -174,12 +174,12 @@ void InventoryHarvesterFacade::initWazuhDBAgentEventSubscription()
         });
 }
 
-void InventoryHarvesterFacade::initWazuhDBFimEventSubscription()
-{
-    m_wdbFimEventsSubscription = std::make_unique<RouterSubscriber>("wdb-fim-events", "inventory_harvester_database");
-    m_wdbFimEventsSubscription->subscribe([this](const std::vector<char>& message)
-                                          { pushFimEvent(message, BufferType::BufferType_JSON); });
-}
+// void InventoryHarvesterFacade::initWazuhDBFimEventSubscription()
+// {
+//     m_wdbFimEventsSubscription = std::make_unique<RouterSubscriber>("wdb-fim-events",
+//     "inventory_harvester_database"); m_wdbFimEventsSubscription->subscribe([this](const std::vector<char>& message)
+//                                           { pushFimEvent(message, BufferType::BufferType_JSON); });
+// }
 
 void InventoryHarvesterFacade::initWazuhDBInventoryEventSubscription()
 {
@@ -242,51 +242,51 @@ void InventoryHarvesterFacade::initSystemEventDispatcher() const
  * @brief Start the system event dispatcher
  *
  */
-void InventoryHarvesterFacade::initFimEventDispatcher() const
-{
-    logDebug2(LOGGER_DEFAULT_TAG,
-              "InventoryHarvesterFacade::initFimEventDispatcher: Initializing fim event dispatcher.");
-    // Init Orchestrator
-    auto fimInventoryOrchestrator = std::make_shared<FimInventoryOrchestrator>();
-
-    const auto parseEventMessage = [](const rocksdb::PinnableSlice& element) -> std::string
-    {
-        if (const auto eventMessageBuffer = GetMessageBuffer(element.data()); eventMessageBuffer)
-        {
-            return {eventMessageBuffer->data()->begin(), eventMessageBuffer->data()->end()};
-        }
-
-        return "unable to parse";
-    };
-
-    m_eventFimInventoryDispatcher->startWorker(
-        // coverity[copy_constructor_call]
-        [fimInventoryOrchestrator, &parseEventMessage](std::queue<rocksdb::PinnableSlice>& dataQueue)
-        {
-            const auto& element = dataQueue.front();
-            try
-            {
-                if (flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(element.data()), element.size());
-                    VerifyMessageBufferBuffer(verifier))
-                {
-                    fimInventoryOrchestrator->processEvent(element);
-                }
-            }
-            catch (const nlohmann::json::exception& e)
-            {
-                logError(
-                    LOGGER_DEFAULT_TAG,
-                    "InventoryHarvesterFacade::initFimEventDispatcher: json exception [%d](%s) - Event message: %s",
-                    e.id,
-                    e.what(),
-                    parseEventMessage(element).c_str());
-            }
-            catch (const std::exception& e)
-            {
-                logError(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initFimEventDispatcher: %s", e.what());
-            }
-        });
-}
+// void InventoryHarvesterFacade::initFimEventDispatcher() const
+// {
+//   logDebug2(LOGGER_DEFAULT_TAG,
+//             "InventoryHarvesterFacade::initFimEventDispatcher: Initializing fim event dispatcher.");
+//   // Init Orchestrator
+//   auto fimInventoryOrchestrator = std::make_shared<FimInventoryOrchestrator>();
+//
+//   const auto parseEventMessage = [](const rocksdb::PinnableSlice& element) -> std::string
+//   {
+//       if (const auto eventMessageBuffer = GetMessageBuffer(element.data()); eventMessageBuffer)
+//       {
+//           return {eventMessageBuffer->data()->begin(), eventMessageBuffer->data()->end()};
+//       }
+//
+//       return "unable to parse";
+//   };
+//
+//   m_eventFimInventoryDispatcher->startWorker(
+//       // coverity[copy_constructor_call]
+//       [fimInventoryOrchestrator, &parseEventMessage](std::queue<rocksdb::PinnableSlice>& dataQueue)
+//       {
+//           const auto& element = dataQueue.front();
+//           try
+//           {
+//               if (flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(element.data()), element.size());
+//                   VerifyMessageBufferBuffer(verifier))
+//               {
+//                   fimInventoryOrchestrator->processEvent(element);
+//               }
+//           }
+//           catch (const nlohmann::json::exception& e)
+//           {
+//               logError(
+//                   LOGGER_DEFAULT_TAG,
+//                   "InventoryHarvesterFacade::initFimEventDispatcher: json exception [%d](%s) - Event message: %s",
+//                   e.id,
+//                   e.what(),
+//                   parseEventMessage(element).c_str());
+//           }
+//           catch (const std::exception& e)
+//           {
+//               logError(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initFimEventDispatcher: %s", e.what());
+//           }
+//       });
+// }
 
 // LCOV_EXCL_START
 void InventoryHarvesterFacade::start(
@@ -303,7 +303,8 @@ void InventoryHarvesterFacade::start(
         PolicyHarvesterManager::instance().initialize(configuration);
 
         // Initialize all event dispatchers.
-        m_eventFimInventoryDispatcher = std::make_shared<EventDispatcher>(FIM_EVENTS_QUEUE_PATH, EVENTS_BULK_SIZE);
+        // m_eventFimInventoryDispatcher = std::make_shared<EventDispatcher>(FIM_EVENTS_QUEUE_PATH, EVENTS_BULK_SIZE);
+        // // DISABLED: FIM events are no longer processed.
         m_eventSystemInventoryDispatcher =
             std::make_shared<EventDispatcher>(SYSTEM_EVENTS_QUEUE_PATH, EVENTS_BULK_SIZE);
 
@@ -340,12 +341,12 @@ void InventoryHarvesterFacade::stop()
     // Reset shared pointers
     m_harvesterRsyncSubscription.reset();
     m_inventoryDeltasSubscription.reset();
-    m_fimDeltasSubscription.reset();
+    // m_fimDeltasSubscription.reset(); // DISABLED: FIM events are no longer processed.
     m_wdbAgentEventsSubscription.reset();
 
     // Policy manager teardown
     m_eventSystemInventoryDispatcher.reset();
-    m_eventFimInventoryDispatcher.reset();
+    // m_eventFimInventoryDispatcher.reset(); DISABLED: FIM events are no longer processed.
 
     logInfo(LOGGER_DEFAULT_TAG, "Inventory harvester module stopped.");
 }
