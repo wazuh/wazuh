@@ -837,7 +837,8 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
         if (typeToJType(sType) != json::Json::Type::Number)
         {
             throw std::runtime_error(fmt::format("Expected number reference but got reference '{}' of type '{}'",
-                                                    ref->dotPath(), schemf::typeToStr(sType)));
+                                                 ref->dotPath(),
+                                                 schemf::typeToStr(sType)));
         }
     }
 
@@ -845,44 +846,42 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
     const auto name = buildCtx->context().opName;
 
     // Tracing messages
-    const std::string successTrace{fmt::format(TRACE_SUCCESS, name)};
-    const std::string failureTrace1{fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
-    const std::string failureTrace2{fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
+    const std::string failureTrace2 {fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
+
     return [failureTrace1, failureTrace2, successTrace, ref, runState = buildCtx->runState()](
-                base::ConstEvent event) -> MapResult {
-        auto object = event->getJson(ref->jsonPath());
-        if (!object.has_value())
+               base::ConstEvent event) -> MapResult
+    {
+        auto getNumberAsDouble = [&](std::string_view path) -> std::optional<double>
         {
-            RETURN_FAILURE(runState, json::Json{}, failureTrace1);
+            if (const auto doubleValue = event->getDouble(path); doubleValue.has_value())
+                return doubleValue.value();
+
+            if (const auto int64Value = event->getIntAsInt64(path); int64Value.has_value())
+                return static_cast<double>(int64Value.value());
+
+            if (const auto floatValue = event->getFloat(path); floatValue.has_value())
+                return static_cast<double>(floatValue.value());
+
+            return std::nullopt;
+        };
+
+        const auto path = ref->jsonPath();
+        const auto numOpt = getNumberAsDouble(path);
+
+        if (!numOpt.has_value())
+        {
+            if (!event->getJson(path).has_value())
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureTrace1);
+            }
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
         }
 
-        if (!object.value().isNumber())
-        {
-            RETURN_FAILURE(runState, json::Json{}, failureTrace2);
-        }
-
-        // Extract numeric value
-        double numValue;
-        if (const auto val = object->getIntAsInt64(); val.has_value())
-        {
-            numValue = static_cast<double>(val.value());
-        }
-        else if (const auto val = object->getFloat(); val.has_value())
-        {
-            numValue = static_cast<double>(val.value());
-        }
-        else if (const auto val = object->getDouble(); val.has_value())
-        {
-            numValue = val.value();
-        }
-        else
-        {
-            RETURN_FAILURE(runState, json::Json{}, failureTrace2);
-        }
-
-        // Convert to JSON boolean: zero and negatives -> false; positives -> true
+        const double numValue = numOpt.value();
         json::Json result;
-        result.setBool(numValue > 0.0);
+        result.setBool(numValue != 0.0);
 
         RETURN_SUCCESS(runState, result, successTrace);
     };
