@@ -760,7 +760,7 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
         if (!std::static_pointer_cast<Value>(opArgs[1])->value().isString())
         {
             throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
-                                                std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+                                                 std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
         }
 
         op = strToNumCastOp(std::static_pointer_cast<Value>(opArgs[1])->value().getString().value());
@@ -837,7 +837,8 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
         if (typeToJType(sType) != json::Json::Type::Number)
         {
             throw std::runtime_error(fmt::format("Expected number reference but got reference '{}' of type '{}'",
-                                                    ref->dotPath(), schemf::typeToStr(sType)));
+                                                 ref->dotPath(),
+                                                 schemf::typeToStr(sType)));
         }
     }
 
@@ -845,45 +846,45 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
     const auto name = buildCtx->context().opName;
 
     // Tracing messages
-    const std::string successTrace{fmt::format(TRACE_SUCCESS, name)};
-    const std::string failureTrace1{fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
-    const std::string failureTrace2{fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
+    const std::string failureTrace2 {fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
 
-    return [failureTrace1, failureTrace2, successTrace, ref, runState = buildCtx->runState()]
-            ( base::ConstEvent event) -> MapResult
+    return [failureTrace1, failureTrace2, successTrace, ref, runState = buildCtx->runState()](
+               base::ConstEvent event) -> MapResult
+    {
+        auto getNumberAsDouble = [&](std::string_view path) -> std::optional<double>
+        {
+            if (const auto doubleValue = event->getDouble(path); doubleValue.has_value())
+                return doubleValue.value();
+
+            if (const auto int64Value = event->getIntAsInt64(path); int64Value.has_value())
+                return static_cast<double>(int64Value.value());
+
+            if (const auto floatValue = event->getFloat(path); floatValue.has_value())
+                return static_cast<double>(floatValue.value());
+
+            return std::nullopt;
+        };
+
+        const auto path = ref->jsonPath();
+        const auto numOpt = getNumberAsDouble(path);
+
+        if (!numOpt.has_value())
+        {
+            if (!event->getJson(path).has_value())
             {
-                auto getNumberAsDouble = [&](std::string_view path) -> std::optional<double>
-                {
-                    if (const auto doubleValue = event->getDouble(path); doubleValue.has_value())
-                        return doubleValue.value();
+                RETURN_FAILURE(runState, json::Json {}, failureTrace1);
+            }
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+        }
 
-                    if (const auto int64Value = event->getIntAsInt64(path); int64Value.has_value())
-                        return static_cast<double>(int64Value.value());
+        const double numValue = numOpt.value();
+        json::Json result;
+        result.setBool(numValue != 0.0);
 
-                    if (const auto floatValue = event->getFloat(path); floatValue.has_value())
-                        return static_cast<double>(floatValue.value());
-
-                    return std::nullopt;
-                };
-
-                const auto path = ref->jsonPath();
-                const auto numOpt = getNumberAsDouble(path);
-
-                if (!numOpt.has_value())
-                {
-                    if (!event->getJson(path).has_value())
-                    {
-                        RETURN_FAILURE(runState, json::Json{}, failureTrace1);
-                    }
-                    RETURN_FAILURE(runState, json::Json{}, failureTrace2);
-                }
-
-                const double numValue = numOpt.value();
-                json::Json result;
-                result.setBool(numValue != 0.0);
-
-                RETURN_SUCCESS(runState, result, successTrace);
-            };
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
 }
 
 // field: +concat/string1|$ref1/string2|$ref2 -> atleastOne is False
