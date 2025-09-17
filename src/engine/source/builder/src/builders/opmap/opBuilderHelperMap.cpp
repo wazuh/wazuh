@@ -853,22 +853,8 @@ MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_
     return [failureTrace1, failureTrace2, successTrace, ref, runState = buildCtx->runState()](
                base::ConstEvent event) -> MapResult
     {
-        auto getNumberAsDouble = [&](std::string_view path) -> std::optional<double>
-        {
-            if (const auto doubleValue = event->getDouble(path); doubleValue.has_value())
-                return doubleValue.value();
-
-            if (const auto int64Value = event->getIntAsInt64(path); int64Value.has_value())
-                return static_cast<double>(int64Value.value());
-
-            if (const auto floatValue = event->getFloat(path); floatValue.has_value())
-                return static_cast<double>(floatValue.value());
-
-            return std::nullopt;
-        };
-
         const auto path = ref->jsonPath();
-        const auto numOpt = getNumberAsDouble(path);
+        const auto numOpt = event->getNumberAsDouble(path);
 
         if (!numOpt.has_value())
         {

@@ -9265,7 +9265,7 @@ field: to_bool(number_to_convert)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| number_to_convert | number | reference | Integers between `-2^63` and `2^63-1` |
+| number_to_convert | number | reference |
 
 
 ## Outputs
@@ -9277,9 +9277,8 @@ field: to_bool(number_to_convert)
 
 ## Description
 
-Converts a number to a boolean value.
-Rule: values greater than 0 map to true; zero and negatives map to false.
-The result of the to_bool operation is mapped to “target_field”.
+Converts a numeric reference to boolean.
+Rule: non-zero → true, zero → false.
 In case of errors “target_field” will not be modified.
 This helper function is typically used in the map stage.
 
@@ -9449,7 +9448,7 @@ normalize:
 
 ### Example 6
 
-Converts integer -1 to false (non-positives are false).
+Converts integer -1 to true (non-positives are true).
 
 #### Asset
 
@@ -9472,7 +9471,7 @@ normalize:
 ```json
 {
   "number_to_convert": -1,
-  "target_field": false
+  "target_field": true
 }
 ```
 
@@ -11325,7 +11324,7 @@ No deletions when argument is null but target has no nulls
 ```yaml
 normalize:
   - map:
-      - target_field: delete_fields_with_value(null)
+      - target_field: delete_fields_with_value(None)
 ```
 
 #### Input Event
