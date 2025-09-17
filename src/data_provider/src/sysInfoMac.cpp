@@ -79,8 +79,8 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
 
     char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
     const auto pathLen
-    { 
-        proc_pidpath(pid, pathBuffer, sizeof(pathBuffer)) 
+    {
+        proc_pidpath(pid, pathBuffer, sizeof(pathBuffer))
     };
 
     jsProcessInfo["command_line"] = pathLen > 0 ? std::string(pathBuffer) : "";

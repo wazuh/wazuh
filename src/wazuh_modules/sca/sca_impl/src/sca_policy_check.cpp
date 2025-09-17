@@ -561,7 +561,7 @@ ProcessRuleEvaluator::ProcessRuleEvaluator(PolicyEvaluationContext ctx,
 
         if (procJson.contains("command_line") && procJson["command_line"].is_string())
         {
-            const auto & cmd = procJson["command_line"].get_ref<const std::string&>();
+            const auto& cmd = procJson["command_line"].get_ref<const std::string&>();
 
             if (!cmd.empty() && cmd != "none")
             {
