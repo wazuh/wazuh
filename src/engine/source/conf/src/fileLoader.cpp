@@ -80,7 +80,7 @@ static OptionMap parseFile(const std::filesystem::path& path)
         value = strip_outer_quotes(value);
 
         // Store in the result map
-        result[high + "." + low] = value;
+        result[makeKey(high, low)] = value;
     }
 
     return result;

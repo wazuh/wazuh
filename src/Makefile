@@ -823,6 +823,7 @@ endif
 endif
 
 ifeq (${TARGET},server)
+SERVER_SHARED_OBJS = shared/engine_external.o # External objects shared between libwazuhshared and engine
 external: $(ROCKSDB_LIB) $(SIMDJSON_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)
 endif
 
@@ -1931,7 +1932,7 @@ $(WAZUH_LIB): $(WAZUH_DLL) $(WAZUH_DEF)
 	$(DLLTOOL)  -D $(WAZUH_DLL) --def $(WAZUH_DEF) --output-delaylib $@
 
 else
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
+$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS) $(SERVER_SHARED_OBJS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -Wl,-rpath,'$$ORIGIN' -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 endif

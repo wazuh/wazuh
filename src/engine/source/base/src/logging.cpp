@@ -9,6 +9,8 @@
  */
 
 #include <base/logging.hpp>
+#include <base/libwazuhshared.hpp>
+
 #include <spdlog/pattern_formatter.h>
 
 namespace Log
@@ -170,17 +172,21 @@ extern "C"
 {
 #endif
 
-    void init(full_log_fnc_t callback)
+    void init()
     {
+        using LogginFnWrapperType = void (*)(int, const char*, const char*, int, const char*, const char*, va_list);
+        auto logWrapper = base::libwazuhshared::getFunction<LogginFnWrapperType>("mtLoggingFunctionsWrapper");
+        base::libwazuhshared::setLoggerTag(logging::default_tag());
+
         initializeFullLogFunction(
-            [callback](const int logLevel,
+            [logWrapper](const int logLevel,
                        const std::string& tag,
                        const std::string& file,
                        const int line,
                        const std::string& func,
                        const std::string& logMessage,
                        va_list args)
-            { callback(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
+            { logWrapper(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
     }
 
 #ifdef __cplusplus
@@ -202,7 +208,7 @@ void applyLevelStandalone(logging::Level target, int debugCount)
     }
 }
 
-void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared)
+void applyLevelWazuh(logging::Level target, int debugCount)
 {
     // -d takes priority over the configuration
     const logging::Level effective = (debugCount > 1)    ? logging::Level::Trace
@@ -214,12 +220,8 @@ void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared
         return; // Info/Warn/Err/Critical
     }
 
-    using now_debug_fn_t = void (*)();
-    auto* nowDebug = reinterpret_cast<now_debug_fn_t>(dlsym(libwazuhshared, "nowDebug"));
-    if (!nowDebug)
-    {
-        throw std::runtime_error {fmt::format("nowDebug symbol not found: {}", dlerror())};
-    }
+    using NowDebugFnType = void (*)();
+    auto nowDebug = base::libwazuhshared::getFunction<NowDebugFnType>("nowDebug");
 
     const int times = (effective == logging::Level::Debug) ? 1 : 2;
     for (int i = 0; i < times; ++i) nowDebug();

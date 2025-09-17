@@ -236,10 +236,8 @@ extern "C"
 #endif
     /**
      * @brief Method to initialize the shared library with a full log function.
-     *
-     * @param logFunction Log function.
      */
-    void init(full_log_fnc_t callback);
+    void init();
 #ifdef __cplusplus
 }
 #endif
@@ -357,11 +355,10 @@ void applyLevelStandalone(logging::Level target, int debugCount);
  * @param target         Target log level when no -d is provided (i.e., when debugCount == 0). Typically
  *                       obtained from configuration; ignored if debugCount > 0.
  * @param debugCount     Number of times the -d flag was specified on the CLI (takes precedence over config).
- * @param libwazuhshared Handle to the opened libwazuhshared shared library. Must be a valid dlopen() handle.
  *
  * @throw std::runtime_error If the `nowDebug` symbol cannot be resolved when the effective level is Debug/Trace.
  */
-void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared);
+void applyLevelWazuh(logging::Level target, int debugCount);
 
 /**
  * @brief Creates a spdlog-based logging function compatible with GLOBAL_LOG_FUNCTION signature
