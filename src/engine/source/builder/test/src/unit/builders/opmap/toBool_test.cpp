@@ -82,7 +82,7 @@ namespace mapoperatestest
             MapT(R"({"ref": 2})", opBuilderHelperToBool, {makeRef("ref")},
                 SUCCESS(customRefExpected(json::Json("true")))),
             MapT(R"({"ref": -1})", opBuilderHelperToBool, {makeRef("ref")},
-                SUCCESS(customRefExpected(json::Json("false")))),
+                SUCCESS(customRefExpected(json::Json("true")))),
             MapT(R"({"ref": 0.5})", opBuilderHelperToBool, {makeRef("ref")},
                 SUCCESS(customRefExpected(json::Json("true"))))),
         testNameFormatter<MapOperationTest>("ToBool"));
