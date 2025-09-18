@@ -227,6 +227,8 @@ protected:
     void SetUp() override
     {
         logging::testInit();
+        // Unset standalone mode to ensure file loader is called
+        unsetenv("WAZUH_ENGINE_STANDALONE");
 
         const auto& optionMap = std::get<1>(this->GetParam());
         m_fileLoader = conf::mocks::createMockFileLoader(optionMap);
@@ -261,6 +263,9 @@ protected:
 
         // Unset the environment variable
         unsetEnv("TEST_ENV");
+
+        // Restore standalone mode for other tests
+        setenv("WAZUH_ENGINE_STANDALONE", "true", 1);
 
         m_conf.reset();
         m_fileLoader.reset();

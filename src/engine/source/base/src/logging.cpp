@@ -156,7 +156,7 @@ void testInit(Level lvl)
         start(logConfig);
     }
 
-    setenv(base::process::ENV_ENGINE_STANDALONE, "true", 1); // TODO Move as shared constant
+    setenv(base::process::ENV_ENGINE_STANDALONE, "true", 1);
 }
 
 void initializeFullLogFunction(
