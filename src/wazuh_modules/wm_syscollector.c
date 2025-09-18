@@ -231,7 +231,7 @@ void* wm_sys_main(wm_sys_t *sys) {
                 mdebug2("Failed to create router handle for 'syscollector'.");
             }
 
-            if (rsync_handle = router_provider_create_func_ptr("rsync-syscollector", true), !rsync_handle) {
+            if (rsync_handle = router_provider_create_func_ptr("rsync", true), !rsync_handle) {
                 mdebug2("Failed to create router handle for 'rsync'.");
             }
         }

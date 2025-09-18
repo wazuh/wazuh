@@ -73,11 +73,11 @@ int main(int argc, const char* argv[])
 
                         if (!flatbuffers::LoadFile(fbsPath.c_str(), false, &schemaStr))
                         {
-                            throw std::runtime_error("Unable to load schema file.");
+                            throw std::runtime_error(std::string("Unable to load schema file: ") + parser.error_);
                         }
                         if (!parser.Parse(schemaStr.c_str()))
                         {
-                            throw std::runtime_error("Unable to parse schema file.");
+                            throw std::runtime_error(std::string("Unable to parse schema file: ") + parser.error_);
                         }
 
                         std::string strData;
@@ -116,13 +116,43 @@ int main(int argc, const char* argv[])
             if (PROVIDER)
             {
                 std::cout << "Sending message: " << data << std::endl;
-                PROVIDER->send(message);
+                auto fbsPath = args.fbsPath();
+                if (fbsPath.empty())
+                {
+                    PROVIDER->send(message);
+                }
+                else
+                {
+                    flatbuffers::IDLOptions options;
+                    options.strict_json = true;
+                    flatbuffers::Parser parser(options);
+                    std::string schemaStr;
+
+                    if (!flatbuffers::LoadFile(fbsPath.c_str(), false, &schemaStr))
+                    {
+                        throw std::runtime_error(std::string("Unable to load schema file: ") + parser.error_);
+                    }
+                    if (!parser.Parse(schemaStr.c_str()))
+                    {
+                        throw std::runtime_error(std::string("Unable to parse schema file: ") + parser.error_);
+                    }
+
+                    if (!parser.Parse(data.c_str()))
+                    {
+                        throw std::runtime_error(std::string("Unable to parse input data: ") + parser.error_);
+                    }
+
+                    std::vector<char> fbsMessage(parser.builder_.GetBufferPointer(),
+                                                 parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
+                    PROVIDER->send(fbsMessage);
+                }
             }
         }
         clean();
     }
     catch (const std::exception& e)
     {
+        std::cerr << "Error: " << e.what() << std::endl;
         CmdLineArgs::showHelp();
         return 1;
     }
