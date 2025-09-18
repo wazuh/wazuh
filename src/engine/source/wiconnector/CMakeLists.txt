@@ -34,11 +34,10 @@ set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 
 # Mocks
-# add_library(wIndexerConnector_mocks INTERFACE)
-# target_include_directories(wIndexerConnector_mocks INTERFACE ${TEST_MOCK_DIR})
-# target_link_libraries(wIndexerConnector_mocks INTERFACE GTest::gmock wIndexerConnector::iwIndexerConnector)
-# add_library(wIndexerConnector::mocks ALIAS wIndexerConnector_mocks)
-
+add_library(wIndexerConnector_mocks INTERFACE)
+target_include_directories(wIndexerConnector_mocks INTERFACE ${TEST_MOCK_DIR})
+target_link_libraries(wIndexerConnector_mocks INTERFACE GTest::gmock wIndexerConnector::iwIndexerConnector)
+add_library(wIndexerConnector::mocks ALIAS wIndexerConnector_mocks)
 
 add_executable(wIndexerConnector_utest
     ${UNIT_SRC_DIR}/wic_test.cpp
