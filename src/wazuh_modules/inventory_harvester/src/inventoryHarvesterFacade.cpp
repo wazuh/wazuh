@@ -35,8 +35,17 @@ void InventoryHarvesterFacade::initInventoryDeltasSubscription()
         // coverity[copy_constructor_call]
         [this](const std::vector<char>& message)
         {
-            logDebug2(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initInventoryDeltasSubscription: pushEvent");
-            pushSystemEvent(message, BufferType::BufferType_DBSync);
+            flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(message.data()), message.size());
+            if (SyscollectorDeltas::VerifyDeltaBuffer(verifier))
+            {
+                logDebug2(LOGGER_DEFAULT_TAG, "InventoryHarvesterFacade::initInventoryDeltasSubscription: pushEvent");
+                pushSystemEvent(message, BufferType::BufferType_DBSync);
+            }
+            else
+            {
+                logError(LOGGER_DEFAULT_TAG,
+                         "InventoryHarvesterFacade::initInventoryDeltasSubscription: Invalid delta message event.");
+            }
         });
 }
 
