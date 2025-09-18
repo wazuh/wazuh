@@ -55,6 +55,8 @@ jobs:
           make -j$(sysctl -n hw.ncpu)
           sudo make install
       - name: Build wazuh agent for macOS 14 with tests flags
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: 3.5
         run: |
           make deps -C src TARGET=agent -j3
           C_INCLUDE_PATH=$C_INCLUDE_PATH:/opt/homebrew/include LIBRARY_PATH=/usr/local/lib:/opt/homebrew/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
