@@ -5,6 +5,8 @@ from typing import AsyncIterator
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol
 from wazuh.core.exception import WazuhEngineError
 
+from wazuh.core.engine.catalog import CatalogModule
+
 logger = getLogger('wazuh')
 
 ENGINE_API_SOCKET_PATH = '/var/ossec/queue/sockets/engine-api'
@@ -25,6 +27,7 @@ class Engine:
         self._client = AsyncClient(transport=transport, timeout=Timeout(timeout))
 
         # Register Engine modules here
+        self.catalog = CatalogModule(self._client)
 
     async def close(self) -> None:
         """Close the Engine client."""
