@@ -6,44 +6,52 @@
 #include <fmt/format.h>
 
 
-static void* libptr = nullptr;
+namespace
+{
+    void* g_libPtr = nullptr;
+}
 
 namespace base::libwazuhshared
 {
 void init()
 {
-    if (!libptr)
+    if (!g_libPtr)
     {
-        libptr = dlopen("libwazuhshared.so", RTLD_NOW | RTLD_GLOBAL);
-        if (!libptr)
+        g_libPtr = dlopen("libwazuhshared.so", RTLD_NOW | RTLD_GLOBAL);
+        if (!g_libPtr)
         {
-            throw std::runtime_error(fmt::format("dlopen libwazuhshared.so failed: {}", dlerror()));
+            throw std::runtime_error(std::string("dlopen libwazuhshared.so failed: ") + dlerror());
         }
     }
 }
 
 void shutdown()
 {
-    if (libptr)
+    if (g_libPtr)
     {
-        dlclose(libptr);
-        libptr = nullptr;
+        dlclose(g_libPtr);
+        g_libPtr = nullptr;
     }
 }
 
 void* getLibPtr()
 {
-    return libptr;
+    return g_libPtr;
 }
 
-// Set the logger tag in wazuh-shared
+// Wrapper for OS_SetName
 void setLoggerTag(std::string_view tag)
 {
     using SetNameFnType = void (*)(const char*);
     const auto setNameFn = getFunction<SetNameFnType>("OS_SetName");
+    if (!setNameFn)
+    {
+        throw std::runtime_error("Failed to get OS_SetName function pointer.");
+    }
     setNameFn(tag.data());
 }
 
+// Wrapper for get_indexer_cnf
 std::string getJsonIndexerCnf()
 {
     using ReadEngineCnfFnType = char* (*)(const char*, char*, size_t);
