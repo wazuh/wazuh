@@ -748,8 +748,6 @@ rm -fr %{buildroot}
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
 %dir %attr(440, root, wazuh) %{_localstatedir}/templates
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_template.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-packages.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-processes.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-system.json
@@ -760,8 +758,6 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-hotfixes.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-ports.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-packages-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-processes-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-system-update.json

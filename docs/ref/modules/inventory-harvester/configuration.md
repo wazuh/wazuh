@@ -74,15 +74,3 @@ Turn off specific providers individually
 </wodle>
 ```
 **`<hotfixes>` provider is hidden by default**
-
-- Disabling FIM components
-
-To disable files monitoring the following configuration must not exist
-```xml
-<directories><FILEPATH_OF_MONITORED_FILE></directories>
-```
-
-To disabled registries monitoring the following configuration must not exist (Only Windows)
-```xml
-<windows_registry><REGISTRYPATH_OF_MONITORED_REGISTRY></windows_registry>
-```
