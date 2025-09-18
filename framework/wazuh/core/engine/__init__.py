@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 from contextlib import asynccontextmanager
 from logging import getLogger
 from typing import AsyncIterator
@@ -6,6 +10,7 @@ from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, Timeou
 from wazuh.core.exception import WazuhEngineError
 
 from wazuh.core.engine.catalog import CatalogModule
+from wazuh.core.engine.content import ContentModule
 
 logger = getLogger('wazuh')
 
@@ -28,6 +33,7 @@ class Engine:
 
         # Register Engine modules here
         self.catalog = CatalogModule(self._client)
+        self.content = ContentModule(self._client)
 
     async def close(self) -> None:
         """Close the Engine client."""
