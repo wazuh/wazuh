@@ -19,6 +19,7 @@
 constexpr auto FIM_EVENTS_QUEUE_PATH {"queue/harvester/fim_event"};
 constexpr auto SYSTEM_EVENTS_QUEUE_PATH {"queue/harvester/system_event"};
 constexpr auto EVENTS_BULK_SIZE {1};
+constexpr auto SIZE_LOG_INTERVAL {10}; // seconds
 
 /**
  * @brief Start the inventory deltas subscription
@@ -45,6 +46,16 @@ void InventoryHarvesterFacade::initInventoryDeltasSubscription()
             {
                 logError(LOGGER_DEFAULT_TAG,
                          "InventoryHarvesterFacade::initInventoryDeltasSubscription: Invalid delta message event.");
+            }
+            auto now = std::chrono::high_resolution_clock::now();
+            if (std::chrono::duration_cast<std::chrono::seconds>(now - m_lastQueueSizeLogTime).count() >
+                SIZE_LOG_INTERVAL)
+            {
+                m_lastQueueSizeLogTime = now;
+                logInfo(LOGGER_DEFAULT_TAG,
+                        "InventoryHarvesterFacade::initInventoryDeltasSubscription: Event queue size: "
+                        "%zu",
+                        m_inventoryDeltasSubscription->getQueueSize());
             }
         });
 }
@@ -143,6 +154,16 @@ void InventoryHarvesterFacade::initRsyncSubscription()
                         attributesType.compare("syscollector_services") == 0)
                     {
                         pushSystemEvent(message, BufferType::BufferType_RSync);
+                        auto now = std::chrono::high_resolution_clock::now();
+                        if (std::chrono::duration_cast<std::chrono::seconds>(now - m_lastQueueSizeLogTime).count() >
+                            SIZE_LOG_INTERVAL)
+                        {
+                            m_lastQueueSizeLogTime = now;
+                            logInfo(LOGGER_DEFAULT_TAG,
+                                    "InventoryHarvesterFacade::initInventoryRsyncSubscription: Event queue size: "
+                                    "%zu",
+                                    m_harvesterRsyncSubscription->getQueueSize());
+                        }
                     }
                 }
                 else if (data->data_type() == Synchronization::DataUnion_integrity_check_global)
@@ -316,6 +337,7 @@ void InventoryHarvesterFacade::start(
         logFunction,
     const nlohmann::json& configuration)
 {
+    m_lastQueueSizeLogTime = std::chrono::high_resolution_clock::now();
     try
     {
         // Initialize logging

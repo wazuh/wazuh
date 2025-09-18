@@ -44,6 +44,13 @@ public:
                        const std::function<void(const std::vector<char>&)>& callback);
 
     /**
+     * @brief Get the queue size for a specific topic
+     * @param name Topic name
+     * @return Queue size or 0 if topic doesn't exist
+     */
+    size_t getQueueSize(const std::string& name);
+
+    /**
      * @brief Adds a subscriber to a given remote provider.
      *
      * @param name Provider name.
@@ -81,8 +88,7 @@ public:
      * @param name Provider name.
      * @param onConnect Callback to be called when the provider is connected.
      */
-    void initProviderRemote(
-        const std::string& name, const std::function<void()>& onConnect = []() {});
+    void initProviderRemote(const std::string& name, const std::function<void()>& onConnect = []() {});
 
     /**
      * @brief Removes remote provider.

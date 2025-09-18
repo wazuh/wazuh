@@ -145,6 +145,11 @@ void RouterProvider::stop()
     }
 }
 
+size_t RouterSubscriber::getQueueSize() const
+{
+    return RouterFacade::instance().getQueueSize(m_topicName);
+}
+
 void RouterSubscriber::subscribe(const std::function<void(const std::vector<char>&)>& callback)
 {
     // Add subscriber to the list.

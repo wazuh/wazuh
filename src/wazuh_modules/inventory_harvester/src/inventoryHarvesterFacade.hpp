@@ -109,6 +109,7 @@ private:
     bool m_noWaitToStop {true};
     std::shared_ptr<EventDispatcher> m_eventSystemInventoryDispatcher;
     // std::shared_ptr<EventDispatcher> m_eventFimInventoryDispatcher; // DISABLED: FIM events are no longer processed.
+    std::chrono::time_point<std::chrono::high_resolution_clock> m_lastQueueSizeLogTime;
 
     void initInventoryDeltasSubscription();
     void initRsyncSubscription();

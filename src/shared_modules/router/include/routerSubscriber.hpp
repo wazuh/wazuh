@@ -81,6 +81,12 @@ public:
      */
     void subscribe(const std::function<void(const std::vector<char>&)>& callback,
                    const std::function<void()>& onConnect);
+
+    /**
+     * @brief Get the Queue Size object
+     * @return Queue size or 0 if topic doesn't exist
+     */
+    size_t getQueueSize() const;
 };
 
 #endif //_ROUTER_SUBSCRIBER_HPP

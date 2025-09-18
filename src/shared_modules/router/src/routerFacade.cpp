@@ -122,6 +122,17 @@ void RouterFacade::removeProviderRemote(const std::string& name)
     m_remoteProviders.erase(name);
 }
 
+size_t RouterFacade::getQueueSize(const std::string& name)
+{
+    std::shared_lock<std::shared_mutex> lock {m_providersMutex};
+    const auto it {m_providers.find(name)};
+    if (it != m_providers.end())
+    {
+        return it->second->getQueueSize();
+    }
+    throw std::runtime_error("getDedicatedQueueSize: Provider not exist");
+}
+
 void RouterFacade::addSubscriber(const std::string& name,
                                  const std::string& subscriberId,
                                  const std::function<void(const std::vector<char>&)>& callback)

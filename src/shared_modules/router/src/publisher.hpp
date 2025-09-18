@@ -90,6 +90,14 @@ public:
     }
 
     /**
+     * @brief Get the Queue Size object
+     */
+    size_t getQueueSize()
+    {
+        return m_msgDispatcher->size();
+    }
+
+    /**
      * @brief Destroy the Publisher object
      *
      */
