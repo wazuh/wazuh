@@ -5,20 +5,21 @@
 import json
 from os.path import exists
 from dataclasses import asdict
+from typing import List, Optional
 
 from wazuh.core.exception import WazuhError
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.utils import validate_response_or_raise
-from wazuh.core.engine.models.resources import ResourceFormat, Resource
+from wazuh.core.engine.models.resources import ResourceFormat, Resource, Status, ResourceType
 from wazuh.core.engine.models.policies import PolicyType
 from wazuh.core.assets import save_asset_file, generate_asset_file_path
 from wazuh.core.results import AffectedItemsWazuhResult
-
+from wazuh.core.utils import process_array
 
 DEFAULT_DECODER_FORMAT = ResourceFormat.JSON
 ENGINE_USER_NAMESPACE = 'user'
 
-def create_decoder(filename: str, contents: Resource, policy_type: PolicyType):
+def create_decoder(filename: str, contents: Resource, policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Create a new decoder resource.
 
     Parameters
@@ -66,7 +67,7 @@ def create_decoder(filename: str, contents: Resource, policy_type: PolicyType):
 
             # Create the new resource
             creation_results = client.content.create_resource(
-                type=policy_type,
+                type=ResourceType.DECODER,
                 format=DEFAULT_DECODER_FORMAT,
                 content=file_contents_json,
                 policy_type=policy_type
@@ -84,8 +85,52 @@ def create_decoder(filename: str, contents: Resource, policy_type: PolicyType):
 
     return result
 
-def get_decoders():
-    pass
+def get_decoders(names: List[str], search: Optional[str], status: Optional[Status], policy_type: PolicyType) -> AffectedItemsWazuhResult:
+    """Retrieve decoder resources.
+
+    Parameters
+    ----------
+    names : List[str]
+        List of decoder names to retrieve.
+    search : Optional[str]
+        Search text to filter decoders.
+    status : Optional[Status]
+        Status to filter decoders.
+    policy_type : PolicyType
+        The policy type for the decoders.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result object containing the retrieved decoders.
+
+    Raises
+    ------
+    WazuhError
+        If decoder retrieval fails (code 8004).
+    """
+    results = AffectedItemsWazuhResult(none_msg='No decoder was returned',
+                                      some_msg='Some decoders were not returned',
+                                      all_msg='All selected decoders were returned')
+
+    async with get_engine_client() as client:
+        decoders_response = client.content.get_resources(
+            type=ResourceType.DECODER,
+            name_list=names,
+            policy_type=policy_type
+        )
+
+        validate_response_or_raise(decoders_response, 8004)
+
+        parsed_decoders = process_array(
+            decoders_response['content'],
+            search_text=search,
+            filters={'status': status} if status else None
+        )
+        results.affected_items = parsed_decoders['items']
+        results.total_affected_items = parsed_decoders['totalItems']
+
+        return results
 
 def update_decoder():
     pass
