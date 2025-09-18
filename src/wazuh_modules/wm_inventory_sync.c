@@ -72,37 +72,14 @@
                  cJSON_AddItemToObject(config_json, "indexer", cJSON_Duplicate(indexer_config, TRUE));
              }
  
-             /* Add cluster name to vulnerability detection configurations
-              * If the cluster is enabled, the cluster name is the cluster name read from the configuration file.
-              * If the cluster is disabled, the cluster name is the hostname, known as the manager name.
-              */
-             const bool cluster_status = get_cluster_status();
-             cJSON_AddBoolToObject(config_json, "clusterEnabled", cluster_status);
+             // Add cluster name to inventory sync configurations. From 5.x.x onwards, the cluster is enabled by default.
+             char* cluster_name = get_cluster_name();
+             cJSON_AddStringToObject(config_json, "clusterName", cluster_name);
+             os_free(cluster_name);
  
-             if (cluster_status)
-             {
-                 char* cluster_name = get_cluster_name();
-                 cJSON_AddStringToObject(config_json, "clusterName", cluster_name);
-                 os_free(cluster_name);
- 
-                 char* manager_node_name = get_node_name();
-                 cJSON_AddStringToObject(config_json, "clusterNodeName", manager_node_name);
-                 os_free(manager_node_name);
-             }
-             else
-             {
-                 char hostname[HOST_NAME_MAX + 1];
-                 if (gethostname(hostname, HOST_NAME_MAX) == 0)
-                 {
-                     cJSON_AddStringToObject(config_json, "clusterName", hostname);
-                 }
-                 else
-                 {
-                     cJSON_AddStringToObject(config_json, "clusterName", "undefined");
-                 }
- 
-                 cJSON_AddStringToObject(config_json, "clusterNodeName", "undefined");
-             }
+             char* manager_node_name = get_node_name();
+             cJSON_AddStringToObject(config_json, "clusterNodeName", manager_node_name);
+             os_free(manager_node_name);
  
              wm_inventory_sync_log_config(config_json);
              inventory_sync_start_ptr(mtLoggingFunctionsWrapper, config_json);
