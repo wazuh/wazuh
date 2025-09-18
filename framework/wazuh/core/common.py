@@ -254,6 +254,10 @@ USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
 USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
 USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')
 
+USER_ASSETS_PATH = os.path.join(WAZUH_PATH, 'etc', 'assets')
+USER_TESTING_ASSETS_PATH = os.path.join(USER_ASSETS_PATH, 'testing')
+USER_PRODUCTION_ASSETS_PATH = os.path.join(USER_ASSETS_PATH, 'production')
+
 # ========================================== INSTALLATION UID PATH ====================================================
 SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')
 INSTALLATION_UID_PATH = os.path.join(SECURITY_PATH, 'installation_uid')
