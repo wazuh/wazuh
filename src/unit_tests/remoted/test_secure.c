@@ -50,6 +50,8 @@ extern remoted logr;
 extern wnotify_t* notify;
 extern char* str_family_address[FAMILY_ADDRESS_SIZE];
 extern OSHash* agent_data_hash;
+extern ROUTER_PROVIDER_HANDLE router_upgrade_ack_handle;
+extern ROUTER_PROVIDER_HANDLE router_sync_handle;
 
 void tmp_HandleSecureMessage_invalid_family_address(sa_family_t sin_family);
 
@@ -1221,7 +1223,6 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -1320,7 +1321,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -1878,7 +1878,6 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
@@ -1955,13 +1954,411 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
-    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'inventory synchronization' not available.");
 
     HandleSecureMessage(&message, control_msg_queue);
 
     os_free(key->id);
     os_free(key->ip);
     os_free(key->name);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
+void test_HandleSecureMessage_router_forwarding_upgrade_ack_success(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}";
+    message_t message = {.buffer = buffer, .size = strlen(buffer), .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("test_agent");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    // Mock router handles
+    router_upgrade_ack_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedIP
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // SendMSG
+    expect_string(__wrap_SendMSG, message, "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (test_agent) 127.0.0.1");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, 0);
+
+    expect_function_call(__wrap_rem_inc_recv_evt);
+
+    // getDefine_Int for router_forwarding_disabled
+    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+
+    // Mock router provider send for upgrade ACK
+    expect_string(__wrap_router_provider_send, message, "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\",\"agents\":[1]}}");
+    expect_value(__wrap_router_provider_send, message_size, strlen("{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\",\"agents\":[1]}}") + 1);
+    will_return(__wrap_router_provider_send, 0);
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    // Clean up router handle
+    router_upgrade_ack_handle = NULL;
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
+void test_HandleSecureMessage_router_forwarding_upgrade_ack_no_handle(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}";
+    message_t message = {.buffer = buffer, .size = strlen(buffer), .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("test_agent");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    // Mock router handles - set upgrade handle to NULL
+    router_upgrade_ack_handle = NULL;
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedIP
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // SendMSG
+    expect_string(__wrap_SendMSG, message, "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (test_agent) 127.0.0.1");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, 0);
+
+    expect_function_call(__wrap_rem_inc_recv_evt);
+
+    // getDefine_Int for router_forwarding_disabled
+    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+
+    // Expect debug message when router handle is not available
+    expect_string(__wrap__mdebug2, formatted_msg, "Router handle for 'upgrade_notifications' not available.");
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
+void test_HandleSecureMessage_router_forwarding_upgrade_ack_invalid_json(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "u:upgrade_module:{invalid json";
+    message_t message = {.buffer = buffer, .size = strlen(buffer), .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("test_agent");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    // Mock router handles
+    router_upgrade_ack_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedIP
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // SendMSG
+    expect_string(__wrap_SendMSG, message, "u:upgrade_module:{invalid json");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (test_agent) 127.0.0.1");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, 0);
+
+    expect_function_call(__wrap_rem_inc_recv_evt);
+
+    // getDefine_Int for router_forwarding_disabled
+    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+
+    // Expect error message for invalid JSON
+    expect_string(__wrap__mwarn, formatted_msg, "Failed to parse router message JSON: 'nvalid json'");  // Updated expected message
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    // Clean up router handle
+    router_upgrade_ack_handle = NULL;
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
+void test_HandleSecureMessage_router_forwarding_upgrade_ack_json_without_parameters(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"not-parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}";
+    message_t message = {.buffer = buffer, .size = strlen(buffer), .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("test_agent");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    // Mock router handles
+    router_upgrade_ack_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedIP
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // SendMSG
+    expect_string(__wrap_SendMSG, message, "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"not-parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}");
+    expect_string(__wrap_SendMSG, locmsg, "[001] (test_agent) 127.0.0.1");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, 0);
+
+    expect_function_call(__wrap_rem_inc_recv_evt);
+
+    // getDefine_Int for router_forwarding_disabled
+    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not get parameters from upgrade message: '{\"command\":\"upgrade_update_status\",\"not-parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\"}}'");
+    HandleSecureMessage(&message, control_msg_queue);
+
+    // Clean up router handle
+    router_upgrade_ack_handle = NULL;
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+}
+
+void test_HandleSecureMessage_router_forwarding_upgrade_ack_send_failed(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}";
+    message_t message = {.buffer = buffer, .size = strlen(buffer), .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("042");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "192.168.1.100";
+    key->name = strdup("agent_042");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("192.168.1.100");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    // Mock router handles
+    router_upgrade_ack_handle = (ROUTER_PROVIDER_HANDLE)0x12345;
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedIP
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "192.168.1.100");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    // ReadSecMSG
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_string(__wrap_ReadSecMSG, buffer, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "192.168.1.100");
+    will_return(__wrap_ReadSecMSG, message.size);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    // SendMSG
+    expect_string(__wrap_SendMSG, message, "u:upgrade_module:{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}");
+    expect_string(__wrap_SendMSG, locmsg, "[042] (agent_042) 192.168.1.100");
+    expect_any(__wrap_SendMSG, loc);
+    will_return(__wrap_SendMSG, 0);
+
+    expect_function_call(__wrap_rem_inc_recv_evt);
+
+    // getDefine_Int for router_forwarding_disabled
+    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+    expect_string(__wrap__mwarn, formatted_msg, "Unable to forward upgrade-ack message '{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\"}}' for agent 042");
+
+    // Mock router provider send for upgrade ACK - simulate failure
+    expect_string(__wrap_router_provider_send, message, "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\",\"agents\":[42]}}");
+    expect_value(__wrap_router_provider_send, message_size, strlen("{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":2,\"message\":\"Upgrade failed\",\"status\":\"Failed\",\"agents\":[42]}}") + 1);
+    will_return(__wrap_router_provider_send, -1);
+
+    HandleSecureMessage(&message, control_msg_queue);
+
+    // Clean up router handle
+    router_upgrade_ack_handle = NULL;
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
     os_free(key);
     os_free(keyentries);
     indexed_queue_free(control_msg_queue);
@@ -2404,6 +2801,11 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_control_msg_succes),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_same_sock_2),
+        cmocka_unit_test(test_HandleSecureMessage_router_forwarding_upgrade_ack_success),
+        cmocka_unit_test(test_HandleSecureMessage_router_forwarding_upgrade_ack_no_handle),
+        cmocka_unit_test(test_HandleSecureMessage_router_forwarding_upgrade_ack_invalid_json),
+        cmocka_unit_test(test_HandleSecureMessage_router_forwarding_upgrade_ack_json_without_parameters),
+        cmocka_unit_test(test_HandleSecureMessage_router_forwarding_upgrade_ack_send_failed),
         cmocka_unit_test(test_HandleSecureMessage_router_forwarding_disabled),
         // Tests handle_new_tcp_connection
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_success, setup_new_tcp, teardown_new_tcp),
