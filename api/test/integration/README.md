@@ -56,24 +56,12 @@ finished. The execution of `api_test` is done automatically thanks to the `pytes
 In the `conftest.py` file, we can also find functions used to make the HTML report,
 configure [RBAC](#RBAC-API-integration-tests), etc.
 
-### Environment selection
-
-The Wazuh docker environment will have a different configuration depending on
-the [`pytest` mark](https://docs.pytest.org/en/6.2.x/mark.html) used to run the tests with.
-
-- If the `cluster` mark is specified, a Wazuh cluster setup with **3 managers and 12 agents** will be built.
-
-- If **no mark** is specified, a Wazuh cluster setup with **3 managers and 12 agents** will be built.
-
-The following table shows how these marks must be used with the `pytest` command and the environment they build:
+The environment is brought up automatically when running an API integration test. As seen in the table, the environment runs in **cluster** mode and tests are executed with `pytest`:
 
 | Command                          | Environment                                          |  
 |----------------------------------|------------------------------------------------------|
 | `pytest TEST_NAME`               | Wazuh cluster environment                            |  
 
-Apart from choosing the environment to be built, marks are also used to filter the API integration test cases.
-Marks are only used to select or filter tests, not to switch environments.
-Tests run in the cluster environment.
 
 Talking about [RBAC API integration tests](#RBAC-API-integration-tests), they don't have any marks, so there is no need
 to specify one when running them. If a mark is specified, no tests will be run due to the filters. In other words,
