@@ -20,8 +20,6 @@ from wazuh.core.utils import process_array, full_copy, safe_move
 DEFAULT_DECODER_FORMAT = ResourceFormat.JSON
 ENGINE_USER_NAMESPACE = 'user'
 
-# TODO - What happens when the save file fails
-# TODO - What happens when the upload to Engine fails
 def create_decoder(filename: str, contents: Resource, policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Create a new decoder resource.
 
@@ -49,14 +47,16 @@ def create_decoder(filename: str, contents: Resource, policy_type: PolicyType) -
     result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
                                       none_msg='Could not upload decoder'
                                       )
-
+    file_contents_json = json.dumps(asdict(contents))
+    asset_file_path = generate_asset_file_path(filename, policy_type)
     try:
-        asset_file_path = generate_asset_file_path(filename, policy_type)
         if exists(asset_file_path):
             raise WazuhError(8001)
 
+        # Create file
+        save_asset_file(asset_file_path, file_contents_json)
+
         async with get_engine_client() as client:
-            file_contents_json = json.dumps(asdict(contents))
 
             # Validate contents
             validation_results = client.catalog.validate_resource(
@@ -78,13 +78,12 @@ def create_decoder(filename: str, contents: Resource, policy_type: PolicyType) -
 
             validate_response_or_raise(creation_results, 8003)
 
-        # Create file
-        save_asset_file(asset_file_path, file_contents_json)
-
         result.affected_items.append(filename)
         result.total_affected_items = len(result.affected_items)
     except WazuhError as exc:
         result.add_failed_item(id_=filename, error=exc)
+    finally:
+        exists(asset_file_path) and remove(asset_file_path)
 
     return result
 
