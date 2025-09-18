@@ -49,6 +49,6 @@ target_link_libraries(wIndexerConnector_utest
     wIndexerConnector::wIndexerConnector
 )
 target_include_directories(wIndexerConnector_utest PRIVATE ${SRC_DIR})
-gtest_discover_tests(wIndexerConnector_utest)
+gtest_discover_tests(wIndexerConnector_utest PROPERTIES RESOURCE_LOCK "rocks_db_lock")
 
 endif(ENGINE_BUILD_TEST)
