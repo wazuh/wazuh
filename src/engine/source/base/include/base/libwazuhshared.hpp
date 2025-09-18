@@ -49,6 +49,7 @@ FuncType getFunction(std::string_view name)
 /* Wrappers */
 void setLoggerTag(std::string_view tag);
 
+std::string getJsonIndexerCnf();
 
 
 }

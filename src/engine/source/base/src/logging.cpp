@@ -175,7 +175,7 @@ extern "C"
     void init()
     {
         using LogginFnWrapperType = void (*)(int, const char*, const char*, int, const char*, const char*, va_list);
-        auto logWrapper = base::libwazuhshared::getFunction<LogginFnWrapperType>("mtLoggingFunctionsWrapper");
+        const auto logWrapper = base::libwazuhshared::getFunction<LogginFnWrapperType>("mtLoggingFunctionsWrapper");
         base::libwazuhshared::setLoggerTag(logging::default_tag());
 
         initializeFullLogFunction(
@@ -221,7 +221,7 @@ void applyLevelWazuh(logging::Level target, int debugCount)
     }
 
     using NowDebugFnType = void (*)();
-    auto nowDebug = base::libwazuhshared::getFunction<NowDebugFnType>("nowDebug");
+    const auto nowDebug = base::libwazuhshared::getFunction<NowDebugFnType>("nowDebug");
 
     const int times = (effective == logging::Level::Debug) ? 1 : 2;
     for (int i = 0; i < times; ++i) nowDebug();

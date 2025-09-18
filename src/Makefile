@@ -824,6 +824,7 @@ endif
 
 ifeq (${TARGET},server)
 SERVER_SHARED_OBJS = shared/engine_external.o # External objects shared between libwazuhshared and engine
+SERVER_SHARED_OBJS += ${os_xml_o} # For config parsing in engine
 external: $(ROCKSDB_LIB) $(SIMDJSON_LIB) $(SPDLOG_LIB) $(YAMLCPP_LIB) $(PUGIXML_LIB) $(MAXMINDDB_LIB) $(DATE_LIB) $(FMT_LIB) $(FAST_FLOAT_LIB) $(PROTOBUF_LIB) $(ABSEILCPP_LIB) $(RE2_LIB)
 endif
 
