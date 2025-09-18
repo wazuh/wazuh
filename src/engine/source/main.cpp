@@ -14,11 +14,11 @@
 #include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
+#include <base/libwazuhshared.hpp>
 #include <base/logging.hpp>
 #include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
 #include <base/utils/singletonLocatorStrategies.hpp>
-#include <base/libwazuhshared.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/allowedFields.hpp>
 #include <builder/builder.hpp>
@@ -28,14 +28,14 @@
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
-#include <scheduler/scheduler.hpp>
-#include <streamlog/logger.hpp>
 #include <httpsrv/server.hpp>
-#include <udgramsrv/udsrv.hpp>
-#include <wiconnector/windexerconnector.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
+#include <scheduler/scheduler.hpp>
+#include <streamlog/logger.hpp>
+#include <udgramsrv/udsrv.hpp>
+#include <wiconnector/windexerconnector.hpp>
 // #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <router/orchestrator.hpp>
@@ -108,11 +108,11 @@ int main(int argc, char* argv[])
     // exit handler
     cmd::details::StackExecutor exitHandler {};
     const auto opts = parseOptions(argc, argv);
-    const bool standalone = base::process::isStandaloneModeEnable();
+    const bool isRunningStandAlone = base::process::isStandaloneModeEnable();
     const bool cliDebug = (opts.debugCount > 0);
 
     // Loggin initialization
-    if (standalone)
+    if (isRunningStandAlone)
     {
         // Standalone logging
         if (opts.testConfig)
@@ -129,10 +129,13 @@ int main(int argc, char* argv[])
     else
     {
         // Use wazuh-shared logging
-        try {
+        try
+        {
             base::libwazuhshared::init();
             exitHandler.add([]() { base::libwazuhshared::shutdown(); });
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception& e)
+        {
             fprintf(stderr, "Error initializing wazuh-shared: %s\n", e.what());
             return EXIT_FAILURE;
         }
@@ -146,10 +149,13 @@ int main(int argc, char* argv[])
         if (opts.testConfig)
         {
 
-            try {
-                auto ReadXML = base::libwazuhshared::getFunction<void (*)()>("os_logging_config");
+            try
+            {
+                const auto ReadXML = base::libwazuhshared::getFunction<void (*)()>("os_logging_config");
                 ReadXML();
-            } catch (const std::exception& e) {
+            }
+            catch (const std::exception& e)
+            {
                 fprintf(stderr, "Error loading configuration: %s\n", e.what());
                 return EXIT_FAILURE;
             }
@@ -240,25 +246,28 @@ int main(int argc, char* argv[])
 
             if (uid == base::process::INVALID_UID || gid == base::process::INVALID_GID)
             {
-                throw std::runtime_error {fmt::format("Invalid user '{}' or group '{}'", user, group, strerror(errno), errno)};
+                throw std::runtime_error {
+                    fmt::format("Invalid user '{}' or group '{}'", user, group, strerror(errno), errno)};
             }
 
             /* Privilege separation only if we got valid IDs */
             if (base::process::privSepSetGroup(gid))
             {
-                throw std::runtime_error {fmt::format("Unable to switch to group '{}' due to [({})-({})].", group, errno, strerror(errno))};
+                throw std::runtime_error {
+                    fmt::format("Unable to switch to group '{}' due to [({})-({})].", group, errno, strerror(errno))};
             }
 
             /* Changing user only if we got a valid UID */
             if (base::process::privSepSetUser(uid))
             {
-                throw std::runtime_error {fmt::format("Unable to switch to user '{}' due to [({})-({})].", user, errno, strerror(errno))};
+                throw std::runtime_error {
+                    fmt::format("Unable to switch to user '{}' due to [({})-({})].", user, errno, strerror(errno))};
             }
         }
 
         // Set new log level if it is different from the default
         {
-            if (standalone)
+            if (isRunningStandAlone)
             {
                 auto verbosity = confManager.get<std::string>(conf::key::STANDALONE_LOGGING_LEVEL);
                 auto level = logging::strToLevel(verbosity);
@@ -273,7 +282,8 @@ int main(int argc, char* argv[])
         }
 
         /* Create PID file */
-        if (!base::process::isStandaloneModeEnable()) {
+        if (!base::process::isStandaloneModeEnable())
+        {
             // Get executable file name
             std::string exePath {};
             {
@@ -296,7 +306,6 @@ int main(int argc, char* argv[])
                     (fmt::format("Could not create PID file for the engine: {}", base::getError(pidError).message)));
             }
         }
-
 
         // Store
         {
@@ -369,7 +378,7 @@ int main(int argc, char* argv[])
         // Indexer Connector
         {
 
-            const std::string jsonCnf = [&]() -> std::string
+            const auto standAloneConfig = [&]() -> std::string
             {
                 wiconnector::Config icConfig {};
                 icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
@@ -382,11 +391,9 @@ int main(int argc, char* argv[])
                     icConfig.ssl.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
                 }
                 return icConfig.toJson();
-            }();
+            };
 
-            // char* read_engine_cnf(const char* cnf_file, char* err_buf, size_t err_buf_size);
-            // using load_fn_t = char* (*)(const char*, char*, size_t);
-
+            const auto jsonCnf = isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
             indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
             LOG_INFO("Indexer Connector initialized.");
         }
@@ -615,7 +622,6 @@ int main(int argc, char* argv[])
 
             LOG_INFO("Remote engine's server initialized and started.");
         }
-
 
         // Do not exit until the server is running
         while (g_engineLocalServer->isRunning())

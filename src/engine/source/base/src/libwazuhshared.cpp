@@ -40,8 +40,24 @@ void* getLibPtr()
 void setLoggerTag(std::string_view tag)
 {
     using SetNameFnType = void (*)(const char*);
-    auto* setNameFn = getFunction<SetNameFnType>("OS_SetName");
+    const auto setNameFn = getFunction<SetNameFnType>("OS_SetName");
     setNameFn(tag.data());
 }
 
+std::string getJsonIndexerCnf()
+{
+    using ReadEngineCnfFnType = char* (*)(const char*, char*, size_t);
+    const auto readEngineCnfFn = getFunction<ReadEngineCnfFnType>("get_indexer_cnf");
+
+    char errBuf[1024] = {0};
+    char* result = readEngineCnfFn("etc/ossec.conf", errBuf, sizeof(errBuf));
+    if (!result)
+    {
+        throw std::runtime_error(fmt::format("get_indexer_cnf failed: {}", errBuf));
+    }
+
+    std::string jsonCnf(result);
+    free(result);
+    return jsonCnf;
+}
 }
