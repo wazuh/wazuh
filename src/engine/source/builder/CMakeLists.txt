@@ -162,7 +162,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/stage/outputs_test.cpp
     ${UNIT_SRC_DIR}/builders/stage/fileOutput_test.cpp
     # TODO: Until the indexer connector is unified with the rest of wazuh-manager
-    # ${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
+    ${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
 
 )
 target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
@@ -180,8 +180,7 @@ target_link_libraries(builder_utest
     geo::mocks
     base::test
     streamlogger::mocks
-    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
-    # indexerconnector::mocks
+    wIndexerConnector::mocks
 )
 gtest_discover_tests(builder_utest)
 

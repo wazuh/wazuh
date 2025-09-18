@@ -3,18 +3,18 @@
 #include "builders/baseBuilders_test.hpp"
 #include "builders/stage/indexerOutput.hpp"
 
-#include <indexerConnector/mockiconnector.hpp>
+#include <wiconnector/mockswindexerconnector.hpp>
 
 using namespace builder::builders;
 
 namespace stagebuildtest
 {
-std::shared_ptr<IIndexerConnector> getMockIndexerConnector()
+std::shared_ptr<wiconnector::IWIndexerConnector> getMockIndexerConnector()
 {
-    return std::make_shared<indexerconnector::mocks::MockIConnector>();
+    return std::make_shared<wiconnector::mocks::MockWIndexerConnector>();
 }
 
-std::shared_ptr<IIndexerConnector> getNullIndexerConnector()
+std::shared_ptr<wiconnector::IWIndexerConnector> getNullIndexerConnector()
 {
     return nullptr;
 }
@@ -96,7 +96,7 @@ const std::string messageStr {R"({
 class IndexerOutputOperationTest : public BaseBuilderTest
 {
 protected:
-    indexerconnector::mocks::MockIConnector mockConnector;
+    wiconnector::mocks::MockWIndexerConnector mockConnector;
     json::Json definition;
 
     void SetUp() override
@@ -116,15 +116,9 @@ protected:
     }
 };
 
-// Custom matcher to check the event starts with a prefix
-MATCHER_P(StartsWith, prefix, "")
-{
-    return arg.find(prefix) == 0;
-}
-
 TEST_F(IndexerOutputOperationTest, output_success)
 {
-    auto iConnector = std::make_shared<indexerconnector::mocks::MockIConnector>();
+    auto iConnector = std::make_shared<wiconnector::mocks::MockWIndexerConnector>();
     auto builder = getIndexerOutputBuilder(iConnector);
 
     EXPECT_CALL(*(mocks->ctx), runState());
@@ -141,7 +135,7 @@ TEST_F(IndexerOutputOperationTest, output_success)
     ASSERT_TRUE(operation);
 
     // Configure the behavior
-    EXPECT_CALL(*iConnector, publish(StartsWith(R"({"operation": "ADD", "index": "wazuh-alerts", "data": {)")));
+    EXPECT_CALL(*iConnector, index("wazuh-alerts", ::testing::_));
 
     // Run the operation
     auto result = operation(event);
@@ -151,7 +145,7 @@ TEST_F(IndexerOutputOperationTest, output_success)
 
 TEST_F(IndexerOutputOperationTest, output_fail)
 {
-    std::shared_ptr<indexerconnector::mocks::MockIConnector> iConnector {nullptr};
+    std::shared_ptr<wiconnector::mocks::MockWIndexerConnector> iConnector {nullptr};
     auto builder = getIndexerOutputBuilder(iConnector);
 
     EXPECT_CALL(*(mocks->ctx), runState());
