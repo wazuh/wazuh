@@ -57,15 +57,13 @@ class ContentModule(BaseModule):
         """
         return {'status': 'OK', 'error': None, 'content': []}
 
-    async def update_resource(self, name: str, format: ResourceFormat, content: str, policy_type: PolicyType) -> dict:
+    async def update_resource(self, name: str, content: str, policy_type: PolicyType) -> dict:
         """Update an existing content resource.
 
         Parameters
         ----------
         name : str
             The name of the resource.
-        format : ResourceFormat
-            The format of the resource content.
         content : str
             The new content of the resource.
         policy_type : PolicyType
