@@ -621,6 +621,10 @@ class WazuhException(Exception):
         8003: {'message': 'Engine error: Unable to add the asset. Please check the asset data and try again.'},
         8004: {'message': 'Engine error: Unable to retrieve the specified decoders. The requested decoders could not be found or there was an issue processing your request.',
                'remediation': 'Please verify the decoder names and ensure they exist in the system.'},
+        8005: {'message': 'Asset does not exist',
+                'remediation': 'Please verify the asset ID and ensure it exists in the system before making the request.'},
+        8006: {'message': 'Engine error: Error uploading the decoder',
+                'remediation': 'Please check the decoder data and ensure it meets the required format before uploading.'},
     }
 
     # Reserve agent upgrade custom errors
