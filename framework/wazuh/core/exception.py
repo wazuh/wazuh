@@ -616,10 +616,11 @@ class WazuhException(Exception):
         # Engine
         8000: {'message': 'Invalid policy type provided: {policy_type}. The specified policy type is not recognized by the engine.'},
         8001: {'message': 'Asset upload failed: An asset with the same ID already exists in the system.',
-               'remediation': 'Please use a unique asset ID to upload a new asset.'
-               },
+               'remediation': 'Please use a unique asset ID to upload a new asset.'},
         8002: {'message': 'Asset syntax error: The provided asset data does not match the required format.'},
-        8003: {'message': 'Engine error: Unable to add the asset. Please check the asset data and try again.'}
+        8003: {'message': 'Engine error: Unable to add the asset. Please check the asset data and try again.'},
+        8004: {'message': 'Engine error: Unable to retrieve the specified decoders. The requested decoders could not be found or there was an issue processing your request.',
+               'remediation': 'Please verify the decoder names and ensure they exist in the system.'},
     }
 
     # Reserve agent upgrade custom errors
