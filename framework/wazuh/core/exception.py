@@ -631,6 +631,8 @@ class WazuhException(Exception):
                 'remediation': 'Please verify the asset ID and ensure it exists in the system before making the request.'},
         8006: {'message': 'Engine error: Error uploading the decoder',
                 'remediation': 'Please check the decoder data and ensure it meets the required format before uploading.'},
+        8007: {'message': 'Engine error: Unable to delete the decoder.',
+                'remediation': 'Check the decoder ID and confirm it is present in the system.'}
     }
 
     # Reserve agent upgrade custom errors
