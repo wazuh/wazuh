@@ -103,14 +103,7 @@ def get_master_health(env_mode):
 
     check0 = check(os.system("diff -q /tmp_volume/output.txt /tmp_volume/healthcheck/agent_control_check.txt"))
 
-    if env_mode == "standalone":
-        # If the environment is in standalone mode, the only difference is in the clusterd daemon
-        check1 = check(not
-                       (subprocess.run(['diff', '/tmp_volume/daemons.txt', '/tmp_volume/healthcheck/daemons_check.txt'],
-                                       stdout=subprocess.PIPE).stdout.decode('utf-8')
-                        == CHECK_CLUSTERD_DAEMON))
-    else:
-        check1 = check(os.system("diff -q /tmp_volume/daemons.txt /tmp_volume/healthcheck/daemons_check.txt"))
+    check1 = check(os.system("diff -q /tmp_volume/daemons.txt /tmp_volume/healthcheck/daemons_check.txt"))
 
     check2 = get_api_health()
 
