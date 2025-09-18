@@ -44,7 +44,7 @@
             "description": "user rules"
         },
 
-        "etc/ruleset/assets/": {
+        "etc/ruleset/assets/production": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],
@@ -55,7 +55,7 @@
             "description": "user assets"
         },
 
-        "etc/ruleset/kvdb/": {
+        "etc/ruleset/kvdb/production": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],
