@@ -19,12 +19,37 @@ depot_path=""
 control_binary=""
 compute_checksums="no"
 
+# SHA256 checksums for downloaded files
+GCC_SHA256="67a338199c7c7e7c69643bcebb8558ecccfef78a1d86db689d83516ab5db8d88"
+CMAKE_SHA256="9583faa9268c07bca102e16113490914c53a546948ba9da823ac8425a150e098"
+
 # Needed variables to build Wazuh with custom GCC and cmake
 PATH=${build_tools_path}/bootstrap-gcc/gcc94_prefix/bin:${build_tools_path}/cmake_prefix_install/bin:/usr/local/bin:$PATH
 LD_LIBRARY_PATH=${build_tools_path}/bootstrap-gcc/gcc94_prefix/lib:${build_tools_path}/bootstrap-gcc/gcc94_prefix/lib/hpux64
 export LD_LIBRARY_PATH
 export PATH
 CXX=${build_tools_path}/bootstrap-gcc/gcc94_prefix/bin/g++
+
+verify_checksum() {
+    local file="$1"
+    local expected_sha256="$2"
+
+    if [ ! -f "$file" ]; then
+        echo "Error: File $file not found"
+        return 1
+    fi
+
+    actual_sha256=$(openssl dgst -sha256 "$file" | cut -d' ' -f2)
+
+    if [ "$actual_sha256" = "$expected_sha256" ]; then
+        return 0
+    else
+        echo "Error: Checksum verification failed for $file"
+        echo "Expected: $expected_sha256"
+        echo "Actual:   $actual_sha256"
+        return 1
+    fi
+}
 
 build_environment() {
 
@@ -62,6 +87,7 @@ build_environment() {
     mkdir bootstrap-gcc
     cd ${build_tools_path}/bootstrap-gcc
     curl -k -SO http://packages.wazuh.com/utils/gcc/gcc_9.4_HPUX_build.tar.gz
+    verify_checksum gcc_9.4_HPUX_build.tar.gz "${GCC_SHA256}" || return 1
     gunzip gcc_9.4_HPUX_build.tar.gz
     tar -xf gcc_9.4_HPUX_build.tar
     rm -f gcc_9.4_HPUX_build.tar
@@ -70,6 +96,7 @@ build_environment() {
     # Install cmake 3.22.2
     cd ${build_tools_path}
     curl -k -SO http://packages.wazuh.com/utils/cmake/cmake_3.22.2_HPUX_build.tar.gz
+    verify_checksum cmake_3.22.2_HPUX_build.tar.gz "${CMAKE_SHA256}" || return 1
     gunzip cmake_3.22.2_HPUX_build.tar.gz
     tar -xf cmake_3.22.2_HPUX_build.tar
     rm -f cmake_3.22.2_HPUX_build.tar
