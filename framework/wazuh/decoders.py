@@ -214,8 +214,70 @@ def update_decoder(filename: str, contents: Resource, policy_type: PolicyType):
     finally:
         exists(backup_file) and safe_move(backup_file, asset_file_path)
 
+    result.total_affected_items = len(result.affected_items)
     return result
 
 
-def delete_decoders():
-    pass
+def delete_decoders(names: List[str], policy_type: PolicyType):
+    """Delete decoder resources.
+
+    Parameters
+    ----------
+    names : List[str]
+        List of decoder names to delete.
+    policy_type : PolicyType
+        The policy type for the decoders.
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Result object indicating success or failure.
+
+    Raises
+    ------
+    WazuhError
+        If the decoder file does not exist (code 8005),
+        if backup copy fails (code 1019),
+        if file deletion fails (code 1907),
+        or if deletion fails in the engine (code 8007).
+    """
+    result = AffectedItemsWazuhResult(all_msg='Decoder file was successfully deleted',
+                                      some_msg='Some decoders were not returned',
+                                      none_msg='Could not delete decoder file')
+
+    for name in names:
+        backup_file = ''
+        asset_file_path = generate_asset_file_path(name, policy_type)
+
+        try:
+            if not exists(asset_file_path):
+                raise WazuhError(8005)
+
+            # Creates a backup copy
+            backup_file = f'{asset_file_path}.backup'
+            try:
+                full_copy(asset_file_path, backup_file)
+            except IOError as exc:
+                raise WazuhError(1019) from exc
+
+            # Deletes the file
+            try:
+                remove(asset_file_path)
+            except IOError as exc:
+                raise WazuhError(1907) from exc
+
+            # Delete asset
+            async with get_engine_client() as client:
+                delete_results = client.content.delete_resource(
+                    name=name,
+                    policy_type=policy_type
+                )
+
+                validate_response_or_raise(delete_results, 8007)
+        except WazuhError as exc:
+            result.add_failed_item(id_=name, error=exc)
+        finally:
+            exists(backup_file) and safe_move(backup_file, asset_file_path)
+
+    result.total_affected_items = len(result.affected_items)
+    return result
