@@ -20,6 +20,10 @@ target_dir="${current_path}/output/"
 compute_checksums="no"
 checksum_dir=""
 
+# SHA256 checksums for downloaded files
+PERL_SHA256="cb7f26ea4b2b28d6644354d87a269d01cac1b635287dae64e88eeafa24b44f35"
+CMAKE_SHA256="c9fbc3e9c27e16b8953c42b3b75e0fe05b6213b87a16774552a5e32c484df5ff"
+
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
  echo "This script must be run as root"
@@ -32,6 +36,27 @@ aix_major=$(echo ${aix_version} | cut -d'.' -f 1)
 aix_minor=$(echo ${aix_version} | cut -d'.' -f 2)
 
 export PATH=$PATH:/opt/freeware/bin
+
+verify_checksum() {
+    local file="$1"
+    local expected_sha256="$2"
+
+    if [ ! -f "$file" ]; then
+        echo "Error: File $file not found"
+        return 1
+    fi
+
+    actual_sha256=$(openssl dgst -sha256 "$file" | cut -d' ' -f2)
+
+    if [ "$actual_sha256" = "$expected_sha256" ]; then
+        return 0
+    else
+        echo "Error: Checksum verification failed for $file"
+        echo "Expected: $expected_sha256"
+        echo "Actual:   $actual_sha256"
+        return 1
+    fi
+}
 
 show_help() {
   echo
@@ -61,6 +86,7 @@ check_openssl() {
 build_perl() {
 
   curl -LO http://www.cpan.org/src/5.0/perl-5.10.1.tar.gz -k -s
+  verify_checksum perl-5.10.1.tar.gz "${PERL_SHA256}" || return 1
   gunzip perl-5.10.1.tar.gz && tar -xf perl-5.10.1.tar
   cd perl-5.10.1 && ./Configure -des -Dcc='gcc' -Dusethreads
   make && make install
@@ -77,6 +103,7 @@ build_cmake() {
   mkdir -p /home/aix
   cd /home/aix
   curl -LO http://packages-dev.wazuh.com/deps/aix/precompiled-aix-cmake-3.12.4.tar.gz -k -s
+  verify_checksum precompiled-aix-cmake-3.12.4.tar.gz "${CMAKE_SHA256}" || return 1
   ln -s /usr/bin/make /usr/bin/gmake
   gunzip precompiled-aix-cmake-3.12.4.tar.gz
   tar -xf precompiled-aix-cmake-3.12.4.tar && cd cmake-3.12.4
@@ -184,10 +211,10 @@ build_environment() {
     $rpm http://packages-dev.wazuh.com/deps/aix/gcc-c%2B%2B-6.3.0-1.aix7.2.ppc.rpm || true
   fi
 
-  build_perl
+  build_perl || return 1
 
   if [[ "${aix_major}" = "6" ]] || [[ "${aix_major}" = "7" ]]; then
-    build_cmake
+    build_cmake || return 1
   fi
   return 0
 }
@@ -294,7 +321,7 @@ main() {
         ;;
         "-e"|"--environment" )
           build_environment
-          exit 0
+          exit $?
         ;;
         "-p"|"--install-path")
           if [ -n "$2" ]
