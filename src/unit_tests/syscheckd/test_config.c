@@ -256,11 +256,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.enable_synchronization, 1);
     assert_int_equal(syscheck.restart_audit, 1);
     assert_int_equal(syscheck.enable_whodata, 0);
-#ifndef TEST_WINAGENT
-    assert_int_equal(syscheck.whodata_provider, EBPF_PROVIDER);
-#else
-    assert_int_equal(syscheck.whodata_provider, AUDIT_PROVIDER);
-#endif
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
@@ -868,72 +863,13 @@ void test_fim_adjust_path_convert_system32 (void **state) {
     free(path);
 }
 
-void test_Read_Syscheck_Config_default_provider(void **state)
-{
-    (void) state;
-    int ret;
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
-    test_mode = 0;
-    ret = Read_Syscheck_Config("test_syscheck_default_provider.conf");
-    test_mode = 1;
-
-    assert_int_equal(ret, 0);
-    assert_int_equal(syscheck.enable_whodata, 1);
-#ifndef TEST_WINAGENT
-    assert_int_equal(syscheck.whodata_provider, EBPF_PROVIDER);
-#else
-    assert_int_equal(syscheck.whodata_provider, AUDIT_PROVIDER);
-#endif
-    assert_int_equal(syscheck.restart_audit, 1);
-    assert_int_equal(syscheck.audit_healthcheck, 1);
-}
-
-void test_getSyscheckConfig_default_provider(void **state)
-{
-    (void) state;
-    cJSON * ret;
-
-    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
-    expect_function_call_any(__wrap_pthread_rwlock_unlock);
-    expect_function_call_any(__wrap_pthread_mutex_lock);
-    expect_function_call_any(__wrap_pthread_mutex_unlock);
-    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
-
-    expect_any_always(__wrap__mdebug1, formatted_msg);
-
-    Read_Syscheck_Config("test_syscheck_default_provider.conf");
-    ret = getSyscheckConfig();
-    *state = ret;
-
-    assert_non_null(ret);
-    cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_non_null(sys_items);
-
-#ifndef TEST_WINAGENT
-    cJSON *sys_whodata = cJSON_GetObjectItem(sys_items, "whodata");
-    assert_non_null(sys_whodata);
-    cJSON *whodata_provider = cJSON_GetObjectItem(sys_whodata, "provider");
-    assert_string_equal(cJSON_GetStringValue(whodata_provider), "ebpf");
-#endif
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_success, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_undefined, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
-        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_default_provider, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
-        cmocka_unit_test_setup_teardown(test_getSyscheckConfig_default_provider, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_directories, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckInternalOptions, setup_read_config, restart_syscheck),

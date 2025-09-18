@@ -7,10 +7,6 @@
           value: TEST_DIR
           attributes:
             - FIM_MODE
-      - whodata:
-          elements:
-            - provider:
-                value: 'audit'  
       - max_eps:
           value: MAX_EPS
       - windows_audit_interval:

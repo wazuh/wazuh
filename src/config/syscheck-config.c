@@ -90,11 +90,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->enable_synchronization          = 1;
     syscheck->restart_audit                   = 1;
     syscheck->enable_whodata                  = 0;
-#ifndef WIN32
-    syscheck->whodata_provider                = EBPF_PROVIDER;
-#else
     syscheck->whodata_provider                = AUDIT_PROVIDER;
-#endif
     syscheck->realtime                        = NULL;
     syscheck->audit_healthcheck               = 1;
     syscheck->process_priority                = 10;

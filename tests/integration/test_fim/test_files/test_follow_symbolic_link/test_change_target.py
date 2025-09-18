@@ -82,11 +82,7 @@ pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.darwin, pytest.m
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_change_target.yaml')
-if sys.platform in (MACOS, WINDOWS):
-    config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
-else:
-    config_path = Path(CONFIGS_PATH, 'configuration_basic_whodata.yaml')
-
+config_path = Path(CONFIGS_PATH, 'configuration_basic.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
