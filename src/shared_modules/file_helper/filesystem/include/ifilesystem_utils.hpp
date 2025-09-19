@@ -3,6 +3,7 @@
 #include <deque>
 #include <string>
 
+// LCOV_EXCL_START
 /// @brief Interface for file system utils.
 class IFileSystemUtils
 {
@@ -17,3 +18,4 @@ class IFileSystemUtils
         /// @param output The deque to store the expanded path.
         virtual void expand_absolute_path(const std::string& path, std::deque<std::string>& output) const = 0;
 };
+// LCOV_EXCL_STOP

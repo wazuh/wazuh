@@ -4,6 +4,8 @@
 #include <functional>
 #include <string>
 
+// LCOV_EXCL_START
+
 /// @brief Interface for file IO operations.
 ///
 /// This interface defines a set of file IO operations such as reading lines from a file,
@@ -32,3 +34,4 @@ class IFileIOUtils
         /// @return The binary content of the file as a vector of bytes.
         virtual std::vector<char> getBinaryContent(const std::string& filePath) const = 0;
 };
+// LCOV_EXCL_STOP

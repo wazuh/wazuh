@@ -1,5 +1,6 @@
 #include <filesystem_wrapper.hpp>
 
+// LCOV_EXCL_START
 namespace file_system
 {
     bool FileSystemWrapper::exists(const std::filesystem::path& path) const
@@ -74,3 +75,4 @@ namespace file_system
         return std::filesystem::remove(path);
     }
 } // namespace file_system
+// LCOV_EXCL_STOP
