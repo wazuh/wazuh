@@ -16,9 +16,9 @@ RUN echo "deb http://archive.debian.org/debian/ wheezy contrib main non-free" > 
 RUN apt-get update && apt-get build-dep python3.2 -y --force-yes && rm -rf /var/lib/apt/lists/*
 
 # -------------------------------------------------------------------
-# Download certificates for https
+# Install certificates for https
 # -------------------------------------------------------------------
-RUN curl -k https://curl.se/ca/cacert.pem -o /etc/ssl/certs/ca-certificates.crt
+COPY certificates/cacert.pem /etc/ssl/certs/ca-certificates.crt
 
 ENV CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
 
