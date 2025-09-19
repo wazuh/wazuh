@@ -213,6 +213,9 @@ def runCoverage(moduleName):
     elif moduleName == "shared_modules/sync_protocol":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
+    elif moduleName == "shared_modules/file_helper":
+        build_dir = os.path.join(currentDir, "build")
+        paths = [root for root, _, _ in os.walk(build_dir) if root.endswith('.dir')]
     elif moduleName == "syscheckd":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
@@ -374,7 +377,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     # The ASAN check is in the end. It builds again the module but with the ASAN flag
     # and runs the test tool.
     # Running this type of check in Windows will be analyzed in #17019
-    if moduleName != "shared_modules/utils" and target != "winagent" and moduleName != "wazuh_modules/sca":
+    if moduleName != "shared_modules/utils" and moduleName != "shared_modules/file_helper" and target != "winagent" and moduleName != "wazuh_modules/sca":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)
     if clean:

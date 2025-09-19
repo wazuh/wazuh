@@ -180,6 +180,8 @@ def getFoldersToAStyle(moduleName):
     elif str(moduleName) == "syscheckd":
         foldersToScan = "\"{0}/src/db/src/*.hpp\" \"{0}/src/db/src/*.cpp\""\
                         .format(moduleName)
+    elif str(moduleName) == "shared_modules/file_helper":
+        foldersToScan = "'{0}/*.cpp' '{0}/*.hpp'".format(moduleName)
     else:
         foldersToScan = "{0}/*.h {0}/*.cpp {0}/*.hpp".format(moduleName)
 

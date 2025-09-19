@@ -51,103 +51,109 @@ struct FsElement
 
 class FileSystemTest : public ::testing::Test
 {
-protected:
-    std::deque<std::string> m_output;
-    std::unordered_map<std::string, uint32_t> m_outputMap;
-    std::unique_ptr<file_system::FileSystemUtils> m_fsUtils;
-    std::shared_ptr<MockFileSystemWrapper> m_mockWrapper;
+    protected:
+        std::deque<std::string> m_output;
+        std::unordered_map<std::string, uint32_t> m_outputMap;
+        std::unique_ptr<file_system::FileSystemUtils> m_fsUtils;
+        std::shared_ptr<MockFileSystemWrapper> m_mockWrapper;
 
-    std::vector<FsElement> m_fsElements {{EXPANDED_PATH_1, true},
-                                         {EXPANDED_PATH_2, true},
-                                         {EXPANDED_PATH_3, true},
-                                         {EXPANDED_PATH_4, true},
-                                         {EXPANDED_PATH_5, true},
-                                         {EXPANDED_PATH_6, false}};
+        std::vector<FsElement> m_fsElements {{EXPANDED_PATH_1, true},
+            {EXPANDED_PATH_2, true},
+            {EXPANDED_PATH_3, true},
+            {EXPANDED_PATH_4, true},
+            {EXPANDED_PATH_5, true},
+            {EXPANDED_PATH_6, false}};
 
-    void TearDown() override
-    {
-        m_fsUtils.reset();
-        m_mockWrapper.reset();
-    }
+        void TearDown() override
+        {
+            m_fsUtils.reset();
+            m_mockWrapper.reset();
+        }
 
-    void SetUp() override
-    {
-        m_mockWrapper = std::make_shared<MockFileSystemWrapper>();
-        m_fsUtils = std::make_unique<file_system::FileSystemUtils>(m_mockWrapper);
-    }
+        void SetUp() override
+        {
+            m_mockWrapper = std::make_shared<MockFileSystemWrapper>();
+            m_fsUtils = std::make_unique<file_system::FileSystemUtils>(m_mockWrapper);
+        }
 
-    void SetupFilesystemWrapperExpectations()
-    {
-        EXPECT_CALL(*m_mockWrapper, exists(::testing::_))
+        void SetupFilesystemWrapperExpectations()
+        {
+            EXPECT_CALL(*m_mockWrapper, exists(::testing::_))
             .WillRepeatedly(::testing::Invoke(
-                [&](const std::filesystem::path& searchPath) -> bool
+                                [&](const std::filesystem::path & searchPath) -> bool
+            {
+                return std::any_of(
+                    m_fsElements.begin(),
+                    m_fsElements.end(),
+                    [&searchPath](const FsElement & dir)
                 {
-                    return std::any_of(
-                        m_fsElements.begin(),
-                        m_fsElements.end(),
-                        [&searchPath](const FsElement& dir)
-                        { return dir.path.compare(0, searchPath.string().length(), searchPath.string()) == 0; });
-                }));
+                    return dir.path.compare(0, searchPath.string().length(), searchPath.string()) == 0;
+                });
+            }));
 
-        EXPECT_CALL(*m_mockWrapper, is_directory(::testing::_))
+            EXPECT_CALL(*m_mockWrapper, is_directory(::testing::_))
             .WillRepeatedly(::testing::Invoke(
-                [&](const std::filesystem::path& searchPath) -> bool
+                                [&](const std::filesystem::path & searchPath) -> bool
+            {
+                auto elem = std::find_if(
+                    m_fsElements.begin(),
+                    m_fsElements.end(),
+                    [&searchPath](const FsElement & dir)
                 {
-                    auto elem = std::find_if(
-                        m_fsElements.begin(),
-                        m_fsElements.end(),
-                        [&searchPath](const FsElement& dir)
-                        { return dir.path.compare(0, searchPath.string().length(), searchPath.string()) == 0; });
+                    return dir.path.compare(0, searchPath.string().length(), searchPath.string()) == 0;
+                });
 
-                    return elem != m_fsElements.end() ? elem->is_dir : false;
-                }));
+                return elem != m_fsElements.end() ? elem->is_dir : false;
+            }));
 
-        EXPECT_CALL(*m_mockWrapper, list_directory(::testing::_))
+            EXPECT_CALL(*m_mockWrapper, list_directory(::testing::_))
             .WillRepeatedly(::testing::Invoke(
-                [&](const std::filesystem::path& searchPath) -> std::vector<std::filesystem::path>
+                                [&](const std::filesystem::path & searchPath) -> std::vector<std::filesystem::path>
+            {
+                // get matching elements
+                std::vector<FsElement> matches(m_fsElements.size());
+                auto it = std::copy_if(
+                    m_fsElements.begin(),
+                    m_fsElements.end(),
+                    matches.begin(),
+                    [&searchPath](const FsElement & dir)
                 {
-                    // get matching elements
-                    std::vector<FsElement> matches(m_fsElements.size());
-                    auto it = std::copy_if(
-                        m_fsElements.begin(),
-                        m_fsElements.end(),
-                        matches.begin(),
-                        [&searchPath](const FsElement& dir)
-                        { return dir.path.compare(0, searchPath.string().length(), searchPath.string()) == 0; });
-                    matches.resize(static_cast<std::size_t>(std::distance(matches.begin(), it)));
+                    return dir.path.compare(0, searchPath.string().length(), searchPath.string()) == 0;
+                });
+                matches.resize(static_cast<std::size_t>(std::distance(matches.begin(), it)));
 
-                    // convert to paths and remove all extra path components but one past the ones in searchPath
-                    std::vector<std::filesystem::path> pathVector;
-                    std::transform(
-                        matches.begin(),
-                        matches.end(),
-                        std::back_inserter(pathVector),
-                        [&](const FsElement& elem)
-                        {
-                            auto basePath = std::filesystem::path(searchPath);
-                            auto curPath = std::filesystem::path(elem.path);
+                // convert to paths and remove all extra path components but one past the ones in searchPath
+                std::vector<std::filesystem::path> pathVector;
+                std::transform(
+                    matches.begin(),
+                    matches.end(),
+                    std::back_inserter(pathVector),
+                    [&](const FsElement & elem)
+                {
+                    auto basePath = std::filesystem::path(searchPath);
+                    auto curPath = std::filesystem::path(elem.path);
 
-                            std::filesystem::path returnPath = basePath;
+                    std::filesystem::path returnPath = basePath;
 
-                            auto longPathIter = curPath.begin();
-                            std::advance(
-                                longPathIter,
-                                std::distance(basePath.begin(),
-                                              basePath.end())); // Advance to the first component past the shorter path
+                    auto longPathIter = curPath.begin();
+                    std::advance(
+                        longPathIter,
+                        std::distance(basePath.begin(),
+                                      basePath.end())); // Advance to the first component past the shorter path
 
-                            returnPath /= *longPathIter;
+                    returnPath /= *longPathIter;
 
-                            return returnPath;
-                        });
+                    return returnPath;
+                });
 
-                    // remove duplicates
-                    std::sort(pathVector.begin(), pathVector.end());
-                    auto end = std::unique(pathVector.begin(), pathVector.end());
-                    pathVector.erase(end, pathVector.end());
+                // remove duplicates
+                std::sort(pathVector.begin(), pathVector.end());
+                auto end = std::unique(pathVector.begin(), pathVector.end());
+                pathVector.erase(end, pathVector.end());
 
-                    return pathVector;
-                }));
-    }
+                return pathVector;
+            }));
+        }
 };
 
 TEST_F(FileSystemTest, FilesystemExpandSimpleWildcard)

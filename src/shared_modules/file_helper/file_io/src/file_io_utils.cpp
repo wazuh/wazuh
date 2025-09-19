@@ -60,10 +60,12 @@ namespace file_io
             {
                 // Get file size using buffer's members
                 size = buffer->pubseekoff(0, file->end, file->in);
+
                 if (size < 0)
                 {
                     return std::vector<char> {};
                 }
+
                 buffer->pubseekpos(0, file->in);
                 // Allocate memory to contain file data
                 auto size_t_size = static_cast<std::size_t>(size);

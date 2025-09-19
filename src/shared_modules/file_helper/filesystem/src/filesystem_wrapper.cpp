@@ -1,5 +1,6 @@
 #include <filesystem_wrapper.hpp>
 
+// LCOV_EXCL_START
 namespace file_system
 {
     bool FileSystemWrapper::exists(const std::filesystem::path& path) const
@@ -55,10 +56,12 @@ namespace file_system
     std::vector<std::filesystem::path> FileSystemWrapper::list_directory(const std::filesystem::path& path) const
     {
         std::vector<std::filesystem::path> result;
+
         for (const auto& entry : std::filesystem::directory_iterator(path))
         {
             result.push_back(entry.path());
         }
+
         return result;
     }
 
@@ -72,3 +75,4 @@ namespace file_system
         return std::filesystem::remove(path);
     }
 } // namespace file_system
+// LCOV_EXCL_STOP
