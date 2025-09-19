@@ -55,10 +55,12 @@ namespace file_system
     std::vector<std::filesystem::path> FileSystemWrapper::list_directory(const std::filesystem::path& path) const
     {
         std::vector<std::filesystem::path> result;
+
         for (const auto& entry : std::filesystem::directory_iterator(path))
         {
             result.push_back(entry.path());
         }
+
         return result;
     }
 
