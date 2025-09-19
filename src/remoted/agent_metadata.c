@@ -75,9 +75,7 @@ agent_meta_t *agent_meta_from_agent_info(const char *id_str,
 
 int agent_meta_upsert_locked(const char *agent_id_str, agent_meta_t *fresh) {
     if (!agent_id_str || !fresh) return -1;
-
     pthread_rwlock_wrlock(&agent_meta_lock);
-
     agent_meta_t *old = (agent_meta_t*)OSHash_Get(agent_meta_map, agent_id_str);
 
     int rc = OSHash_Add(agent_meta_map, agent_id_str, fresh);
@@ -97,7 +95,7 @@ int agent_meta_upsert_locked(const char *agent_id_str, agent_meta_t *fresh) {
 int agent_meta_snapshot_str(const char *agent_id_str, agent_meta_t *out) {
     if (!agent_id_str || !out) return -1;
 
-    agent_meta_t tmp = {0};  // acumula aquí; si algo falla, limpiamos tmp y retornamos
+    agent_meta_t tmp = {0};  // accumulates here; if something fails, we clear tmp and return
 
     pthread_rwlock_rdlock(&agent_meta_lock);
     agent_meta_t *m = (agent_meta_t*)OSHash_Get(agent_meta_map, agent_id_str);
@@ -106,7 +104,7 @@ int agent_meta_snapshot_str(const char *agent_id_str, agent_meta_t *out) {
         return -1;
     }
 
-    // Duplicar absolutamente todo para ownership completo en 'out'
+    // Duplicate absolutely everything for complete ownership in 'out'
     if (m->agent_id)    { m->agent_id = tmp.agent_id; }
     if (m->agent_ip)    { os_strdup(m->agent_ip,    tmp.agent_ip);    if (!tmp.agent_ip)    goto oom_unlock; }
     if (m->version)     { os_strdup(m->version,     tmp.version);     if (!tmp.version)     goto oom_unlock; }
@@ -120,13 +118,12 @@ int agent_meta_snapshot_str(const char *agent_id_str, agent_meta_t *out) {
 
     pthread_rwlock_unlock(&agent_meta_lock);
 
-    // Éxito: mover tmp → out (shallow copy de punteros ya nuestros)
+    // Success: move tmp → out (shallow copy of pointers already ours)
     *out = tmp;
     return 0;
 
 oom_unlock:
     pthread_rwlock_unlock(&agent_meta_lock);
-    agent_meta_free(&tmp);   // limpia lo que ya se duplicó
+    agent_meta_free(&tmp);   // clean up what has already been duplicated
     return -1;
 }
-

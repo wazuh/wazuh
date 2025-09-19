@@ -208,8 +208,8 @@ void HandleSecure()
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
     indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
 
-    //size_t events_queue_size = (size_t)getDefine_Int("remoted", "events_queue_size", 65536, 0x1<<26); // 1MB
-    events_queue = batch_queue_init(ctrl_msg_queue_size);
+    size_t events_queue_size = (size_t)getDefine_Int("remoted", "batch_event_queue_size", 4096, 0x1<<20); // 1MB
+    events_queue = batch_queue_init(events_queue_size);
     batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
 
     uhttp_global_init();
@@ -1288,9 +1288,6 @@ static int append_header(dispatch_ctx_t *ctx) {
         if (!agent_name && keys.keyentries[idx]->name) {
             os_strdup(keys.keyentries[idx]->name, agent_name);
         }
-        if (!agent_ip && keys.keyentries[idx]->ip && keys.keyentries[idx]->ip->ip) {
-            os_strdup(keys.keyentries[idx]->ip->ip, agent_ip);
-        }
     }
     key_unlock();
 
@@ -1323,6 +1320,7 @@ static int append_header(dispatch_ctx_t *ctx) {
     if (have_meta && snap.version) {
         cJSON_AddStringToObject(agent, "version", snap.version);
     }
+    cJSON_AddStringToObject(agent, "id", ctx->agent_key);
 
     // host.ip (array)
     cJSON *ips = cJSON_CreateArray();
