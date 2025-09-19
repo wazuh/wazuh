@@ -369,7 +369,7 @@ int validate_control_msg(const keyentry * key, char *r_msg, size_t msg_length, c
     /* Send ACK for non-shutdown messages */
     if (*is_shutdown == 0) {
         snprintf(msg_ack, OS_FLSIZE, "%s%s", CONTROL_HEADER, HC_ACK);
-        if (send_msg(key->id, msg_ack, -1) >= 0) {
+        if (send_msg_with_key_control(key->id, msg_ack, -1, true) >= 0) {
             rem_inc_send_ack(key->id);
         }
     }

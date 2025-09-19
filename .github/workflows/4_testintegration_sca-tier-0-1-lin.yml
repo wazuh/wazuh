@@ -1,4 +1,4 @@
-name: Integration tests for SCA on Linux - Tier 0 and 1
+name: 4.X - SCA on Linux - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:

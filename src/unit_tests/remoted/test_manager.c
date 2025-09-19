@@ -113,6 +113,13 @@ int __wrap_send_msg(const char *agent_id, const char *msg, ssize_t msg_length) {
     return 0;
 }
 
+int __wrap_send_msg_with_key_control(const char *agent_id, const char *msg, ssize_t msg_length, bool skip_key_lock) {
+    check_expected(agent_id);
+    check_expected(msg);
+    check_expected(skip_key_lock);
+    return 0;
+}
+
 static int test_setup_group(void ** state) {
     test_mode = 1;
     return 0;
@@ -4732,8 +4739,9 @@ void test_validate_control_msg_keepalive_success(void** state)
     keyentry_init(&key, "agent1", "001", "192.168.1.1", "test_key");
 
     expect_string(__wrap_rem_inc_recv_ctrl_keepalive, agent_id, "001");
-    expect_string(__wrap_send_msg, agent_id, "001");
-    expect_string(__wrap_send_msg, msg, "#!-agent ack ");
+    expect_string(__wrap_send_msg_with_key_control, agent_id, "001");
+    expect_string(__wrap_send_msg_with_key_control, msg, "#!-agent ack ");
+    expect_value(__wrap_send_msg_with_key_control, skip_key_lock, true);
 
     expect_string(__wrap_rem_inc_send_ack, agent_id, "001");
 

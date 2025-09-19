@@ -1,5 +1,5 @@
 run-name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
-name: Package - Upload manager images
+name: 4.X - Package - Upload manager images
 
 on:
   workflow_dispatch:

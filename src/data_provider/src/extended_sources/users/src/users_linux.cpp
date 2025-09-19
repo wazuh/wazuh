@@ -57,25 +57,10 @@ nlohmann::json UsersProvider::genUserJson(const struct passwd* pwd, bool include
     r["uid_signed"] = static_cast<int32_t>(pwd->pw_uid);
     r["gid_signed"] = static_cast<int32_t>(pwd->pw_gid);
 
-    if (pwd->pw_name != nullptr)
-    {
-        r["username"] = pwd->pw_name;
-    }
-
-    if (pwd->pw_gecos != nullptr)
-    {
-        r["description"] = pwd->pw_gecos;
-    }
-
-    if (pwd->pw_dir != nullptr)
-    {
-        r["directory"] = pwd->pw_dir;
-    }
-
-    if (pwd->pw_shell != nullptr)
-    {
-        r["shell"] = pwd->pw_shell;
-    }
+    r["username"] = (pwd->pw_name != nullptr) ? pwd->pw_name : "";
+    r["description"] = (pwd->pw_gecos != nullptr) ? pwd->pw_gecos : "";
+    r["directory"] = (pwd->pw_dir != nullptr) ? pwd->pw_dir : "";
+    r["shell"] = (pwd->pw_shell != nullptr) ? pwd->pw_shell : "";
 
     r["pid_with_namespace"] = "0";
     r["include_remote"] = static_cast<int>(include_remote);

@@ -21,9 +21,9 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/bin/wazuh-modulesd,root,root,750,file,-rwxr-x---,1109516,0.1
 /var/ossec/bin/wazuh-agentd,root,root,750,file,-rwxr-x---,1199816,0.1
 /var/ossec/lib/libwazuhshared.so,root,wazuh,750,file,-rwxr-x---,215664,0.1
-/var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,10701072,0.1
+/var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,12390192,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,525380,0.1
-/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2346320,0.1
+/var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2673916,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,516264,0.1
 /var/ossec/lib/libbpf.so,root,wazuh,750,file,-rwxr-x---,470148,0.1
 /var/ossec/lib/libfimebpf.so,root,wazuh,750,file,-rwxr-x---,47248,0.1

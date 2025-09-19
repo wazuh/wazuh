@@ -24,7 +24,7 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 TEST(ChromeExtensionsTests, NumberOfExtensions)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin_mock_home");
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin");
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
@@ -37,7 +37,7 @@ TEST(ChromeExtensionsTests, NumberOfExtensions)
 TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin_mock_home");
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "darwin");
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
@@ -61,7 +61,7 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["manifest_hash"], "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19");
             EXPECT_EQ(jsonElement["name"], "Chrome Web Store Payments");
             EXPECT_EQ(jsonElement["optional_permissions"], "");
-            EXPECT_EQ(jsonElement["path"], Utils::joinPaths(mockHomePath, "mock-user/Library/Application Support/Google/Chrome/Profile 1/Extensions/nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0"));
+            EXPECT_EQ(jsonElement["path"], Utils::joinPaths(mockHomePath, "mock-user/Library/Application Support/Google/Chrome/Profile 1/Extensions/ext2/1.2.3"));
             EXPECT_EQ(jsonElement["permissions"],
                       "identity, webview, https://www.google.com/, https://www.googleapis.com/*, https://payments.google.com/payments/v4/js/integrator.js, https://sandbox.google.com/payments/v4/js/integrator.js");
             EXPECT_EQ(jsonElement["persistent"], "0");
@@ -69,10 +69,11 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["profile_path"], Utils::joinPaths(mockHomePath, "mock-user/Library/Application Support/Google/Chrome/Profile 1"));
             EXPECT_EQ(jsonElement["referenced"], "1");
             EXPECT_EQ(jsonElement["referenced_identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
-            EXPECT_EQ(jsonElement["state"], "");
+            EXPECT_EQ(jsonElement["state"], "1");
             EXPECT_EQ(jsonElement["uid"], "123");
             EXPECT_EQ(jsonElement["update_url"], "https://clients2.google.com/service/update2/crx");
             EXPECT_EQ(jsonElement["version"], "1.0.0.6");
+            break;
         }
     }
 }

@@ -230,14 +230,20 @@ FILE *__wrap_popen(const char *command, const char *type) {
 }
 
 void expect_popen(const char *command, const char *type, FILE *ret) {
-  expect_string(__wrap_popen, command, command);
-  expect_string(__wrap_popen, type, type);
-  will_return(__wrap_popen, ret);
+    expect_string(__wrap_popen, command, command);
+    expect_string(__wrap_popen, type, type);
+    will_return(__wrap_popen, ret);
 }
 
-int __wrap_pclose(FILE *stream) {
-    check_expected(stream);
+extern int __real_pclose(FILE *__stream);
+int __wrap_pclose(FILE *__stream) {
+    check_expected(__stream);
     return mock();
+}
+
+void expect_pclose(FILE *__stream, int ret) {
+    expect_value(__wrap_pclose, __stream, __stream);
+    will_return(__wrap_pclose, ret);
 }
 
 int __wrap_fputc(char character, FILE *stream) {
