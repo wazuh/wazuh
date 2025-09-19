@@ -70,6 +70,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,rem_inc_recv_unknown -Wl,--wrap,rem_inc_tcp \
                             -Wl,--wrap,rem_msgpush -Wl,--wrap,rem_setCounter -Wl,--wrap,remove \
                             -Wl,--wrap,save_controlmsg -Wl,--wrap,validate_control_msg -Wl,--wrap,sleep -Wl,--wrap,stat -Wl,--wrap,time \
+                            -Wl,--wrap,agent_meta_from_agent_info -Wl,--wrap,agent_meta_upsert_locked \
+                            -Wl,--wrap,batch_queue_enqueue_ex \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int \
                             -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
@@ -88,6 +90,9 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdeb
                             -Wl,--wrap,bqueue_push -Wl,--wrap,bqueue_peek -Wl,--wrap,bqueue_drop -Wl,--wrap,bqueue_clear -Wl,--wrap,sleep \
                             -Wl,--wrap,send -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fcntl -Wl,--wrap,getpid \
                             -Wl,--wrap,bqueue_used -Wl,--wrap,rem_inc_send_discarded -Wl,--wrap,recv -Wl,--wrap,rem_msgpush")
+
+list(APPEND remoted_names "test_bulk")
+list(APPEND remoted_flags "-W")
 
 list(APPEND remoted_names "test_sendmsg")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \

@@ -17,31 +17,6 @@ namespace
 {
 
 constexpr size_t LOCATION_OFFSET = 2;         // Given the "q:" prefix.
-constexpr char DEFAULT_MANAGTER_ID[] = "000"; // Default manager ID if not specified in the event.
-
-/**
- * @brief Get the hostname of the Manager
- *
- * This function retrieves the hostname of the machine where the Manager is running.
- * @note: The hostname is cached after the first call to avoid repeated system calls, the function is thread-safe.
- * @return const std::string&
- */
-const std::string& getHostName()
-{
-    static const std::string hostname = []()
-    {
-        constexpr size_t BUF_SIZE = 256;
-        char buf[BUF_SIZE] = {};
-        if (::gethostname(buf, BUF_SIZE) != 0)
-        {
-            throw std::runtime_error {std::string {"gethostname failed: "} + std::strerror(errno)};
-        }
-        buf[BUF_SIZE - 1] = '\0';
-        return std::string {buf, std::strlen(buf)};
-    }();
-
-    return hostname;
-}
 
 /**
  * @brief If `location` has the form "[$agentID] ($agentName) $registerIP->$module", extract
@@ -118,7 +93,7 @@ bool parseLegacyLocation(std::string& location, std::shared_ptr<json::Json>& eve
 
 } // namespace
 
-Event parseLegacyEvent(std::string_view rawEvent)
+Event parseLegacyEvent(std::string_view rawEvent, const json::Json& hostInfo)
 {
     auto parseEvent = std::make_shared<json::Json>();
 
@@ -175,13 +150,16 @@ Event parseLegacyEvent(std::string_view rawEvent)
     // If the location is in the legacy agent format "[ID] (Name) IP->Module", parse it.
     if (!parseLegacyLocation(rawLocation, parseEvent))
     {
-        parseEvent->setString(getHostName(), EVENT_AGENT_NAME);
-        parseEvent->setString(DEFAULT_MANAGTER_ID, EVENT_AGENT_ID);
+        try
+        {
+            parseEvent->merge(true, hostInfo);
+        }
+        catch (const std::exception& ex)
+        {
+            throw std::runtime_error(fmt::format("merge failed: {}", ex.what()));
+        }
     }
     parseEvent->setString(rawLocation, EVENT_LOCATION_ID);
-
-    // Set the manager
-    parseEvent->setString(getHostName(), EVENT_MANAGER_NAME);
 
     // Set the original event message.
     auto msgView = rawEvent.substr(separatorPos + 1);

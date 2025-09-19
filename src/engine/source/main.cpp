@@ -14,6 +14,7 @@
 #include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
+#include <base/hostInfo.hpp>
 #include <base/logging.hpp>
 #include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
@@ -613,11 +614,12 @@ int main(int argc, char* argv[])
 
         // UDP Servers
         {
+            const auto hostInfo = base::hostInfo::toJson();
             g_engineLocalServer = std::make_shared<udsrv::Server>(
-                [orchestrator, archiver](std::string_view msg)
+                [orchestrator, archiver, hostInfo](std::string_view msg)
                 {
                     archiver->archive(msg.data());
-                    orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg));
+                    orchestrator->postEvent(base::eventParsers::parseLegacyEvent(msg, hostInfo));
                 },
                 confManager.get<std::string>(conf::key::SERVER_EVENT_SOCKET));
             g_engineLocalServer->start(confManager.get<int>(conf::key::SERVER_EVENT_THREADS));

@@ -6,6 +6,9 @@
 using namespace api::event::protocol;
 using namespace base::test;
 
+
+using namespace api::event::protocol;
+
 using SuccessExpected = InnerExpected<std::queue<base::Event>, None>;
 using FailureExpected = InnerExpected<None, None>;
 using Expc = Expected<SuccessExpected, FailureExpected>;
@@ -14,10 +17,9 @@ static auto FAILURE = Expc::failure();
 
 using EventT = std::tuple<std::string, Expc>;
 
-class NdJsonParserTest : public ::testing::TestWithParam<EventT>
-{
-};
+class NdJsonParserTest : public ::testing::TestWithParam<EventT> {};
 
+// Original helpers
 template<size_t multiplyOriginalJson = 1, typename... Args>
 std::string makeRawNdJson(Args&&... args)
 {
@@ -30,7 +32,6 @@ std::string makeRawNdJson(Args&&... args)
         }(args),
         ...);
 
-    // Store the original content to repeat
     std::string originalContent = rawNdJson;
     for (size_t i = 1; i < multiplyOriginalJson; ++i)
     {
@@ -42,7 +43,6 @@ std::string makeRawNdJson(Args&&... args)
 template<size_t multiplyOriginalJson = 1, typename... Args>
 std::queue<base::Event> makeResult(Args&&... args)
 {
-    // Store the events for one repetition
     std::vector<base::Event> events;
     (
         [&events](const auto& arg)
@@ -63,6 +63,90 @@ std::queue<base::Event> makeResult(Args&&... args)
     return result;
 }
 
+// ===================== NEW helper for H/E =====================
+
+// Builds the expected queue for the H/E protocol (JSON header, OSSEC events "queue:location:message").
+// Accepts the same list of lines you pass to makeRawNdJson:
+//   "H\t{json}", "E\tqueue:location:message", "<continuation>", ...
+// Repeats the sequence 'multiplyOriginalJson' times (same as makeRawNdJson).
+template<size_t multiplyOriginalJson = 1, typename... Args>
+std::queue<base::Event> makeResultHE(Args&&... args)
+{
+    // 1) One pass of lines
+    std::vector<std::string> lines;
+    (lines.emplace_back(std::forward<Args>(args)), ...);
+
+    // 2) Repeat the block
+    std::vector<std::string> all;
+    all.reserve(lines.size() * multiplyOriginalJson);
+    for (size_t i = 0; i < multiplyOriginalJson; ++i) {
+        all.insert(all.end(), lines.begin(), lines.end());
+    }
+
+    // 3) Simulate state like the parser
+    json::Json header;
+    bool header_set = false;
+    std::string currentRaw;
+    bool inEvent = false;
+
+    auto flush_event = [&](std::queue<base::Event>& out)
+    {
+        if (!inEvent) return;
+        // The parser removes '\r' from the payload
+        currentRaw.erase(std::remove(currentRaw.begin(), currentRaw.end(), '\r'), currentRaw.end());
+        base::Event ev = base::eventParsers::parseLegacyEvent(std::string_view{currentRaw}, header);
+        out.push(std::move(ev));
+        inEvent = false;
+        currentRaw.clear();
+    };
+
+    auto after_tag_trim = [](std::string_view s) -> std::string_view {
+        size_t i = 1;
+        while (i < s.size() && (s[i] == ' ' || s[i] == '\t')) ++i;
+        return (i < s.size()) ? s.substr(i) : std::string_view{};
+    };
+
+    std::queue<base::Event> out;
+
+    for (const auto& ln_s : all)
+    {
+        std::string_view ln{ln_s};
+        if (ln.empty()) continue;
+
+        if (ln.front() == 'H') {
+            flush_event(out);
+            auto payload = after_tag_trim(ln);
+            header = json::Json(std::string(payload).c_str()); // header IS JSON
+            header_set = true;
+            continue;
+        }
+
+        if (ln.front() == 'E') {
+            if (!header_set) throw std::runtime_error("Test helper: E before H");
+            flush_event(out);
+            auto payload = after_tag_trim(ln);
+            currentRaw.assign(payload.data(), payload.size()); // OSSEC: queue:location:message
+            inEvent = true;
+            continue;
+        }
+
+        // Continuation lines of a multi-line event (no prefix)
+        if (inEvent) {
+            if (!currentRaw.empty()) currentRaw.push_back('\n');
+            currentRaw.append(ln.data(), ln.size());
+            continue;
+        }
+
+        // Outside an event and not H/E: should not happen in success tests
+        throw std::runtime_error("Test helper: unexpected line outside of event");
+    }
+
+    if (inEvent) flush_event(out);
+    return out;
+}
+
+// ===================== Test (your TEST_P) =====================
+
 TEST_P(NdJsonParserTest, Parse)
 {
     auto [batch, expc] = GetParam();
@@ -73,6 +157,7 @@ TEST_P(NdJsonParserTest, Parse)
         auto expected = expc.succCase()(None {});
         std::queue<base::Event> got;
         ASSERT_NO_THROW(got = parser(std::move(batch)));
+
         auto printRes = [](std::queue<base::Event> res)
         {
             std::string str;
@@ -85,7 +170,8 @@ TEST_P(NdJsonParserTest, Parse)
             return str;
         };
 
-        ASSERT_EQ(expected.size(), got.size()) << "Expected:\n" << printRes(expected) << "Got:\n" << printRes(got);
+        ASSERT_EQ(expected.size(), got.size())
+            << "Expected:\n" << printRes(expected) << "Got:\n" << printRes(got);
 
         while (!expected.empty())
         {
@@ -100,39 +186,82 @@ TEST_P(NdJsonParserTest, Parse)
     }
 }
 
+// ===================== Parameterized cases =====================
+
+// Raw line helpers
+static inline std::string H(std::string j) { return "H\t" + std::move(j); }
+static inline std::string E(std::string p) { return "E\t" + std::move(p); }
+
+// Example JSON headers
+static const std::string HDR1 = R"({"agent":{"name":"worker","id":"000"}})";
+static const std::string HDR2 = R"({"agent":{"name":"alt","id":"000"}})";
+
+// OSSEC events: "queue:location:message"
+static const std::string EV1 = "1:/etc/passwd:File modified md5=abc";
+static const std::string EV2 = "2:/var/log/auth.log:sshd[12345]: Failed password for root from 1.2.3.4 port 22";
+static const std::string EV3L1 = "3:/var/log/app.log:START";  // multi-line (message continues)
+
+// Repeat block N times (exercise performance and repetition)
+template<size_t N>
+static EventT RepeatCase()
+{
+    return EventT(
+        makeRawNdJson<N>(H(HDR1), E(EV1), E(EV2)),
+        SUCCESS(makeResultHE<N>(H(HDR1), E(EV1), E(EV2)))
+    );
+}
+
 INSTANTIATE_TEST_SUITE_P(
-    Api,
+    NDJSON_HE,
     NdJsonParserTest,
     ::testing::Values(
-        // No trailing newline
-        EventT(R"({"single":"event"})", SUCCESS(makeResult(R"({"single":"event"})"))),
-        // Success 1 event
-        EventT(makeRawNdJson(R"({"original":"event"})"),
-               SUCCESS(makeResult(R"({"original":"event"})"))),
-        // Success 4 events
-        EventT(makeRawNdJson<4>(R"({"field":"type"})",
-                                R"({"a":"abc", "number":2254})",
-                                R"({"original":"event"})"),
-               SUCCESS(makeResult<4>(R"({"field":"type"})",
-                                R"({"a":"abc", "number":2254})",
-                                R"({"original":"event"})"))),
-        // Success 40 events
-        EventT(makeRawNdJson<40>(R"({"field":"type"})",
-                                 R"({"a":"abc", "number":2254})",
-                                 R"({"original":"event"})"),
-               SUCCESS(makeResult<40>(R"({"field":"type"})",
-                                 R"({"a":"abc", "number":2254})",
-                                 R"({"original":"event"})"))),
-        // Failure empty
+        // OK: 1 event, no trailing newline
+        EventT(
+            std::string(H(HDR1) + "\n" + E(EV1)),
+            SUCCESS(makeResultHE(H(HDR1), E(EV1)))
+        ),
+
+        // OK: 2 simple events
+        EventT(
+            makeRawNdJson(H(HDR1), E(EV1), E(EV2)),
+            SUCCESS(makeResultHE(H(HDR1), E(EV1), E(EV2)))
+        ),
+
+        // OK: header change mid-batch
+        EventT(
+            makeRawNdJson(H(HDR1), E(EV1), H(HDR2), E(EV2)),
+            SUCCESS(makeResultHE(H(HDR1), E(EV1), H(HDR2), E(EV2)))
+        ),
+
+        // OK: payload with CRLF (parser removes '\r')
+        EventT(
+            // Manually include '\r'
+            std::string(H(HDR1) + "\nE\t1:/var/log/app.log:{\r\nline\r\n}\r\n"),
+            SUCCESS(makeResultHE(H(HDR1), "E\t1:/var/log/app.log:{", "line", "}", "")) // "" due to last \r\n
+        ),
+
+        // OK: repeat block 3 times
+        RepeatCase<3>(),
+
+        // FAIL: empty batch
         EventT("", FAILURE()),
-        // Mixed valid/invalid json
-        EventT(makeRawNdJson(R"({"field":"type"})", R"({"a":"abcd", "number":12365})", "event"),
-               FAILURE()),
-        // Mixed invalid/valid json
-        EventT(makeRawNdJson("invalid_json", R"({"valid":"first"})"), FAILURE()),
-        // Empty lines
-        EventT("line1\n\nline2", FAILURE()),
-        // Invalid JSON syntax
-        EventT(makeRawNdJson(R"({"invalid": json})"), FAILURE()),
-        EventT(makeRawNdJson(R"({"unclosed": "string)"), FAILURE())
-        ));
+
+        // FAIL: first line is not H
+        EventT(makeRawNdJson(E(EV1)), FAILURE()),
+
+        // FAIL: header without JSON
+        EventT(makeRawNdJson("H\t   ", E(EV1)), FAILURE()),
+
+        // FAIL: invalid JSON header
+        EventT(makeRawNdJson("H\t{invalid", E(EV1)), FAILURE()),
+
+        // FAIL: unexpected line (neither H nor E) outside an event
+        EventT(makeRawNdJson(H(HDR1), "stray line", E(EV1)), FAILURE()),
+
+        // FAIL: E without payload (empty)
+        EventT(std::string(H(HDR1) + "\nE\t"), FAILURE()),
+
+        // FAIL: event not compliant with OSSEC (missing ':')
+        EventT(makeRawNdJson(H(HDR1), E("bad-payload-without-colons")), FAILURE())
+    )
+);
