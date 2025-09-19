@@ -56,14 +56,12 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
 } // namespace
 
 std::shared_ptr<udsrv::Server> g_engineLocalServer {};
+volatile sig_atomic_t g_shutdown_requested = 0;
+
 
 void sigintHandler(const int signum)
 {
-    if (g_engineLocalServer)
-    {
-        g_engineLocalServer->stop();
-        LOG_INFO("Received signal {}: Stopping the engine local server.", signum);
-    }
+    g_shutdown_requested = signum;
 }
 
 struct Options
@@ -624,6 +622,11 @@ int main(int argc, char* argv[])
         while (g_engineLocalServer->isRunning())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            if (g_shutdown_requested)
+            {
+                LOG_INFO("Shutdown requested (signal: {}), stopping the engine local server.", g_shutdown_requested);
+                g_engineLocalServer->stop();
+            }
         }
         g_engineLocalServer.reset();
         LOG_INFO("Engine local server stopped.");

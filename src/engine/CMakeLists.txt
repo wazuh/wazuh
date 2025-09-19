@@ -334,6 +334,12 @@ if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
     target_link_libraries(wazuh-engine -static-libgcc -static-libstdc++)
 endif()
 
+# Print LD anc CXX flags
+message(STATUS "engine CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "engine CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
+message(STATUS "engine CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
+message(STATUS "engine CMAKE_MODULE_LINKER_FLAGS: ${CMAKE_MODULE_LINKER_FLAGS}") 
+
 # Create a custom test target
 function(get_all_targets _result _dir)
     get_property(_subdirs DIRECTORY "${_dir}" PROPERTY SUBDIRECTORIES)
