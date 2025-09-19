@@ -40,18 +40,13 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", (wazuhRoot / "engine/kvdb/").c_str());
 
     // Indexer connector
-    addUnit<std::string>(key::INDEXER_INDEX, "WAZUH_INDEXER_INDEX", "wazuh-alerts-5.x-0001");
-    addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOST", {"http://127.0.0.1:9200"});
+    addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
     addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");
-    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "WazuhEngine5+");
-    addUnit<std::string>(key::INDEXER_SSL_CA_BUNDLE, "WAZUH_INDEXER_SSL_CA_BUNDLE", "");
+    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "admin");
+    addUnit<std::vector<std::string>>(key::INDEXER_SSL_CA_BUNDLE, "WAZUH_INDEXER_SSL_CA_BUNDLE", {});
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
-    addUnit<bool>(key::INDEXER_SSL_USE_SSL, "WAZUH_INDEXER_SSL_USE_SSL", false);
-    addUnit<bool>(key::INDEXER_SSL_VERIFY_CERTS, "WAZUH_INDEXER_SSL_VERIFY_CERTS", true);
-    addUnit<int>(key::INDEXER_TIMEOUT, "WAZUH_INDEXER_TIMEOUT", 60000);
-    addUnit<int>(key::INDEXER_THREADS, "WAZUH_INDEXER_THREADS", 1);
-    addUnit<std::string>(key::INDEXER_DB_PATH, "WAZUH_INDEXER_DB_PATH", "/var/lib/wazuh-server/indexer-connector/");
+
 
     // Queue module
     addUnit<int>(key::QUEUE_SIZE, "WAZUH_QUEUE_SIZE", 1000000);
@@ -110,9 +105,8 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Process module
     addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());
-    addUnit<std::string>(key::USER, "WAZUH_ENGINE_USER", "wazuh");
     addUnit<std::string>(key::GROUP, "WAZUH_ENGINE_GROUP", "wazuh");
-    addUnit<bool>(key::SKIP_USER_CHANGE, "WAZUH_SKIP_USER_CHANGE", false);
+    addUnit<bool>(key::SKIP_GROUP_CHANGE, "WAZUH_SKIP_GROUP_CHANGE", false);
 };
 
 void Conf::validate(const OptionMap& config) const
@@ -180,14 +174,6 @@ void Conf::validate(const OptionMap& config) const
                         "Invalid configuration type for key '{}'. Bracket notation '[...]' is not allowed: '{}'.",
                         key,
                         valueStr));
-                }
-
-                if (valueStr.find(',') == std::string::npos)
-                {
-                    throw std::runtime_error(
-                        fmt::format("Invalid configuration type for key '{}'. Expected comma-separated list, got '{}'.",
-                                    key,
-                                    valueStr));
                 }
 
                 break;

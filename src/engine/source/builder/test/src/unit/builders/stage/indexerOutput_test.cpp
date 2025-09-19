@@ -3,18 +3,21 @@
 #include "builders/baseBuilders_test.hpp"
 #include "builders/stage/indexerOutput.hpp"
 
-#include <indexerConnector/mockiconnector.hpp>
+#include <wiconnector/mockswindexerconnector.hpp>
 
 using namespace builder::builders;
 
 namespace stagebuildtest
 {
-std::shared_ptr<IIndexerConnector> getMockIndexerConnector()
+std::shared_ptr<wiconnector::IWIndexerConnector> getMockIndexerConnector()
 {
-    return std::make_shared<indexerconnector::mocks::MockIConnector>();
+    // Static thread
+    static thread_local std::shared_ptr<wiconnector::mocks::MockWIndexerConnector> mock =
+        std::make_shared<wiconnector::mocks::MockWIndexerConnector>();
+    return mock;
 }
 
-std::shared_ptr<IIndexerConnector> getNullIndexerConnector()
+std::shared_ptr<wiconnector::IWIndexerConnector> getNullIndexerConnector()
 {
     return nullptr;
 }
@@ -96,7 +99,7 @@ const std::string messageStr {R"({
 class IndexerOutputOperationTest : public BaseBuilderTest
 {
 protected:
-    indexerconnector::mocks::MockIConnector mockConnector;
+    wiconnector::mocks::MockWIndexerConnector mockConnector;
     json::Json definition;
 
     void SetUp() override
@@ -116,15 +119,10 @@ protected:
     }
 };
 
-// Custom matcher to check the event starts with a prefix
-MATCHER_P(StartsWith, prefix, "")
-{
-    return arg.find(prefix) == 0;
-}
-
+// The indexer connector never fails.
 TEST_F(IndexerOutputOperationTest, output_success)
 {
-    auto iConnector = std::make_shared<indexerconnector::mocks::MockIConnector>();
+    auto iConnector = std::make_shared<wiconnector::mocks::MockWIndexerConnector>();
     auto builder = getIndexerOutputBuilder(iConnector);
 
     EXPECT_CALL(*(mocks->ctx), runState());
@@ -141,36 +139,11 @@ TEST_F(IndexerOutputOperationTest, output_success)
     ASSERT_TRUE(operation);
 
     // Configure the behavior
-    EXPECT_CALL(*iConnector, publish(StartsWith(R"({"operation": "ADD", "index": "wazuh-alerts", "data": {)")));
+    EXPECT_CALL(*iConnector, index("wazuh-alerts", ::testing::_));
 
     // Run the operation
     auto result = operation(event);
     ASSERT_TRUE(result.success());
     ASSERT_EQ(*result.payload(), *event);
 }
-
-TEST_F(IndexerOutputOperationTest, output_fail)
-{
-    std::shared_ptr<indexerconnector::mocks::MockIConnector> iConnector {nullptr};
-    auto builder = getIndexerOutputBuilder(iConnector);
-
-    EXPECT_CALL(*(mocks->ctx), runState());
-    auto expression = builder(definition, this->mocks->ctx);
-    auto event = std::make_shared<json::Json>(messageStr.c_str());
-
-    // Check the expression
-    ASSERT_TRUE(expression->isTerm());
-    auto term = expression->getPtr<base::Term<base::EngineOp>>();
-    ASSERT_EQ(term->getName(), "write.output(wazuh-indexer/wazuh-alerts)");
-
-    // Check the operation
-    auto operation = term->getFn();
-    ASSERT_TRUE(operation);
-
-    // Run the operation
-    auto result = operation(event);
-    ASSERT_TRUE(result.failure());
-    ASSERT_EQ(*result.payload(), *event);
-}
-
 } // namespace indexeroutputtest

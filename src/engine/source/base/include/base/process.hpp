@@ -15,8 +15,7 @@
 
 namespace base::process
 {
-const uid_t INVALID_UID = static_cast<uid_t>(-1);
-const gid_t INVALID_GID = static_cast<gid_t>(-1);
+constexpr auto ENV_ENGINE_STANDALONE = "WAZUH_ENGINE_STANDALONE"; ///< Env var to indicate standalone mode
 
 /**
  * @brief Transforms the current process into a daemon (double fork + detach).
@@ -77,34 +76,13 @@ struct passwd* getpwnam(const char* name, struct passwd* pwd, char* buf, size_t 
 struct group* getgrnam(const char* name, struct group* grp, char* buf, int buflen);
 
 /**
- * @brief Find a UID by user name
- * @param name Name of the user.
- * @return UID of the user, if found.
- * @retval -1 user not found.
- */
-uid_t privSepGetUser(const std::string& username);
-
-/**
  * @brief Lookup a group’s GID by group name.
  *        Automatically grows the buffer on ERANGE.
  * @param groupname  The name of the group to look up.
  * @return GID if found.
- * @throws std::system_error on underlying errors.
- * @retval INVALID_GID if group not found.
+ * @throws std::runtime_error if the group is not found or on other errors.
  */
 gid_t privSepGetGroup(const std::string& groupname);
-
-/**
- * @brief Sets the user ID for privilege separation.
- *
- * This function changes the effective user ID of the calling process to the
- * specified user ID. This is typically used for privilege separation to drop
- * elevated privileges and run with reduced permissions for security purposes.
- *
- * @param uid The user ID to set for the current process
- * @return false on success, true on failure
- */
-bool privSepSetUser(uid_t uid);
 
 /**
  * @brief Sets the group ID and supplementary groups for privilege separation.
@@ -114,14 +92,11 @@ bool privSepSetUser(uid_t uid);
  *
  * @param gid The group ID to set for the current process
  *
- * @return OS_SUCCESS on successful group ID change, OS_INVALID on failure
- *
- * @note This function first clears all supplementary groups by calling setgroups()
- *       with a single group, then sets the effective group ID using setgid().
- * @note false is returned on success, true on failure.
- * @warning Calling this function will drop supplementary group memberships.
+ * @throws std::runtime_error if any system call fails, with a descriptive error message.
+ * @warning This function modifies the process's group IDs and should be used with caution.
+ *          It is typically called in a privileged context before dropping privileges.
  */
-int privSepSetGroup(gid_t gid);
+void privSepSetGroup(gid_t gid);
 
 /**
  * @brief Gets the Wazuh installation home directory path.

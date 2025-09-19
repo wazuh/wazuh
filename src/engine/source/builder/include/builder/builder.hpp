@@ -5,8 +5,7 @@
 
 #include <defs/idefinitions.hpp>
 #include <geo/imanager.hpp>
-// TODO: Until the indexer connector is unified with the rest of wazuh-manager
-// #include <indexerConnector/iindexerconnector.hpp>
+#include <wiconnector/iwindexerconnector.hpp>
 #include <kvdb/ikvdbmanager.hpp>
 #include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
@@ -30,7 +29,7 @@ struct BuilderDeps
     std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager;
     std::shared_ptr<geo::IManager> geoManager;
     std::shared_ptr<streamlog::ILogManager> logManager;
-    // std::shared_ptr<IIndexerConnector> iConnector;
+    std::weak_ptr<wiconnector::IWIndexerConnector> iConnector;
 };
 
 class Builder final

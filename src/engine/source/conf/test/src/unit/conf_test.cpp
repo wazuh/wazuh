@@ -169,9 +169,12 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(conf::OptionMap {{"TEST.INT", "10"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "10"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.STRING", "test"}}, false),
+        std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "hello"}}, false), // Single value on list
+        std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "123"}}, false), // Single numeric string value on list
         std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "hello, world"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "true"}}, false),
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "false"}}, false),
+
         // Failure
         // Invalid int
         std::make_tuple(conf::OptionMap {{"TEST.INT", "invalid"}}, true),
@@ -186,9 +189,7 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "true"}}, true),
         std::make_tuple(conf::OptionMap {{"TEST.INT64", "10, 11"}}, true),
         // Invalid string list
-        std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "hello"}}, true),
         std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "[hello, world]"}}, true),
-        std::make_tuple(conf::OptionMap {{"TEST.STRING_LIST", "123"}}, true),
         // Invalid bool
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "invalid"}}, true),
         std::make_tuple(conf::OptionMap {{"TEST.BOOL", "10"}}, true),
@@ -226,6 +227,8 @@ protected:
     void SetUp() override
     {
         logging::testInit();
+        // Unset standalone mode to ensure file loader is called
+        unsetenv(base::process::ENV_ENGINE_STANDALONE);
 
         const auto& optionMap = std::get<1>(this->GetParam());
         m_fileLoader = conf::mocks::createMockFileLoader(optionMap);
@@ -260,6 +263,9 @@ protected:
 
         // Unset the environment variable
         unsetEnv("TEST_ENV");
+
+        // Restore standalone mode for other tests
+        setenv(base::process::ENV_ENGINE_STANDALONE, "true", 1);
 
         m_conf.reset();
         m_fileLoader.reset();
@@ -360,9 +366,9 @@ INSTANTIATE_TEST_SUITE_P(ConfPriorityStringList,
                                              std::vector<std::string> {"hello", "world"},
                                              ExpFailType::NONE),
                              std::make_tuple(std::vector<std::string> {"hello", "world"},
-                                             conf::OptionMap {{"TEST", "hello, world"}},
+                                             conf::OptionMap {{"TEST", "hello, world2"}},
                                              std::nullopt,
-                                             std::vector<std::string> {"hello", "world"},
+                                             std::vector<std::string> {"hello", "world2"},
                                              ExpFailType::NONE),
                              std::make_tuple(std::vector<std::string> {"hello", "world"},
                                              conf::OptionMap {{"TEST", "hello, world"}},
@@ -389,12 +395,11 @@ INSTANTIATE_TEST_SUITE_P(ConfPriorityStringList,
                                              R"([hello,world])",
                                              std::vector<std::string> {"hello", "world"},
                                              ExpFailType::NONE),
-                             // Failure on load the configuration (Data validation)
                              std::make_tuple(std::vector<std::string> {"hello", "world"},
                                              conf::OptionMap {{"TEST", "hello"}},
                                              std::nullopt,
-                                             std::vector<std::string> {"hello", "world"},
-                                             ExpFailType::ON_FILE_LOAD)
+                                             std::vector<std::string> {"hello"},
+                                             ExpFailType::NONE)
                              // END
                              ));
 

@@ -186,6 +186,8 @@ if (NOT SHARED_MODULES)
 endif()
 include_directories(${SHARED_MODULES}/utils)
 
+# Set de indexer connector build directory
+set(INDEXERCONNECTOR_LIB_BUILD_DIR "${CMAKE_SOURCE_DIR}/build/shared_modules/indexer_connector")
 
 ####################################################################################################
 # Rocksdb dynamic link
@@ -211,8 +213,9 @@ if(NOT _orig_rpath)
 endif()
 
 set(_new_paths
-  ${CMAKE_SOURCE_DIR}       # For shared libwazuhext.so
-  ${ROCKSDB_LIB_BUILD_DIR}
+  ${CMAKE_SOURCE_DIR}               # For shared libwazuhext.so
+  ${ROCKSDB_LIB_BUILD_DIR}          # External precompiled rocksdb lib
+  ${INDEXERCONNECTOR_LIB_BUILD_DIR} # Internal precompiled indexer connector lib
   "$ORIGIN/../lib"
   "$ORIGIN/lib"
 )
@@ -295,6 +298,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
+add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 
 
 target_link_libraries(wazuh-engine
@@ -317,7 +321,7 @@ target_link_libraries(wazuh-engine
     geo::igeo
     scheduler::scheduler
     streamlogger::streamlogger
-    # indexerconnector # TODO: Comment until indexerconnector is unified with the old one
+    wIndexerConnector::wIndexerConnector
     httpsrv
     udgramsrv::udgramsrv
     api::event
@@ -329,6 +333,12 @@ target_link_libraries(wazuh-engine
 if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
     target_link_libraries(wazuh-engine -static-libgcc -static-libstdc++)
 endif()
+
+# Print LD anc CXX flags
+message(STATUS "engine CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
+message(STATUS "engine CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
+message(STATUS "engine CMAKE_SHARED_LINKER_FLAGS: ${CMAKE_SHARED_LINKER_FLAGS}")
+message(STATUS "engine CMAKE_MODULE_LINKER_FLAGS: ${CMAKE_MODULE_LINKER_FLAGS}") 
 
 # Create a custom test target
 function(get_all_targets _result _dir)
