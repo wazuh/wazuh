@@ -119,48 +119,6 @@ struct group* getgrnam(const char* name, struct group* grp, char* buf, int bufle
     return result;
 }
 
-uid_t privSepGetUser(const std::string& username)
-{
-    long bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-    if (bufsize <= 0)
-        bufsize = 1024;
-
-    std::vector<char> buffer(static_cast<size_t>(bufsize));
-    struct passwd pwd_storage {};
-    struct passwd* result = nullptr;
-
-    while (true)
-    {
-        result = getpwnam(username.c_str(), &pwd_storage, buffer.data(), buffer.size());
-        if (result)
-        {
-            return result->pw_uid;
-        }
-        if (errno == ERANGE)
-        {
-            // Expand buffer and retry
-            if (buffer.size() >= MAX_RBUFFER_SIZE)
-            {
-                break;
-            }
-            buffer.resize(std::min(buffer.size() * 2, static_cast<size_t>(MAX_RBUFFER_SIZE)));
-            errno = 0;
-        }
-        else if (errno == 0)
-        {
-            // Not found
-            return ::base::process::INVALID_UID;
-        }
-        else
-        {
-            // Other error
-            throw std::system_error(errno, std::generic_category(), "Error looking up user '" + username + "'");
-        }
-    }
-
-    throw std::runtime_error("Exceeded maximum buffer size looking up user '" + username + "'");
-}
-
 gid_t privSepGetGroup(const std::string& groupname)
 {
     long bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
@@ -189,40 +147,32 @@ gid_t privSepGetGroup(const std::string& groupname)
         }
         else if (errno == 0)
         {
-            return ::base::process::INVALID_UID;
+            throw std::runtime_error("Error changing to group '" + groupname + "': group not found");
         }
         else
         {
-            throw std::system_error(errno, std::generic_category(), "Error looking up group '" + groupname + "'");
+            throw std::runtime_error(fmt::format("Error looking up group '{}': {} ({})",
+                                             groupname,
+                                             std::strerror(errno),
+                                             errno));
         }
     }
 
     throw std::runtime_error("Exceeded maximum buffer size looking up group '" + groupname + "'");
 }
 
-bool privSepSetUser(uid_t uid)
-{
-    if (setuid(uid) < 0)
-    {
-        return true;
-    }
 
-    return false;
-}
-
-int privSepSetGroup(gid_t gid)
+void privSepSetGroup(gid_t gid)
 {
     if (setgroups(1, &gid) == -1)
     {
-        return true;
+        throw std::runtime_error(fmt::format("Error clearing supplementary groups: {} ({})", strerror(errno), errno));
     }
 
     if (setgid(gid) < 0)
     {
-        return true;
+        throw std::runtime_error(fmt::format("Error changing to group ID {}: {} ({})", gid, strerror(errno), errno));
     }
-
-    return false;
 }
 
 std::filesystem::path getWazuhHome()

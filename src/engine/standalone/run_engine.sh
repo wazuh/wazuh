@@ -15,7 +15,7 @@ export WAZUH_KVDB_PATH="${DATA_PATH}/kvdb"
 export WAZUH_SERVER_API_SOCKET="${SOCKET_PATH}/engine-api.sock"
 export WAZUH_SERVER_EVENT_SOCKET="${SOCKET_PATH}/engine-prod-event.sock"
 export WAZUH_SERVER_ENRICHED_EVENTS_SOCKET="${SOCKET_PATH}/queue-http.sock"
-export WAZUH_SKIP_USER_CHANGE="true"
+export WAZUH_SKIP_GROUP_CHANGE="true"
 export WAZUH_STREAMLOG_BASE_PATH="${LOG_PATH}"
 
 # If not exist create directories

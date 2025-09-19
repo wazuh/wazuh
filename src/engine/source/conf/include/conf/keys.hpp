@@ -57,8 +57,7 @@ constexpr std::string_view STREAMLOG_ARCHIVES_BUFFER_SIZE = "analysisd.streamlog
 constexpr std::string_view ARCHIVER_ENABLED = "analysisd.archiver_enabled";
 
 constexpr std::string_view PID_FILE_PATH = "analysisd.pid_path";
-constexpr std::string_view SKIP_USER_CHANGE = "analysisd.owner_user_change_skip";
-constexpr std::string_view USER = "analysisd.owner_user";
+constexpr std::string_view SKIP_GROUP_CHANGE = "analysisd.owner_group_change_skip";
 constexpr std::string_view GROUP = "analysisd.owner_group";
 }; // namespace conf::key
 
