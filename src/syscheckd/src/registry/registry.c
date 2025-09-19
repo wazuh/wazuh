@@ -842,7 +842,7 @@ void fim_read_values(HKEY key_handle,
                      TXN_HANDLE regval_txn_handler,
                      fim_val_txn_context_t *txn_ctx_regval) {
     fim_registry_value_data value_data;
-    TCHAR *value_buffer;
+    WCHAR *value_buffer_w;
     BYTE *data_buffer;
     DWORD i;
     fim_entry new;
@@ -858,25 +858,35 @@ void fim_read_values(HKEY key_handle,
     new.registry_entry.value = &value_data;
     new.registry_entry.key = NULL;
 
-    os_calloc(max_value_length + 1, sizeof(TCHAR), value_buffer);
+    os_calloc(max_value_length + 1, sizeof(WCHAR), value_buffer_w);
     os_calloc(max_value_data_length, sizeof(BYTE), data_buffer);
 
     for (i = 0; i < value_count; i++) {
         DWORD value_size = max_value_length + 1;
         DWORD data_size = max_value_data_length;
         DWORD data_type = 0;
+        char *value_name_utf8 = NULL;
 
         configuration = fim_registry_configuration(path, arch);
         if (configuration == NULL) {
+            os_free(value_buffer_w);
+            os_free(data_buffer);
             return;
         }
 
-        if (RegEnumValue(key_handle, i, value_buffer, &value_size, NULL, &data_type, data_buffer, &data_size) !=
+        if (RegEnumValueW(key_handle, i, value_buffer_w, &value_size, NULL, &data_type, data_buffer, &data_size) !=
             ERROR_SUCCESS) {
             break;
         }
 
-        new.registry_entry.value->name = value_buffer;
+        // Convert wide character value name to UTF-8
+        value_name_utf8 = wide_to_utf8(value_buffer_w);
+
+        if (value_name_utf8 == NULL) {
+            continue;
+        }
+
+        new.registry_entry.value->name = value_name_utf8;
         new.registry_entry.value->type = data_type <= REG_QWORD ? data_type : REG_UNKNOWN;
         new.registry_entry.value->size = data_size;
         new.registry_entry.value->last_event = time(NULL);
@@ -890,12 +900,13 @@ void fim_read_values(HKEY key_handle,
 
         if (fim_registry_validate_ignore(value_path, configuration, 0)) {
             os_free(value_path);
-            os_free(value_data.name);
+            os_free(value_name_utf8);
             continue;
         }
         os_free(value_path);
 
         if (fim_check_restrict(new.registry_entry.value->name, configuration->restrict_value)) {
+            os_free(value_name_utf8);
             continue;
         }
 
@@ -923,10 +934,13 @@ void fim_read_values(HKEY key_handle,
         if (result_transaction < 0) {
             mdebug2("dbsync transaction failed due to %d", result_transaction);
         }
+
+        // Free the UTF-8 converted value name
+        os_free(value_name_utf8);
     }
 
     new.registry_entry.value = NULL;
-    os_free(value_data.name);
+    os_free(value_buffer_w);
     os_free(data_buffer);
 }
 
@@ -990,11 +1004,16 @@ void fim_open_key(HKEY root_key_handle,
     }
 
     access_rights = KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
+    wchar_t *wide_sub_key = auto_to_wide(sub_key);
+    LONG reg_result = RegOpenKeyExW(root_key_handle, wide_sub_key, 0, access_rights, &current_key_handle);
 
-    if (RegOpenKeyEx(root_key_handle, sub_key, 0, access_rights, &current_key_handle) != ERROR_SUCCESS) {
-        mdebug1(FIM_REG_OPEN, sub_key, arch == ARCH_32BIT ? "[x32]" : "[x64]");
+    if (reg_result != ERROR_SUCCESS) {
+        mdebug1(FIM_REG_OPEN, reg_result, sub_key, arch == ARCH_32BIT ? "[x32]" : "[x64]");
+        os_free(wide_sub_key);
         return;
     }
+
+    os_free(wide_sub_key);
 
     /* We use the class_name, sub_key_count and the value count */
     if (RegQueryInfoKey(current_key_handle, NULL, NULL, NULL, &sub_key_count, NULL, NULL, &value_count,
@@ -1007,20 +1026,28 @@ void fim_open_key(HKEY root_key_handle,
     for (i = 0; i < sub_key_count; i++) {
         char *new_full_key;
         char *new_sub_key;
+        char *sub_key_name_utf8 = NULL;
         size_t new_full_key_length;
-        TCHAR sub_key_name_b[MAX_KEY_LENGTH + 1];
+        WCHAR sub_key_name_w[MAX_KEY_LENGTH + 1];
         DWORD sub_key_name_s = MAX_KEY_LENGTH;
 
-        if (RegEnumKeyEx(current_key_handle, i, sub_key_name_b, &sub_key_name_s, NULL, NULL, NULL, NULL) !=
+        if (RegEnumKeyExW(current_key_handle, i, sub_key_name_w, &sub_key_name_s, NULL, NULL, NULL, NULL) !=
             ERROR_SUCCESS) {
             continue;
         }
 
-        new_full_key_length = strlen(full_key) + sub_key_name_s + 2;
+        // Convert wide character subkey name back to UTF-8
+        sub_key_name_utf8 = wide_to_utf8(sub_key_name_w);
+
+        if (sub_key_name_utf8 == NULL) {
+            continue;
+        }
+
+        new_full_key_length = strlen(full_key) + strlen(sub_key_name_utf8) + 2;
 
         os_malloc(new_full_key_length, new_full_key);
 
-        snprintf(new_full_key, new_full_key_length, "%s\\%s", full_key, sub_key_name_b);
+        snprintf(new_full_key, new_full_key_length, "%s\\%s", full_key, sub_key_name_utf8);
 
         if (new_sub_key = strchr(new_full_key, '\\'), new_sub_key) {
             new_sub_key++;
@@ -1031,6 +1058,7 @@ void fim_open_key(HKEY root_key_handle,
                      regval_txn_handler, txn_ctx_regval, txn_ctx_reg);
 
         os_free(new_full_key);
+        os_free(sub_key_name_utf8);
     }
 
     // Restrict check
