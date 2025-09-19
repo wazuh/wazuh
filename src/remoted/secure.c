@@ -1228,9 +1228,6 @@ static int append_header(dispatch_ctx_t *ctx) {
         if (!agent_name && keys.keyentries[idx]->name) {
             os_strdup(keys.keyentries[idx]->name, agent_name);
         }
-        if (!agent_ip && keys.keyentries[idx]->ip && keys.keyentries[idx]->ip->ip) {
-            os_strdup(keys.keyentries[idx]->ip->ip, agent_ip);
-        }
     }
     key_unlock();
 
@@ -1263,6 +1260,7 @@ static int append_header(dispatch_ctx_t *ctx) {
     if (have_meta && snap.version) {
         cJSON_AddStringToObject(agent, "version", snap.version);
     }
+    cJSON_AddStringToObject(agent, "id", ctx->agent_key);
 
     // host.ip (array)
     cJSON *ips = cJSON_CreateArray();

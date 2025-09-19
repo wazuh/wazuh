@@ -81,10 +81,9 @@ static inline void ring_remove_node(w_rr_queue_t *sched, w_rr_agent_slot_t *node
         // only element
         sched->ring_head = sched->ring_tail = NULL;
         sched->cursor = sched->prev_cursor = NULL;
+        sched->ring_slots = 0;
         node->in_ring = 0;
         node->next = NULL;
-        // NOTE: consider adjusting ring_slots here (e.g., set to 0 or --)
-        // to keep the metric in sync for the single-element removal case.
         return;
     }
 
@@ -96,7 +95,7 @@ static inline void ring_remove_node(w_rr_queue_t *sched, w_rr_agent_slot_t *node
 
     node->in_ring = 0;
     node->next = NULL;
-    sched->ring_slots--;
+    if (sched->ring_slots) sched->ring_slots--;
 }
 
 /**
@@ -327,9 +326,16 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
         }
         n->data = data;
         n->next = NULL;
-        n->prev = slot->q->last;
-        if (slot->q->last) slot->q->last->next = n; else slot->q->first = n;
-        slot->q->last = n;
+        //n->prev = slot->q->last;
+        if (slot->q->last) {
+            n->prev = slot->q->last;          // enlazar hacia atrás
+            slot->q->last->next = n;          // enlazar hacia adelante
+            slot->q->last = n;
+        } else {
+            // cola vacía
+            n->prev = NULL;
+            slot->q->first = slot->q->last = n;
+        }
         slot->q->elements++;
     }
 
@@ -386,8 +392,8 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
     w_rr_agent_slot_t *slot = sched->cursor;
     w_rr_agent_slot_t *prev = sched->prev_cursor ? sched->prev_cursor : sched->ring_tail;
 
-    sched->prev_cursor = slot;     // the new "previous" of the next cursor will be this slot
     sched->cursor      = slot->next;
+    sched->prev_cursor = prev;     // the new "previous" of the next cursor will be this slot
 
     // Remove from ring for this turn
     ring_remove_node(sched, slot, prev);
@@ -399,7 +405,6 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
 
     // Snapshot-detach the whole queue in O(1)
     w_linked_queue_node_t *head = slot->q->first;
-    size_t local_count = slot->q->elements;
     slot->q->first = NULL;
     slot->q->last  = NULL;
     slot->q->elements = 0;
