@@ -18,6 +18,7 @@ static void * wm_command_main(wm_command_t * command);    // Module main functio
 #endif
 static void wm_command_destroy(wm_command_t * command);   // Destroy data
 cJSON *wm_command_dump(const wm_command_t * command);
+int validate_checksum(wm_command_t * command, char *full_path, char *hash, crypto_type ctype); // Validate checksums
 
 // Command module context definition
 
@@ -42,7 +43,6 @@ void * wm_command_main(wm_command_t * command) {
     size_t extag_len;
     char * extag;
     int usec = 1000000 / wm_max_eps;
-    int validation;
     char *command_cpy;
     char *binary;
     char *full_path;
@@ -89,61 +89,24 @@ void * wm_command_main(wm_command_t * command) {
 
 
         if (command->md5_hash && command->md5_hash[0]) {
-            validation = wm_validate_command(full_path, command->md5_hash, MD5SUM);
-
-            switch (validation) {
-                case 1:
-                    mtdebug1(WM_COMMAND_LOGTAG, "MD5 checksum verification succeded for command '%s'.", command->full_command);
-                    break;
-
-                case 0:
-                    if (!command->skip_verification) {
-                        mterror(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command '%s'.", command->full_command);
-                        pthread_exit(NULL);
-                    } else {
-                        mtwarn(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command '%s'. Skipping...", command->full_command);
-                    }
+            if (validate_checksum(command, full_path, command->md5_hash, MD5SUM) != 0) {
+                pthread_exit(NULL);
             }
         }
 
         if (command->sha1_hash && command->sha1_hash[0]) {
-            validation = wm_validate_command(full_path, command->sha1_hash, SHA1SUM);
-
-            switch (validation) {
-                case 1:
-                    mtdebug1(WM_COMMAND_LOGTAG, "SHA1 checksum verification succeded for command '%s'.", command->full_command);
-                    break;
-
-                case 0:
-                    if (!command->skip_verification) {
-                        mterror(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command '%s'.", command->full_command);
-                        pthread_exit(NULL);
-                    } else {
-                        mtwarn(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command '%s'. Skipping...", command->full_command);
-                    }
+            if (validate_checksum(command, full_path, command->sha1_hash, SHA1SUM) != 0) {
+                pthread_exit(NULL);
             }
         }
 
         if (command->sha256_hash && command->sha256_hash[0]) {
-            validation = wm_validate_command(full_path, command->sha256_hash, SHA256SUM);
-
-            switch (validation) {
-                case 1:
-                    mtdebug1(WM_COMMAND_LOGTAG, "SHA256 checksum verification succeded for command '%s'.", command->full_command);
-                    break;
-
-                case 0:
-                    if (!command->skip_verification) {
-                        mterror(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command '%s'.", command->full_command);
-                        pthread_exit(NULL);
-                    } else {
-                        mtwarn(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command '%s'. Skipping...", command->full_command);
-                    }
+            if (validate_checksum(command, full_path, command->sha256_hash, SHA256SUM) != 0) {
+                pthread_exit(NULL);
             }
         }
 
         free(command_cpy);
-        free(full_path);
     } else {
         command->full_command = strdup(command->command);
     }
@@ -189,6 +152,26 @@ void * wm_command_main(wm_command_t * command) {
             w_sleep_until(next_scan_time);
         }
 
+        mtinfo(WM_COMMAND_LOGTAG, "Verifying command checksum '%s'.", command->tag);
+
+        if (command->md5_hash && command->md5_hash[0]) {
+            if (validate_checksum(command, full_path, command->md5_hash, MD5SUM) != 0) {
+                pthread_exit(NULL);
+            }
+        }
+
+        if (command->sha1_hash && command->sha1_hash[0]) {
+            if (validate_checksum(command, full_path, command->sha1_hash, SHA1SUM) != 0) {
+                pthread_exit(NULL);
+            }
+        }
+
+        if (command->sha256_hash && command->sha256_hash[0]) {
+            if (validate_checksum(command, full_path, command->sha256_hash, SHA256SUM) != 0) {
+                pthread_exit(NULL);
+            }
+        }
+
         mtinfo(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
 
         int status = 0;
@@ -226,16 +209,50 @@ void * wm_command_main(wm_command_t * command) {
             os_free(output);
         }
 
-
         mtdebug1(WM_COMMAND_LOGTAG, "Command '%s' finished.", command->tag);
     } while (FOREVER());
 
+    free(full_path);
     free(extag);
 #ifdef WIN32
     return 0;
 #else
     return NULL;
 #endif
+}
+
+int validate_checksum(wm_command_t * command, char *full_path, char *hash, crypto_type ctype) {
+    int validation = wm_validate_command(full_path, hash, ctype);
+
+    char *ctype_str = "";
+
+    switch (ctype) {
+        case MD5SUM:
+            ctype_str = "MD5";
+            break;
+        case SHA1SUM:
+            ctype_str = "SHA1";
+            break;
+        case SHA256SUM:
+            ctype_str = "SHA256";
+            break;
+    }
+
+    switch (validation) {
+        case 1:
+            mtdebug1(WM_COMMAND_LOGTAG, "'%s' checksum verification succeded for command '%s'.", ctype_str, command->full_command);
+            return 0;
+        case 0:
+            if (!command->skip_verification) {
+                mterror(WM_COMMAND_LOGTAG, "'%s' checksum verification failed for command '%s'.", ctype_str, command->full_command);
+                return -1;
+            } else {
+                mtwarn(WM_COMMAND_LOGTAG, "'%s' checksum verification failed for command '%s'. Skipping...", ctype_str, command->full_command);
+                return 0;
+            }
+    }
+
+    return -1;
 }
 
 
