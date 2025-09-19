@@ -758,8 +758,6 @@ rm -fr %{buildroot}
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
 %dir %attr(440, root, wazuh) %{_localstatedir}/templates
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_template.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-packages.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-processes.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-system.json
@@ -774,8 +772,6 @@ rm -fr %{buildroot}
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-browser-extensions.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-services.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_update_mappings.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-files-update.json
-%attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-fim-registries-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-packages-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-processes-update.json
 %attr(0440, root, wazuh) %{_localstatedir}/templates/wazuh-states-inventory-system-update.json
@@ -968,7 +964,7 @@ rm -fr %{buildroot}
 %changelog
 * Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
-* Thu Sep 11 2025 support <info@wazuh.com> - 4.13.0
+* Thu Sep 18 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html

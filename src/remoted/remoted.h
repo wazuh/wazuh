@@ -118,6 +118,7 @@ int req_save(const char * counter, const char * buffer, size_t length);
 /* Send message to agent */
 /* Must not call key_lock() before this */
 int send_msg(const char *agent_id, const char *msg, ssize_t msg_length);
+int send_msg_with_key_control(const char* agent_id, const char* msg, ssize_t msg_length, bool skip_key_lock);
 
 int check_keyupdate(void);
 
