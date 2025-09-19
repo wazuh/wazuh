@@ -542,6 +542,14 @@ if [ $1 = 0 ]; then
     rm -f /etc/init.d/wazuh-agent
   fi
 
+  # Delete audisp wazuh plugin if exists
+  if [ -e /etc/audit/plugins.d/af_wazuh.conf ]; then
+    rm -f -- /etc/audit/plugins.d/af_wazuh.conf
+  fi
+  if [ -e /etc/audisp/plugins.d/af_wazuh.conf ]; then
+    rm -f -- /etc/audisp/plugins.d/af_wazuh.conf
+  fi
+
   # Remove SCA files
   rm -f %{_localstatedir}/ruleset/sca/*
 
@@ -795,7 +803,7 @@ rm -fr %{buildroot}
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-1.html
 * Thu Sep 25 2025 support <info@wazuh.com> - 4.14.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-0.html
-* Thu Sep 11 2025 support <info@wazuh.com> - 4.13.0
+* Thu Sep 18 2025 support <info@wazuh.com> - 4.13.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-13-0.html
 * Wed May 07 2025 support <info@wazuh.com> - 4.12.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-12-0.html

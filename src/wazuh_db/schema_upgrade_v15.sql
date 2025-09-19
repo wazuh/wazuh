@@ -10,8 +10,7 @@
 
 BEGIN;
 
-/* FIM and syscollector will be indexed. We clean the data. No real schema change.*/
-DELETE FROM fim_entry;
+/* syscollector will be indexed. We clean the data. No real schema change.*/
 DELETE FROM sys_netiface;
 DELETE FROM sys_netproto;
 DELETE FROM sys_netaddr;
@@ -21,18 +20,12 @@ DELETE FROM sys_ports;
 DELETE FROM sys_programs;
 DELETE FROM sys_hotfixes;
 DELETE FROM sys_processes;
-DELETE FROM scan_info WHERE module IN ('fim', 'syscollector');
-DELETE FROM sync_info;
+DELETE FROM scan_info WHERE module IN ('syscollector');
+DELETE FROM sync_info WHERE component IN ('syscollector-processes', 'syscollector-packages', 'syscollector-hotfixes', 'syscollector-ports', 'syscollector-netproto', 'syscollector-netaddress', 'syscollector-netinfo', 'syscollector-hwinfo', 'syscollector-osinfo');
 
 INSERT OR REPLACE INTO metadata (key, value) VALUES ('db_version', 15);
 
-INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
-INSERT INTO sync_info (component) VALUES ('fim');
-INSERT INTO sync_info (component) VALUES ('fim_file');
-INSERT INTO sync_info (component) VALUES ('fim_registry');
-INSERT INTO sync_info (component) VALUES ('fim_registry_key');
-INSERT INTO sync_info (component) VALUES ('fim_registry_value');
 INSERT INTO sync_info (component) VALUES ('syscollector-processes');
 INSERT INTO sync_info (component) VALUES ('syscollector-packages');
 INSERT INTO sync_info (component) VALUES ('syscollector-hotfixes');

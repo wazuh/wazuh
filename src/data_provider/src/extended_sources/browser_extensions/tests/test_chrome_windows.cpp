@@ -24,7 +24,7 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 TEST(ChromeExtensionsTests, NumberOfExtensions)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "windows_mock_home");
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "windows");
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
@@ -37,7 +37,7 @@ TEST(ChromeExtensionsTests, NumberOfExtensions)
 TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "windows_mock_home");
+    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "windows");
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
@@ -47,32 +47,33 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 
     for (const auto& jsonElement : extensionsJson)
     {
-        if (jsonElement.contains("manifest_hash") && jsonElement["manifest_hash"] == "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19")
+        if (jsonElement.contains("manifest_hash") && jsonElement["manifest_hash"] == "ac233e626b47562d9ae982f21deea7a8367105b4784b69d62c807b54f072e89f")
         {
             EXPECT_EQ(jsonElement["author"], "");
             EXPECT_EQ(jsonElement["browser_type"], "chrome");
             EXPECT_EQ(jsonElement["current_locale"], "");
             EXPECT_EQ(jsonElement["default_locale"], "en");
-            EXPECT_EQ(jsonElement["description"], "Chrome Web Store Payments");
+            EXPECT_EQ(jsonElement["description"], "Do more in Google Chrome with Adobe Acrobat PDF tools. View, fill, comment, sign, and try convert and compress tools.");
             EXPECT_EQ(jsonElement["from_webstore"], "1");
-            EXPECT_EQ(jsonElement["identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
-            EXPECT_EQ(jsonElement["install_time"], "13394392373345452");
-            EXPECT_EQ(jsonElement["install_timestamp"], "1749918773");
-            EXPECT_EQ(jsonElement["manifest_hash"], "5dbdf0ed368be287abaff83d639b760fa5d7dc8a28e92387773b4fd3e1ba4f19");
-            EXPECT_EQ(jsonElement["name"], "Chrome Web Store Payments");
-            EXPECT_EQ(jsonElement["optional_permissions"], "");
-            EXPECT_EQ(jsonElement["path"], Utils::joinPaths(mockHomePath, "mock-user/.config/google-chrome/Profile 1/Extensions/nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0"));
+            EXPECT_EQ(jsonElement["identifier"], "efaidnbmnnnibpcajpcglclefindmkaj");
+            EXPECT_EQ(jsonElement["install_time"], "13398894114840641");
+            EXPECT_EQ(jsonElement["install_timestamp"], "1754420514");
+            EXPECT_EQ(jsonElement["manifest_hash"], "ac233e626b47562d9ae982f21deea7a8367105b4784b69d62c807b54f072e89f");
+            EXPECT_EQ(jsonElement["name"], "Adobe Acrobat: PDF edit, convert, sign tools");
+            EXPECT_EQ(jsonElement["optional_permissions"], "history, bookmarks");
+            EXPECT_EQ(jsonElement["path"], Utils::joinPaths(mockHomePath, "mock-user/AppData\\Local\\Google\\Chrome\\User Data/Default/Extensions/ext1\\1.2.3"));
             EXPECT_EQ(jsonElement["permissions"],
-                      "identity, webview, https://www.google.com/, https://www.googleapis.com/*, https://payments.google.com/payments/v4/js/integrator.js, https://sandbox.google.com/payments/v4/js/integrator.js");
+                      "contextMenus, tabs, downloads, nativeMessaging, webRequest, webNavigation, storage, scripting, alarms, offscreen, cookies, sidePanel");
             EXPECT_EQ(jsonElement["persistent"], "0");
-            EXPECT_EQ(jsonElement["profile"], "Your Chrome");
-            EXPECT_EQ(jsonElement["profile_path"], Utils::joinPaths(mockHomePath, "mock-user/.config/google-chrome/Profile 1"));
+            EXPECT_EQ(jsonElement["profile"], "Seu Chrome");
+            EXPECT_EQ(jsonElement["profile_path"], Utils::joinPaths(mockHomePath, "mock-user/AppData\\Local\\Google\\Chrome\\User Data/Default"));
             EXPECT_EQ(jsonElement["referenced"], "1");
-            EXPECT_EQ(jsonElement["referenced_identifier"], "nmmhkkegccagdldgiimedpiccmgmieda");
-            EXPECT_EQ(jsonElement["state"], "");
+            EXPECT_EQ(jsonElement["referenced_identifier"], "efaidnbmnnnibpcajpcglclefindmkaj");
+            EXPECT_EQ(jsonElement["state"], "1");
             EXPECT_EQ(jsonElement["uid"], "123");
             EXPECT_EQ(jsonElement["update_url"], "https://clients2.google.com/service/update2/crx");
-            EXPECT_EQ(jsonElement["version"], "1.0.0.6");
+            EXPECT_EQ(jsonElement["version"], "25.7.2.1");
+            break;
         }
     }
 }

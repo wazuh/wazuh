@@ -61,7 +61,7 @@ extern void mock_assert(const int result, const char* const expression,
 #endif
 
 void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
-    if (!router_fim_events_handle || !router_inventory_events_handle) {
+    if (!router_inventory_events_handle) {
         mdebug2("Router handle not available.");
         return;
     }
@@ -73,6 +73,14 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
     int result = SQLITE_ERROR;
 
     do{
+        // Skip JSON creation for disabled FIM events but still step through rows
+        if (component == WDB_FIM || component == WDB_FIM_FILE ||
+            component == WDB_FIM_REGISTRY || component == WDB_FIM_REGISTRY_KEY ||
+            component == WDB_FIM_REGISTRY_VALUE) {
+            result = wdb_step(stmt);
+            continue;
+        }
+
         ROUTER_PROVIDER_HANDLE router_handle = NULL;
         j_msg_to_send = cJSON_CreateObject();
         j_agent_info = cJSON_CreateObject();
@@ -157,35 +165,35 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
                 cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
                 router_handle = router_inventory_events_handle;
                 break;
-            case WDB_FIM:
-            case WDB_FIM_FILE:
-                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteFile");
-                cJSON_AddItemToObject(j_data, "path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
-                router_handle = router_fim_events_handle;
-                break;
-            case WDB_FIM_REGISTRY:
-                {
-                    const char *type = (const char*) sqlite3_column_text(stmt, 2);
-                    if (type && strcmp(type, "registry_key") == 0) {
-                        cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryKey");
-                    } else {
-                        cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryValue");
-                    }
-                    cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
-                    router_handle = router_fim_events_handle;
-                }
-                break;
-            case WDB_FIM_REGISTRY_KEY:
-                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryKey");
-                cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
-                router_handle = router_fim_events_handle;
-                break;
-
-            case WDB_FIM_REGISTRY_VALUE:
-                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryValue");
-                cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
-                router_handle = router_fim_events_handle;
-                break;
+            // DISABLED: RSync deletes for FIM events are not sent to the Inventory Harvester
+            // case WDB_FIM:
+            // case WDB_FIM_FILE:
+            //     cJSON_AddStringToObject(j_msg_to_send, "action", "deleteFile");
+            //     cJSON_AddItemToObject(j_data, "path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+            //     router_handle = router_fim_events_handle;
+            //     break;
+            // case WDB_FIM_REGISTRY:
+            //     {
+            //         const char *type = (const char*) sqlite3_column_text(stmt, 2);
+            //         if (type && strcmp(type, "registry_key") == 0) {
+            //             cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryKey");
+            //         } else {
+            //             cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryValue");
+            //         }
+            //         cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+            //         router_handle = router_fim_events_handle;
+            //     }
+            //     break;
+            // case WDB_FIM_REGISTRY_KEY:
+            //     cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryKey");
+            //     cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+            //     router_handle = router_fim_events_handle;
+            //     break;
+            // case WDB_FIM_REGISTRY_VALUE:
+            //     cJSON_AddStringToObject(j_msg_to_send, "action", "deleteRegistryValue");
+            //     cJSON_AddItemToObject(j_data, "full_path", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+            //     router_handle = router_fim_events_handle;
+            //     break;
             default:
                 break;
         }

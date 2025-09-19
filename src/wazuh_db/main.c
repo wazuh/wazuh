@@ -213,9 +213,9 @@ int main(int argc, char ** argv)
         mdebug2("Failed to create router handle for 'wdb-agent-events'.");
     }
 
-    if (router_fim_events_handle = router_provider_create(WDB_FIM_EVENTS_TOPIC, false), !router_fim_events_handle) {
-        mdebug2("Failed to create router handle for 'wdb-fim-events'.");
-    }
+    // if (router_fim_events_handle = router_provider_create(WDB_FIM_EVENTS_TOPIC, false), !router_fim_events_handle) {
+    //     mdebug2("Failed to create router handle for 'wdb-fim-events'.");
+    // } // DISABLED: FIM events are no longer processed.
 
     if (router_inventory_events_handle = router_provider_create(WDB_INVENTORY_EVENTS_TOPIC, false), !router_inventory_events_handle) {
         mdebug2("Failed to create router handle for 'wdb-inventory-events'.");

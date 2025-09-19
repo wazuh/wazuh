@@ -1,4 +1,4 @@
-name: Windows binaries' details
+name: 4.X - Windows binaries' details
 
 on:
   pull_request:

@@ -123,6 +123,8 @@ nlohmann::json LoggedInUsersProvider::collect()
 
         auto wtsClient = reinterpret_cast<WTSCLIENTA*>(clientInfo);
 
+        r["host"] = "";
+
         if (wtsClient->ClientAddressFamily == AF_INET)
         {
             r["host"] = std::to_string(wtsClient->ClientAddress[0]) + "." +
@@ -179,6 +181,9 @@ nlohmann::json LoggedInUsersProvider::collect()
             m_twsApiWrapper->WTSFreeMemory(sessionInfo);
             sessionInfo = nullptr;
         }
+
+        r["sid"] = "";
+        r["registry_hive"] = "";
 
         if (sidBuf == nullptr)
         {

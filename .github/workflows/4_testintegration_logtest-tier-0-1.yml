@@ -1,4 +1,4 @@
-name: Integration tests for Logtest - Tier 0 and 1
+name: 4.X - Logtest - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:

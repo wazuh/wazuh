@@ -1,4 +1,4 @@
-name: Integration tests for logcollector on MacOS - Tier 0 and 1
+name: 4.X - Logcollector on MacOS - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:

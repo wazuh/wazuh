@@ -25,57 +25,18 @@ constexpr auto DB_PERMISSIONS {0640};
 
 namespace SQLite
 {
-    enum class ExceptionType : std::int8_t
-    {
-        SQLITE_CONNECTION_ERROR = -1,
-        SQLITE_MEMORY_ERROR = -2,
-        SQLITE_BUSY_ERROR = -3,
-        SQLITE_MISUSE_ERROR = -4,
-        SQLITE_IO_ERROR = -5,
-        SQLITE_AUTH_ERROR = -6,
-        SQLITE_SCHEMA_ERROR = -7,
-        SQLITE_CONSTRAINT_ERROR = -8,
-        SQLITE_PERMISSION_ERROR = -9,
-        SQLITE_UNINITIALIZED = -10,
-        SQLITE_QUERY_ERROR = -11,
-        SQLITE_STATEMENT_ERROR = -12,
-        SQLITE_BIND_ERROR = -13,
-        SQLITE_STEP_ERROR = -14,
-    };
-
-    const static std::map<ExceptionType, std::string> SQLITE_ERROR_MESSAGES = {
-        {ExceptionType::SQLITE_CONNECTION_ERROR, "Connection error."},
-        {ExceptionType::SQLITE_MEMORY_ERROR, "Memory error."},
-        {ExceptionType::SQLITE_BUSY_ERROR, "Database is busy."},
-        {ExceptionType::SQLITE_MISUSE_ERROR, "Misuse of SQLite API."},
-        {ExceptionType::SQLITE_IO_ERROR, "I/O error."},
-        {ExceptionType::SQLITE_AUTH_ERROR, "Authorization error."},
-        {ExceptionType::SQLITE_SCHEMA_ERROR, "Schema error."},
-        {ExceptionType::SQLITE_CONSTRAINT_ERROR, "Constraint error."},
-        {ExceptionType::SQLITE_PERMISSION_ERROR, "Permission error."},
-        {ExceptionType::SQLITE_UNINITIALIZED, "SQLite not initialized."},
-        {ExceptionType::SQLITE_QUERY_ERROR, "Query error."},
-        {ExceptionType::SQLITE_STATEMENT_ERROR, "Statement error."},
-        {ExceptionType::SQLITE_BIND_ERROR, "Bind error."},
-        {ExceptionType::SQLITE_STEP_ERROR, "Step error."},
-    };
-
     class Sqlite3Error : public std::exception
     {
-        const ExceptionType m_errorCode; ///< Exception error code.
+        const char* m_errorMessage;
     public:
-        explicit Sqlite3Error(ExceptionType exceptionType)
-            : m_errorCode(exceptionType)
+        explicit Sqlite3Error(const char* errorMessage)
+            : m_errorMessage(errorMessage)
         {
         }
         ~Sqlite3Error() override = default;
         const char* what() const noexcept override
         {
-            return SQLITE_ERROR_MESSAGES.at(m_errorCode).c_str();
-        }
-        ExceptionType errorCode() const
-        {
-            return m_errorCode;
+            return m_errorMessage;
         }
     };
 
@@ -96,7 +57,7 @@ namespace SQLite
             sqlite3* pDb {nullptr};
             if (const auto result {sqlite3_open_v2(path.c_str(), &pDb, flags, nullptr)}; SQLITE_OK != result)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_CONNECTION_ERROR};
+                throw Sqlite3Error {"Unspecified type during initialization of SQLite."};
             }
 
             return pDb;
@@ -113,7 +74,7 @@ namespace SQLite
             {
                 if (const auto result {chmod(path.c_str(), DB_PERMISSIONS)}; result != 0)
                 {
-                    throw Sqlite3Error {ExceptionType::SQLITE_PERMISSION_ERROR};
+                    throw Sqlite3Error {"Error changing permissions of SQLite database."};
                 }
 
                 m_db.reset(openSQLiteDb(path, SQLITE_OPEN_READWRITE));
@@ -152,14 +113,14 @@ namespace SQLite
         {
             if (db() == nullptr)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_UNINITIALIZED};
+                throw Sqlite3Error {"SQLite not initialized."};
             }
 
             const auto result {sqlite3_exec(db(), query.c_str(), nullptr, nullptr, nullptr)};
 
             if (SQLITE_OK != result)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_QUERY_ERROR};
+                throw Sqlite3Error {sqlite3_errmsg(db())};
             }
         }
 
@@ -196,7 +157,7 @@ namespace SQLite
                     connection.db(), query.data(), static_cast<int>(query.size()), &pStatement, nullptr)};
                 SQLITE_OK != result)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_STATEMENT_ERROR};
+                throw Sqlite3Error {sqlite3_errmsg(connection.db())};
             }
             return pStatement;
         }
@@ -218,7 +179,7 @@ namespace SQLite
 
                 if (SQLITE_ROW != ret && SQLITE_DONE != ret && SQLITE_OK != ret)
                 {
-                    throw Sqlite3Error {ExceptionType::SQLITE_STEP_ERROR};
+                    throw Sqlite3Error {sqlite3_errmsg(m_connection.db())};
                 }
             }
 
@@ -235,7 +196,7 @@ namespace SQLite
         {
             if (const auto result {sqlite3_bind_int(m_stmt.get(), index, value)}; SQLITE_OK != result)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_BIND_ERROR};
+                throw Sqlite3Error {sqlite3_errmsg(m_connection.db())};
             }
             ++m_bindParametersIndex;
         }
@@ -244,7 +205,7 @@ namespace SQLite
             if (const auto result {sqlite3_bind_int64(m_stmt.get(), index, static_cast<sqlite3_int64>(value))};
                 SQLITE_OK != result)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_BIND_ERROR};
+                throw Sqlite3Error {sqlite3_errmsg(m_connection.db())};
             }
             ++m_bindParametersIndex;
         }
@@ -252,7 +213,7 @@ namespace SQLite
         {
             if (const auto result {sqlite3_bind_int64(m_stmt.get(), index, value)}; SQLITE_OK != result)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_BIND_ERROR};
+                throw Sqlite3Error {sqlite3_errmsg(m_connection.db())};
             }
             ++m_bindParametersIndex;
         }
@@ -262,7 +223,7 @@ namespace SQLite
                     m_stmt.get(), index, value.c_str(), static_cast<int>(value.length()), SQLITE_TRANSIENT)};
                 SQLITE_OK != result)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_BIND_ERROR};
+                throw Sqlite3Error {sqlite3_errmsg(m_connection.db())};
             }
             ++m_bindParametersIndex;
         }
@@ -272,7 +233,7 @@ namespace SQLite
                     m_stmt.get(), index, value.data(), static_cast<int>(value.length()), SQLITE_TRANSIENT)};
                 SQLITE_OK != result)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_BIND_ERROR};
+                throw Sqlite3Error {sqlite3_errmsg(m_connection.db())};
             }
             ++m_bindParametersIndex;
         }
@@ -280,7 +241,7 @@ namespace SQLite
         {
             if (const auto result {sqlite3_bind_double(m_stmt.get(), index, value)}; SQLITE_OK != result)
             {
-                throw Sqlite3Error {ExceptionType::SQLITE_BIND_ERROR};
+                throw Sqlite3Error {sqlite3_errmsg(m_connection.db())};
             }
             ++m_bindParametersIndex;
         }

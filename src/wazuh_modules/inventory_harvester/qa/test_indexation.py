@@ -182,10 +182,25 @@ def is_test_folder_name(name: str) -> bool:
     return name and name[0].isdigit()
 
 
+def should_include_folder(folder: Path) -> bool:
+    """
+    Only include numeric-named folders that are not FIM cases.
+    """
+    if not is_test_folder_name(folder.name):
+        return False
+
+    path_str = str(folder).lower()
+    # Skip anything under "fim"
+    if "fim" in path_str:
+        return False
+
+    return True
+
+
 test_folders = sorted(
     str(folder)
     for folder in TEST_DATA_ROOT.rglob("*")
-    if folder.is_dir() and is_test_folder_name(folder.name)
+    if folder.is_dir() and should_include_folder(folder)
 )
 
 

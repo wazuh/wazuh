@@ -44,7 +44,7 @@ OSHash *remoted_agents_state;
 extern remoted_state_t remoted_state;
 ROUTER_PROVIDER_HANDLE router_rsync_handle = NULL;
 ROUTER_PROVIDER_HANDLE router_syscollector_handle = NULL;
-ROUTER_PROVIDER_HANDLE router_syscheck_handle = NULL;
+// ROUTER_PROVIDER_HANDLE router_syscheck_handle = NULL; // DISABLED 
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
@@ -260,9 +260,10 @@ void HandleSecure()
         mdebug2("Failed to create router handle for 'syscollector'.");
     }
 
-    if (router_syscheck_handle = router_provider_create("deltas-syscheck", false), !router_syscheck_handle) {
-        mdebug2("Failed to create router handle for 'syscheck'.");
-    }
+    // Disable the syscheck router as FIM events are not to be forwarded
+    // if (router_syscheck_handle = router_provider_create("deltas-syscheck", false), !router_syscheck_handle) {
+    //     mdebug2("Failed to create router handle for 'syscheck'.");
+    // }
 
     if (router_rsync_handle = router_provider_create("rsync", false), !router_rsync_handle) {
         mdebug2("Failed to create router handle for 'rsync'.");
@@ -962,6 +963,20 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
     int message_header_size = 0;
     int schema_type = -1;
 
+    // Disable forwarding of FIM/syscheck events to Inventory Harvester
+    if (
+        strncmp(msg, SYSCHECK_HEADER, SYSCHECK_HEADER_SIZE) == 0 ||
+        (strncmp(msg, DBSYNC_HEADER, DBSYNC_HEADER_SIZE) == 0 && (
+            strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_FILE_HEADER, SYSCHECK_FILE_HEADER_SIZE) == 0 ||
+            strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_REGISTRY_KEY_HEADER, SYSCHECK_REGISTRY_KEY_HEADER_SIZE) == 0 ||
+            strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_REGISTRY_VALUE_HEADER, SYSCHECK_REGISTRY_VALUE_HEADER_SIZE) == 0
+        ))
+    ) {
+        // FIM event detected, skipping forwarding
+        mdebug2("FIM event detected, not forwarding to Inventory Harvester.");
+        return;
+    }
+
     if(strncmp(msg, SYSCOLLECTOR_HEADER, SYSCOLLECTOR_HEADER_SIZE) == 0) {
         if (!router_syscollector_handle) {
             mdebug2("Router handle for 'syscollector' not available.");
@@ -978,35 +993,16 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
 
         int message_subheader_size = 0;
 
-        if(strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_FILE_HEADER, SYSCHECK_FILE_HEADER_SIZE) == 0) {
-            message_subheader_size = SYSCHECK_FILE_HEADER_SIZE;
-        }
-        else if(strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_REGISTRY_KEY_HEADER, SYSCHECK_REGISTRY_KEY_HEADER_SIZE) == 0) {
-            message_subheader_size = SYSCHECK_REGISTRY_KEY_HEADER_SIZE;
-        }
-        else if(strncmp(msg+DBSYNC_HEADER_SIZE, SYSCHECK_REGISTRY_VALUE_HEADER, SYSCHECK_REGISTRY_VALUE_HEADER_SIZE) == 0) {
-            message_subheader_size = SYSCHECK_REGISTRY_VALUE_HEADER_SIZE;
-        }
-        else if (strncmp(msg+DBSYNC_HEADER_SIZE, SYSCOLLECTOR_SYNC_HEADER, SYSCOLLECTOR_SYNC_HEADER_SIZE) == 0) {
+        if (strncmp(msg+DBSYNC_HEADER_SIZE, SYSCOLLECTOR_SYNC_HEADER, SYSCOLLECTOR_SYNC_HEADER_SIZE) == 0) {
             message_subheader_size = SYSCOLLECTOR_SYNC_HEADER_SIZE;
-        }
-        else {
-            mdebug2("Syscheck message not recognized %s", msg);
+        } else {
+            mdebug2("DBSYNC message not recognized %s", msg);
             return;
         }
 
         router_handle = router_rsync_handle;
         message_header_size = DBSYNC_HEADER_SIZE + message_subheader_size;
         schema_type = MT_SYNC;
-    } else if(strncmp(msg, SYSCHECK_HEADER, SYSCHECK_HEADER_SIZE) == 0) {
-        if (!router_syscheck_handle) {
-            mdebug2("Router handle for 'syscheck' not available.");
-            return;
-        }
-
-        router_handle = router_syscheck_handle;
-        message_header_size = SYSCHECK_HEADER_SIZE;
-        schema_type = MT_SYSCHECK_DELTAS;
     }
     else {
         mdebug2("%s message not recognized %s", agent_id, msg);

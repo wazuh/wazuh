@@ -1,0 +1,818 @@
+{
+    "schemaVersion": 37,
+    "addons": [
+        {
+            "id": "langpack-en-US@firefox.mozilla.org",
+            "syncGUID": "{b495c182-7e61-4d35-bb2a-0b2bcee62d81}",
+            "version": "141.0.20250806.102122",
+            "type": "locale",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "Language: English (US)",
+                "description": "Firefox Language Pack for English (US) (en-US)",
+                "creator": "mozilla.org",
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": true,
+            "userDisabled": false,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "installDate": 1754999546237,
+            "updateDate": 1754999546237,
+            "applyBackgroundUpdates": 1,
+            "path": "/linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi",
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": "141.0",
+                    "maxVersion": "141.*"
+                }
+            ],
+            "targetPlatforms": [],
+            "signedState": 2,
+            "signedTypes": [
+                2,
+                1
+            ],
+            "signedDate": 1754483876000,
+            "seen": true,
+            "dependencies": [],
+            "userPermissions": null,
+            "optionalPermissions": null,
+            "requestedPermissions": null,
+            "icons": {},
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": {
+                "chromeEntries": [
+                    [
+                        "locale",
+                        "app-marketplace-icons",
+                        "en-US",
+                        "browser/chrome/browser/locale/en-US/app-marketplace-icons/"
+                    ],
+                    [
+                        "locale",
+                        "branding",
+                        "en-US",
+                        "browser/chrome/en-US/locale/branding/"
+                    ],
+                    [
+                        "locale",
+                        "browser",
+                        "en-US",
+                        "browser/chrome/en-US/locale/browser/"
+                    ],
+                    [
+                        "locale",
+                        "browser-region",
+                        "en-US",
+                        "browser/chrome/en-US/locale/browser-region/"
+                    ],
+                    [
+                        "locale",
+                        "devtools",
+                        "en-US",
+                        "browser/chrome/en-US/locale/en-US/devtools/client/"
+                    ],
+                    [
+                        "locale",
+                        "devtools-shared",
+                        "en-US",
+                        "browser/chrome/en-US/locale/en-US/devtools/shared/"
+                    ],
+                    [
+                        "locale",
+                        "alerts",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/alerts/"
+                    ],
+                    [
+                        "locale",
+                        "autoconfig",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/autoconfig/"
+                    ],
+                    [
+                        "locale",
+                        "global",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/global/"
+                    ],
+                    [
+                        "locale",
+                        "global-platform",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/global-platform/unix/"
+                    ],
+                    [
+                        "locale",
+                        "mozapps",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/mozapps/"
+                    ],
+                    [
+                        "locale",
+                        "necko",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/necko/"
+                    ],
+                    [
+                        "locale",
+                        "passwordmgr",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/passwordmgr/"
+                    ],
+                    [
+                        "locale",
+                        "pipnss",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/pipnss/"
+                    ],
+                    [
+                        "locale",
+                        "pippki",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/pippki/"
+                    ],
+                    [
+                        "locale",
+                        "places",
+                        "en-US",
+                        "chrome/en-US/locale/en-US/places/"
+                    ]
+                ],
+                "langpackId": "langpack-en-US-browser",
+                "l10nRegistrySources": {
+                    "toolkit": "",
+                    "browser": "browser/"
+                },
+                "languages": [
+                    "en-US"
+                ]
+            },
+            "hidden": false,
+            "installTelemetryInfo": {
+                "source": "distribution"
+            },
+            "recommendationState": null,
+            "rootURI": "jar:file:///linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi!/",
+            "location": "app-profile"
+        },
+        {
+            "id": "formautofill@mozilla.org",
+            "syncGUID": "{20dd039d-4842-4507-a215-17f797b811c6}",
+            "version": "1.0.1",
+            "type": "extension",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "Form Autofill",
+                "creator": null,
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": true,
+            "userDisabled": false,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "applyBackgroundUpdates": 1,
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": null,
+                    "maxVersion": null
+                }
+            ],
+            "targetPlatforms": [],
+            "signedDate": null,
+            "seen": true,
+            "dependencies": [],
+            "incognito": "spanning",
+            "userPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "optionalPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "requestedPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "icons": {},
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": null,
+            "hidden": true,
+            "installTelemetryInfo": null,
+            "recommendationState": null,
+            "rootURI": "resource://builtin-addons/formautofill/",
+            "location": "app-builtin-addons"
+        },
+        {
+            "id": "newtab@mozilla.org",
+            "syncGUID": "{cad9018d-f2e4-4310-b9f8-1a2a7c208fa9}",
+            "version": "141.1.0",
+            "type": "extension",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "New Tab",
+                "description": "",
+                "creator": null,
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": true,
+            "userDisabled": false,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "applyBackgroundUpdates": 1,
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": "138.0a1",
+                    "maxVersion": null
+                }
+            ],
+            "targetPlatforms": [],
+            "signedDate": null,
+            "seen": true,
+            "dependencies": [],
+            "incognito": "spanning",
+            "userPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "optionalPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "requestedPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "icons": {},
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": null,
+            "hidden": true,
+            "installTelemetryInfo": null,
+            "recommendationState": null,
+            "rootURI": "resource://builtin-addons/newtab/",
+            "location": "app-builtin-addons"
+        },
+        {
+            "id": "pictureinpicture@mozilla.org",
+            "syncGUID": "{3f16ff7a-28d8-4d72-a328-97c8ec791e8c}",
+            "version": "1.0.0",
+            "type": "extension",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "Picture-In-Picture",
+                "description": "Fixes for web compatibility with Picture-in-Picture",
+                "creator": null,
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": true,
+            "userDisabled": false,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "applyBackgroundUpdates": 1,
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": "88.0a1",
+                    "maxVersion": null
+                }
+            ],
+            "targetPlatforms": [],
+            "signedDate": null,
+            "seen": true,
+            "dependencies": [],
+            "incognito": "spanning",
+            "userPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "optionalPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "requestedPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "icons": {},
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": null,
+            "hidden": true,
+            "installTelemetryInfo": null,
+            "recommendationState": null,
+            "rootURI": "resource://builtin-addons/pictureinpicture/",
+            "location": "app-builtin-addons"
+        },
+        {
+            "id": "addons-search-detection@mozilla.com",
+            "syncGUID": "{f3d2ddb9-c319-4ea6-9b3b-38a7024bbe2c}",
+            "version": "2.0.0",
+            "type": "extension",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "Add-ons Search Detection",
+                "description": "",
+                "creator": null,
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": true,
+            "userDisabled": false,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "applyBackgroundUpdates": 1,
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": null,
+                    "maxVersion": null
+                }
+            ],
+            "targetPlatforms": [],
+            "signedDate": null,
+            "seen": true,
+            "dependencies": [],
+            "incognito": "spanning",
+            "userPermissions": {
+                "permissions": [
+                    "telemetry",
+                    "webRequest",
+                    "webRequestBlocking"
+                ],
+                "origins": [
+                    "<all_urls>"
+                ],
+                "data_collection": []
+            },
+            "optionalPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "requestedPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "icons": {},
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": null,
+            "hidden": true,
+            "installTelemetryInfo": null,
+            "recommendationState": null,
+            "rootURI": "resource://builtin-addons/search-detection/",
+            "location": "app-builtin-addons"
+        },
+        {
+            "id": "webcompat@mozilla.org",
+            "syncGUID": "{4810f8e8-5df3-49b1-804f-bfa743127b2a}",
+            "version": "141.3.0",
+            "type": "extension",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "Web Compatibility Interventions",
+                "description": "Urgent post-release fixes for web compatibility.",
+                "creator": null,
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": true,
+            "userDisabled": false,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "applyBackgroundUpdates": 1,
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": "102.0",
+                    "maxVersion": null
+                }
+            ],
+            "targetPlatforms": [],
+            "signedDate": null,
+            "seen": true,
+            "dependencies": [],
+            "incognito": "spanning",
+            "userPermissions": {
+                "permissions": [
+                    "cookies",
+                    "mozillaAddons",
+                    "scripting",
+                    "tabs",
+                    "webNavigation",
+                    "webRequest",
+                    "webRequestBlocking"
+                ],
+                "origins": [
+                    "<all_urls>"
+                ],
+                "data_collection": []
+            },
+            "optionalPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "requestedPermissions": {
+                "permissions": [],
+                "origins": [],
+                "data_collection": []
+            },
+            "icons": {},
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": null,
+            "hidden": true,
+            "installTelemetryInfo": null,
+            "recommendationState": null,
+            "rootURI": "resource://builtin-addons/webcompat/",
+            "location": "app-builtin-addons"
+        },
+        {
+            "id": "default-theme@mozilla.org",
+            "syncGUID": "{2bc40f94-a63d-4040-ac4a-496e467f1b63}",
+            "version": "1.4.2",
+            "type": "theme",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "System theme — auto",
+                "description": "Follow the operating system setting for buttons, menus, and windows.",
+                "creator": "Mozilla",
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": true,
+            "userDisabled": false,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "installDate": 1754999546567,
+            "applyBackgroundUpdates": 1,
+            "path": null,
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": null,
+                    "maxVersion": null
+                }
+            ],
+            "targetPlatforms": [],
+            "signedDate": null,
+            "seen": true,
+            "dependencies": [],
+            "userPermissions": null,
+            "optionalPermissions": null,
+            "requestedPermissions": null,
+            "icons": {
+                "32": "icon.svg"
+            },
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": null,
+            "hidden": false,
+            "installTelemetryInfo": null,
+            "recommendationState": null,
+            "rootURI": "resource://default-theme/",
+            "location": "app-builtin"
+        },
+        {
+            "id": "firefox-compact-light@mozilla.org",
+            "syncGUID": "{b4c998b8-3286-4dce-9bfc-6239c1c42f2d}",
+            "version": "1.3.2",
+            "type": "theme",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "Light",
+                "description": "A theme with a light color scheme.",
+                "creator": "Mozilla",
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": false,
+            "userDisabled": true,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "installDate": 1754999547564,
+            "applyBackgroundUpdates": 1,
+            "path": null,
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": null,
+                    "maxVersion": null
+                }
+            ],
+            "targetPlatforms": [],
+            "signedDate": null,
+            "seen": true,
+            "dependencies": [],
+            "userPermissions": null,
+            "optionalPermissions": null,
+            "requestedPermissions": null,
+            "icons": {
+                "32": "icon.svg"
+            },
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": null,
+            "hidden": false,
+            "installTelemetryInfo": null,
+            "recommendationState": null,
+            "rootURI": "resource://builtin-themes/light/",
+            "location": "app-builtin"
+        },
+        {
+            "id": "firefox-compact-dark@mozilla.org",
+            "syncGUID": "{34076e49-2f2a-40fc-99df-4385eba4b606}",
+            "version": "1.3.3",
+            "type": "theme",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "Dark",
+                "description": "A theme with a dark color scheme.",
+                "creator": "Mozilla",
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": false,
+            "userDisabled": true,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "installDate": 1754999547565,
+            "applyBackgroundUpdates": 1,
+            "path": null,
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": null,
+                    "maxVersion": null
+                }
+            ],
+            "targetPlatforms": [],
+            "signedDate": null,
+            "seen": true,
+            "dependencies": [],
+            "userPermissions": null,
+            "optionalPermissions": null,
+            "requestedPermissions": null,
+            "icons": {
+                "32": "icon.svg"
+            },
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": null,
+            "hidden": false,
+            "installTelemetryInfo": null,
+            "recommendationState": null,
+            "rootURI": "resource://builtin-themes/dark/",
+            "location": "app-builtin"
+        },
+        {
+            "id": "firefox-alpenglow@mozilla.org",
+            "syncGUID": "{e74303a5-4606-44d9-9ce3-f973d83d641f}",
+            "version": "1.5",
+            "type": "theme",
+            "loader": null,
+            "updateURL": null,
+            "installOrigins": null,
+            "manifestVersion": 2,
+            "optionsURL": null,
+            "optionsType": null,
+            "optionsBrowserStyle": true,
+            "aboutURL": null,
+            "defaultLocale": {
+                "name": "Firefox Alpenglow",
+                "description": "Use a colorful appearance for buttons, menus, and windows.",
+                "creator": null,
+                "developers": null,
+                "translators": null,
+                "contributors": null
+            },
+            "visible": true,
+            "active": false,
+            "userDisabled": true,
+            "appDisabled": false,
+            "embedderDisabled": false,
+            "installDate": 1754999547565,
+            "applyBackgroundUpdates": 1,
+            "path": null,
+            "skinnable": false,
+            "sourceURI": null,
+            "releaseNotesURI": null,
+            "softDisabled": false,
+            "foreignInstall": false,
+            "strictCompatibility": true,
+            "locales": [],
+            "targetApplications": [
+                {
+                    "id": "toolkit@mozilla.org",
+                    "minVersion": null,
+                    "maxVersion": null
+                }
+            ],
+            "targetPlatforms": [],
+            "signedDate": null,
+            "seen": true,
+            "dependencies": [],
+            "userPermissions": null,
+            "optionalPermissions": null,
+            "requestedPermissions": null,
+            "icons": {
+                "32": "icon.svg"
+            },
+            "iconURL": null,
+            "blocklistAttentionDismissed": false,
+            "blocklistState": 0,
+            "blocklistURL": null,
+            "startupData": null,
+            "hidden": false,
+            "installTelemetryInfo": null,
+            "recommendationState": null,
+            "rootURI": "resource://builtin-themes/alpenglow/",
+            "location": "app-builtin"
+        }
+    ]
+}

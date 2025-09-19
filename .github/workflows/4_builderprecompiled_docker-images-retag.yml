@@ -1,4 +1,4 @@
-name: Package - Retag Docker images
+name: 4.X - Package - Retag Docker images
 on:
   workflow_dispatch:
     inputs:
