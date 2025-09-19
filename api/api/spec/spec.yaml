@@ -74,8 +74,8 @@ x-rbac-catalog:
       description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
     'decoder:file':
       description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-    'list:kvdb':
-      description: "Reference KVDBs via logical name (i.e. list:kvdb:ip_reputation)"
+    'kvdbs':
+      description: "User-defined KVDBs (testing/production policies)"
     'rule:file':
       description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
     'policy:id':
@@ -326,29 +326,39 @@ x-rbac-catalog:
         actions: ['decoders:delete']
         resources: ['decoder:file:local_decoder.xml']
         effect: "allow"
-    'lists:read':
-      description: "Read KVDBs"
+    'kvdbs:read':
       resources:
-        - $ref: '#/x-rbac-catalog/resources/list:kvdb'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      related_endpoints:
+        - GET /kvdbs
       example:
-        actions: ['lists:read']
-        resources: ['list:kvdb:ip_reputation']
+        actions:
+          - kvdbs:read
+        resources:
+          - '*:*:*'
         effect: "allow"
-    'lists:write':
-      description: "Create/Update KVDBs"
+    'kvdbs:write':
       resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'   # o usa list:kvdb si preferís granularidad
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      related_endpoints:
+        - POST /kvdbs
+        - PUT /kvdbs
       example:
-        actions: ['lists:write']
-        resources: ['*:*:*']
+        actions:
+          - kvdbs:write
+        resources:
+          - '*:*:*'
         effect: "allow"
-    'lists:delete':
-      description: "Delete KVDBs"
+    'kvdbs:delete':
       resources:
-        - $ref: '#/x-rbac-catalog/resources/list:kvdb'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      related_endpoints:
+        - DELETE /kvdbs
       example:
-        actions: ['lists:delete']
-        resources: ['list:kvdb:ip_reputation']
+        actions:
+          - kvdbs:delete
+        resources:
+          - '*:*:*'
         effect: "allow"
     'logtest:run':
       description: "Run logtest tool or end a logtest session"
@@ -979,32 +989,6 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/DecoderFile'
-
-    AllItemsResponseLists:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CDBList'
-
-    AllItemsResponseListsFiles:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CDBListFile'
 
     AllItemsResponseRoles:
       allOf:
@@ -1985,82 +1969,59 @@ components:
               - "yes"
               - "no"
 
-    KVDBListItem:
+    KVDBItem:
       type: object
+      description: "KVDB asset descriptor and content"
+      required:
+        - type
+        - id
+        - name
+        - content
       properties:
+        type:
+          type: string
+          description: "Asset type. Always 'kvdb'."
+          enum:
+            - kvdb
+        id:
+          type: string
+          description: "Unique KVDB ID"
+        integration_id:
+          type: string
+          nullable: true
+          description: "Optional integration owner ID"
         name:
           type: string
-          description: "KVDB logical name"
-        size:
-          type: integer
-          description: "Size in bytes (if available)"
-        lastUpdated:
-          type: string
-          format: date-time
-          description: "Last update timestamp (if available)"
-      required: [name]
+          description: "Human-friendly name"
+        content:
+          type: object
+          additionalProperties: true
+          description: "Key-Value map (or object) managed by the Engine"
+
+    KVDBUpsertRequest:
+      allOf:
+        - $ref: '#/components/schemas/KVDBItem'
 
     AllItemsResponseKVDBs:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
         - type: object
-          required: [affected_items]
+          required:
+            - affected_items
           properties:
             affected_items:
               type: array
               description: "KVDBs returned by the API call"
               items:
-                $ref: '#/components/schemas/KVDBListItem'
+                $ref: '#/components/schemas/KVDBItem'
 
-    KVDBContentItem:
-      type: object
-      properties:
-        name:
-          type: string
-          description: "KVDB logical name"
-        entries:
-          type: array
-          description: "KV pairs or arbitrary objects depending on the Engine definition"
-          items:
-            type: object
-            additionalProperties: true
-      required: [name, entries]
-
-    AllItemsResponseKVDBContent:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required: [affected_items]
-          properties:
-            affected_items:
-              type: array
-              description: "KVDB content items returned by the API call"
-              items:
-                $ref: '#/components/schemas/KVDBContentItem'
-
-    KVDBWriteRequest:
-      type: object
-      properties:
-        payload:
-          type: string
-          description: "Full KVDB content (validated by Engine before persistence)"
-      required: [payload]
-
-    KVDBListResponse:
+    KVDBsResponse:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
         - type: object
           properties:
             data:
               $ref: '#/components/schemas/AllItemsResponseKVDBs'
-
-    KVDBContentResponse:
-      allOf:
-        - $ref: '#/components/schemas/ApiResponse'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/AllItemsResponseKVDBContent'
 
     # Logtest models
     LogtestRequest:
@@ -4062,33 +4023,6 @@ components:
         - $ref: '#/components/schemas/RulesetFile'
         - $ref: '#/components/schemas/RulesetStatus'
 
-    # Lists models
-    CDBList:
-      allOf:
-        - $ref: '#/components/schemas/RulesetFile'
-        - type: object
-          properties:
-            items:
-              type: array
-              items:
-                $ref: '#/components/schemas/CDBListPair'
-
-    CDBListPair:
-      type: object
-      required:
-        - key
-        - value
-      properties:
-        key:
-          type: string
-          description: "Value of the CDB list item key"
-        value:
-          type: string
-          description: "Value of the CDB list item value"
-
-    CDBListFile:
-      $ref: '#/components/schemas/RulesetFile'
-
     # Overview models
     OverviewAgents:
       type: object
@@ -4609,11 +4543,21 @@ components:
         default: 500
         minimum: 1
         maximum: 500
-    kvdb_path:
-      in: path
-      name: kvdb
-      description: KVDB logical name
+    kvdbs_type:
+      name: type
+      in: query
       required: true
+      description: "Policy type"
+      schema:
+        type: string
+        enum:
+          - testing
+          - production
+    kvdbs_list:
+      name: kvdbs_list
+      in: query
+      required: false
+      description: "Comma-separated KVDB IDs to filter or delete (e.g. id1,id2,id3)"
       schema:
         type: string
     agents_list:
@@ -5899,7 +5843,7 @@ components:
           - 'group:id'
           - 'node:id'
           - 'decoder:file'
-          - 'list:file'
+          - 'kvdbs'
           - 'rule:file'
           - 'policy:id'
           - 'role:id'
@@ -5951,8 +5895,8 @@ tags:
     description: "Ingestion endpoints"
   - name: Groups
     description: "Group of agents and centralized configurations"
-  - name: Lists
-    description: "CDB lists management"
+  - name: KVDBs
+    description: "User-defined KVDBs management (testing/production policies)"
   - name: Logtest
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
@@ -9224,12 +9168,8 @@ paths:
                         rule_exclude:
                           - 0215-policy_rules.xml
                         list:
-                          - etc/lists/audit-keys
-                          - etc/lists/amazon/aws-eventnames
-                          - etc/lists/security-eventchannel
-                          - etc/lists/malicious-ioc/malware-hashes
-                          - etc/lists/malicious-ioc/malicious-ip
-                          - etc/lists/malicious-ioc/malicious-domains
+                          - etc/ruleset/kvdb/ip_reputation.json
+                          - etc/ruleset/kvdb/geoip_countries.json
                       auth:
                         disabled: no
                         port: "1515"
@@ -10264,16 +10204,18 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /lists:
+  /kvdbs:
     get:
-      tags: 
-       - Lists
-      summary: "List user-defined KVDBs"
-      description: "Return KVDBs managed by the analysis Engine."
-      operationId: api.controllers.kvdb_list_controller.get_lists
+      tags:
+        - KVDBs
+      summary: "List or get KVDBs"
+      description: "Return KVDBs; filter by IDs with 'kvdbs_list'."
+      operationId: api.controllers.kvdbs_controller.get_kvdbs
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:read'
       parameters:
+        - $ref: '#/components/parameters/kvdbs_type'
+        - $ref: '#/components/parameters/kvdbs_list'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
@@ -10281,13 +10223,30 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/q'
+        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
-          description: "KVDB list"
+          description: "KVDBs"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/KVDBListResponse'
+                $ref: '#/components/schemas/KVDBsResponse'
+              example:
+                data:
+                  affected_items:
+                    - type: kvdb
+                      id: ip_reputation
+                      integration_id: threatintel_v1
+                      name: "IP Reputation"
+                      content:
+                        "1.2.3.4": "malicious"
+                        "5.6.7.8": "suspicious"
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "KVDBs returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10296,51 +10255,21 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /lists/{kvdb}:
-    parameters:
-      - $ref: '#/components/parameters/kvdb_path'
-    get:
-      tags: 
-       - Lists
-      summary: "Get KVDB content"
-      description: "Return full content of the specified KVDB."
-      operationId: api.controllers.kvdb_list_controller.get_kvdb
+    post:
+      tags:
+        - KVDBs
+      summary: "Create a KVDB (testing only)"
+      description: "Create a KVDB in the testing policy (master node only)."
+      operationId: api.controllers.kvdbs_controller.post_kvdbs
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:write'
       parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/select'
-      responses:
-        '200':
-          description: "KVDB content"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/KVDBContentResponse'
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-    put:
-      tags: 
-       - Lists
-      summary: "Create/Replace KVDB content"
-      description: "Validate and persist full KVDB content; triggers Engine reload."
-      operationId: api.controllers.kvdb_list_controller.put_kvdb
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:write'
-      parameters:
+        - $ref: '#/components/parameters/kvdbs_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
@@ -10348,21 +10277,30 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/KVDBWriteRequest'
+              $ref: '#/components/schemas/KVDBUpsertRequest'
+            example:
+              type: kvdb
+              id: kvdb_id
+              integration_id: integration_a_id
+              name: "Example KVDB"
+              content:
+                Key1: "Value1"
+                Key2: "Value2"
       responses:
         '200':
-          description: "OK"
+          description: "Created"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 data:
-                  affected_items: []
-                  total_affected_items: 0
+                  affected_items:
+                    - kvdb_id
+                  total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "KVDB stored and Engine reloaded"
+                message: "KVDB created in testing policy"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10372,34 +10310,95 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    put:
+      tags:
+        - KVDBs
+      summary: "Update a KVDB (testing only)"
+      description: "Update a KVDB in the testing policy (master node only)."
+      operationId: api.controllers.kvdbs_controller.put_kvdbs
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:write'
+      parameters:
+        - $ref: '#/components/parameters/kvdbs_type'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KVDBUpsertRequest'
+            example:
+              type: kvdb
+              id: kvdb_id
+              integration_id: integration_a_id
+              name: "Example KVDB modified"
+              content:
+                Key1: "Value1"
+                Key2: "Value2"
+      responses:
+        '200':
+          description: "Updated"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - kvdb_id
+                  total_affected_items: 1
+                  total_failed_items: 0
+                  failed_items: []
+                message: "KVDB updated in testing policy"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
     delete:
-      tags: 
-       - Lists
-      summary: "Delete KVDB"
-      description: "Delete KVDB and trigger Engine reload."
-      operationId: api.controllers.kvdb_list_controller.delete_kvdb
+      tags:
+        - KVDBs
+      summary: "Delete KVDBs (testing only)"
+      description: "Delete one or more KVDBs in the testing policy (master node only)."
+      operationId: api.controllers.kvdbs_controller.delete_kvdbs
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:delete'
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:delete'
       parameters:
+        - $ref: '#/components/parameters/kvdbs_type'
+        - $ref: '#/components/parameters/kvdbs_list'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: "OK"
+          description: "Deleted"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
               example:
                 data:
-                  affected_items: []
-                  total_affected_items: 0
+                  affected_items:
+                    - kvdb_id
+                    - kvdb_old
+                  total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: "KVDB deleted and Engine reloaded"
+                message: "KVDBs deleted in testing policy"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10409,6 +10408,8 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -13878,8 +13879,8 @@ paths:
                     description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
                   "decoder:file":
                     description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-                  "list:file":
-                    description: "Reference list files via its filename (i.e. list:file:audit-keys)"
+                  "kvdbs":
+                    description: "User-defined KVDBs (testing/production policies)"
                   "rule:file":
                     description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
                   "policy:id":
