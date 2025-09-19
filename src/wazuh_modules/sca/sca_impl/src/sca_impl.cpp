@@ -117,6 +117,8 @@ void SecurityConfigurationAssessment::Run()
                 checkResult.policyId, checkResult.checkId, checkResult.result, checkResult.reason);
         };
 
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA scan started.");
+
         for (auto& policy : m_policies)
         {
             if (!m_keepRunning)
@@ -128,6 +130,8 @@ void SecurityConfigurationAssessment::Run()
         }
 
         firstScan = false;
+
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA scan ended.");
     }
 }
 

@@ -76,6 +76,7 @@ static void * wm_sca_sync_module(__attribute__((unused)) void * args);
 #endif
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
+static void wm_sca_stop();  // Stop
 
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
@@ -87,7 +88,7 @@ const wm_context WM_SCA_CONTEXT = {
     .destroy = (void(*)(void *))wm_sca_destroy,
     .dump = (cJSON * (*)(const void *))wm_sca_dump,
     .sync = (int(*)(const char*, size_t))wm_sca_sync_message,
-    .stop = NULL,
+    .stop = (void(*)(void *))wm_sca_stop,
     .query = NULL,
 };
 
@@ -268,15 +269,18 @@ static int wm_sca_start(wm_sca_t *sca) {
 
 // Destroy data
 void wm_sca_destroy(wm_sca_t * data) {
+    if (data) {
+        os_free(data);
+    }
+}
+
+// Stop
+void wm_sca_stop() {
     g_shutting_down = 1;
     sca_sync_module_running = 0;
 
     if (sca_stop_ptr) {
         sca_stop_ptr();
-    }
-
-    if (data) {
-        os_free(data);
     }
 }
 
