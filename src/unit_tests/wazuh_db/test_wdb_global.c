@@ -16,7 +16,9 @@
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/posix/time_wrappers.h"
 #include "../wrappers/wazuh/shared/cluster_op_wrappers.h"
+#include "../../config/wazuh_db-config.h"
 #include "wazuhdb_op.h"
+
 
 #define GROUPS_SIZE 10
 #define AGENTS_SIZE 10

@@ -150,6 +150,7 @@ int OS_RecvSecureClusterTCP(int sock, char* ret, size_t length);
 
 /* Byte ordering */
 uint32_t wnet_order(uint32_t value);
+uint32_t wnet_order_big(uint32_t value);
 
 /* Set the maximum buffer size for the socket */
 int OS_SetSocketSize(int sock, int mode, int max_msg_size);
