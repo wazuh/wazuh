@@ -214,6 +214,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "date_from_epoch",
         {schemf::STypeToken::create(schemf::Type::DATE), builders::opBuilderHelperDateFromEpochTime});
     registry->template add<builders::OpBuilderEntry>(
+        "date_to_epoch", {schemf::STypeToken::create(schemf::Type::DOUBLE), builders::opBuilderHelperDateToEpochTime});
+    registry->template add<builders::OpBuilderEntry>(
         "get_date", {schemf::STypeToken::create(schemf::Type::DATE), builders::opBuilderHelperGetDate});
 
     // Transform builders
@@ -365,7 +367,8 @@ void registerStageBuilders(const std::shared_ptr<Registry>& registry, const Buil
     registry->template add<builders::StageBuilder>(syntax::asset::PARSE_KEY,
                                                    builders::getParseBuilder(deps.logpar, deps.logparDebugLvl));
     registry->template add<builders::StageBuilder>(syntax::asset::OUTPUTS_KEY, builders::outputsBuilder);
-    registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY, builders::getFileOutputBuilder(deps.logManager));
+    registry->template add<builders::StageBuilder>(syntax::asset::FILE_OUTPUT_KEY,
+                                                   builders::getFileOutputBuilder(deps.logManager));
     // TODO: Until the indexer connector is unified with the rest of wazuh-manager
     // registry->template add<builders::StageBuilder>(syntax::asset::INDEXER_OUTPUT_KEY,
     //                                                builders::getIndexerOutputBuilder(deps.iConnector));
