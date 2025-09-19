@@ -58,7 +58,13 @@ int check_keyupdate()
  * Returns -1 on error
  * Must not call key_lock() before this
  */
+
 int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
+{
+    return send_msg_with_key_control(agent_id, msg, msg_length, false);
+}
+
+int send_msg_with_key_control(const char* agent_id, const char* msg, ssize_t msg_length, bool skip_key_lock)
 {
     int key_id;
     ssize_t msg_size;
@@ -67,18 +73,24 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     int retval = OS_INVALID;
     int error = 0;
 
-    key_lock_read();
+    if (!skip_key_lock) {
+        key_lock_read();
+    }
     key_id = OS_IsAllowedID(&keys, agent_id);
 
     if (key_id < 0) {
-        key_unlock();
+        if (!skip_key_lock) {
+            key_unlock();
+        }
         merror(AR_NOAGENT_ERROR, agent_id);
         return OS_INVALID;
     }
 
     /* If we don't have the agent id, ignore it */
     if (keys.keyentries[key_id]->rcvd < (time(0) - logr.global.agents_disconnection_time)) {
-        key_unlock();
+        if (!skip_key_lock) {
+            key_unlock();
+        }
         mdebug1(SEND_DISCON, keys.keyentries[key_id]->id);
         return OS_INVALID;
     }
@@ -86,7 +98,9 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, key_id);
 
     if (msg_size <= 0) {
-        key_unlock();
+        if (!skip_key_lock) {
+            key_unlock();
+        }
         merror(SEC_ERROR);
         return OS_INVALID;
     }
@@ -105,11 +119,15 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
         /* TCP mode, enqueue the message in the send buffer */
         retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size, keys.keyentries[key_id]->id);
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
-        key_unlock();
+        if (!skip_key_lock) {
+            key_unlock();
+        }
         return retval;
     } else {
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
-        key_unlock();
+        if (!skip_key_lock) {
+            key_unlock();
+        }
         mdebug1("Send operation cancelled due to closed socket.");
         return OS_INVALID;
     }
@@ -139,6 +157,8 @@ int send_msg(const char *agent_id, const char *msg, ssize_t msg_length)
     }
 
     w_mutex_unlock(&keys.keyentries[key_id]->mutex);
-    key_unlock();
+    if (!skip_key_lock) {
+        key_unlock();
+    }
     return retval;
 }

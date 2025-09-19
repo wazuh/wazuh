@@ -117,6 +117,7 @@ All notable changes to this project will be documented in this file.
 - Improved exception handling in `run_local` SDK funcition. ([#30851](https://github.com/wazuh/wazuh/pull/30851))
 - Improved Authd connection management using epoll for better handling of concurrent agent registration requests. ([#29135](https://github.com/wazuh/wazuh/pull/29135))
 - Added single writer buffer manager instance for each indexer connector instances. ([#31114](https://github.com/wazuh/wazuh/pull/31114))
+- Disabled FIM Global Queries. ([#31856)](https://github.com/wazuh/wazuh/pull/31856))
 
 ### Agent
 
