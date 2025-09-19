@@ -4,6 +4,8 @@
 
 #include <string>
 
+// LCOV_EXCL_START
+
 namespace file_io
 {
     /// @copydoc IFileIOWrapper
@@ -24,3 +26,4 @@ namespace file_io
             bool is_open(const std::ifstream& file) const override;
     };
 } // namespace file_io
+// LCOV_EXCL_STOP

@@ -9,6 +9,10 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+if(FSANITIZE)
+  set(CMAKE_CXX_FLAGS_DEBUG "-g --coverage")
+endif(FSANITIZE)
+
 # FilesystemWrapper target
 if(WIN32)
     set(SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/filesystem/src/filesystem_wrapper_win.cpp)
@@ -34,6 +38,15 @@ target_include_directories(FileIO PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/file_io/inc
 
 if(UNIT_TEST)
     enable_testing()
+
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_link_libraries(FilesystemWrapper PRIVATE -fprofile-arcs)
+        target_link_libraries(FileIO PRIVATE -fprofile-arcs)
+    else()
+        target_link_libraries(FilesystemWrapper PRIVATE gcov)
+        target_link_libraries(FileIO PRIVATE gcov)
+    endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+
     add_subdirectory(filesystem/tests)
     add_subdirectory(file_io/tests)
 endif()

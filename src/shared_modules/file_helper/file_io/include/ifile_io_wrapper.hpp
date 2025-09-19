@@ -4,6 +4,8 @@
 #include <memory>
 #include <string>
 
+// LCOV_EXCL_START
+
 /// @brief Wrapper Interface for file IO operations.
 ///
 /// This interface wraps a set of file IO operations such as reading lines from a file,
@@ -39,3 +41,4 @@ class IFileIOWrapper
         /// @return True if a line was read, false otherwise.
         virtual bool get_line(std::istream& file, std::string& line) const = 0;
 };
+// LCOV_EXCL_STOP

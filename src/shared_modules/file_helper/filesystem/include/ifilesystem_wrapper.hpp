@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <vector>
 
+// LCOV_EXCL_START
+
 /// @brief Interface for file system operations.
 ///
 /// This interface is a wrapper for a set of file system operations such as checking if a file exists,
@@ -100,3 +102,4 @@ class IFileSystemWrapper
         /// @return 0 on success, -1 on error
         virtual int close(int fd) const = 0;
 };
+// LCOV_EXCL_STOP

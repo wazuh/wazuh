@@ -2,6 +2,8 @@
 
 #include <ifilesystem_wrapper.hpp>
 
+// LCOV_EXCL_START
+
 namespace file_system
 {
     /// @brief A wrapper class for file system operations, implementing the IFileSystemWrapper interface.
@@ -62,3 +64,4 @@ namespace file_system
             int close(int fd) const override;
     };
 } // namespace file_system
+// LCOV_EXCL_STOP
