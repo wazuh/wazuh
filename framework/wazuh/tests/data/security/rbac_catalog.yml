@@ -364,6 +364,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
+          - PUT /cluster/analysisd/reload
       lists:read:
         description: Read CDB lists files
         resources:
@@ -478,6 +479,7 @@ get_rbac_actions:
             - "*:*:*"
           effect: deny
         related_endpoints:
+          - PUT /manager/analysisd/reload
           - PUT /manager/restart
       mitre:read:
         description: Access information from MITRE database
