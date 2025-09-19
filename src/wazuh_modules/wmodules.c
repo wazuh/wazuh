@@ -473,7 +473,7 @@ int wm_relative_path(const char * path) {
 }
 
 /**
- Check the binary wich executes a commad has the specified hash.
+ Check the binary wich executes a command has the specified hash.
  Returns:
      1 if the binary matchs with the specified digest, 0 if not.
     -1 invalid parameters.
