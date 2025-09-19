@@ -77,7 +77,6 @@ namespace SQLite
             // LCOV_EXCL_STOP
             virtual int32_t step() = 0;
             virtual void bind(const int32_t index, const int32_t value) = 0;
-            virtual void bind(const int32_t index, const uint32_t value) = 0;
             virtual void bind(const int32_t index, const uint64_t value) = 0;
             virtual void bind(const int32_t index, const int64_t value) = 0;
             virtual void bind(const int32_t index, const std::string& value) = 0;

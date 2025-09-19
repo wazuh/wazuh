@@ -105,10 +105,6 @@ class MockStatement : public SQLite::IStatement
                     (override));
         MOCK_METHOD(void,
                     bind,
-                    (const int32_t index, const uint32_t value),
-                    (override));
-        MOCK_METHOD(void,
-                    bind,
                     (const int32_t index, const uint64_t value),
                     (override));
         MOCK_METHOD(void,

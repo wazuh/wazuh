@@ -81,7 +81,6 @@ namespace SQLite
             void reset() override;
 
             void bind(const int32_t index, const int32_t value) override;
-            void bind(const int32_t index, const uint32_t value) override;
             void bind(const int32_t index, const uint64_t value) override;
             void bind(const int32_t index, const int64_t value) override;
             void bind(const int32_t index, const std::string& value) override;

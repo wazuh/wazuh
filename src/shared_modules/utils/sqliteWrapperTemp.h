@@ -175,7 +175,6 @@ namespace SQLite
             // LCOV_EXCL_STOP
             virtual int32_t step() = 0;
             virtual void bind(const int32_t index, const int32_t value) = 0;
-            virtual void bind(const int32_t index, const uint32_t value) = 0;
             virtual void bind(const int32_t index, const uint64_t value) = 0;
             virtual void bind(const int32_t index, const int64_t value) = 0;
             virtual void bind(const int32_t index, const std::string& value) = 0;
@@ -461,12 +460,6 @@ namespace SQLite
             }
 
             void bind(const int32_t index, const int32_t value)
-            {
-                const auto result{ sqlite3_bind_int(m_stmt.get(), index, value) };
-                checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
-                ++m_bindParametersIndex;
-            }
-            void bind(const int32_t index, const uint32_t value)
             {
                 const auto result{ sqlite3_bind_int(m_stmt.get(), index, value) };
                 checkSqliteResult(result, sqlite3_errmsg(m_connection->db().get()));
