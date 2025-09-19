@@ -299,19 +299,6 @@ get_rbac_actions:
           - PUT /cluster/analysisd/reload
           - GET /cluster/configuration/validation
           - GET /cluster/{node_id}/configuration/{component}/{configuration}
-      cluster:ruleset_reload:
-        description: Reload the Wazuh's cluster nodes ruleset
-        resources:
-          - node:id
-        example:
-          actions:
-            - cluster:ruleset_reload
-          resources:
-            - node:id:worker1
-            - node:id:worker3
-          effect: deny
-        related_endpoints:
-          - PUT /cluster/analysisd/reload
       ciscat:read:
         description: Access CIS-CAT results for agents
         resources:
@@ -455,18 +442,7 @@ get_rbac_actions:
           - PUT /manager/restart
           - GET /manager/configuration/validation
           - GET /manager/configuration/{component}/{configuration}
-      manager:ruleset_reload:
-        description: Reload the Wazuh manager ruleset
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - manager:ruleset_reload
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /manager/analysisd/reload
+
       manager:update_config:
         description: Update current Wazuh manager configuration
         resources:
