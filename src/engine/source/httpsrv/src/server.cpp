@@ -3,6 +3,10 @@
 #include <sstream>
 #include <stdexcept>
 
+#include <cerrno>
+#include <cstring>
+#include <sys/stat.h>
+
 #include <fmt/format.h>
 
 #include <base/logging.hpp>
@@ -14,6 +18,7 @@ namespace httpsrv
 Server::Server(const std::string& id)
     : m_srv(std::make_shared<httplib::Server>())
     , m_id(id)
+    , m_socketPath()
 {
     // General exception handler for routes handlers, handlers must not throw exceptions.
     auto excptFnName = fmt::format("Server::Server({})::set_exception_handler", id);
@@ -67,6 +72,34 @@ void Server::addRoute(Method method,
     LOG_DEBUG("Server {} added route: {} {}", m_id, methodToStr(method), route);
 }
 
+bool Server::bindAndListen()
+{
+    if (m_socketPath.empty())
+    {
+        LOG_ERROR("Server {} cannot bind and listen: empty socket path", m_id);
+        return false;
+    }
+
+    if (!m_srv->bind_to_port(m_socketPath.string(), 80))
+    {
+        LOG_ERROR("Server {} failed to bind to socket {}", m_id, m_socketPath.string());
+        return false;
+    }
+
+    if (chmod(m_socketPath.c_str(), 0660) != 0)
+    {
+        LOG_WARNING("Server {} failed to change socket permissions: {} ({})", m_id, std::strerror(errno), errno);
+    }
+    else
+    {
+        LOG_TRACE("Server {} changed socket permissions to 660 for {}", m_id, m_socketPath.string());
+    }
+
+    LOG_DEBUG("Server {} bound to socket {}", m_id, m_socketPath.string());
+
+    return m_srv->listen_after_bind();
+}
+
 void Server::start(const std::filesystem::path& socketPath, bool useThread)
 {
     if (socketPath.empty())
@@ -92,16 +125,41 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
         std::filesystem::remove(socketPath);
         LOG_TRACE("Server {} removed existing socket file {}", m_id, socketPath.string());
     }
+    m_socketPath = socketPath;
 
     if (useThread)
     {
+        std::atomic<bool> threadFailed {false};
+
         m_thread = std::thread(
-            [srv = m_srv, socketPath]()
+            [this, &threadFailed]()
             {
                 base::process::setThreadName("httpsrv");
-                srv->listen(socketPath, true);
+                if (!bindAndListen())
+                {
+                    threadFailed = true;
+                }
             });
-        m_srv->wait_until_ready();
+
+        const auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+
+        while (!threadFailed && std::chrono::steady_clock::now() < timeout)
+        {
+            if (m_srv->is_running())
+            {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        if (threadFailed)
+        {
+            if (m_thread.joinable())
+            {
+                m_thread.join();
+            }
+            throw std::runtime_error(fmt::format("Server {} failed to start at {}", m_id, socketPath.string()));
+        }
 
         auto tid = m_thread.get_id();
         std::stringstream ss;
@@ -111,7 +169,10 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
     else
     {
         LOG_INFO("Starting server {} at {}", m_id, socketPath.string());
-        m_srv->listen(socketPath, true);
+        if (!bindAndListen())
+        {
+            throw std::runtime_error(fmt::format("Server {} failed to start at {}", m_id, socketPath.string()));
+        }
     }
 }
 
@@ -129,6 +190,13 @@ void Server::stop() noexcept
         if (m_thread.joinable())
         {
             m_thread.join();
+        }
+
+        if (!m_socketPath.empty())
+        {
+            std::filesystem::remove(m_socketPath);
+            LOG_TRACE("Server {} removed socket file {}", m_id, m_socketPath.string());
+            m_socketPath.clear();
         }
 
         LOG_INFO("Server {} stopped", m_id);

@@ -105,9 +105,8 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Process module
     addUnit<std::string>(key::PID_FILE_PATH, "WAZUH_ENGINE_PID_FILE_PATH", (wazuhRoot / "var/run/").c_str());
-    addUnit<std::string>(key::USER, "WAZUH_ENGINE_USER", "wazuh");
     addUnit<std::string>(key::GROUP, "WAZUH_ENGINE_GROUP", "wazuh");
-    addUnit<bool>(key::SKIP_USER_CHANGE, "WAZUH_SKIP_USER_CHANGE", false);
+    addUnit<bool>(key::SKIP_GROUP_CHANGE, "WAZUH_SKIP_GROUP_CHANGE", false);
 };
 
 void Conf::validate(const OptionMap& config) const

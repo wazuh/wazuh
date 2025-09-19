@@ -236,33 +236,12 @@ int main(int argc, char* argv[])
     try
     {
         // Changing user and group
-        if (!confManager.get<bool>(conf::key::SKIP_USER_CHANGE))
+        if (!confManager.get<bool>(conf::key::SKIP_GROUP_CHANGE))
         {
             /* Check if the user/group given are valid */
-            const auto user = confManager.get<std::string>(conf::key::USER);
             const auto group = confManager.get<std::string>(conf::key::GROUP);
-            const auto uid = base::process::privSepGetUser(user);
             const auto gid = base::process::privSepGetGroup(group);
-
-            if (uid == base::process::INVALID_UID || gid == base::process::INVALID_GID)
-            {
-                throw std::runtime_error {
-                    fmt::format("Invalid user '{}' or group '{}'", user, group, strerror(errno), errno)};
-            }
-
-            /* Privilege separation only if we got valid IDs */
-            if (base::process::privSepSetGroup(gid))
-            {
-                throw std::runtime_error {
-                    fmt::format("Unable to switch to group '{}' due to [({})-({})].", group, errno, strerror(errno))};
-            }
-
-            /* Changing user only if we got a valid UID */
-            if (base::process::privSepSetUser(uid))
-            {
-                throw std::runtime_error {
-                    fmt::format("Unable to switch to user '{}' due to [({})-({})].", user, errno, strerror(errno))};
-            }
+            base::process::privSepSetGroup(gid);
         }
 
         // Set new log level if it is different from the default
@@ -394,8 +373,13 @@ int main(int argc, char* argv[])
             };
 
             const auto jsonCnf = isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
-            indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
-            LOG_INFO("Indexer Connector initialized.");
+            try {
+                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
+                LOG_INFO("Indexer Connector initialized.");
+            } catch (const std::exception& e) {
+                // ALLOW the engine to start even if the indexer connector fails.
+                LOG_ERROR("Could not initialize the indexer connector: '{}', review the configuration.", e.what());
+            }
         }
 
         // Scheduler
@@ -532,7 +516,7 @@ int main(int argc, char* argv[])
             orchestrator = std::make_shared<router::Orchestrator>(config);
             orchestrator->start();
 
-            exitHandler.add([orchestrator]() { orchestrator->stop(); });
+            exitHandler.add([orchestrator]() { orchestrator->cleanup(); });
             LOG_INFO("Router initialized.");
         }
 
@@ -621,6 +605,19 @@ int main(int argc, char* argv[])
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
 
             LOG_INFO("Remote engine's server initialized and started.");
+        }
+
+        if (isRunningStandAlone)
+        {
+            LOG_INFO("Engine started in standalone mode.");
+        }
+        else if (indexerConnector == nullptr)
+        {
+            LOG_ERROR("Engine started without indexer connector, event will be lost. Review the configuration.");
+        }
+        else
+        {
+            LOG_INFO("Engine started and ready to process events.");
         }
 
         // Do not exit until the server is running
