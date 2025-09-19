@@ -10,7 +10,7 @@ set -x
 current_path="$( cd $(dirname $0) ; pwd -P )"
 install_path="/var/ossec"
 build_tools_path="/home/okkam"
-source_directory=/wazuh-sources
+source_directory=/var/wazuh-sources
 configuration_file="${source_directory}/etc/preloaded-vars.conf"
 target_dir="${current_path}/output/"
 wazuh_version=""
