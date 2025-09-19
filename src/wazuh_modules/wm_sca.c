@@ -269,13 +269,6 @@ static int wm_sca_start(wm_sca_t *sca) {
 
 // Destroy data
 void wm_sca_destroy(wm_sca_t * data) {
-    g_shutting_down = 1;
-    sca_sync_module_running = 0;
-
-    if (sca_stop_ptr) {
-        sca_stop_ptr();
-    }
-
     if (data) {
         os_free(data);
     }
