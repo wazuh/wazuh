@@ -451,11 +451,11 @@ WriteAgent()
     else
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     fi
-    echo "    <ca_store>etc/wpk_root.pem</ca_store>" >> $NEWCONFIG
-
     if [ -n "$CA_STORE" ]
     then
         echo "    <ca_store>${CA_STORE}</ca_store>" >> $NEWCONFIG
+    else
+        echo "    <ca_store>etc/wpk_root.pem</ca_store>" >> $NEWCONFIG
     fi
 
     echo "    <ca_verification>yes</ca_verification>" >> $NEWCONFIG
