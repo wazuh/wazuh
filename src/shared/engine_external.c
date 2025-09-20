@@ -194,10 +194,7 @@ static int parse_indexer_subnodes(const OS_XML* xml, XML_NODE nodes, cJSON* outp
 
             if (cJSON_GetArraySize(array_node) == 0)
             {
-                merror("Configuration array '%s' is empty in module 'indexer'. Check configuration", node_keypath);
-                cJSON_Delete(array_node);
-                os_free(node_keypath);
-                return 1;
+                mwarn("Configuration array '%s' is empty in module 'indexer'. Check configuration", node_keypath);
             }
 
             replace_existing_json_item(output_json, current_node->element, array_node);
