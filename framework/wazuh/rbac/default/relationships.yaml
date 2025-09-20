@@ -21,6 +21,7 @@ relationships:
         - lists_all
         - rootcheck_read
         - rules_all
+        - content_all
         - mitre_read
         - sca_read
         - syscheck_read
