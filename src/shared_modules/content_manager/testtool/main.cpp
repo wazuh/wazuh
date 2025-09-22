@@ -114,10 +114,9 @@ void logFunction(const int logLevel,
 
 namespace Log
 {
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
-};
+}; // namespace Log
 
 /**
  * @brief Performs a PUT query to the on-demand manager, requesting an offset update.

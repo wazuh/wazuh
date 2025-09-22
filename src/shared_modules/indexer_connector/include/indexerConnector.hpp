@@ -107,14 +107,10 @@ class EXPORTED IndexerConnector final
      * @param logFunction Callback function to be called when trying to log a message.
      * @param config Indexer configuration, including database_path and servers.
      */
-    void preInitialization(const std::function<void(const int,
-                                                    const std::string&,
-                                                    const std::string&,
-                                                    const int,
-                                                    const std::string&,
-                                                    const std::string&,
-                                                    va_list)>& logFunction,
-                           const nlohmann::json& config);
+    void preInitialization(
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction,
+        const nlohmann::json& config);
 
     /*
      * @brief Send bulk reactive, this method is used to send a bulk request to the indexer.
@@ -139,18 +135,14 @@ public:
      * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
      */
-    explicit IndexerConnector(const nlohmann::json& config,
-                              const std::string& templatePath,
-                              const std::string& updateMappingsPath,
-                              bool useSeekDelete = true,
-                              const std::function<void(const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       va_list)>& logFunction = {},
-                              const uint32_t& timeout = DEFAULT_INTERVAL);
+    explicit IndexerConnector(
+        const nlohmann::json& config,
+        const std::string& templatePath,
+        const std::string& updateMappingsPath,
+        bool useSeekDelete = true,
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction = {},
+        const uint32_t& timeout = DEFAULT_INTERVAL);
 
     /**
      * @brief Class constructor that initializes the publisher in a simplified state that doesn't index the data and
@@ -160,15 +152,11 @@ public:
      * @param useSeekDelete If true, the connector will index the seek method to delete operation.
      * @param logFunction Callback function to be called when trying to log a message.
      */
-    explicit IndexerConnector(const nlohmann::json& config,
-                              bool useSeekDelete = true,
-                              const std::function<void(const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       va_list)>& logFunction = {});
+    explicit IndexerConnector(
+        const nlohmann::json& config,
+        bool useSeekDelete = true,
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction = {});
 
     ~IndexerConnector();
 

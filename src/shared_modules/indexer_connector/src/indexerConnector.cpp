@@ -39,10 +39,9 @@ constexpr auto RECURSIVE_MAX_DEPTH {20};
 
 namespace Log
 {
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
-};
+}; // namespace Log
 constexpr auto MAX_WAIT_TIME {60};
 constexpr auto START_TIME {1};
 constexpr auto DOUBLE_FACTOR {2};
@@ -498,8 +497,7 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
 }
 
 void IndexerConnector::preInitialization(
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction,
     const nlohmann::json& config)
 {
@@ -525,8 +523,7 @@ IndexerConnector::IndexerConnector(
     const std::string& templatePath,
     const std::string& updateMappingsPath,
     const bool useSeekDelete,
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction,
     const uint32_t& timeout)
     : m_useSeekDelete(useSeekDelete)
@@ -858,8 +855,7 @@ IndexerConnector::IndexerConnector(
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const bool useSeekDelete,
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
         logFunction)
     : m_useSeekDelete(useSeekDelete)
 {
