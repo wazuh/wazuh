@@ -115,7 +115,17 @@ nlohmann::json UsersProvider::collectUsers(const std::set<uid_t>& uids)
         }
         else
         {
+            // User exists in OpenDirectory but not in local passwd database
+            // Initialize all fields with default values to ensure consistent JSON structure
             user["username"] = username;
+            user["uid"] = static_cast<uid_t>(-1);  // Special value indicating user not found locally
+            user["gid"] = static_cast<gid_t>(-1);
+            user["uid_signed"] = -1;
+            user["gid_signed"] = -1;
+            user["description"] = "";
+            user["directory"] = "";
+            user["shell"] = "";
+            user["uuid"] = "";
         }
 
         user["is_hidden"] = static_cast<int>(isHidden);

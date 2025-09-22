@@ -1,0 +1,50 @@
+{
+  "extensions": {
+    "settings": {
+      "ahfgeienlihckogmohjhadlkjgocpleb": {
+        "first_install_time": "13338748509377993",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/116.0.5845.179/Resources/web_store",
+        "state": 1
+      },
+      "efaidnbmnnnibpcajpcglclefindmkaj": {
+        "first_install_time": "13390078625371004",
+        "from_webstore": true,
+        "path": "ext1/1.2.3"
+      },
+      "fignfifoniblkonapihmkfakmlgkbkcf": {
+        "first_install_time": "13398350223495125",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/138.0.7204.169/Resources/network_speech_synthesis/mv3",
+      },
+      "ghbmnnjooekpmoecnnnilnnbdlolhkhi": {
+        "first_install_time": "13338748511797684",
+        "from_webstore": true,
+        "path": "ext2/1.2.3",
+      },
+      "mhjfbmdgcfjbbpaeojofohoefgiehjai": {
+        "first_install_time": "13338748509379174",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/116.0.5845.179/Resources/pdf",
+        "state": 1
+      },
+      "neajdppkdcdipfabeoofebfddakdcjhd": {
+        "first_install_time": "13338748509380301",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/116.0.5845.179/Resources/network_speech_synthesis"
+      },
+      "nkeimhogjdpnpccoofpliimaahmaaome": {
+        "first_install_time": "13338748509379860",
+        "from_webstore": false,
+        "path": "/Applications/Google Chrome.app/Contents/Frameworks/Google Chrome Framework.framework/Versions/136.0.7103.93/Resources/hangout_services",
+      },
+      "nmmhkkegccagdldgiimedpiccmgmieda": {
+        "first_install_time": "13338748511767844",
+        "from_webstore": true,
+        "path": "nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0",
+      },
+      "ojagfgibjiofppmilfbgmipfelkhcccn": {
+      }
+    }
+  }
+}

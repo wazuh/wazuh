@@ -134,6 +134,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap,wdb_get_agent_info -Wl,--wrap,_mdebug
 else()
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,external_socket_connect \
                                 -Wl,--wrap,sleep -Wl,--wrap,strerror -Wl,--wrap,getpid -Wl,--wrap,close \
+                                -Wl,--wrap,fclose -Wl,--wrap,fprintf -Wl,--wrap,wfopen -Wl,--wrap,_merror \
+                                -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread \
+                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen \
                                 -Wl,--wrap,OS_SendSecureTCPCluster -Wl,--wrap,OS_RecvSecureClusterTCP ${DEBUG_OP_WRAPPERS}")
 endif()
 

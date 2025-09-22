@@ -150,6 +150,15 @@ int __wrap_close(int __fd)
     return mock();
 }
 
+int __wrap_router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle, const char* msg, 
+                                        void* agent_ctx, int schema_type) {
+    check_expected_ptr(handle);
+    check_expected_ptr(msg);
+    check_expected_ptr(agent_ctx);
+    check_expected(schema_type);
+    return mock_type(int);
+}
+
 /*****************WRAPS********************/
 int __wrap_w_mutex_lock(pthread_mutex_t* mutex)
 {

@@ -76,10 +76,10 @@ namespace od
 
         policyData =
         {
-            {"creation_time", nullptr},
-            {"failed_login_count", nullptr},
-            {"failed_login_timestamp", nullptr},
-            {"password_last_set_time", nullptr}
+            {"creation_time", 0.0},
+            {"failed_login_count", 0},
+            {"failed_login_timestamp", 0.0},
+            {"password_last_set_time", 0.0}
         };
 
         ODNode* root = [ODNode nodeWithSession:s name:@"/Local/Default" error:&err];

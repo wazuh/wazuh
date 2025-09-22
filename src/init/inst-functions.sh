@@ -14,6 +14,7 @@
 # ./src/init/template-select.sh
 
 ## Templates
+set -e
 . ./src/init/template-select.sh
 
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
@@ -206,7 +207,7 @@ GenerateAuthCert()
 WriteLogs()
 {
   LOCALFILES_TMP=`cat ${LOCALFILES_TEMPLATE}`
-  HAS_JOURNALD=`command -v journalctl`
+  HAS_JOURNALD=`command -v journalctl || true`
 
   # If has journald, add journald to the configuration file
   if [ "X$HAS_JOURNALD" != "X" ]; then
@@ -245,7 +246,7 @@ WriteLogs()
       fi
 
       # If journald is not available, change the log_format from '[!journald] ${log_type}' to '${log_type}'
-      NEGATE_JOURNALD=$(echo "$LOG_FORMAT" | grep "\[!journald\] ")
+      NEGATE_JOURNALD=$(echo "$LOG_FORMAT" | grep "\[!journald\] " || true)
       if [ "X$HAS_JOURNALD" = "X" ]; then
         if [ -n "$NEGATE_JOURNALD" ]; then
           LOG_FORMAT=$(echo "$LOG_FORMAT" | sed -e "s|\[!journald\] ||g")
@@ -649,7 +650,6 @@ WriteLocal()
 
 InstallCommon()
 {
-
   WAZUH_GROUP='wazuh'
   WAZUH_USER='wazuh'
   INSTALL="install"
@@ -1133,7 +1133,7 @@ InstallServer()
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/jemalloc/lib/libjemalloc.so.2 ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libjemalloc.so.2
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libjemalloc.so.2 || true
         fi
     fi
     if [ -f build/shared_modules/router/librouter.so ]
@@ -1141,7 +1141,7 @@ InstallServer()
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/router/librouter.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librouter.so
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librouter.so || true
         fi
     fi
     if [ -f build/shared_modules/content_manager/libcontent_manager.so ]
@@ -1149,7 +1149,7 @@ InstallServer()
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/content_manager/libcontent_manager.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libcontent_manager.so
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libcontent_manager.so || true
         fi
     fi
 
@@ -1158,7 +1158,7 @@ InstallServer()
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/indexer_connector/libindexer_connector.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_connector.so
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_connector.so || true
         fi
     fi
     if [ -f external/rocksdb/build/librocksdb.so.8 ]
@@ -1166,7 +1166,7 @@ InstallServer()
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/rocksdb/build/librocksdb.so.8 ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librocksdb.so.8 || true
         fi
     fi
 

@@ -25,7 +25,7 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 TEST(FirefoxAddonsTests, NumberOfExtensions)
 {
     auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "linux_mock_home").string();
+    std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "linux").string();
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return("123"));
@@ -38,7 +38,7 @@ TEST(FirefoxAddonsTests, NumberOfExtensions)
 TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
 {
     auto mockAddonsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "linux_mock_home").string();
+    std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "linux").string();
 
     EXPECT_CALL(*mockAddonsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockAddonsWrapper, getUserId(::testing::StrEq("mock-user"))).WillRepeatedly(::testing::Return("123"));
@@ -58,7 +58,7 @@ TEST(FirefoxAddonsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["identifier"], "langpack-en-US@firefox.mozilla.org");
             EXPECT_EQ(jsonElement["location"], "app-profile");
             EXPECT_EQ(jsonElement["name"], "Language: English (US)");
-            EXPECT_EQ(jsonElement["path"], "/linux_mock_home/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi");
+            EXPECT_EQ(jsonElement["path"], "/linux/mock-user/snap/firefox/common/.mozilla/firefox/pwd5bwxx.default/extensions/langpack-en-US@firefox.mozilla.org.xpi");
             EXPECT_EQ(jsonElement["source_url"], "");
             EXPECT_EQ(jsonElement["type"], "locale");
             EXPECT_EQ(jsonElement["uid"], "123");

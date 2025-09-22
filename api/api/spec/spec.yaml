@@ -214,14 +214,6 @@ x-rbac-catalog:
         actions: ['cluster:read']
         resources: ['node:id:worker1', 'node:id:worker3']
         effect: "deny"
-    'cluster:ruleset_reload':
-      description: "Reload the Wazuh's cluster nodes ruleset"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/node:id'
-      example:
-        actions: [ 'cluster:ruleset_reload' ]
-        resources: ['node:id:worker1', 'node:id:worker3']
-        effect: "deny"
     'cluster:update_config':
       description: "Change the Wazuh's cluster node configuration"
       resources:
@@ -261,14 +253,6 @@ x-rbac-catalog:
       example:
         actions: ['manager:read']
         resources: ['*:*:*']
-        effect: "allow"
-    'manager:ruleset_reload':
-      description: "Reload the Wazuh manager ruleset"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: [ 'manager:ruleset_reload' ]
-        resources: [ '*:*:*' ]
         effect: "allow"
     'manager:update_config':
       description: "Update current Wazuh manager configuration"
@@ -850,7 +834,7 @@ components:
               items:
                 $ref: '#/components/schemas/NodeID'
         - $ref: '#/components/schemas/AllItemsResponse'
-    
+
     AllItemsResponseNodeAnalysisdReload:
       allOf:
         - $ref: '#/components/schemas/AllItemsResponse'
@@ -1033,6 +1017,175 @@ components:
                 oneOf:
                   - $ref: '#/components/schemas/PoliciesResponse'
                   - type: integer
+
+    AllItemsResponseSyscollectorHardware:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorHardware'
+
+    AllItemsResponseSyscollectorHotfixes:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorHotfix'
+
+    AllItemsResponseSyscollectorInterface:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorInterface'
+
+    AllItemsResponseSyscollectorOS:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorOS'
+
+    AllItemsResponseSyscollectorPackages:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorPackages'
+
+    AllItemsResponseSyscollectorPorts:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorPorts'
+
+    AllItemsResponseSyscollectorProcesses:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorProcess'
+
+    AllItemsResponseSyscollectorProtocol:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorProtocol'
+
+    AllItemsResponseSyscollectorNetwork:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorNetwork'
+
+    AllItemsResponseSyscollectorUsers:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorUser'
+
+    AllItemsResponseSyscollectorGroups:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorGroup'
+
+    AllItemsResponseSyscollectorBrowserExtensions:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorBrowserExtension'
+
+    AllItemsResponseSyscollectorService:
+      allOf:
+        - $ref: '#/components/schemas/AllItemsResponse'
+        - type: object
+          required:
+            - affected_items
+          properties:
+            affected_items:
+              type: array
+              description: "Items that successfully applied the API call action"
+              items:
+                $ref: '#/components/schemas/SyscollectorService'
 
     AllItemsResponseUsers:
       allOf:
@@ -10063,7 +10216,7 @@ paths:
       operationId: api.controllers.cluster_controller.put_reload_analysisd
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
-        - $ref: '#/x-rbac-catalog/actions/cluster:ruleset_reload'
+        - $ref: '#/x-rbac-catalog/actions/cluster:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
@@ -11636,7 +11789,7 @@ paths:
       operationId: api.controllers.manager_controller.put_reload_analysisd
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/manager:read'
-        - $ref: '#/x-rbac-catalog/actions/manager:ruleset_reload'
+        - $ref: '#/x-rbac-catalog/actions/manager:restart'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

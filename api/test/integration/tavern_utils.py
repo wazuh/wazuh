@@ -537,3 +537,23 @@ def validate_update_check_response(response, current_version, update_check):
         if available_update_data != {}:
             for key, value_type in keys_to_check:
                 assert isinstance(available_update_data[key], value_type)
+
+
+def test_agent_ports(response, agents_list):
+    """Check that syscollector ports results belongs to certain agents.
+
+    Parameters
+    ----------
+    response : Request response.
+    agents_list : list
+        List of expected agents that should have port information.
+    """
+
+    data = response.json()['data']
+
+    expected_agents_with_ports =  set(agents_list.split(","))
+    current_agents_with_ports = { port_info["agent_id"] for port_info in data.get('affected_items', []) }
+
+    assert expected_agents_with_ports == current_agents_with_ports, \
+        f'Current agents listing ports ({current_agents_with_ports})  \
+            is different than expected ({expected_agents_with_ports}).'
