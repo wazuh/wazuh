@@ -1,5 +1,6 @@
 #include <filesystem_wrapper.hpp>
 
+// LCOV_EXCL_START
 namespace file_system
 {
     int
@@ -18,3 +19,4 @@ namespace file_system
         return 0;
     }
 } // namespace file_system
+// LCOV_EXCL_STOP
