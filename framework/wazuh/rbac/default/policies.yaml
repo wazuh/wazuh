@@ -144,6 +144,33 @@ default_policies:
           - '*:*:*'
         effect: allow
 
+  kvdbs_read:
+    description: Allow reading KVDBs (testing/production).
+    policies:
+      kvdbs:
+        actions:
+          - kvdbs:read
+        resources:
+          - '*:*:*'
+        effect: allow
+
+  kvdbs_all:
+    description: Allow managing KVDBs (create/update/delete in testing policy).
+    policies:
+      kvdbs:
+        actions:
+          - kvdbs:read
+          - kvdbs:delete
+        resources:
+          - '*:*:*'
+        effect: allow
+      resourceless:
+        actions:
+          - kvdbs:write
+        resources:
+          - '*:*:*'
+        effect: allow
+
   mitre_read:
     description: Allow read MITRE database information.
     policies:
