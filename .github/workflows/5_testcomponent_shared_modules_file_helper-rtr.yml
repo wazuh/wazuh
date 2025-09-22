@@ -7,7 +7,7 @@ on:
       - "src/ci/**"
       - "src/build.py"
       - ".github/actions/**"
-      - ".github/workflows/5_testunit_shared_modules_file_helper.yml"
+      - ".github/workflows/5_testcomponent_shared_modules_file_helper-rtr.yml"
       - "src/shared_modules/file_helper/**"
 
 jobs:
