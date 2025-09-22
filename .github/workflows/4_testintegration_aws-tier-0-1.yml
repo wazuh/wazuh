@@ -52,6 +52,11 @@ jobs:
           sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile default
           sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile default
           sudo aws configure set default.region ${AWS_DEFAULT_REGION} --profile default
+      - name: Set AWS credentials file for inspector2 tests (us-east-2)
+        run: |
+          sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile inspector_tests
+          sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile inspector_tests
+          sudo aws configure set region us-east-2 --profile inspector_tests
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
       # Build wazuh server for linux.

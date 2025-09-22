@@ -563,7 +563,6 @@ configurator.configure_test(configuration_file='inspector_configuration_with_onl
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.skip(reason="The Inspector Classic service was deprecated. A migration to Inspector v2 is required")
 @pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
@@ -634,12 +633,15 @@ def test_inspector_with_only_logs_after(
     service_type = metadata['service_type']
     only_logs_after = metadata['only_logs_after']
     expected_results = metadata['expected_results']
+    aws_profile = metadata['aws_profile']
+
 
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
+        '--aws_profile', aws_profile,
         '--only_logs_after', only_logs_after,
-        '--regions', US_EAST_1_REGION,
+        '--regions', 'us-east-2',
         '--debug', '2'
     ]
 
@@ -871,7 +873,6 @@ configurator.configure_test(cases_file='cases_inspector_multiple_calls.yaml')
 @pytest.mark.parametrize('metadata',
                          configurator.metadata,
                          ids=configurator.cases_ids)
-@pytest.mark.skip(reason="The Inspector Classic service was deprecated. A migration to Inspector v2 is required")
 def test_inspector_multiple_calls(
     metadata, clean_aws_services_db, load_wazuh_basic_configuration, restart_wazuh_function
 ):
@@ -908,14 +909,25 @@ def test_inspector_multiple_calls(
     """
 
     service_type = metadata['service_type']
+    aws_profile = metadata['aws_profile']
 
     base_parameters = [
         '--service', service_type,
-        '--regions', US_EAST_1_REGION,
+        '--aws_profile', aws_profile,
+        '--regions', 'us-east-2',
         '--debug', '2'
     ]
 
     pattern = fr"{NO_NEW_EVENTS}"
+
+    # Call the module with only_logs_after set in the past and check that the expected number of logs were processed.
+    analyze_command_output(
+        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2025-SEP-15'),
+        callback=event_monitor.callback_detect_service_event_processed(
+            expected_results=106,
+            service_type=service_type),
+        error_message=ERROR_MESSAGE['incorrect_event_number']
+    )
 
     # Call the module without only_logs_after and check that no logs were processed
     analyze_command_output(
@@ -923,31 +935,6 @@ def test_inspector_multiple_calls(
         callback=event_monitor.make_aws_callback(pattern),
         error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
     )
-
-    # Call the module with only_logs_after set in the past and check that the expected number of logs were processed.
-    analyze_command_output(
-        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-30'),
-        callback=event_monitor.callback_detect_service_event_processed(
-            expected_results=4,
-            service_type=service_type),
-        error_message=ERROR_MESSAGE['incorrect_event_number']
-    )
-
-    # Call the module with the same parameters in and check there were no duplicates
-    analyze_command_output(
-        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-30'),
-        callback=event_monitor.make_aws_callback(pattern),
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
-    )
-
-    # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
-    # were processed, there were no duplicates
-    analyze_command_output(
-        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2023-JAN-31'),
-        callback=event_monitor.make_aws_callback(pattern),
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
-    )
-
 
 # ----------------------------------------- TEST_CLOUDWATCH_MULTIPLE_CALLS ---------------------------------------------
 # Configure T8 test
