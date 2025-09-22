@@ -370,8 +370,8 @@ int main(int argc, char* argv[])
                 return icConfig.toJson();
             };
 
-            const auto jsonCnf = isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
             try {
+                const auto jsonCnf = isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
                 indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
                 LOG_INFO("Indexer Connector initialized.");
             } catch (const std::exception& e) {
