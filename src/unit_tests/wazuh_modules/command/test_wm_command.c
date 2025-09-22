@@ -25,6 +25,7 @@
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
 
 #define TEST_MAX_DATES 5
 
@@ -130,8 +131,13 @@ void test_interval_execution(void **state) {
     will_return(__wrap_FOREVER, 0);
     expect_any_always(__wrap__mtinfo, tag);
     expect_any_always(__wrap__mtinfo, formatted_msg);
-    expect_any_always(__wrap__mtwarn, tag);
-    expect_any_always(__wrap__mtwarn, formatted_msg);
+    expect_any_always(__wrap__mtdebug1, tag);
+    expect_any_always(__wrap__mtdebug1, formatted_msg);
+
+    expect_any_always(__wrap_wm_validate_command, command);
+    expect_any_always(__wrap_wm_validate_command, digest);
+    expect_any_always(__wrap_wm_validate_command, ctype);
+    will_return_always(__wrap_wm_validate_command, 1);
 
     command_module->context->start(module_data);
 }
@@ -261,6 +267,124 @@ void test_read_scheduling_interval_configuration(void **state) {
     assert_int_equal(module_data->scan_config.scan_wday, -1);
 }
 
+void test_validate_checksum_sha256_success(void **state) {
+    wm_command_t command = {0};
+    command.full_command = strdup("/test/file.sh");
+    command.sha256_hash = strdup("e69ee96c1f3f6117391ce27b4656193e54b7b187d66c9920806eced9dd4a4129");
+    command.skip_verification = 0;
+
+    expect_string(__wrap_wm_validate_command, command, "/test/file.sh");
+    expect_string(__wrap_wm_validate_command, digest, "e69ee96c1f3f6117391ce27b4656193e54b7b187d66c9920806eced9dd4a4129");
+    expect_value(__wrap_wm_validate_command, ctype, SHA256SUM);
+    will_return(__wrap_wm_validate_command, 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mtdebug1, formatted_msg, "'SHA256' checksum verification succeded for command '/test/file.sh'.");
+
+    int result = validate_checksum(&command, SHA256SUM);
+    assert_int_equal(result, 0);
+
+    free(command.full_command);
+    free(command.sha256_hash);
+}
+
+void test_validate_checksum_sha1_success(void **state) {
+    wm_command_t command = {0};
+    command.full_command = strdup("/test/file.sh");
+    command.sha1_hash = strdup("da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    command.skip_verification = 0;
+
+    expect_string(__wrap_wm_validate_command, command, "/test/file.sh");
+    expect_string(__wrap_wm_validate_command, digest, "da39a3ee5e6b4b0d3255bfef95601890afd80709");
+    expect_value(__wrap_wm_validate_command, ctype, SHA1SUM);
+    will_return(__wrap_wm_validate_command, 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mtdebug1, formatted_msg, "'SHA1' checksum verification succeded for command '/test/file.sh'.");
+
+    int result = validate_checksum(&command, SHA1SUM);
+    assert_int_equal(result, 0);
+
+    free(command.full_command);
+    free(command.sha1_hash);
+}
+
+void test_validate_checksum_md5_success(void **state) {
+    wm_command_t command = {0};
+    command.full_command = strdup("/test/file.sh");
+    command.md5_hash = strdup("d41d8cd98f00b204e9800998ecf8427e");
+    command.skip_verification = 0;
+
+    expect_string(__wrap_wm_validate_command, command, "/test/file.sh");
+    expect_string(__wrap_wm_validate_command, digest, "d41d8cd98f00b204e9800998ecf8427e");
+    expect_value(__wrap_wm_validate_command, ctype, MD5SUM);
+    will_return(__wrap_wm_validate_command, 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mtdebug1, formatted_msg, "'MD5' checksum verification succeded for command '/test/file.sh'.");
+
+    int result = validate_checksum(&command, MD5SUM);
+    assert_int_equal(result, 0);
+
+    free(command.full_command);
+    free(command.md5_hash);
+}
+
+void test_validate_checksum_failure_no_skip(void **state) {
+    wm_command_t command = {0};
+    command.full_command = strdup("/test/file.sh");
+    command.sha256_hash = strdup("invalid_hash");
+    command.skip_verification = 0;
+
+    expect_string(__wrap_wm_validate_command, command, "/test/file.sh");
+    expect_string(__wrap_wm_validate_command, digest, "invalid_hash");
+    expect_value(__wrap_wm_validate_command, ctype, SHA256SUM);
+    will_return(__wrap_wm_validate_command, 0);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mterror, formatted_msg, "'SHA256' checksum verification failed for command '/test/file.sh'.");
+
+    int result = validate_checksum(&command, SHA256SUM);
+    assert_int_equal(result, -1);
+
+    free(command.full_command);
+    free(command.sha256_hash);
+}
+
+void test_validate_checksum_failure_with_skip(void **state) {
+    wm_command_t command = {0};
+    command.full_command = strdup("/test/file.sh");
+    command.sha256_hash = strdup("invalid_hash");
+    command.skip_verification = 1;
+
+    expect_string(__wrap_wm_validate_command, command, "/test/file.sh");
+    expect_string(__wrap_wm_validate_command, digest, "invalid_hash");
+    expect_value(__wrap_wm_validate_command, ctype, SHA256SUM);
+    will_return(__wrap_wm_validate_command, 0);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mtwarn, formatted_msg, "'SHA256' checksum verification failed for command '/test/file.sh'. Skipping...");
+
+    int result = validate_checksum(&command, SHA256SUM);
+    assert_int_equal(result, 0);
+
+    free(command.full_command);
+    free(command.sha256_hash);
+}
+
+void test_validate_checksum_invalid_ctype(void **state) {
+    wm_command_t command = {0};
+    command.full_command = strdup("/test/file.sh");
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:command");
+    expect_string(__wrap__mterror, formatted_msg, "Checksum verification failed for command '/test/file.sh' due to invalid ctype.");
+
+    int result = validate_checksum(&command, 999);
+    assert_int_equal(result, 0);
+
+    free(command.full_command);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
@@ -272,8 +396,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
     };
+    const struct CMUnitTest tests_validate_checksum[] = {
+        cmocka_unit_test(test_validate_checksum_sha256_success),
+        cmocka_unit_test(test_validate_checksum_sha1_success),
+        cmocka_unit_test(test_validate_checksum_md5_success),
+        cmocka_unit_test(test_validate_checksum_failure_no_skip),
+        cmocka_unit_test(test_validate_checksum_failure_with_skip),
+        cmocka_unit_test(test_validate_checksum_invalid_ctype)
+    };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);
     result += cmocka_run_group_tests(tests_without_startup, NULL, NULL);
+    result += cmocka_run_group_tests(tests_validate_checksum, NULL, NULL);
     return result;
 }
