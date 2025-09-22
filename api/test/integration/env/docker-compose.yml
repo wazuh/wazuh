@@ -1,8 +1,5 @@
 services:
   wazuh-master:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/manager/manager.Dockerfile
@@ -18,11 +15,8 @@ services:
       - wazuh-master
       - master-node
       - master
-      - ${ENV_MODE}
 
   wazuh-worker1:
-    profiles:
-      - cluster
     image: integration_test_wazuh-manager
     hostname: wazuh-worker1
     volumes:
@@ -37,8 +31,6 @@ services:
       - wazuh-master
 
   wazuh-worker2:
-    profiles:
-      - cluster
     image: integration_test_wazuh-manager
     hostname: wazuh-worker2
     volumes:
@@ -53,9 +45,6 @@ services:
       - wazuh-master
 
   wazuh-agent1:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/new.Dockerfile
@@ -72,9 +61,6 @@ services:
       - haproxy-lb
 
   wazuh-agent2:
-    profiles:
-      - standalone
-      - cluster
     image: integration_test_wazuh-agent
     hostname: wazuh-agent2
     volumes:
@@ -89,9 +75,6 @@ services:
       - haproxy-lb
 
   wazuh-agent3:
-    profiles:
-      - standalone
-      - cluster
     image: integration_test_wazuh-agent
     hostname: wazuh-agent3
     volumes:
@@ -106,9 +89,6 @@ services:
       - haproxy-lb
 
   wazuh-agent4:
-    profiles:
-      - standalone
-      - cluster
     image: integration_test_wazuh-agent
     hostname: wazuh-agent4
     volumes:
@@ -123,9 +103,6 @@ services:
       - haproxy-lb
 
   wazuh-agent5:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: .
       dockerfile: base/agent/old.Dockerfile
@@ -144,9 +121,6 @@ services:
       - haproxy-lb
 
   wazuh-agent6:
-    profiles:
-      - standalone
-      - cluster
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent6
     volumes:
@@ -162,9 +136,6 @@ services:
       - haproxy-lb
 
   wazuh-agent7:
-    profiles:
-      - standalone
-      - cluster
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent7
     volumes:
@@ -180,9 +151,6 @@ services:
       - haproxy-lb
 
   wazuh-agent8:
-    profiles:
-      - standalone
-      - cluster
     image: integration_test_wazuh-agent_old
     hostname: wazuh-agent8
     volumes:
@@ -198,24 +166,17 @@ services:
       - haproxy-lb
 
   haproxy-lb:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: ./base/haproxy-lb
     image: integration_test_haproxy-lb
     entrypoint:
       - /scripts/entrypoint.sh
-      - ${ENV_MODE}
     depends_on:
       - wazuh-master
       - wazuh-worker1
       - wazuh-worker2
 
   cti:
-    profiles:
-      - standalone
-      - cluster
     build:
       context: ./base/cti
     image: integration_test_cti
