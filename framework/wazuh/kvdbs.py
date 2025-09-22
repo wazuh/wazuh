@@ -74,16 +74,11 @@ def list_kvdbs(policy_type: Optional[str] = None,
                                       some_msg='Some KVDBs were not returned',
                                       none_msg='No KVDB was returned')
     try:
-        if get_engine_client is None or ContentModule is None:
-            raise WazuhException(2802)  # Engine not wired yet
-
         with get_engine_client() as client:
-            module = ContentModule(client)
-            pt = _to_policy_type(policy_type)
-            resp = client.run(module.get_resources(
+            resp = client.run(client.content.get_resources(
                 type=ResourceType.KVDB,
                 name_list=ids or [],
-                policy_type=pt
+                policy_type=_to_policy_type(policy_type)
             ))
             items: List[Dict[str, Any]] = resp.get('content', [])
 
@@ -143,8 +138,6 @@ def upsert_kvdb(policy_type: Optional[str] = None,
         return result
 
     try:
-        if get_engine_client is None or ContentModule is None:
-            raise WazuhException(2802)
 
         kvdb_id = (item or {}).get('id')
         content_obj = (item or {}).get('content')
@@ -159,14 +152,13 @@ def upsert_kvdb(policy_type: Optional[str] = None,
         payload = json.dumps(content_obj, ensure_ascii=False)
 
         with get_engine_client() as client:
-            module = ContentModule(client)
             pt = _to_policy_type(policy_type)
 
             # Idempotent: try update; if not found → create
             try:
-                client.run(module.update_resource(name=kvdb_id, content=payload, policy_type=pt))
+                client.run(client.content.update_resource(name=kvdb_id, content=payload, policy_type=pt))
             except Exception:
-                client.run(module.create_resource(
+                client.run(client.content.create_resource(
                     type=ResourceType.KVDB,
                     format=ResourceFormat.JSON,
                     content=payload,
@@ -215,10 +207,9 @@ def delete_kvdbs(policy_type: Optional[str] = None,
             raise WazuhException(2802)
 
         with get_engine_client() as client:
-            module = ContentModule(client)
             pt = _to_policy_type(policy_type)
             for _id in ids or []:
-                client.run(module.delete_resource(name=_id, policy_type=pt))
+                client.run(client.content.delete_resource(name=_id, policy_type=pt))
 
         result.affected_items.extend(ids or [])
         result.total_affected_items = len(result.affected_items)
