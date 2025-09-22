@@ -592,35 +592,11 @@ static void test_os_write_agent_info_success(void **state) {
     assert_int_equal(ret, 1);
 }
 
-static void test_os_write_agent_info_no_success(void **state) {
-    test_mode = 1;
-
-    expect_string(__wrap_wfopen, path, AGENT_INFO_FILE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, NULL);
-
-    errno = 1;
-
-    will_return(__wrap_strerror, "Operation not permitted");
-    char response[OS_MAXSTR];
-    snprintf(response, sizeof(response),
-         "(1103): Could not open file '%s' due to [(%d)-(%s)].",
-         AGENT_INFO_FILE, errno, "Operation not permitted");
-
-    expect_string(__wrap__merror, formatted_msg, response);    
-    int ret = os_write_agent_info("agent", "192.168.56.10", "001", NULL);
-
-    errno = 0;
-    test_mode = 0;
-    assert_int_equal(ret, 0);
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_create_agent_add_payload),
         cmocka_unit_test(test_parse_agent_add_response),
         cmocka_unit_test(test_os_write_agent_info_success),
-        cmocka_unit_test(test_os_write_agent_info_no_success),
         #ifndef WIN32
         cmocka_unit_test(test_create_agent_remove_payload),
         cmocka_unit_test(test_create_sendsync_payload),

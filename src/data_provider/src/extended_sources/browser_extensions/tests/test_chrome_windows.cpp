@@ -62,12 +62,12 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["manifest_hash"], "ac233e626b47562d9ae982f21deea7a8367105b4784b69d62c807b54f072e89f");
             EXPECT_EQ(jsonElement["name"], "Adobe Acrobat: PDF edit, convert, sign tools");
             EXPECT_EQ(jsonElement["optional_permissions"], "history, bookmarks");
-            EXPECT_EQ(jsonElement["path"], (std::filesystem::path(mockHomePath) / "mock-user/AppData\\Local\\Google\\Chrome\\User Data/Default/Extensions/ext1\\1.2.3").string());
+            EXPECT_EQ(jsonElement["path"], (std::filesystem::path(mockHomePath) / "mock-user" / "AppData" / "Local" / "Google" / "Chrome" / "User Data" / "Default" / "Extensions" / "ext1" / "1.2.3").string());
             EXPECT_EQ(jsonElement["permissions"],
                       "contextMenus, tabs, downloads, nativeMessaging, webRequest, webNavigation, storage, scripting, alarms, offscreen, cookies, sidePanel");
             EXPECT_EQ(jsonElement["persistent"], "0");
             EXPECT_EQ(jsonElement["profile"], "Seu Chrome");
-            EXPECT_EQ(jsonElement["profile_path"], (std::filesystem::path(mockHomePath) / "mock-user/AppData\\Local\\Google\\Chrome\\User Data/Default").string());
+            EXPECT_EQ(jsonElement["profile_path"], (std::filesystem::path(mockHomePath) / "mock-user" / "AppData" / "Local" / "Google" / "Chrome" / "User Data" / "Default").string());
             EXPECT_EQ(jsonElement["referenced"], "1");
             EXPECT_EQ(jsonElement["referenced_identifier"], "efaidnbmnnnibpcajpcglclefindmkaj");
             EXPECT_EQ(jsonElement["state"], "1");
