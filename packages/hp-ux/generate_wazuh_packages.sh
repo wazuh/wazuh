@@ -10,7 +10,7 @@ set -x
 current_path="$( cd $(dirname $0) ; pwd -P )"
 install_path="/var/ossec"
 build_tools_path="/home/okkam"
-source_directory=/wazuh-sources
+source_directory=/var/wazuh-sources
 configuration_file="${source_directory}/etc/preloaded-vars.conf"
 target_dir="${current_path}/output/"
 wazuh_version=""
@@ -25,6 +25,16 @@ LD_LIBRARY_PATH=${build_tools_path}/bootstrap-gcc/gcc94_prefix/lib:${build_tools
 export LD_LIBRARY_PATH
 export PATH
 CXX=${build_tools_path}/bootstrap-gcc/gcc94_prefix/bin/g++
+
+# Set up certificate bundle for secure connections
+CERT_BUNDLE="${current_path}/certificates/cacert.pem"
+if [[ -f "${CERT_BUNDLE}" ]]; then
+  export CURL_CA_BUNDLE="${CERT_BUNDLE}"
+  export SSL_CERT_FILE="${CERT_BUNDLE}"
+else
+  echo "Warning: Certificate bundle not found at ${CERT_BUNDLE}"
+  echo "SSL certificate verification may fail for HTTPS connections"
+fi
 
 build_environment() {
 
@@ -61,7 +71,7 @@ build_environment() {
     cd ${build_tools_path}
     mkdir bootstrap-gcc
     cd ${build_tools_path}/bootstrap-gcc
-    curl -k -SO http://packages.wazuh.com/utils/gcc/gcc_9.4_HPUX_build.tar.gz
+    curl -SO https://packages.wazuh.com/utils/gcc/gcc_9.4_HPUX_build.tar.gz
     gunzip gcc_9.4_HPUX_build.tar.gz
     tar -xf gcc_9.4_HPUX_build.tar
     rm -f gcc_9.4_HPUX_build.tar
@@ -69,7 +79,7 @@ build_environment() {
 
     # Install cmake 3.22.2
     cd ${build_tools_path}
-    curl -k -SO http://packages.wazuh.com/utils/cmake/cmake_3.22.2_HPUX_build.tar.gz
+    curl -SO https://packages.wazuh.com/utils/cmake/cmake_3.22.2_HPUX_build.tar.gz
     gunzip cmake_3.22.2_HPUX_build.tar.gz
     tar -xf cmake_3.22.2_HPUX_build.tar
     rm -f cmake_3.22.2_HPUX_build.tar
@@ -100,7 +110,7 @@ compute_version_revision() {
     fi
 
     # Add commit hash to the VERSION.json file
-    short_commit_hash=$(/usr/local/bin/curl -ks "https://api.github.com/repos/wazuh/wazuh/commits/${wazuh_branch}" | awk -F '"' '/"sha":/ {print substr($4, 1, 7); exit}')
+    short_commit_hash=$(/usr/local/bin/curl -s "https://api.github.com/repos/wazuh/wazuh/commits/${wazuh_branch}" | awk -F '"' '/"sha":/ {print substr($4, 1, 7); exit}')
     awk -v commit="$short_commit_hash" '
     {
         lines[NR] = $0  # Store lines in an array
@@ -134,7 +144,7 @@ compute_version_revision() {
 
 download_source() {
     echo " Downloading source"
-    /usr/local/bin/curl -k -L -o "/wazuh.zip" "https://github.com/wazuh/wazuh/archive/${wazuh_branch}.zip"
+    /usr/local/bin/curl -L -o "/wazuh.zip" "https://github.com/wazuh/wazuh/archive/${wazuh_branch}.zip"
     /usr/local/bin/unzip /wazuh.zip
     mv wazuh-* ${source_directory}
     compute_version_revision
@@ -154,7 +164,7 @@ compile() {
     cd ${source_directory}/src
     config
     check_version
-    gmake deps RESOURCES_URL=http://packages.wazuh.com/deps/${deps_version} TARGET=agent
+    gmake deps RESOURCES_URL=https://packages.wazuh.com/deps/${deps_version} TARGET=agent
     gmake TARGET=agent USE_SELINUX=no
     bash ${source_directory}/install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
     # Install std libs needed to run the agent
