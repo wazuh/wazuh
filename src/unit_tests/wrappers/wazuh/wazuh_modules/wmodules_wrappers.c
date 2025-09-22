@@ -38,3 +38,11 @@ int __wrap_wm_state_io(const char * tag,
     }
     return ret;
 }
+
+int __wrap_wm_validate_command(const char *command, const char *digest, crypto_type ctype) {
+    check_expected(command);
+    check_expected(digest);
+    check_expected(ctype);
+    
+    return mock_type(int);
+}
