@@ -128,6 +128,7 @@ def upsert_kvdb(policy_type: Optional[str] = None,
     AffectedItemsWazuhResult
         Confirmation with affected ids.
     """
+    # TODO(#31021): Make POST/PUT all-or-nothing (validate→write/update→reload; rollback on error).
     result = AffectedItemsWazuhResult(all_msg='KVDB upserted successfully',
                                       none_msg='KVDB not upserted')
 
@@ -193,6 +194,7 @@ def delete_kvdbs(policy_type: Optional[str] = None,
     AffectedItemsWazuhResult
         Confirmation with affected ids.
     """
+    # TODO(#31021): Make DELETE all-or-nothing (snapshot→delete→reload; restore on error).
     result = AffectedItemsWazuhResult(all_msg='KVDBs deleted successfully',
                                       none_msg='KVDBs not deleted')
 
