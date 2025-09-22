@@ -33,6 +33,9 @@ int w_is_worker(void) {
                     is_worker = 0;
                 }
                 free(cl_type);
+            } else {
+                // node_type defaults to "master" when not explicitly defined
+                is_worker = 0;
             }
             free(cl_config);
         } else {
