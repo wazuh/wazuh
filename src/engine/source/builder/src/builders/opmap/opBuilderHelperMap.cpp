@@ -2013,6 +2013,11 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
     };
 }
 
+MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+
+}
 //*************************************************
 //*              Time tranform                    *
 //*************************************************

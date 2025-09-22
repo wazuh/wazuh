@@ -197,6 +197,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "ip_version",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperIPVersionFromIPStr});
     registry->template add<builders::OpBuilderEntry>(
+        "network_community_id",
+        {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperNetworkCommunityId});
+    registry->template add<builders::OpBuilderEntry>(
         "join", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringFromArray});
     registry->template add<builders::OpBuilderEntry>(
         "decode_base16",
