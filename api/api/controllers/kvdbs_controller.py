@@ -17,7 +17,7 @@ logger = logging.getLogger('wazuh-api')
 async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
                     offset: int = 0, limit: int = None, select: list = None,
                     sort: str = None, search: str = None, q: str = None,
-                    distinct: bool = False, type: str = None, kvdbs_list: str = None) -> ConnexionResponse:
+                    distinct: bool = False, type_: str = None, kvdbs_list: str = None) -> ConnexionResponse:
     """List or get KVDBs.
     Parameters
     ----------
@@ -40,7 +40,7 @@ async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
         Query to filter results by.
     distinct : bool
         Look for distinct values.
-    type : str
+    type_ : str
         Policy type. Allowed values: 'testing' | 'production'.
     kvdbs_list : str
         Comma-separated KVDB IDs to filter by (e.g. "id1,id2").
@@ -50,7 +50,7 @@ async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
         API response.
     """
     f_kwargs = {
-        'policy_type': type,
+        'policy_type': type_,
         'ids': kvdbs_list.split(',') if kvdbs_list else None,
         'offset': offset,
         'limit': limit,
@@ -79,7 +79,7 @@ async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
 
 
 async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = False,
-                     type: str = None) -> ConnexionResponse:
+                     type_: str = None) -> ConnexionResponse:
     """Create a KVDB in the testing policy (master node only).
     Parameters
     ----------
@@ -94,7 +94,7 @@ async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool =
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    type : str
+    type_ : str
         Policy type. Must be 'testing' for mutations.
     Returns
     -------
@@ -102,7 +102,7 @@ async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool =
         API response.
     """
     f_kwargs = {
-        'policy_type': type,
+        'policy_type': type_,
         'item': body or {}
     }
 
@@ -121,7 +121,7 @@ async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool =
 
 
 async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = False,
-                    type: str = None) -> ConnexionResponse:
+                    type_: str = None) -> ConnexionResponse:
     """Update a KVDB in the testing policy (master node only).
     Parameters
     ----------
@@ -136,7 +136,7 @@ async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = 
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    type : str
+    type_ : str
         Policy type. Must be 'testing' for mutations.
     Returns
     -------
@@ -144,7 +144,7 @@ async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = 
         API response.
     """
     f_kwargs = {
-        'policy_type': type,
+        'policy_type': type_,
         'item': body or {}
     }
 
@@ -163,7 +163,7 @@ async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = 
 
 
 async def delete_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
-                       type: str = None, kvdbs_list: str = None) -> ConnexionResponse:
+                       type_: str = None, kvdbs_list: str = None) -> ConnexionResponse:
     """Delete one or more KVDBs in the testing policy (master node only).
     Parameters
     ----------
@@ -171,7 +171,7 @@ async def delete_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    type : str
+    type_ : str
         Policy type. Must be 'testing' for mutations.
     kvdbs_list : str
         Comma-separated KVDB IDs to delete (e.g. "id1,id2").
@@ -181,7 +181,7 @@ async def delete_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
         API response.
     """
     f_kwargs = {
-        'policy_type': type,
+        'policy_type': type_,
         'ids': kvdbs_list.split(',') if kvdbs_list else None
     }
 
