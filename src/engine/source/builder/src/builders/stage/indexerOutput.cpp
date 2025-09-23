@@ -11,7 +11,7 @@ namespace builder::builders
 
 base::Expression indexerOutputBuilder(const json::Json& definition,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                      const std::shared_ptr<IIndexerConnector>& iConnector)
+                                      const std::weak_ptr<wiconnector::IWIndexerConnector>& iConnector)
 {
     if (!definition.isObject())
     {
@@ -58,25 +58,24 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace = fmt::format("{} -> The indexer connector is disabled", name);
 
+    // Get shared ptr
+    auto wic = iConnector.lock();
+    if (!wic)
+    {
+        throw std::runtime_error("Indexer connector is not available");
+    }
+
     return base::Term<base::EngineOp>::create(
         name,
-        [indexName, iConnector, successTrace, failureTrace, runState = buildCtx->runState()](
+        [indexName, wic, successTrace, failureTrace, runState = buildCtx->runState()](
             base::Event event) -> base::result::Result<base::Event>
         {
-            if (!iConnector)
-            {
-                RETURN_FAILURE(runState, event, failureTrace);
-            }
-
-            const auto pushEvent =
-                fmt::format(R"({{"operation": "ADD", "index": "{}", "data": {} }})", indexName, event->str());
-            iConnector->publish(pushEvent);
-
+            wic->index(indexName, event->str());
             RETURN_SUCCESS(runState, event, successTrace);
         });
 }
 
-StageBuilder getIndexerOutputBuilder(const std::shared_ptr<IIndexerConnector>& indexerPtr)
+StageBuilder getIndexerOutputBuilder(const std::weak_ptr<wiconnector::IWIndexerConnector>& indexerPtr)
 {
     return
         [indexerPtr](const json::Json& definition, const std::shared_ptr<const IBuildCtx>& buildCtx) -> base::Expression

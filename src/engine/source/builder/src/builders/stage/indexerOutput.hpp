@@ -7,7 +7,7 @@
 
 #include <fmt/format.h>
 
-#include <indexerConnector/iindexerconnector.hpp>
+#include <wiconnector/iwindexerconnector.hpp>
 
 #include "builders/types.hpp"
 
@@ -24,7 +24,7 @@ namespace builder::builders
  */
 base::Expression indexerOutputBuilder(const json::Json& definition,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                      const std::shared_ptr<IIndexerConnector>& indexerPtr);
+                                      const std::weak_ptr<wiconnector::IWIndexerConnector>& indexerPtr);
 
 /**
  * @brief Get the Indexer Output Stage Builder.
@@ -32,7 +32,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
  * @param indexerPtr Indexer connector.
  * @return StageBuilder The indexer output builder.
  */
-StageBuilder getIndexerOutputBuilder(const std::shared_ptr<IIndexerConnector>& indexerPtr);
+StageBuilder getIndexerOutputBuilder(const std::weak_ptr<wiconnector::IWIndexerConnector>& indexerPtr);
 
 } // namespace builder::builders
 

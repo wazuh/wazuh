@@ -14,6 +14,7 @@
 #include <api/policy/policy.hpp>
 #include <archiver/archiver.hpp>
 #include <base/eventParser.hpp>
+#include <base/libwazuhshared.hpp>
 #include <base/logging.hpp>
 #include <base/process.hpp>
 #include <base/utils/singletonLocator.hpp>
@@ -27,15 +28,14 @@
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
-#include <scheduler/scheduler.hpp>
-#include <streamlog/logger.hpp>
 #include <httpsrv/server.hpp>
-#include <udgramsrv/udsrv.hpp>
-// TODO: Until the indexer connector is unified with the rest of wazuh-manager
-// #include <indexerConnector/indexerConnector.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
+#include <scheduler/scheduler.hpp>
+#include <streamlog/logger.hpp>
+#include <udgramsrv/udsrv.hpp>
+#include <wiconnector/windexerconnector.hpp>
 // #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <router/orchestrator.hpp>
@@ -56,14 +56,12 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
 } // namespace
 
 std::shared_ptr<udsrv::Server> g_engineLocalServer {};
+volatile sig_atomic_t g_shutdown_requested = 0;
+
 
 void sigintHandler(const int signum)
 {
-    if (g_engineLocalServer)
-    {
-        g_engineLocalServer->stop();
-        LOG_INFO("Received signal {}: Stopping the engine local server.", signum);
-    }
+    g_shutdown_requested = signum;
 }
 
 struct Options
@@ -108,12 +106,11 @@ int main(int argc, char* argv[])
     // exit handler
     cmd::details::StackExecutor exitHandler {};
     const auto opts = parseOptions(argc, argv);
-    const bool standalone = base::process::isStandaloneModeEnable();
+    const bool isRunningStandAlone = base::process::isStandaloneModeEnable();
     const bool cliDebug = (opts.debugCount > 0);
-    void* libwazuhshared = nullptr;
 
     // Loggin initialization
-    if (standalone)
+    if (isRunningStandAlone)
     {
         // Standalone logging
         if (opts.testConfig)
@@ -130,13 +127,16 @@ int main(int argc, char* argv[])
     else
     {
         // Use wazuh-shared logging
-        libwazuhshared = dlopen("libwazuhshared.so", RTLD_NOW | RTLD_GLOBAL);
-        if (!libwazuhshared)
+        try
         {
-            fprintf(stderr, "dlopen libwazuhshared.so failed: %s\n", dlerror());
+            base::libwazuhshared::init();
+            exitHandler.add([]() { base::libwazuhshared::shutdown(); });
+        }
+        catch (const std::exception& e)
+        {
+            fprintf(stderr, "Error initializing wazuh-shared: %s\n", e.what());
             return EXIT_FAILURE;
         }
-        exitHandler.add([libwazuhshared]() { dlclose(libwazuhshared); });
 
         if (chdir(base::process::getWazuhHome().string().c_str()) == -1)
         {
@@ -146,26 +146,29 @@ int main(int argc, char* argv[])
 
         if (opts.testConfig)
         {
-            using os_logging_config_fn = void (*)();
-            auto* pReadXML = reinterpret_cast<os_logging_config_fn>(dlsym(libwazuhshared, "os_logging_config"));
-            if (!pReadXML)
+
+            try
             {
-                fprintf(stderr, "dlsym os_logging_config failed: %s\n", dlerror());
+                const auto ReadXML = base::libwazuhshared::getFunction<void (*)()>("os_logging_config");
+                ReadXML();
+            }
+            catch (const std::exception& e)
+            {
+                fprintf(stderr, "Error loading configuration: %s\n", e.what());
                 return EXIT_FAILURE;
             }
-
-            pReadXML();
             return EXIT_SUCCESS;
         }
 
-        using log_fn_t = void (*)(int, const char*, const char*, int, const char*, const char*, va_list);
-        auto* wrapper = reinterpret_cast<log_fn_t>(dlsym(libwazuhshared, "mtLoggingFunctionsWrapper"));
-        if (!wrapper)
+        try
         {
-            fprintf(stderr, "dlsym mtLoggingFunctionsWrapper failed: %s\n", dlerror());
+            logging::init();
+        }
+        catch (const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
             return EXIT_FAILURE;
         }
-        logging::init(wrapper);
     }
 
     // Daemonize the process
@@ -211,7 +214,7 @@ int main(int argc, char* argv[])
     }
 
     // Engine start - Init modules
-    
+
     std::shared_ptr<store::Store> store;
     std::shared_ptr<builder::Builder> builder;
     std::shared_ptr<api::catalog::Catalog> catalog;
@@ -223,7 +226,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<scheduler::Scheduler> scheduler;
     std::shared_ptr<streamlog::LogManager> streamLogger;
     std::shared_ptr<api::policy::IPolicy> policyManager;
-    // std::shared_ptr<IIndexerConnector> iConnector;
+    std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
@@ -231,35 +234,17 @@ int main(int argc, char* argv[])
     try
     {
         // Changing user and group
-        if (!confManager.get<bool>(conf::key::SKIP_USER_CHANGE))
+        if (!confManager.get<bool>(conf::key::SKIP_GROUP_CHANGE))
         {
             /* Check if the user/group given are valid */
-            const auto user = confManager.get<std::string>(conf::key::USER);
             const auto group = confManager.get<std::string>(conf::key::GROUP);
-            const auto uid = base::process::privSepGetUser(user);
             const auto gid = base::process::privSepGetGroup(group);
-
-            if (uid == base::process::INVALID_UID || gid == base::process::INVALID_GID)
-            {
-                throw std::runtime_error {fmt::format("Invalid user '{}' or group '{}'", user, group, strerror(errno), errno)};
-            }
-
-            /* Privilege separation only if we got valid IDs */
-            if (base::process::privSepSetGroup(gid))
-            {
-                throw std::runtime_error {fmt::format("Unable to switch to group '{}' due to [({})-({})].", group, errno, strerror(errno))};
-            }
-
-            /* Changing user only if we got a valid UID */
-            if (base::process::privSepSetUser(uid))
-            {
-                throw std::runtime_error {fmt::format("Unable to switch to user '{}' due to [({})-({})].", user, errno, strerror(errno))};
-            }
+            base::process::privSepSetGroup(gid);
         }
 
         // Set new log level if it is different from the default
         {
-            if (standalone)
+            if (isRunningStandAlone)
             {
                 auto verbosity = confManager.get<std::string>(conf::key::STANDALONE_LOGGING_LEVEL);
                 auto level = logging::strToLevel(verbosity);
@@ -269,12 +254,13 @@ int main(int argc, char* argv[])
             {
                 auto verbosity = confManager.get<int>(conf::key::LOGGING_LEVEL);
                 auto level = logging::verbosityToLevel(verbosity);
-                logging::applyLevelWazuh(level, opts.debugCount, libwazuhshared);
+                logging::applyLevelWazuh(level, opts.debugCount);
             }
         }
 
         /* Create PID file */
-        if (!base::process::isStandaloneModeEnable()) {
+        if (!base::process::isStandaloneModeEnable())
+        {
             // Get executable file name
             std::string exePath {};
             {
@@ -297,7 +283,6 @@ int main(int argc, char* argv[])
                     (fmt::format("Could not create PID file for the engine: {}", base::getError(pidError).message)));
             }
         }
-
 
         // Store
         {
@@ -368,54 +353,32 @@ int main(int argc, char* argv[])
         }
 
         // Indexer Connector
-        /*
-        TODO: Until the indexer connector is unified with the rest of wazuh-manager
         {
-            IndexerConnectorOptions icConfig {};
-            icConfig.name = confManager.get<std::string>(conf::key::INDEXER_INDEX);
-            icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
-            icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
-            icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
-            if (confManager.get<bool>(conf::key::INDEXER_SSL_USE_SSL))
+
+            const auto standAloneConfig = [&]() -> std::string
             {
-                icConfig.sslOptions.cacert = confManager.get<std::string>(conf::key::INDEXER_SSL_CA_BUNDLE);
-                icConfig.sslOptions.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
-                icConfig.sslOptions.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
-                icConfig.sslOptions.skipVerifyPeer = !confManager.get<bool>(conf::key::INDEXER_SSL_VERIFY_CERTS);
-            }
-            else
-            {
-                // If not use SSL, check if url start with https
-                for (const auto& host : icConfig.hosts)
+                wiconnector::Config icConfig {};
+                icConfig.hosts = confManager.get<std::vector<std::string>>(conf::key::INDEXER_HOST);
+                icConfig.username = confManager.get<std::string>(conf::key::INDEXER_USER);
+                icConfig.password = confManager.get<std::string>(conf::key::INDEXER_PASSWORD);
+                // SSL config
                 {
-                    if (base::utils::string::startsWith(host, "https://"))
-                    {
-                        throw std::runtime_error(fmt::format(
-                            "The host '{}' for indexer connector is using HTTPS but the SSL options are not "
-                            "enabled.",
-                            host));
-                    }
+                    icConfig.ssl.cert = confManager.get<std::string>(conf::key::INDEXER_SSL_CERTIFICATE);
+                    icConfig.ssl.cacert = confManager.get<std::vector<std::string>>(conf::key::INDEXER_SSL_CA_BUNDLE);
+                    icConfig.ssl.key = confManager.get<std::string>(conf::key::INDEXER_SSL_KEY);
                 }
-            }
+                return icConfig.toJson();
+            };
 
-            icConfig.databasePath = confManager.get<std::string>(conf::key::INDEXER_DB_PATH);
-            const auto to = confManager.get<int>(conf::key::INDEXER_TIMEOUT);
-            if (to < 0)
-            {
-                throw std::runtime_error("Invalid indexer timeout value.");
+            try {
+                const auto jsonCnf = isRunningStandAlone ? standAloneConfig() : base::libwazuhshared::getJsonIndexerCnf();
+                indexerConnector = std::make_shared<wiconnector::WIndexerConnector>(jsonCnf);
+                LOG_INFO("Indexer Connector initialized.");
+            } catch (const std::exception& e) {
+                // ALLOW the engine to start even if the indexer connector fails.
+                LOG_ERROR("Could not initialize the indexer connector: '{}', review the configuration.", e.what());
             }
-            icConfig.timeout = to;
-            const auto wt = confManager.get<int>(conf::key::INDEXER_THREADS);
-            if (wt < 0)
-            {
-                throw std::runtime_error("Invalid indexer threads value.");
-            }
-            icConfig.workingThreads = wt;
-
-            iConnector = std::make_shared<IndexerConnector>(icConfig);
-            LOG_INFO("Indexer Connector initialized.");
         }
-        */
 
         // Scheduler
         {
@@ -479,7 +442,7 @@ int main(int argc, char* argv[])
             builderDeps.kvdbManager = kvdbManager;
             builderDeps.geoManager = geoManager;
             builderDeps.logManager = streamLogger;
-            // builderDeps.iConnector = iConnector;
+            builderDeps.iConnector = indexerConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
             // Build allowed fields
@@ -551,7 +514,7 @@ int main(int argc, char* argv[])
             orchestrator = std::make_shared<router::Orchestrator>(config);
             orchestrator->start();
 
-            exitHandler.add([orchestrator]() { orchestrator->stop(); });
+            exitHandler.add([orchestrator]() { orchestrator->cleanup(); });
             LOG_INFO("Router initialized.");
         }
 
@@ -642,11 +605,28 @@ int main(int argc, char* argv[])
             LOG_INFO("Remote engine's server initialized and started.");
         }
 
+        if (isRunningStandAlone)
+        {
+            LOG_INFO("Engine started in standalone mode.");
+        }
+        else if (indexerConnector == nullptr)
+        {
+            LOG_ERROR("Engine started without indexer connector, event will be lost. Review the configuration.");
+        }
+        else
+        {
+            LOG_INFO("Engine started and ready to process events.");
+        }
 
         // Do not exit until the server is running
         while (g_engineLocalServer->isRunning())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            if (g_shutdown_requested)
+            {
+                LOG_INFO("Shutdown requested (signal: {}), stopping the engine local server.", g_shutdown_requested);
+                g_engineLocalServer->stop();
+            }
         }
         g_engineLocalServer.reset();
         LOG_INFO("Engine local server stopped.");
