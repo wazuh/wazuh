@@ -2,16 +2,15 @@
 
 using base::utils::string::trim;
 
-namespace base::hostInfo
-{
-
 constexpr char DEFAULT_MANAGER_ID[] = "000"; // Default manager ID if not specified in the event.
 
+namespace
+{
 /**
  * @brief Remove a single leading and trailing double quote if both are present.
  *        Example: "\"Ubuntu\"" → "Ubuntu".
  */
-static void unquoteEdges(std::string& s)
+void unquoteEdges(std::string& s)
 {
     if (s.size() >= 2 && s.front() == '\"' && s.back() == '\"')
     {
@@ -29,7 +28,7 @@ static void unquoteEdges(std::string& s)
  * @return const std::string& Reference to the cached hostname.
  * @throws std::runtime_error if gethostname fails.
  */
-static const std::string& getHostName()
+const std::string& getHostName()
 {
     static const std::string hostname = []()
     {
@@ -54,7 +53,7 @@ static const std::string& getHostName()
  * @return std::unordered_map<std::string, std::string> with fields like NAME, VERSION, ID, VERSION_CODENAME.
  *         Missing file or parse errors are treated as empty results.
  */
-static std::unordered_map<std::string, std::string> parseOsRelease()
+std::unordered_map<std::string, std::string> parseOsRelease()
 {
     std::unordered_map<std::string, std::string> kv;
     std::ifstream f("/etc/os-release");
@@ -84,7 +83,7 @@ static std::unordered_map<std::string, std::string> parseOsRelease()
  * an empty list is returned. This intentionally does not enumerate every interface; it
  * focuses on addresses associated with the primary hostname. Extend if you need all NICs.
  */
-static std::vector<std::string> getIpv4List()
+std::vector<std::string> getIpv4List()
 {
     std::vector<std::string> ips;
     char hostname[256] {};
@@ -123,7 +122,7 @@ static std::vector<std::string> getIpv4List()
  * @param[out] codename  VERSION_CODENAME
  * @param[out] platform  ID
  */
-static void fillOsRelease(std::string& name, std::string& version, std::string& codename, std::string& platform)
+void fillOsRelease(std::string& name, std::string& version, std::string& codename, std::string& platform)
 {
     auto kv = parseOsRelease();
     if (auto it = kv.find("NAME"); it != kv.end())
@@ -145,7 +144,7 @@ static void fillOsRelease(std::string& name, std::string& version, std::string& 
  * @param agentName The hostname/agent name to embed in the string.
  * @return std::string The formatted kernel string (or "unknown" if uname fails).
  */
-static std::string buildKernelString(const std::string& agentName)
+std::string buildKernelString(const std::string& agentName)
 {
     struct utsname uts {};
     if (uname(&uts) != 0)
@@ -155,7 +154,10 @@ static std::string buildKernelString(const std::string& agentName)
         std::string(uts.sysname) + " |" + agentName + " |" + uts.release + " |" + uts.version + " |" + uts.machine;
     return s;
 }
+} // namespace
 
+namespace base::hostInfo
+{
 /**
  * @brief Collect host/agent information and return it as a json::Json.
  *

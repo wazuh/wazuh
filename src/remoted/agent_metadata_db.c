@@ -1,4 +1,4 @@
-#include "agent_metadata.h"
+#include "agent_metadata_db.h"
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 
 #include <stdlib.h>

@@ -24,150 +24,101 @@ inline ProtocolHandler getNDJsonParser()
     {
         try
         {
-            if (batch.empty())
-            {
-                throw std::runtime_error{"empty batch"};
-            }
-
-            // --- Split input into lines, preserving content ---
+            // ---- In-place line tokenization (zero-copy) ----
+            // Reserve approximate number of lines to reduce reallocations.
             std::vector<std::string_view> lines;
             {
-                // Replace '\n' with '\0' so we can tokenize using the same buffer (no copies)
+                const std::size_t approx_lines =
+                    1u + static_cast<std::size_t>(std::count(batch.begin(), batch.end(), '\n'));
+                lines.reserve(approx_lines);
+
+                // Replace '\n' with '\0' to create C-style segments inside the same buffer.
                 std::replace(batch.begin(), batch.end(), '\n', '\0');
+
+                // Walk the buffer and produce views for each line segment.
                 const char* p = batch.data();
                 const char* e = p + batch.size();
                 while (p < e)
                 {
                     const char* q = std::find(p, e, '\0');
-                    if (q > p) { lines.emplace_back(p, static_cast<size_t>(q - p)); }
+                    if (q > p)
+                    {
+                        lines.emplace_back(p, static_cast<std::size_t>(q - p));
+                    }
                     p = q + 1;
                 }
             }
-            if (lines.empty())
-            {
-                throw std::runtime_error{"no lines in batch"};
-            }
 
-            auto starts_with = [](std::string_view s, char tag)
+            // Helper: require exact "<tag>\t..."
+            auto is_tag_tab = [](std::string_view s, char tag) noexcept -> bool
             {
-                // Accepts 'H ' / 'H\t' / 'E ' / 'E\t' prefixes
-                return !s.empty() && s.front() == tag;
+                return s.size() >= 2 && s[0] == tag && s[1] == '\t';
             };
 
-            // --- Parse first header line: "H\t{json}" ---
-            json::Json header;
-            {
-                std::string_view h = lines.front();
-                if (!starts_with(h, 'H'))
-                {
-                    throw std::runtime_error{"first line must start with 'H\\t{json}'"};
-                }
-                // Skip leading spaces/tabs after 'H'
-                size_t i = 1;
-                while (i < h.size() && (h[i] == ' ' || h[i] == '\t')) ++i;
-                if (i >= h.size())
-                {
-                    throw std::runtime_error{"missing JSON header"};
-                }
-                try
-                {
-                    header = json::Json(h.substr(i).data());
-                }
-                catch (const std::exception& ex)
-                {
-                    throw std::runtime_error{std::string("invalid JSON header: ") + ex.what()};
-                }
-            }
+            // ---- Single header at the start: "H\t{json}" (assumed valid) ----
+            // We assume there's always JSON after "H\t"; no length checks here.
+            json::Json header(lines.front().substr(2).data());
 
-            // --- Event collector (supports multi-line events) ---
+            // ---- Event collection (supports multi-line payloads) ----
             std::queue<base::Event> out;
-            std::string currentRaw;  // buffer reused for each event
+            std::string currentRaw; // re-used buffer for each event
             bool inEvent = false;
 
-            auto flush_event = [&](bool /*final_flush*/)
+            auto flush_event = [&]()
             {
-                if (!inEvent) return;
-                // Remove residual CRs
-                currentRaw.erase(std::remove(currentRaw.begin(), currentRaw.end(), '\r'), currentRaw.end());
-                if (currentRaw.empty())
-                {
-                    throw std::runtime_error{"empty event payload"};
-                }
+                if (!inEvent)
+                    return;
 
-                // Step 1: legacy parse of event payload
-                base::Event ev;
-                try
-                {
-                    ev = base::eventParsers::parseLegacyEvent(std::string_view{currentRaw}, header);
-                }
-                catch (...)
-                {
-                    // No re-wrap: let the original message bubble up; prefix is added once at top-level.
-                    throw;
-                }
+                // No CR stripping: preserve payload as-is, avoid extra memory moves.
+                // Delegate validation to the legacy event parser.
+                base::Event ev = base::eventParsers::parseLegacyEvent(std::string_view {currentRaw}, header);
 
                 out.push(std::move(ev));
                 inEvent = false;
                 currentRaw.clear();
             };
 
-            // --- Iterate through lines starting from the second one ---
-            for (size_t li = 1; li < lines.size(); ++li)
+            // Parse from the second line onwards: "E\t..." starts an event;
+            // any other line is a continuation if an event is open, else ignored.
+            for (std::size_t li = 1; li < lines.size(); ++li)
             {
                 std::string_view ln = lines[li];
-                if (ln.empty()) continue;
-
-                if (starts_with(ln, 'H'))
-                {
-                    // New header inside the same batch (rare but supported)
-                    flush_event(/*final*/false);
-
-                    size_t i = 1;
-                    while (i < ln.size() && (ln[i] == ' ' || ln[i] == '\t')) ++i;
-                    if (i >= ln.size()) throw std::runtime_error{"invalid header: missing JSON"};
-                    try
-                    {
-                        header = json::Json(ln.substr(i).data());
-                    }
-                    catch (const std::exception& ex)
-                    {
-                        throw std::runtime_error{std::string("invalid header json: ") + ex.what()};
-                    }
+                if (ln.empty())
                     continue;
-                }
 
-                if (starts_with(ln, 'E'))
+                if (is_tag_tab(ln, 'E'))
                 {
-                    // If an event was already open, flush it before starting a new one
-                    if (inEvent) flush_event(/*final*/false);
+                    if (inEvent)
+                        flush_event();
 
-                    size_t i = 1;
-                    while (i < ln.size() && (ln[i] == ' ' || ln[i] == '\t')) ++i;
-                    currentRaw.assign((i < ln.size()) ? ln.substr(i) : std::string_view{});
+                    currentRaw.assign((ln.size() > 2) ? ln.substr(2) : std::string_view{});
                     inEvent = true;
                     continue;
                 }
 
-                // Continuation of a multi-line event payload
+                // Multi-line continuation: only valid if an event is open.
                 if (inEvent)
                 {
-                    if (!currentRaw.empty()) currentRaw.push_back('\n');
+                    if (!currentRaw.empty())
+                        currentRaw.push_back('\n');
                     currentRaw.append(ln.data(), ln.size());
                     continue;
                 }
 
-                // Unexpected line: neither header nor event
-                throw std::runtime_error{"unexpected line (neither H nor E) before any event start"};
+                // STRICT mode: any non-empty, non-"E\t" line outside an event is a protocol error.
+                throw std::runtime_error{"unexpected line outside of an event"};
             }
 
-            // Flush last event if still open
-            if (inEvent) flush_event(true);
+            // Finalize last open event, if any.
+            if (inEvent)
+                flush_event();
 
             return out;
         }
         catch (const std::exception& ex)
         {
-            throw std::runtime_error{fmt::format(HEADER_ERROR_MSG, ex.what())};
+            // Normalize error message format for the caller.
+            throw std::runtime_error {fmt::format(HEADER_ERROR_MSG, ex.what())};
         }
     };
 }

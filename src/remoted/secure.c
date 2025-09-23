@@ -10,7 +10,7 @@
 
 #include "shared.h"
 #include "bulk.h"
-#include "agent_metadata.h"
+#include "agent_metadata_db.h"
 #include "../os_net/os_net.h"
 #include "remoted.h"
 #include "remoted_op.h"
@@ -172,7 +172,7 @@ typedef struct {
 } evt_item_t;
 
 typedef struct {
-    const char *agent_key;   // set por batch_queue_drain_next_ex
+    const char *agent_key;
     char *agent_id;
     char *agent_name;
     char *agent_ip;
@@ -208,9 +208,12 @@ void HandleSecure()
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
     indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
 
-    size_t events_queue_size = (size_t)getDefine_Int("remoted", "batch_event_queue_size", 4096, 0x1<<20); // 1MB
-    events_queue = batch_queue_init(events_queue_size);
+    size_t batch_events_capacity = (size_t)getDefine_Int("remoted", "batch_events_capacity", 0, 0x1<<20);
+    events_queue = batch_queue_init(batch_events_capacity);
     batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    size_t batch_events_per_agent_capacity = (size_t)getDefine_Int("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20);
+    batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
 
     uhttp_global_init();
 
@@ -891,22 +894,24 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                 os_calloc(1, sizeof(w_ctrl_msg_data_t), ctrl_msg_data);
 
                 /* Parsing msg */
-                agent_info_data *agent_data;
-                os_calloc(1, sizeof(agent_info_data), agent_data);
-                int result = parse_agent_update_msg(tmp_msg, agent_data);
+                {
+                    agent_info_data *agent_data;
+                    os_calloc(1, sizeof(agent_info_data), agent_data);
+                    int result = parse_agent_update_msg(tmp_msg, agent_data);
 
-                if (OS_SUCCESS == result) {
-                    // Build metadata from parsed agent_info_data and upsert in the global map
-                    agent_meta_t *fresh = agent_meta_from_agent_info(key->id, agent_data);
-                    if (fresh) {
-                        if (agent_meta_upsert_locked(key->id, fresh) != 0) {
-                            mwarn("Error upsert metadata from agent ID '%s'.", key->id);
-                            agent_meta_free(fresh);
+                    if (OS_SUCCESS == result) {
+                        // Build metadata from parsed agent_info_data and upsert in the global map
+                        agent_meta_t *fresh = agent_meta_from_agent_info(key->id, agent_data);
+                        if (fresh) {
+                            if (agent_meta_upsert_locked(key->id, fresh) != 0) {
+                                mwarn("Error upsert metadata from agent ID '%s'.", key->id);
+                                agent_meta_free(fresh);
+                            }
                         }
                     }
-                }
 
-                wdb_free_agent_info_data(agent_data);
+                    wdb_free_agent_info_data(agent_data);
+                }
 
                 ctrl_msg_data->key = key;
 
@@ -1375,6 +1380,7 @@ static uint64_t mono_ms(void) {
 // Drop-only consumer: free each queued item without building a bulk
 static void drop_consumer(void *data, void *user) {
     (void)user;
+    mwarn("Dropped event: unable to connect with analysisd");
     dispose_evt_item((evt_item_t *)data);
 }
 

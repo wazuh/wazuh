@@ -27,9 +27,10 @@
  * Empty bucket: `key == NULL`
  * Tombstone (deleted): `key == (char*)-1`
  */
-typedef struct hm_entry {
-    char   *key;     ///< NULL = empty; (char*)-1 = tombstone (deleted)
-    void   *value;   ///< Associated value pointer
+typedef struct hm_entry
+{
+    char* key;   ///< NULL = empty; (char*)-1 = tombstone (deleted)
+    void* value; ///< Associated value pointer
 } hm_entry_t;
 
 /**
@@ -38,8 +39,9 @@ typedef struct hm_entry {
  * @invariant capacity is a power of two and >= 16.
  * @note `entries` is an array with length `capacity`.
  */
-typedef struct hashmap {
-    hm_entry_t *entries; ///< Bucket array of length `capacity`
+typedef struct hashmap
+{
+    hm_entry_t* entries; ///< Bucket array of length `capacity`
     size_t capacity;     ///< Power of two (>= 16)
     size_t size;         ///< Number of live keys (excludes tombstones)
     size_t tombstones;   ///< Number of deleted buckets (tombstones)
@@ -48,8 +50,9 @@ typedef struct hashmap {
 /**
  * @brief Forward-only iterator over occupied entries (skips empty/tombstones).
  */
-typedef struct hm_iter {
-    const hashmap_t *hm; ///< Hash map being iterated
+typedef struct hm_iter
+{
+    const hashmap_t* hm; ///< Hash map being iterated
     size_t idx;          ///< Current bucket index (0..capacity)
 } hm_iter_t;
 
@@ -62,7 +65,7 @@ typedef struct hm_iter {
  * @retval 0 on success
  * @retval -1 on allocation or parameter error
  */
-int   hm_init(hashmap_t *hm, size_t initial_capacity);
+int hm_init(hashmap_t* hm, size_t initial_capacity);
 
 /**
  * @brief Destroy a hash map and release its internal storage.
@@ -72,7 +75,7 @@ int   hm_init(hashmap_t *hm, size_t initial_capacity);
  *       explicitly documents ownership transfer. Caller is responsible for
  *       disposing pointed data if needed.
  */
-void  hm_destroy(hashmap_t *hm);
+void hm_destroy(hashmap_t* hm);
 
 /**
  * @brief Look up a key.
@@ -83,7 +86,7 @@ void  hm_destroy(hashmap_t *hm);
  * @retval 1 if found (and *out_value set)
  * @retval 0 if not found
  */
-int   hm_get(hashmap_t *hm, const char *key, void **out_value);
+int hm_get(hashmap_t* hm, const char* key, void** out_value);
 
 /**
  * @brief Insert or replace a (key, value) pair.
@@ -99,7 +102,7 @@ int   hm_get(hashmap_t *hm, const char *key, void **out_value);
  *       otherwise by the implementation. Keys must remain valid for the
  *       lifetime of the entry if the map stores pointers directly.
  */
-int   hm_put(hashmap_t *hm, const char *key, void *value);
+int hm_put(hashmap_t* hm, const char* key, void* value);
 
 /**
  * @brief Delete a key if present.
@@ -109,7 +112,7 @@ int   hm_put(hashmap_t *hm, const char *key, void *value);
  * @retval 1 if a key was found and deleted
  * @retval 0 if the key did not exist
  */
-int   hm_del(hashmap_t *hm, const char *key);
+int hm_del(hashmap_t* hm, const char* key);
 
 /**
  * @brief Initialize an iterator to traverse live (occupied) entries.
@@ -119,7 +122,8 @@ int   hm_del(hashmap_t *hm, const char *key);
  * @param hm Hash map to iterate.
  * @param it Iterator to initialize.
  */
-static inline void hm_iter_init(const hashmap_t *hm, hm_iter_t *it) {
+static inline void hm_iter_init(const hashmap_t* hm, hm_iter_t* it)
+{
     it->hm = hm;
     it->idx = 0;
 }
@@ -135,7 +139,7 @@ static inline void hm_iter_init(const hashmap_t *hm, hm_iter_t *it) {
  *
  * @warning The returned `key` pointer is owned by the hash map. Do NOT free it.
  */
-int hm_iter_next(hm_iter_t *it, const char **out_key, void **out_value);
+int hm_iter_next(hm_iter_t* it, const char** out_key, void** out_value);
 
 /**
  * @brief Get the number of live keys (excludes tombstones).
@@ -143,6 +147,9 @@ int hm_iter_next(hm_iter_t *it, const char **out_key, void **out_value);
  * @param hm Hash map.
  * @return Count of live keys; 0 if `hm` is NULL.
  */
-static inline size_t hm_size(const hashmap_t *hm) { return hm ? hm->size : 0; }
+static inline size_t hm_size(const hashmap_t* hm)
+{
+    return hm ? hm->size : 0;
+}
 
 #endif // HASHMAP_OP_H

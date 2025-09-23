@@ -12,7 +12,7 @@
 #ifndef AGENT_METADATA_WRAPPERS_H
 #define AGENT_METADATA_WRAPPERS_H
 
-#include "../../remoted/agent_metadata.h"
+#include "../../remoted/agent_metadata_db.h"
 
 void __wrap_agent_metadata_init(void);
 

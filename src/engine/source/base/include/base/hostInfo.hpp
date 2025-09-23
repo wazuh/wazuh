@@ -12,8 +12,6 @@
 #include "json.hpp"
 #include "utils/stringUtils.hpp"
 
-using base::utils::string::trim;
-
 namespace base::hostInfo
 {
 
@@ -40,6 +38,33 @@ constexpr char EVENT_HOST_IP[] {"/host/ip"};
 
 /**
  * @brief Collects host information and returns it as a JSON document.
+ *
+ * The resulting JSON follows this shape (fields present when available):
+ *
+ * @code{.json}
+ * {
+ *   "agent": {
+ *     "id":   "000",
+ *     "name": "worker"
+ *   },
+ *   "host": {
+ *     "os": {
+ *       "name":     "Ubuntu",
+ *       "version":  "22.04.4 LTS",
+ *       "full":     "Jammy Jellyfish",
+ *       "platform": "ubuntu",
+ *       "kernel":   "Linux |worker |5.15.0-113-generic|x86_64"
+ *     },
+ *     "architecture": "x86_64",
+ *     "ip": ["192.168.1.10", "10.0.0.5"]
+ *   }
+ * }
+ * @endcode
+ *
+ * Notes:
+ * - `host.ip` is an array of IPv4 strings (may be empty if no addresses are found).
+ * - `host.os.kernel` is a formatted descriptor including OS, hostname, kernel release and arch.
+ * - Missing data is simply omitted (no nulls), depending on system call availability.
  *
  * @return json::Json with the fields above set when available.
  * @throws std::runtime_error on unexpected system call failures (e.g., gethostname()).

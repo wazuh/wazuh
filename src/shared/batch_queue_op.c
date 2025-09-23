@@ -326,13 +326,12 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
         }
         n->data = data;
         n->next = NULL;
-        //n->prev = slot->q->last;
         if (slot->q->last) {
-            n->prev = slot->q->last;          // enlazar hacia atrás
-            slot->q->last->next = n;          // enlazar hacia adelante
+            n->prev = slot->q->last;
+            slot->q->last->next = n;
             slot->q->last = n;
         } else {
-            // cola vacía
+            // empty queue
             n->prev = NULL;
             slot->q->first = slot->q->last = n;
         }
