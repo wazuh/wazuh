@@ -150,7 +150,7 @@ jobs:
           RUN_ID=$(gh run list -L 200 \
             --commit="${{ github.event.pull_request.head.sha }}" \
             --json databaseId,headSha,displayTitle,workflowName,conclusion \
-            --jq '.[] | select(.workflowName == "Package - Build multiple Wazuh Manager Packages") | .databaseId' | head -1)
+            --jq '.[] | select(.workflowName | test("Package - Build multiple Wazuh Manager Packages")) | .databaseId' | head -1)
 
           if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
             echo "[-] No package build run found for this branch"
@@ -301,16 +301,16 @@ jobs:
           echo "[*] Debugging Wazuh installation..."
           echo "[*] Checking if /var/ossec exists:"
           ls -la /var/ossec/ 2>/dev/null || echo "[-] /var/ossec directory not found"
-          
+
           echo "[*] Checking if /var/ossec/logs exists:"
           ls -la /var/ossec/logs/ 2>/dev/null || echo "[-] /var/ossec/logs directory not found"
-          
+
           echo "[*] Checking all files in /var/ossec/logs/ (if exists):"
           sudo find /var/ossec/logs/ -type f -name "*.log" 2>/dev/null || echo "[-] No log files found"
-          
+
           echo "[*] Checking Wazuh service status:"
           sudo systemctl status wazuh-manager --no-pager --lines=10 || echo "[-] Could not get service status"
-          
+
           echo "[*] Checking if Wazuh was actually installed:"
           dpkg -l | grep wazuh || echo "[-] No Wazuh packages found"
 
@@ -325,11 +325,11 @@ jobs:
             echo "[+] Copied ossec.log to workspace"
           else
             echo "[-] ossec.log not found at /var/ossec/logs/ossec.log"
-            
+
             # Try to find any log files that might exist
             echo "[*] Searching for any log files in the system:"
             sudo find /var/log -name "*wazuh*" -o -name "*ossec*" 2>/dev/null | head -10 || echo "[-] No Wazuh/OSSEC logs found in /var/log"
-            
+
             # Check if logs might be in a different location
             echo "[*] Checking common log locations:"
             for log_path in "/var/log/wazuh" "/var/log/ossec" "/opt/wazuh/logs" "/usr/local/ossec/logs"; do
