@@ -166,9 +166,9 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_protocol) == 0) {
-            mwarn("Deprecated option 'protocol' is no longer available. Method TCP is the only one allowed.");
+            mwarn("Ignoring the 'protocol' option. Switching to TCP.");
         } else if(strcmp(node[i]->element, xml_crypto_method) == 0){
-            mwarn("Deprecated option 'crypto_method' is no longer available. Method AES is the only one allowed.");
+            mwarn("Ignoring the 'crypto_method' option. Switching to AES.");
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -281,7 +281,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
             }
             network_interface = (uint32_t)interface_numeric;
         } else if (strcmp(node[j]->element, xml_protocol) == 0) {
-            mwarn("Deprecated option 'protocol' is no longer available. Method TCP is the only one allowed.");
+            mwarn("Ignoring the 'protocol' option. Switching to TCP.");
         } else if (strcmp(node[j]->element, xml_max_retries) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);
