@@ -3,6 +3,7 @@
 #include <sys/file.h>
 #include <unistd.h>
 
+// LCOV_EXCL_START
 namespace file_system
 {
     int FileSystemWrapper::open(const char* path, int flags, int mode) const
@@ -21,3 +22,4 @@ namespace file_system
         return ::close(fd);
     }
 } // namespace file_system
+// LCOV_EXCL_STOP

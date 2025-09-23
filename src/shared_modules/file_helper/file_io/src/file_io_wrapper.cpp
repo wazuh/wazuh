@@ -1,5 +1,6 @@
 #include <file_io_wrapper.hpp>
 
+// LCOV_EXCL_START
 namespace file_io
 {
     std::unique_ptr<std::ifstream> FileIOWrapper::create_ifstream(const std::string& filePath,
@@ -23,3 +24,4 @@ namespace file_io
         return static_cast<bool>(std::getline(file, line));
     }
 }; // namespace file_io
+// LCOV_EXCL_STOP

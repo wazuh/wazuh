@@ -38,7 +38,8 @@ namespace file_system
 
             // The parent directory is the part of the path before the first wildcard.
             // If the wildcard is the first character, then the parent directory is the root directory.
-            const auto nextDirectoryPos {
+            const auto nextDirectoryPos
+            {
                 wildcardPos == 0 ? 0 : path.find_first_of(std::filesystem::path::preferred_separator, wildcardPos)};
 
             if (parentDirectoryPos == std::string::npos)
@@ -64,11 +65,12 @@ namespace file_system
             // If the wildcard is the last character, then the pattern is the rest of the string.
             // If the wildcard is the first character, then the pattern is the rest of the string, minus the next '\'.
             // If there is no next '\', then the pattern is the rest of the string.
-            const auto pattern {
+            const auto pattern
+            {
                 path.substr(parentDirectoryPos == 0 ? 0 : parentDirectoryPos + 1,
                             nextDirectoryPos == std::string::npos
-                                ? std::string::npos
-                                : nextDirectoryPos - (parentDirectoryPos == 0 ? 0 : parentDirectoryPos + 1))};
+                            ? std::string::npos
+                            : nextDirectoryPos - (parentDirectoryPos == 0 ? 0 : parentDirectoryPos + 1))};
 
             if (m_fsWrapper->exists(baseDir))
             {

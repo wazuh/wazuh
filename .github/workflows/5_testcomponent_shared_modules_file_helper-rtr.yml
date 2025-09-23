@@ -1,0 +1,44 @@
+name: 5.X - Running RTR. Shared Modules - File Helper - Unit tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/ci/**"
+      - "src/build.py"
+      - ".github/actions/**"
+      - ".github/workflows/5_testcomponent_shared_modules_file_helper-rtr.yml"
+      - "src/shared_modules/file_helper/**"
+
+jobs:
+  rtr:
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [shared_modules/file_helper]
+        target: [agent, winagent]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+      - name: "Install dependencies"
+        uses: ./.github/actions/install_build_deps
+        with:
+          target: ${{ matrix.target }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: ".github/workflows/.python-version"
+          architecture: x64
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
+      - name: Run RTR for module ${{ matrix.module }} and target ${{ matrix.target }}
+        run: |
+          cd src/
+          python build.py --target ${{ matrix.target }} --readytoreview ${{ matrix.module }}
+      - name: Uploading coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage_report ${{ matrix.target }}
+          path: ./**/coverage_report/**

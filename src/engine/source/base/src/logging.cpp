@@ -9,6 +9,8 @@
  */
 
 #include <base/logging.hpp>
+#include <base/libwazuhshared.hpp>
+
 #include <spdlog/pattern_formatter.h>
 
 namespace Log
@@ -153,6 +155,8 @@ void testInit(Level lvl)
         logConfig.level = lvl;
         start(logConfig);
     }
+
+    setenv(base::process::ENV_ENGINE_STANDALONE, "true", 1);
 }
 
 void initializeFullLogFunction(
@@ -168,17 +172,21 @@ extern "C"
 {
 #endif
 
-    void init(full_log_fnc_t callback)
+    void init()
     {
+        using LogginFnWrapperType = void (*)(int, const char*, const char*, int, const char*, const char*, va_list);
+        const auto logWrapper = base::libwazuhshared::getFunction<LogginFnWrapperType>("mtLoggingFunctionsWrapper");
+        base::libwazuhshared::setLoggerTag(logging::default_tag());
+
         initializeFullLogFunction(
-            [callback](const int logLevel,
+            [logWrapper](const int logLevel,
                        const std::string& tag,
                        const std::string& file,
                        const int line,
                        const std::string& func,
                        const std::string& logMessage,
                        va_list args)
-            { callback(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
+            { logWrapper(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args); });
     }
 
 #ifdef __cplusplus
@@ -200,7 +208,7 @@ void applyLevelStandalone(logging::Level target, int debugCount)
     }
 }
 
-void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared)
+void applyLevelWazuh(logging::Level target, int debugCount)
 {
     // -d takes priority over the configuration
     const logging::Level effective = (debugCount > 1)    ? logging::Level::Trace
@@ -212,12 +220,8 @@ void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared
         return; // Info/Warn/Err/Critical
     }
 
-    using now_debug_fn_t = void (*)();
-    auto* nowDebug = reinterpret_cast<now_debug_fn_t>(dlsym(libwazuhshared, "nowDebug"));
-    if (!nowDebug)
-    {
-        throw std::runtime_error {fmt::format("nowDebug symbol not found: {}", dlerror())};
-    }
+    using NowDebugFnType = void (*)();
+    const auto nowDebug = base::libwazuhshared::getFunction<NowDebugFnType>("nowDebug");
 
     const int times = (effective == logging::Level::Debug) ? 1 : 2;
     for (int i = 0; i < times; ++i) nowDebug();
@@ -225,4 +229,44 @@ void applyLevelWazuh(logging::Level target, int debugCount, void* libwazuhshared
     LOG_DEBUG("Changed log level to '{}'", logging::levelToStr(effective));
 }
 
+/**
+ * @brief Creates a spdlog-based logging function compatible with GLOBAL_LOG_FUNCTION signature
+ *        for use in standalone mode.
+ *
+ * This function returns a logging function that uses spdlog internally and is compatible
+ * with the GLOBAL_LOG_FUNCTION signature used throughout the Wazuh codebase.
+ *
+ * @return A function that can be used to log messages using spdlog in standalone mode.
+ *         The returned function has the signature:
+ *         void(const int, const char*, const char*, const int, const char*, const char*, va_list)
+ */
+std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+createStandaloneLogFunction()
+{
+    return [](const int logLevel,
+              const char* tag,
+              const char* file,
+              const int line,
+              const char* func,
+              const char* msg,
+              va_list args) -> void
+    {
+        // Convert the log level from Wazuh format to logging::Level
+        logging::Level level;
+        switch (logLevel)
+        {
+            case 0: level = logging::Level::Debug; break;
+            case 1: level = logging::Level::Info; break;
+            case 2: level = logging::Level::Warn; break;
+            case 3: level = logging::Level::Err; break;
+            case 4: level = logging::Level::Critical; break;
+            case 5: level = logging::Level::Trace; break;
+            default: level = logging::Level::Info; break;
+        }
+
+        char buffer[4096]; // Max size of formatted message TODO move a constant
+        vsnprintf(buffer, sizeof(buffer), msg, args);
+        backend_log(level, file, line, func, buffer, strlen(buffer));
+    };
+}
 } // namespace logging
