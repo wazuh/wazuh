@@ -282,9 +282,24 @@ function install_deps() {
 
     echo "Installing build dependencies for $(uname -m) architecture."
     if [ "$(uname -m)" = "arm64" ]; then
-        brew install gcc binutils autoconf automake libtool cmake
+        brew install binutils autoconf automake libtool cmake
     else
         brew install cmake
+    fi
+
+    echo "Checking required gcc version (11)."
+    if brew list --versions gcc >/dev/null 2>&1; then
+        GCC_VER="$(brew list --versions gcc | awk '{print $2}')"
+        GCC_MAJOR="${GCC_VER%%.*}"
+        if [ "${GCC_MAJOR:-0}" -ge 11 ]; then
+            echo "Found gcc installed version ${GCC_VER} >= 11. Nothing to do."
+        else
+            echo "Found gcc installed version ${GCC_VER} < 11. Upgrading."
+            brew upgrade gcc
+        fi
+    else
+        echo "No gcc found. Installing."
+        brew install gcc
     fi
     exit 0
 }
