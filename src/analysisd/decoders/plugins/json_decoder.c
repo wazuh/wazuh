@@ -113,6 +113,9 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
     }
 
     if (strcmp(key, "dstuser") == 0){
+        if (lf->dstuser) {
+            os_free(lf->dstuser);  // prevent data leakage if it originated from "user"
+        }
         os_strdup(value, lf->dstuser);
 #ifdef TESTRULE
         if (!alert_only) {
@@ -120,6 +123,22 @@ void fillData(Eventinfo *lf, const char *key, const char *value)
         }
 #endif
         return;
+    }
+
+    /* ALIAS: "user" -> dstuser (only if dstuser is not set).
+    * If dstuser already exists (for example, if the JSON contains both keys),
+    * we do NOT overwrite it and let "user" be treated as a dynamic field.
+    */
+    if (strcmp(key, "user") == 0){
+        if (!lf->dstuser || !*lf->dstuser) {
+            os_strdup(value, lf->dstuser);
+#ifdef TESTRULE
+        if (!alert_only) {
+            print_out("       dstuser(aliased from user): '%s'", lf->dstuser);
+        }
+#endif
+            return;
+        }
     }
 
     if (strcmp(key, "id") == 0){
