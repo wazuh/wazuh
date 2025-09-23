@@ -135,10 +135,9 @@ checks:
     compliance:
       - cis: ["2.3.1.1"]
       - cis_csc: ["4.7"]
-    condition: any
+    condition: all
     rules:
-      - 'c:wmic useraccount where (sid like "s-1-5-21-%-500") get Disabled -> r:TRUE'
-      - 'c:wmic useraccount where (sid like "s-1-5-21-%-500") get Disabled -> r:No Instance\(s\) Available.'
+      - 'c:powershell -NoProfile -Command "[bool](Get-CimInstance -Query ''SELECT * FROM Win32_UserAccount WHERE LocalAccount = TRUE AND SID LIKE ''''S-1-5-21-%-500'''''' | Where-Object -Property Disabled)" -> r:True'
 
   - id: 15510
     title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'."
@@ -163,10 +162,9 @@ checks:
     compliance:
       - cis: ["2.3.1.3"]
       - cis_csc: ["4.7"]
-    condition: any
+    condition: all
     rules:
-      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:TRUE'
-      - 'c:wmic useraccount where (sid like "s-1-5-21-%-501") get Disabled -> r:No Instance\(s\) Available.'
+      - 'c:powershell -NoProfile -Command "[bool](Get-CimInstance -Query ''SELECT * FROM Win32_UserAccount WHERE LocalAccount = TRUE AND SID LIKE ''''S-1-5-21-%-501'''''' | Where-Object -Property Disabled)" -> r:True'
 
   - id: 15512
     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'."
