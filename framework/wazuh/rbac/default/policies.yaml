@@ -118,28 +118,24 @@ default_policies:
         effect: allow
 
   decoders_read:
-    description: Allow reading all decoder files in the system.
+    description: Allow reading all decoders in the system.
     policies:
-      decoders:
+      resourceless:
         actions:
           - decoders:read
         resources:
-          - decoder:file:*
+          - '*:*:*'
         effect: allow
 
   decoders_all:
-    description: Allow managing all decoder files in the system.
+    description: Allow managing all decoders in the system.
     policies:
-      files:
-        actions:
-          - decoders:read
-          - decoders:delete
-        resources:
-          - decoder:file:*
-        effect: allow
       resourceless:
         actions:
+          - decoders:create
+          - decoders:read 
           - decoders:update
+          - decoders:delete
         resources:
           - '*:*:*'
         effect: allow
