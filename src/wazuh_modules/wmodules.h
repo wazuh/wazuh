@@ -183,9 +183,9 @@ int wm_sendmsg_ex(int usec, int queue, const char *message, const char *locmsg, 
 int wm_relative_path(const char * path);
 
 /**
- Check the binary wich executes a commad has the specified hash.
+ Check the binary which executes a command has the specified hash.
  Returns:
-     1 if the binary matchs with the specified digest, 0 if not.
+     1 if the binary matches with the specified digest, 0 if not.
     -1 if the binary doesn't exist.
     -2 invalid parameters.
 */

@@ -25,6 +25,13 @@ int __wrap_wm_state_io(const char * tag,
                        void *state,
                        size_t size);
 
-int __wrap_wm_validate_command(const char *command, const char *digest, crypto_type ctype);
+int __wrap_wm_validate_command(const char *command,
+                               const char *digest,
+                               crypto_type ctype);
+
+void expect_wm_validate_command(const char *command,
+                                const char *digest,
+                                crypto_type ctype,
+                                int ret);
 
 #endif

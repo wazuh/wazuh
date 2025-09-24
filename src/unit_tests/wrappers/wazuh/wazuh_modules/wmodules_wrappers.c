@@ -43,6 +43,13 @@ int __wrap_wm_validate_command(const char *command, const char *digest, crypto_t
     check_expected(command);
     check_expected(digest);
     check_expected(ctype);
-    
+
     return mock_type(int);
+}
+
+void expect_wm_validate_command(const char *command, const char *digest, crypto_type ctype, int ret) {
+    expect_string(__wrap_wm_validate_command, command, command);
+    expect_string(__wrap_wm_validate_command, digest, digest);
+    expect_value(__wrap_wm_validate_command, ctype, ctype);
+    will_return(__wrap_wm_validate_command, ret);
 }

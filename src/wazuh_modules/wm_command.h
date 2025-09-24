@@ -43,6 +43,6 @@ extern const wm_context WM_COMMAND_CONTEXT;   // Context
 int wm_command_read(xml_node **nodes, wmodule *module, int agent_cfg);
 
 // Validate checksums
-int validate_checksum(wm_command_t * command, crypto_type ctype);
+int validate_command_checksums(wm_command_t * command);
 
 #endif // WM_COMMAND_H
