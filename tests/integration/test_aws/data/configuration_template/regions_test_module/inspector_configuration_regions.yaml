@@ -9,7 +9,9 @@
             attributes:
               - type: SERVICE_TYPE
             elements:
+              - aws_profile:
+                  value: inspector_tests
               - only_logs_after:
-                  value: 2023-JAN-12
+                  value: 2025-SEP-15
               - regions:
                   value: REGIONS

@@ -79,7 +79,7 @@ nlohmann::json LoggedInUsersProvider::collect()
             }
             else
             {
-                row["host"] = nullptr;
+                row["host"] = "";
             }
         }
         else
@@ -93,7 +93,7 @@ nlohmann::json LoggedInUsersProvider::collect()
             }
             else
             {
-                row["host"] = nullptr;
+                row["host"] = "";
             }
         }
 

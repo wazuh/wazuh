@@ -1,4 +1,4 @@
-name: 4.X - Create and publish Coverity Docker image
+name: 4.X - Coverity Docker image - Create and publish
 
 on:
   workflow_dispatch:

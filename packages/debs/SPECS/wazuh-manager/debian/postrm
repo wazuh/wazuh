@@ -41,6 +41,14 @@ case "$1" in
             rm -rf ${DIR}/engine
         fi
 
+        # Delete audisp wazuh plugin if exists
+        if [ -e /etc/audit/plugins.d/af_wazuh.conf ]; then
+            rm -f -- /etc/audit/plugins.d/af_wazuh.conf
+        fi
+        if [ -e /etc/audisp/plugins.d/af_wazuh.conf ]; then
+            rm -f -- /etc/audisp/plugins.d/af_wazuh.conf
+        fi
+
         # Delete old .save
         find ${DIR}/etc/ -type f  -name "*save" -exec rm -f {} \;
         find ${DIR}/api/ -type f  -name "*save" -exec rm -f {} \;

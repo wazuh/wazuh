@@ -95,7 +95,11 @@ runs:
 
           echo "Executing: lcov $arguments"
           echo "Include files: $include_files"
-          lcov $arguments --ignore-errors unused
+          option=""
+          if dpkg --compare-versions $(lcov --version | rev | cut -d ' ' -f1 | rev) ge 2.0-1; then
+             option="--ignore-errors unused"
+          fi
+          lcov $arguments ${option}
 
       # Generate the HTML coverage report and capture coverage data
       - name: Generate coverage report and extract coverage data
@@ -107,11 +111,11 @@ runs:
           genhtml coverage.info --output-directory coverage_report > genhtml_output.txt 2>&1
           genhtml_output=$(cat genhtml_output.txt)
           echo "$genhtml_output"
-          
+
           # Extract coverage data from genhtml output using awk for more robust parsing
           linesCoverage=$(echo "$genhtml_output" | awk '/lines.*:/ {gsub(/[^0-9.]/, "", $2); print $2}')
           functionsCoverage=$(echo "$genhtml_output" | awk '/functions.*:/ {gsub(/[^0-9.]/, "", $2); print $2}')
-          
+
           echo "Lines coverage is: '$linesCoverage' %"
           echo "Functions coverage is: '$functionsCoverage' %"
 

@@ -82,6 +82,10 @@ nlohmann::json ShadowProvider::collect()
                 // Possible improvement assigning each hash name: "6" should be "sha512"
                 entry["hash_alg"] = std::string(matches[1]);
             }
+            else
+            {
+                entry["hash_alg"] = "";
+            }
         }
         else
         {

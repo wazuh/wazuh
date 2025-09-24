@@ -1205,7 +1205,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "    System Version: macOS 10.12 (16A323)\n");
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     // sw_vers -productVersion
@@ -1222,7 +1222,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "10.2\n");
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     // sw_vers -buildVersion
@@ -1233,7 +1233,7 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "10\n");
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     // uname -r
@@ -1244,11 +1244,11 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "macos\n");
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     ret = get_unix_version();
@@ -1362,7 +1362,7 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, NULL);
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     // sw_vers -productVersion
@@ -1379,7 +1379,7 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "10.2\n");
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     // sw_vers -buildVersion
@@ -1390,7 +1390,7 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "10\n");
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     // uname -r
@@ -1401,11 +1401,11 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "macos\n");
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     ret = get_unix_version();
@@ -1507,11 +1507,11 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "10.3.5");
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     ret = get_unix_version();
@@ -1613,10 +1613,10 @@ void test_get_unix_version_zscaler(void **state)
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "10-R");
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
-    expect_value(__wrap_pclose, stream, 1);
+    expect_value(__wrap_pclose, __stream, 1);
     will_return(__wrap_pclose, 1);
 
     ret = get_unix_version();

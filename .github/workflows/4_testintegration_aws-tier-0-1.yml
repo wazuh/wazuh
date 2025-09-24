@@ -51,6 +51,11 @@ jobs:
           sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile default
           sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile default
           sudo aws configure set default.region ${AWS_DEFAULT_REGION} --profile default
+      - name: Set AWS credentials file for inspector2 tests (us-east-2)
+        run: |
+          sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile inspector_tests
+          sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile inspector_tests
+          sudo aws configure set region us-east-2 --profile inspector_tests
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
       # Build wazuh server for linux.
@@ -82,6 +87,10 @@ jobs:
           echo 'USER_WHITE_LIST="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_SYSLOG="n"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_ENABLE_ACTIVE_RESPONSE="y"' >> ./etc/preloaded-vars.conf
+          echo "" >> ./etc/preloaded-vars.conf
+          echo 'USER_CA_STORE="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_ENABLE_AUTHD="n"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf

@@ -19,6 +19,9 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
+#ifdef WIN32
+#include "../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#endif
 #endif
 
 static pthread_mutex_t restart_mutex = PTHREAD_MUTEX_INITIALIZER;

@@ -1006,7 +1006,6 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
     int message_header_size = 0;
     msg_type message_type = MT_INVALID;
 
-
     if(strncmp(msg, INVENTORY_SYNC_HEADER, INVENTORY_SYNC_HEADER_SIZE) == 0) {
         if (!router_sync_handle) {
             mdebug2("Router handle for 'inventory synchronization' not available.");
