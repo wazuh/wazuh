@@ -1408,8 +1408,9 @@ void fim_get_checksum (fim_file_data * data) {
 
     size = snprintf(0,
             0,
-            "%llu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
+            "%llu:%s:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
             data->size,
+            data->path,
             data->perm ? data->perm : "",
             data->attributes ? data->attributes : "",
             data->uid ? data->uid : "",
@@ -1425,8 +1426,9 @@ void fim_get_checksum (fim_file_data * data) {
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
             size + 1,
-            "%llu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
+            "%llu:%s:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
             data->size,
+            data->path,
             data->perm ? data->perm : "",
             data->attributes ? data->attributes : "",
             data->uid ? data->uid : "",

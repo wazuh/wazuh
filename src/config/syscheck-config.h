@@ -273,6 +273,7 @@ typedef struct fim_file_data {
 #ifdef WIN32
     cJSON * perm_json;
 #endif
+    char * path;
     char * perm;
     char * attributes;
     char * uid;
