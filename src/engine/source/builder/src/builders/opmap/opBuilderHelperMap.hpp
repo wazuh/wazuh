@@ -61,6 +61,17 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
 MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
+ * @brief Helper that converts a numeric value to a boolean (JSON boolean).
+ *        Rule: values  != 0 map to true otherwise false.
+ *
+ * @param opArgs Vector of operation arguments containing the numeric value to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
+ * @return MapOp operation
+ * @throw std::runtime_error if the parameter is not a number.
+ */
+MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
  * @brief Helper function to build a MapOp that concatenates strings from OpArgs.
  *
  * This function constructs a MapOp that concatenates strings from OpArgs, either directly
