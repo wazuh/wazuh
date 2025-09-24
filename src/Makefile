@@ -951,7 +951,7 @@ ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
 SIMDJSON_LIB = $(EXTERNAL_SIMDJSON)build/libsimdjson.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
-LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
+LUA_LIB = ${EXTERNAL_LUA}liblua.a
 LIBBPF_LIB = $(EXTERNAL_LIBBPF)build/modern.bpf.o
 DBUS_LIB = $(EXTERNAL_DBUS)lib/libdbus-1.a
 
@@ -1233,7 +1233,7 @@ endif
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 ${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
-	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
+	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE) libarchive.la
 
 $(EXTERNAL_LIBARCHIVE)Makefile:
 	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl --without-libb2
@@ -1326,27 +1326,7 @@ $(POPT_BUILD_DIR)Makefile:
 ### lua lib ###
 
 $(LUA_LIB):
-ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_LUA} && make mingw CC=${MING_BASE}${CC} MYCFLAGS='-fPIC' && make local TO_BIN='lua.exe luac.exe'
-else
-ifeq (${uname_S},Darwin)
-	cd ${EXTERNAL_LUA} && make macosx MYCFLAGS='-fPIC' && make local
-else
-ifeq (${uname_S},SunOS)
-	cd ${EXTERNAL_LUA} && gmake solaris MYCFLAGS='-fPIC' && gmake local INSTALL='cp -p' INSTALL_EXEC='cp -p' INSTALL_DATA='cp -p'
-else
-ifeq ($(findstring BSD,${uname_S}), BSD)
-	cd ${EXTERNAL_LUA} && make bsd MYCFLAGS='-fPIC' && make local
-else
-ifeq (${uname_S},AIX)
-	cd ${EXTERNAL_LUA} && make aix MYCFLAGS='-fPIC' && make local
-else
-	cd ${EXTERNAL_LUA} && make posix MYCFLAGS='-fPIC' && make local
-endif
-endif
-endif
-endif
-endif
+	cd ${EXTERNAL_LUA} && ${MAKE} all MYCFLAGS='-fPIC -DLUA_USE_LINUX -mno-bmi2' MYLIBS='-lm -ldl'
 
 ### rpm lib ###
 
