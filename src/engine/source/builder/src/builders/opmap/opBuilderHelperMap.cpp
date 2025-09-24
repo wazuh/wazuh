@@ -820,6 +820,59 @@ MapOp opBuilderHelperToInt(const std::vector<OpArg>& opArgs, const std::shared_p
     };
 }
 
+// field: +to_bool/$ref
+MapOp opBuilderHelperToBool(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Assert expected number of parameters
+    builder::builders::utils::assertSize(opArgs, 1);
+
+    // Parameter type check
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto ref = std::static_pointer_cast<Reference>(opArgs[0]);
+
+    if (buildCtx->validator().hasField(ref->dotPath()))
+    {
+        auto sType = buildCtx->validator().getType(ref->dotPath());
+        if (typeToJType(sType) != json::Json::Type::Number)
+        {
+            throw std::runtime_error(fmt::format("Expected number reference but got reference '{}' of type '{}'",
+                                                 ref->dotPath(),
+                                                 schemf::typeToStr(sType)));
+        }
+    }
+
+    // Format name for the tracer
+    const auto name = buildCtx->context().opName;
+
+    // Tracing messages
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+    const std::string failureTrace1 {fmt::format(TRACE_REFERENCE_NOT_FOUND, name, ref->dotPath())};
+    const std::string failureTrace2 {fmt::format("{} -> Reference '{}' is not a number", name, ref->dotPath())};
+
+    return [failureTrace1, failureTrace2, successTrace, ref, runState = buildCtx->runState()](
+               base::ConstEvent event) -> MapResult
+    {
+        const auto path = ref->jsonPath();
+        const auto numOpt = event->getNumberAsDouble(path);
+
+        if (!numOpt.has_value())
+        {
+            if (!event->getJson(path).has_value())
+            {
+                RETURN_FAILURE(runState, json::Json {}, failureTrace1);
+            }
+            RETURN_FAILURE(runState, json::Json {}, failureTrace2);
+        }
+
+        const double numValue = numOpt.value();
+        json::Json result;
+        result.setBool(numValue != 0.0);
+
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
+
 // field: +concat/string1|$ref1/string2|$ref2 -> atleastOne is False
 // field: +concat_any/string1|$ref1/string2|$ref2 -> atleastOne is True
 MapBuilder opBuilderHelperStringConcat(bool atleastOne)
