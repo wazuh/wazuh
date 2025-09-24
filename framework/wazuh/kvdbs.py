@@ -86,7 +86,7 @@ def list_kvdbs(policy_type: Optional[str] = None,
                                   search_text=search_text,
                                   search_in_fields=search_in_fields or ['id', 'name', 'integration_id'],
                                   complementary_search=complementary_search,
-                                  sort_by={'fields': sort_by or ['id']},
+                                  sort_by=sort_by or ['id'],
                                   sort_ascending=sort_ascending,
                                   offset=offset,
                                   limit=limit,
@@ -222,4 +222,3 @@ def delete_kvdbs(policy_type: Optional[str] = None,
             result.total_affected_items = 0
             return result
         raise e
-

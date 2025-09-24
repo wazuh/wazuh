@@ -7,12 +7,14 @@ from wazuh import WazuhError
 
 def validate_response_or_raise(response: dict, error_code: int):
     """Validate an engine response and raise an error if not OK.
+
     Parameters
     ----------
     response : dict
         The response dictionary from the engine.
     error_code : int
         The error code to use if raising an exception.
+
     Raises
     ------
     WazuhError

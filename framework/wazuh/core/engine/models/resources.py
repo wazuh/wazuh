@@ -8,6 +8,7 @@ from typing import List
 
 class ResourceType(str, Enum):
     """Enumeration for resource types in the catalog.
+
     Values
     ------
     RULE : str
@@ -26,6 +27,7 @@ class ResourceType(str, Enum):
 
 class ResourceFormat(str, Enum):
     """Enumeration for resource formats in the catalog.
+
     Values
     ------
     JSON : str

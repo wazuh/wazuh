@@ -16,10 +16,12 @@ DEFAULT_PERMISSIONS = 0o660
 
 def generate_asset_filename(filename: str) -> str:
     """Generate a safe asset filename from a given string.
+
     Parameters
     ----------
     filename : str
         The original filename.
+
     Returns
     -------
     str
@@ -29,12 +31,14 @@ def generate_asset_filename(filename: str) -> str:
 
 def generate_asset_file_path(filename: str, policy_type: PolicyType) -> str:
     """Generate the full file path for an asset based on its policy type.
+
     Parameters
     ----------
     filename : str
         The asset filename.
     policy_type : PolicyType
         The policy type for the asset.
+
     Returns
     -------
     str
@@ -50,6 +54,7 @@ def generate_asset_file_path(filename: str, policy_type: PolicyType) -> str:
 
 def save_asset_file(file_path: str, content: str, permissions = DEFAULT_PERMISSIONS) -> results.WazuhResult:
     """Save asset content to a file, handling permissions and atomic move.
+
     Parameters
     ----------
     file_path : str
@@ -58,6 +63,7 @@ def save_asset_file(file_path: str, content: str, permissions = DEFAULT_PERMISSI
         The content to write.
     permissions : int, optional
         The file permissions to set (default is 0o660).
+
     Returns
     -------
     WazuhResult

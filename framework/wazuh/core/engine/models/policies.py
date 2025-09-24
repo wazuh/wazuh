@@ -14,10 +14,12 @@ class PolicyType(str, Enum):
 
     def get_base_path(self):
         """Get the base path for the given policy type.
+
         Returns
         -------
         str
             The base path for the policy type.
+
         Raises
         ------
         WazuhError
