@@ -8,6 +8,7 @@ from os.path import exists
 from dataclasses import asdict
 from typing import List, Optional
 
+from wazuh.rbac.decorators import expose_resources
 from wazuh.core.exception import WazuhError
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.utils import validate_response_or_raise
@@ -20,7 +21,8 @@ from wazuh.core.utils import process_array, full_copy, safe_move
 DEFAULT_DECODER_FORMAT = ResourceFormat.JSON
 ENGINE_USER_NAMESPACE = 'user'
 
-def create_decoder(filename: str, contents: Resource, policy_type: PolicyType) -> AffectedItemsWazuhResult:
+@expose_resources(actions=['decoders:create'], resources=["*:*:*"])
+async def create_decoder(filename: str, contents: Resource, policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Create a new decoder resource.
 
     Parameters
@@ -87,7 +89,8 @@ def create_decoder(filename: str, contents: Resource, policy_type: PolicyType) -
 
     return result
 
-def get_decoders(names: List[str], search: Optional[str], status: Optional[Status], policy_type: PolicyType) -> AffectedItemsWazuhResult:
+@expose_resources(actions=['decoders:read'], resources=["*:*:*"])
+async def get_decoders(names: List[str], search: Optional[str], status: Optional[Status], policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Retrieve decoder resources.
 
     Parameters
@@ -134,7 +137,8 @@ def get_decoders(names: List[str], search: Optional[str], status: Optional[Statu
 
         return results
 
-def update_decoder(filename: str, contents: Resource, policy_type: PolicyType):
+@expose_resources(actions=['decoders:update'], resources=["*:*:*"])
+async def update_decoder(filename: str, contents: Resource, policy_type: PolicyType):
     """Update an existing decoder resource.
 
     Parameters
@@ -217,8 +221,8 @@ def update_decoder(filename: str, contents: Resource, policy_type: PolicyType):
     result.total_affected_items = len(result.affected_items)
     return result
 
-
-def delete_decoders(names: List[str], policy_type: PolicyType):
+@expose_resources(actions=['decoders:delete'], resources=["*:*:*"])
+async def delete_decoders(names: List[str], policy_type: PolicyType):
     """Delete decoder resources.
 
     Parameters
