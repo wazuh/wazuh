@@ -327,10 +327,9 @@ x-rbac-catalog:
         resources: ['decoder:file:local_decoder.xml']
         effect: "allow"
     'kvdbs:read':
+      description: "Read KVDBs (testing/production)"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
-      related_endpoints:
-        - GET /kvdbs
       example:
         actions:
           - kvdbs:read
@@ -338,11 +337,9 @@ x-rbac-catalog:
           - '*:*:*'
         effect: "allow"
     'kvdbs:write':
+      description: "Create/Update KVDBs (testing policy)"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
-      related_endpoints:
-        - POST /kvdbs
-        - PUT /kvdbs
       example:
         actions:
           - kvdbs:write
@@ -350,10 +347,9 @@ x-rbac-catalog:
           - '*:*:*'
         effect: "allow"
     'kvdbs:delete':
+      description: "Delete KVDBs (testing policy)"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
-      related_endpoints:
-        - DELETE /kvdbs
       example:
         actions:
           - kvdbs:delete
