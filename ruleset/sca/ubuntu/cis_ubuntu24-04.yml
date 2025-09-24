@@ -2909,8 +2909,8 @@ checks:
        - soc_2: ["CC6.6"]
      condition: all
      rules:
-      - 'c:sh -c "systemctl show ufw.service nft.service iptables.service | grep -cE \"^ActiveState=active\"" -> n:^(\p*\d+) compare == 1'
-      - 'c:sh -c "systemctl show ufw.service nft.service iptables.service | grep -cE \"^LoadState=loaded\"" -> n:^(\p*\d+) compare == 1'
+      - 'c:sh -c "systemctl show ufw.service nftables.service iptables.service | grep -cE \"^ActiveState=active\"" -> n:^(\p*\d+) compare == 1'
+      - 'c:sh -c "systemctl show ufw.service nftables.service iptables.service | grep -cE \"^LoadState=loaded\"" -> n:^(\p*\d+) compare == 1'
 
   # 4.2.1 Ensure ufw is installed. (Automated)
    - id: 35620
@@ -6699,3 +6699,4 @@ checks:
 
   # 7.2.9 Ensure local interactive user home directories are configured. (Automated) - Not Implemented
   # 7.2.10 Ensure local interactive user dot files access is configured. (Automated) - Not Implemented
+
