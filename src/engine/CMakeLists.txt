@@ -299,6 +299,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/udgramsrv)
 add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
+add_subdirectory(${ENGINE_SOURCE_DIR}/ctistore)
 
 
 target_link_libraries(wazuh-engine
