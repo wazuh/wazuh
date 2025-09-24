@@ -7,6 +7,8 @@
 #include <api/adapter/helpers.hpp>
 #include <api/tester/handlers.hpp>
 
+#include <base/hostInfo.hpp>
+
 namespace api::tester::handlers
 {
 namespace eTester = ::com::wazuh::api::engine::tester;
@@ -427,9 +429,10 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
 
         // Create The event to test
         base::Event event;
+        const auto hostInfo = base::hostInfo::toJson();
         try
         {
-            event = protocolHandler(protoReq.event());
+            event = protocolHandler(protoReq.event(), hostInfo);
         }
         catch (const std::exception& e)
         {

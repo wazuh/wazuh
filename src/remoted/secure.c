@@ -9,14 +9,18 @@
  */
 
 #include "shared.h"
+#include "bulk.h"
+#include "agent_metadata_db.h"
 #include "../os_net/os_net.h"
 #include "remoted.h"
+#include "remoted_op.h"
 #include "state.h"
 #include "../wazuh_db/helpers/wdb_global_helpers.h"
 #include "router.h"
 #include "sym_load.h"
 #include "indexed_queue_op.h"
-
+#include "batch_queue_op.h"
+#include "http_op.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
@@ -28,6 +32,7 @@
 /* Global variables */
 int sender_pool;
 w_indexed_queue_t *control_msg_queue = NULL;
+w_rr_queue_t *events_queue = NULL;
 
 netbuffer_t netbuffer_recv;
 netbuffer_t netbuffer_send;
@@ -37,7 +42,6 @@ wnotify_t * notify = NULL;
 size_t global_counter;
 
 _Atomic (time_t) current_ts;
-
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
@@ -66,7 +70,7 @@ static void * rem_handler_main(void * args);
 void * rem_keyupdate_main(__attribute__((unused)) void * args);
 
 /* Handle each message received */
-STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue);
+STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue);
 
 // Close and remove socket from keystore
 int _close_sock(keystore * keys, int sock);
@@ -162,6 +166,34 @@ static char *w_ctrl_msg_get_key(void *data) {
  */
 void * save_control_thread(void * queue);
 
+typedef struct {
+    char  *raw;
+    size_t len;
+} evt_item_t;
+
+typedef struct {
+    const char *agent_key;
+    char *agent_id;
+    char *agent_name;
+    char *agent_ip;
+
+    int   header_added;
+    bulk_t bulk;             // body to send (header + events)
+} dispatch_ctx_t;
+
+static void dispose_evt_item(void *p) {
+    evt_item_t *e = (evt_item_t*)p;
+    if (!e) return;
+    os_free(e->raw);
+    os_free(e);
+}
+
+void * dispach_events_thread(void * queue);
+
+typedef struct {
+    w_indexed_queue_t *control_msg_queue; // the indexed control queue
+    w_rr_queue_t      *events_queue;      // round robbin event ring
+} rem_handler_args_t;
 
 /* Handle secure connections */
 void HandleSecure()
@@ -169,11 +201,21 @@ void HandleSecure()
     const int protocol = logr.proto[logr.position];
     int n_events = 0;
 
+    agent_metadata_init();
 
     size_t ctrl_msg_queue_size = (size_t) getDefine_Int("remoted", "control_msg_queue_size", 4096, 0x1 << 20); // 1MB
     control_msg_queue = indexed_queue_init(ctrl_msg_queue_size);
     indexed_queue_set_dispose(control_msg_queue, (void (*)(void *))w_free_ctrl_msg_data);
     indexed_queue_set_get_key(control_msg_queue, w_ctrl_msg_get_key);
+
+    size_t batch_events_capacity = (size_t)getDefine_Int("remoted", "batch_events_capacity", 0, 0x1<<20);
+    events_queue = batch_queue_init(batch_events_capacity);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    size_t batch_events_per_agent_capacity = (size_t)getDefine_Int("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20);
+    batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
+
+    uhttp_global_init();
 
     struct sockaddr_storage peer_info;
     memset(&peer_info, 0, sizeof(struct sockaddr_storage));
@@ -256,6 +298,13 @@ void HandleSecure()
     // Create upsert control message thread
     w_create_thread(save_control_thread, (void *) control_msg_queue);
 
+    // Create upsert control message thread
+    w_create_thread(dispach_events_thread, (void *) events_queue);
+
+    rem_handler_args_t *worker_args;
+    os_malloc(sizeof(*worker_args), worker_args);
+    worker_args->control_msg_queue = control_msg_queue;
+    worker_args->events_queue      = events_queue;
     // Create message handler thread pool
     {
         int worker_pool = getDefine_Int("remoted", "worker_pool", 1, 16);
@@ -263,7 +312,7 @@ void HandleSecure()
         global_counter = 0;
         rem_initList(FD_LIST_INIT_VALUE);
         while (worker_pool > 0) {
-            w_create_thread(rem_handler_main, control_msg_queue);
+            w_create_thread(rem_handler_main, worker_args);
             worker_pool--;
         }
     }
@@ -462,12 +511,15 @@ STATIC void handle_outgoing_data_to_tcp_socket(int sock_client)
 // Message handler thread
 void * rem_handler_main(void * args) {
     message_t * message;
-    w_indexed_queue_t * control_msg_queue = (w_indexed_queue_t *) args;
+    rem_handler_args_t *queues = (rem_handler_args_t*)args;
+    w_indexed_queue_t *control_msg_queue = queues->control_msg_queue;
+    w_rr_queue_t      *events_queue      = queues->events_queue;
+
     mdebug1("Message handler thread started.");
 
     while (1) {
         message = rem_msgpop();
-        HandleSecureMessage(message, control_msg_queue);
+        HandleSecureMessage(message, control_msg_queue, events_queue);
         rem_msgfree(message);
     }
 
@@ -537,7 +589,7 @@ STATIC void * close_fp_main(void * args) {
     return NULL;
 }
 
-STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue) {
+STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * control_msg_queue, w_rr_queue_t * batch_queue) {
     int agentid;
     const int protocol = (message->sock == USING_UDP_NO_CLIENT_SOCKET) ? REMOTED_NET_PROTOCOL_UDP : REMOTED_NET_PROTOCOL_TCP;
     char cleartext_msg[OS_MAXSTR + 1];
@@ -839,7 +891,27 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
             if (validation_result == 1) {
                 // Message should be queued for database processing
                 w_ctrl_msg_data_t * ctrl_msg_data;
-                os_calloc(sizeof(w_ctrl_msg_data_t), 1, ctrl_msg_data);
+                os_calloc(1, sizeof(w_ctrl_msg_data_t), ctrl_msg_data);
+
+                /* Parsing msg */
+                {
+                    agent_info_data *agent_data;
+                    os_calloc(1, sizeof(agent_info_data), agent_data);
+                    int result = parse_agent_update_msg(tmp_msg, agent_data);
+
+                    if (OS_SUCCESS == result) {
+                        // Build metadata from parsed agent_info_data and upsert in the global map
+                        agent_meta_t *fresh = agent_meta_from_agent_info(key->id, agent_data);
+                        if (fresh) {
+                            if (agent_meta_upsert_locked(key->id, fresh) != 0) {
+                                mwarn("Error upsert metadata from agent ID '%s'.", key->id);
+                                agent_meta_free(fresh);
+                            }
+                        }
+                    }
+
+                    wdb_free_agent_info_data(agent_data);
+                }
 
                 ctrl_msg_data->key = key;
 
@@ -888,11 +960,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         return;
     }
 
-    /* Generate srcmsg */
-
-    snprintf(srcmsg, OS_FLSIZE, "[%s] (%s) %s", keys.keyentries[agentid]->id,
-             keys.keyentries[agentid]->name, keys.keyentries[agentid]->ip->ip);
-
     os_strdup(keys.keyentries[agentid]->id, agentid_str);
     os_strdup(keys.keyentries[agentid]->name, agent_name);
     os_strdup(keys.keyentries[agentid]->ip->ip, agent_ip);
@@ -903,25 +970,15 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         _close_sock(&keys, sock_idle);
     }
 
-    /* If we can't send the message, try to connect to the
-     * socket again. If it not exit.
-     */
-    if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
-        merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
+    evt_item_t *e; os_calloc(1, sizeof(*e), e);
+    os_calloc(msg_length, sizeof(char), e->raw);
+    memcpy(e->raw, tmp_msg, msg_length);
+    e->len = msg_length;
 
-        // Try to reconnect infinitely
-        logr.m_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-
-        minfo("Successfully reconnected to '%s'", DEFAULTQUEUE);
-
-        if (SendMSG(logr.m_queue, tmp_msg, srcmsg, SECURE_MQ) < 0) {
-            // Something went wrong sending a message after an immediate reconnection...
-            merror(QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-        } else {
-            rem_inc_recv_evt(agentid_str);
-        }
-    } else {
-        rem_inc_recv_evt(agentid_str);
+    int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
+    if (rc < 0) {
+        dispose_evt_item(e);
+        mwarn("Dropping event for agent '%s' (rc=%d)", agentid_str, rc);
     }
 
     if(getDefine_Int("remoted", "router_forwarding_disabled", 0, 1) == 1) {
@@ -1208,5 +1265,239 @@ void * save_control_thread(void * control_msg_queue)
         }
     }
 
+    return NULL;
+}
+
+// Encode the header ONLY once above the body
+static int append_header(dispatch_ctx_t *ctx) {
+    if (ctx->header_added) return 0;
+    if (!ctx || !ctx->agent_key) return -1;
+
+    // Snapshot metadata for this agent (copies strings into 'snap')
+    agent_meta_t snap = {0};
+    int have_meta = (agent_meta_snapshot_str(ctx->agent_key, &snap) == 0);
+
+    // Fallbacks
+    char *agent_name = NULL;
+    char *agent_ip   = NULL;
+
+    // Prefer metadata snapshot
+    if (have_meta) {
+        if (snap.agent_ip) os_strdup(snap.agent_ip, agent_ip);
+    }
+
+    // Fallback name from keystore (never deref without lock)
+    key_lock_read();
+    int idx = OS_IsAllowedID(&keys, ctx->agent_key);
+    if (idx >= 0 && idx < (int)keys.keysize) {
+        if (!agent_name && keys.keyentries[idx]->name) {
+            os_strdup(keys.keyentries[idx]->name, agent_name);
+        }
+    }
+    key_unlock();
+
+    if (!agent_name) os_strdup("-", agent_name);
+    if (!agent_ip)   os_strdup("-", agent_ip);
+
+    // Also keep these in ctx for router / metrics
+    if (!ctx->agent_id) {
+        // agent_id is the string key (e.g. "002"); keep a borrowed pointer or duplicate:
+        os_strdup(ctx->agent_key, ctx->agent_id);
+    }
+    if (!ctx->agent_name) os_strdup(agent_name, ctx->agent_name);
+    if (!ctx->agent_ip)   os_strdup(agent_ip,   ctx->agent_ip);
+
+    // --- Build nested JSON: { "agent": {...}, "host": { "ip":[...], "os": {...}, "architecture": ... } } ---
+    cJSON *root = cJSON_CreateObject();
+    if (!root) goto fail;
+
+    cJSON *agent = cJSON_CreateObject();
+    cJSON *host  = cJSON_CreateObject();
+    cJSON *os    = cJSON_CreateObject();
+    if (!agent || !host || !os) { cJSON_Delete(root); goto fail; }
+
+    cJSON_AddItemToObject(root, "agent", agent);
+    cJSON_AddItemToObject(root, "host",  host);
+    cJSON_AddItemToObject(host, "os",    os);
+
+    // agent.*
+    cJSON_AddStringToObject(agent, "name", agent_name ? agent_name : "-");
+    if (have_meta && snap.version) {
+        cJSON_AddStringToObject(agent, "version", snap.version);
+    }
+    cJSON_AddStringToObject(agent, "id", ctx->agent_key);
+
+    // host.ip (array)
+    cJSON *ips = cJSON_CreateArray();
+    if (!ips) { cJSON_Delete(root); goto fail; }
+    if (agent_ip && *agent_ip) cJSON_AddItemToArray(ips, cJSON_CreateString(agent_ip));
+    cJSON_AddItemToObject(host, "ip", ips);
+
+    // host.os.*
+    if (have_meta && snap.os_name)     cJSON_AddStringToObject(os, "name",     snap.os_name);
+    if (have_meta && snap.os_version)  cJSON_AddStringToObject(os, "version",  snap.os_version);
+    if (have_meta && snap.os_codename) cJSON_AddStringToObject(os, "full",     snap.os_codename);
+    if (have_meta && snap.os_platform) cJSON_AddStringToObject(os, "platform", snap.os_platform);
+    if (have_meta && snap.os_build)    cJSON_AddStringToObject(os, "build",    snap.os_build);
+    if (have_meta && snap.os_kernel)   cJSON_AddStringToObject(os, "kernel",   snap.os_kernel);
+
+    // host.architecture
+    if (have_meta && snap.arch) cJSON_AddStringToObject(host, "architecture", snap.arch);
+
+    // Emit header line
+    char *json = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+    if (!json) goto fail;
+
+    if (bulk_append_fmt(&ctx->bulk, "H\t%s\n", json) < 0) {
+        free(json);
+        goto fail;
+    }
+    free(json);
+
+    ctx->header_added = 1;
+
+    os_free(agent_name);
+    os_free(agent_ip);
+    agent_meta_clear(&snap);
+    return 0;
+
+fail:
+    // Free local fallbacks
+    os_free(agent_name);
+    os_free(agent_ip);
+    agent_meta_clear(&snap);
+    // If you duplicated strings inside 'snap' with snapshot API, free them (see below).
+    return -1;
+}
+
+// --- helper: monotonic ms ---
+static uint64_t mono_ms(void) {
+    struct timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000ull + ts.tv_nsec / 1000000ull;
+}
+
+// Drop-only consumer: free each queued item without building a bulk
+static void drop_consumer(void *data, void *user) {
+    (void)user;
+    mwarn("Dropped event: unable to connect with analysisd");
+    dispose_evt_item((evt_item_t *)data);
+}
+
+// Consumer: Only accumulates in ctx->bulk. Releases each item individually.
+static void rr_collect_one(void *data, void *user) {
+    evt_item_t *e = (evt_item_t*)data;
+    dispatch_ctx_t *ctx = (dispatch_ctx_t*)user;
+
+    // Ensure header at the top of the body
+    if (!ctx->header_added) {
+        if (append_header(ctx) < 0) {
+            mwarn("Unable to append header for agent '%s'", ctx->agent_key ?: "?");
+        }
+    }
+
+    // Event Framing: "E\t<payload>\n"
+    if (bulk_append_fmt(&ctx->bulk, "E\t") < 0 ||
+        bulk_append(&ctx->bulk, e->raw, e->len) < 0 ||
+        bulk_append(&ctx->bulk, "\n", 1) < 0) {
+        mwarn("Unable to append event for agent '%s'", ctx->agent_key ?: "?");
+    }
+
+    dispose_evt_item(e);
+}
+
+// Thread that dispatches each ring turn as a single POST
+void *dispach_events_thread(void *arg) {
+    w_rr_queue_t *q = (w_rr_queue_t*)arg;
+
+    uhttp_options_t opt = {
+        .unix_socket_path   = ANLSYS_ENRICH_SOCK,           // analysisd unix socket
+        .url                = "http://localhost/events/enriched",
+        .content_type       = "application/x-wev1",
+        .user_agent         = "wazuh-remoted/1.0",
+        .timeout_ms         = 5000,
+        .connect_timeout_ms = 2000,
+        .keepalive          = true
+    };
+
+    uhttp_client_t *cli = NULL;
+    int    fail_streak = 0;
+    uint64_t reopen_at = 0; // circuit breaker reopen time (ms monotonic)
+
+    for (;;) {
+        uint64_t now = mono_ms();
+
+        // Try to (re)open client if breaker is closed or backoff elapsed
+        if (!cli && now >= reopen_at) {
+            cli = uhttp_client_new(&opt);
+            if (!cli) {
+                // Still offline: increase backoff (cap ~30s) and drain+drop one turn
+                fail_streak++;
+                uint64_t backoff = 500u << (fail_streak > 6 ? 6 : fail_streak); // 0.5s .. 32s
+                if (backoff > 30000u) backoff = 30000u;
+                reopen_at = now + backoff;
+
+                // Drain one agent turn and DROP items (do not build a bulk)
+                size_t dropped = batch_queue_drain_next_ex(q, /*abstime=*/NULL,
+                                                           drop_consumer, /*user=*/NULL,
+                                                           /*out_agent_key=*/NULL);
+                if (dropped == 0) {
+                    // Nothing to drain: small nap to avoid busy loop while offline
+                    struct timespec ts = { .tv_sec = 0, .tv_nsec = 200 * 1000 * 1000 };
+                    nanosleep(&ts, NULL);
+                }
+                continue;
+            } else {
+                // Back online
+                fail_streak = 0;
+                reopen_at = 0;
+            }
+        }
+
+        // If still offline, keep draining and dropping
+        if (!cli) {
+            (void)batch_queue_drain_next_ex(q, /*abstime=*/NULL,
+                                            drop_consumer, /*user=*/NULL,
+                                            /*out_agent_key=*/NULL);
+            continue;
+        }
+
+        // Online path: build one agent batch and POST it
+        dispatch_ctx_t ctx = {
+            .agent_key    = NULL,
+            .agent_id     = NULL, .agent_name = NULL, .agent_ip = NULL,
+            .header_added = 0
+        };
+        bulk_init(&ctx.bulk, 8192);
+
+        size_t drained = batch_queue_drain_next_ex(q, /*abstime=*/NULL,
+                                                   rr_collect_one, &ctx, &ctx.agent_key);
+
+        if (drained > 0 && ctx.bulk.len > 0) {
+            uhttp_result_t res = {0};
+            int rc = uhttp_post(cli, ctx.bulk.buf, ctx.bulk.len, &res);
+            if (rc != 0) {
+                // POST failed: discard this batch (already in ctx.bulk) and go offline
+                mwarn("analysisd offline? POST failed (rc=%d, http=%ld, curl=%d). "
+                      "Dropping events until recovery.",
+                      rc, res.http_status, res.curl_code);
+
+                uhttp_client_free(cli);
+                cli = NULL;
+
+                fail_streak++;
+                uint64_t backoff = 500u << (fail_streak > 6 ? 6 : fail_streak);
+                if (backoff > 30000u) backoff = 30000u;
+                reopen_at = mono_ms() + backoff;
+
+                // From now on (until reopened), the loop will drain with drop_consumer.
+            }
+        }
+
+        bulk_free(&ctx.bulk);
+        os_free(ctx.agent_id); os_free(ctx.agent_name); os_free(ctx.agent_ip);
+    }
+
+    if (cli) uhttp_client_free(cli);
     return NULL;
 }
