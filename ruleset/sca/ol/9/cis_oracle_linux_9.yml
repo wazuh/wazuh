@@ -843,7 +843,7 @@ checks:
     condition: all
     rules:
       - 'f:/boot/grub2/user.cfg'
-      - 'f:/boot/grub2/user.cfg -> r:^\s*GRUB2_PASSWORD=grub.pbkdf2.sha512'
+      - 'f:/boot/grub2/user.cfg -> r:^\s*GRUB2_PASSWORD=grub\.pbkdf2\.sha512'
 
   # 1.4.2 Ensure permissions on bootloader config are configured. (Automated)
   - id: 33532
