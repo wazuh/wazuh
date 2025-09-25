@@ -1,4 +1,4 @@
-name: 4.X - Package - Build multiple Wazuh Manager Packages
+name: 5.X - Package - Build multiple Wazuh Manager Packages
 on:
   workflow_dispatch:
     inputs:
@@ -30,7 +30,8 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     branches:
-      - '4.[0-9]+.[0-9]+'
+      - 'main'
+      - '5.[0-9]+.[0-9]+'
 
 jobs:
   select-targets:
@@ -55,10 +56,13 @@ jobs:
   build-wazuh-manager:
     name: Build Wazuh Manager
     needs: select-targets
+    permissions:
+        contents: read
+        packages: write
     strategy:
         matrix: ${{ fromJSON(needs.select-targets.outputs.matrix) }}
         fail-fast: false
-    uses: ./.github/workflows/4_builderpackage_manager.yml
+    uses: ./.github/workflows/5_builderpackage_manager.yml
     with:
       docker_image_tag: auto  
       architecture:  ${{ matrix.architecture }}
