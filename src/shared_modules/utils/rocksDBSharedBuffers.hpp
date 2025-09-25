@@ -25,8 +25,8 @@ public:
         return instance;
     }
 
-    static constexpr size_t SHARED_BUFFER_SIZE {128 * 1024 * 1024};    // 128MB
-    static constexpr size_t SHARED_READ_CACHE_SIZE {32 * 1024 * 1024}; // 32MB
+    static constexpr size_t SHARED_BUFFER_SIZE {256 * 1024 * 1024};    // 256MB
+    static constexpr size_t SHARED_READ_CACHE_SIZE {64 * 1024 * 1024}; // 64MB
 
     std::shared_ptr<rocksdb::Cache> getReadCache()
     {

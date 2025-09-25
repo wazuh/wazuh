@@ -332,7 +332,6 @@ configurator.configure_test(configuration_file='inspector_configuration_regions.
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.skip(reason="The Inspector Classic service was deprecated. A migration to Inspector v2 is required")
 @pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
@@ -400,6 +399,7 @@ def test_inspector_regions(
     """
     service_type = metadata['service_type']
     only_logs_after = metadata['only_logs_after']
+    aws_profile = metadata['aws_profile']
     regions: str = metadata['regions']
     expected_results = metadata['expected_results']
     regions_list = regions.split(",")
@@ -407,6 +407,7 @@ def test_inspector_regions(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
+        '--aws_profile', aws_profile,
         '--only_logs_after', only_logs_after,
         '--regions', regions,
         '--debug', '2'

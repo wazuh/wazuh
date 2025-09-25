@@ -1,0 +1,50 @@
+{
+    "extensions": {
+        "settings": {
+            "ahfgeienlihckogmohjhadlkjgocpleb": {
+                "first_install_time": "13394392315398366",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/web_store"
+            },
+            "efaidnbmnnnibpcajpcglclefindmkaj": {
+                "first_install_time": "13394392361796052",
+                "from_webstore": true,
+                "path": "ext1/1.2.3"
+            },
+            "fignfifoniblkonapihmkfakmlgkbkcf": {
+                "first_install_time": "13395499565294374",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/network_speech_synthesis/mv3"
+            },
+            "ghbmnnjooekpmoecnnnilnnbdlolhkhi": {
+                "first_install_time": "13394392320863088",
+                "from_webstore": true,
+                "path": "ext2/1.2.3"
+            },
+            "mhjfbmdgcfjbbpaeojofohoefgiehjai": {
+                "first_install_time": "13394392315398753",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/pdf"
+            },
+            "neajdppkdcdipfabeoofebfddakdcjhd": {
+                "first_install_time": "13394392315399348",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/network_speech_synthesis/mv3"
+            },
+            "nkeimhogjdpnpccoofpliimaahmaaome": {
+                "first_install_time": "13394392315399048",
+                "from_webstore": false,
+                "path": "/opt/google/chrome/resources/hangout_services"
+            },
+            "nmmhkkegccagdldgiimedpiccmgmieda": {
+                "first_install_time": "13394392315399548",
+                "from_webstore": false,
+                "path": "nmmhkkegccagdldgiimedpiccmgmieda/1.0.0.6_0"
+            },
+            "ojagfgibjiofppmilfbgmipfelkhcccn": {}
+        }
+    },
+    "profile": {
+        "name": "Your Chrome"
+    }
+}

@@ -98,27 +98,19 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         // of previous line and append it to appropriate column.
         if (isLongLine)
         {
-            isLongLine = (line.back() == '\\');
+            isLongLine = (!line.empty() && line.back() == '\\');
             auto& lastLine = results.back();
 
-            if (lastLine["rule_details"].empty())
+            // Remove trailing backslash from the line before appending
+            std::string lineToAppend = line;
+
+            if (!lineToAppend.empty() && lineToAppend.back() == '\\')
             {
-                if (lastLine["header"].empty())
-                {
-                    std::string tmp = lastLine["header"];
-                    lastLine["header"] = tmp;
-                }
-            }
-            else
-            {
-                if (lastLine["rule_details"].empty())
-                {
-                    std::string tmp = lastLine["rule_details"];
-                    lastLine["rule_details"] = tmp;
-                }
+                lineToAppend.pop_back();
+                Utils::trimSpaces(lineToAppend);
             }
 
-            lastLine["rule_details"] = lastLine["rule_details"].get<std::string>() + line;
+            lastLine["rule_details"] = lastLine["rule_details"].get<std::string>() + " " + lineToAppend;
             continue;
         }
 
@@ -133,7 +125,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         auto isIncludeDir = (header == "#includedir" || header == "@includedir");
 
         // skip comments.
-        if (line.at(0) == '#' && !isInclude && !isIncludeDir)
+        if (!line.empty() && line.at(0) == '#' && !isInclude && !isIncludeDir)
         {
             continue;
         }
@@ -150,9 +142,16 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         }
 
         // Check if a blackslash is the last character on this line.
-        if (!isInclude && !isIncludeDir && line.back() == '\\')
+        if (!isInclude && !isIncludeDir && !line.empty() && line.back() == '\\')
         {
             isLongLine = true;
+
+            // Remove trailing backslash from rule_details for consistency
+            if (!ruleDetails.empty() && ruleDetails.back() == '\\')
+            {
+                ruleDetails.pop_back();
+                Utils::trimSpaces(ruleDetails);
+            }
         }
 
         nlohmann::json entry;
@@ -164,7 +163,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         if (isIncludeDir)
         {
             // support both relative and full paths
-            if (ruleDetails.at(0) != '/')
+            if (!ruleDetails.empty() && ruleDetails.at(0) != '/')
             {
                 const auto fullPath = (std::filesystem::path(fileName).parent_path() / ruleDetails).string();
                 ruleDetails = fullPath;
@@ -196,7 +195,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
                 // contain a '.' or end with '~' are ignored.
                 if (incBasename.empty() ||
                         incBasename.find('.') != std::string::npos ||
-                        incBasename.back() == '~')
+                        (!incBasename.empty() && incBasename.back() == '~'))
                 {
                     continue;
                 }
@@ -208,7 +207,7 @@ void SudoersProvider::genSudoersFile(const std::string& fileName,
         if (isInclude)
         {
             // Relative or full paths
-            if (ruleDetails.at(0) != '/')
+            if (!ruleDetails.empty() && ruleDetails.at(0) != '/')
             {
                 const auto fullPath = (std::filesystem::path(fileName).parent_path() / ruleDetails).string();
                 ruleDetails = fullPath;

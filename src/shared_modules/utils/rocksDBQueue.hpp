@@ -63,9 +63,9 @@ public:
         options.write_buffer_manager = m_writeManager;
         options.num_levels = 4;
 
-        options.write_buffer_size = 32 * 1024 * 1024;
+        options.write_buffer_size = 64 * 1024 * 1024;
         options.max_write_buffer_number = 4;
-        options.max_background_jobs = 4;
+        options.max_background_jobs = 8;
 
         rocksdb::DB* db;
 

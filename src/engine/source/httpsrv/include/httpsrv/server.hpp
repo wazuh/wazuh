@@ -21,6 +21,17 @@ private:
     std::shared_ptr<httplib::Server> m_srv; ///< Httplib Server instance
     std::thread m_thread;                   ///< Server thread
     std::string m_id;                       ///< Server identifier
+    std::filesystem::path m_socketPath;    ///< Socket path where the server is listening
+
+    /**
+     * @brief Binds the server to a socket and starts listening for incoming connections.
+     *
+     * This method is blocking and will run until the server is stopped, either by calling stop() or due to an error.
+     * If the server fails to bind to the socket or start listening, it will return false.
+     * @return true if the server successfully binds and starts listening, false otherwise.
+     * @note This method is blockin and should be called in a separate thread if non-blocking behavior is desired.
+     */
+    bool bindAndListen();
 
 public:
     /**

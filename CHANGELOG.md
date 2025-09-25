@@ -109,6 +109,8 @@ All notable changes to this project will be documented in this file.
 - Updated `urllib3` to version 2.5.0 and `protobuf` to version 5.29.5. ([#30624](https://github.com/wazuh/wazuh/pull/30624))
 - Upgraded Python embedded interpreter to 3.10.18. ([#30916](https://github.com/wazuh/wazuh/pull/30916))
 
+## [v4.13.1]
+
 
 ## [v4.13.0]
 
@@ -143,6 +145,7 @@ All notable changes to this project will be documented in this file.
 - Improved exception handling in `run_local` SDK funcition. ([#30851](https://github.com/wazuh/wazuh/pull/30851))
 - Improved Authd connection management using epoll for better handling of concurrent agent registration requests. ([#29135](https://github.com/wazuh/wazuh/pull/29135))
 - Added single writer buffer manager instance for each indexer connector instances. ([#31114](https://github.com/wazuh/wazuh/pull/31114))
+- Disabled FIM Global Queries. ([#31856)](https://github.com/wazuh/wazuh/pull/31856))
 
 ### Agent
 

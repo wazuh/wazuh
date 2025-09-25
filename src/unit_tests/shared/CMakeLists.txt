@@ -114,6 +114,25 @@ else()
 list(APPEND shared_tests_flags "${QUEUE_LINKED_OP_BASE_FLAGS}")
 endif()
 
+list(APPEND shared_tests_names "test_batch_queue_op")
+set(BATCH_QUEUE_OP_BASE_FLAGS  "-Wl,--wrap=pthread_cond_wait \
+                                -Wl,--wrap=pthread_cond_signal")
+if(${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_flags "${BATCH_QUEUE_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown")
+else()
+list(APPEND shared_tests_flags "${BATCH_QUEUE_OP_BASE_FLAGS}")
+endif()
+
+list(APPEND shared_tests_names "test_hashmap_op")
+if(${TARGET} STREQUAL "winagent")
+  list(APPEND shared_tests_flags
+       "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap,is_fim_shutdown -Wl,--wrap,_imp__dbsync_initialize -Wl,--wrap,fim_db_teardown")
+else()
+  list(APPEND shared_tests_flags " ")
+endif()
+
 list(APPEND shared_tests_names "test_indexed_queue_op")
 set(INDEXED_QUEUE_OP_FLAGS "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
                             -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait")
@@ -128,12 +147,18 @@ endif()
 list(APPEND shared_tests_names "test_agent_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,wdb_get_agent_info -Wl,--wrap,_mdebug1 -Wl,--wrap,getpid \
+                                -Wl,--wrap,fclose -Wl,--wrap,fprintf -Wl,--wrap,wfopen -Wl,--wrap,_merror \
+                                -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread \
+                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen \
                                 -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                 -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 else()
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,external_socket_connect \
                                 -Wl,--wrap,sleep -Wl,--wrap,strerror -Wl,--wrap,getpid -Wl,--wrap,close \
+                                -Wl,--wrap,fclose -Wl,--wrap,fprintf -Wl,--wrap,wfopen -Wl,--wrap,_merror \
+                                -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread \
+                                -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen \
                                 -Wl,--wrap,OS_SendSecureTCPCluster -Wl,--wrap,OS_RecvSecureClusterTCP ${DEBUG_OP_WRAPPERS}")
 endif()
 

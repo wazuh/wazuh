@@ -8,7 +8,6 @@
 
 - actions:
   - cluster:restart
-  - cluster:ruleset_reload
   resources:
   - node:id:worker1
   effect: deny

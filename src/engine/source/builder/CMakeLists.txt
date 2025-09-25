@@ -38,8 +38,7 @@ add_library(builder STATIC
     ${SRC_DIR}/builders/stage/normalize.cpp
     ${SRC_DIR}/builders/stage/outputs.cpp
     ${SRC_DIR}/builders/stage/fileOutput.cpp
-    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
-    # ${SRC_DIR}/builders/stage/indexerOutput.cpp
+    ${SRC_DIR}/builders/stage/indexerOutput.cpp
 
     # Map
     ${SRC_DIR}/builders/opmap/map.cpp
@@ -71,8 +70,7 @@ target_link_libraries(builder
     kvdb::ikvdb
     geo::igeo
     streamlogger::istreamlogger
-    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
-    # indexerconnector::iindexerconnector
+    wIndexerConnector::iwIndexerConnector
     logpar
 
     PRIVATE
@@ -140,6 +138,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opmap/floatCalc_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/intCalc_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/toInt_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/toBool_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/regex_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/ip_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/time_test.cpp
@@ -164,7 +163,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/stage/outputs_test.cpp
     ${UNIT_SRC_DIR}/builders/stage/fileOutput_test.cpp
     # TODO: Until the indexer connector is unified with the rest of wazuh-manager
-    # ${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
+    ${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
 
 )
 target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
@@ -182,8 +181,7 @@ target_link_libraries(builder_utest
     geo::mocks
     base::test
     streamlogger::mocks
-    # TODO: Until the indexer connector is unified with the rest of wazuh-manager
-    # indexerconnector::mocks
+    wIndexerConnector::mocks
 )
 gtest_discover_tests(builder_utest)
 

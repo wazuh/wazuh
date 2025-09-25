@@ -531,7 +531,7 @@
 #define WAITING_FREE    "Agent is now online. Process unlocked, continuing..."
 #define SERVER_UNAV     "Server unavailable. Setting lock."
 #define SERVER_UP       "Server responded. Releasing lock."
-#define LOCK_RES        "Agent auto-restart locked for %d seconds."
+#define LOCK_RES        "Agent auto-restart locked for %ld seconds."
 
 /* Buffer alerts */
 #define DISABLED_BUFFER "Agent buffer disabled."

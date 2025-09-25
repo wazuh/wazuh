@@ -20,8 +20,8 @@
 
 #define AUDIT_RULES_FILE            "etc/audit_rules_wazuh.rules"
 #define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.rules"
-#define PLUGINS_DIR_AUDIT_2         "/etc/audisp/plugins.d"
-#define PLUGINS_DIR_AUDIT_3         "/etc/audit/plugins.d"
+#define PLUGINS_OLD_DIR_AUDISP      "/etc/audisp/plugins.d"
+#define PLUGINS_DIR_AUDIT           "/etc/audit/plugins.d"
 #define AUDIT_CONF_LINK             "af_wazuh.conf"
 #define BUF_SIZE OS_MAXSTR
 #define MAX_CONN_RETRIES 5          // Max retries to reconnect to Audit socket
@@ -34,8 +34,12 @@ pthread_cond_t audit_thread_started;
 
 unsigned int count_reload_retries;
 
-static const char *const AUDISP_CONFIGURATION = "active = yes\ndirection = out\npath = builtin_af_unix\n"
-                                                "type = builtin\nargs = 0640 %s\nformat = string\n";
+static const char *const AUDISP_CONFIGURATION_0 = "active = yes\ndirection = out\npath = builtin_af_unix\n"
+                                                  "type = builtin\nargs = 0640 %s\nformat = string\n";
+static const char *const AUDISP_CONFIGURATION_1 = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
+                                                  "type = always\nargs = 0640 %s\nformat = string\n";
+static const char *const AUDISP_CONFIGURATION_2 = "active = yes\ndirection = out\npath = /sbin/audisp-af_unix\n"
+                                                  "type = always\nargs = 0640 %s string\nformat = binary\n";
 
 w_queue_t * audit_queue;
 
@@ -57,6 +61,23 @@ typedef struct _audit_data_s {
  * @param [out] audit_data Struct that saves the audit socket to read the events from and the audit mode.
  */
 static void *audit_main(audit_data_t *audit_data);
+
+int get_audit_version_code(unsigned *out_code) {
+    if (!out_code) return -1;
+
+    FILE *p = popen("auditctl -v 2>/dev/null", "r");
+    if (!p) return -1;
+
+    int M = 0, m = 0, pch = 0;
+    int n = fscanf(p, "auditctl version %d.%d.%d", &M, &m, &pch);
+    pclose(p);
+
+    if (n < 1) return -1;
+    if ((unsigned)M > 255 || (unsigned)m > 255 || (unsigned)pch > 255) return -1;
+
+    *out_code = VERCODE(M, m, pch);
+    return 0;
+}
 
 int check_auditd_enabled(void) {
     PROCTAB *proc = openproc(PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLCOM );
@@ -81,12 +102,26 @@ int check_auditd_enabled(void) {
     return auditd_pid;
 }
 
-
-int configure_audisp(const char *audisp_path, const char *audisp_config) {
+int configure_audisp(const char *audisp_path, const char *abs_path_socket, const char *audisp_config) {
     FILE *fp;
     char buffer[PATH_MAX] = {'\0'};
+    struct stat st;
 
     minfo(FIM_AUDIT_SOCKET, AUDIT_CONF_FILE);
+
+    if (unlink(audisp_path) < 0) {
+        if (errno != ENOENT) {
+            merror(UNLINK_ERROR, audisp_path, errno, strerror(errno));
+            return -1;
+        }
+    }
+
+    if (unlink(abs_path_socket) < 0) {
+        if (errno != ENOENT) {
+            merror(UNLINK_ERROR, abs_path_socket, errno, strerror(errno));
+            return -1;
+        }
+    }
 
     abspath(AUDIT_CONF_FILE, buffer, PATH_MAX);
 
@@ -96,34 +131,37 @@ int configure_audisp(const char *audisp_path, const char *audisp_config) {
         return -1;
     }
 
-    fwrite(audisp_config, sizeof(char), strlen(audisp_config), fp);
+    if (fwrite(audisp_config, sizeof(char), strlen(audisp_config), fp) < strlen(audisp_config)) {
+        merror(FWRITE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
+        fclose(fp);
+        return -1;
+    }
 
     if (fclose(fp)) {
         merror(FCLOSE_ERROR, AUDIT_CONF_FILE, errno, strerror(errno));
         return -1;
     }
 
-    if (symlink(buffer, audisp_path) < 0) {
+    if (link(buffer, audisp_path) < 0) {
         switch (errno) {
         case EEXIST:
             if (unlink(audisp_path) < 0) {
                 merror(UNLINK_ERROR, audisp_path, errno, strerror(errno));
                 return -1;
             }
-
-            if (symlink(buffer, audisp_path) == 0) {
+            if (link(buffer, audisp_path) == 0) {
                 break;
             }
 
         // Fallthrough
         default:
-            merror(LINK_ERROR, audisp_path, AUDIT_CONF_FILE, errno, strerror(errno));
+            merror(LINK_ERROR, buffer, audisp_path, errno, strerror(errno));
             return -1;
         }
     }
 
     if (syscheck.restart_audit) {
-        minfo(FIM_AUDIT_RESTARTING, AUDIT_CONF_FILE);
+        minfo(FIM_AUDIT_RESTARTING, audisp_path);
         return audit_restart();
     } else {
         mwarn(FIM_WARN_AUDIT_CONFIGURATION_MODIFIED);
@@ -133,46 +171,81 @@ int configure_audisp(const char *audisp_path, const char *audisp_config) {
 
 // Set Auditd socket configuration
 int set_auditd_config(void) {
-    char audisp_path[50] = {0};
+    char audisp_path[PATH_MAX] = {'\0'};
+    char abs_path_socket[PATH_MAX] = {'\0'};
     char *configuration = NULL;
     int configuration_length;
-    char abs_path_socket[PATH_MAX] = {'\0'};
     int retval = 1;
     os_sha1 file_sha1, configuration_sha1;
+    const char *plugin_dir = NULL;
+    const char *audisp_config = NULL;
 
-    // Check audisp version
-    if (IsDir(PLUGINS_DIR_AUDIT_3) == 0) {
-        // Audit 3.X
-        snprintf(audisp_path, sizeof(audisp_path) - 1, "%s/%s", PLUGINS_DIR_AUDIT_3, AUDIT_CONF_LINK);
-    } else if (IsDir(PLUGINS_DIR_AUDIT_2) == 0) {
-        // Audit 2.X
-        snprintf(audisp_path, sizeof(audisp_path) - 1, "%s/%s", PLUGINS_DIR_AUDIT_2, AUDIT_CONF_LINK);
+    if (IsDir(PLUGINS_DIR_AUDIT) == 0) {
+        unsigned vcode;
+        plugin_dir = PLUGINS_DIR_AUDIT;
+
+        if (get_audit_version_code(&vcode) != 0) {
+            mdebug2("Could not get audit version code. Using default configuration.");
+            audisp_config = AUDISP_CONFIGURATION_2;
+        } else {
+            mdebug2("Audit version detected: %u.%u.%u", (vcode >> 16) & 0xFF, (vcode >> 8) & 0xFF, vcode & 0xFF);
+
+            if (vcode < VERCODE(3, 1, 1)) {
+                // Before audit version 3.1.1 old code worked with builtin_af_unix
+                audisp_config = AUDISP_CONFIGURATION_0;
+            } else if (vcode < VERCODE(3, 1, 5)) {
+                // Audit version 3.1.1 includes changes for audispd af_unix plugin to a standalone program
+                audisp_config = AUDISP_CONFIGURATION_1;
+            } else if (vcode < VERCODE(4, 0, 0)) {
+                // Audit version 3.1.5 includes changes to propagate event format to the audisp-af_unix plugin
+                audisp_config = AUDISP_CONFIGURATION_2;
+            } else if (vcode < VERCODE(4, 0, 3)) {
+                // From audit version 4.0.0 to 4.0.2 format changes are not included
+                audisp_config = AUDISP_CONFIGURATION_1;
+            } else {
+                // From audit version 4.0.3 format changes are included
+                audisp_config = AUDISP_CONFIGURATION_2;
+            }
+        }
+    } else if (IsDir(PLUGINS_OLD_DIR_AUDISP) == 0) {
+        plugin_dir = PLUGINS_OLD_DIR_AUDISP;
+        audisp_config = AUDISP_CONFIGURATION_0;
     } else {
+        // No known plugins directory found
         return 0;
     }
 
+    // Build the config file path safely
+    if (snprintf(audisp_path, sizeof(audisp_path), "%s/%s", plugin_dir, AUDIT_CONF_LINK) >= (int)sizeof(audisp_path)) {
+        merror("audisp_path too long: base '%s', file '%s'", plugin_dir, AUDIT_CONF_LINK);
+        return -1;
+    }
+
+    // Resolve absolute socket path
     abspath(AUDIT_SOCKET, abs_path_socket, PATH_MAX);
 
-    configuration_length = snprintf(NULL, 0, AUDISP_CONFIGURATION, abs_path_socket);
-
+    // Compute required size for the final configuration content (template expects the socket path)
+    configuration_length = snprintf(NULL, 0, audisp_config, abs_path_socket);
     if (configuration_length <= 0) {
         return -1; // LCOV_EXCL_LINE
     }
 
-    os_calloc(configuration_length + 1, sizeof(char), configuration);
-
-    snprintf(configuration, configuration_length + 1, AUDISP_CONFIGURATION, abs_path_socket);
+    // Allocate and render the final configuration file content
+    os_calloc((size_t)configuration_length + 1, sizeof(char), configuration);
+    snprintf(configuration, (size_t)configuration_length + 1, audisp_config, abs_path_socket);
 
     // Sanity check the configuration file
     OS_SHA1_Str(configuration, configuration_length, configuration_sha1);
 
     if (OS_SHA1_File(audisp_path, file_sha1, OS_TEXT) != 0) {
-        retval = configure_audisp(audisp_path, configuration);
+        // File does not exist or cannot be read; write it
+        retval = configure_audisp(audisp_path, abs_path_socket, configuration);
         goto end;
     }
 
     if (strcmp(file_sha1, configuration_sha1) != 0) {
-        retval = configure_audisp(audisp_path, configuration);
+        // Contents differ; update file
+        retval = configure_audisp(audisp_path, abs_path_socket, configuration);
         goto end;
     }
 

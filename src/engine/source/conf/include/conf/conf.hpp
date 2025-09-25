@@ -31,7 +31,9 @@ std::string toStr(const U& value)
         {
             result += item + ",";
         }
-        result.pop_back(); // Remove the last comma
+        if (!result.empty()) {
+            result.pop_back(); // Remove the last comma
+        }
         return result;
     }
 
@@ -334,7 +336,19 @@ public:
 
         // 3. Default value
         auto value = unit->template getDefaultValue<T>();
-        LOG_DEBUG("Using configuration key '{}' from default: '{}'", key, toStr<T>(value));
+
+        const auto strVal = [&]() -> std::string
+        {
+            auto strVal = toStr<T>(value);
+            if (strVal.empty())
+            {
+                return "<empty>";
+            }
+            return strVal;
+        }();
+
+        LOG_DEBUG("Using configuration key '{}' from default: '{}'", key, strVal);
+
         return value;
     }
 };
