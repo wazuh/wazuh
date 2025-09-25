@@ -16,10 +16,15 @@ inputs:
   github_token:
     description: 'GitHub token'
     required: true
+outputs:
+  issue_url:
+    description: 'URL of the created issue'
+    value: ${{ steps.create-issue.outputs.issue_url }}
 runs:
   using: 'composite'
   steps:
     - name: Create Coverity Scan Issue
+      id: create-issue
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
@@ -48,8 +53,10 @@ runs:
         EOF
         )
 
-        gh issue create \
+        ISSUE_URL=$(gh issue create \
           --repo "$REPO" \
           --title "$TITLE" \
           --label "$LABEL" \
-          --body "$BODY"
+          --body "$BODY")
+
+        echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
