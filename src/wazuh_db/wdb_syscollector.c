@@ -16,7 +16,7 @@
 
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
 int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter,
-                     const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets,
+                     const char * type, const char * state, int64_t mtu, const char * mac, long tx_packets, long rx_packets,
                      long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped,
                      const char * checksum, const char * item_id, const bool replace) {
 
@@ -54,7 +54,7 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 
 // Insert Network info tuple. Return 0 on success or -1 on error.
 int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter,
-                       const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets,
+                       const char * type, const char * state, int64_t mtu, const char * mac, long tx_packets, long rx_packets,
                        long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped,
                        const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
@@ -80,7 +80,7 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 6, state, -1, NULL);
 
     if (mtu > 0) {
-        sqlite3_bind_int(stmt, 7, mtu);
+        sqlite3_bind_int64(stmt, 7, mtu);
     } else {
         sqlite3_bind_null(stmt, 7);
     }
@@ -1623,7 +1623,7 @@ int wdb_syscollector_netinfo_save2(wdb_t * wdb, const cJSON * attributes)
     const char * adapter = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "adapter"));
     const char * type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
     const char * state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "state"));
-    const int mtu = cJSON_GetObjectItem(attributes, "mtu") ? cJSON_GetObjectItem(attributes, "mtu")->valueint : 0;
+    const int64_t mtu = cJSON_GetObjectItem(attributes, "mtu") ? (int64_t)cJSON_GetObjectItem(attributes, "mtu")->valuedouble : 0;
     const char * mac = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "mac"));
     const long tx_packets = cJSON_GetObjectItem(attributes, "tx_packets") ? cJSON_GetObjectItem(attributes, "tx_packets")->valueint : 0;
     const long rx_packets = cJSON_GetObjectItem(attributes, "rx_packets") ? cJSON_GetObjectItem(attributes, "rx_packets")->valueint : 0;

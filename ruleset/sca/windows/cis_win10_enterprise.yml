@@ -199,6 +199,18 @@ checks:
      rules:
       - 'c:powershell secedit /export /cfg $env:TEMP\secpol.cfg; Get-Content $env:TEMP\secpol.cfg | Select-String "ResetLockoutCount"; Remove-Item $env:TEMP\secpol.cfg -> n:ResetLockoutCount = (\d+) compare >= 15'
 
+  - id: 15509
+    title: "Ensure 'Accounts: Administrator account status' is set to 'Disabled'."
+    description: "This policy setting enables or disables the Administrator account during normal operation. When a computer is booted into safe mode, the Administrator account is always enabled, regardless of how this setting is configured. Note that this setting will have no impact when applied to the Domain Controllers organizational unit via group policy because Domain Controllers have no local account database. It can be configured at the domain level via group policy, similar to account lockout and password policy settings. The recommended state for this setting is: Disabled."
+    rationale: "In some organizations, it can be a daunting management challenge to maintain a regular schedule for periodic password changes for local accounts. Therefore, you may want to disable the built-in Administrator account instead of relying on regular password changes to protect it from attack. Another reason to disable this built-in account is that it cannot be locked out no matter how many failed logons it accrues, which makes it a prime target for brute force attacks that attempt to guess passwords. Also, this account has a well-known security identifier (SID) and there are third-party tools that allow authentication by using the SID rather than the account name. This capability means that even if you rename the Administrator account, an attacker could launch a brute force attack by using the SID to log on."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Administrator account status"
+    compliance:
+      - cis: ["2.3.1.1"]
+      - cis_csc: ["4.7"]
+    condition: all
+    rules:
+      - 'c:powershell -NoProfile -Command "[bool](Get-CimInstance -Query ''SELECT * FROM Win32_UserAccount WHERE LocalAccount = TRUE AND SID LIKE ''''S-1-5-21-%-500'''''' | Where-Object -Property Disabled)" -> r:True'
+
   # 2.3.1.1 (L1) Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'. (Automated)
    - id: 15510
      title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'."

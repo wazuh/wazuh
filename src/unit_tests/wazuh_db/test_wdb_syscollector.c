@@ -757,9 +757,9 @@ static void wdb_syscollector_netinfo_save2_success(cJSON *attribute) {
     expect_value(__wrap_sqlite3_bind_text, pos, 6);
     expect_string(__wrap_sqlite3_bind_text, buffer, "state");
     will_return(__wrap_sqlite3_bind_text, 0);
-    expect_value(__wrap_sqlite3_bind_int, index, 7);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 7);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_string(__wrap_sqlite3_bind_text, buffer, "mac");
     will_return(__wrap_sqlite3_bind_text, 0);
@@ -946,9 +946,9 @@ void test_wdb_netinfo_insert_default_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "state");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 7);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 7);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64           , 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_string(__wrap_sqlite3_bind_text, buffer, "mac");
@@ -1018,9 +1018,9 @@ void test_wdb_netinfo_insert_sql_constraint_fail(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "state");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 7);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 7);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_string(__wrap_sqlite3_bind_text, buffer, "mac");
@@ -1093,9 +1093,9 @@ void test_wdb_netinfo_insert_sql_constraint_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "state");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 7);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 7);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_string(__wrap_sqlite3_bind_text, buffer, "mac");
@@ -1166,9 +1166,9 @@ void test_wdb_netinfo_insert_sql_success(void **state) {
     expect_string(__wrap_sqlite3_bind_text, buffer, "state");
     will_return(__wrap_sqlite3_bind_text, 0);
 
-    expect_value(__wrap_sqlite3_bind_int, index, 7);
-    expect_value(__wrap_sqlite3_bind_int, value, 1);
-    will_return(__wrap_sqlite3_bind_int, 0);
+    expect_value(__wrap_sqlite3_bind_int64, index, 7);
+    expect_value(__wrap_sqlite3_bind_int64, value, 1);
+    will_return(__wrap_sqlite3_bind_int64, 0);
 
     expect_value(__wrap_sqlite3_bind_text, pos, 8);
     expect_string(__wrap_sqlite3_bind_text, buffer, "mac");
@@ -5458,6 +5458,7 @@ void test_wdb_syscollector_save2_netinfo_success(void **state) {
     cJSON attribute = {0};
 
     attribute.valueint = 1;
+    attribute.valuedouble = 1;
     will_return(__wrap_cJSON_Parse, 1);
     will_return(__wrap_cJSON_GetObjectItem, 1);
 
@@ -5630,7 +5631,7 @@ typedef struct netinfo_object {
     char *adapter;
     char *type;
     char *_state;
-    int mtu;
+    int64_t mtu;
     char *mac;
     long tx_packets;
     long rx_packets;
@@ -6024,7 +6025,7 @@ void configure_wdb_netinfo_insert(netinfo_object test_netinfo, int sqlite_code) 
     configure_sqlite3_bind_text(4, test_netinfo.adapter);
     configure_sqlite3_bind_text(5, test_netinfo.type);
     configure_sqlite3_bind_text(6, test_netinfo._state);
-    configure_sqlite3_bind_int(7, test_netinfo.mtu, NOT_ALLOW_ZERO);
+    configure_sqlite3_bind_int64(7, test_netinfo.mtu, NOT_ALLOW_ZERO);
     configure_sqlite3_bind_text(8, test_netinfo.mac);
     configure_sqlite3_bind_int64(9, test_netinfo.tx_packets, ALLOW_ZERO);
     configure_sqlite3_bind_int64(10, test_netinfo.rx_packets, ALLOW_ZERO);
@@ -6331,7 +6332,6 @@ static void test_wdb_netinfo_insert_negative_values_error(void **state) {
     test_netinfo.rx_dropped = OS_INVALID;
 
     configure_wdb_netinfo_insert(test_netinfo, SQLITE_ERROR);
-
     will_return(__wrap_sqlite3_errmsg, "ERROR_MESSAGE");
     expect_string(__wrap__merror, formatted_msg, "SQLite: ERROR_MESSAGE");
 
