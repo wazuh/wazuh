@@ -20,11 +20,10 @@ policy:
 requirements:
   title: "Check macOS version."
   description: "Requirements for running the SCA scan against macOS 12.x (Monterey)."
-  condition: any
+  condition: all
   rules:
     - 'c:sw_vers -> r:^ProductVersion:\t*\s*12\p'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:\.*12\p'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\t*\s*12\p'
+    - 'c:bash -c "ioreg -rd1 -c IOPMrootDomain | grep -q ''\"IOPMUserIsActive\" = Yes'' && echo awake || echo asleep" -> r:^awake$'
 
 checks:
   ############################################################

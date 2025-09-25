@@ -19,11 +19,10 @@ policy:
 requirements:
   title: "Check MacOS 14 Sonoma platform."
   description: "Requirements for running the policy against MacOS 14 Sonoma."
-  condition: any
+  condition: all
   rules:
     - 'c:sw_vers -> r:^ProductVersion:\t*\s*14\p'
-    - 'c:system_profiler SPSoftwareDataType -> r:System Version:.*14\p'
-    - 'c:defaults read loginwindow SystemVersionStampAsString -> r:^\s*14\p'
+    - 'c:bash -c "ioreg -rd1 -c IOPMrootDomain | grep -q ''\"IOPMUserIsActive\" = Yes'' && echo awake || echo asleep" -> r:^awake$'
 
 checks:
   # 1.1 Ensure All Apple-provided Software Is Current. (Automated) - Not Implemented
