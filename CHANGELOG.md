@@ -109,6 +109,8 @@ All notable changes to this project will be documented in this file.
 - Updated `urllib3` to version 2.5.0 and `protobuf` to version 5.29.5. ([#30624](https://github.com/wazuh/wazuh/pull/30624))
 - Upgraded Python embedded interpreter to 3.10.18. ([#30916](https://github.com/wazuh/wazuh/pull/30916))
 
+## [v4.13.1]
+
 
 ## [v4.13.0]
 
