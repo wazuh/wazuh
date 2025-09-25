@@ -4,7 +4,8 @@
 
 from contextlib import asynccontextmanager
 from logging import getLogger
-from typing import AsyncIterator
+from typing import Iterator
+import asyncio
 
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol
 from wazuh.core.exception import WazuhEngineError
@@ -40,8 +41,8 @@ class Engine:
         await self._client.aclose()
 
 
-@asynccontextmanager
-async def get_engine_client() -> AsyncIterator[Engine]:
+@contextmanager
+def get_engine_client() -> Iterator[Engine]:
     """Create and return the engine client.
 
     Returns
@@ -60,4 +61,8 @@ async def get_engine_client() -> AsyncIterator[Engine]:
     except ConnectError:
         raise WazuhEngineError(2802)
     finally:
-        await client.close()
+        # ensure the async close is executed from sync code
+        try:
+            client.run(client.close())
+        except Exception:
+            pass

@@ -121,24 +121,3 @@ def expand_decoders() -> set:
                 decoders.add(f)
 
     return decoders
-
-
-@resource_cache()
-def expand_lists() -> set:
-    """Return all CDB list files in the system.
-
-    Returns
-    -------
-    set
-        CDB list files.
-    """
-    folders = [common.LISTS_PATH, common.USER_LISTS_PATH]
-    lists = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.LISTS_EXTENSION), files):
-                # List files do not have an extension at the moment
-                if '.' not in f:
-                    lists.add(f)
-
-    return lists

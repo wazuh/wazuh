@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import List
 
-class ResourceType(Enum, str):
+class ResourceType(str, Enum):
     """Enumeration for resource types in the catalog.
 
     Values
@@ -15,14 +15,17 @@ class ResourceType(Enum, str):
         Rule resource type.
     DECODER : str
         Decoder resource type.
+    KVDB : str
+        KVDB resource type.
     INTEGRATION : str
         Integration resource type.
     """
     RULE = 'rule'
     DECODER = 'decoder'
+    KVDB = 'kvdb'
     INTEGRATION = 'integration'
 
-class ResourceFormat(Enum, str):
+class ResourceFormat(str, Enum):
     """Enumeration for resource formats in the catalog.
 
     Values
@@ -33,12 +36,15 @@ class ResourceFormat(Enum, str):
         YAML format.
     YML : str
         YML format.
+    XML : str
+        XML format.
     """
     JSON = 'json'
     YAML = 'yaml'
     YML = 'yml'
+    XML = 'xml'
 
-class Status(Enum, str):
+class Status(str, Enum):
     """Enumeration for resource status values."""
     ENABLED = 'enabled'
     DISABLED = 'disabled'
