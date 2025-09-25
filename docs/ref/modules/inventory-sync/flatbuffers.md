@@ -80,7 +80,7 @@ Signals completion of data transmission:
 
 ```flatbuffers
 table End {
-    session: uint64;
+    session: ulong;
 }
 ```
 
@@ -95,12 +95,14 @@ The module sends acknowledgment responses back to agents:
 ```flatbuffers
 table EndAck {
     status: Status;
-    session: uint64;
+    session: ulong;
 }
 
-enum Status : byte {
-    Ok = 0,
-    Error = 1
+enum Status: byte {
+    Ok,
+    PartialOk,
+    Error,
+    Offline
 }
 ```
 
