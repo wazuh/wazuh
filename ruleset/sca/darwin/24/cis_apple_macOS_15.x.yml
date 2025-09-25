@@ -1437,7 +1437,7 @@ checks:
       - soc_2: ["CC6.8"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan" -> r:^1$'
+      - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan$" -> r:^1$'
       - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan.startup" -> r:^1$'
 
   # 6.1.1 Ensure Show All Filename Extensions Setting is Enabled. (Automated) - Not Implemented
