@@ -519,4 +519,10 @@
   <description>Traffic Denied (group level-2)</description>
 </rule>
 
+<!-- user is considered an alias for the static user field (dstuser). -->
+<rule id="999286" level="10">
+  <user>root</user>
+  <description>Root user detected (static user field: dstuser)</description>
+</rule>
+
 </group>
