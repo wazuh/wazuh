@@ -3942,6 +3942,17 @@ components:
           enum: [white, black]
           example: white
 
+    # Common engine ruleset model
+    CommonRuleset:
+      type: object
+      properties:
+        id:
+          type: string
+          description: "Unique ID"
+        name:
+          type: string
+          description: "Human-friendly name"
+
     # Decoders models
     Decoder:
       type: object
@@ -4772,6 +4783,17 @@ components:
         type: array
         items:
           $ref: '#/components/schemas/Policy_id'
+    policy_type:
+      in: query
+      name: type
+      description: "Engine policy type"
+      required: true
+      schema:
+        type: string
+        items:
+          enum:
+          - testing
+          - production
     endpoint:
       in: query
       name: endpoint
