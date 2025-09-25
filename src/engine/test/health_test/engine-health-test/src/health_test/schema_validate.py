@@ -32,30 +32,49 @@ def is_valid_ip(value):
     except ValueError:
         return False
 
+def infer_type_name_for_error(v, declared_elem_type: str) -> str:
+    """Best-effort mapping from JSON value to an engine schema-ish type name for error messages."""
+    if isinstance(v, bool):
+        return 'boolean'
+    if isinstance(v, int) and not isinstance(v, bool):
+        return 'long'
+    if isinstance(v, float):
+        return 'double'
+    if isinstance(v, dict):
+        return 'object'
+    if isinstance(v, list):
+        return 'array'
+    if isinstance(v, str):
+        return 'keyword'
+    return 'unknown'
 
 def get_validation_function(field_type):
-    if field_type == 'object':
-        return lambda value: isinstance(value, dict) and bool(value)
-
-    if field_type == 'nested':
-        return lambda value: isinstance(value, list) and bool(value)
+    """
+    Returns a validator for a single element (scalar) of the declared type.
+    Cardinality (scalar vs array) is handled by the caller.
+    """
+    if field_type in {'object', 'nested', 'flattened'}:
+        return lambda v: isinstance(v, dict)
 
     if field_type == 'ip':
         return is_valid_ip
 
-    if field_type == 'keyword' or field_type == 'text' or field_type == 'wildcard':
-        return lambda value: isinstance(value, str)
+    if field_type in {'keyword', 'text', 'wildcard'}:
+        return lambda v: isinstance(v, str)
 
-    if field_type == 'long' or field_type == 'scaled_float':
-        return lambda value: isinstance(value, int)
+    if field_type == 'unsigned_long':
+        return lambda v: (isinstance(v, int) and not isinstance(v, bool) and v >= 0)
 
-    if field_type == 'float':
-        return lambda value: isinstance(value, float)
+    if field_type in {'long', 'integer', 'short', 'byte'}:
+        return lambda v: isinstance(v, int) and not isinstance(v, bool)
+
+    if field_type in {'float', 'half_float', 'double', 'scaled_float'}:
+        return lambda v: (isinstance(v, float) or (isinstance(v, int) and not isinstance(v, bool)))
 
     if field_type == 'boolean':
-        return lambda value: isinstance(value, bool)
+        return lambda v: isinstance(v, bool)
 
-    if field_type == 'date':
+    if field_type in {'date', 'date_nanos'}:
         return is_valid_date
 
     if field_type == 'geo_point':
@@ -97,13 +116,12 @@ def get_validation_function(field_type):
 
         return _is_geo_point
 
-    else:
-        return lambda value: False
+    return lambda value: False
 
 
 def load_custom_fields(custom_fields_path, reporter: ErrorReporter, allowed_custom_fields_type):
     """
-    Load custom fields from 'custom_fields.yml' into a map of field -> (type, validation_function).
+    Load custom fields from 'custom_fields.yml' into a map of field -> (type, array_flag, validation_function).
     """
     custom_fields_map = {}
     try:
@@ -117,8 +135,20 @@ def load_custom_fields(custom_fields_path, reporter: ErrorReporter, allowed_cust
                     )
                     continue
 
+                declared_array_flag = bool(item.get('array', False))
+
+                if item['type'] == 'nested':
+                    if declared_array_flag:
+                        reporter.add_warning(
+                        "Load Custom Fields", custom_fields_path,
+                        f"Field '{item['field']}': 'type: nested' implies array; 'array: true' is redundant."
+                        )
+                    array_flag = True
+                else:
+                    array_flag = declared_array_flag
+
                 validation_fn = get_validation_function(item['type'])
-                custom_fields_map[item['field']] = (item['type'], validation_fn)
+                custom_fields_map[item['field']] = (item['type'], array_flag, validation_fn)
 
         return custom_fields_map
     except Exception as e:
@@ -174,7 +204,7 @@ def ancestors(field: str):
     return out
 
 
-def verify_schema_types(schema, expected_json_files, custom_fields_map, integration_name, reporter):
+def verify_schema_types(schema, expected_json_files, custom_fields_map, integration_name, reporter, custom_fields_path):
     """
     Compare the fields in the '_expected.json' files with the schema and custom fields.
     """
@@ -188,15 +218,88 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
         reporter.add_error(integration_name, str(schema), f"Error reading the JSON schema file: {e}")
         return
 
-    invalid_fields = []
+    base_root = Path(schema).resolve().parent.parent
 
-    if reporter.has_errors():
-        return
+    _CANON_RE = re.compile(r"\[\d+\]")
+    def _canon(p: str) -> str:
+        return _CANON_RE.sub("", p)
+
+    def _is_under_geopoint(field_path: str) -> bool:
+        for anc in ancestors(field_path):
+            if schema_field_types.get(anc) == 'geo_point':
+                return True
+        return False
+
+    def _remove_children(candidates: set, parent_field: str) -> None:
+        parent_c = _canon(parent_field)
+        for inv in list(candidates):
+            inv_c = _canon(inv)
+            if inv_c == parent_c or inv_c.startswith(parent_c + '.'):
+                candidates.discard(inv)
+
+    def _validate_array(field, ftype, validate_fn, value, add_err):
+        if ftype == 'nested' and isinstance(value, dict):
+            value = [value]
+        if not isinstance(value, list):
+            add_err(f"Field '{field}' declared as array, but schema emits a scalar value: {repr(value)}")
+            return False
+
+        is_valid = True
+        for el in value:
+            if ftype == 'nested':
+                if not isinstance(el, dict):
+                    got_t = infer_type_name_for_error(el, ftype)
+                    add_err(f"Field '{field}' nested elements must be objects; got '{got_t}' (value={repr(el)})")
+                    is_valid = False
+                else:
+                    if not el:
+                        reporter.add_warning(integration_name, json_file, f"Field '{field}': empty object value '{{}}'")
+            else:
+                if ftype in {'object', 'flattened'} and isinstance(el, dict) and not el:
+                    reporter.add_warning(integration_name, json_file, f"Field '{field}': empty object value '{{}}'")
+
+                if not validate_fn(el):
+                    got_t = infer_type_name_for_error(el, ftype)
+                    add_err(f"Field '{field}' array element type mismatch: expected '{ftype}', got '{got_t}' (value={repr(el)})")
+                    is_valid = False
+        return is_valid
+
+    def _validate_scalar(field, ftype, validate_fn, value, add_err):
+        if isinstance(value, list):
+            add_err(f"Field '{field}' declared scalar, but schema emits an array")
+            return False
+
+        if ftype == 'nested':
+            if not isinstance(value, dict):
+                got_t = infer_type_name_for_error(value, ftype)
+                add_err(f"Field '{field}' nested must be an object or array of objects; got '{got_t}' (value={repr(value)})")
+                return False
+            if not value:
+                reporter.add_warning(integration_name, json_file, f"Field '{field}': empty object value '{{}}'")
+            return True
+
+        if ftype in {'object', 'flattened'} and isinstance(value, dict) and not value:
+            reporter.add_warning(integration_name, json_file, f"Field '{field}': empty object value '{{}}'")
+
+        if not validate_fn(value):
+            got_t = infer_type_name_for_error(value, ftype)
+            add_err(f"Field '{field}' declared as '{ftype}' has incompatible scalar value (got type '{got_t}', value={repr(value)})")
+            return False
+        return True
+
+    try:
+        custom_rel = Path(custom_fields_path).resolve().relative_to(base_root).as_posix()
+    except Exception:
+        custom_rel = Path(custom_fields_path).as_posix()
 
     for json_file in expected_json_files:
         try:
             with open(json_file, 'r') as f:
                 expected_data = json.load(f)
+
+                file_unknowns = set()
+                custom_errors = set()
+                add_err = custom_errors.add
 
                 for expected in expected_data:
                     extracted_fields = transform_dict_to_list(expected)
@@ -207,32 +310,39 @@ def verify_schema_types(schema, expected_json_files, custom_fields_map, integrat
 
                     filtered_invalid_fields = set(invalid_fields)
 
-                    for invalid_field in list(filtered_invalid_fields):
-                        for anc in ancestors(invalid_field):
-                            if schema_field_types.get(anc) == 'geo_point':
-                                filtered_invalid_fields.discard(invalid_field)
-                                break
+                    for inv in list(filtered_invalid_fields):
+                        if _is_under_geopoint(inv):
+                            filtered_invalid_fields.discard(inv)
 
-                    for field, (type, validate_function) in custom_fields_map.items():
+                    for field, (ftype, is_array, validate_function) in custom_fields_map.items():
                         expected_value = get_value_from_hierarchy(expected, field)
-                        if expected_value == None:
+                        if expected_value is None:
+                            filtered_invalid_fields.discard(field)
                             continue
-                        if validate_function(expected_value):
-                            if type == 'object':
-                                for invalid_field in invalid_fields:
-                                    if invalid_field.startswith(field + '.'):
-                                        filtered_invalid_fields.discard(invalid_field)
-                            elif type == 'nested':
-                                for invalid_field in invalid_fields:
-                                    filtered_invalid_fields.discard(invalid_field)
-                            else:
-                                filtered_invalid_fields.discard(field)
+
+                        is_valid = _validate_array(field, ftype, validate_function, expected_value, add_err) if is_array \
+                             else _validate_scalar(field, ftype, validate_function, expected_value, add_err)
+
+                        if not is_valid:
+                            filtered_invalid_fields.discard(field)
+                            continue
+
+                        if ftype in {'object', 'nested', 'flattened'}:
+                            _remove_children(filtered_invalid_fields, field)
+                        else:
+                            filtered_invalid_fields.discard(field)
 
                     if filtered_invalid_fields:
-                        reporter.add_error(
-                            integration_name,
-                            json_file,
-                            f"{filtered_invalid_fields}")
+                        file_unknowns.update(_canon(f) for f in filtered_invalid_fields)
+
+                if custom_errors:
+                    message = "Errors in: " + f"'{custom_rel}'" + "".join(f"\n      - {m}" for m in sorted(custom_errors))
+                    reporter.add_error(integration_name, json_file, message)
+
+                if file_unknowns:
+                    unknowns = sorted(file_unknowns)
+                    message = "Unknown fields in: " + f"'{custom_rel}'" + "".join(f"\n      - {u}" for u in unknowns)
+                    reporter.add_error(integration_name, json_file, message)
 
         except Exception as e:
             reporter.add_error(integration_name, str(json_file), f"Error reading the file: {e}")
@@ -269,7 +379,7 @@ def verify(schema, integration: Path, reporter):
             reporter.add_error(integration.name, str(test_folder), "Error: No '_expected.json' files found.")
             return
 
-        verify_schema_types(schema, expected_json_files, custom_fields, integration.name, reporter)
+        verify_schema_types(schema, expected_json_files, custom_fields, integration.name, reporter, custom_fields_path)
 
 
 def integration_validator(schema, ruleset_path: Path, integration: str, reporter):
@@ -338,9 +448,13 @@ def run(args):
             integration_validator(schema, ruleset_path, integration, reporter)
             rules_validator(schema, ruleset_path, integration_rule, reporter)
 
+        reporter.print_warnings(
+        "Non-fatal issues detected (redundant configuration or permissive values)",
+        ruleset_path)
+        reporter.report_title = "VALIDATION ERRORS:"
         reporter.exit_with_errors(
-            "There are fields present in the expected event that are not in the schema and were not defined as custom",
-            ruleset_path)
+        "Schema mismatches detected (unknown fields, type errors, or array/scalar cardinality)",
+        ruleset_path)
 
         print("Success execution")
     except Exception as e:
