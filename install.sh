@@ -3,6 +3,9 @@
 # Installation script for Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
+# Exit immediately if a command exits with a non-zero status
+set -e
+
 ### Looking up for the execution directory
 cd `dirname $0`
 
