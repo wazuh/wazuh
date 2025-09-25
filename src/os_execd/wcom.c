@@ -239,7 +239,7 @@ size_t wcom_restart(char ** output) {
         }
 #endif
     } else {
-        minfo(LOCK_RES, (int)lock);
+        minfo(LOCK_RES, (long)lock);
     }
 
     if (!*output) os_strdup("ok ", *output);
@@ -298,7 +298,7 @@ size_t wcom_reload(char ** output) {
         }
 #endif
     } else {
-        minfo(LOCK_RES, (int)lock);
+        minfo(LOCK_RES, (long)lock);
     }
 
     if (!*output) os_strdup("ok ", *output);

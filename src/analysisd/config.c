@@ -340,14 +340,14 @@ cJSON *getManagerLabelsConfig(void) {
 
 long get_global_alert_second_id(void) {
     long v;
-    pthread_rwlock_rdlock(&g_ftell_alerts_lock);
+    w_rwlock_rdlock(&g_ftell_alerts_lock);
     v = g_ftell_alerts;
-    pthread_rwlock_unlock(&g_ftell_alerts_lock);
+    w_rwlock_unlock(&g_ftell_alerts_lock);
     return v;
 }
 
 void set_global_alert_second_id(long v) {
-    pthread_rwlock_wrlock(&g_ftell_alerts_lock);
+    w_rwlock_wrlock(&g_ftell_alerts_lock);
     g_ftell_alerts = v;
-    pthread_rwlock_unlock(&g_ftell_alerts_lock);
+    w_rwlock_unlock(&g_ftell_alerts_lock);
 }
