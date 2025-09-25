@@ -1,0 +1,17 @@
+{
+    "topicName": "engine_cti_store",
+    "interval": 3600,
+    "ondemand": true,
+    "configData": {
+        "consumerName": "Wazuh Engine",
+        "contentSource": "cti-offset",
+        "compressionType": "raw",
+        "versionedContent": "cti-api",
+        "deleteDownloadedContent": true,
+        "url": "https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_test_5.0/consumers/decoders_test_5.0",
+        "outputFolder": "/var/ossec/engine/cti_store/content",
+        "contentFileName": "api_file.json",
+        "databasePath": "/var/ossec/engine/cti_store/db",
+        "offset": 0
+    }
+}

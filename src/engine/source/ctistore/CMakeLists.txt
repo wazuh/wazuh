@@ -13,10 +13,13 @@ add_library(ctistore::ictistore ALIAS ctistore_ictistore)
 add_library(ctistore_ctistore STATIC
     ${SRC_DIR}/cm.cpp
     ${SRC_DIR}/ctistoragedb.cpp
+    ${SRC_DIR}/contentDownloader.cpp
 )
 target_include_directories(ctistore_ctistore
     PUBLIC
     ${INC_DIR}
+    # Needed so that includes like <external/nlohmann/json.hpp> (from shared content_manager headers) resolve
+    ${SRC_FOLDER}
 )
 target_link_libraries(ctistore_ctistore
     PUBLIC
@@ -25,6 +28,7 @@ target_link_libraries(ctistore_ctistore
     PRIVATE
     urlrequest
     rocksdb
+    content_manager
 )
 add_library(ctistore::ctistore ALIAS ctistore_ctistore)
 
@@ -45,6 +49,7 @@ add_library(ctistore::mocks ALIAS ctistore_mocks)
 
 add_executable(ctistore_utest
     ${UNIT_SRC_DIR}/cm_test.cpp
+    ${UNIT_SRC_DIR}/contentDownloader_test.cpp
 )
 target_link_libraries(ctistore_utest
     PRIVATE
@@ -53,6 +58,7 @@ target_link_libraries(ctistore_utest
     ctistore::ctistore
 )
 target_include_directories(ctistore_utest PRIVATE ${SRC_DIR})
+target_include_directories(ctistore_utest PRIVATE ${SRC_FOLDER})
 gtest_discover_tests(ctistore_utest)
 
 add_executable(ctistore_ctest
@@ -88,6 +94,7 @@ target_include_directories(ctistore_benchmark
     ${BENCH_SRC_DIR}
     ${SRC_DIR}
     ${INC_DIR}
+    ${SRC_FOLDER}
 )
 
 target_link_libraries(ctistore_benchmark
