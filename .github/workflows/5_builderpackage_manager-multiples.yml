@@ -56,6 +56,9 @@ jobs:
   build-wazuh-manager:
     name: Build Wazuh Manager
     needs: select-targets
+    permissions:
+        contents: read
+        packages: write
     strategy:
         matrix: ${{ fromJSON(needs.select-targets.outputs.matrix) }}
         fail-fast: false

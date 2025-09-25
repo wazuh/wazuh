@@ -29,6 +29,8 @@ on:
         required: false
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+    branches:
+      - '4.[0-9]+.[0-9]+'
 
 jobs:
   select-targets:
