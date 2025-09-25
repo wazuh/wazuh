@@ -324,6 +324,14 @@ start_service()
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
+        ## Do not start the API in worker nodes
+        if [ X"$i" = "Xwazuh-apid" ]; then
+            node_type=$(grep '<node_type>' ${DIR}/etc/ossec.conf | sed 's/<node_type>\(.*\)<\/node_type>/\1/'); 
+            if [ "$node_type" = "worker" ]; then 
+                continue
+            fi
+        fi
+
         ## If wazuh-authd is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-authd" ]; then
              start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
