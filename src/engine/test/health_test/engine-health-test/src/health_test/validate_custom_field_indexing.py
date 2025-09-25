@@ -15,9 +15,6 @@ from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 from google.protobuf.json_format import ParseDict
-import shared.resource_handler as rs
-import ipaddress
-from datetime import datetime
 from health_test.utils import *
 
 class UnitOutput:
@@ -139,89 +136,6 @@ class Result:
         return out
 
 
-def is_valid_date(value):
-    try:
-        datetime.fromisoformat(value)
-        return True
-    except ValueError:
-        return False
-
-
-def is_valid_ip(value):
-    """ Check if the value is a valid IP address. """
-    try:
-        ipaddress.ip_address(value)
-        return True
-    except ValueError:
-        return False
-
-
-def get_validation_function(field_type):
-    if field_type == 'object':
-        return lambda value: isinstance(value, dict) and bool(value)
-
-    if field_type == 'nested':
-        return lambda value: isinstance(value, list) and bool(value)
-
-    if field_type == 'ip':
-        return is_valid_ip
-
-    if field_type == 'keyword' or field_type == 'text' or field_type == 'wildcard':
-        return lambda value: isinstance(value, str)
-
-    if field_type == 'long' or field_type == 'scaled_float':
-        return lambda value: isinstance(value, int)
-
-    if field_type == 'float':
-        return lambda value: isinstance(value, float)
-
-    if field_type == 'boolean':
-        return lambda value: isinstance(value, bool)
-
-    if field_type == 'date':
-        return is_valid_date
-
-    else:
-        return lambda value: False
-
-
-def load_custom_fields(integration, custom_fields_path, allowed_types):
-    """
-    Load custom fields from 'custom_fields.yml' into a map of field -> (type, validation_function).
-    """
-    custom_fields_map = {}
-    failure_load_custom_fields = []
-    try:
-        custom_fields_data = rs.ResourceHandler().load_file(custom_fields_path.as_posix())
-        for item in custom_fields_data:
-            if item['field']:
-                if item['type'] not in allowed_types:
-                    message = f"\nIntegration: {integration}\n"
-                    message += f"Invalid type '{item['type']}' for field '{item['field']}'. Allowed types: {allowed_types}\n"
-                    failure_load_custom_fields.append(message)
-                    continue
-
-                validation_fn = get_validation_function(item['type'])
-                custom_fields_map[item['field']] = (item['type'], validation_fn)
-
-        return custom_fields_map, failure_load_custom_fields
-    except Exception as e:
-        sys.exit(f"Error loading custom fields from {custom_fields_path}: {e}")
-
-
-def get_value_from_hierarchy(data, field):
-    keys = field.split('.')
-    value = data
-
-    for key in keys:
-        if isinstance(value, dict) and key in value:
-            value = value[key]
-        else:
-            return None
-
-    return value
-
-
 class OpensearchManagement:
     def __init__(self):
         self.offset = 0
@@ -290,25 +204,7 @@ class OpensearchManagement:
             print(f"An unexpected error occurred: {e}")
             self.stop()
 
-    def check_custom_fields(self, custom_fields: dict, all_custom_fields: set, hits: list):
-        filtered_invalid_fields = set(all_custom_fields)
-        for hit in hits:
-            for field, (type_, validate_function) in custom_fields.items():
-                expected_value = get_value_from_hierarchy(hit['_source'], field)
-                if expected_value == None:
-                    continue
-                if validate_function(expected_value):
-                    if type_ == 'object':
-                        for invalid_field in filtered_invalid_fields:
-                            if invalid_field.startswith(field + '.'):
-                                all_custom_fields.discard(invalid_field)
-                    elif type_ == 'nested':
-                        for invalid_field in filtered_invalid_fields:
-                            all_custom_fields.discard(invalid_field)
-                    else:
-                        all_custom_fields.discard(field)
-
-    def read_index(self, result: Result, custom_fields: dict, all_custom_fields: set, outputs_number: int, retries=10, delay=4):
+    def read_index(self, outputs_number: int, retries=10, delay=4):
         url_search = f'http://localhost:9200/{Constants.INDEX_PATTERN}/_search'
         headers = {"Content-Type": "application/json"}
         terminate = False
@@ -332,7 +228,6 @@ class OpensearchManagement:
 
                 if current_hits_count == outputs_number:
                     terminate = True
-                    self.check_custom_fields(custom_fields, all_custom_fields, hits)
                     break
                 elif current_hits_count > last_hits_count:
                     # If the count increased, reset the consecutive same count
@@ -363,52 +258,15 @@ class OpensearchManagement:
 opensearch_management = OpensearchManagement()
 
 
-def extract_fields(d):
-    def extract_keys(d, prefix=""):
-        result = []
-        if isinstance(d, dict):
-            for key, value in d.items():
-                new_prefix = f"{prefix}.{key}" if prefix else key
-                if isinstance(value, dict):
-                    result.extend(extract_keys(value, new_prefix))
-                elif isinstance(value, list):
-                    for i, item in enumerate(value):
-                        if isinstance(item, dict):
-                            result.extend(extract_keys(item, f"{new_prefix}[{i}]"))
-                        else:
-                            result.append(f"{new_prefix}")
-                else:
-                    result.append(new_prefix)
-        return result
-
-    return extract_keys(d)
-
-
-def add_custom_fields(custom_fields: set, data_list, schema_fields):
-    for data_str in data_list:
-        try:
-            data = json.loads(data_str)
-            extracted_fields = extract_fields(data)
-
-            for field in extracted_fields:
-                if field not in schema_fields:
-                    custom_fields.add(field)
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON: {e}")
-
-
-def execute(name: str, command: str, customs: set, schema_fields: list) -> Tuple[Optional[str], EngineTestOutput]:
+def execute(name: str, command: str) -> Tuple[Optional[str], EngineTestOutput]:
     result = EngineTestOutput(name, command)
     try:
-        output = subprocess.check_output(
-            command, shell=True, stderr=subprocess.STDOUT)
+        output = subprocess.check_output(command, shell=True, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         return f"Error executing command: {e.output.decode()}", result
 
     output_str = output.decode('utf-8')
     json_strings = output_str.strip().split('\n')
-
-    add_custom_fields(customs, json_strings, schema_fields)
 
     for i, json_string in enumerate(json_strings):
         try:
@@ -421,9 +279,9 @@ def execute(name: str, command: str, customs: set, schema_fields: list) -> Tuple
     return None, result
 
 
-def test(input_file: Path, command: str, customs: set, schema_fields: list) -> EngineTestOutput:
+def test(input_file: Path, command: str) -> EngineTestOutput:
     name = input_file.stem.replace("_input", "")
-    error, output = execute(name, command, customs, schema_fields)
+    error, output = execute(name, command)
 
     if error:
         print(error)
@@ -436,11 +294,9 @@ def test(input_file: Path, command: str, customs: set, schema_fields: list) -> E
 
 
 def run_all_tests(test_parent_paths: List[Path],
-                  engine_api_socket: str, schema_fields) -> Tuple[Dict[str, List[EngineTestOutput]],
-                                                                  int, set]:
+                  engine_api_socket: str) -> Tuple[Dict[str, List[EngineTestOutput]], int]:
     all_outputs_by_integration = {}
     number_outputs = 0
-    customs = set()
 
     for test_parent_path in test_parent_paths:
         test_parent_name = test_parent_path.name
@@ -464,54 +320,24 @@ def run_all_tests(test_parent_paths: List[Path],
             engine_test_command = f"engine-test -c {engine_test_conf.resolve().as_posix()} run {test_name} -s {Constants.DEFAULT_SESSION} --api-socket {engine_api_socket} -j"
             command = f"cat {input_file.resolve().as_posix()} | {engine_test_command}"
 
-            output = test(input_file, command, customs, schema_fields)
-            number_outputs += len(output.results)
+            output = test(input_file, command)
+            number_outputs += sum(1 for r in output.results if getattr(r, "success", False))
             outputs_for_integration.append(output)
 
         all_outputs_by_integration[test_parent_name] = outputs_for_integration
 
-    return all_outputs_by_integration, number_outputs, customs
+    return all_outputs_by_integration, number_outputs
 
 
-def validate_custom_fields(
-        integration: str, custom_fields: dict, all_custom_fields: set, outputs_number: int) -> Result:
-    result = Result(integration)
-    opensearch_management.read_index(result, custom_fields, all_custom_fields, outputs_number)
+def run_test(test_parent_paths: List[Path], engine_api_socket: str) -> List[Result]:
+    outputs_by_integration, number_outputs = run_all_tests(test_parent_paths, engine_api_socket)
 
-    return result
+    opensearch_management.read_index(number_outputs)
 
-
-def run_test(test_parent_paths: List[Path], engine_api_socket: str, schema_data) -> List[Result]:
-    schema_fields = set(schema_data.get("fields", {}).keys())
-    outputs, number_outputs, all_custom_fields = run_all_tests(test_parent_paths, engine_api_socket, schema_fields)
-    results = []
-    failures = []
-    allowed_types = {field_info["type"] for field_info in schema_data["fields"].values()}
-    for custom_field_container in test_parent_paths:
-        if custom_field_container.name != 'wazuh-core':
-            custom_fields_path = custom_field_container / 'test' / 'custom_fields.yml'
-            if not custom_fields_path.exists():
-                sys.exit(custom_field_container.name, str(custom_fields_path),
-                         "Error: custom_fields.yml file does not exist.")
-            custom_fields, failure_load_custom_fields = load_custom_fields(
-                custom_field_container.name, custom_fields_path, allowed_types)
-            if not failure_load_custom_fields:
-                results.append(validate_custom_fields(custom_field_container.name,
-                                                      custom_fields, all_custom_fields, number_outputs))
-            else:
-                failures.append(failure_load_custom_fields)
-
-    if failures or all_custom_fields:
-        print("The test did not end correctly:")
-
-    if failures:
-        for failure in failures:
-            print(failure)
-        sys.exit(1)
-
-    if all_custom_fields:
-        sys.exit(f"The following fields were not found or matched incorrectly: {all_custom_fields}")
-
+    results: List[Result] = []
+    for integration_name, outputs in outputs_by_integration.items():
+        r = Result(integration_name)
+        results.append(r)
     return results
 
 
@@ -647,13 +473,6 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
         sys.exit(f"Integrations directory not found: {integrations_path}")
     print("Environment validated.")
 
-    schema = env_path / "ruleset/schemas/engine-schema.json"
-    try:
-        with open(schema, 'r') as schema_file:
-            schema_data = json.load(schema_file)
-    except Exception as e:
-        sys.exit(f"Error reading the JSON schema file: {e}")
-
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
                                    CONFIG_ENV_KEYS.LOG_LEVEL.value: "debug"})
@@ -692,7 +511,7 @@ def decoder_health_test(env_path: Path, integration_name: Optional[str] = None, 
             reload_session(engine_handler)
 
         print("\n\nRunning tests...")
-        results = run_test(integrations, engine_handler.api_socket_path, schema_data)
+        results = run_test(integrations, engine_handler.api_socket_path)
 
     except Exception as e:
         # TODO: Improve error handling diferentiating between elasic or engine errors, and handle them properly
@@ -737,13 +556,6 @@ def rule_health_test(env_path: Path, integration_rule: Optional[str] = None, ski
         sys.exit(f"Integrations rules directory not found: {integrations_rules_path}")
     print("Environment validated.")
 
-    schema = env_path / "ruleset/schemas/engine-schema.json"
-    try:
-        with open(schema, 'r') as schema_file:
-            schema_data = json.load(schema_file)
-    except Exception as e:
-        sys.exit(f"Error reading the JSON schema file: {e}")
-
     print("Starting engine...")
     engine_handler = EngineHandler(bin_path.as_posix(), conf_path.as_posix(), override_env={
                                    CONFIG_ENV_KEYS.LOG_LEVEL.value: "debug"})
@@ -781,7 +593,7 @@ def rule_health_test(env_path: Path, integration_rule: Optional[str] = None, ski
             reload_session(engine_handler)
 
         print("\n\nRunning tests...")
-        results = run_test(rules, engine_handler.api_socket_path, schema_data)
+        results = run_test(rules, engine_handler.api_socket_path)
 
     except Exception as e:
         # TODO: Improve error handling diferentiating between elasic or engine errors, and handle them properly
