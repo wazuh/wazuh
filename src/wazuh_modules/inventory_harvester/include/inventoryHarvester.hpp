@@ -36,14 +36,10 @@ public:
      * @param logFunction Log function to be used.
      * @param configuration Harvester configuration.
      */
-    void start(const std::function<void(const int,
-                                        const std::string&,
-                                        const std::string&,
-                                        const int,
-                                        const std::string&,
-                                        const std::string&,
-                                        va_list)>& logFunction,
-               const nlohmann::json& configuration) const;
+    void
+    start(const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+              logFunction,
+          const nlohmann::json& configuration) const;
     /**
      * @brief Stops Inventory scanner.
      *
