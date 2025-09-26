@@ -80,6 +80,7 @@ target_link_libraries(ctistore_bench INTERFACE ctistore::ctistore benchmark::ben
 add_library(ctistore::bench ALIAS ctistore_bench)
 add_executable(ctistore_benchmark
     ${BENCH_SRC_DIR}/cm_bench.cpp
+    ${BENCH_SRC_DIR}/ctistoragedb_bench.cpp
 )
 
 target_include_directories(ctistore_benchmark
