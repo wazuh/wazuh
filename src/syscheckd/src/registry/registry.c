@@ -879,7 +879,6 @@ void fim_read_values(HKEY key_handle,
             break;
         }
 
-        // Convert wide character value name to UTF-8
         value_name_utf8 = wide_to_utf8(value_buffer_w);
 
         if (value_name_utf8 == NULL) {
@@ -935,7 +934,6 @@ void fim_read_values(HKEY key_handle,
             mdebug2("dbsync transaction failed due to %d", result_transaction);
         }
 
-        // Free the UTF-8 converted value name
         os_free(value_name_utf8);
     }
 
