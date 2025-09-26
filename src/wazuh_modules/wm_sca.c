@@ -983,7 +983,7 @@ static int wm_sca_do_scan(cJSON * checks,
             snprintf(_check_id_str, sizeof(_check_id_str), "Requirements check");
         } else {
             const cJSON * const c_id = cJSON_GetObjectItem(check, "id");
-            if (!c_id || !c_id->valueint) {
+            if (!c_id || !cJSON_IsNumber(c_id)) {
                 merror("Skipping check. Check ID is invalid. Offending check number: %d", check_count);
                 ret_val = 1;
                 continue;
@@ -2645,7 +2645,7 @@ static cJSON *wm_sca_build_event(const cJSON * const check, const cJSON * const 
         goto error;
     }
 
-    if(!pm_id->valueint) {
+    if(!cJSON_IsNumber(pm_id)) {
         mdebug1("Field 'id' must be a number.");
         goto error;
     }
@@ -2872,15 +2872,14 @@ static int wm_sca_check_hash(OSHash * const cis_db_hash, const char * const resu
     cJSON *pm_id = cJSON_GetObjectItem(check, "id");
     int alert = 1;
 
-    if(!pm_id) {
+    if (!pm_id) {
         return 0;
     }
-
-    if(!pm_id->valueint) {
+    if (cJSON_IsNumber(pm_id)) {
+        sprintf(id_hashed, "%g", pm_id->valuedouble);
+    } else {
         return 0;
     }
-
-    sprintf(id_hashed, "%d", pm_id->valueint);
 
     hashed_result = OSHash_Get(cis_db_hash, id_hashed);
 
