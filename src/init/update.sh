@@ -365,8 +365,8 @@ UpdateStopOSSEC()
         rm -f $PREINSTALLEDDIR/queue/agent-info/* > /dev/null 2>&1
     fi
     rm -rf $PREINSTALLEDDIR/framework/* > /dev/null 2>&1
-    rm $PREINSTALLEDDIR/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
-    rm $PREINSTALLEDDIR/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
+    rm -f $PREINSTALLEDDIR/wodles/aws/aws > /dev/null 2>&1 # this script has been renamed
+    rm -f $PREINSTALLEDDIR/wodles/aws/aws.py > /dev/null 2>&1 # this script has been renamed
 
     # Deleting plain-text agent information if exists (it was migrated to Wazuh DB in v4.1)
     if [ -d "$PREINSTALLEDDIR/queue/agent-info" ]; then
