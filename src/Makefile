@@ -840,21 +840,21 @@ endif
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
 endif
-server: external ${CPPLIBDEPS}
+server: ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},local)
 $(error Do not use 'local' directly, use 'TARGET=local')
 endif
-local: external ${CPPLIBDEPS}
+local: ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 	${MAKE} ${BUILD_SERVER}
 
 ifeq (${MAKECMDGOALS},hybrid)
 $(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
 endif
-hybrid: external ${CPPLIBDEPS}
+hybrid: ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 	${MAKE} ${BUILD_SERVER}
 
@@ -998,7 +998,7 @@ EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
 
 
-.PHONY: external test_external
+.PHONY: external test_external check_external_libs
 external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
@@ -1029,6 +1029,20 @@ test_external:
 ifeq ($(wildcard external/*/*),)
 	$(error No external directory found. Run "${MAKE} deps" before compiling external libraries)
 endif
+
+# Check if external libraries exist, error if missing
+check_external_libs: test_external
+	@missing_libs=""; \
+	for lib in $(EXTERNAL_LIBS) $(EXTERNAL_LIBS_NO_WHOLE); do \
+		if [ ! -f "$$lib" ]; then \
+			missing_libs="$$missing_libs $$lib"; \
+		fi; \
+	done; \
+	if [ -n "$$missing_libs" ]; then \
+		echo "Error: The following external libraries do not exist:$$missing_libs"; \
+		echo "Run 'make external' to compile them or verify they are already precompiled"; \
+		exit 1; \
+	fi
 
 #### OpenSSL ##########
 
@@ -2008,15 +2022,15 @@ libwazuh.a: ${config_o} ${wmodules_dep} ${crypto_o} ${shared_o} ${os_net_o} ${os
 ifeq (${uname_S},Darwin)
 WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ $(OSSEC_LIBS)
+$(WAZUHEXT_LIB): | check_external_libs
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $(EXTERNAL_LIBS) $(OSSEC_LIBS)
 else
 ifeq (${TARGET}, winagent)
 $(WAZUHEXT_LIB): $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF)
 	$(DLLTOOL) -D $(WAZUHEXT_DLL) --def $(WAZUHEXT_LIB_DEF) --output-delaylib $@
 
-$(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS) win32/version-dll.o
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
+$(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): win32/version-dll.o | check_external_libs
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $(EXTERNAL_LIBS) $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
 
 
 else
@@ -2027,15 +2041,15 @@ else
 LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
 endif
 ifeq (${uname_P},sparc)
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+$(WAZUHEXT_LIB): | check_external_libs
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $(EXTERNAL_LIBS) -Wl,--no-whole-archive ${OSSEC_LIBS}
 else
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+$(WAZUHEXT_LIB): | check_external_libs
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $(EXTERNAL_LIBS) -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 else
 ifeq (${uname_S},AIX)
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+$(WAZUHEXT_LIB): | check_external_libs
 	mkdir -p libwazuhext;
 	find external/ -name \*.a -exec cp {} libwazuhext/ \;
 	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
@@ -2045,7 +2059,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -latomic -lm
 else
 ifeq (${uname_S},HP-UX)
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
+$(WAZUHEXT_LIB): | check_external_libs
 	mkdir -p libwazuhext;
 	find external/ -name \*.a -exec cp {} libwazuhext/ \;
 	for lib in libcjson.a libz.a libmsgpack.a libssl.a libcrypto.a libsqlite3.a libyaml.a libpcre2-8.a ; do \
@@ -2054,8 +2068,8 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	done
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc
 else
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
+$(WAZUHEXT_LIB): | check_external_libs
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $(EXTERNAL_LIBS) -Wl,--no-whole-archive ${OSSEC_LIBS}
 endif
 endif
 endif
