@@ -48,6 +48,11 @@ static registry_t one_entry_config[] = {
     { NULL, 0, 0, 320, 0, NULL, NULL, NULL }
 };
 
+static registry_t non_UTF8_config[] = {
+    { "HKEY_LOCAL_MACHINE\\SOFTWARE\\Tëstç", ARCH_64BIT, CHECK_REGISTRY_ALL, 320, 0, NULL, NULL, NULL },
+    { NULL, 0, 0, 320, 0, NULL, NULL, NULL }
+};
+
 static registry_ignore default_ignore[] = { { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_32BIT},
                                             { "HKEY_LOCAL_MACHINE\\Software\\Ignore", ARCH_64BIT},
                                             { NULL, 0} };
@@ -234,6 +239,35 @@ static int teardown_test_hashes(void **state) {
         fim_registry_free_key(entry->registry_entry.key);
         fim_registry_free_value_data(entry->registry_entry.value);
         free(entry);
+    }
+
+    return 0;
+}
+
+static int setup_test_non_utf8(void **state) {
+    fim_val_txn_context_t *txn_ctx_regval;
+
+    os_calloc(1, sizeof(fim_val_txn_context_t), txn_ctx_regval);
+
+    *state = txn_ctx_regval;
+
+    return 0;
+}
+
+static int teardown_test_non_utf8(void **state) {
+    fim_val_txn_context_t *txn_ctx_regval = *state;
+
+    if (txn_ctx_regval) {
+        os_free(txn_ctx_regval->diff);
+        os_free(txn_ctx_regval->data->path);
+        os_free(txn_ctx_regval->data->name);
+        os_free(txn_ctx_regval->data->size);
+        os_free(txn_ctx_regval->data->type);
+        os_free(txn_ctx_regval->data->scanned);
+        os_free(txn_ctx_regval->data->last_event);
+        os_free(txn_ctx_regval->data->hash_full_path);
+        os_free(txn_ctx_regval->data);
+        os_free(txn_ctx_regval);
     }
 
     return 0;
@@ -679,13 +713,13 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
     // Scan a subkey of batfile
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile", 0, KEY_READ | KEY_WOW64_64KEY, NULL,
                              ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(1, 0, &last_write_time, ERROR_SUCCESS);
-    expect_RegEnumKeyEx_call("FirstSubKey", 12, ERROR_SUCCESS);
+    expect_RegEnumKeyExW_call(L"FirstSubKey", 12, ERROR_SUCCESS);
 
     // Scan a value of FirstSubKey
-    expect_RegOpenKeyEx_call(HKEY_LOCAL_MACHINE, "Software\\Classes\\batfile\\FirstSubKey", 0,
+    expect_RegOpenKeyExW_call(HKEY_LOCAL_MACHINE, L"Software\\Classes\\batfile\\FirstSubKey", 0,
                              KEY_READ | KEY_WOW64_64KEY, NULL, ERROR_SUCCESS);
     expect_RegQueryInfoKey_call(0, 1, &last_write_time, ERROR_SUCCESS);
 
@@ -696,7 +730,7 @@ static void test_fim_registry_scan_base_line_generation(void **state) {
     will_return(__wrap_fim_db_transaction_sync_row, -1);
     expect_string(__wrap__merror, formatted_msg, "Dbsync registry transaction failed due to -1");
     will_return(__wrap_fim_db_transaction_sync_row, -1);
-    expect_RegEnumValue_call(value_name, value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
+    expect_RegEnumValueW_call(auto_to_wide(value_name), value_type, (LPBYTE)&value_data, value_size, ERROR_SUCCESS);
 
     expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile\\FirstSubKey", "test_value",
                                    (const char *)&value_data, 4, REG_DWORD, NULL);
@@ -810,7 +844,7 @@ static void test_fim_registry_scan_RegOpenKeyEx_fail(void **state) {
     will_return(__wrap_fim_db_transaction_start, mock_handle);
     will_return(__wrap_fim_db_transaction_start, mock_handle);
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_START);
-    expect_string(__wrap__mdebug1, formatted_msg, "(6920): Unable to open registry key: 'Software\\Classes\\batfile' arch: '[x64]'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6920): Failed to open registry key: 'Software\\Classes\\batfile' (arch: '[x64]'). Error code: 2.");
     expect_string(__wrap__mdebug1, formatted_msg, FIM_WINREGISTRY_ENDED);
     expect_any_always(__wrap__mdebug2, formatted_msg);
 
@@ -1110,6 +1144,30 @@ static void test_fim_registry_free_entry(){
     fim_registry_free_entry(entry);
 }
 
+static void test_fim_read_values_success(void **state) {
+    syscheck.registry = non_UTF8_config;
+
+    fim_val_txn_context_t *txn_ctx_regval = *state;
+    char *path = "HKEY_LOCAL_MACHINE\\SOFTWARE\\Tëstç";
+    wchar_t *value_name = L"Tést1";
+    char* value_data = "tést_chain";
+
+    expect_RegEnumValueW_call(value_name, REG_SZ, (LPBYTE)&value_data, 22, ERROR_SUCCESS);
+
+    expect_fim_registry_value_diff("HKEY_LOCAL_MACHINE\\SOFTWARE\\Tëstç", "Tést1",
+                                   (const char *)&value_data, 4, REG_SZ, NULL);
+
+    will_return(__wrap_fim_db_transaction_sync_row, 0);
+
+    fim_read_values(HKEY_LOCAL_MACHINE, path, ARCH_64BIT, 1, 14, 24, NULL, txn_ctx_regval);
+
+    assert_string_equal(txn_ctx_regval->data->path, "HKEY_LOCAL_MACHINE\\SOFTWARE\\Tëstç");
+    assert_string_equal(txn_ctx_regval->data->name, "Tést1");
+    assert_int_equal(txn_ctx_regval->data->type, REG_SZ);
+    assert_int_equal(txn_ctx_regval->data->size, 0x16);
+    assert_int_equal(txn_ctx_regval->data->scanned, 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_set_root_key test */
@@ -1183,7 +1241,10 @@ int main(void) {
         cmocka_unit_test(test_fim_registry_value_transaction_callback_max_rows),
 
         /* fim_registry_free_entry */
-        cmocka_unit_test(test_fim_registry_free_entry)
+        cmocka_unit_test(test_fim_registry_free_entry),
+
+        /* fim_read_values */
+        cmocka_unit_test_setup_teardown(test_fim_read_values_success, setup_test_non_utf8, teardown_test_non_utf8)
     };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
