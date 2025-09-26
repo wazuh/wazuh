@@ -372,6 +372,7 @@ base::RespOrError<store::Col> Catalog::getCol(const Resource& resource, const st
     return col;
 }
 
+
 base::RespOrError<std::string> Catalog::getResource(const Resource& resource, const std::string& namespaceId) const
 {
     using Type = ::com::wazuh::api::engine::catalog::ResourceType;
@@ -494,6 +495,11 @@ base::OptError Catalog::deleteResource(const Resource& resource, const std::stri
 
     // Delete document
     return delDoc(resource);
+}
+
+bool Catalog::collectionExists(const Resource& resource, const std::string& namespaceId) const
+{
+    return m_store->existsCol(resource.m_name, store::NamespaceId {namespaceId});
 }
 
 base::OptError Catalog::validate(const Resource& item, const std::string& namespaceId, const json::Json& content) const
