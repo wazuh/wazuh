@@ -2,16 +2,35 @@
 #define _CTI_STORE_CM
 
 #include <ctistore/icmreader.hpp>
+#include <ctistore/contentDownloader.hpp>
+
+#include <memory>
+#include <shared_mutex>
 
 namespace cti::store
 {
 
-// TODO: Documentation
+/**
+ * @brief ContentManager class - Main CTI Store manager
+ *
+ * This class manages the CTI Store, providing access to downloaded assets
+ * and handling content synchronization from the remote CTI platform.
+ */
 class ContentManager : public ICMReader
 {
 public:
-    ContentManager() = default;
-    ~ContentManager() override = default;
+    /**
+     * @brief Constructor
+     * @param config Configuration for the content downloader
+     * @param autoStart If true, starts the downloader automatically
+     */
+    explicit ContentManager(const ContentManagerConfig& config = ContentManagerConfig{},
+                           bool autoStart = false);
+
+    /**
+     * @brief Destructor
+     */
+    ~ContentManager() override;
 
     /************************************************************************************
      * ICMReader interface implementation
@@ -48,6 +67,82 @@ public:
     /************************************************************************************
      * Other public methods or other interfaces can be added here
      ************************************************************************************/
+
+    /**
+     * @brief Start content synchronization from remote CTI platform
+     * @return true if started successfully
+     */
+    bool startSync();
+
+    /**
+     * @brief Stop content synchronization
+     */
+    void stopSync();
+
+    /**
+     * @brief Check if synchronization is running
+     * @return true if sync is active
+     */
+    bool isSyncRunning() const;
+
+    /**
+     * @brief Force an immediate synchronization
+     * @return true if sync was triggered successfully
+     */
+    bool forceSyncNow();
+
+    /**
+     * @brief Update synchronization interval
+     * @param intervalSeconds New interval in seconds
+     */
+    void updateSyncInterval(size_t intervalSeconds);
+
+    /**
+     * @brief Get current configuration
+     * @return Current configuration
+     */
+    ContentManagerConfig getConfig() const;
+
+    /**
+     * @brief Update configuration
+     * @param config New configuration
+     * @param restart If true, restarts sync with new config
+     */
+    void updateConfig(const ContentManagerConfig& config, bool restart = true);
+
+private:
+    /**
+     * @brief Process downloaded content and store in database
+     * @param message Message from content downloader
+     * @return Processing result
+     */
+    FileProcessingResult processDownloadedContent(const std::string& message);
+
+    /**
+     * @brief Store asset in local database
+     * @param asset Asset data to store
+     * @return true if stored successfully
+     */
+    bool storeAsset(const json::Json& asset);
+
+    /**
+     * @brief Store KVDB data in local database
+     * @param kvdbData KVDB data to store
+     * @return true if stored successfully
+     */
+    bool storeKVDB(const json::Json& kvdbData);
+
+    /**
+     * @brief Store policy data in local database
+     * @param policyData Policy data to store
+     * @return true if stored successfully
+     */
+    bool storePolicy(const json::Json& policyData);
+
+private:
+    std::unique_ptr<ContentDownloader> m_downloader;
+    mutable std::shared_mutex m_mutex;
+    ContentManagerConfig m_config;
 };
 
 } // namespace cti::store
