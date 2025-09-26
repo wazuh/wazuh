@@ -11,9 +11,8 @@ from wazuh.core.exception import WazuhError
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
-cluster_enabled = not read_cluster_config(from_import=True)['disabled']
-node_id = get_node().get('node') if cluster_enabled else 'manager'
-node_type = get_node().get('type') if cluster_enabled else 'master'
+node_id = get_node().get('node')
+node_type = get_node().get('type')
 
 _reload_ruleset_default_result_kwargs = {
     'all_msg': f"Reload request sent to {'all specified nodes' if node_id != 'manager' else ''}",
@@ -22,11 +21,9 @@ _reload_ruleset_default_result_kwargs = {
     'sort_casting': ['str']
 }
 
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+@expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
                   post_proc_func=async_list_handler)
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:restart"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'],
+@expose_resources(actions=['cluster:restart'], resources=[f'node:id:{node_id}'],
                   post_proc_kwargs={'default_result_kwargs': _reload_ruleset_default_result_kwargs},
                   post_proc_func=async_list_handler)
 async def reload_ruleset() -> AffectedItemsWazuhResult:
