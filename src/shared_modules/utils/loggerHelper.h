@@ -54,8 +54,7 @@ namespace Log
 // Remove visibility of this extern function
 #pragma GCC visibility push(hidden)
 
-    extern std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    extern std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 #pragma GCC visibility pop
 
@@ -67,13 +66,10 @@ namespace Log
      *
      * @param logFunction callback function that is going to be called on every message logging operation.
      */
-    static void assignLogFunction(const std::function<void(const int,
-                                                           const std::string&,
-                                                           const std::string&,
-                                                           const int,
-                                                           const std::string&,
-                                                           const std::string&,
-                                                           va_list)>& logFunction)
+    static void assignLogFunction(
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction)
+
     {
         if (!GLOBAL_LOG_FUNCTION)
         {

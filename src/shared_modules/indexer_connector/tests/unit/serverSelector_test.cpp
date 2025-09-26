@@ -21,8 +21,7 @@ constexpr auto SERVER_SELECTOR_HEALTH_CHECK_INTERVAL {5u};
 
 namespace Log
 {
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
 }; // namespace Log
 
