@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 - Added system users and groups to the inventory data. ([#30848](https://github.com/wazuh/wazuh/pull/30848))
 - Added browser extensions and services to the inventory data. ([#31614](https://github.com/wazuh/wazuh/pull/31614))
+- Added IPv6 support to Maltiverse integration. ([#31731](https://github.com/wazuh/wazuh/pull/31731))
 
 #### Fixed
 
@@ -17,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Fixed race condition in the event queue. ([#29672](https://github.com/wazuh/wazuh/pull/29672))
 - Fixed regexCompile race condition. ([#29699](https://github.com/wazuh/wazuh/pull/29699))
 - Fixed malformed alerts in alerts.log when `<group>` contains newline characters. ([#30653](https://github.com/wazuh/wazuh/pull/30653))
+- Fixed and improved dpkg version comparison algorithm in Vulnerability Detector. ([#31599](https://github.com/wazuh/wazuh/pull/31599))
 
 #### Changed
 
@@ -32,12 +34,17 @@ All notable changes to this project will be documented in this file.
 - Added capability to do a hot configuration reload in Linux agents. ([#30797](https://github.com/wazuh/wazuh/pull/30797))
 - Added support for Amazon Inspector v2. ([#31163](https://github.com/wazuh/wazuh/pull/31163))
 - Added system users and groups to the inventory data. ([#30369](https://github.com/wazuh/wazuh/pull/30369))
+- Added browser extensions to the inventory data. ([#805](https://github.com/wazuh/wazuh-agent/issues/805))
+- Added services to the inventory data. ([#807](https://github.com/wazuh/wazuh-agent/issues/807))
+- Added missing AWS regions `us-gov-west-1` and `us-gov-east-1` to AWS wodle. ([#31418](https://github.com/wazuh/wazuh/pull/31418))
 
 #### Fixed
 
 - Fixed errors with Azure Graph event fields. ([#30831](https://github.com/wazuh/wazuh/pull/30831))
 - Added the missing "provider" field to the whodata section in syscheckd JSON configuration. ([#30877](https://github.com/wazuh/wazuh/pull/30877))
 - Fixed journald disabled filters when both blocks have no filters. ([#31700](https://github.com/wazuh/wazuh/pull/31700))
+- Fixed whodata FIM compatibility with latest audit versions. ([#30215](https://github.com/wazuh/wazuh/pull/30215))
+- Fixed mismatch between MTU values in database and indexer for Windows agents. ([#31875](https://github.com/wazuh/wazuh/pull/31875))
 
 #### Changed
 
@@ -57,7 +64,12 @@ All notable changes to this project will be documented in this file.
 
 ### Ruleset
 
-#### Changed
+#### Added
+
+- Added SCA content for Rocky Linux 10. ([#30745](https://github.com/wazuh/wazuh/pull/30745))
+- Added SCA content for Debian 13. ([#31747](https://github.com/wazuh/wazuh/pull/31747))
+
+#### Fixed
 
 - Fixed multiple Rocky Linux SCA checks generating incorrect results. ([#29976](https://github.com/wazuh/wazuh/pull/29976))
 - Fixed missing Check (2.3.7.6) in Windows Server 2019 v2.0.0. ([#30173](https://github.com/wazuh/wazuh/pull/30173))
@@ -69,10 +81,10 @@ All notable changes to this project will be documented in this file.
 - Fixed Auditd EXECVE sibling Decoders. ([#30612](https://github.com/wazuh/wazuh/pull/30612))
 - Fixed problems with other Windows OS languages except English. ([#31227](https://github.com/wazuh/wazuh/pull/31227))
 - Reworked SCA Policy for Debian Linux 12. ([#30717](https://github.com/wazuh/wazuh/pull/30717))
-
-#### Added
-
-- Added SCA content for Rocky Linux 10. ([#30745](https://github.com/wazuh/wazuh/pull/30745))
+- Fixed missing comma in 0393-fortiauth_rules.xml. ([#32025](https://github.com/wazuh/wazuh/pull/32025))
+- Fixed Windows sca user account checks. ([#32102](https://github.com/wazuh/wazuh/pull/32102))
+- Fixed inaccuracies in Ubuntu 2404 sca policy. ([#32106](https://github.com/wazuh/wazuh/pull/32106))
+- Fixed incorrect service name in Ubuntu firewall service check. ([#32143](https://github.com/wazuh/wazuh/pull/32143))
 
 ### Other
 
@@ -82,6 +94,8 @@ All notable changes to this project will be documented in this file.
 - Updated `requests` to version 2.32.4. ([#30536](https://github.com/wazuh/wazuh/pull/30536))
 - Updated `urllib3` to version 2.5.0 and `protobuf` to version 5.29.5. ([#30624](https://github.com/wazuh/wazuh/pull/30624))
 - Upgraded Python embedded interpreter to 3.10.18. ([#30916](https://github.com/wazuh/wazuh/pull/30916))
+- Updated OpenSSL to 3.0.15 and cpp-httplib to v0.25.0. ([#31779](https://github.com/wazuh/wazuh/pull/31779))
+- Updated SQLite dependency to version 3.50.4. ([#29586](https://github.com/wazuh/wazuh/issues/29586))
 
 ## [v4.13.1]
 
