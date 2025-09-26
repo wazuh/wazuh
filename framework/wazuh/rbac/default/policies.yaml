@@ -145,7 +145,7 @@ default_policies:
         effect: allow
 
   kvdbs_read:
-    description: Allow reading KVDBs (testing/production).
+    description: Allow reading KVDBs.
     policies:
       kvdbs:
         actions:
@@ -155,7 +155,7 @@ default_policies:
         effect: allow
 
   kvdbs_all:
-    description: Allow managing KVDBs (create/update/delete in testing policy).
+    description: Allow managing KVDBs (create, update, delete).
     policies:
       kvdbs:
         actions:
@@ -166,7 +166,8 @@ default_policies:
         effect: allow
       resourceless:
         actions:
-          - kvdbs:write
+          - kvdbs:create
+          - kvdbs:update
         resources:
           - '*:*:*'
         effect: allow

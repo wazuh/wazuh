@@ -4,38 +4,43 @@
 
 from typing import List, Dict, Any, Optional
 import json
+from os import remove
+from os.path import exists
 
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.exception import WazuhException, WazuhError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.utils import process_array
+from wazuh.core.utils import process_array, full_copy, safe_move
 
 from wazuh.core.engine import get_engine_client
-from wazuh.core.engine.content import ContentModule
+from wazuh.core.engine.utils import validate_response_or_raise
 from wazuh.core.engine.models.policies import PolicyType
 from wazuh.core.engine.models.resources import ResourceType, ResourceFormat
 
+from wazuh.core.assets import save_asset_file, generate_asset_file_path
+
+DEFAULT_KVDB_FORMAT = ResourceFormat.JSON
+ENGINE_USER_NAMESPACE = 'user'
+
 
 def _to_policy_type(policy: Optional[str]) -> Optional["PolicyType"]:
-    if PolicyType is None:
-        return None
-    # Default to PRODUCTION on None/others; only 'testing' goes to testing
+    """Map API 'type' query param to engine PolicyType. Defaults to PRODUCTION."""
     return PolicyType.TESTING if policy == 'testing' else PolicyType.PRODUCTION
 
 
 @expose_resources(actions=['kvdbs:read'], resources=['*:*:*'])
-def list_kvdbs(policy_type: Optional[str] = None,
-               ids: Optional[List[str]] = None,
-               offset: int = 0,
-               limit: Optional[int] = None,
-               select: Optional[List[str]] = None,
-               sort_by: Optional[List[str]] = None,
-               sort_ascending: bool = True,
-               search_text: Optional[str] = None,
-               complementary_search: bool = False,
-               search_in_fields: Optional[List[str]] = None,
-               q: Optional[str] = None,
-               distinct: bool = False) -> AffectedItemsWazuhResult:
+async def list_kvdbs(policy_type: Optional[str] = None,
+                     ids: Optional[List[str]] = None,
+                     offset: int = 0,
+                     limit: Optional[int] = None,
+                     select: Optional[List[str]] = None,
+                     sort_by: Optional[List[str]] = None,
+                     sort_ascending: bool = True,
+                     search_text: Optional[str] = None,
+                     complementary_search: bool = False,
+                     search_in_fields: Optional[List[str]] = None,
+                     q: Optional[str] = None,
+                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """List or get KVDBs.
 
     Parameters
@@ -70,29 +75,36 @@ def list_kvdbs(policy_type: Optional[str] = None,
     AffectedItemsWazuhResult
         KVDBs collection.
     """
-    result = AffectedItemsWazuhResult(all_msg='KVDBs were returned',
-                                      some_msg='Some KVDBs were not returned',
-                                      none_msg='No KVDB was returned')
+    result = AffectedItemsWazuhResult(
+        all_msg='KVDBs were returned',
+        some_msg='Some KVDBs were not returned',
+        none_msg='No KVDB was returned'
+    )
+
     try:
-        with get_engine_client() as client:
-            resp = client.run(client.content.get_resources(
+        async with get_engine_client() as client:
+            resp = client.content.get_resources(
                 type=ResourceType.KVDB,
                 name_list=ids or [],
                 policy_type=_to_policy_type(policy_type)
-            ))
+            )
+            validate_response_or_raise(resp, 8004)
+
             items: List[Dict[str, Any]] = resp.get('content', [])
 
-        processed = process_array(items,
-                                  search_text=search_text,
-                                  search_in_fields=search_in_fields or ['id', 'name', 'integration_id'],
-                                  complementary_search=complementary_search,
-                                  sort_by=sort_by or ['id'],
-                                  sort_ascending=sort_ascending,
-                                  offset=offset,
-                                  limit=limit,
-                                  select=select,
-                                  q=q,
-                                  distinct=distinct)
+        processed = process_array(
+            items,
+            search_text=search_text,
+            search_in_fields=search_in_fields or ['id', 'name', 'integration_id'],
+            complementary_search=complementary_search,
+            sort_by=sort_by or ['id'],
+            sort_ascending=sort_ascending,
+            offset=offset,
+            limit=limit,
+            select=select,
+            q=q,
+            distinct=distinct
+        )
         result.affected_items = processed['items']
         result.total_affected_items = processed['totalItems']
         return result
@@ -105,17 +117,17 @@ def list_kvdbs(policy_type: Optional[str] = None,
         raise e
 
 
-@expose_resources(actions=['kvdbs:write'], resources=['*:*:*'])
-def upsert_kvdb(policy_type: Optional[str] = None,
-                item: Optional[Dict[str, Any]] = None) -> AffectedItemsWazuhResult:
-    """Create/Update a KVDB in testing policy.
+@expose_resources(actions=['kvdbs:create'], resources=['*:*:*'])
+async def create_kvdb(policy_type: Optional[str] = None,
+                      item: Optional[Dict[str, Any]] = None) -> AffectedItemsWazuhResult:
+    """Create a KVDB (IO→Engine flow, igual que decoders.create).
 
     Parameters
     ----------
     policy_type : str, optional
         Must be 'testing' for mutations.
     item : dict, optional
-        KVDB item to create/update:
+        KVDB item to create:
           - type: "kvdb"
           - id: str
           - integration_id: str (optional)
@@ -125,11 +137,12 @@ def upsert_kvdb(policy_type: Optional[str] = None,
     Returns
     -------
     AffectedItemsWazuhResult
-        Confirmation with affected ids.
+        Confirmation with affected ids (or failed_items if exists/error).
     """
-    # TODO(#31021): Make POST/PUT all-or-nothing (validate→write/update→reload; rollback on error).
-    result = AffectedItemsWazuhResult(all_msg='KVDB upserted successfully',
-                                      none_msg='KVDB not upserted')
+    result = AffectedItemsWazuhResult(
+        all_msg='KVDB was successfully created',
+        none_msg='Could not create KVDB'
+    )
 
     if policy_type != 'testing':
         kvdb_id = (item or {}).get('id', 'unknown')
@@ -137,48 +150,165 @@ def upsert_kvdb(policy_type: Optional[str] = None,
         result.total_affected_items = 0
         return result
 
+    kvdb_id = (item or {}).get('id')
+    content_obj = (item or {}).get('content')
+
+    if not kvdb_id or not isinstance(content_obj, dict):
+        bad_id = kvdb_id or 'unknown'
+        result.add_failed_item(id_=bad_id, error=WazuhError(4000, 'Invalid KVDB payload'))
+        result.total_affected_items = 0
+        return result
+
+    payload = json.dumps(content_obj, ensure_ascii=False)
+    pt = _to_policy_type(policy_type)
+    asset_file_path = generate_asset_file_path(kvdb_id, pt)
+
     try:
+        # Fail if file already exists
+        if exists(asset_file_path):
+            raise WazuhError(8001)
 
-        kvdb_id = (item or {}).get('id')
-        content_obj = (item or {}).get('content')
+        # Stage file on disk
+        save_asset_file(asset_file_path, payload)
 
-        # Minimal payload validation (helps tests and avoids engine errors)
-        if not kvdb_id or not isinstance(content_obj, dict):
-            bad_id = kvdb_id or 'unknown'
-            result.add_failed_item(id_=bad_id, error=WazuhError(4000, 'Invalid KVDB payload'))
-            result.total_affected_items = 0
-            return result
+        # Validate and create in Engine
+        async with get_engine_client() as client:
+            validation_results = client.catalog.validate_resource(
+                name=kvdb_id,
+                format=DEFAULT_KVDB_FORMAT,
+                content=payload,
+                namespace_id=ENGINE_USER_NAMESPACE
+            )
+            validate_response_or_raise(validation_results, 8002)
 
-        payload = json.dumps(content_obj, ensure_ascii=False)
-
-        with get_engine_client() as client:
-            pt = _to_policy_type(policy_type)
-
-            # Idempotent: try update; if not found → create
-            try:
-                client.run(client.content.update_resource(name=kvdb_id, content=payload, policy_type=pt))
-            except Exception:
-                client.run(client.content.create_resource(
-                    type=ResourceType.KVDB,
-                    format=ResourceFormat.JSON,
-                    content=payload,
-                    policy_type=pt
-                ))
+            creation_results = client.content.create_resource(
+                type=ResourceType.KVDB,
+                format=DEFAULT_KVDB_FORMAT,
+                content=payload,
+                policy_type=pt
+            )
+            validate_response_or_raise(creation_results, 8003)
 
         result.affected_items.append(kvdb_id)
         result.total_affected_items = 1
 
+    except WazuhError as exc:
+        result.add_failed_item(id_=kvdb_id, error=exc)
+        result.total_affected_items = 0
     except WazuhException as e:
         if getattr(e, 'code', None) == 2802:
             result.total_affected_items = 0
-            return result
-        raise e
+        else:
+            raise e
+    finally:
+        # Cleanup staged file
+        exists(asset_file_path) and remove(asset_file_path)
+
+    return result
+
+
+@expose_resources(actions=['kvdbs:update'], resources=['*:*:*'])
+async def update_kvdb(policy_type: Optional[str] = None,
+                      item: Optional[Dict[str, Any]] = None) -> AffectedItemsWazuhResult:
+    """Update an existing KVDB (IO→Engine flow, igual que decoders.update).
+
+    Parameters
+    ----------
+    policy_type : str, optional
+        Must be 'testing' for mutations.
+    item : dict, optional
+        KVDB item to update:
+          - id: str
+          - integration_id: str (optional)
+          - name: str (optional)
+          - content: object (K/V map)
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Confirmation with affected ids (o failed_items si no existe).
+    """
+    result = AffectedItemsWazuhResult(
+        all_msg='KVDB was successfully updated',
+        none_msg='Could not update KVDB'
+    )
+
+    if policy_type != 'testing':
+        kvdb_id = (item or {}).get('id', 'unknown')
+        result.add_failed_item(id_=kvdb_id, error=WazuhError(4000, 'Mutations only allowed in testing policy'))
+        result.total_affected_items = 0
+        return result
+
+    kvdb_id = (item or {}).get('id')
+    content_obj = (item or {}).get('content')
+
+    if not kvdb_id or not isinstance(content_obj, dict):
+        bad_id = kvdb_id or 'unknown'
+        result.add_failed_item(id_=bad_id, error=WazuhError(4000, 'Invalid KVDB payload'))
+        result.total_affected_items = 0
+        return result
+
+    payload = json.dumps(content_obj, ensure_ascii=False)
+    pt = _to_policy_type(policy_type)
+    asset_file_path = generate_asset_file_path(kvdb_id, pt)
+
+    backup_file = ''
+    try:
+        # Must exist to update
+        if not exists(asset_file_path):
+            raise WazuhError(8005)
+
+        # Backup current file, replace on disk, then validate and update in Engine
+        backup_file = f'{asset_file_path}.backup'
+        try:
+            full_copy(asset_file_path, backup_file)
+        except IOError as exc:
+            raise WazuhError(1019) from exc
+
+        try:
+            remove(asset_file_path)
+        except IOError as exc:
+            raise WazuhError(1907) from exc
+
+        save_asset_file(asset_file_path, payload)
+
+        async with get_engine_client() as client:
+            validation_results = client.catalog.validate_resource(
+                name=kvdb_id,
+                format=DEFAULT_KVDB_FORMAT,
+                content=payload,
+                namespace_id=ENGINE_USER_NAMESPACE
+            )
+            validate_response_or_raise(validation_results, 8002)
+
+            update_results = client.content.update_resource(
+                name=kvdb_id,
+                content=payload,
+                policy_type=pt
+            )
+            validate_response_or_raise(update_results, 8006)
+
+        result.affected_items.append(kvdb_id)
+
+    except WazuhError as exc:
+        result.add_failed_item(id_=kvdb_id, error=exc)
+    except WazuhException as e:
+        if getattr(e, 'code', None) == 2802:
+            pass
+        else:
+            raise e
+    finally:
+        # Restore original file if backup exists
+        exists(backup_file) and safe_move(backup_file, asset_file_path)
+
+    result.total_affected_items = len(result.affected_items)
+    return result
 
 
 @expose_resources(actions=['kvdbs:delete'], resources=['*:*:*'])
-def delete_kvdbs(policy_type: Optional[str] = None,
-                 ids: Optional[List[str]] = None) -> AffectedItemsWazuhResult:
-    """Delete one or more KVDBs in testing policy.
+async def delete_kvdbs(policy_type: Optional[str] = None,
+                       ids: Optional[List[str]] = None) -> AffectedItemsWazuhResult:
+    """Delete one or more KVDBs (IO→Engine flow, igual que decoders.delete).
 
     Parameters
     ----------
@@ -190,11 +320,12 @@ def delete_kvdbs(policy_type: Optional[str] = None,
     Returns
     -------
     AffectedItemsWazuhResult
-        Confirmation with affected ids.
+        Confirmation with affected ids (some_msg semantics si algunos no existen).
     """
-    # TODO(#31021): Make DELETE all-or-nothing (snapshot→delete→reload; restore on error).
-    result = AffectedItemsWazuhResult(all_msg='KVDBs deleted successfully',
-                                      none_msg='KVDBs not deleted')
+    result = AffectedItemsWazuhResult(
+        all_msg='KVDBs deleted successfully',
+        none_msg='KVDBs not deleted'
+    )
 
     if policy_type != 'testing':
         for _id in ids or []:
@@ -203,12 +334,40 @@ def delete_kvdbs(policy_type: Optional[str] = None,
         return result
 
     try:
-        if get_engine_client is None or ContentModule is None:
-            raise WazuhException(2802)
-
-        with get_engine_client() as client:
+        pt = _to_policy_type(policy_type)
+        async with get_engine_client() as client:
             for _id in ids or []:
-                client.run(client.content.delete_resource(name=_id, policy_type=pt))
+                asset_file_path = generate_asset_file_path(_id, pt)
+                backup_file = f'{asset_file_path}.backup'
+
+                try:
+                    # If the file does not exist, mark as failed
+                    if not exists(asset_file_path):
+                        raise WazuhError(8005)
+
+                    try:
+                        full_copy(asset_file_path, backup_file)
+                    except IOError as exc:
+                        raise WazuhError(1019) from exc
+
+                    try:
+                        remove(asset_file_path)
+                    except IOError as exc:
+                        raise WazuhError(1907) from exc
+
+                    delete_results = client.content.delete_resource(
+                        name=_id,
+                        policy_type=pt
+                    )
+                    validate_response_or_raise(delete_results, 8007)
+
+                    result.affected_items.append(_id)
+
+                except WazuhError as exc:
+                    result.add_failed_item(id_=_id, error=exc)
+                finally:
+                    # Restore file from backup if something went wrong above
+                    exists(backup_file) and safe_move(backup_file, asset_file_path)
 
         result.total_affected_items = len(result.affected_items)
         return result
