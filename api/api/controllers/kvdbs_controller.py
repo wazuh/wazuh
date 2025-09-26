@@ -132,7 +132,6 @@ async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = 
     ----------
     body : dict
         JSON body with the KVDB item to update. Expected fields:
-          - type: "kvdb"
           - id: str
           - integration_id: str (optional)
           - name: str

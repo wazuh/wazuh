@@ -99,7 +99,6 @@ def list_kvdbs(policy_type: Optional[str] = None,
 
     except WazuhException as e:
         if getattr(e, 'code', None) == 2802:
-            # placeholder mode: no engine yet
             result.affected_items = []
             result.total_affected_items = 0
             return result
@@ -168,7 +167,6 @@ def upsert_kvdb(policy_type: Optional[str] = None,
 
         result.affected_items.append(kvdb_id)
         result.total_affected_items = 1
-        return result
 
     except WazuhException as e:
         if getattr(e, 'code', None) == 2802:
@@ -209,11 +207,9 @@ def delete_kvdbs(policy_type: Optional[str] = None,
             raise WazuhException(2802)
 
         with get_engine_client() as client:
-            pt = _to_policy_type(policy_type)
             for _id in ids or []:
                 client.run(client.content.delete_resource(name=_id, policy_type=pt))
 
-        result.affected_items.extend(ids or [])
         result.total_affected_items = len(result.affected_items)
         return result
 

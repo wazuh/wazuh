@@ -75,7 +75,7 @@ x-rbac-catalog:
     'decoder:file':
       description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
     'kvdbs':
-      description: "User-defined KVDBs (testing/production policies)"
+      description: "User-defined KVDBs"
     'rule:file':
       description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
     'policy:id':
@@ -311,34 +311,38 @@ x-rbac-catalog:
         resources: ['decoder:file:local_decoder.xml']
         effect: "allow"
     'kvdbs:read':
-      description: "Read KVDBs (testing/production)"
+      description: "Read KVDBs"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions:
-          - kvdbs:read
-        resources:
-          - '*:*:*'
+        actions: ['kvdbs:read']
+        resources: ['*:*:*']
         effect: "allow"
-    'kvdbs:write':
-      description: "Create/Update KVDBs (testing policy)"
+      related_endpoints:
+        - GET /kvdbs
+    'kvdbs:create':
+      description: "Create KVDBs"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions:
-          - kvdbs:write
-        resources:
-          - '*:*:*'
+        actions: ['kvdbs:create']
+        resources: ['*:*:*']
+        effect: "allow"
+    'kvdbs:update':
+      description: "Update KVDBs"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['kvdbs:update']
+        resources: ['*:*:*']
         effect: "allow"
     'kvdbs:delete':
-      description: "Delete KVDBs (testing policy)"
+      description: "Delete KVDBs"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions:
-          - kvdbs:delete
-        resources:
-          - '*:*:*'
+        actions: ['kvdbs:delete']
+        resources: ['*:*:*']
         effect: "allow"
     'logtest:run':
       description: "Run logtest tool or end a logtest session"
@@ -1949,59 +1953,64 @@ components:
               - "yes"
               - "no"
 
-    KVDBItem:
-      type: object
-      description: "KVDB asset descriptor and content"
-      required:
-        - type
-        - id
-        - name
-        - content
-      properties:
-        type:
-          type: string
-          description: "Asset type. Always 'kvdb'."
-          enum:
-            - kvdb
-        id:
-          type: string
-          description: "Unique KVDB ID"
-        integration_id:
-          type: string
-          nullable: true
-          description: "Optional integration owner ID"
-        name:
-          type: string
-          description: "Human-friendly name"
-        content:
-          type: object
-          additionalProperties: true
-          description: "Key-Value map (or object) managed by the Engine"
+    # KVDB models
+    ItemKVDB:
+      allOf:
+        - $ref: '#/components/schemas/CommonRuleset'
+        - type: object
+          description: "KVDB asset descriptor and content"
+          required:
+            - type
+            - id
+            - name
+            - content
+          properties:
+            type:
+              type: string
+              description: "Asset type. Always 'kvdb'."
+              enum:
+                - kvdb
+            integration_id:
+              type: string
+              nullable: true
+              description: "Optional integration owner ID"
+            content:
+              type: object
+              additionalProperties: true
+              description: "Key-Value map (or object) managed by the Engine"
 
     KVDBUpsertRequest:
       allOf:
-        - $ref: '#/components/schemas/KVDBItem'
-
-    AllItemsResponseKVDBs:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
+        - $ref: '#/components/schemas/CommonRuleset'
         - type: object
           required:
-            - affected_items
+            - id
+            - content
           properties:
-            affected_items:
-              type: array
-              description: "KVDBs returned by the API call"
-              items:
-                $ref: '#/components/schemas/KVDBItem'
+            integration_id:
+              type: string
+              nullable: true
+            content:
+              type: object
+              additionalProperties: true
 
-    KVDBsResponse:
+    AllItempsResponseKVDBs:
       allOf:
         - $ref: '#/components/schemas/ApiResponse'
         - type: object
           properties:
             data:
-              $ref: '#/components/schemas/AllItemsResponseKVDBs'
+              allOf:
+                - $ref: '#/components/schemas/AllItemsResponse'
+                - type: object
+                  required:
+                    - affected_items
+                  properties:
+                    affected_items:
+                      type: array
+                      description: "KVDBs affected/returned by the API call"
+                      items:
+                        $ref: '#/components/schemas/ItemKVDB'
 
     # Logtest models
     LogtestRequest:
@@ -4548,23 +4557,15 @@ components:
         default: 500
         minimum: 1
         maximum: 500
-    kvdbs_type:
-      name: type
+    kvdb_id:
       in: query
-      required: true
-      description: "Policy type"
-      schema:
-        type: string
-        enum:
-          - testing
-          - production
-    kvdbs_list:
-      name: kvdbs_list
-      in: query
+      name: kvdb_id
+      description: "Filter by KVDB IDs"
       required: false
-      description: "Comma-separated KVDB IDs to filter or delete (e.g. id1,id2,id3)"
       schema:
-        type: string
+        type: array
+        items:
+          type: string
     agents_list:
       in: query
       name: agents_list
@@ -5912,7 +5913,7 @@ tags:
   - name: Groups
     description: "Group of agents and centralized configurations"
   - name: KVDBs
-    description: "User-defined KVDBs management (testing/production policies)"
+    description: "User-defined KVDBs management"
   - name: Logtest
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
@@ -10228,13 +10229,13 @@ paths:
       tags:
         - KVDBs
       summary: "List or get KVDBs"
-      description: "Return KVDBs; filter by IDs with 'kvdbs_list'."
+      description: "Return KVDBs."
       operationId: api.controllers.kvdbs_controller.get_kvdbs
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:read'
       parameters:
-        - $ref: '#/components/parameters/kvdbs_type'
-        - $ref: '#/components/parameters/kvdbs_list'
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/kvdb_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
@@ -10242,7 +10243,7 @@ paths:
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/q'
+        - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/distinct'
       responses:
         '200':
@@ -10250,7 +10251,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/KVDBsResponse'
+                $ref: '#/components/schemas/AllItempsResponseKVDBs'
               example:
                 data:
                   affected_items:
@@ -10282,13 +10283,13 @@ paths:
     post:
       tags:
         - KVDBs
-      summary: "Create a KVDB (testing only)"
-      description: "Create a KVDB in the testing policy (master node only)."
+      summary: "Create a KVDB"
+      description: "Create a KVDB."
       operationId: api.controllers.kvdbs_controller.post_kvdbs
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/kvdbs:write'
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:create'
       parameters:
-        - $ref: '#/components/parameters/kvdbs_type'
+        - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
@@ -10296,7 +10297,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/KVDBUpsertRequest'
+              $ref: '#/components/schemas/ItemKVDB'
             example:
               type: kvdb
               id: kvdb_id
@@ -10319,7 +10320,7 @@ paths:
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "KVDB created in testing policy"
+                message: "KVDB created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10337,13 +10338,13 @@ paths:
     put:
       tags:
         - KVDBs
-      summary: "Update a KVDB (testing only)"
-      description: "Update a KVDB in the testing policy (master node only)."
+      summary: "Update a KVDB"
+      description: "Update a KVDB."
       operationId: api.controllers.kvdbs_controller.put_kvdbs
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/kvdbs:write'
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:update'
       parameters:
-        - $ref: '#/components/parameters/kvdbs_type'
+        - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       requestBody:
@@ -10353,28 +10354,32 @@ paths:
             schema:
               $ref: '#/components/schemas/KVDBUpsertRequest'
             example:
-              type: kvdb
               id: kvdb_id
               integration_id: integration_a_id
-              name: "Example KVDB modified"
               content:
-                Key1: "Value1"
-                Key2: "Value2"
+                Key1: "NewValue1"
+                Key3: "Value3"
       responses:
         '200':
           description: "Updated"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ApiResponse'
+                $ref: '#/components/schemas/AllItempsResponseKVDBs'
               example:
                 data:
                   affected_items:
-                    - kvdb_id
+                    - type: kvdb
+                      id: kvdb_id
+                      integration_id: integration_a_id
+                      name: "Example KVDB"
+                      content:
+                        Key1: "NewValue1"
+                        Key3: "Value3"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "KVDB updated in testing policy"
+                message: "KVDB updated"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10392,14 +10397,14 @@ paths:
     delete:
       tags:
         - KVDBs
-      summary: "Delete KVDBs (testing only)"
-      description: "Delete one or more KVDBs in the testing policy (master node only)."
+      summary: "Delete KVDBs"
+      description: "Delete one or more KVDBs."
       operationId: api.controllers.kvdbs_controller.delete_kvdbs
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:delete'
       parameters:
-        - $ref: '#/components/parameters/kvdbs_type'
-        - $ref: '#/components/parameters/kvdbs_list'
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/kvdb_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
@@ -10417,7 +10422,7 @@ paths:
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
-                message: "KVDBs deleted in testing policy"
+                message: "KVDBs deleted"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -13899,7 +13904,7 @@ paths:
                   "decoder:file":
                     description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
                   "kvdbs":
-                    description: "User-defined KVDBs (testing/production policies)"
+                    description: "User-defined KVDBs"
                   "rule:file":
                     description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
                   "policy:id":

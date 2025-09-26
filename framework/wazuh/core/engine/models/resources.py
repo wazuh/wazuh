@@ -75,8 +75,5 @@ class Document:
 class Resource:
     """Class representing a resource in the catalog."""
     type: ResourceType
-    integration_id: str
     id: str
     name: str
-    status: Status
-    document: Document
