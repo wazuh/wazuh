@@ -13,6 +13,7 @@ concurrency:
 
 env:
   BUILD_DIR: ${{github.workspace}}/src/build
+  ENGINE_CMAKE: src/engine/CMakeLists.txt
 
 jobs:
   build:
@@ -24,6 +25,19 @@ jobs:
       - name: Install CMake
         uses: ./.github/actions/reinstall_cmake
 
+      - name: Force ENGINE_ENABLE_ASAN=ON in CMakeLists
+
+        run: |
+          file="${ENGINE_CMAKE}"
+          grep -qE 'option\(\s*ENGINE_ENABLE_ASAN\b' "$file" || {
+            echo "ERROR: ENGINE_ENABLE_ASAN option not found in ${file}"; exit 1; }
+
+          sed -i -E 's/^(option\(\s*ENGINE_ENABLE_ASAN\b[^)]*\b)OFF(\b[^)]*\))/\1ON\2/' "$file" || {
+            echo "ERROR: sed failed setting ENGINE_ENABLE_ASAN=ON"; exit 1; }
+
+          grep -nE 'option\(\s*ENGINE_ENABLE_ASAN\b.*\bON\b' "$file" || {
+            echo "ERROR: ENGINE_ENABLE_ASAN not set to ON in ${file}"; exit 1; }
+
       - name: Build Wazuh server
         run: |
           make deps -C src TARGET=server -j$(nproc)
@@ -32,4 +46,7 @@ jobs:
       - name: Unit Test
         # Run unit tests using CTest
         working-directory: ${{env.BUILD_DIR}}/engine
+        env:
+          ASAN_OPTIONS: "detect_leaks=1:halt_on_error=1:malloc_context_size=0:symbolize=0"
+          LSAN_OPTIONS: "exitcode=1"
         run: MALLOC_CHECK_=2 ctest -T test --output-on-failure -j$(nproc)
