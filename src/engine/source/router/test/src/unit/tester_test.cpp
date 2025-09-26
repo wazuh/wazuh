@@ -41,7 +41,7 @@ public:
             .WillOnce(::testing::Return(m_mockController));
 
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
-        EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
+        EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(hash));
     }
 
     void stopControllerCall(size_t times = 1) { EXPECT_CALL(*m_mockController, stop()).Times(times); }
@@ -61,7 +61,7 @@ public:
             .WillOnce(::testing::Return(m_mockController));
 
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
-        EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
+        EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(hash));
     }
 
     void ingestTestCallersSuccess(const char* event)
