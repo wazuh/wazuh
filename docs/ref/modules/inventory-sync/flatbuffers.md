@@ -22,6 +22,44 @@ union MessageType {
     EndAck,
     ReqRet
 }
+
+table Data {
+    seq: ulong;
+    session: ulong;
+    operation: Operation;
+    id: string;
+    index: string;
+    data: [byte];
+}
+
+table Start {
+    mode: Mode;
+    size: ulong;
+}
+
+table StartAck {
+    status: Status;
+    session: ulong;
+}
+
+table End {
+    session: ulong;
+}
+
+table EndAck {
+    status: Status;
+    session: ulong;
+}
+
+table Pair {
+    begin: ulong;
+    end: ulong;
+}
+
+table ReqRet {
+    seq: [Pair];
+    session: ulong;
+}
 ```
 
 ### Start Message
