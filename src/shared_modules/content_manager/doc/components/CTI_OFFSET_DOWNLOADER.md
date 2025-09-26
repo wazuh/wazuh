@@ -10,8 +10,8 @@ The output content files will be stored in any of the following output directori
 
 The download process can be summarized as follows:
 1. Get the last CTI API consumer offset. This is done by performing an HTTP GET query to CTI. This value will be used as the last possible offset to query.
-2. Set the range of offsets to be downloaded, starting from `currentOffset` (set in the context) and with a range-width of `1000`. So, for example, if the current offset is equal to `N`, the range will be from offset `N` to offset `N + 1000`. 
-3. Download the offsets range from **step 2** and update `currentOffset` with the last downloaded offset. The download will be retried indefinitely if the server responds with an 5xx HTTP error code.
+2. Set the range of offsets to be downloaded, starting from `currentOffset` (set in the context) and with a range-width of `1000`. So, for example, if the current offset is equal to `N`, the range will be from offset `N` to offset `N + 1000`.
+3. Download the offsets range from **step 2**. The download will be retried indefinitely if the server responds with an 5xx HTTP error code. The `currentOffset` isn't updated in this phase but in the processing callback.
 4. Dump the downloaded offsets into an output file. This file path will be generated as `<output-folder>/<currentOffset>-<contentFileName>`.
 5. Push the new file path (from **step 4**) to the context [data paths](../../src/components/updaterContext.hpp).
 6. If the last possible offset (from **step 1**) has been downloaded, the process finishes. Otherwise, the process continues with the **step 2**.
@@ -20,7 +20,7 @@ The download process can be summarized as follows:
 
 Given the following conditions:
 - Last possible offset: `3200`.
-- Initial current offset: `0` (first execution ever). 
+- Initial current offset: `0` (first execution ever).
 - Content compressed: No.
 - Output folder: `/tmp/`.
 - Content filename: `data.json`.
@@ -43,4 +43,4 @@ The context fields related to this stage are:
 - `contentsFolder`: Used as output folder when the input file is not compressed.
 - `data`: Used to read and update the paths under the `paths` key. The stage status is also updated on this member.
 - `outputFolder`: Used as the destination file path base.
-- `currentOffset`: Used as the first offset that will be fetched from the API. It is also updated with the last offset fetched, so next time the download begins with the new offset value.
+- `currentOffset`: Used as the first offset that will be fetched from the API. The next time the download begins from the offset read from the DB, only the processing data callback after a successful operation updates the value in the context.
