@@ -77,16 +77,16 @@ LONG wrap_RegEnumKeyEx(HKEY hKey,
 
 void expect_RegEnumKeyEx_call(LPSTR name, DWORD name_length, LONG return_value);
 
-LONG wrap_RegEnumKeyEx(HKEY hKey,
+LONG wrap_RegEnumKeyExW(HKEY hKey,
                        DWORD dwIndex,
                        LPWSTR lpName,
                        LPDWORD lpcchName,
                        LPDWORD lpReserved,
-                       LPSTR lpClass,
+                       LPWSTR lpClass,
                        LPDWORD lpcchClass,
                        PFILETIME lpftLastWriteTime);
 
-void expect_RegEnumKeyEx_call(LPWSTR name, DWORD name_length, LONG return_value);
+void expect_RegEnumKeyExW_call(LPWSTR name, DWORD name_length, LONG return_value);
 
 LONG wrap_RegOpenKeyEx(HKEY hKey,
                        LPCSTR lpSubKey,
