@@ -46,6 +46,8 @@ jobs:
           ctest -V
           cd ../../../shared_modules/file_helper/build
           ctest -V
+          cd ../../utils/build
+          ctest -V
   build-sonoma:
     runs-on: macos-14
     steps:
@@ -83,4 +85,6 @@ jobs:
           cd ../../wazuh_modules/sca/build
           ctest -V
           cd ../../../shared_modules/file_helper/build
+          ctest -V
+          cd ../../utils/build
           ctest -V

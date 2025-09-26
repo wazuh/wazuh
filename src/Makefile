@@ -110,6 +110,7 @@ ROUTER=${SHARED_MODULES}router/
 CONTENT_MANAGER=${SHARED_MODULES}content_manager/
 FILE_HELPER=${SHARED_MODULES}file_helper/
 VULNERABILITY_SCANNER=wazuh_modules/vulnerability_scanner/
+UTILS=${SHARED_MODULES}utils/
 SYSINFO=data_provider/
 SYSCHECK=syscheckd/
 USE_INOTIFY=no
@@ -148,6 +149,7 @@ SCA_TEST=-DUNIT_TEST=ON #--coverage
 SYSINFO_TEST=-DUNIT_TEST=ON #--coverage
 SYNC_PROTOCOL_TEST=-DUNIT_TEST=ON #--coverage
 WAZUH_TEST=-DUNIT_TEST=ON #--coverage
+UTILS_TEST=-DUNIT_TEST=ON #--coverage
 endif
 ifneq (,$(filter ${FSANITIZE},YES yes y Y 1))
 CMAKE_OPTS+=-DFSANITIZE=ON
@@ -706,6 +708,7 @@ win32/shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+	cd ${UTILS} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${UTILS_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 #### Sysinfo ##
 
@@ -789,6 +792,11 @@ endif
 ifeq (${TARGET},server)
 	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(SIMDJSON_LIB)
 	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
+endif
+
+# Adding minizip for tests (needed by shared_modules/utils tests)
+ifneq (,$(filter ${TEST},YES yes y Y 1))
+	EXTERNAL_LIBS += $(MINIZIP_LIB)
 endif
 
 ifneq (${TARGET},winagent)
@@ -1650,6 +1658,7 @@ build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} .. && ${MAKE}
 	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
+	cd ${UTILS} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${UTILS_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 
 #### Sysinfo ##
 build_sysinfo: build_shared_modules $(WAZUHEXT_LIB)
@@ -2381,6 +2390,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(DBSYNC)build
 	rm -rf $(SYNC_PROTOCOL)build
 	rm -rf $(FILE_HELPER)build
+	rm -rf $(UTILS)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SCA)build
 	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/

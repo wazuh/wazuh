@@ -216,6 +216,9 @@ def runCoverage(moduleName):
     elif moduleName == "shared_modules/file_helper":
         build_dir = os.path.join(currentDir, "build")
         paths = [root for root, _, _ in os.walk(build_dir) if root.endswith('.dir')]
+    elif moduleName == "shared_modules/utils":
+        build_dir = os.path.join(currentDir, "build")
+        paths = [root for root, _, _ in os.walk(build_dir) if root.endswith('.dir')]
     elif moduleName == "syscheckd":
         paths = [root for root, _, _ in os.walk(
             (os.path.join(currentDir, "build"))) if re.search(".dir$", root)]
@@ -330,7 +333,9 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
 
     # We first run the fastest tests
     runCppCheck(moduleName=moduleName)
-    runAStyleCheck(moduleName=moduleName)
+    # Skip AStyle check for shared_modules/utils
+    if moduleName != "shared_modules/utils":
+        runAStyleCheck(moduleName=moduleName)
 
     # Making a full clean, downloading external dependencies and
     # building the corresponding target with tests flag enabled
