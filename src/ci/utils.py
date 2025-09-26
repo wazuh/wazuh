@@ -40,7 +40,7 @@ HEADER_DIR = {
 }
 MODULE_LIST = ['wazuh_modules/syscollector', 'shared_modules/dbsync',
                'shared_modules/sync_protocol',
-               'shared_modules/file_helper', 'data_provider', 'syscheckd', 'wazuh_modules/sca']
+               'shared_modules/file_helper', 'shared_modules/utils', 'data_provider', 'syscheckd', 'wazuh_modules/sca']
 MODULE_LIST_STR = '|'.join(MODULE_LIST)
 TARGET_LIST = ['agent', 'server', 'winagent']
 

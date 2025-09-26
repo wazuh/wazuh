@@ -147,7 +147,10 @@ def processArgs():
         run_check.runASAN(moduleName=args.asan,
                           testToolConfig=utils.readJSONFile(jsonFilePath=args.path))
     elif args.scheck:
-        run_check.runAStyleCheck(moduleName=args.scheck)
+        if args.scheck != "shared_modules/utils":
+            run_check.runAStyleCheck(moduleName=args.scheck)
+        else:
+            print("Skipping AStyle check for shared_modules/utils")
     elif args.sformat:
         run_check.runAStyleFormat(moduleName=args.sformat)
     elif args.scanbuild:

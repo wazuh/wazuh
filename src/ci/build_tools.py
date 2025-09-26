@@ -19,6 +19,7 @@ DELETE_FOLDER_DIC = {
     'shared_modules/dbsync':        ['build', 'smokeTests/output'],
     'shared_modules/sync_protocol': ['build', 'smokeTests/output', 'coverage_report'],
     'shared_modules/file_helper':   ['build'],
+    'shared_modules/utils':         ['build'],
     'data_provider':                ['build', 'smokeTests/output'],
     'syscheckd':                    ['build', 'src/db/smokeTests/output',
                                      'coverage_report'],
