@@ -73,7 +73,7 @@ TEST_P(PipelineTest, TfProcessTraces)
     GTEST_SKIP(); // TODO
 }
 
-TEST_P(PipelineTest, RxProessEvent)
+TEST_P(PipelineTest, RxProcessEvent)
 {
     auto [name, expression, expectedPath] = GetParam();
     auto testExpression = getTestExpression(expression);
