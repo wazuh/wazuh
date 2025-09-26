@@ -1326,7 +1326,7 @@ $(POPT_BUILD_DIR)Makefile:
 ### lua lib ###
 
 $(LUA_LIB):
-	cd ${EXTERNAL_LUA} && ${MAKE} all MYCFLAGS='-fPIC -DLUA_USE_LINUX -mno-bmi2' MYLIBS='-lm -ldl'
+	cd ${EXTERNAL_LUA} && ${MAKE} all MYCFLAGS='-fPIC -DLUA_USE_LINUX' MYLIBS='-lm -ldl'
 
 ### rpm lib ###
 
