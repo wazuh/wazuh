@@ -68,6 +68,12 @@ public:
     // Get the timeout of the test of event ingestion (in milliseconds)
     virtual std::size_t getTestTimeout() const = 0;
 };
+
+class IOrchestratorAPI : public IRouterAPI, public ITesterAPI
+{
+public:
+    virtual ~IOrchestratorAPI() = default;
+};
 } // namespace router
 
 #endif // _ROUTER_IROUTER_HPP
