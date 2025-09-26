@@ -318,18 +318,22 @@ start_service()
         fi
     done
 
+    node_type=$(grep '<node_type>' ${DIR}/etc/ossec.conf | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
+    if [ -z $node_type ]; then
+        echo "Invalid cluster configuration, check the $DIR/etc/ossec.conf file."
+        unlock;
+        exit 1;
+    fi
+
     # We actually start them now.
     first=true
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
-        ## Do not start the API in worker nodes
-        if [ X"$i" = "Xwazuh-apid" ]; then
-            node_type=$(grep '<node_type>' ${DIR}/etc/ossec.conf | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
-            if [ "$node_type" = "worker" ]; then 
-                continue
-            fi
+        ## Only start the API daemon on the master node
+        if [ X"$i" = "Xwazuh-apid" ] && [ "$node_type" != "master" ]; then
+            continue
         fi
 
         ## If wazuh-authd is disabled, don't try to start it.
