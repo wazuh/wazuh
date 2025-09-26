@@ -20,6 +20,7 @@ export WAZUH_STREAMLOG_BASE_PATH="${LOG_PATH}"
 
 # If not exist create directories
 mkdir -p "$SOCKET_PATH" "$LOG_PATH"
+mkdir -p "${SCRIPT_DIR}/queue/indexer/" # For rocksdb indexer conector
 
 "${SCRIPT_DIR}/bin/wazuh-engine" -f
 
