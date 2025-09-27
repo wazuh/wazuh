@@ -1,9 +1,14 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
+#include <atomic>
+#include <chrono>
 #include <filesystem>
-#include <string>
 #include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 #include <ctistore/ctistoragedb.hpp>
 #include <base/json.hpp>
@@ -549,4 +554,572 @@ TEST_F(CTIStorageDBTest, DataIntegrityAfterReopen)
 
     auto retrievedContent = m_storage->kvdbDump("test_kvdb");
     EXPECT_EQ(retrievedContent.getString("/key1").value_or(""), "value1");
+}
+
+// Thread Safety and Concurrency Tests
+// These tests verify that our explicit synchronization (shared_mutex) works correctly
+// for the single-writer, multiple-reader pattern with both read and write operations.
+TEST_F(CTIStorageDBTest, ConcurrentReadWriteOperations)
+{
+    // This test verifies that writes are exclusive and readers can run concurrently
+    const int numReaderThreads = 10;
+    const int numWriterThreads = 1; // Single writer as per design
+    const int readsPerThread = 50;
+    const int writesPerThread = 20;
+
+    std::atomic<int> totalReads{0};
+    std::atomic<int> totalWrites{0};
+    std::atomic<int> successfulReads{0};
+    std::atomic<int> successfulWrites{0};
+    std::mutex errorMutex;
+    std::vector<std::string> errors;
+
+    // Barrier to synchronize thread start
+    std::atomic<bool> startFlag{false};
+
+    // Writer thread - stores new integrations
+    auto writerWorker = [&](int threadId) {
+        // Wait for start signal
+        while (!startFlag.load()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }
+
+        for (int i = 0; i < writesPerThread; ++i) {
+            try {
+                totalWrites++;
+                std::string id = "writer_" + std::to_string(threadId) + "_integration_" + std::to_string(i);
+                std::string title = "Writer " + std::to_string(threadId) + " Integration " + std::to_string(i);
+
+                auto integration = createSampleIntegration(id, title);
+                m_storage->storeIntegration(integration);
+
+                successfulWrites++;
+
+                // Small delay to let readers have a chance
+                std::this_thread::sleep_for(std::chrono::microseconds(100));
+            }
+            catch (const std::exception& e) {
+                std::lock_guard<std::mutex> lock(errorMutex);
+                errors.push_back("Writer " + std::to_string(threadId) + ": " + e.what());
+            }
+        }
+    };
+
+    // Reader threads - read existing and newly written data
+    auto readerWorker = [&](int threadId) {
+        // Wait for start signal
+        while (!startFlag.load()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }
+
+        for (int i = 0; i < readsPerThread; ++i) {
+            try {
+                totalReads++;
+
+                // Try to read from existing data and potentially new data
+                auto assetList = m_storage->getAssetList("integration");
+
+                // If there are assets, try to read one
+                if (!assetList.empty()) {
+                    int index = (threadId * readsPerThread + i) % assetList.size();
+                    auto asset = m_storage->getAsset(assetList[index], "integration");
+                    EXPECT_FALSE(asset.str().empty());
+                }
+
+                successfulReads++;
+
+                // Very small delay to increase concurrency likelihood
+                std::this_thread::sleep_for(std::chrono::microseconds(10));
+            }
+            catch (const std::exception& e) {
+                std::lock_guard<std::mutex> lock(errorMutex);
+                errors.push_back("Reader " + std::to_string(threadId) + ": " + e.what());
+            }
+        }
+    };
+
+    // Store some initial data
+    for (int i = 0; i < 10; ++i) {
+        auto integration = createSampleIntegration("initial_integration_" + std::to_string(i), "Initial Integration " + std::to_string(i));
+        m_storage->storeIntegration(integration);
+    }
+
+    std::vector<std::thread> threads;
+
+    // Start writer thread
+    for (int t = 0; t < numWriterThreads; ++t) {
+        threads.emplace_back(writerWorker, t);
+    }
+
+    // Start reader threads
+    for (int t = 0; t < numReaderThreads; ++t) {
+        threads.emplace_back(readerWorker, t);
+    }
+
+    // Signal all threads to start
+    startFlag.store(true);
+
+    // Wait for all threads to complete
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    // Verify results
+    EXPECT_TRUE(errors.empty()) << "Mixed read/write errors occurred:\n" <<
+        [&errors]() {
+            std::string allErrors;
+            for (const auto& error : errors) {
+                allErrors += error + "\n";
+            }
+            return allErrors;
+        }();
+
+    EXPECT_EQ(successfulWrites.load(), numWriterThreads * writesPerThread)
+        << "Expected all writes to succeed";
+
+    EXPECT_EQ(successfulReads.load(), numReaderThreads * readsPerThread)
+        << "Expected all reads to succeed";
+
+    // Verify final state - should have initial + written assets
+    auto finalList = m_storage->getAssetList("integration");
+    EXPECT_EQ(finalList.size(), 10 + numWriterThreads * writesPerThread);
+}
+
+TEST_F(CTIStorageDBTest, ConcurrentQueriesDifferentTypes)
+{
+    // Setup: Store multiple assets of different types
+    const int numAssets = 50;
+
+    // Store integrations
+    for (int i = 0; i < numAssets; ++i)
+    {
+        auto integration = createSampleIntegration(
+            "integration_" + std::to_string(i),
+            "Integration " + std::to_string(i)
+        );
+        m_storage->storeIntegration(integration);
+    }
+
+    // Store decoders
+    for (int i = 0; i < numAssets; ++i)
+    {
+        auto decoder = createSampleDecoder(
+            "decoder_" + std::to_string(i),
+            "Decoder " + std::to_string(i)
+        );
+        m_storage->storeDecoder(decoder);
+    }
+
+    // Store KVDBs
+    for (int i = 0; i < numAssets; ++i)
+    {
+        auto kvdb = createSampleKVDB(
+            "kvdb_" + std::to_string(i),
+            "KVDB " + std::to_string(i)
+        );
+        m_storage->storeKVDB(kvdb);
+    }
+
+    // Test concurrent queries on different asset types from multiple threads
+    const int numThreads = 10;
+    const int queriesPerThread = 20;
+    std::vector<std::thread> threads;
+    std::atomic<int> successfulQueries{0};
+    std::atomic<int> totalQueries{0};
+    std::mutex errorMutex;
+    std::vector<std::string> errors;
+
+    auto queryWorker = [&](int threadId, const std::string& assetType) {
+        for (int i = 0; i < queriesPerThread; ++i)
+        {
+            try
+            {
+                totalQueries++;
+                int assetIndex = (threadId * queriesPerThread + i) % numAssets;
+                std::string assetName;
+
+                if (assetType == "integration")
+                {
+                    assetName = "Integration " + std::to_string(assetIndex);
+                    auto asset = m_storage->getAsset(base::Name(assetName), assetType);
+                    EXPECT_FALSE(asset.str().empty());
+                }
+                else if (assetType == "decoder")
+                {
+                    assetName = "Decoder " + std::to_string(assetIndex);
+                    auto asset = m_storage->getAsset(base::Name(assetName), assetType);
+                    EXPECT_FALSE(asset.str().empty());
+                }
+                else if (assetType == "kvdb")
+                {
+                    std::string kvdbName = "KVDB " + std::to_string(assetIndex);
+                    bool exists = m_storage->kvdbExists(kvdbName);
+                    EXPECT_TRUE(exists);
+                    if (exists) {
+                        auto dump = m_storage->kvdbDump(kvdbName);
+                        EXPECT_TRUE(dump.isObject());
+                    }
+                }
+
+                // Also test list operations
+                if (i % 5 == 0) {
+                    auto assetList = m_storage->getAssetList(assetType == "kvdb" ? "decoder" : assetType);
+                    EXPECT_FALSE(assetList.empty());
+                }
+
+                successfulQueries++;
+            }
+            catch (const std::exception& e)
+            {
+                std::lock_guard<std::mutex> lock(errorMutex);
+                errors.push_back("Thread " + std::to_string(threadId) + " (" + assetType + "): " + e.what());
+            }
+        }
+    };
+
+    // Launch threads querying different asset types concurrently
+    for (int t = 0; t < numThreads; ++t)
+    {
+        if (t % 3 == 0) {
+            threads.emplace_back(queryWorker, t, "integration");
+        } else if (t % 3 == 1) {
+            threads.emplace_back(queryWorker, t, "decoder");
+        } else {
+            threads.emplace_back(queryWorker, t, "kvdb");
+        }
+    }
+
+    // Wait for all threads to complete
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    // Verify results
+    EXPECT_TRUE(errors.empty()) << "Concurrent query errors occurred:\n" <<
+        [&errors]() {
+            std::string allErrors;
+            for (const auto& error : errors) {
+                allErrors += error + "\n";
+            }
+            return allErrors;
+        }();
+
+    EXPECT_EQ(successfulQueries.load(), totalQueries.load())
+        << "Expected all queries to succeed, but " << (totalQueries - successfulQueries)
+        << " out of " << totalQueries << " failed";
+}
+
+TEST_F(CTIStorageDBTest, ConcurrentQueriesSameType)
+{
+    // Setup: Store many assets of the same type
+    const int numIntegrations = 100;
+
+    for (int i = 0; i < numIntegrations; ++i)
+    {
+        auto integration = createSampleIntegration(
+            "concurrent_integration_" + std::to_string(i),
+            "Concurrent Integration " + std::to_string(i)
+        );
+        m_storage->storeIntegration(integration);
+    }
+
+    // Test concurrent queries on the same asset type from multiple threads
+    const int numThreads = 20;
+    const int queriesPerThread = 15;
+    std::vector<std::thread> threads;
+    std::atomic<int> successfulQueries{0};
+    std::atomic<int> successfulExists{0};
+    std::atomic<int> successfulLists{0};
+    std::mutex errorMutex;
+    std::vector<std::string> errors;
+
+    auto concurrentWorker = [&](int threadId) {
+        for (int i = 0; i < queriesPerThread; ++i)
+        {
+            try
+            {
+                int assetIndex = (threadId * queriesPerThread + i) % numIntegrations;
+                std::string assetName = "Concurrent Integration " + std::to_string(assetIndex);
+                std::string assetId = "concurrent_integration_" + std::to_string(assetIndex);
+
+                // Test getAsset by name
+                auto asset = m_storage->getAsset(base::Name(assetName), "integration");
+                EXPECT_FALSE(asset.str().empty());
+                EXPECT_EQ(asset.getString("/name").value_or(""), assetId);
+                successfulQueries++;
+
+                // Test assetExists
+                bool exists = m_storage->assetExists(base::Name(assetName), "integration");
+                EXPECT_TRUE(exists);
+                if (exists) successfulExists++;
+
+                // Test getAssetList periodically
+                if (i % 5 == 0) {
+                    auto assetList = m_storage->getAssetList("integration");
+                    EXPECT_GE(assetList.size(), numIntegrations);
+                    successfulLists++;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                std::lock_guard<std::mutex> lock(errorMutex);
+                errors.push_back("Thread " + std::to_string(threadId) + ": " + e.what());
+            }
+        }
+    };
+
+    // Launch multiple threads querying the same asset type
+    for (int t = 0; t < numThreads; ++t)
+    {
+        threads.emplace_back(concurrentWorker, t);
+    }
+
+    // Wait for all threads to complete
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    // Verify no errors occurred
+    EXPECT_TRUE(errors.empty()) << "Concurrent query errors occurred:\n" <<
+        [&errors]() {
+            std::string allErrors;
+            for (const auto& error : errors) {
+                allErrors += error + "\n";
+            }
+            return allErrors;
+        }();
+
+    // Verify all operations succeeded
+    int expectedQueries = numThreads * queriesPerThread;
+    int expectedExists = numThreads * queriesPerThread;
+    int expectedLists = numThreads * (queriesPerThread / 5); // Every 5th query
+
+    EXPECT_EQ(successfulQueries.load(), expectedQueries)
+        << "Expected " << expectedQueries << " successful getAsset calls, got " << successfulQueries;
+
+    EXPECT_EQ(successfulExists.load(), expectedExists)
+        << "Expected " << expectedExists << " successful assetExists calls, got " << successfulExists;
+
+    EXPECT_EQ(successfulLists.load(), expectedLists)
+        << "Expected " << expectedLists << " successful getAssetList calls, got " << successfulLists;
+}
+
+TEST_F(CTIStorageDBTest, ConcurrentMixedOperations)
+{
+    // Setup: Store some initial data
+    const int initialAssets = 30;
+
+    for (int i = 0; i < initialAssets; ++i)
+    {
+        auto integration = createSampleIntegration(
+            "mixed_integration_" + std::to_string(i),
+            "Mixed Integration " + std::to_string(i)
+        );
+        m_storage->storeIntegration(integration);
+
+        auto decoder = createSampleDecoder(
+            "mixed_decoder_" + std::to_string(i),
+            "Mixed Decoder " + std::to_string(i),
+            "mixed_integration_" + std::to_string(i)
+        );
+        m_storage->storeDecoder(decoder);
+    }
+
+    // Test mixed read operations (no writes to ensure thread safety focus is on reads)
+    const int numThreads = 15;
+    std::vector<std::thread> threads;
+    std::atomic<int> totalOperations{0};
+    std::atomic<int> successfulOperations{0};
+    std::mutex errorMutex;
+    std::vector<std::string> errors;
+
+    auto mixedOperationsWorker = [&](int threadId) {
+        const int operationsPerThread = 30;
+
+        for (int i = 0; i < operationsPerThread; ++i)
+        {
+            try
+            {
+                totalOperations++;
+                int operation = i % 6; // 6 different types of operations
+                int assetIndex = (threadId * operationsPerThread + i) % initialAssets;
+
+                switch (operation)
+                {
+                    case 0: // Get integration by name
+                    {
+                        std::string name = "Mixed Integration " + std::to_string(assetIndex);
+                        auto asset = m_storage->getAsset(base::Name(name), "integration");
+                        EXPECT_FALSE(asset.str().empty());
+                        break;
+                    }
+                    case 1: // Get decoder by name
+                    {
+                        std::string name = "Mixed Decoder " + std::to_string(assetIndex);
+                        auto asset = m_storage->getAsset(base::Name(name), "decoder");
+                        EXPECT_FALSE(asset.str().empty());
+                        break;
+                    }
+                    case 2: // Check integration exists
+                    {
+                        std::string name = "Mixed Integration " + std::to_string(assetIndex);
+                        bool exists = m_storage->assetExists(base::Name(name), "integration");
+                        EXPECT_TRUE(exists);
+                        break;
+                    }
+                    case 3: // Check decoder exists
+                    {
+                        std::string name = "Mixed Decoder " + std::to_string(assetIndex);
+                        bool exists = m_storage->assetExists(base::Name(name), "decoder");
+                        EXPECT_TRUE(exists);
+                        break;
+                    }
+                    case 4: // List integrations
+                    {
+                        auto list = m_storage->getAssetList("integration");
+                        EXPECT_GE(list.size(), initialAssets);
+                        break;
+                    }
+                    case 5: // List decoders
+                    {
+                        auto list = m_storage->getAssetList("decoder");
+                        EXPECT_GE(list.size(), initialAssets);
+                        break;
+                    }
+                }
+
+                successfulOperations++;
+            }
+            catch (const std::exception& e)
+            {
+                std::lock_guard<std::mutex> lock(errorMutex);
+                errors.push_back("Thread " + std::to_string(threadId) + " op " + std::to_string(i) + ": " + e.what());
+            }
+        }
+    };
+
+    // Launch threads with mixed operations
+    for (int t = 0; t < numThreads; ++t)
+    {
+        threads.emplace_back(mixedOperationsWorker, t);
+    }
+
+    // Wait for all threads to complete
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    // Verify results
+    EXPECT_TRUE(errors.empty()) << "Mixed concurrent operation errors occurred:\n" <<
+        [&errors]() {
+            std::string allErrors;
+            for (const auto& error : errors) {
+                allErrors += error + "\n";
+            }
+            return allErrors;
+        }();
+
+    EXPECT_EQ(successfulOperations.load(), totalOperations.load())
+        << "Expected all " << totalOperations << " mixed operations to succeed, but "
+        << (totalOperations - successfulOperations) << " failed";
+}
+
+TEST_F(CTIStorageDBTest, ThreadSafetyBasicVerification)
+{
+    // Simple test: verify that basic read/write operations work without crashes
+    // in a multithreaded environment (this should work with our current implementation)
+
+    const int numWriters = 1;
+    const int numReaders = 5;
+    const int writesPerWriter = 5;
+    const int readsPerReader = 10;
+
+    std::vector<std::thread> threads;
+    std::atomic<int> successfulWrites{0};
+    std::atomic<int> successfulReads{0};
+    std::mutex errorMutex;
+    std::vector<std::string> errors;
+
+    // Writer worker
+    auto writer = [&]() {
+        try {
+            for (int i = 0; i < writesPerWriter; ++i) {
+                std::string id = "basic_integration_" + std::to_string(i);
+                std::string title = "Basic Integration " + std::to_string(i);
+                auto integration = createSampleIntegration(id, title);
+
+                m_storage->storeIntegration(integration);
+                successfulWrites++;
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+        catch (const std::exception& e) {
+            std::lock_guard<std::mutex> lock(errorMutex);
+            errors.push_back("Writer error: " + std::string(e.what()));
+        }
+    };
+
+    // Reader worker
+    auto reader = [&](int threadId) {
+        try {
+            for (int i = 0; i < readsPerReader; ++i) {
+                auto assetList = m_storage->getAssetList("integration");
+
+                // Try to read an asset if any exist
+                if (!assetList.empty()) {
+                    int index = i % assetList.size();
+                    auto asset = m_storage->getAsset(assetList[index], "integration");
+                    EXPECT_FALSE(asset.str().empty());
+                }
+
+                successfulReads++;
+                std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
+        }
+        catch (const std::exception& e) {
+            std::lock_guard<std::mutex> lock(errorMutex);
+            errors.push_back("Reader " + std::to_string(threadId) + " error: " + e.what());
+        }
+    };
+
+    // Store some initial data
+    for (int i = 0; i < 3; ++i) {
+        auto integration = createSampleIntegration("initial_" + std::to_string(i), "Initial " + std::to_string(i));
+        m_storage->storeIntegration(integration);
+    }
+
+    // Launch threads
+    for (int i = 0; i < numWriters; ++i) {
+        threads.emplace_back(writer);
+    }
+
+    for (int i = 0; i < numReaders; ++i) {
+        threads.emplace_back(reader, i);
+    }
+
+    // Wait for all threads
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    // Basic verification
+    EXPECT_TRUE(errors.empty()) << "Errors occurred during basic threading test:\n" <<
+        [&errors]() {
+            std::string allErrors;
+            for (const auto& error : errors) {
+                allErrors += error + "\n";
+            }
+            return allErrors;
+        }();
+
+    EXPECT_EQ(successfulWrites.load(), numWriters * writesPerWriter);
+    EXPECT_EQ(successfulReads.load(), numReaders * readsPerReader);
+
+    // Should have initial + written assets
+    auto finalList = m_storage->getAssetList("integration");
+    EXPECT_EQ(finalList.size(), 3 + numWriters * writesPerWriter);
 }

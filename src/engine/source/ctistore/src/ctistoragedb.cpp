@@ -1,6 +1,7 @@
 #include <ctistore/ctistoragedb.hpp>
 
 #include <filesystem>
+#include <shared_mutex>
 #include <stdexcept>
 #include <unordered_map>
 
@@ -79,6 +80,9 @@ struct CTIStorageDB::Impl
     ColumnFamilyHandles m_cfHandles;                            ///< Column family handles.
     std::shared_ptr<rocksdb::Cache> m_readCache;                ///< Optional shared block cache.
     std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;///< Optional shared write buffer manager.
+
+    // Thread safety: single-writer, multiple-reader pattern
+    mutable std::shared_mutex m_rwMutex;                        ///< Reader-writer mutex for thread safety.
 
     // Implementation methods
     void initializeColumnFamilies(const std::string& dbPath, bool useSharedBuffers);
@@ -174,6 +178,7 @@ CTIStorageDB::~CTIStorageDB() = default;
 
 bool CTIStorageDB::isOpen() const
 {
+    std::shared_lock<std::shared_mutex> lock(m_pImpl->m_rwMutex); // Shared read lock
     return m_pImpl->m_db != nullptr;
 }
 
@@ -577,6 +582,7 @@ bool CTIStorageDB::validateDocument(const json::Json& doc, const std::string& ex
 // Impl method implementations
 void CTIStorageDB::Impl::storePolicy(const json::Json& policyDoc)
 {
+    std::unique_lock<std::shared_mutex> lock(m_rwMutex); // Exclusive write lock
     if (!validateDocument(policyDoc, "policy"))
     {
         throw std::invalid_argument("Invalid policy document format");
@@ -586,6 +592,7 @@ void CTIStorageDB::Impl::storePolicy(const json::Json& policyDoc)
 
 void CTIStorageDB::Impl::storeIntegration(const json::Json& integrationDoc)
 {
+    std::unique_lock<std::shared_mutex> lock(m_rwMutex); // Exclusive write lock
     if (!validateDocument(integrationDoc, "integration"))
     {
         throw std::invalid_argument("Invalid integration document format");
@@ -596,6 +603,7 @@ void CTIStorageDB::Impl::storeIntegration(const json::Json& integrationDoc)
 
 void CTIStorageDB::Impl::storeDecoder(const json::Json& decoderDoc)
 {
+    std::unique_lock<std::shared_mutex> lock(m_rwMutex); // Exclusive write lock
     if (!validateDocument(decoderDoc, "decoder"))
     {
         throw std::invalid_argument("Invalid decoder document format");
@@ -605,6 +613,7 @@ void CTIStorageDB::Impl::storeDecoder(const json::Json& decoderDoc)
 
 void CTIStorageDB::Impl::storeKVDB(const json::Json& kvdbDoc)
 {
+    std::unique_lock<std::shared_mutex> lock(m_rwMutex); // Exclusive write lock
     if (!validateDocument(kvdbDoc, "kvdb"))
     {
         throw std::invalid_argument("Invalid KVDB document format");
@@ -614,6 +623,8 @@ void CTIStorageDB::Impl::storeKVDB(const json::Json& kvdbDoc)
 
 std::vector<base::Name> CTIStorageDB::Impl::getAssetList(const std::string& assetType) const
 {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
     auto cfIt = CTIStorageDB::getAssetTypeToColumnFamily().find(assetType);
     if (cfIt == CTIStorageDB::getAssetTypeToColumnFamily().end())
     {
@@ -655,6 +666,8 @@ std::vector<base::Name> CTIStorageDB::Impl::getAssetList(const std::string& asse
 
 json::Json CTIStorageDB::Impl::getAsset(const base::Name& name, const std::string& assetType) const
 {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
     auto cfIt = CTIStorageDB::getAssetTypeToColumnFamily().find(assetType);
     if (cfIt == CTIStorageDB::getAssetTypeToColumnFamily().end())
     {
@@ -673,6 +686,8 @@ json::Json CTIStorageDB::Impl::getAsset(const base::Name& name, const std::strin
 
 bool CTIStorageDB::Impl::assetExists(const base::Name& name, const std::string& assetType) const
 {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
     auto cfIt = CTIStorageDB::getAssetTypeToColumnFamily().find(assetType);
     if (cfIt == CTIStorageDB::getAssetTypeToColumnFamily().end())
     {
@@ -691,6 +706,8 @@ bool CTIStorageDB::Impl::assetExists(const base::Name& name, const std::string& 
 
 std::vector<std::string> CTIStorageDB::Impl::getKVDBList() const
 {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
     std::vector<std::string> kvdbs;
     rocksdb::ReadOptions ro;
     ro.total_order_seek = true;
@@ -720,6 +737,8 @@ std::vector<std::string> CTIStorageDB::Impl::getKVDBList() const
 
 std::vector<std::string> CTIStorageDB::Impl::getKVDBList(const base::Name& integrationName) const
 {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
     try
     {
         json::Json integration = getByIdOrName(integrationName.fullName(), CTIStorageDB::ColumnFamily::INTEGRATION, "integration:", "name:integration:");
@@ -740,11 +759,14 @@ std::vector<std::string> CTIStorageDB::Impl::getKVDBList(const base::Name& integ
 
 bool CTIStorageDB::Impl::kvdbExists(const std::string& kvdbName) const
 {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
     return existsByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, "kvdb:", "name:kvdb:");
 }
 
 json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
 {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
     json::Json kvdbDoc = getByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, "kvdb:", "name:kvdb:");
 
     if (kvdbDoc.exists("/payload/document/content"))
@@ -763,6 +785,8 @@ json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
 
 std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
 {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
     std::vector<base::Name> integrations;
     rocksdb::ReadOptions ro;
     ro.total_order_seek = true;
@@ -801,11 +825,15 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
 
 base::Name CTIStorageDB::Impl::getPolicyDefaultParent() const
 {
+    // Note: This is a constant value, no lock needed but added for consistency
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
     return base::Name("wazuh");
 }
 
 void CTIStorageDB::Impl::clearAll()
 {
+    std::unique_lock<std::shared_mutex> lock(m_rwMutex); // Exclusive write lock
+
     rocksdb::WriteBatch batch;
 
     auto clearColumnFamily = [&](rocksdb::ColumnFamilyHandle* cf) {
@@ -831,6 +859,8 @@ void CTIStorageDB::Impl::clearAll()
 
 size_t CTIStorageDB::Impl::getStorageStats(CTIStorageDB::ColumnFamily cf) const
 {
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
     size_t count = 0;
     auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamily(cf)));
 
@@ -844,6 +874,8 @@ size_t CTIStorageDB::Impl::getStorageStats(CTIStorageDB::ColumnFamily cf) const
 
 bool CTIStorageDB::Impl::validateDocument(const json::Json& doc, const std::string& expectedType) const
 {
+    // Note: validateDocument is a pure function that doesn't access database state
+    // No lock needed, but we could add shared lock for consistency if needed
     if (!doc.exists("/name") || extractIdFromJson(doc).empty())
     {
         return false;
