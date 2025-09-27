@@ -102,6 +102,38 @@ NumCastOperator strToNumCastOp(const std::string& op)
 }
 
 /**
+ * @brief Protocols supported by the community_id helper.
+ */
+enum class NetworkProto : uint8_t
+{
+    ICMP   = 1,
+    TCP    = 6,
+    UDP    = 17,
+    ICMPv6 = 58,
+    SCTP   = 132,
+    OTHER  = 255  // marcador genérico
+};
+
+/**
+ * @brief Convert an IANA protocol number to NetworkProto.
+ *
+ * @param proto Protocol number (e.g., 6 = TCP, 17 = UDP).
+ * @return Corresponding NetworkProto value or OTHER if not mapped.
+ */
+inline NetworkProto toNetworkProto(uint8_t proto)
+{
+    switch (proto)
+    {
+        case 1:   return NetworkProto::ICMP;
+        case 6:   return NetworkProto::TCP;
+        case 17:  return NetworkProto::UDP;
+        case 58:  return NetworkProto::ICMPv6;
+        case 132: return NetworkProto::SCTP;
+        default:  return NetworkProto::OTHER;
+    }
+}
+
+/**
  * @brief Tranform the string in `field` path in the base::Event `e` according to the
  * `op` definition and the `value` or the `refValue`
  *
@@ -2014,7 +2046,7 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
         RETURN_SUCCESS(runState, resultJson, successTrace);
     };
 }
-
+// field: + community.id
 MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -2247,8 +2279,9 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
 
         constexpr uint16_t ICMP_MAX = 255u;
         constexpr uint16_t PORT_MAX = std::numeric_limits<uint16_t>::max();
+        auto protocol = toNetworkProto(proto);
 
-        if (proto == 1 || proto == 58)
+        if (protocol == NetworkProto::ICMP || protocol == NetworkProto::ICMPv6)
         {
             if (const auto err = readPort(sportRef,
                                           false,
@@ -2272,7 +2305,7 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
                 RETURN_FAILURE(runState, json::Json {}, *err);
             }
         }
-        else if (proto == 6 || proto == 17 || proto == 132)
+        else if (protocol == NetworkProto::TCP || protocol == NetworkProto::UDP || protocol == NetworkProto::SCTP)
         {
             // TCP/UDP/SCTP: requerido, rango 0..65535
             if (const auto err = readPort(sportRef,
