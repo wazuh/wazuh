@@ -2018,221 +2018,330 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
 MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Check parameters
-    builder::builders::utils::assertSize(opArgs, 5, 6);
-    builder::builders::utils::assertRef(opArgs, 0, 1, 2, 3, 4);
+    builder::builders::utils::assertSize(opArgs, 5);
+    builder::builders::utils::assertRef(opArgs, 0, 1, 2, 3);
+
+    constexpr uint16_t defaultSeed = 0;
 
     auto saddrRef = *std::static_pointer_cast<Reference>(opArgs[0]);
     auto daddrRef = *std::static_pointer_cast<Reference>(opArgs[1]);
     auto sportRef = *std::static_pointer_cast<Reference>(opArgs[2]);
     auto dportRef = *std::static_pointer_cast<Reference>(opArgs[3]);
-    auto protoRef = *std::static_pointer_cast<Reference>(opArgs[4]);
 
-    uint16_t seed = 0;
-    if (opArgs.size() == 6)
+    std::optional<Reference> protoRef {};
+    std::optional<uint8_t> protoLiteral {};
+
+    const auto& validator = buildCtx->validator();
+
+    auto ensureStringRef = [&validator](const Reference& ref)
     {
-        builder::builders::utils::assertValue(opArgs, 5);
-        const auto& seedArg = std::static_pointer_cast<Value>(opArgs[5])->value();
-        if (!seedArg.isInt())
+        if (validator.hasField(ref.dotPath()))
         {
-            throw std::runtime_error("Expected 'seed' argument to be an integer");
+            const auto type = validator.getJsonType(ref.dotPath());
+            if (type != json::Json::Type::String)
+            {
+                throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                     ref.dotPath(),
+                                                     json::Json::typeToStr(type)));
+            }
         }
-        const auto seed64 = seedArg.getIntAsInt64().value();
-        if (seed64 < 0 || seed64 > std::numeric_limits<uint16_t>::max())
+    };
+
+    auto ensureNumericRef = [&validator](const Reference& ref)
+    {
+        if (validator.hasField(ref.dotPath()))
         {
-            throw std::runtime_error("Seed out of range (expected 0..65535)");
+            const auto type = validator.getType(ref.dotPath());
+            if (type != schemf::Type::INTEGER && type != schemf::Type::SHORT && type != schemf::Type::LONG)
+            {
+                throw std::runtime_error(fmt::format("Expected numeric reference but got reference '{}' of type '{}'",
+                                                     ref.dotPath(),
+                                                     schemf::typeToStr(type)));
+            }
         }
-        seed = static_cast<uint16_t>(seed64);
+    };
+
+    ensureStringRef(saddrRef);
+    ensureStringRef(daddrRef);
+    ensureNumericRef(sportRef);
+    ensureNumericRef(dportRef);
+
+    if (opArgs[4]->isReference())
+    {
+        const auto ref = *std::static_pointer_cast<Reference>(opArgs[4]);
+        if (validator.hasField(ref.dotPath()))
+        {
+            const auto type = validator.getJsonType(ref.dotPath());
+            if (type != json::Json::Type::Number)
+            {
+                throw std::runtime_error(fmt::format("Expected 'number' reference but got reference '{}' of type '{}'",
+                                                     ref.dotPath(),
+                                                     json::Json::typeToStr(type)));
+            }
+        }
+        protoRef = ref;
+    }
+    else
+    {
+        const auto& protoJson = std::static_pointer_cast<Value>(opArgs[4])->value();
+        if (!protoJson.isInt())
+        {
+            throw std::runtime_error("Expected 'network.iana_number' argument to be a number");
+        }
+
+        const auto protoOpt = protoJson.getIntAsInt64();
+        if (!protoOpt.has_value())
+        {
+            throw std::runtime_error("Expected 'network.iana_number' argument to be a number");
+        }
+
+        const auto proto64 = protoOpt.value();
+        if (proto64 < 0 || proto64 > std::numeric_limits<uint8_t>::max())
+        {
+            throw std::runtime_error("network.iana_number out of range (expected 0..255)");
+        }
+
+        protoLiteral = static_cast<uint8_t>(proto64);
     }
 
-
-    // Tracing
     const auto name = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", name);
-    // not found traces
-    const std::string traceSaddrNotFound {fmt::format("{} -> Reference '{}' not found", name, saddrRef.dotPath())};
-    const std::string traceDaddrNotFound {fmt::format("{} -> Reference '{}' not found", name, daddrRef.dotPath())};
-    const std::string traceSportNotFound {fmt::format("{} -> Reference '{}' not found", name, sportRef.dotPath())};
-    const std::string traceDportNotFound {fmt::format("{} -> Reference '{}' not found", name, dportRef.dotPath())};
-    const std::string traceProtoNotFound {fmt::format("{} -> Reference '{}' not found", name, protoRef.dotPath())};
-    // wrong type traces
-    const std::string traceSaddrNotString {
-        fmt::format("{} -> Reference '{}' must be a string", name, saddrRef.dotPath())};
-    const std::string traceDaddrNotString {
-        fmt::format("{} -> Reference '{}' must be a string", name, daddrRef.dotPath())};
-    const std::string traceSportNotNumber {
-        fmt::format("{} -> Reference '{}' must be a number", name, sportRef.dotPath())};
-    const std::string traceDportNotNumber {
-        fmt::format("{} -> Reference '{}' must be a number", name, dportRef.dotPath())};
-    const std::string traceProtoNotNumber {
-        fmt::format("{} -> Reference '{}' must be a number", name, protoRef.dotPath())};
-    // out of range traces
-    const std::string traceProtoOutOfRange {
-        fmt::format("{} -> network.iana_number out of range (expected 0..255)", name)};
-    const std::string traceSportOutOfRangeIcmp {
-        fmt::format("{} -> source.port out of range (expected 0..255)", name)};
-    const std::string traceDportOutOfRangeIcmp {
-        fmt::format("{} -> destination.port out of range (expected 0..255)", name)};
-    const std::string traceSportOutOfRangeTransport {
-        fmt::format("{} -> source.port out of range (expected 0..65535)", name)};
-    const std::string traceDportOutOfRangeTransport {
-        fmt::format("{} -> destination.port out of range (expected 0..65535)", name)};
 
-    // Invalid IP format
-    const std::string traceSaddrInvalidIp {fmt::format("{} -> Invalid IP format in '{}'", name, saddrRef.dotPath())};
-    const std::string traceDaddrInvalidIp {fmt::format("{} -> Invalid IP format in '{}'", name, daddrRef.dotPath())};
+    const auto missingTrace = [name](const Reference& ref)
+    {
+        return fmt::format("{} -> Reference '{}' not found", name, ref.dotPath());
+    };
+    const auto stringTrace = [name](const Reference& ref)
+    {
+        return fmt::format("{} -> Reference '{}' must be a string", name, ref.dotPath());
+    };
+    const auto numberTrace = [name](const Reference& ref)
+    {
+        return fmt::format("{} -> Reference '{}' must be a number", name, ref.dotPath());
+    };
+    const auto invalidIPTrace = [name](const Reference& ref)
+    {
+        return fmt::format("{} -> Invalid IP format in '{}'", name, ref.dotPath());
+    };
 
-    const std::string traceBuildBufferFailure {fmt::format("{} -> failed to build Community ID buffer", name)};
-    const std::string traceSHA1DigestFailure {fmt::format("{} -> SHA1 digest computation failed", name)};
-    const std::string traceBase64Failure {fmt::format("{} -> Base64 encoding failed", name)};
-    const std::string traceComputeFailed {fmt::format("{} -> failed to compute Community ID", name)};
+    const auto protoOutOfRangeTrace = fmt::format("{} -> network.iana_number out of range (expected 0..255)", name);
+    const auto sportOutOfRangeIcmpTrace = fmt::format("{} -> source.port out of range (expected 0..255)", name);
+    const auto dportOutOfRangeIcmpTrace = fmt::format("{} -> destination.port out of range (expected 0..255)", name);
+    const auto sportOutOfRangeTransportTrace = fmt::format("{} -> source.port out of range (expected 0..65535)", name);
+    const auto dportOutOfRangeTransportTrace =
+        fmt::format("{} -> destination.port out of range (expected 0..65535)", name);
+    const auto invalidIpTrace = [name](const Reference& ref)
+    {
+        return fmt::format("{} -> Invalid IP format in '{}'", name, ref.dotPath());
+    };
+
+    const auto computeFailureTrace = fmt::format("{} -> failed to compute Community ID", name);
+    const auto buildBufferFailureTrace = fmt::format("{} -> failed to build Community ID buffer", name);
+    const auto sha1FailureTrace = fmt::format("{} -> SHA1 digest computation failed", name);
+    const auto base64FailureTrace = fmt::format("{} -> Base64 encoding failed", name);
 
     return [=, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
     {
-        // source.ip
-        if (!event->exists(saddrRef.jsonPath()))
-        {
-            RETURN_FAILURE(runState, json::Json {}, traceSaddrNotFound);
-        }
-        if (!event->isString(saddrRef.jsonPath()))
-        {
-            RETURN_FAILURE(runState, json::Json {}, traceSaddrNotString);
-        }
-        const auto saddr = event->getString(saddrRef.jsonPath()).value();
+        std::string saddr;
+        std::string daddr;
 
-        if (!::utils::ip::checkStrIsIPv4(saddr) && !::utils::ip::checkStrIsIPv6(saddr))
+        auto readIp = [&](const Reference& ref,
+                          const std::string& missingMsg,
+                          const std::string& typeMsg,
+                          const std::string& invalidMsg,
+                          std::string& out) -> std::optional<std::string>
         {
-            RETURN_FAILURE(runState, json::Json {}, traceSaddrInvalidIp);
+            const auto valueOpt = event->getString(ref.jsonPath());
+            if (!valueOpt)
+            {
+                if (!event->exists(ref.jsonPath()))
+                {
+                    return missingMsg;
+                }
+                return typeMsg;
+            }
+
+            const auto& value = valueOpt.value();
+            if (!::utils::ip::checkStrIsIPv4(value) && !::utils::ip::checkStrIsIPv6(value))
+            {
+                return invalidMsg;
+            }
+
+            out = value;
+            return std::nullopt;
+        };
+
+        if (const auto err =
+                readIp(saddrRef, missingTrace(saddrRef), stringTrace(saddrRef), invalidIpTrace(saddrRef), saddr))
+        {
+            RETURN_FAILURE(runState, json::Json {}, *err);
         }
 
-        // destination.ip
-        if (!event->exists(daddrRef.jsonPath()))
+        if (const auto err =
+                readIp(daddrRef, missingTrace(daddrRef), stringTrace(daddrRef), invalidIpTrace(daddrRef), daddr))
         {
-            RETURN_FAILURE(runState, json::Json {}, traceDaddrNotFound);
-        }
-        if (!event->isString(daddrRef.jsonPath()))
-        {
-            RETURN_FAILURE(runState, json::Json {}, traceDaddrNotString);
-        }
-        const auto daddr = event->getString(daddrRef.jsonPath()).value();
-
-        if (!::utils::ip::checkStrIsIPv4(daddr) && !::utils::ip::checkStrIsIPv6(daddr))
-        {
-            RETURN_FAILURE(runState, json::Json {}, traceDaddrInvalidIp);
+            RETURN_FAILURE(runState, json::Json {}, *err);
         }
 
-        // network.iana_number (proto)
-        if (!event->exists(protoRef.jsonPath()))
+        uint8_t proto = 0;
+        if (protoLiteral)
         {
-            RETURN_FAILURE(runState, json::Json {}, traceProtoNotFound);
+            proto = protoLiteral.value();
         }
-        if (!event->isInt(protoRef.jsonPath()))
+        else
         {
-            RETURN_FAILURE(runState, json::Json {}, traceProtoNotNumber);
-        }
-        const auto proto64 = event->getIntAsInt64(protoRef.jsonPath()).value();
+            const auto& ref = protoRef.value();
+            const auto protoOpt = event->getIntAsInt64(ref.jsonPath());
+            if (!protoOpt)
+            {
+                if (!event->exists(ref.jsonPath()))
+                {
+                    RETURN_FAILURE(runState, json::Json {}, missingTrace(ref));
+                }
+                RETURN_FAILURE(runState, json::Json {}, numberTrace(ref));
+            }
 
-        if (proto64 < 0 || proto64 > 255)
-        {
-            RETURN_FAILURE(runState, json::Json {}, traceProtoOutOfRange);
+            if (protoOpt.value() < 0 || protoOpt.value() > std::numeric_limits<uint8_t>::max())
+            {
+                RETURN_FAILURE(runState, json::Json {}, protoOutOfRangeTrace);
+            }
+            proto = static_cast<uint8_t>(protoOpt.value());
         }
-        const auto proto = static_cast<uint8_t>(proto64);
 
-        uint16_t sport = 0, dport = 0;
+        uint16_t sport = 0;
+        uint16_t dport = 0;
+
+        auto readPort = [&](const Reference& ref,
+                            bool required,
+                            uint16_t maxVal,
+                            const std::string& rangeTrace,
+                            const std::string& missingMsg,
+                            const std::string& numberMsg,
+                            uint16_t& out) -> std::optional<std::string>
+        {
+            const auto& path = ref.jsonPath();
+            const auto valueOpt = event->getIntAsInt64(path);
+
+            if (valueOpt)
+            {
+                const auto value = valueOpt.value();
+                if (value < 0 || value > maxVal)
+                {
+                    return rangeTrace;
+                }
+                out = static_cast<uint16_t>(value);
+                return std::nullopt;
+            }
+
+            if (!event->exists(path))
+            {
+                if (required)
+                {
+                    return missingMsg;
+                }
+                return std::nullopt;
+            }
+
+            return numberMsg;
+        };
+
+        constexpr uint16_t ICMP_MAX = 255u;
+        constexpr uint16_t PORT_MAX = std::numeric_limits<uint16_t>::max();
 
         if (proto == 1 || proto == 58)
         {
-            if (event->exists(sportRef.jsonPath()))
+            if (const auto err = readPort(sportRef,
+                                          false,
+                                          ICMP_MAX,
+                                          sportOutOfRangeIcmpTrace,
+                                          missingTrace(sportRef),
+                                          numberTrace(sportRef),
+                                          sport))
             {
-                if (!event->isInt(sportRef.jsonPath()))
-                {
-                    RETURN_FAILURE(runState, json::Json {}, traceSportNotNumber);
-                }
-
-                const auto sport64 = event->getIntAsInt64(sportRef.jsonPath()).value();
-
-                if (sport64 < 0 || sport64 > 255)
-                {
-                    RETURN_FAILURE(runState, json::Json {}, traceSportOutOfRangeIcmp);
-                }
-
-                sport = static_cast<uint16_t>(sport64);
+                RETURN_FAILURE(runState, json::Json {}, *err);
             }
 
-            if (event->exists(dportRef.jsonPath()))
+            if (const auto err = readPort(dportRef,
+                                          false,
+                                          ICMP_MAX,
+                                          dportOutOfRangeIcmpTrace,
+                                          missingTrace(dportRef),
+                                          numberTrace(dportRef),
+                                          dport))
             {
-                if (!event->isInt(dportRef.jsonPath()))
-                {
-                    RETURN_FAILURE(runState, json::Json {}, traceDportNotNumber);
-                }
-
-                const auto dport64 = event->getIntAsInt64(dportRef.jsonPath()).value();
-
-                if (dport64 < 0 || dport64 > 255)
-                {
-                    RETURN_FAILURE(runState, json::Json {}, traceDportOutOfRangeIcmp);
-                }
-
-                dport = static_cast<uint16_t>(dport64);
+                RETURN_FAILURE(runState, json::Json {}, *err);
             }
         }
         else if (proto == 6 || proto == 17 || proto == 132)
         {
-            if (!event->exists(sportRef.jsonPath()))
+            // TCP/UDP/SCTP: requerido, rango 0..65535
+            if (const auto err = readPort(sportRef,
+                                          true,
+                                          PORT_MAX,
+                                          sportOutOfRangeTransportTrace,
+                                          missingTrace(sportRef),
+                                          numberTrace(sportRef),
+                                          sport))
             {
-                RETURN_FAILURE(runState, json::Json {}, traceSportNotFound);
-            }
-            if (!event->isInt(sportRef.jsonPath()))
-            {
-                RETURN_FAILURE(runState, json::Json {}, traceSportNotNumber);
-            }
-
-            if (!event->exists(dportRef.jsonPath()))
-            {
-                RETURN_FAILURE(runState, json::Json {}, traceDportNotFound);
-            }
-            if (!event->isInt(dportRef.jsonPath()))
-            {
-                RETURN_FAILURE(runState, json::Json {}, traceDportNotNumber);
+                RETURN_FAILURE(runState, json::Json {}, *err);
             }
 
-            const auto sport64 = event->getIntAsInt64(sportRef.jsonPath()).value();
-            const auto dport64 = event->getIntAsInt64(dportRef.jsonPath()).value();
-
-            if (sport64 < 0 || sport64 > 65535)
+            if (const auto err = readPort(dportRef,
+                                          true,
+                                          PORT_MAX,
+                                          dportOutOfRangeTransportTrace,
+                                          missingTrace(dportRef),
+                                          numberTrace(dportRef),
+                                          dport))
             {
-                RETURN_FAILURE(runState, json::Json {}, traceSportOutOfRangeTransport);
+                RETURN_FAILURE(runState, json::Json {}, *err);
             }
-            if (dport64 < 0 || dport64 > 65535)
+        }
+        else
+        {
+            // Otros: opcional (fallback 0/0), rango 0..65535
+            if (const auto err = readPort(sportRef,
+                                          false,
+                                          PORT_MAX,
+                                          sportOutOfRangeTransportTrace,
+                                          missingTrace(sportRef),
+                                          numberTrace(sportRef),
+                                          sport))
             {
-                RETURN_FAILURE(runState, json::Json {}, traceDportOutOfRangeTransport);
+                RETURN_FAILURE(runState, json::Json {}, *err);
             }
 
-            sport = static_cast<uint16_t>(sport64);
-            dport = static_cast<uint16_t>(dport64);
+            if (const auto err = readPort(dportRef,
+                                          false,
+                                          PORT_MAX,
+                                          dportOutOfRangeTransportTrace,
+                                          missingTrace(dportRef),
+                                          numberTrace(dportRef),
+                                          dport))
+            {
+                RETURN_FAILURE(runState, json::Json {}, *err);
+            }
         }
 
-        const auto cid = base::utils::CommunityId::getCommunityIdV1(saddr, daddr, sport, dport, proto, seed);
+        const auto cid = base::utils::CommunityId::getCommunityIdV1(saddr, daddr, sport, dport, proto, defaultSeed);
 
         if (std::holds_alternative<base::utils::CommunityId::CommunityError>(cid))
         {
             switch (std::get<base::utils::CommunityId::CommunityError>(cid))
             {
                 case base::utils::CommunityId::CommunityError::BuildBufferFailed:
-                    RETURN_FAILURE(runState, json::Json {}, traceBuildBufferFailure);
+                    RETURN_FAILURE(runState, json::Json {}, buildBufferFailureTrace);
                 case base::utils::CommunityId::CommunityError::Sha1Failure:
-                    RETURN_FAILURE(runState, json::Json {}, traceSHA1DigestFailure);
+                    RETURN_FAILURE(runState, json::Json {}, sha1FailureTrace);
                 case base::utils::CommunityId::CommunityError::Base64Failure:
-                    RETURN_FAILURE(runState, json::Json {}, traceBase64Failure);
+                    RETURN_FAILURE(runState, json::Json {}, base64FailureTrace);
                 case base::utils::CommunityId::CommunityError::Unknown:
-                default: RETURN_FAILURE(runState, json::Json {}, traceComputeFailed);
+                default: RETURN_FAILURE(runState, json::Json {}, computeFailureTrace);
             }
         }
 
-        auto& communityID = std::get<std::string>(cid);
-
         json::Json result;
-        result.setString(communityID);
+        result.setString(std::get<std::string>(cid));
         RETURN_SUCCESS(runState, result, successTrace);
     };
 }

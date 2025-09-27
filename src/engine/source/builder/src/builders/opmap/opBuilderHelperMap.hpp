@@ -311,8 +311,7 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
 
 /**
  * @brief Produces the Community ID v1 ("1:<base64>") for a flow (ECS `network.community_id`).
- * @param opArgs saddr, daddr, sport, dport, proto [, seed] or
- *               {saddr,daddr,proto,[sport,dport|icmp_type,icmp_code],[seed]}.
+ * @param opArgs saddr, daddr, sport, dport, proto (reference or literal value).
  * @param buildCtx Build context.
  * @return MapOp mapper that emits the ID (seed defaults to 0).
  */
