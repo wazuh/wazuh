@@ -2013,6 +2013,129 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
     };
 }
 
+MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    // Check parameters
+    builder::builders::utils::assertSize(opArgs, 5, 6);
+    builder::builders::utils::assertRef(opArgs, 0, 1, 2, 3, 4);
+
+    // TODO: optional seed (u16)
+    auto saddrRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    auto daddrRef = *std::static_pointer_cast<Reference>(opArgs[1]);
+    auto sportRef = *std::static_pointer_cast<Reference>(opArgs[2]);
+    auto dportRef = *std::static_pointer_cast<Reference>(opArgs[3]);
+    auto protoRef = *std::static_pointer_cast<Reference>(opArgs[4]);
+
+    // TODO: Validator for arguments
+
+    // Tracing
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+    //not found traces
+    const std::string traceSaddrNotFound   { fmt::format("{} -> Reference '{}' not found", name, saddrRef.dotPath()) };
+    const std::string traceDaddrNotFound   { fmt::format("{} -> Reference '{}' not found", name, daddrRef.dotPath()) };
+    const std::string traceSportNotFound   { fmt::format("{} -> Reference '{}' not found", name, sportRef.dotPath()) };
+    const std::string traceDportNotFound   { fmt::format("{} -> Reference '{}' not found", name, dportRef.dotPath()) };
+    const std::string traceProtoNotFound   { fmt::format("{} -> Reference '{}' not found", name, protoRef.dotPath()) };
+    //wrong type traces
+    const std::string traceSaddrNotString  { fmt::format("{} -> Reference '{}' must be a string", name, saddrRef.dotPath()) };
+    const std::string traceDaddrNotString  { fmt::format("{} -> Reference '{}' must be a string", name, daddrRef.dotPath()) };
+    const std::string traceSportNotNumber  { fmt::format("{} -> Reference '{}' must be a number", name, sportRef.dotPath()) };
+    const std::string traceDportNotNumber  { fmt::format("{} -> Reference '{}' must be a number", name, dportRef.dotPath()) };
+    const std::string traceProtoNotNumber  { fmt::format("{} -> Reference '{}' must be a number", name, protoRef.dotPath()) };
+    //out of range traces
+    const std::string traceProtoOutOfRange { fmt::format("{} -> network.iana_number out of range (expected 0..255)", name) };
+    const std::string traceSportOutOfRange { fmt::format("{} -> source.port out of range (expected 0..65535)", name) };
+    const std::string traceDportOutOfRange { fmt::format("{} -> destination.port out of range (expected 0..65535)", name) };
+
+    // Invalid IP format
+    //const std::string traceSaddrInvalidIp  { fmt::format("{} -> Invalid IP format in '{}'", name, saddrRef->dotPath()) };
+    //const std::string traceDaddrInvalidIp  { fmt::format("{} -> Invalid IP format in '{}'", name, daddrRef->dotPath()) };
+    const std::string traceComputeFailed  { fmt::format("{} -> failed to compute Community ID", name) };
+
+    return [=, runState = buildCtx->runState()](base::ConstEvent event)->MapReult
+    {
+         // source.ip
+        if (!event->exists(saddrRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, traceSaddrNotFound);
+        }
+        if (!event->isString(saddrRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, traceSaddrNotString);
+        }
+        const auto saddr = event->getString(saddrRef.jsonPath()).value();
+        // destination.ip
+        if (!event->exists(daddrRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, traceDaddrNotFound);
+        }
+        if (!event->isString(daddrRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, traceDaddrNotString);
+        }
+        const auto daddr = event->getString(daddrRef.jsonPath()).value();
+        //network.iana_number (proto)
+        if (!event->exists(protoRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, traceProtoNotFound);
+        }
+        if (!event->isInt(protoRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, traceProtoNotNumber);
+        }
+        const auto proto64 = event->getIntAsInt64(protoRef.jsonPath()).value();
+
+        if (proto64 < 0 || proto64 > 255)
+        {
+            RETURN_FAILURE(runState, json::Json {}, traceProtoOutOfRange);
+        }
+        const uint8_t proto = static_cast<uint8_t>(proto64);
+
+        // port (jusr for: TCP/UDP/SCTP)
+        uint16_t sport = 0, dport = 0;
+        const bool usesPorts = (proto == 6 || proto == 17 || proto == 132);
+
+        if (usesPorts)
+        {
+            if (!event->exists(sportRef.jsonPath()))
+            {
+                RETURN_FAILURE(runState, json::Json {}, traceSportNotFound);
+            }
+            if (!event->isInt(sportRef.jsonPath()))
+            {
+                RETURN_FAILURE(runState, json::Json {}, traceSportNotNumber);
+            }
+
+            if (!event->exists(dportRef.jsonPath()))
+            {
+                RETURN_FAILURE(runState, json::Json {}, traceDportNotFound);
+            }
+            if (!event->isInt(dportRef.jsonPath()))
+            {
+                RETURN_FAILURE(runState, json::Json {}, traceDportNotNumber);
+            }
+
+            sport = static_cast<uint16_t>(event->getIntAsInt64(sportRef.jsonPath()).value());
+            dport = static_cast<uint16_t>(event->getIntAsInt64(dportRef.jsonPath()).value());
+        }
+        // seed temporaly
+        constexpr uint16_t seed = 0;
+
+        const std::string cid = base::utils::getCommunityIdV1(saddr, daddr, sport, dport, proto, seed);
+
+        if (cid.empty())
+        {
+            RETURN_FAILURE(runState, json::Json {}, traceComputeFailed);
+        }
+
+        json::Json result;
+        result.setString(cid);
+        RETURN_SUCCESS(runState, result, successTrace);
+    }
+
+}
 //*************************************************
 //*              Time tranform                    *
 //*************************************************
