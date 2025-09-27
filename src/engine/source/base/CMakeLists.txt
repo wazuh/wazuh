@@ -54,6 +54,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/result_test.cpp
     ${UNIT_SRC_DIR}/graph_test.cpp
     ${UNIT_SRC_DIR}/name_test.cpp
+    ${UNIT_SRC_DIR}/utils/communityId_test.cpp
     ${UNIT_SRC_DIR}/utils/timeUtils_test.cpp
     ${UNIT_SRC_DIR}/dotPath_test.cpp
     ${UNIT_SRC_DIR}/eventParser_test.cpp
