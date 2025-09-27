@@ -2,6 +2,7 @@
 #define _CTI_STORE_STORAGE_DB_HPP
 
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,8 +25,10 @@ namespace cti::store
  * It also maintains secondary indexes (by name/title) and relationship indexes
  * (e.g., integration -> related assets/KVDBs).
  *
- * Thread-safety: instances are not guaranteed to be thread-safe unless
- * externally synchronized by the caller.
+ * Thread-safety: This class is thread-safe for single-writer, multiple-reader
+ * scenarios. Write operations (storeXXX) must be called from a single thread,
+ * while read operations (getXXX, existsXXX, listXXX) can be called concurrently
+ * from multiple threads safely.
  */
 class CTIStorageDB
 {
