@@ -103,17 +103,6 @@ void NetworkEndpoint::ParseIpAddress(std::string_view ip)
     }
 }
 
-bool operator==(const NetworkEndpoint& lhs, const NetworkEndpoint& rhs) noexcept
-{
-    if (lhs.getFamily() != rhs.getFamily())
-        return false;
-
-    if (lhs.hasPort() && rhs.hasPort() && (lhs.getPort() != rhs.getPort()))
-        return false;
-
-    return std::equal(lhs.getIpBytes().begin(), lhs.getIpBytes().end(), rhs.getIpBytes().begin());
-}
-
 bool operator<(const NetworkEndpoint& lhs, const NetworkEndpoint& rhs) noexcept
 {
     if (lhs.getFamily() != rhs.getFamily())
