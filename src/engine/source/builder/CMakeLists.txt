@@ -144,6 +144,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opmap/hash_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/kvdb_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/mmdb_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/networkCommunityId_test.cpp
 
     # Transform Builders
     ${UNIT_SRC_DIR}/builders/optransform/strTransform_test.cpp
