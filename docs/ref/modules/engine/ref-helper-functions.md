@@ -75,6 +75,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [int_calculate](#int_calculate)
 - [ip_version](#ip_version)
 - [join](#join)
+- [network_community_id](#network_community_id)
 - [regex_extract](#regex_extract)
 - [sha1](#sha1)
 - [system_epoch](#system_epoch)
@@ -2755,7 +2756,7 @@ check:
 
 ### Example 3
 
-Not null (array)
+Not null (boolean)
 
 #### Asset
 
@@ -2767,14 +2768,39 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": true
+}
 ```
 
 *The check was successful*
 
 ### Example 4
 
-Not null (object)
+Not null (array, non-empty)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: is_not_null()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": [
+    1
+  ]
+}
+```
+
+*The check was successful*
+
+### Example 5
+
+Not null (object, non-empty)
 
 #### Asset
 
@@ -2795,9 +2821,9 @@ check:
 
 *The check was successful*
 
-### Example 5
+### Example 6
 
-Is null
+Missing (empty object is unmapped)
 
 #### Asset
 
@@ -2890,7 +2916,7 @@ check:
 
 ### Example 3
 
-Not number (array)
+number (array not empty)
 
 #### Asset
 
@@ -2902,7 +2928,11 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": [
+    1
+  ]
+}
 ```
 
 *The check was successful*
@@ -3202,7 +3232,7 @@ check:
 {}
 ```
 
-*The check was successful*
+*The check was performed with errors*
 
 ### Example 2
 
@@ -4338,7 +4368,7 @@ check:
 
 ### Example 3
 
-Field exists (array)
+Field exists (array non-empty)
 
 #### Asset
 
@@ -4350,14 +4380,18 @@ check:
 #### Input Event
 
 ```json
-{}
+{
+  "target_field": [
+    1
+  ]
+}
 ```
 
 *The check was performed with errors*
 
 ### Example 4
 
-Field exists (object)
+Field exists (object non-empty)
 
 #### Asset
 
@@ -4377,6 +4411,65 @@ check:
 ```
 
 *The check was performed with errors*
+
+### Example 5
+
+Field exists (boolean)
+
+#### Asset
+
+```yaml
+check:
+  - target_field: not_exists()
+```
+
+#### Input Event
+
+```json
+{
+  "target_field": true
+}
+```
+
+*The check was performed with errors*
+
+### Example 6
+
+Field absent via empty array
+
+#### Asset
+
+```yaml
+check:
+  - target_field: not_exists()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was successful*
+
+### Example 7
+
+Field absent via empty object
+
+#### Asset
+
+```yaml
+check:
+  - target_field: not_exists()
+```
+
+#### Input Event
+
+```json
+{}
+```
+
+*The check was successful*
 
 
 
@@ -5231,28 +5324,29 @@ check:
 
 ```
 
-field: regex_not_match(regexp)
+field: regex_not_match(regxp)
 ```
 
 ## Arguments
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| regexp | string | value | Any string |
+| regxp | string | value | Any regex |
 
 
 ## Target Field
 
 | Type | Possible values |
 | ---- | --------------- |
-| [number, string, boolean, array, object] | - |
+| string | Any string |
 
 
 ## Description
 
-Checks that the field string does not match the given regular expression (partial match).
-If the regex matches, the function evaluates to false. If the field is missing or not a string, it evaluates to false.
-This helper function is typically used in the check stage
+Checks that the target field (string) does NOT match the given regular expression (RE2).
+If it matches, evaluates to false. If the field is missing or not a string, evaluates to false.
+Keep in mind YAML escaping rules. RE2 syntax: https://github.com/google/re2/wiki/Syntax
+Typically used in the check stage.
 
 
 ## Keywords
@@ -5284,7 +5378,7 @@ check:
 
 ### Example 2
 
-Matches (regex finds a prefix 'abc')
+Matches (prefix 'abc')
 
 #### Asset
 
@@ -5305,55 +5399,13 @@ check:
 
 ### Example 3
 
-Does not match (no 'error' or 'fail')
+Not a string -> fails
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: regex_not_match('error|fail')
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": "Status OK"
-}
-```
-
-*The check was successful*
-
-### Example 4
-
-Matches (contains 'fail')
-
-#### Asset
-
-```yaml
-check:
-  - target_field: regex_not_match('error|fail')
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": "critical failure detected"
-}
-```
-
-*The check was performed with errors*
-
-### Example 5
-
-Not a string → fails
-
-#### Asset
-
-```yaml
-check:
-  - target_field: regex_not_match('^abc')
+  - target_field: regex_not_match('^(bye pcre\\d)$')
 ```
 
 #### Input Event
@@ -5673,7 +5725,7 @@ field: string_greater_or_equal(any_string)
 
 | parameter | Type | Source | Accepted values |
 | --------- | ---- | ------ | --------------- |
-| any_string | string | value | Any string |
+| any_string | string | value or reference | Any string |
 
 
 ## Target Field
@@ -5685,9 +5737,9 @@ field: string_greater_or_equal(any_string)
 
 ## Description
 
-Checks whether the string stored in field is lexicographically greater than or equal to the provided value.
-If it is less, the function evaluates to false. In case of error, the function will evaluate to false.
-This helper function is typically used in the check stage
+Checks whether the string stored in field is lexicographically greater than or equal
+to the provided value. If it is less, evaluates to false. On error, evaluates to false.
+Typically used in the check stage.
 
 
 ## Keywords
@@ -5721,19 +5773,20 @@ check:
 
 ### Example 2
 
-Target > argument → passes
+Target >= argument (world >= hello) → passes
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: string_greater_or_equal('hello')
+  - target_field: string_greater_or_equal($any_string)
 ```
 
 #### Input Event
 
 ```json
 {
+  "any_string": "hello",
   "target_field": "world"
 }
 ```
@@ -5742,7 +5795,7 @@ check:
 
 ### Example 3
 
-Target < argument → fails
+Target < argument (abc < def) → fails
 
 #### Asset
 
@@ -5769,13 +5822,14 @@ Not a string → fails
 
 ```yaml
 check:
-  - target_field: string_greater_or_equal('abc')
+  - target_field: string_greater_or_equal($any_string)
 ```
 
 #### Input Event
 
 ```json
 {
+  "any_string": "abc",
   "target_field": 123
 }
 ```
@@ -7155,7 +7209,7 @@ Null format format
 ```yaml
 normalize:
   - map:
-      - target_field: date_to_epoch($date, None)
+      - target_field: date_to_epoch($date, null)
 ```
 
 #### Input Event
@@ -8991,6 +9045,327 @@ normalize:
 ```
 
 *The operation was successful*
+
+
+
+---
+# network_community_id
+
+## Signature
+
+```
+
+field: network_community_id(source_ip, destination_ip, source_port, destination_port, protocol)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| source_ip | string | reference | Any IP |
+| destination_ip | string | reference | Any IP |
+| source_port | number | reference | Integers between `-2^63` and `2^63-1` |
+| destination_port | number | reference | Integers between `-2^63` and `2^63-1` |
+| protocol | number | reference | Integers between `-2^63` and `2^63-1` |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Produces the Community ID v1 (format `1:<base64>`) for a network flow using source/destination IPs,
+transport ports (or ICMP type/code), and the IANA protocol number. The seed is fixed to 0.
+Port requirements by protocol:
+  - TCP/UDP/SCTP: ports are mandatory and must be in 0..65535.
+  - ICMP/ICMPv6: type/code are optional; if provided they must be in 0..255; otherwise 0/0 is used.
+  - Other protocols: ports are optional (0..65535).
+The helper validates references, types, and ranges; on failure the target is left untouched.
+
+
+## Keywords
+
+- `network` 
+
+- `community-id` 
+
+- `flow` 
+
+## Examples
+
+### Example 1
+
+TCP/IPv4 flow (protocol literal), seed=0
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 6
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 6,
+  "target_field": "1:JHvDxB6S6/K68OntUBf4DJZYvkM="
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+UDP/IPv4 flow (protocol literal), seed=0
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "10.1.1.1",
+  "destination_ip": "10.1.1.2",
+  "source_port": 5353,
+  "destination_port": 53,
+  "protocol": 17
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "10.1.1.1",
+  "destination_ip": "10.1.1.2",
+  "source_port": 5353,
+  "destination_port": 53,
+  "protocol": 17,
+  "target_field": "1:8JTDncPomK8OiyinJXhpO10W6EY="
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+IPv6 encapsulation flow (no ports), seed=0
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "2001:db8::1",
+  "destination_ip": "2001:db8::2",
+  "source_port": 0,
+  "destination_port": 0,
+  "protocol": 41
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "2001:db8::1",
+  "destination_ip": "2001:db8::2",
+  "source_port": 0,
+  "destination_port": 0,
+  "protocol": 41,
+  "target_field": "1:CXfAfp/8zYUwm/5DkEbJvPdJtcU="
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+ICMP echo request (type/code mapped to ports), seed=0
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.0.2.1",
+  "destination_ip": "198.51.100.2",
+  "source_port": 8,
+  "destination_port": 0,
+  "protocol": 1
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.0.2.1",
+  "destination_ip": "198.51.100.2",
+  "source_port": 8,
+  "destination_port": 0,
+  "protocol": 1,
+  "target_field": "1:zFLKq9oekfjLhmre/zOf0XYYjVE="
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Reject invalid source IP literal
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "not-an-ip",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 6
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "not-an-ip",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 6
+}
+```
+
+*The operation was performed with errors*
+
+### Example 6
+
+Reject out-of-range protocol number (>255)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 300
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 300
+}
+```
+
+*The operation was performed with errors*
+
+### Example 7
+
+Reject transport port above 65535
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 70000,
+  "destination_port": 80,
+  "protocol": 6
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 70000,
+  "destination_port": 80,
+  "protocol": 6
+}
+```
+
+*The operation was performed with errors*
 
 
 
@@ -12607,7 +12982,7 @@ normalize:
 
 ```
 
-field: parse_binary(input_field, [...])
+field: parse_binary(input_field)
 ```
 
 ## Arguments
@@ -12814,7 +13189,7 @@ normalize:
 
 ```
 
-field: parse_bool(input_field, [...])
+field: parse_bool(input_field)
 ```
 
 ## Arguments
@@ -12988,7 +13363,7 @@ normalize:
 
 ```
 
-field: parse_byte(input_field, [...])
+field: parse_byte(input_field)
 ```
 
 ## Arguments
@@ -13369,7 +13744,7 @@ ISO-8601 with timezone (explicit format)
 ```yaml
 normalize:
   - map:
-      - target_field: parse_date($input_field, '%Y-%m-%dT%H:%M:%S%z', '_auto')
+      - target_field: parse_date($input_field, '%Y-%m-%dT%H:%M:%S%Ez', '_auto')
 ```
 
 #### Input Event
@@ -13386,7 +13761,7 @@ normalize:
 ```json
 {
   "input_field": "2025-09-01T10:30:00-05:00",
-  "target_field": "2025-09-01T15:30:00Z"
+  "target_field": "2025-09-01T15:30:00.000Z"
 }
 ```
 
@@ -13418,7 +13793,7 @@ normalize:
 ```json
 {
   "input_field": "01/09/2025 10:30",
-  "target_field": "2025-09-01T10:30:00Z"
+  "target_field": "2025-09-01T10:30:00.000Z"
 }
 ```
 
@@ -13426,7 +13801,7 @@ normalize:
 
 ### Example 3
 
-Invalid date -> error
+Format mismatch -> error
 
 #### Asset
 
@@ -13440,7 +13815,7 @@ normalize:
 
 ```json
 {
-  "input_field": "2025-13-99 99:99",
+  "input_field": "2025/09/01 10:30",
   "target_field": "any_value"
 }
 ```
@@ -13449,7 +13824,7 @@ normalize:
 
 ```json
 {
-  "input_field": "2025-13-99 99:99",
+  "input_field": "2025/09/01 10:30",
   "target_field": "any_value"
 }
 ```
@@ -13465,7 +13840,7 @@ normalize:
 
 ```
 
-field: parse_double(input_field, [...])
+field: parse_double(input_field)
 ```
 
 ## Arguments
@@ -13804,7 +14179,7 @@ normalize:
 
 ```
 
-field: parse_float(input_field, [...])
+field: parse_float(input_field)
 ```
 
 ## Arguments
@@ -14700,7 +15075,7 @@ normalize:
 
 ```
 
-field: parse_long(input_field, [...])
+field: parse_long(input_field)
 ```
 
 ## Arguments

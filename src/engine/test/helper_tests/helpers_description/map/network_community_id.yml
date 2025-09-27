@@ -3,15 +3,13 @@ name: network_community_id
 
 metadata:
   description: |
-    Produces the Community ID v1 (format `1:<base64>`) for a network flow using the source and destination
-    IP addresses, transport ports (or ICMP type/code), the IANA protocol number and an optional seed.
-    The computed identifier is stored in the target field; on failure the target is left untouched.
-    The helper validates that all references exist, have the correct type and lie inside the accepted ranges:
-      - IP addresses must be IPv4 or IPv6 literals.
-      - Protocol numbers must be between 0 and 255.
-      - TCP/UDP/SCTP ports must be in the 0-65535 range.
-      - ICMP type/code values must be in the 0-255 range.
-      - If present, the seed must be an integer in the range 0-65535.
+    Produces the Community ID v1 (format `1:<base64>`) for a network flow using source/destination IPs,
+    transport ports (or ICMP type/code), and the IANA protocol number. The seed is fixed to 0.
+    Port requirements by protocol:
+      - TCP/UDP/SCTP: ports are mandatory and must be in 0..65535.
+      - ICMP/ICMPv6: type/code are optional; if provided they must be in 0..255; otherwise 0/0 is used.
+      - Other protocols: ports are optional (0..65535).
+    The helper validates references, types, and ranges; on failure the target is left untouched.
   keywords:
     - network
     - community-id
@@ -19,7 +17,6 @@ metadata:
 
 helper_type: map
 
-# Arguments expected by the helper function
 arguments:
   source_ip:
     type: string
@@ -33,22 +30,22 @@ arguments:
     type: number
     generate: integer
     source: reference
+    min: 0
+    max: 65535
   destination_port:
     type: number
     generate: integer
     source: reference
+    min: 0
+    max: 65535
   protocol:
     type: number
     generate: integer
-    source: reference
-  seed:
-    type: number
-    generate: integer
-    source: value
-    optional: true
+    source: reference # Includes values or references (their names start with $)
+    min: 0
+    max: 255
 
-# Indicates whether the helper function supports a variable number of arguments
-is_variadic: true
+is_variadic: false
 
 output:
   type: string
@@ -63,17 +60,18 @@ test:
       protocol: 6
     should_pass: true
     expected: 1:JHvDxB6S6/K68OntUBf4DJZYvkM=
-    description: TCP/IPv4 flow without seed
+    description: TCP/IPv4 flow (protocol literal), seed=0
+
   - arguments:
       source_ip: 10.1.1.1
       destination_ip: 10.1.1.2
       source_port: 5353
       destination_port: 53
       protocol: 17
-      seed: 42
     should_pass: true
-    expected: 1:cVxeSVIJF0vjg//mit9ho1VN3qw=
-    description: UDP/IPv4 flow with custom seed
+    expected: 1:8JTDncPomK8OiyinJXhpO10W6EY=
+    description: UDP/IPv4 flow (protocol literal), seed=0
+
   - arguments:
       source_ip: 2001:db8::1
       destination_ip: 2001:db8::2
@@ -82,16 +80,18 @@ test:
       protocol: 41
     should_pass: true
     expected: 1:CXfAfp/8zYUwm/5DkEbJvPdJtcU=
-    description: IPv6 encapsulation flow (no ports)
+    description: IPv6 encapsulation flow (no ports), seed=0
+
   - arguments:
       source_ip: 192.0.2.1
       destination_ip: 198.51.100.2
-      source_port: 8
-      destination_port: 0
+      source_port: 8    # ICMP type
+      destination_port: 0    # ICMP code
       protocol: 1
     should_pass: true
     expected: 1:zFLKq9oekfjLhmre/zOf0XYYjVE=
-    description: ICMP echo request
+    description: ICMP echo request (type/code mapped to ports), seed=0
+
   - arguments:
       source_ip: not-an-ip
       destination_ip: 10.0.0.5
@@ -100,6 +100,7 @@ test:
       protocol: 6
     should_pass: false
     description: Reject invalid source IP literal
+
   - arguments:
       source_ip: 192.168.0.1
       destination_ip: 10.0.0.5
@@ -107,7 +108,8 @@ test:
       destination_port: 80
       protocol: 300
     should_pass: false
-    description: Reject out-of-range protocol number
+    description: Reject out-of-range protocol number (>255)
+
   - arguments:
       source_ip: 192.168.0.1
       destination_ip: 10.0.0.5
@@ -116,12 +118,4 @@ test:
       protocol: 6
     should_pass: false
     description: Reject transport port above 65535
-  - arguments:
-      source_ip: 192.0.2.1
-      destination_ip: 198.51.100.2
-      source_port: 8
-      destination_port: 0
-      protocol: 1
-      seed: -1
-    should_pass: false
-    description: Reject negative seed value
+
