@@ -3,11 +3,8 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 #include <unordered_map>
-
-#include <rocksdb/db.h>
-#include <rocksdb/write_batch.h>
+#include <vector>
 
 #include <base/json.hpp>
 #include <base/name.hpp>
@@ -15,103 +12,216 @@
 namespace cti::store
 {
 
+/**
+ * @brief Persistent storage for CTI assets and KVDBs backed by RocksDB.
+ *
+ * CTIStorageDB provides CRUD-like primitives to store and query:
+ * - Policy documents
+ * - Integration documents
+ * - Decoder documents
+ * - Key-Value databases (KVDB)
+ *
+ * It also maintains secondary indexes (by name/title) and relationship indexes
+ * (e.g., integration -> related assets/KVDBs).
+ *
+ * Thread-safety: instances are not guaranteed to be thread-safe unless
+ * externally synchronized by the caller.
+ */
 class CTIStorageDB
 {
 public:
+    /**
+     * @brief Logical column families used inside RocksDB.
+     */
     enum class ColumnFamily : std::uint8_t
     {
-        METADATA,
-        POLICY,
-        INTEGRATION,
-        DECODER,
-        KVDB
+        METADATA,     ///< Internal metadata and bookkeeping.
+        POLICY,       ///< Policy documents and policy-related indexes.
+        INTEGRATION,  ///< Integration documents and name/id indexes.
+        DECODER,      ///< Decoder documents and name/id indexes.
+        KVDB          ///< KVDB catalog and relationship indexes.
     };
 
+    /**
+     * @brief Open (or create) a CTI storage at @p dbPath.
+     *
+     * @param dbPath Filesystem path to the RocksDB database.
+     * @param useSharedBuffers If true, enable shared read cache and write buffer manager.
+     * @throw std::runtime_error on failure to open or initialize column families.
+     */
     explicit CTIStorageDB(const std::string& dbPath, bool useSharedBuffers = true);
-    ~CTIStorageDB() = default;
+
+    /// Destructor - must be defined in .cpp for PIMPL
+    ~CTIStorageDB();
 
     CTIStorageDB(const CTIStorageDB&) = delete;
     CTIStorageDB& operator=(const CTIStorageDB&) = delete;
 
-    bool isOpen() const { return m_db != nullptr; }
+    /**
+     * @brief Whether the underlying RocksDB handle is open.
+     */
+    bool isOpen() const;
 
+    /**
+     * @brief Store (upsert) a policy document.
+     *
+     * Expects a valid JSON with required identifiers. Builds primary and
+     * secondary (name) indexes and updates policy-related relationships.
+     *
+     * @param policyDoc Policy JSON document.
+     * @throw std::runtime_error on validation or write error.
+     */
     void storePolicy(const json::Json& policyDoc);
 
+    /**
+     * @brief Store (upsert) an integration document.
+     *
+     * Maintains id and name indexes and updates relationship indexes
+     * (e.g., integration -> KVDBs / related assets).
+     *
+     * @param integrationDoc Integration JSON document.
+     * @throw std::runtime_error on validation or write error.
+     */
     void storeIntegration(const json::Json& integrationDoc);
 
+    /**
+     * @brief Store (upsert) a decoder document.
+     *
+     * @param decoderDoc Decoder JSON document.
+     * @throw std::runtime_error on validation or write error.
+     */
     void storeDecoder(const json::Json& decoderDoc);
 
+    /**
+     * @brief Register (upsert) a KVDB catalog entry and optional metadata.
+     *
+     * @param kvdbDoc KVDB descriptor JSON (name, owner integration, etc.).
+     * @throw std::runtime_error on validation or write error.
+     */
     void storeKVDB(const json::Json& kvdbDoc);
 
+    /**
+     * @brief List available assets by type.
+     *
+     * @param assetType One of: "policy", "integration", "decoder".
+     * @return Vector of asset Names (titles) for the given type.
+     * @throw std::runtime_error on invalid type or read error.
+     */
     std::vector<base::Name> getAssetList(const std::string& assetType) const;
 
+    /**
+     * @brief Fetch an asset by id or name for a given type.
+     *
+     * @param name Asset identifier (can be an id or a title).
+     * @param assetType One of: "policy", "integration", "decoder".
+     * @return Parsed JSON asset document.
+     * @throw std::runtime_error if not found or on read error.
+     */
     json::Json getAsset(const base::Name& name, const std::string& assetType) const;
 
+    /**
+     * @brief Check asset existence by id or name for a given type.
+     *
+     * @param name Asset identifier (can be an id or a title).
+     * @param assetType One of: "policy", "integration", "decoder".
+     * @return true if it exists; false otherwise.
+     * @throw std::runtime_error on invalid type or read error.
+     */
     bool assetExists(const base::Name& name, const std::string& assetType) const;
 
+    /**
+     * @brief List all KVDB names.
+     *
+     * @return Vector with registered KVDB names.
+     * @throw std::runtime_error on read error.
+     */
     std::vector<std::string> getKVDBList() const;
 
+    /**
+     * @brief List KVDB names owned by a given integration.
+     *
+     * @param integrationName Integration name/title.
+     * @return Vector of KVDB names (possibly empty).
+     * @throw std::runtime_error on read error.
+     */
     std::vector<std::string> getKVDBList(const base::Name& integrationName) const;
 
+    /**
+     * @brief Check if a KVDB exists.
+     *
+     * @param kvdbName KVDB name.
+     * @return true if present; false otherwise.
+     * @throw std::runtime_error on read error.
+     */
     bool kvdbExists(const std::string& kvdbName) const;
 
+    /**
+     * @brief Dump KVDB content as JSON.
+     *
+     * The structure is implementation-defined (e.g., object of key->value).
+     *
+     * @param kvdbName KVDB name.
+     * @return JSON dump of the KVDB.
+     * @throw std::runtime_error if not found or on read error.
+     */
     json::Json kvdbDump(const std::string& kvdbName) const;
 
+    /**
+     * @brief Get the list of integration names referenced by the policy.
+     *
+     * @return Vector of integration Names in the policy (order not guaranteed).
+     * @throw std::runtime_error on read error.
+     */
     std::vector<base::Name> getPolicyIntegrationList() const;
 
+    /**
+     * @brief Get the default parent integration used by the policy.
+     *
+     * Returned when a policy item does not specify an explicit parent.
+     *
+     * @return Default parent integration Name.
+     * @throw std::runtime_error on read error or if undefined.
+     */
     base::Name getPolicyDefaultParent() const;
 
+    /**
+     * @brief Remove all data from all column families.
+     *
+     * Intended for testing or re-initialization scenarios.
+     * @throw std::runtime_error on write error.
+     */
     void clearAll();
 
+    /**
+     * @brief Return an approximate storage usage for a column family.
+     *
+     * Exact definition depends on RocksDB APIs (may be bytes on disk or
+     * internal property-derived estimate).
+     *
+     * @param cf Column family.
+     * @return Size/usage metric as a size_t.
+     * @throw std::runtime_error on query error.
+     */
     size_t getStorageStats(ColumnFamily cf) const;
 
+    /**
+     * @brief Lightweight schema/shape validation for documents.
+     *
+     * @param doc JSON document to validate.
+     * @param expectedType One of: "policy", "integration", "decoder", "kvdb".
+     * @return true if document shape matches expectations; false otherwise.
+     */
     bool validateDocument(const json::Json& doc, const std::string& expectedType) const;
 
+    // Static helper methods for asset type mappings
+    static const std::unordered_map<std::string, ColumnFamily>& getAssetTypeToColumnFamily();
+    static const std::unordered_map<std::string, std::string>& getAssetTypeToKeyPrefix();
+    static const std::unordered_map<std::string, std::string>& getAssetTypeToNamePrefix();
+
 private:
-    struct ColumnFamilyHandles
-    {
-        rocksdb::ColumnFamilyHandle* metadata;
-        rocksdb::ColumnFamilyHandle* policy;
-        rocksdb::ColumnFamilyHandle* integration;
-        rocksdb::ColumnFamilyHandle* decoder;
-        rocksdb::ColumnFamilyHandle* kvdb;
-    };
-
-    std::unique_ptr<rocksdb::DB> m_db;
-    ColumnFamilyHandles m_cfHandles;
-    std::shared_ptr<rocksdb::Cache> m_readCache;
-    std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;
-
-    void initializeColumnFamilies(const std::string& dbPath, bool useSharedBuffers);
-
-    rocksdb::ColumnFamilyHandle* getColumnFamily(ColumnFamily cf) const;
-
-    std::string extractIdFromJson(const json::Json& doc) const;
-    std::string extractTitleFromJson(const json::Json& doc) const;
-    std::string extractIntegrationIdFromJson(const json::Json& doc) const;
-
-    void storeWithIndex(const json::Json& doc,
-                       ColumnFamily cf,
-                       const std::string& keyPrefix,
-                       const std::string& namePrefix);
-
-    json::Json getByIdOrName(const std::string& identifier,
-                           ColumnFamily cf,
-                           const std::string& keyPrefix,
-                           const std::string& namePrefix) const;
-
-    bool existsByIdOrName(const std::string& identifier,
-                         ColumnFamily cf,
-                         const std::string& keyPrefix,
-                         const std::string& namePrefix) const;
-
-    void updateRelationshipIndexes(const json::Json& integrationDoc);
-
-    std::vector<std::string> getRelatedAssets(const std::string& integrationId, const std::string& relationshipKey) const;
-
-    static const std::unordered_map<std::string, ColumnFamily> s_assetTypeToColumnFamily;
-    static const std::unordered_map<std::string, std::string> s_assetTypeToKeyPrefix;
-    static const std::unordered_map<std::string, std::string> s_assetTypeToNamePrefix;
+    // PIMPL idiom - hide RocksDB implementation details
+    struct Impl;
+    std::unique_ptr<Impl> m_pImpl;
 };
 
 } // namespace cti::store

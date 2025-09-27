@@ -45,23 +45,23 @@ add_library(ctistore::mocks ALIAS ctistore_mocks)
 
 add_executable(ctistore_utest
     ${UNIT_SRC_DIR}/cm_test.cpp
-    ${UNIT_SRC_DIR}/ctistoragedb_test.cpp
 )
 target_link_libraries(ctistore_utest
     PRIVATE
     GTest::gtest_main
     GTest::gmock
     ctistore::ctistore
-    rocksdb
 )
 target_include_directories(ctistore_utest PRIVATE ${SRC_DIR})
 gtest_discover_tests(ctistore_utest)
 
 add_executable(ctistore_ctest
     ${COMPONENT_SRC_DIR}/cm_test.cpp
+    ${COMPONENT_SRC_DIR}/ctistoragedb_test.cpp
 )
 
-target_link_libraries(ctistore_ctest PRIVATE ctistore::ctistore GTest::gtest_main)
+target_link_libraries(ctistore_ctest PRIVATE ctistore::ctistore GTest::gtest_main GTest::gmock rocksdb)
+target_include_directories(ctistore_ctest PRIVATE ${SRC_DIR})
 gtest_discover_tests(ctistore_ctest)
 
 endif(ENGINE_BUILD_TEST)
