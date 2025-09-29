@@ -52,6 +52,28 @@ void AgentSyncProtocol::persistDifference(const std::string& id,
     }
 }
 
+void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
+                                                  Operation operation,
+                                                  const std::string& index,
+                                                  const std::string& data)
+{
+    try
+    {
+        PersistedData persistedData;
+        persistedData.seq = 0;  // Will be assigned during synchronization
+        persistedData.id = id;
+        persistedData.index = index;
+        persistedData.data = data;
+        persistedData.operation = operation;
+
+        m_inMemoryData.push_back(persistedData);
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to persist item in memory: ") + e.what());
+    }
+}
+
 bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
     if (!ensureQueueAvailable())

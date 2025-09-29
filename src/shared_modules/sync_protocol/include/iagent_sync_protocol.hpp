@@ -28,6 +28,17 @@ class IAgentSyncProtocol
                                        const std::string& index,
                                        const std::string& data) = 0;
 
+        /// @brief Persist a difference to in-memory vector instead of database.
+        /// This method is used for recovery scenarios where data should be kept in memory.
+        /// @param id Unique identifier for the data item.
+        /// @param operation Type of operation (CREATE, MODIFY, DELETE).
+        /// @param index Logical index for the data item.
+        /// @param data Serialized content of the message.
+        virtual void persistDifferenceInMemory(const std::string& id,
+                                               Operation operation,
+                                               const std::string& index,
+                                               const std::string& data) = 0;
+
         /// @brief Synchronize a module with the server
         /// @param mode Sync mode
         /// @param timeout The timeout for each response wait.
