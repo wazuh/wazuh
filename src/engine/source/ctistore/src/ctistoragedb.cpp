@@ -16,6 +16,35 @@
 namespace cti::store
 {
 
+// String constants for prefixes and keys
+namespace constants
+{
+    // Asset type strings
+    constexpr std::string_view INTEGRATION_TYPE = "integration";
+    constexpr std::string_view DECODER_TYPE = "decoder";
+    constexpr std::string_view POLICY_TYPE = "policy";
+    constexpr std::string_view KVDB_TYPE = "kvdb";
+
+    // Key prefixes
+    constexpr std::string_view INTEGRATION_PREFIX = "integration:";
+    constexpr std::string_view DECODER_PREFIX = "decoder:";
+    constexpr std::string_view POLICY_PREFIX = "policy:";
+    constexpr std::string_view KVDB_PREFIX = "kvdb:";
+
+    // Name index prefixes
+    constexpr std::string_view NAME_INTEGRATION_PREFIX = "name:integration:";
+    constexpr std::string_view NAME_DECODER_PREFIX = "name:decoder:";
+    constexpr std::string_view NAME_POLICY_PREFIX = "name:policy:";
+    constexpr std::string_view NAME_KVDB_PREFIX = "name:kvdb:";
+
+    // Relationship index prefixes
+    constexpr std::string_view IDX_INTEGRATION_DECODERS = "idx:integration_decoders:";
+    constexpr std::string_view IDX_INTEGRATION_KVDBS = "idx:integration_kvdbs:";
+
+    // Default parent
+    constexpr std::string_view DEFAULT_PARENT = "wazuh";
+}
+
 // PIMPL implementation - contains all RocksDB-specific details
 struct CTIStorageDB::Impl
 {
@@ -134,9 +163,9 @@ struct CTIStorageDB::Impl
 const std::unordered_map<std::string, CTIStorageDB::ColumnFamily>& CTIStorageDB::getAssetTypeToColumnFamily()
 {
     static const std::unordered_map<std::string, ColumnFamily> s_map = {
-        {"integration", ColumnFamily::INTEGRATION},
-        {"decoder", ColumnFamily::DECODER},
-        {"policy", ColumnFamily::POLICY}
+        {std::string(constants::INTEGRATION_TYPE), ColumnFamily::INTEGRATION},
+        {std::string(constants::DECODER_TYPE), ColumnFamily::DECODER},
+        {std::string(constants::POLICY_TYPE), ColumnFamily::POLICY}
     };
     return s_map;
 }
@@ -144,9 +173,9 @@ const std::unordered_map<std::string, CTIStorageDB::ColumnFamily>& CTIStorageDB:
 const std::unordered_map<std::string, std::string>& CTIStorageDB::getAssetTypeToKeyPrefix()
 {
     static const std::unordered_map<std::string, std::string> s_map = {
-        {"integration", "integration:"},
-        {"decoder", "decoder:"},
-        {"policy", "policy:"}
+        {std::string(constants::INTEGRATION_TYPE), std::string(constants::INTEGRATION_PREFIX)},
+        {std::string(constants::DECODER_TYPE), std::string(constants::DECODER_PREFIX)},
+        {std::string(constants::POLICY_TYPE), std::string(constants::POLICY_PREFIX)}
     };
     return s_map;
 }
@@ -154,9 +183,9 @@ const std::unordered_map<std::string, std::string>& CTIStorageDB::getAssetTypeTo
 const std::unordered_map<std::string, std::string>& CTIStorageDB::getAssetTypeToNamePrefix()
 {
     static const std::unordered_map<std::string, std::string> s_map = {
-        {"integration", "name:integration:"},
-        {"decoder", "name:decoder:"},
-        {"policy", "name:policy:"}
+        {std::string(constants::INTEGRATION_TYPE), std::string(constants::NAME_INTEGRATION_PREFIX)},
+        {std::string(constants::DECODER_TYPE), std::string(constants::NAME_DECODER_PREFIX)},
+        {std::string(constants::POLICY_TYPE), std::string(constants::NAME_POLICY_PREFIX)}
     };
     return s_map;
 }
@@ -387,7 +416,7 @@ void CTIStorageDB::Impl::updateRelationshipIndexes(const json::Json& integration
                 }
             }
             batch.Put(getColumnFamily(ColumnFamily::METADATA),
-                     "idx:integration_decoders:" + integrationId,
+                     std::string(constants::IDX_INTEGRATION_DECODERS) + integrationId,
                      decoderList.str());
         }
     }
@@ -407,7 +436,7 @@ void CTIStorageDB::Impl::updateRelationshipIndexes(const json::Json& integration
                 }
             }
             batch.Put(getColumnFamily(ColumnFamily::METADATA),
-                     "idx:integration_kvdbs:" + integrationId,
+                     std::string(constants::IDX_INTEGRATION_KVDBS) + integrationId,
                      kvdbList.str());
         }
     }
@@ -587,7 +616,7 @@ void CTIStorageDB::Impl::storePolicy(const json::Json& policyDoc)
     {
         throw std::invalid_argument("Invalid policy document format");
     }
-    storeWithIndex(policyDoc, CTIStorageDB::ColumnFamily::POLICY, "policy:", "name:policy:");
+    storeWithIndex(policyDoc, CTIStorageDB::ColumnFamily::POLICY, std::string(constants::POLICY_PREFIX), std::string(constants::NAME_POLICY_PREFIX));
 }
 
 void CTIStorageDB::Impl::storeIntegration(const json::Json& integrationDoc)
@@ -597,7 +626,7 @@ void CTIStorageDB::Impl::storeIntegration(const json::Json& integrationDoc)
     {
         throw std::invalid_argument("Invalid integration document format");
     }
-    storeWithIndex(integrationDoc, CTIStorageDB::ColumnFamily::INTEGRATION, "integration:", "name:integration:");
+    storeWithIndex(integrationDoc, CTIStorageDB::ColumnFamily::INTEGRATION, std::string(constants::INTEGRATION_PREFIX), std::string(constants::NAME_INTEGRATION_PREFIX));
     updateRelationshipIndexes(integrationDoc);
 }
 
@@ -608,7 +637,7 @@ void CTIStorageDB::Impl::storeDecoder(const json::Json& decoderDoc)
     {
         throw std::invalid_argument("Invalid decoder document format");
     }
-    storeWithIndex(decoderDoc, CTIStorageDB::ColumnFamily::DECODER, "decoder:", "name:decoder:");
+    storeWithIndex(decoderDoc, CTIStorageDB::ColumnFamily::DECODER, std::string(constants::DECODER_PREFIX), std::string(constants::NAME_DECODER_PREFIX));
 }
 
 void CTIStorageDB::Impl::storeKVDB(const json::Json& kvdbDoc)
@@ -618,7 +647,7 @@ void CTIStorageDB::Impl::storeKVDB(const json::Json& kvdbDoc)
     {
         throw std::invalid_argument("Invalid KVDB document format");
     }
-    storeWithIndex(kvdbDoc, CTIStorageDB::ColumnFamily::KVDB, "kvdb:", "name:kvdb:");
+    storeWithIndex(kvdbDoc, CTIStorageDB::ColumnFamily::KVDB, std::string(constants::KVDB_PREFIX), std::string(constants::NAME_KVDB_PREFIX));
 }
 
 std::vector<base::Name> CTIStorageDB::Impl::getAssetList(const std::string& assetType) const
@@ -712,7 +741,7 @@ std::vector<std::string> CTIStorageDB::Impl::getKVDBList() const
     rocksdb::ReadOptions ro;
     ro.total_order_seek = true;
     auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(ro, getColumnFamily(CTIStorageDB::ColumnFamily::KVDB)));
-    const std::string prefix = "kvdb:";
+    constexpr auto prefix = constants::KVDB_PREFIX;
 
     for (it->Seek(prefix); it->Valid() &&
          it->key().ToString().compare(0, prefix.size(), prefix) == 0; it->Next())
@@ -741,7 +770,7 @@ std::vector<std::string> CTIStorageDB::Impl::getKVDBList(const base::Name& integ
 
     try
     {
-        json::Json integration = getByIdOrName(integrationName.fullName(), CTIStorageDB::ColumnFamily::INTEGRATION, "integration:", "name:integration:");
+        json::Json integration = getByIdOrName(integrationName.fullName(), CTIStorageDB::ColumnFamily::INTEGRATION, std::string(constants::INTEGRATION_PREFIX), std::string(constants::NAME_INTEGRATION_PREFIX));
         std::string integrationId = extractIdFromJson(integration);
 
         if (integrationId.empty())
@@ -749,7 +778,7 @@ std::vector<std::string> CTIStorageDB::Impl::getKVDBList(const base::Name& integ
             return {};
         }
 
-        return getRelatedAssets(integrationId, "idx:integration_kvdbs:");
+        return getRelatedAssets(integrationId, std::string(constants::IDX_INTEGRATION_KVDBS));
     }
     catch (const std::exception&)
     {
@@ -760,14 +789,14 @@ std::vector<std::string> CTIStorageDB::Impl::getKVDBList(const base::Name& integ
 bool CTIStorageDB::Impl::kvdbExists(const std::string& kvdbName) const
 {
     std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
-    return existsByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, "kvdb:", "name:kvdb:");
+    return existsByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, std::string(constants::KVDB_PREFIX), std::string(constants::NAME_KVDB_PREFIX));
 }
 
 json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
 {
     std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
 
-    json::Json kvdbDoc = getByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, "kvdb:", "name:kvdb:");
+    json::Json kvdbDoc = getByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, std::string(constants::KVDB_PREFIX), std::string(constants::NAME_KVDB_PREFIX));
 
     if (kvdbDoc.exists("/payload/document/content"))
     {
@@ -791,7 +820,7 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
     rocksdb::ReadOptions ro;
     ro.total_order_seek = true;
     auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(ro, getColumnFamily(CTIStorageDB::ColumnFamily::POLICY)));
-    const std::string prefix = "policy:";
+    constexpr auto prefix = constants::POLICY_PREFIX;
 
     for (it->Seek(prefix); it->Valid() &&
          it->key().ToString().compare(0, prefix.size(), prefix) == 0; it->Next())
@@ -827,7 +856,7 @@ base::Name CTIStorageDB::Impl::getPolicyDefaultParent() const
 {
     // Note: This is a constant value, no lock needed but added for consistency
     std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
-    return base::Name("wazuh");
+    return base::Name(std::string(constants::DEFAULT_PARENT));
 }
 
 void CTIStorageDB::Impl::clearAll()
