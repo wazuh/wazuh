@@ -37,6 +37,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                const std::string& index,
                                const std::string& data) override;
 
+        /// @copydoc IAgentSyncProtocol::persistDifferenceInMemory
+        void persistDifferenceInMemory(const std::string& id,
+                                       Operation operation,
+                                       const std::string& index,
+                                       const std::string& data) override;
+
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
 
@@ -65,6 +71,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Sent message counter for eps control
         std::atomic<size_t> m_msgSent{0};
+
+        /// @brief In-memory vector to store PersistedData for recovery scenarios
+        std::vector<PersistedData> m_inMemoryData;
 
         /// @brief Ensures that the queue is available
         /// @return True on success, false on failure
