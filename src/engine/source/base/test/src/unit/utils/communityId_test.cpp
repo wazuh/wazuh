@@ -12,8 +12,7 @@ using base::utils::CommunityId::getCommunityIdV1;
 
 void expectStringResult(const CommunityResult& result, const std::string& expected)
 {
-    ASSERT_TRUE(std::holds_alternative<std::string>(result))
-        << "Expected Community ID string but got error";
+    ASSERT_TRUE(std::holds_alternative<std::string>(result)) << "Expected Community ID string but got error";
     EXPECT_EQ(expected, std::get<std::string>(result));
 }
 
@@ -51,7 +50,6 @@ TEST(CommunityIdTest, InvalidIpReturnsUnknownError)
 {
     const auto result = getCommunityIdV1("not-an-ip", "10.0.0.5", 12345, 80, 6);
 
-    ASSERT_TRUE(std::holds_alternative<CommunityError>(result))
-        << "Expected error variant but got Community ID string";
+    ASSERT_TRUE(std::holds_alternative<CommunityError>(result)) << "Expected error variant but got Community ID string";
     EXPECT_EQ(CommunityError::Unknown, std::get<CommunityError>(result));
 }
