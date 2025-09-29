@@ -149,6 +149,11 @@ struct CTIStorageDB::Impl
     std::string extractIdFromJson(const json::Json& doc) const;
     std::string extractTitleFromJson(const json::Json& doc) const;
 
+    // Metadata operations interface
+    bool putMetadata(const std::string& key, const std::string& value);
+    std::optional<std::string> getMetadata(const std::string& key) const;
+    bool deleteMetadata(const std::string& key);
+
     void storeWithIndex(const json::Json& doc,
                         CTIStorageDB::ColumnFamily cf,
                         const std::string& keyPrefix,
@@ -348,6 +353,31 @@ rocksdb::ColumnFamilyHandle* CTIStorageDB::Impl::getColumnFamily(CTIStorageDB::C
     throw std::invalid_argument("Invalid column family");
 }
 
+bool CTIStorageDB::Impl::putMetadata(const std::string& key, const std::string& value)
+{
+    auto status = m_db->Put(rocksdb::WriteOptions(), getColumnFamily(ColumnFamily::METADATA), key, value);
+    return status.ok();
+}
+
+std::optional<std::string> CTIStorageDB::Impl::getMetadata(const std::string& key) const
+{
+    std::string value;
+    auto status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(ColumnFamily::METADATA), key, &value);
+
+    if (status.ok())
+    {
+        return value;
+    }
+
+    return std::nullopt;
+}
+
+bool CTIStorageDB::Impl::deleteMetadata(const std::string& key)
+{
+    auto status = m_db->Delete(rocksdb::WriteOptions(), getColumnFamily(ColumnFamily::METADATA), key);
+    return status.ok();
+}
+
 std::string CTIStorageDB::Impl::extractIdFromJson(const json::Json& doc) const
 {
     return doc.getString(constants::JSON_NAME).value_or("");
@@ -480,12 +510,12 @@ json::Json CTIStorageDB::Impl::getByIdOrName(const std::string& identifier,
 
     if (!status.ok() && status.IsNotFound())
     {
-        std::string actualId;
-        status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(ColumnFamily::METADATA), namePrefix + identifier, &actualId);
+        // Try to resolve the name to an ID via metadata
+        auto actualIdOpt = getMetadata(namePrefix + identifier);
 
-        if (status.ok())
+        if (actualIdOpt)
         {
-            status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(cf), keyPrefix + actualId, &value);
+            status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(cf), keyPrefix + *actualIdOpt, &value);
         }
     }
 
@@ -519,12 +549,12 @@ bool CTIStorageDB::Impl::existsByIdOrName(const std::string& identifier,
 
     if (status.IsNotFound())
     {
-        std::string actualId;
-        status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(ColumnFamily::METADATA), namePrefix + identifier, &actualId);
+        // Try to resolve the name to an ID via metadata
+        auto actualIdOpt = getMetadata(namePrefix + identifier);
 
-        if (status.ok())
+        if (actualIdOpt)
         {
-            status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(cf), keyPrefix + actualId, &value);
+            status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(cf), keyPrefix + *actualIdOpt, &value);
         }
     }
 
@@ -558,31 +588,38 @@ std::vector<std::string> CTIStorageDB::getKVDBList(const base::Name& integration
 
 std::vector<std::string> CTIStorageDB::Impl::getRelatedAssets(const std::string& integrationId, const std::string& relationshipKey) const
 {
-    std::string value;
-    auto status = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(ColumnFamily::METADATA), relationshipKey + integrationId, &value);
+    auto valueOpt = getMetadata(relationshipKey + integrationId);
 
-    if (!status.ok())
+    if (!valueOpt)
     {
         return {};
     }
 
     try
     {
-        json::Json assetList(value.c_str());
+        json::Json assetList(valueOpt->c_str());
         std::vector<std::string> result;
 
-        if (assetList.isArray())
+        if (!assetList.isArray())
         {
-            auto array = assetList.getArray();
-            if (array)
+            return result;
+        }
+
+        auto arrayOpt = assetList.getArray();
+        if (!arrayOpt)
+        {
+            return result;
+        }
+
+        // Reserve space to avoid reallocations during iteration
+        const auto& array = *arrayOpt;
+        result.reserve(array.size());
+
+        for (const auto& item : array)
+        {
+            if (auto itemStr = item.getString())
             {
-                for (const auto& item : *array)
-                {
-                    if (auto itemStr = item.getString())
-                    {
-                        result.push_back(*itemStr);
-                    }
-                }
+                result.push_back(*itemStr);
             }
         }
 

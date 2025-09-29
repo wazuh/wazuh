@@ -546,6 +546,130 @@ TEST_F(CTIStorageDBTest, ConcurrentReadWrite)
     EXPECT_EQ(integrations.size(), 2);
 }
 
+// Metadata interface tests - Name-to-ID resolution
+TEST_F(CTIStorageDBTest, MetadataNameToIdResolution)
+{
+    // Store an integration with both ID and title
+    auto integration = createSampleIntegration("int_001", "My Integration");
+    m_storage->storeIntegration(integration);
+
+    // Should be able to retrieve by ID
+    auto byId = m_storage->getAsset(base::Name("int_001"), "integration");
+    EXPECT_EQ(byId.getString("/name").value_or(""), "int_001");
+
+    // Should be able to retrieve by title (uses metadata name-to-id mapping)
+    auto byTitle = m_storage->getAsset(base::Name("My Integration"), "integration");
+    EXPECT_EQ(byTitle.getString("/name").value_or(""), "int_001");
+
+    // Both should return the same document
+    EXPECT_EQ(byId.str(), byTitle.str());
+
+    // Check existence using both ID and title
+    EXPECT_TRUE(m_storage->assetExists(base::Name("int_001"), "integration"));
+    EXPECT_TRUE(m_storage->assetExists(base::Name("My Integration"), "integration"));
+}
+
+TEST_F(CTIStorageDBTest, MetadataNameToIdResolutionMultipleAssets)
+{
+    // Store multiple integrations
+    auto int1 = createSampleIntegration("int_001", "Integration Alpha");
+    auto int2 = createSampleIntegration("int_002", "Integration Beta");
+    auto int3 = createSampleIntegration("int_003", "Integration Gamma");
+
+    m_storage->storeIntegration(int1);
+    m_storage->storeIntegration(int2);
+    m_storage->storeIntegration(int3);
+
+    // Verify each can be retrieved by both ID and title
+    EXPECT_TRUE(m_storage->assetExists(base::Name("int_001"), "integration"));
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Integration Alpha"), "integration"));
+
+    EXPECT_TRUE(m_storage->assetExists(base::Name("int_002"), "integration"));
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Integration Beta"), "integration"));
+
+    EXPECT_TRUE(m_storage->assetExists(base::Name("int_003"), "integration"));
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Integration Gamma"), "integration"));
+
+    // Non-existent names should not be found
+    EXPECT_FALSE(m_storage->assetExists(base::Name("int_004"), "integration"));
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Non Existent"), "integration"));
+}
+
+// Metadata interface tests - Relationship indexes
+TEST_F(CTIStorageDBTest, MetadataRelationshipIndexes)
+{
+    // Create integration with decoders and kvdbs in document
+    auto integration = createSampleIntegration("test_int", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // The metadata should store the relationship indexes
+    // Query KVDBs by integration name
+    auto kvdbs = m_storage->getKVDBList(base::Name("Test Integration"));
+
+    // Should return the kvdbs defined in the integration document
+    EXPECT_EQ(kvdbs.size(), 2);
+    EXPECT_THAT(kvdbs, ::testing::UnorderedElementsAre("kvdb_1", "kvdb_2"));
+}
+
+TEST_F(CTIStorageDBTest, MetadataRelationshipIndexesUpdate)
+{
+    // Create integration with initial relationships
+    auto integration = createSampleIntegration("test_int", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    auto kvdbs = m_storage->getKVDBList(base::Name("Test Integration"));
+    EXPECT_EQ(kvdbs.size(), 2);
+
+    // Update integration with different relationships
+    json::Json updatedIntegration = integration;
+    json::Json newKvdbs;
+    newKvdbs.setArray();
+    newKvdbs.appendString("kvdb_3");
+    newKvdbs.appendString("kvdb_4");
+    newKvdbs.appendString("kvdb_5");
+
+    updatedIntegration.set("/payload/document/kvdbs", newKvdbs);
+    m_storage->storeIntegration(updatedIntegration);
+
+    // Metadata relationship indexes should be updated
+    auto updatedKvdbList = m_storage->getKVDBList(base::Name("Test Integration"));
+    EXPECT_EQ(updatedKvdbList.size(), 3);
+    EXPECT_THAT(updatedKvdbList, ::testing::UnorderedElementsAre("kvdb_3", "kvdb_4", "kvdb_5"));
+}
+
+TEST_F(CTIStorageDBTest, MetadataRelationshipIndexesNonExistent)
+{
+    // Query relationships for non-existent integration
+    auto kvdbs = m_storage->getKVDBList(base::Name("Non Existent Integration"));
+
+    // Should return empty list
+    EXPECT_EQ(kvdbs.size(), 0);
+}
+
+TEST_F(CTIStorageDBTest, MetadataClearAll)
+{
+    // Store data that creates metadata entries
+    auto integration = createSampleIntegration("test_int", "Test Integration");
+    auto decoder = createSampleDecoder("test_dec", "Test Decoder");
+
+    m_storage->storeIntegration(integration);
+    m_storage->storeDecoder(decoder);
+
+    // Verify metadata is working (name resolution)
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Test Integration"), "integration"));
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Test Decoder"), "decoder"));
+
+    // Clear all should also clear metadata
+    m_storage->clearAll();
+
+    // Metadata should be cleared (no name resolution)
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Test Integration"), "integration"));
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Test Decoder"), "decoder"));
+
+    // Verify metadata column family is empty
+    EXPECT_EQ(m_storage->getStorageStats(CTIStorageDB::ColumnFamily::METADATA), 0);
+}
+
 // Data integrity test
 TEST_F(CTIStorageDBTest, DataIntegrityAfterReopen)
 {
