@@ -18,14 +18,6 @@ ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStar
 {
     LOG_INFO("Initializing CTI Store ContentManager");
 
-    try {
-        if (!m_config.databasePath.empty()) { std::filesystem::create_directories(m_config.databasePath); }
-        if (!m_config.outputFolder.empty()) { std::filesystem::create_directories(m_config.outputFolder); }
-    } catch (const std::exception& e) {
-        LOG_ERROR("Failed to create CTI store directories: {}", e.what());
-        throw;
-    }
-
     // Initialize the content downloader with a callback to process downloaded content
     auto processingCallback = [this](const std::string& message) -> FileProcessingResult
     {

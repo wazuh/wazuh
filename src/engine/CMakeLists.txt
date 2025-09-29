@@ -329,6 +329,7 @@ target_link_libraries(wazuh-engine
     api::event
     queue
     archiver::archive
+    ctistore::ctistore
     cmsync::cmsync
 )
 

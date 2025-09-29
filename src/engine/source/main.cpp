@@ -38,6 +38,7 @@
 #include <streamlog/logger.hpp>
 #include <udgramsrv/udsrv.hpp>
 #include <wiconnector/windexerconnector.hpp>
+#include <ctistore/cm.hpp>
 // #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <router/orchestrator.hpp>
@@ -233,6 +234,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<archiver::Archiver> archiver;
     std::shared_ptr<cm::sync::CMSync> cmsync;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
+    std::shared_ptr<cti::store::ContentManager> ctiStoreManager;
 
     try
     {
@@ -528,6 +530,15 @@ int main(int argc, char* argv[])
             LOG_INFO("Archiver initialized.");
             exitHandler.add([archiver, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { archiver->deactivate(); });
+        }
+
+        // CTI Store
+        {
+            const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
+            cti::store::ContentManagerConfig ctiCfg;
+            ctiCfg.basePath = baseCtiPath;
+            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, true);
+            LOG_INFO("CTI Store initialized.");
         }
 
         // Create and configure the api endpints

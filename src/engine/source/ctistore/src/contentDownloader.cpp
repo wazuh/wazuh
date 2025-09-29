@@ -64,6 +64,24 @@ ContentDownloader::ContentDownloader(const ContentManagerConfig& config,
     : m_config(config)
     , m_fileProcessingCallback(fileProcessingCallback)
 {
+    try {
+        if (!m_config.basePath.empty())
+        {
+            std::filesystem::path base {m_config.basePath};
+            const auto makeAbsolute = [&](const std::string& value) -> std::string
+            {
+                if (value.empty()) { return value; }
+                std::filesystem::path p {value};
+                if (p.is_absolute()) { return p.string(); }
+                return (base / p).string();
+            };
+            m_config.outputFolder = makeAbsolute(m_config.outputFolder);
+            m_config.databasePath = makeAbsolute(m_config.databasePath);
+        }
+    } catch (const std::exception& e) {
+        LOG_WARNING("CTI Store: failed to resolve relative paths using basePath '{}': {}", m_config.basePath, e.what());
+    }
+
     LOG_DEBUG("CTI Store ContentDownloader initializing with topic: {}", m_config.topicName);
 
     if (!m_fileProcessingCallback)

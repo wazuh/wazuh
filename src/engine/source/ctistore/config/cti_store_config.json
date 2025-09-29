@@ -9,9 +9,9 @@
         "versionedContent": "cti-api",
         "deleteDownloadedContent": true,
         "url": "https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_test_5.0/consumers/decoders_test_5.0",
-        "outputFolder": "/var/ossec/engine/cti_store/content",
+        "outputFolder": "content",
         "contentFileName": "api_file.json",
-        "databasePath": "/var/ossec/engine/cti_store/db",
+        "databasePath": "rocksdb",
         "offset": 0
     }
 }

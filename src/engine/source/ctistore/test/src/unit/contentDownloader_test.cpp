@@ -192,8 +192,10 @@ TEST(ContentManagerConfigTest, DefaultValues)
     EXPECT_TRUE(config.onDemand);
     EXPECT_EQ(config.consumerName, "Wazuh Engine");
     EXPECT_EQ(config.contentSource, "cti-offset");
-    EXPECT_EQ(config.outputFolder, "/var/ossec/engine/cti_store/content");
-    EXPECT_EQ(config.databasePath, "/var/ossec/engine/cti_store/rocksdb");
+    EXPECT_EQ(config.outputFolder, "content");
+    EXPECT_EQ(config.databasePath, "rocksdb");
+    EXPECT_TRUE(config.outputFolder.rfind("/var/ossec", 0) != 0);
+    EXPECT_TRUE(config.databasePath.rfind("/var/ossec", 0) != 0);
 }
 
 TEST(ContentManagerConfigTest, FromJsonOverridesPaths)
@@ -219,6 +221,28 @@ TEST(ContentManagerConfigTest, FromJsonOverridesPaths)
     // Since we now take provided values verbatim even if relative
     EXPECT_EQ(config.outputFolder, "custom_content");
     EXPECT_EQ(config.databasePath, "custom_db");
+}
+
+TEST_F(ContentDownloaderTest, RelativePathsResolvedAgainstBasePath)
+{
+    auto baseRoot = testDir + "/root";
+    ContentManagerConfig cfg;
+    cfg.basePath = baseRoot;
+    cfg.outputFolder = "content";
+    cfg.databasePath = "rocksdb";
+
+    ASSERT_FALSE(std::filesystem::exists(baseRoot));
+
+    ContentDownloader downloader(cfg);
+    auto effective = downloader.getConfig();
+
+    EXPECT_TRUE(effective.outputFolder.find(baseRoot) == 0);
+    EXPECT_TRUE(effective.databasePath.find(baseRoot) == 0);
+    EXPECT_EQ(effective.outputFolder, baseRoot + std::string{"/content"});
+    EXPECT_EQ(effective.databasePath, baseRoot + std::string{"/rocksdb"});
+
+    EXPECT_TRUE(std::filesystem::exists(effective.outputFolder));
+    EXPECT_TRUE(std::filesystem::exists(effective.databasePath));
 }
 
 // Integration tests for ContentManager
