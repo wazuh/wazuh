@@ -76,6 +76,13 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
 
 bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
+    // Validate synchronization mode
+    if (mode != Mode::FULL && mode != Mode::DELTA)
+    {
+        m_logger(LOG_ERROR, "Invalid synchronization mode: " + std::to_string(static_cast<int>(mode)));
+        return false;
+    }
+
     if (!ensureQueueAvailable())
     {
         m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
@@ -86,19 +93,29 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
 
     std::vector<PersistedData> dataToSync;
 
-    try
+    if (mode == Mode::FULL)
     {
-        dataToSync = m_persistentQueue->fetchAndMarkForSync();
+        // For FULL mode, use in-memory data for recovery scenarios
+        dataToSync = m_inMemoryData;
     }
-    catch (const std::exception& e)
+    else
     {
-        m_logger(LOG_ERROR, std::string("Failed to fetch items for sync: ") + e.what());
-        return false;
+        // For DELTA mode, use traditional database persistence
+        try
+        {
+            dataToSync = m_persistentQueue->fetchAndMarkForSync();
+        }
+        catch (const std::exception& e)
+        {
+            m_logger(LOG_ERROR, std::string("Failed to fetch items for sync: ") + e.what());
+            return false;
+        }
     }
 
     if (dataToSync.empty())
     {
-        m_logger(LOG_DEBUG, "No pending items to synchronize for module " + m_moduleName);
+        const std::string modeStr = (mode == Mode::FULL) ? "FULL" : "DELTA";
+        m_logger(LOG_DEBUG, "No items to synchronize for module " + m_moduleName + " in " + modeStr + " mode");
         return true;
     }
 
@@ -125,17 +142,35 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
         if (success)
         {
             m_logger(LOG_DEBUG_VERBOSE, "Synchronization completed successfully.");
-            m_persistentQueue->clearSyncedItems();
+
+            if (mode == Mode::FULL)
+            {
+                // For FULL mode, clear the in-memory data after successful sync
+                m_inMemoryData.clear();
+            }
+            else
+            {
+                // For DELTA mode, clear database synced items
+                m_persistentQueue->clearSyncedItems();
+            }
         }
         else
         {
             m_logger(LOG_WARNING, "Synchronization failed.");
-            m_persistentQueue->resetSyncingItems();
+
+            if (mode == Mode::FULL)
+            {
+                m_inMemoryData.clear();
+            }
+            else
+            {
+                m_persistentQueue->resetSyncingItems();
+            }
         }
     }
     catch (const std::exception& e)
     {
-        m_logger(LOG_ERROR, std::string("Failed to finalize sync state in DB: ") + e.what());
+        m_logger(LOG_ERROR, std::string("Failed to finalize sync state: ") + e.what());
     }
 
     clearSyncState();
