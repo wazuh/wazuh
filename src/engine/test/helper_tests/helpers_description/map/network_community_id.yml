@@ -1,4 +1,3 @@
-# Name of the helper function
 name: network_community_id
 
 metadata:
@@ -118,4 +117,3 @@ test:
       protocol: 6
     should_pass: false
     description: Reject transport port above 65535
-

@@ -106,12 +106,12 @@ NumCastOperator strToNumCastOp(const std::string& op)
  */
 enum class NetworkProto : uint8_t
 {
-    ICMP   = 1,
-    TCP    = 6,
-    UDP    = 17,
+    ICMP = 1,
+    TCP = 6,
+    UDP = 17,
     ICMPv6 = 58,
-    SCTP   = 132,
-    OTHER  = 255  // marcador genérico
+    SCTP = 132,
+    OTHER = 255 // marcador genérico
 };
 
 /**
@@ -124,12 +124,12 @@ inline NetworkProto toNetworkProto(uint8_t proto)
 {
     switch (proto)
     {
-        case 1:   return NetworkProto::ICMP;
-        case 6:   return NetworkProto::TCP;
-        case 17:  return NetworkProto::UDP;
-        case 58:  return NetworkProto::ICMPv6;
+        case 1: return NetworkProto::ICMP;
+        case 6: return NetworkProto::TCP;
+        case 17: return NetworkProto::UDP;
+        case 58: return NetworkProto::ICMPv6;
         case 132: return NetworkProto::SCTP;
-        default:  return NetworkProto::OTHER;
+        default: return NetworkProto::OTHER;
     }
 }
 

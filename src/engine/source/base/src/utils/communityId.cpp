@@ -5,27 +5,27 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
+#include <openssl/evp.h>
+#include <openssl/sha.h>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
-#include <openssl/evp.h>
-#include <openssl/sha.h>
 
 namespace
 {
-    inline constexpr std::size_t SEED_LEN  = 2;
-    inline constexpr std::size_t PROTO_LEN = 1;
-    inline constexpr std::size_t PAD_LEN   = 1;
-    inline constexpr std::size_t PORT_LEN  = 2;
-    inline constexpr std::string_view CID_V1_PREFIX = "1:";
-    inline constexpr std::uint8_t CID_PADDING = 0;
+inline constexpr std::size_t SEED_LEN = 2;
+inline constexpr std::size_t PROTO_LEN = 1;
+inline constexpr std::size_t PAD_LEN = 1;
+inline constexpr std::size_t PORT_LEN = 2;
+inline constexpr std::string_view CID_V1_PREFIX = "1:";
+inline constexpr std::uint8_t CID_PADDING = 0;
 
-    using Sha1Digest = std::array<unsigned char, SHA_DIGEST_LENGTH>;
+using Sha1Digest = std::array<unsigned char, SHA_DIGEST_LENGTH>;
 
-    using base::utils::CommunityId::CommunityResult;
-    using base::utils::CommunityId::CommunityError;
-    using ByteView = std::basic_string_view<std::uint8_t>;
+using base::utils::CommunityId::CommunityError;
+using base::utils::CommunityId::CommunityResult;
+using ByteView = std::basic_string_view<std::uint8_t>;
 class NetworkEndpoint
 {
 public:
@@ -127,19 +127,17 @@ struct CommunityTupleArgs
 {
     NetworkEndpoint src;
     NetworkEndpoint dst;
-    std::uint8_t    protoIana;
-    std::uint16_t   seed;
+    std::uint8_t protoIana;
+    std::uint16_t seed;
 };
 
 std::optional<Sha1Digest> computeSha1Digest(std::string_view data)
 {
-    Sha1Digest out{};
-    unsigned char* ok = ::SHA1(
-        reinterpret_cast<const unsigned char*>(data.data()),
-        static_cast<size_t>(data.size()),
-        out.data()
-    );
-    if (!ok) return std::nullopt;
+    Sha1Digest out {};
+    unsigned char* ok =
+        ::SHA1(reinterpret_cast<const unsigned char*>(data.data()), static_cast<size_t>(data.size()), out.data());
+    if (!ok)
+        return std::nullopt;
     return out;
 }
 
@@ -149,31 +147,27 @@ std::optional<std::string> encodeDigestToBase64(const Sha1Digest& digest)
 
     std::string result(SHA1_BASE64_LEN, '\0');
 
-    int written = ::EVP_EncodeBlock(
-        reinterpret_cast<unsigned char*>(&result[0]),
-        digest.data(),
-        static_cast<int>(digest.size())
-    );
-    if (written <= 0) return std::nullopt;
+    int written =
+        ::EVP_EncodeBlock(reinterpret_cast<unsigned char*>(&result[0]), digest.data(), static_cast<int>(digest.size()));
+    if (written <= 0)
+        return std::nullopt;
 
     result.resize(written);
 
     return result;
 }
 
-
 std::optional<std::string> buildCidBuffer(const CommunityTupleArgs& tupleArgs)
 {
     const auto ip1 = tupleArgs.src.getIpBytes();
     const auto ip2 = tupleArgs.dst.getIpBytes();
 
-    const std::size_t total =
-        SEED_LEN + ip1.size() + ip2.size() + PROTO_LEN + PAD_LEN + PORT_LEN + PORT_LEN;
+    const std::size_t total = SEED_LEN + ip1.size() + ip2.size() + PROTO_LEN + PAD_LEN + PORT_LEN + PORT_LEN;
 
     std::string buffer(total, '\0');
     std::size_t offset = 0;
 
-    auto put_u8   = [&](std::uint8_t value8)
+    auto put_u8 = [&](std::uint8_t value8)
     {
         buffer[offset++] = static_cast<char>(value8);
     };
@@ -181,7 +175,7 @@ std::optional<std::string> buildCidBuffer(const CommunityTupleArgs& tupleArgs)
     auto put_u16b = [&](std::uint16_t value16)
     {
         buffer[offset++] = static_cast<char>((value16 >> 8) & 0xFF);
-        buffer[offset++] = static_cast<char>( value16       & 0xFF);
+        buffer[offset++] = static_cast<char>(value16 & 0xFF);
     };
 
     auto put_span = [&](ByteView ipBytes)
@@ -200,7 +194,8 @@ std::optional<std::string> buildCidBuffer(const CommunityTupleArgs& tupleArgs)
     put_u16b(tupleArgs.src.getPort());
     put_u16b(tupleArgs.dst.getPort());
 
-    if (offset != total) return std::nullopt;
+    if (offset != total)
+        return std::nullopt;
 
     return buffer;
 }
@@ -208,13 +203,16 @@ std::optional<std::string> buildCidBuffer(const CommunityTupleArgs& tupleArgs)
 CommunityResult buildCommunityId(const CommunityTupleArgs& args)
 {
     auto buffer = buildCidBuffer(args);
-    if (!buffer) return CommunityError::BuildBufferFailed;
+    if (!buffer)
+        return CommunityError::BuildBufferFailed;
 
     auto digest = computeSha1Digest(*buffer);
-    if (!digest) return CommunityError::Sha1Failure;
+    if (!digest)
+        return CommunityError::Sha1Failure;
 
     auto b64 = encodeDigestToBase64(*digest);
-    if (!b64) return CommunityError::Base64Failure;
+    if (!b64)
+        return CommunityError::Base64Failure;
 
     std::string out;
     out.reserve(CID_V1_PREFIX.size() + b64->size());
@@ -225,11 +223,14 @@ CommunityResult buildCommunityId(const CommunityTupleArgs& args)
 
 } // namespace
 
-
 namespace base::utils::CommunityId
 {
-CommunityResult getCommunityIdV1(
-    const std::string& saddr, const std::string& daddr, uint16_t sport, uint16_t dport, uint8_t protoIana, uint16_t seed)
+CommunityResult getCommunityIdV1(const std::string& saddr,
+                                 const std::string& daddr,
+                                 uint16_t sport,
+                                 uint16_t dport,
+                                 uint8_t protoIana,
+                                 uint16_t seed)
 {
     try
     {
@@ -239,7 +240,7 @@ CommunityResult getCommunityIdV1(
         if (dst < src)
             std::swap(src, dst);
 
-        CommunityTupleArgs args{ std::move(src), std::move(dst), protoIana, seed };
+        CommunityTupleArgs args {std::move(src), std::move(dst), protoIana, seed};
         return buildCommunityId(args);
     }
     catch (const std::exception& e)
