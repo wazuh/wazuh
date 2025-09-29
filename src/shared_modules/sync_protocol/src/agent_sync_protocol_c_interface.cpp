@@ -93,6 +93,31 @@ extern "C" {
         }
     }
 
+    void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
+                                    const char* id,
+                                    Operation_t operation,
+                                    const char* index,
+                                    const char* data)
+    {
+        try
+        {
+            if (!handle || !id || !index || !data) return;
+
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+            wrapper->impl->persistDifferenceInMemory(id,
+                                                     static_cast<Operation>(operation),
+                                                     index, data);
+        }
+        catch (const std::exception& ex)
+        {
+            return;
+        }
+        catch (...)
+        {
+            return;
+        }
+    }
+
     bool asp_sync_module(AgentSyncProtocolHandle* handle,
                          Mode_t mode,
                          unsigned int sync_timeout,

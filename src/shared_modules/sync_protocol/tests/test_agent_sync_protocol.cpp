@@ -123,6 +123,28 @@ TEST_F(AgentSyncProtocolTest, PersistDifferenceCatchesException)
     EXPECT_NO_THROW(protocol->persistDifference(testId, testOperation, testIndex, testData));
 }
 
+TEST_F(AgentSyncProtocolTest, PersistDifferenceInMemorySuccess)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+
+    const std::string testId = "memory_test_id";
+    const std::string testIndex = "memory_test_index";
+    const std::string testData = "memory_test_data";
+    const Operation testOperation = Operation::CREATE;
+
+    EXPECT_NO_THROW(protocol->persistDifferenceInMemory(testId, testOperation, testIndex, testData));
+}
+
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
