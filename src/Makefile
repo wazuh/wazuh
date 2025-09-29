@@ -106,6 +106,7 @@ DBSYNC=${SHARED_MODULES}dbsync/
 SYNC_PROTOCOL=${SHARED_MODULES}sync_protocol/
 SYSCOLLECTOR=wazuh_modules/syscollector/
 SCA=wazuh_modules/sca/
+AGENT_INFO=wazuh_modules/agent_info/
 ROUTER=${SHARED_MODULES}router/
 CONTENT_MANAGER=${SHARED_MODULES}content_manager/
 FILE_HELPER=${SHARED_MODULES}file_helper/
@@ -363,7 +364,7 @@ endif
 
 OSSEC_CFLAGS+=${DEFINES}
 OSSEC_CFLAGS+=-pipe -Wall -Wextra -std=gnu99
-OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${SYNC_PROTOCOL}include -I${SYSCOLLECTOR}include -I${SCA}include -I${SYSINFO}include -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${FILE_HELPER}file_io/include -I${FILE_HELPER}filesystem/include -I${VULNERABILITY_SCANNER}include -I./shared_modules/
+OSSEC_CFLAGS+=-I./ -I./headers/ -I${EXTERNAL_OPENSSL}include -I$(EXTERNAL_JSON) -I${EXTERNAL_LIBYAML}include -I${EXTERNAL_CURL}include -I${EXTERNAL_MSGPACK}include -I${EXTERNAL_BZIP2} -I${SHARED_MODULES}common -I${DBSYNC}include -I${SYNC_PROTOCOL}include -I${SYSCOLLECTOR}include -I${SCA}include -I${AGENT_INFO}include -I${SYSINFO}include -I${EXTERNAL_LIBPCRE2}include -I${EXTERNAL_RPM}/builddir/output/include -I${SYSCHECK}include -I${ROUTER}include -I${CONTENT_MANAGER}include -I${FILE_HELPER}file_io/include -I${FILE_HELPER}filesystem/include -I${VULNERABILITY_SCANNER}include -I./shared_modules/
 
 OSSEC_CFLAGS += ${CFLAGS}
 OSSEC_LDFLAGS += ${LDFLAGS}
@@ -481,6 +482,7 @@ ifeq (${TARGET}, winagent)
 else
 	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
 	OSSEC_LDFLAGS+=-L${SCA}build/lib
+	OSSEC_LDFLAGS+=-L${AGENT_INFO}build/lib
 	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
 	OSSEC_LDFLAGS+=-L${SYSCHECK}build/lib
 endif
@@ -630,6 +632,7 @@ ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 BUILD_CMAKE_PROJECTS+=build_syscollector
 endif
 BUILD_CMAKE_PROJECTS+=build_sca
+BUILD_CMAKE_PROJECTS+=build_agent_info
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
 	cp $< $@
@@ -1653,8 +1656,12 @@ endif
 build_sca: build_shared_modules build_sysinfo
 	cd ${SCA} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} .. && ${MAKE}
 
+#### Agent Info ##
+build_agent_info: build_shared_modules build_sysinfo
+	cd ${AGENT_INFO} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${AGENT_INFO_TEST} ${AGENT_INFO_RELEASE_TYPE} .. && ${MAKE}
+
 #### Wazuh cmake ###
-build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector build_sca
+build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector build_sca build_agent_info
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} ${CMAKE_ENGINE_OPTS} && ${MAKE}
 
 #### Wazuh modules ##
@@ -2374,6 +2381,7 @@ clean-internals: clean-unit-tests
 	rm -rf $(FILE_HELPER)build
 	rm -rf $(SYSCOLLECTOR)build
 	rm -rf $(SCA)build
+	rm -rf $(AGENT_INFO)build
 	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/
 	rm -rf $(wildcard $(VULNERABILITY_SCANNER)include/*_generated.h)
 	rm -rf $(SYSINFO)build
@@ -2438,6 +2446,7 @@ clean-windows:
 	rm -f libwazuhext.*
 	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
 	rm -f wazuh_modules/sca/*.o wazuh_modules/sca/*.obj
+	rm -f wazuh_modules/agent_info/*.o wazuh_modules/agent_info/*.obj
 	rm -f win32/LICENSE.txt
 	rm -f win32/help_win.txt
 	rm -f win32/internal_options.conf
