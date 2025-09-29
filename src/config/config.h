@@ -62,6 +62,7 @@ int ReadActiveResponses(XML_NODE node, void *d1, void *d2);
 int ReadActiveCommands(XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
+int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
 
 /**
  * @brief Read the configuration for client section with centralized configuration

@@ -75,6 +75,7 @@ typedef enum crypto_type {
 #include "wm_task_general.h"
 #include "agent_upgrade/wm_agent_upgrade.h"
 #include "task_manager/wm_task_manager.h"
+#include "wm_agent_info.h"
 #include "wm_github.h"
 #include "wm_office365.h"
 #include "wm_router.h"
