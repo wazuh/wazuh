@@ -769,7 +769,7 @@ PROTOBUF_LIB = $(EXTERNAL_PROTOBUF)build/libprotobuf.a
 DATE_LIB = $(EXTERNAL_DATE)build/libdate-tz.a
 FMT_LIB = $(EXTERNAL_FMT)build/libfmt.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
-LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
+LUA_LIB = ${EXTERNAL_LUA}liblua.a
 LIBBPF_LIB = $(EXTERNAL_LIBBPF)build/modern.bpf.o
 DBUS_LIB = $(EXTERNAL_DBUS)lib/libdbus-1.a
 
@@ -1091,7 +1091,7 @@ endif
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 ${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
-	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
+	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE) libarchive.la
 
 $(EXTERNAL_LIBARCHIVE)Makefile:
 	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl --without-libb2
@@ -1172,19 +1172,7 @@ $(POPT_BUILD_DIR)Makefile:
 ### lua lib ###
 
 $(LUA_LIB):
-ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_LUA} && make mingw CC=${MING_BASE}${CC} MYCFLAGS='-fPIC' && make local TO_BIN='lua.exe luac.exe'
-else
-ifeq (${uname_S},Darwin)
-	cd ${EXTERNAL_LUA} && make macosx MYCFLAGS='-fPIC' && make local
-else
-ifeq ($(findstring BSD,${uname_S}), BSD)
-	cd ${EXTERNAL_LUA} && make bsd MYCFLAGS='-fPIC' && make local
-else
-	cd ${EXTERNAL_LUA} && make posix MYCFLAGS='-fPIC' && make local
-endif
-endif
-endif
+	cd ${EXTERNAL_LUA} && ${MAKE} all MYCFLAGS='-fPIC -DLUA_USE_LINUX' MYLIBS='-lm -ldl'
 
 ### rpm lib ###
 

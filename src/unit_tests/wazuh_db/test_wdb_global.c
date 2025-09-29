@@ -630,7 +630,7 @@ void test_wdb_global_validate_sync_status_no_old_status(void **state)
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
 
-    expect_string(__wrap__merror, formatted_msg, "Failed to get old sync_status for agent '1'");
+    expect_string(__wrap__mwarn, formatted_msg, "Failed to get old sync_status for agent '1'");
 
     new_status = wdb_global_validate_sync_status(data->wdb, agent_id, status);
     assert_string_equal(new_status, status);
