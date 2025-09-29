@@ -16,7 +16,6 @@
 #include <filesystem>
 #include <fstream>
 #include <functional>
-#include <fstream>
 
 namespace Log
 {
