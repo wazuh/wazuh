@@ -35,6 +35,7 @@ struct ContentManagerConfig
     std::string topicName {"engine_cti_store"};
     int interval {3600}; // seconds
     bool onDemand {true};
+    std::string basePath {};
 
     // Config data
     std::string consumerName {"Wazuh Engine"};
@@ -43,9 +44,9 @@ struct ContentManagerConfig
     std::string versionedContent {"cti-api"};
     bool deleteDownloadedContent {true};
     std::string url {"https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_test_5.0/consumers/decoders_test_5.0"};
-    std::string outputFolder {"/var/ossec/engine/cti_store/content"};
+    std::string outputFolder {"content"};
     std::string contentFileName {"api_file.json"};
-    std::string databasePath {"/var/ossec/engine/cti_store/rocksdb"};
+    std::string databasePath {"rocksdb"};
     int offset {0};
 
     /**
