@@ -328,6 +328,7 @@ target_link_libraries(wazuh-engine
     api::event
     queue
     archiver::archive
+    ctistore::ctistore
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
