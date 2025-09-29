@@ -931,7 +931,7 @@ char *wdb_global_validate_sync_status(wdb_t *wdb, int id, const char *requested_
     char *old_sync_status = wdb_global_get_sync_status(wdb, id);
 
     if (!old_sync_status) {
-        merror("Failed to get old sync_status for agent '%d'", id);
+        mwarn("Failed to get old sync_status for agent '%d'", id);
         // If we can't validate, allow the requested one by duplicating it
         char *fallback = NULL;
         os_strdup(requested_sync_status, fallback);

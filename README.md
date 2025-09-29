@@ -138,8 +138,8 @@ Here you can find all the automation tools maintained by the Wazuh team.
 |[Flatbuffers](https://github.com/google/flatbuffers/)|23.5.26|Google Inc.|Apache 2.0 License|
 |[GoogleTest](https://github.com/google/googletest)|1.11.0|Google Inc.|3-Clause "New" BSD License|
 |[jemalloc](https://github.com/jemalloc/jemalloc)|5.2.1|Jason Evans|2-Clause "Simplified" BSD License|
-|[Lua](https://github.com/lua/lua)|5.3.6|PUC-Rio|MIT License|
-|[libarchive](https://github.com/libarchive/libarchive)|3.7.2|Tim Kientzle|3-Clause "New" BSD License|
+|[Lua](https://github.com/lua/lua)|5.4.8|PUC-Rio|MIT License|
+|[libarchive](https://github.com/libarchive/libarchive)|3.8.1|Tim Kientzle|3-Clause "New" BSD License|
 |[libdb](https://github.com/yasuhirokimura/db18)|18.1.40|Oracle Corporation|Affero GPL v3|
 |[libffi](https://github.com/libffi/libffi)|3.2.1|Anthony Green|MIT License|
 |[libpcre2](https://github.com/PCRE2Project/pcre2)|10.42.0|Philip Hazel|BSD License|
