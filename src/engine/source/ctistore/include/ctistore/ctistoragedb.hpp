@@ -66,6 +66,17 @@ public:
     bool isOpen() const;
 
     /**
+     * @brief Perform a controlled shutdown of the database.
+     *
+     * Flushes all pending writes to disk and closes the database gracefully.
+     * After calling this method, no further operations should be performed.
+     * The destructor will automatically call this if not already called.
+     *
+     * @throw std::runtime_error on flush or close error.
+     */
+    void shutdown();
+
+    /**
      * @brief Store (upsert) a policy document.
      *
      * Expects a valid JSON with required identifiers. Builds primary and

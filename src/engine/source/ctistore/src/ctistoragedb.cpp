@@ -19,6 +19,14 @@ namespace cti::store
 // String constants for prefixes and keys
 namespace constants
 {
+
+    // Tables type strings
+    constexpr std::string_view INTEGRATION_TABLE = "integration";
+    constexpr std::string_view DECODER_TABLE = "decoder";
+    constexpr std::string_view POLICY_TABLE = "policy";
+    constexpr std::string_view KVDB_TABLE = "kvdb";
+    constexpr std::string_view METADATA_TABLE = "metadata";
+
     // Asset type strings
     constexpr std::string_view INTEGRATION_TYPE = "integration";
     constexpr std::string_view DECODER_TYPE = "decoder";
@@ -145,6 +153,7 @@ struct CTIStorageDB::Impl
     void initializeColumnFamilies(const std::string& dbPath, bool useSharedBuffers);
     rocksdb::ColumnFamilyHandle* getColumnFamily(CTIStorageDB::ColumnFamily cf) const;
     rocksdb::Options createRocksDBOptions() const;
+    void shutdown();
 
     std::string extractIdFromJson(const json::Json& doc) const;
     std::string extractTitleFromJson(const json::Json& doc) const;
@@ -236,12 +245,30 @@ CTIStorageDB::CTIStorageDB(const std::string& dbPath, bool useSharedBuffers)
     }
 }
 
-CTIStorageDB::~CTIStorageDB() = default;
+CTIStorageDB::~CTIStorageDB()
+{
+    if (m_pImpl && m_pImpl->m_db)
+    {
+        try
+        {
+            m_pImpl->shutdown();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING("Exception during CTIStorageDB destructor shutdown: {}", e.what());
+        }
+    }
+}
 
 bool CTIStorageDB::isOpen() const
 {
     std::shared_lock<std::shared_mutex> lock(m_pImpl->m_rwMutex); // Shared read lock
     return m_pImpl->m_db != nullptr;
+}
+
+void CTIStorageDB::shutdown()
+{
+    m_pImpl->shutdown();
 }
 
 rocksdb::Options CTIStorageDB::Impl::createRocksDBOptions() const
@@ -286,11 +313,11 @@ void CTIStorageDB::Impl::initializeColumnFamilies(const std::string& dbPath, boo
 
     std::vector<rocksdb::ColumnFamilyDescriptor> columnFamilies = {
         rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, options),
-        rocksdb::ColumnFamilyDescriptor("metadata", options),
-        rocksdb::ColumnFamilyDescriptor("policy", options),
-        rocksdb::ColumnFamilyDescriptor("integration", options),
-        rocksdb::ColumnFamilyDescriptor("decoder", options),
-        rocksdb::ColumnFamilyDescriptor("kvdb", options)
+        rocksdb::ColumnFamilyDescriptor(std::string(constants::METADATA_TABLE), options),
+        rocksdb::ColumnFamilyDescriptor(std::string(constants::POLICY_TABLE), options),
+        rocksdb::ColumnFamilyDescriptor(std::string(constants::INTEGRATION_TABLE), options),
+        rocksdb::ColumnFamilyDescriptor(std::string(constants::DECODER_TABLE), options),
+        rocksdb::ColumnFamilyDescriptor(std::string(constants::KVDB_TABLE), options)
     };
 
     std::filesystem::create_directories(std::filesystem::path(dbPath));
@@ -378,6 +405,65 @@ bool CTIStorageDB::Impl::deleteMetadata(const std::string& key)
     return status.ok();
 }
 
+void CTIStorageDB::Impl::shutdown()
+{
+    std::unique_lock<std::shared_mutex> lock(m_rwMutex); // Exclusive write lock
+
+    if (!m_db)
+    {
+        return; // Already closed
+    }
+
+    LOG_INFO("Initiating controlled shutdown of CTIStorageDB");
+
+    // Flush all column families to ensure all data is persisted
+    rocksdb::FlushOptions flushOptions;
+    flushOptions.wait = true; // Wait for flush to complete
+
+    std::vector<rocksdb::ColumnFamilyHandle*> columnFamilies;
+    if (m_cfHandles.metadata.get()) columnFamilies.push_back(m_cfHandles.metadata.get());
+    if (m_cfHandles.policy.get()) columnFamilies.push_back(m_cfHandles.policy.get());
+    if (m_cfHandles.integration.get()) columnFamilies.push_back(m_cfHandles.integration.get());
+    if (m_cfHandles.decoder.get()) columnFamilies.push_back(m_cfHandles.decoder.get());
+    if (m_cfHandles.kvdb.get()) columnFamilies.push_back(m_cfHandles.kvdb.get());
+
+    if (!columnFamilies.empty())
+    {
+        auto status = m_db->Flush(flushOptions, columnFamilies);
+        if (!status.ok())
+        {
+            LOG_WARNING("Failed to flush column families during shutdown: {}", status.ToString());
+        }
+    }
+
+    // Sync WAL (Write-Ahead Log) to ensure durability
+    auto status = m_db->SyncWAL();
+    if (!status.ok())
+    {
+        LOG_WARNING("Failed to sync WAL during shutdown: {}", status.ToString());
+    }
+
+    // Destroy column family handles before closing the database
+    // This prevents the CFHandle destructor from trying to destroy handles after DB is closed
+    m_cfHandles.metadata = CFHandle();
+    m_cfHandles.policy = CFHandle();
+    m_cfHandles.integration = CFHandle();
+    m_cfHandles.decoder = CFHandle();
+    m_cfHandles.kvdb = CFHandle();
+
+    // Close the database
+    status = m_db->Close();
+    if (!status.ok())
+    {
+        throw std::runtime_error("Failed to close database during shutdown: " + status.ToString());
+    }
+
+    // Release the database handle
+    m_db.reset();
+
+    LOG_INFO("CTIStorageDB shutdown completed successfully");
+}
+
 std::string CTIStorageDB::Impl::extractIdFromJson(const json::Json& doc) const
 {
     return doc.getString(constants::JSON_NAME).value_or("");
@@ -408,10 +494,35 @@ void CTIStorageDB::Impl::storeWithIndex(const json::Json& doc,
         throw std::invalid_argument("Document missing required 'name' field");
     }
 
+    const std::string primaryKey = keyPrefix + id;
     rocksdb::WriteBatch batch;
     std::string docJson = doc.str();
 
-    batch.Put(getColumnFamily(cf), keyPrefix + id, docJson);
+    // Remove outdated alias before writing the new document.
+    std::string existingValue;
+    auto readStatus = m_db->Get(rocksdb::ReadOptions(), getColumnFamily(cf), primaryKey, &existingValue);
+    if (readStatus.ok())
+    {
+        try
+        {
+            json::Json existingDoc(existingValue.c_str());
+            std::string previousTitle = extractTitleFromJson(existingDoc);
+            if (!previousTitle.empty() && previousTitle != title)
+            {
+                batch.Delete(getColumnFamily(ColumnFamily::METADATA), namePrefix + previousTitle);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING("Failed to parse stored document while cleaning alias for {}: {}", id, e.what());
+        }
+    }
+    else if (!readStatus.IsNotFound())
+    {
+        throw std::runtime_error("Failed to read existing document: " + readStatus.ToString());
+    }
+
+    batch.Put(getColumnFamily(cf), primaryKey, docJson);
 
     if (!title.empty())
     {

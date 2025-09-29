@@ -670,6 +670,53 @@ TEST_F(CTIStorageDBTest, MetadataClearAll)
     EXPECT_EQ(m_storage->getStorageStats(CTIStorageDB::ColumnFamily::METADATA), 0);
 }
 
+// Controlled shutdown test
+TEST_F(CTIStorageDBTest, ControlledShutdown)
+{
+    auto integration = createSampleIntegration("test_integration", "Test Integration");
+    auto decoder = createSampleDecoder("test_decoder", "Test Decoder");
+    auto kvdb = createSampleKVDB("test_kvdb", "Test KVDB");
+
+    m_storage->storeIntegration(integration);
+    m_storage->storeDecoder(decoder);
+    m_storage->storeKVDB(kvdb);
+
+    EXPECT_TRUE(m_storage->isOpen());
+
+    // Perform controlled shutdown
+    EXPECT_NO_THROW(m_storage->shutdown());
+
+    // After shutdown, database should not be open
+    EXPECT_FALSE(m_storage->isOpen());
+
+    // Multiple shutdown calls should be safe
+    EXPECT_NO_THROW(m_storage->shutdown());
+}
+
+TEST_F(CTIStorageDBTest, ShutdownPersistsData)
+{
+    auto integration = createSampleIntegration("test_integration", "Test Integration");
+    auto kvdb = createSampleKVDB("test_kvdb", "Test KVDB");
+
+    m_storage->storeIntegration(integration);
+    m_storage->storeKVDB(kvdb);
+
+    // Perform controlled shutdown
+    m_storage->shutdown();
+    EXPECT_FALSE(m_storage->isOpen());
+
+    // Reopen the database
+    std::string dbPath = m_testDbPath.string();
+    m_storage = std::make_unique<CTIStorageDB>(dbPath, false);
+
+    // Verify data was persisted
+    EXPECT_TRUE(m_storage->assetExists(base::Name("test_integration"), "integration"));
+    EXPECT_TRUE(m_storage->kvdbExists("test_kvdb"));
+
+    auto retrievedIntegration = m_storage->getAsset(base::Name("test_integration"), "integration");
+    EXPECT_EQ(retrievedIntegration.getString("/name").value_or(""), "test_integration");
+}
+
 // Data integrity test
 TEST_F(CTIStorageDBTest, DataIntegrityAfterReopen)
 {
