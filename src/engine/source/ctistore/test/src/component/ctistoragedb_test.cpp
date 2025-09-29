@@ -6,8 +6,10 @@
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 #include <ctistore/ctistoragedb.hpp>
@@ -15,20 +17,35 @@
 
 using namespace cti::store;
 
+namespace
+{
+    const std::string CTI_TEST_PATH {"/tmp/cti_test/"};
+
+    std::filesystem::path uniquePath(const std::string& path)
+    {
+        auto pid = getpid();
+        auto tid = std::this_thread::get_id();
+        std::stringstream ss;
+        ss << pid << "_" << tid << "/"; // Unique path per thread and process
+        return std::filesystem::path(path) / ss.str();
+    }
+}
+
 class CTIStorageDBTest : public ::testing::Test
 {
 protected:
     void SetUp() override
     {
-        // Create unique test database path using test name to avoid conflicts
-        const ::testing::TestInfo* const test_info = ::testing::UnitTest::GetInstance()->current_test_info();
-        std::string test_name = std::string(test_info->test_suite_name()) + "_" + std::string(test_info->name());
-        m_testDbPath = std::filesystem::temp_directory_path() / ("cti_storage_test_db_" + test_name);
+        // Create unique test database path to avoid conflicts between parallel tests
+        m_testDbPath = uniquePath(CTI_TEST_PATH);
 
         if (std::filesystem::exists(m_testDbPath))
         {
             std::filesystem::remove_all(m_testDbPath);
         }
+
+        // Create the test directory
+        std::filesystem::create_directories(m_testDbPath.parent_path());
 
         m_storage = std::make_unique<CTIStorageDB>(m_testDbPath.string(), false);
     }

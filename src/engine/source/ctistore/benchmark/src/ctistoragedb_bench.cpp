@@ -2,7 +2,10 @@
 
 #include <filesystem>
 #include <memory>
+#include <sstream>
 #include <string>
+#include <thread>
+#include <unistd.h>
 #include <vector>
 
 #include <ctistore/ctistoragedb.hpp>
@@ -10,17 +13,32 @@
 
 using namespace cti::store;
 
+namespace
+{
+    const std::string CTI_BENCHMARK_PATH {"/tmp/cti_benchmark/"};
+
+    std::filesystem::path uniquePath(const std::string& path)
+    {
+        auto pid = getpid();
+        auto tid = std::this_thread::get_id();
+        std::stringstream ss;
+        ss << pid << "_" << tid << "/"; // Unique path per thread and process
+        return std::filesystem::path(path) / ss.str();
+    }
+}
+
 class CTIStorageBenchmark
 {
 public:
     CTIStorageBenchmark()
     {
-        // Create unique benchmark database path
-        m_testDbPath = std::filesystem::temp_directory_path() / "cti_storage_benchmark_db";
+        // Create unique benchmark database path to avoid conflicts
+        m_testDbPath = uniquePath(CTI_BENCHMARK_PATH);
         if (std::filesystem::exists(m_testDbPath))
         {
             std::filesystem::remove_all(m_testDbPath);
         }
+        std::filesystem::create_directories(m_testDbPath.parent_path());
         m_storage = std::make_unique<CTIStorageDB>(m_testDbPath.string(), false);
     }
 
