@@ -43,12 +43,40 @@ namespace constants
 
     // Default parent
     constexpr std::string_view DEFAULT_PARENT = "wazuh";
+
+    // JSON paths
+    constexpr std::string_view JSON_NAME = "/name";
+    constexpr std::string_view JSON_PAYLOAD_TITLE = "/payload/title";
+    constexpr std::string_view JSON_DOCUMENT_TITLE = "/payload/document/title";
+    constexpr std::string_view JSON_PAYLOAD_INTEGRATION_ID = "/payload/integration_id";
+    constexpr std::string_view JSON_PAYLOAD_TYPE = "/payload/type";
+    constexpr std::string_view JSON_PAYLOAD = "/payload";
+    constexpr std::string_view JSON_PAYLOAD_DOCUMENT = "/payload/document";
+    constexpr std::string_view JSON_PAYLOAD_INTEGRATIONS = "/payload/integrations";
+    constexpr std::string_view JSON_PAYLOAD_DOCUMENT_DECODERS = "/payload/document/decoders";
+    constexpr std::string_view JSON_PAYLOAD_DOCUMENT_KVDBS = "/payload/document/kvdbs";
+    constexpr std::string_view JSON_PAYLOAD_DOCUMENT_CONTENT = "/payload/document/content";
+
+    // Memory configuration
+    constexpr size_t READ_CACHE_SIZE = 32 * 1024 * 1024;  // LRU cache size for reading blocks from SST files (32MB)
+    constexpr size_t WRITE_BUFFER_SIZE = 64 * 1024 * 1024; // Total memory budget for write buffers across all column families (64MB)
+    constexpr size_t WRITE_BUFFER_SIZE_PER_CF = 32 * 1024 * 1024; // Memtable size before flush to disk per column family (32MB)
+
+    // RocksDB configuration
+    constexpr int BLOOM_FILTER_BITS = 10; // Bits per key for bloom filter (higher = less false positives, more memory)
+    // Log files are stored in the database directory (dbPath) as LOG (current) and LOG.old.* (rotated)
+    constexpr int KEEP_LOG_FILE_NUM = 5; // Number of info log files to keep before deletion
+    constexpr size_t MAX_LOG_FILE_SIZE = 5 * 1024 * 1024; // Maximum size of each info log file before rotation (5MB)
+    constexpr int RECYCLE_LOG_FILE_NUM = 5; // Number of log files to recycle instead of deleting
+    constexpr int MAX_OPEN_FILES = 32; // Maximum number of file descriptors to keep open (-1 = unlimited)
+    constexpr int NUM_LEVELS = 4; // Number of levels in LSM tree (fewer levels = less compaction overhead)
+    constexpr int MAX_WRITE_BUFFER_NUMBER = 3; // Maximum number of memtables to maintain before blocking writes
+    constexpr int MAX_BACKGROUND_JOBS = 4; // Maximum concurrent background compaction and flush jobs
 }
 
 // PIMPL implementation - contains all RocksDB-specific details
 struct CTIStorageDB::Impl
 {
-    // Simple RAII wrapper for RocksDB ColumnFamilyHandle
     class CFHandle
     {
     public:
@@ -116,10 +144,10 @@ struct CTIStorageDB::Impl
     // Implementation methods
     void initializeColumnFamilies(const std::string& dbPath, bool useSharedBuffers);
     rocksdb::ColumnFamilyHandle* getColumnFamily(CTIStorageDB::ColumnFamily cf) const;
+    rocksdb::Options createRocksDBOptions() const;
 
     std::string extractIdFromJson(const json::Json& doc) const;
     std::string extractTitleFromJson(const json::Json& doc) const;
-    std::string extractIntegrationIdFromJson(const json::Json& doc) const;
 
     void storeWithIndex(const json::Json& doc,
                         CTIStorageDB::ColumnFamily cf,
@@ -211,6 +239,30 @@ bool CTIStorageDB::isOpen() const
     return m_pImpl->m_db != nullptr;
 }
 
+rocksdb::Options CTIStorageDB::Impl::createRocksDBOptions() const
+{
+    rocksdb::BlockBasedTableOptions tableOptions;
+    tableOptions.block_cache = m_readCache;
+    tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(constants::BLOOM_FILTER_BITS, false));
+
+    rocksdb::Options options;
+    options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(tableOptions));
+    options.create_if_missing = true;
+    options.create_missing_column_families = true;
+    options.info_log_level = rocksdb::InfoLogLevel::INFO_LEVEL;
+    options.keep_log_file_num = constants::KEEP_LOG_FILE_NUM;
+    options.max_log_file_size = constants::MAX_LOG_FILE_SIZE;
+    options.recycle_log_file_num = constants::RECYCLE_LOG_FILE_NUM;
+    options.max_open_files = constants::MAX_OPEN_FILES;
+    options.write_buffer_manager = m_writeManager;
+    options.num_levels = constants::NUM_LEVELS;
+    options.write_buffer_size = constants::WRITE_BUFFER_SIZE_PER_CF;
+    options.max_write_buffer_number = constants::MAX_WRITE_BUFFER_NUMBER;
+    options.max_background_jobs = constants::MAX_BACKGROUND_JOBS;
+
+    return options;
+}
+
 void CTIStorageDB::Impl::initializeColumnFamilies(const std::string& dbPath, bool useSharedBuffers)
 {
     if (useSharedBuffers)
@@ -221,28 +273,11 @@ void CTIStorageDB::Impl::initializeColumnFamilies(const std::string& dbPath, boo
     }
     else
     {
-        m_readCache = rocksdb::NewLRUCache(32 * 1024 * 1024); // 32MB
-        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(64 * 1024 * 1024, m_readCache);
+        m_readCache = rocksdb::NewLRUCache(constants::READ_CACHE_SIZE);
+        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(constants::WRITE_BUFFER_SIZE, m_readCache);
     }
 
-    rocksdb::BlockBasedTableOptions tableOptions;
-    tableOptions.block_cache = m_readCache;
-    tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, false));
-
-    rocksdb::Options options;
-    options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(tableOptions));
-    options.create_if_missing = true;
-    options.create_missing_column_families = true;
-    options.info_log_level = rocksdb::InfoLogLevel::INFO_LEVEL;
-    options.keep_log_file_num = 5;
-    options.max_log_file_size = 5 * 1024 * 1024;
-    options.recycle_log_file_num = 5;
-    options.max_open_files = 32;
-    options.write_buffer_manager = m_writeManager;
-    options.num_levels = 4;
-    options.write_buffer_size = 32 * 1024 * 1024;
-    options.max_write_buffer_number = 3;
-    options.max_background_jobs = 4;
+    rocksdb::Options options = createRocksDBOptions();
 
     std::vector<rocksdb::ColumnFamilyDescriptor> columnFamilies = {
         rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, options),
@@ -287,7 +322,7 @@ void CTIStorageDB::Impl::initializeColumnFamilies(const std::string& dbPath, boo
 
     m_db.reset(db);
 
-    if (handles.size() != 6)
+    if (handles.size() != columnFamilies.size())
     {
         for (auto* handle : handles) { if (handle) delete handle; }
         throw std::runtime_error("Unexpected number of column family handles");
@@ -315,34 +350,20 @@ rocksdb::ColumnFamilyHandle* CTIStorageDB::Impl::getColumnFamily(CTIStorageDB::C
 
 std::string CTIStorageDB::Impl::extractIdFromJson(const json::Json& doc) const
 {
-    if (doc.exists("/name"))
-    {
-        return doc.getString("/name").value_or("");
-    }
-    return "";
+    return doc.getString(constants::JSON_NAME).value_or("");
 }
 
 std::string CTIStorageDB::Impl::extractTitleFromJson(const json::Json& doc) const
 {
-    if (doc.exists("/payload/title"))
+    // Try payload/title first, then payload/document/title as fallback
+    std::string title = doc.getString(constants::JSON_PAYLOAD_TITLE).value_or("");
+    if (title.empty())
     {
-        return doc.getString("/payload/title").value_or("");
+        title = doc.getString(constants::JSON_DOCUMENT_TITLE).value_or("");
     }
-    if (doc.exists("/payload/document/title"))
-    {
-        return doc.getString("/payload/document/title").value_or("");
-    }
-    return "";
+    return title;
 }
 
-std::string CTIStorageDB::Impl::extractIntegrationIdFromJson(const json::Json& doc) const
-{
-    if (doc.exists("/payload/integration_id"))
-    {
-        return doc.getString("/payload/integration_id").value_or("");
-    }
-    return "";
-}
 
 void CTIStorageDB::Impl::storeWithIndex(const json::Json& doc,
                                         CTIStorageDB::ColumnFamily cf,
@@ -401,9 +422,9 @@ void CTIStorageDB::Impl::updateRelationshipIndexes(const json::Json& integration
 
     rocksdb::WriteBatch batch;
 
-    if (integrationDoc.exists("/payload/document/decoders"))
+    if (integrationDoc.exists(constants::JSON_PAYLOAD_DOCUMENT_DECODERS))
     {
-        auto decoders = integrationDoc.getArray("/payload/document/decoders");
+        auto decoders = integrationDoc.getArray(constants::JSON_PAYLOAD_DOCUMENT_DECODERS);
         if (decoders)
         {
             json::Json decoderList;
@@ -421,9 +442,9 @@ void CTIStorageDB::Impl::updateRelationshipIndexes(const json::Json& integration
         }
     }
 
-    if (integrationDoc.exists("/payload/document/kvdbs"))
+    if (integrationDoc.exists(constants::JSON_PAYLOAD_DOCUMENT_KVDBS))
     {
-        auto kvdbs = integrationDoc.getArray("/payload/document/kvdbs");
+        auto kvdbs = integrationDoc.getArray(constants::JSON_PAYLOAD_DOCUMENT_KVDBS);
         if (kvdbs)
         {
             json::Json kvdbList;
@@ -798,9 +819,9 @@ json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
 
     json::Json kvdbDoc = getByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, std::string(constants::KVDB_PREFIX), std::string(constants::NAME_KVDB_PREFIX));
 
-    if (kvdbDoc.exists("/payload/document/content"))
+    if (kvdbDoc.exists(constants::JSON_PAYLOAD_DOCUMENT_CONTENT))
     {
-        auto content = kvdbDoc.getJson("/payload/document/content");
+        auto content = kvdbDoc.getJson(constants::JSON_PAYLOAD_DOCUMENT_CONTENT);
         if (content)
         {
             return *content;
@@ -828,9 +849,9 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
         try
         {
             json::Json doc(it->value().ToString().c_str());
-            if (doc.exists("/payload/integrations"))
+            if (doc.exists(constants::JSON_PAYLOAD_INTEGRATIONS))
             {
-                auto integrationArray = doc.getArray("/payload/integrations");
+                auto integrationArray = doc.getArray(constants::JSON_PAYLOAD_INTEGRATIONS);
                 if (integrationArray)
                 {
                     for (const auto& integration : *integrationArray)
@@ -905,26 +926,26 @@ bool CTIStorageDB::Impl::validateDocument(const json::Json& doc, const std::stri
 {
     // Note: validateDocument is a pure function that doesn't access database state
     // No lock needed, but we could add shared lock for consistency if needed
-    if (!doc.exists("/name") || extractIdFromJson(doc).empty())
+    if (!doc.exists(constants::JSON_NAME) || extractIdFromJson(doc).empty())
     {
         return false;
     }
 
-    if (!doc.exists("/payload"))
+    if (!doc.exists(constants::JSON_PAYLOAD))
     {
         return false;
     }
 
-    if (doc.exists("/payload/type"))
+    if (doc.exists(constants::JSON_PAYLOAD_TYPE))
     {
-        auto type = doc.getString("/payload/type");
+        auto type = doc.getString(constants::JSON_PAYLOAD_TYPE);
         if (type && *type != expectedType)
         {
             return false;
         }
     }
 
-    if (expectedType != "policy" && !doc.exists("/payload/document"))
+    if (expectedType != std::string(constants::POLICY_TYPE) && !doc.exists(constants::JSON_PAYLOAD_DOCUMENT))
     {
         return false;
     }
