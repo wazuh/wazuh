@@ -46,6 +46,19 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
                       const char* index,
                       const char* data);
 
+/// @brief Persists a difference to in-memory vector instead of database.
+/// This method is used for recovery scenarios where data should be kept in memory.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param id Unique identifier for the data item.
+/// @param operation Type of operation (create, modify, delete).
+/// @param index Logical index for the data item.
+/// @param data Serialized content of the message.
+void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
+                                const char* id,
+                                Operation_t operation,
+                                const char* index,
+                                const char* data);
+
 // @brief Triggers synchronization of a module.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
