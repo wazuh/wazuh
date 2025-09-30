@@ -318,8 +318,6 @@ x-rbac-catalog:
         actions: ['kvdbs:read']
         resources: ['*:*:*']
         effect: "allow"
-      related_endpoints:
-        - GET /kvdbs
     'kvdbs:create':
       description: "Create KVDBs"
       resources:

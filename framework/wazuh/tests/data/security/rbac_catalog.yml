@@ -348,8 +348,9 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - PUT /cluster/restart
+          - PUT /cluster/analysisd/reload
       kvdbs:read:
-        description: Read KVDBs (testing/production)
+        description: Read KVDBs
         resources:
           - "*:*"
         example:
@@ -360,21 +361,32 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - GET /kvdbs
-      kvdbs:write:
-        description: Create/Update KVDBs (testing policy)
+      kvdbs:create:
+        description: Create KVDBs
         resources:
           - "*:*"
         example:
           actions:
-            - kvdbs:write
+            - kvdbs:create
           resources:
             - "*:*:*"
           effect: allow
         related_endpoints:
           - POST /kvdbs
+      kvdbs:update:
+        description: Update KVDBs
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - kvdbs:update
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
           - PUT /kvdbs
       kvdbs:delete:
-        description: Delete KVDBs (testing policy)
+        description: Delete KVDBs
         resources:
           - "*:*"
         example:
@@ -774,7 +786,7 @@ get_rbac_resources:
       decoder:file:
         description: Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)
       kvdbs:
-        description: User-defined KVDBs (testing/production policies)
+        description: User-defined KVDBs
       rule:file:
         description: Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)
       policy:id:
