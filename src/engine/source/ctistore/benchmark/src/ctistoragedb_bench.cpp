@@ -15,7 +15,7 @@ using namespace cti::store;
 
 namespace
 {
-    const std::string CTI_BENCHMARK_PATH {"/tmp/cti_benchmark/"};
+    const std::filesystem::path CTI_BENCHMARK_PATH = std::filesystem::temp_directory_path() / "cti_benchmark";
 
     std::filesystem::path uniquePath(const std::string& path)
     {

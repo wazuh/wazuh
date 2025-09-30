@@ -19,15 +19,15 @@ using namespace cti::store;
 
 namespace
 {
-    const std::string CTI_TEST_PATH {"/tmp/cti_test/"};
+    const std::filesystem::path CTI_TEST_PATH = std::filesystem::temp_directory_path() / "cti_test";
 
-    std::filesystem::path uniquePath(const std::string& path)
+    std::filesystem::path uniquePath(const std::filesystem::path& basePath)
     {
         auto pid = getpid();
         auto tid = std::this_thread::get_id();
         std::stringstream ss;
         ss << pid << "_" << tid << "/"; // Unique path per thread and process
-        return std::filesystem::path(path) / ss.str();
+        return basePath / ss.str();
     }
 }
 
