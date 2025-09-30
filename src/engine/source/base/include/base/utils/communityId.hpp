@@ -5,19 +5,9 @@
 #include <optional>
 #include <string>
 #include <variant>
-
+#include <base/error.hpp>
 namespace base::utils::CommunityId
 {
-enum class CommunityError : std::uint8_t
-{
-    BuildBufferFailed,
-    Sha1Failure,
-    Base64Failure,
-    Unknown
-};
-
-using CommunityResult = std::variant<std::string, CommunityError>;
-
 /**
  * @brief Compute the Zeek Community ID v1 for a network flow.
  *
@@ -40,10 +30,10 @@ using CommunityResult = std::variant<std::string, CommunityError>;
  * @note The function does not throw; failures are reported via the CommunityError variant.
  * @see https://github.com/corelight/community-id-spec
  */
-CommunityResult getCommunityIdV1(const std::string& saddr,
+base::RespOrError<std::string> getCommunityIdV1(const std::string& saddr,
                                  const std::string& daddr,
-                                 uint16_t sport,
-                                 uint16_t dport,
+                                 int64_t sport,
+                                 int64_t dport,
                                  uint8_t protoIana,
                                  uint16_t seed = 0);
 

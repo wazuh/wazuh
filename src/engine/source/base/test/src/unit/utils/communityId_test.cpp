@@ -1,3 +1,4 @@
+#include "error.hpp"
 #include <gtest/gtest.h>
 
 #include <base/utils/communityId.hpp>
@@ -6,15 +7,14 @@
 
 namespace
 {
-using base::utils::CommunityId::CommunityError;
-using base::utils::CommunityId::CommunityResult;
+
 using base::utils::CommunityId::getCommunityIdV1;
 
-void expectStringResult(const CommunityResult& result, const std::string& expected)
+void expectStringResult(const base::RespOrError<std::string>& result, const std::string& expected)
 {
-    ASSERT_TRUE(std::holds_alternative<std::string>(result))
-        << "Expected Community ID string but got error";
-    EXPECT_EQ(expected, std::get<std::string>(result));
+    ASSERT_FALSE(base::isError(result)) << "Expected Community ID string but got error: "
+                                        << base::getError(result).message;
+    EXPECT_EQ(expected, base::getResponse(result));
 }
 
 } // namespace
@@ -51,7 +51,7 @@ TEST(CommunityIdTest, InvalidIpReturnsUnknownError)
 {
     const auto result = getCommunityIdV1("not-an-ip", "10.0.0.5", 12345, 80, 6);
 
-    ASSERT_TRUE(std::holds_alternative<CommunityError>(result))
-        << "Expected error variant but got Community ID string";
-    EXPECT_EQ(CommunityError::Unknown, std::get<CommunityError>(result));
+    ASSERT_TRUE(base::isError(result)) << "Expected error variant but got Community ID string";
+    EXPECT_EQ("Failed to compute Community ID 'Invalid IP address format: not-an-ip'",
+              base::getError(result).message);
 }

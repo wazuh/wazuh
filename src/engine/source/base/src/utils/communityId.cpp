@@ -1,5 +1,3 @@
-#include "utils/communityId.hpp"
-
 #include <algorithm>
 #include <arpa/inet.h>
 #include <array>
@@ -9,23 +7,52 @@
 #include <string>
 #include <string_view>
 #include <utility>
+
+#include <fmt/format.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
 
+#include "error.hpp"
+
+#include "utils/communityId.hpp"
+#include "utils/ipUtils.hpp"
+
 namespace
 {
-    inline constexpr std::size_t SEED_LEN  = 2;
-    inline constexpr std::size_t PROTO_LEN = 1;
-    inline constexpr std::size_t PAD_LEN   = 1;
-    inline constexpr std::size_t PORT_LEN  = 2;
-    inline constexpr std::string_view CID_V1_PREFIX = "1:";
-    inline constexpr std::uint8_t CID_PADDING = 0;
+inline constexpr std::size_t SEED_LEN = 2;
+inline constexpr std::size_t PROTO_LEN = 1;
+inline constexpr std::size_t PAD_LEN = 1;
+inline constexpr std::size_t PORT_LEN = 2;
+inline constexpr std::string_view CID_V1_PREFIX = "1:";
+inline constexpr std::uint8_t CID_PADDING = 0;
+inline constexpr std::int64_t ICMP_PORT_MAX = std::numeric_limits<std::uint8_t>::max();       // 255
+inline constexpr std::int64_t TRANSPORT_PORT_MAX = std::numeric_limits<std::uint16_t>::max(); // 65535
 
-    using Sha1Digest = std::array<unsigned char, SHA_DIGEST_LENGTH>;
+using Sha1Digest = std::array<unsigned char, SHA_DIGEST_LENGTH>;
+using ByteView = std::basic_string_view<std::uint8_t>;
 
-    using base::utils::CommunityId::CommunityResult;
-    using base::utils::CommunityId::CommunityError;
-    using ByteView = std::basic_string_view<std::uint8_t>;
+enum class NetworkProto : std::uint8_t
+{
+    TCP = 6,
+    UDP = 17,
+    SCTP = 132,
+    ICMP = 1,
+    ICMPv6 = 58,
+    OTHER = 0
+};
+
+NetworkProto toNetworkProto(std::uint8_t protocol) noexcept
+{
+    switch (protocol)
+    {
+        case 6: return NetworkProto::TCP;
+        case 17: return NetworkProto::UDP;
+        case 132: return NetworkProto::SCTP;
+        case 1: return NetworkProto::ICMP;
+        case 58: return NetworkProto::ICMPv6;
+        default: return NetworkProto::OTHER;
+    }
+}
 class NetworkEndpoint
 {
 public:
@@ -44,7 +71,6 @@ public:
     bool hasPort() const noexcept;
 
     friend bool operator<(const NetworkEndpoint& lhs, const NetworkEndpoint& rhs) noexcept;
-    friend bool operator==(const NetworkEndpoint& lhs, const NetworkEndpoint& rhs) noexcept;
 
 private:
     void ParseIpAddress(std::string_view ip);
@@ -86,13 +112,15 @@ void NetworkEndpoint::ParseIpAddress(std::string_view ip)
         throw std::invalid_argument("IP address is empty");
 
     m_ip.assign(ip);
+    std::array<std::uint8_t, 4> tmp4 {};
 
-    if (inet_pton(AF_INET, m_ip.c_str(), m_ipBytes.data()) == 1)
+    if (utils::ip::checkStrIsIPv4(m_ip, &tmp4))
     {
+        std::memcpy(m_ipBytes.data(), tmp4.data(), tmp4.size());
         m_family = IpFamily::IPv4;
         m_len = 4;
     }
-    else if (inet_pton(AF_INET6, m_ip.c_str(), m_ipBytes.data()) == 1)
+    else if (utils::ip::checkStrIsIPv6(m_ip, &m_ipBytes))
     {
         m_family = IpFamily::IPv6;
         m_len = 16;
@@ -127,19 +155,17 @@ struct CommunityTupleArgs
 {
     NetworkEndpoint src;
     NetworkEndpoint dst;
-    std::uint8_t    protoIana;
-    std::uint16_t   seed;
+    std::uint8_t protoIana;
+    std::uint16_t seed;
 };
 
 std::optional<Sha1Digest> computeSha1Digest(std::string_view data)
 {
-    Sha1Digest out{};
-    unsigned char* ok = ::SHA1(
-        reinterpret_cast<const unsigned char*>(data.data()),
-        static_cast<size_t>(data.size()),
-        out.data()
-    );
-    if (!ok) return std::nullopt;
+    Sha1Digest out {};
+    unsigned char* ok =
+        ::SHA1(reinterpret_cast<const unsigned char*>(data.data()), static_cast<size_t>(data.size()), out.data());
+    if (!ok)
+        return std::nullopt;
     return out;
 }
 
@@ -149,31 +175,27 @@ std::optional<std::string> encodeDigestToBase64(const Sha1Digest& digest)
 
     std::string result(SHA1_BASE64_LEN, '\0');
 
-    int written = ::EVP_EncodeBlock(
-        reinterpret_cast<unsigned char*>(&result[0]),
-        digest.data(),
-        static_cast<int>(digest.size())
-    );
-    if (written <= 0) return std::nullopt;
+    int written =
+        ::EVP_EncodeBlock(reinterpret_cast<unsigned char*>(&result[0]), digest.data(), static_cast<int>(digest.size()));
+    if (written <= 0)
+        return std::nullopt;
 
     result.resize(written);
 
     return result;
 }
 
-
 std::optional<std::string> buildCidBuffer(const CommunityTupleArgs& tupleArgs)
 {
     const auto ip1 = tupleArgs.src.getIpBytes();
     const auto ip2 = tupleArgs.dst.getIpBytes();
 
-    const std::size_t total =
-        SEED_LEN + ip1.size() + ip2.size() + PROTO_LEN + PAD_LEN + PORT_LEN + PORT_LEN;
+    const std::size_t total = SEED_LEN + ip1.size() + ip2.size() + PROTO_LEN + PAD_LEN + PORT_LEN + PORT_LEN;
 
     std::string buffer(total, '\0');
     std::size_t offset = 0;
 
-    auto put_u8   = [&](std::uint8_t value8)
+    auto put_u8 = [&](std::uint8_t value8)
     {
         buffer[offset++] = static_cast<char>(value8);
     };
@@ -181,7 +203,7 @@ std::optional<std::string> buildCidBuffer(const CommunityTupleArgs& tupleArgs)
     auto put_u16b = [&](std::uint16_t value16)
     {
         buffer[offset++] = static_cast<char>((value16 >> 8) & 0xFF);
-        buffer[offset++] = static_cast<char>( value16       & 0xFF);
+        buffer[offset++] = static_cast<char>(value16 & 0xFF);
     };
 
     auto put_span = [&](ByteView ipBytes)
@@ -200,21 +222,76 @@ std::optional<std::string> buildCidBuffer(const CommunityTupleArgs& tupleArgs)
     put_u16b(tupleArgs.src.getPort());
     put_u16b(tupleArgs.dst.getPort());
 
-    if (offset != total) return std::nullopt;
+    if (offset != total)
+        return std::nullopt;
 
     return buffer;
 }
 
-CommunityResult buildCommunityId(const CommunityTupleArgs& args)
+bool validatePortsForProto(std::uint8_t protoIana, std::int64_t sport, std::int64_t dport, std::string& outErr) noexcept
+{
+    const auto proto = toNetworkProto(protoIana);
+
+    if (proto == NetworkProto::ICMP || proto == NetworkProto::ICMPv6)
+    {
+        if (sport < 0 || sport > ICMP_PORT_MAX)
+        {
+            outErr = "source.port out of range (expected 0..255)";
+            return false;
+        }
+        if (dport < 0 || dport > ICMP_PORT_MAX)
+        {
+            outErr = "destination.port out of range (expected 0..255)";
+            return false;
+        }
+        return true;
+    }
+
+    if (proto == NetworkProto::TCP || proto == NetworkProto::UDP || proto == NetworkProto::SCTP)
+    {
+        if (sport <= 0 || sport > TRANSPORT_PORT_MAX)
+        {
+            outErr = "source.port out of range (expected 0..65535)";
+            return false;
+        }
+
+        if (dport <= 0 || dport > TRANSPORT_PORT_MAX)
+        {
+            outErr = "destination.port out of range (expected 0..65535)";
+            return false;
+        }
+
+        return true;
+    }
+
+    // Other protocols do not use ports, but we allow 0 values for compatibility
+    if (sport < 0 || sport > TRANSPORT_PORT_MAX)
+    {
+        outErr = "source.port out of range (expected 0..65535)";
+        return false;
+    }
+    if (dport < 0 || dport > TRANSPORT_PORT_MAX)
+    {
+        outErr = "destination.port out of range (expected 0..65535)";
+        return false;
+    }
+
+    return true;
+}
+
+base::RespOrError<std::string> buildCommunityId(const CommunityTupleArgs& args)
 {
     auto buffer = buildCidBuffer(args);
-    if (!buffer) return CommunityError::BuildBufferFailed;
+    if (!buffer)
+        return base::Error {"Failed to build Community ID buffer"};
 
     auto digest = computeSha1Digest(*buffer);
-    if (!digest) return CommunityError::Sha1Failure;
+    if (!digest)
+        return base::Error {"Failed to compute SHA1 digest"};
 
     auto b64 = encodeDigestToBase64(*digest);
-    if (!b64) return CommunityError::Base64Failure;
+    if (!b64)
+        return base::Error {"Failed to encode SHA1 digest to Base64"};
 
     std::string out;
     out.reserve(CID_V1_PREFIX.size() + b64->size());
@@ -225,26 +302,31 @@ CommunityResult buildCommunityId(const CommunityTupleArgs& args)
 
 } // namespace
 
-
 namespace base::utils::CommunityId
 {
-CommunityResult getCommunityIdV1(
-    const std::string& saddr, const std::string& daddr, uint16_t sport, uint16_t dport, uint8_t protoIana, uint16_t seed)
+base::RespOrError<std::string> getCommunityIdV1(
+    const std::string& saddr, const std::string& daddr, int64_t sport, int64_t dport, uint8_t protoIana, uint16_t seed)
 {
     try
     {
-        NetworkEndpoint src(saddr, sport);
-        NetworkEndpoint dst(daddr, dport);
+        std::string portErr;
+        if (!validatePortsForProto(protoIana, sport, dport, portErr))
+        {
+            return base::Error {portErr};
+        }
+
+        NetworkEndpoint src(saddr, static_cast<std::uint16_t>(sport));
+        NetworkEndpoint dst(daddr, static_cast<std::uint16_t>(dport));
 
         if (dst < src)
             std::swap(src, dst);
 
-        CommunityTupleArgs args{ std::move(src), std::move(dst), protoIana, seed };
+        CommunityTupleArgs args {std::move(src), std::move(dst), protoIana, seed};
         return buildCommunityId(args);
     }
     catch (const std::exception& e)
     {
-        return CommunityError::Unknown;
+        return base::Error {fmt::format("Failed to compute Community ID '{}'", e.what())};
     }
 }
 

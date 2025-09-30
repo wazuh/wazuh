@@ -13,7 +13,6 @@ metadata:
   keywords:
     - network
     - community-id
-    - flow
 
 helper_type: map
 
@@ -30,20 +29,14 @@ arguments:
     type: number
     generate: integer
     source: reference
-    min: 0
-    max: 65535
   destination_port:
     type: number
     generate: integer
     source: reference
-    min: 0
-    max: 65535
   protocol:
     type: number
     generate: integer
-    source: reference # Includes values or references (their names start with $)
-    min: 0
-    max: 255
+    source: both # Includes values or references (their names start with $)
 
 is_variadic: false
 
@@ -118,4 +111,3 @@ test:
       protocol: 6
     should_pass: false
     description: Reject transport port above 65535
-

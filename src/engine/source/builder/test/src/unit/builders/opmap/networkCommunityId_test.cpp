@@ -33,19 +33,17 @@ std::vector<OpArg> makeProtoLiteralArgs(uint8_t proto)
     return args;
 }
 
-json::Json successCidForFlow(const std::string& saddr,
-                             const std::string& daddr,
-                             uint16_t sport,
-                             uint16_t dport,
-                             uint8_t proto)
+json::Json
+successCidForFlow(const std::string& saddr, const std::string& daddr, uint16_t sport, uint16_t dport, uint8_t proto)
 {
     auto result = base::utils::CommunityId::getCommunityIdV1(saddr, daddr, sport, dport, proto, 0);
-    if (!std::holds_alternative<std::string>(result))
+    if (base::isError(result))
     {
-        throw std::runtime_error("Failed to compute community ID for test expectation");
+        throw std::runtime_error(
+            fmt::format("Failed to compute community ID for test expectation: {}", base::getError(result).message));
     }
 
-    const auto encoded = fmt::format("\"{}\"", std::get<std::string>(result));
+    const auto encoded = fmt::format("\"{}\"", base::getResponse(result));
     return json::Json(encoded.c_str());
 }
 
@@ -142,21 +140,22 @@ namespace mapoperatestest
 {
 auto operationSuccess(json::Json expected)
 {
-    return SuccessExpected::Param {
-        SuccessExpected::Behaviour([expected = std::move(expected)](const BuildersMocks& mocks) mutable
-                                    {
-                                        expectSchemaAbsentLookups(mocks);
-                                        return expected;
-                                    })};
+    return SuccessExpected::Param {SuccessExpected::Behaviour(
+        [expected = std::move(expected)](const BuildersMocks& mocks) mutable
+        {
+            expectSchemaAbsentLookups(mocks);
+            return expected;
+        })};
 }
 
 auto operationFailure()
 {
-    return FailureExpected::Param {FailureExpected::Behaviour([](const BuildersMocks& mocks)
-                                                              {
-                                                                  expectSchemaAbsentLookups(mocks);
-                                                                  return base::test::None {};
-                                                              })};
+    return FailureExpected::Param {FailureExpected::Behaviour(
+        [](const BuildersMocks& mocks)
+        {
+            expectSchemaAbsentLookups(mocks);
+            return base::test::None {};
+        })};
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -169,11 +168,10 @@ INSTANTIATE_TEST_SUITE_P(
             opBuilderHelperNetworkCommunityId,
             makeDefaultArgs(),
             SUCCESS(operationSuccess(successCidForFlow("192.168.0.1", "10.0.0.5", 12345, 80, 6)))),
-        MapT(
-            R"({"source":{"ip":"10.1.1.1","port":5353},"destination":{"ip":"10.1.1.2","port":53}})",
-            opBuilderHelperNetworkCommunityId,
-            makeProtoLiteralArgs(17),
-            SUCCESS(operationSuccess(successCidForFlow("10.1.1.1", "10.1.1.2", 5353, 53, 17)))),
+        MapT(R"({"source":{"ip":"10.1.1.1","port":5353},"destination":{"ip":"10.1.1.2","port":53}})",
+             opBuilderHelperNetworkCommunityId,
+             makeProtoLiteralArgs(17),
+             SUCCESS(operationSuccess(successCidForFlow("10.1.1.1", "10.1.1.2", 5353, 53, 17)))),
         MapT(R"({"source":{"ip":"2001:db8::1"},"destination":{"ip":"2001:db8::2"},"network":{"iana_number":41}})",
              opBuilderHelperNetworkCommunityId,
              makeDefaultArgs(),
