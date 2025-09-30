@@ -9067,7 +9067,7 @@ field: network_community_id(source_ip, destination_ip, source_port, destination_
 | destination_ip | string | reference | Any IP |
 | source_port | number | reference | Integers between `-2^63` and `2^63-1` |
 | destination_port | number | reference | Integers between `-2^63` and `2^63-1` |
-| protocol | number | reference | Integers between `-2^63` and `2^63-1` |
+| protocol | number | value or reference | Integers between `-2^63` and `2^63-1` |
 
 
 ## Outputs
@@ -9094,8 +9094,6 @@ The helper validates references, types, and ranges; on failure the target is lef
 
 - `community-id` 
 
-- `flow` 
-
 ## Examples
 
 ### Example 1
@@ -9107,7 +9105,7 @@ TCP/IPv4 flow (protocol literal), seed=0
 ```yaml
 normalize:
   - map:
-      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 6)
 ```
 
 #### Input Event
@@ -9117,8 +9115,7 @@ normalize:
   "source_ip": "192.168.0.1",
   "destination_ip": "10.0.0.5",
   "source_port": 12345,
-  "destination_port": 80,
-  "protocol": 6
+  "destination_port": 80
 }
 ```
 
@@ -9130,7 +9127,6 @@ normalize:
   "destination_ip": "10.0.0.5",
   "source_port": 12345,
   "destination_port": 80,
-  "protocol": 6,
   "target_field": "1:JHvDxB6S6/K68OntUBf4DJZYvkM="
 }
 ```
@@ -9185,7 +9181,7 @@ IPv6 encapsulation flow (no ports), seed=0
 ```yaml
 normalize:
   - map:
-      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 41)
 ```
 
 #### Input Event
@@ -9195,8 +9191,7 @@ normalize:
   "source_ip": "2001:db8::1",
   "destination_ip": "2001:db8::2",
   "source_port": 0,
-  "destination_port": 0,
-  "protocol": 41
+  "destination_port": 0
 }
 ```
 
@@ -9208,7 +9203,6 @@ normalize:
   "destination_ip": "2001:db8::2",
   "source_port": 0,
   "destination_port": 0,
-  "protocol": 41,
   "target_field": "1:CXfAfp/8zYUwm/5DkEbJvPdJtcU="
 }
 ```
@@ -9263,7 +9257,7 @@ Reject invalid source IP literal
 ```yaml
 normalize:
   - map:
-      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 6)
 ```
 
 #### Input Event
@@ -9273,8 +9267,7 @@ normalize:
   "source_ip": "not-an-ip",
   "destination_ip": "10.0.0.5",
   "source_port": 12345,
-  "destination_port": 80,
-  "protocol": 6
+  "destination_port": 80
 }
 ```
 
@@ -9285,8 +9278,7 @@ normalize:
   "source_ip": "not-an-ip",
   "destination_ip": "10.0.0.5",
   "source_port": 12345,
-  "destination_port": 80,
-  "protocol": 6
+  "destination_port": 80
 }
 ```
 
@@ -9339,7 +9331,7 @@ Reject transport port above 65535
 ```yaml
 normalize:
   - map:
-      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 6)
 ```
 
 #### Input Event
@@ -9349,8 +9341,7 @@ normalize:
   "source_ip": "192.168.0.1",
   "destination_ip": "10.0.0.5",
   "source_port": 70000,
-  "destination_port": 80,
-  "protocol": 6
+  "destination_port": 80
 }
 ```
 
@@ -9361,8 +9352,7 @@ normalize:
   "source_ip": "192.168.0.1",
   "destination_ip": "10.0.0.5",
   "source_port": 70000,
-  "destination_port": 80,
-  "protocol": 6
+  "destination_port": 80
 }
 ```
 
@@ -11646,7 +11636,7 @@ No deletions when argument is null but target has no nulls
 ```yaml
 normalize:
   - map:
-      - target_field: delete_fields_with_value(None)
+      - target_field: delete_fields_with_value(null)
 ```
 
 #### Input Event
