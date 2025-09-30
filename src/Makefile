@@ -759,7 +759,6 @@ ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
 SIMDJSON_LIB = $(EXTERNAL_SIMDJSON)build/libsimdjson.a
 ABSEILCPP_LIB = $(EXTERNAL_ABSEILCPP)build/build_result/lib*/libabsl_*.a
 RE2_LIB = $(EXTERNAL_RE2)build/libre2.a
-SIMDJSON_LIB = $(EXTERNAL_SIMDJSON)build/libsimdjson.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 SPDLOG_LIB = $(EXTERNAL_SPDLOG)build/libspdlog.a
 YAMLCPP_LIB = $(EXTERNAL_YAMLCPP)build/libyaml-cpp.a
@@ -2068,7 +2067,7 @@ install_api: install_python
 ####################
 #### test ##########
 ####################
-CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
+CFLAGS_TEST=-g -O0 --coverage -fPIC -DWAZUH_UNIT_TESTING
 # Use sanitizers only on linux and when VALGRIND is not set
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
