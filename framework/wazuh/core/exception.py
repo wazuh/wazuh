@@ -630,7 +630,7 @@ class WazuhException(Exception):
     # Reserve agent upgrade custom errors
     ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
                                     'The error message will be the output of vulnerability scan module'}
-                   for key in range(8001, 9000)})
+                   for key in range(8007, 9000)})
 
     def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
                  dapi_errors: dict = None, title: str = None, type: str = None):

@@ -7,7 +7,7 @@ from enum import Enum
 from wazuh import WazuhError
 from wazuh.core.common import USER_TESTING_ASSETS_PATH, USER_PRODUCTION_ASSETS_PATH
 
-class PolicyType(Enum, str):
+class PolicyType(str, Enum):
     """Enumeration for policy types used in asset management."""
     TESTING = 'testing'
     PRODUCTION = 'production'

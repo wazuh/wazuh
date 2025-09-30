@@ -83,7 +83,7 @@ async def list_kvdbs(policy_type: Optional[str] = None,
 
     try:
         async with get_engine_client() as client:
-            resp = client.content.get_resources(
+            resp = await client.content.get_resources(
                 type=ResourceType.KVDB,
                 name_list=ids or [],
                 policy_type=_to_policy_type(policy_type)
@@ -120,7 +120,7 @@ async def list_kvdbs(policy_type: Optional[str] = None,
 @expose_resources(actions=['kvdbs:create'], resources=['*:*:*'])
 async def create_kvdb(policy_type: Optional[str] = None,
                       item: Optional[Dict[str, Any]] = None) -> AffectedItemsWazuhResult:
-    """Create a KVDB (IO→Engine flow, igual que decoders.create).
+    """Create a KVDB.
 
     Parameters
     ----------
@@ -151,7 +151,9 @@ async def create_kvdb(policy_type: Optional[str] = None,
         return result
 
     kvdb_id = (item or {}).get('id')
+    display_name = (item or {}).get('name')
     content_obj = (item or {}).get('content')
+    integration_id = (item or {}).get('integration_id')
 
     if not kvdb_id or not isinstance(content_obj, dict):
         bad_id = kvdb_id or 'unknown'
@@ -163,17 +165,18 @@ async def create_kvdb(policy_type: Optional[str] = None,
     pt = _to_policy_type(policy_type)
     asset_file_path = generate_asset_file_path(kvdb_id, pt)
 
+    created_ok = False
     try:
         # Fail if file already exists
         if exists(asset_file_path):
             raise WazuhError(8001)
 
-        # Stage file on disk
+        # Write staged file on disk
         save_asset_file(asset_file_path, payload)
 
         # Validate and create in Engine
         async with get_engine_client() as client:
-            validation_results = client.catalog.validate_resource(
+            validation_results = await client.catalog.validate_resource(
                 name=kvdb_id,
                 format=DEFAULT_KVDB_FORMAT,
                 content=payload,
@@ -181,14 +184,19 @@ async def create_kvdb(policy_type: Optional[str] = None,
             )
             validate_response_or_raise(validation_results, 8002)
 
-            creation_results = client.content.create_resource(
+            creation_results = await client.content.create_resource(
                 type=ResourceType.KVDB,
                 format=DEFAULT_KVDB_FORMAT,
                 content=payload,
-                policy_type=pt
+                policy_type=pt,
+                name=kvdb_id,
+                integration_id=integration_id,
+                display_name=display_name
             )
             validate_response_or_raise(creation_results, 8003)
 
+        # Keep the file on disk when successful
+        created_ok = True
         result.affected_items.append(kvdb_id)
         result.total_affected_items = 1
 
@@ -201,8 +209,9 @@ async def create_kvdb(policy_type: Optional[str] = None,
         else:
             raise e
     finally:
-        # Cleanup staged file
-        exists(asset_file_path) and remove(asset_file_path)
+        # Remove staged file only on failure
+        if not created_ok and exists(asset_file_path):
+            remove(asset_file_path)
 
     return result
 
@@ -210,7 +219,7 @@ async def create_kvdb(policy_type: Optional[str] = None,
 @expose_resources(actions=['kvdbs:update'], resources=['*:*:*'])
 async def update_kvdb(policy_type: Optional[str] = None,
                       item: Optional[Dict[str, Any]] = None) -> AffectedItemsWazuhResult:
-    """Update an existing KVDB (IO→Engine flow, igual que decoders.update).
+    """Update an existing KVDB.
 
     Parameters
     ----------
@@ -226,7 +235,7 @@ async def update_kvdb(policy_type: Optional[str] = None,
     Returns
     -------
     AffectedItemsWazuhResult
-        Confirmation with affected ids (o failed_items si no existe).
+        Confirmation with affected ids.
     """
     result = AffectedItemsWazuhResult(
         all_msg='KVDB was successfully updated',
@@ -240,6 +249,7 @@ async def update_kvdb(policy_type: Optional[str] = None,
         return result
 
     kvdb_id = (item or {}).get('id')
+    display_name = (item or {}).get('name')
     content_obj = (item or {}).get('content')
 
     if not kvdb_id or not isinstance(content_obj, dict):
@@ -253,6 +263,7 @@ async def update_kvdb(policy_type: Optional[str] = None,
     asset_file_path = generate_asset_file_path(kvdb_id, pt)
 
     backup_file = ''
+    updated_ok = False
     try:
         # Must exist to update
         if not exists(asset_file_path):
@@ -273,7 +284,7 @@ async def update_kvdb(policy_type: Optional[str] = None,
         save_asset_file(asset_file_path, payload)
 
         async with get_engine_client() as client:
-            validation_results = client.catalog.validate_resource(
+            validation_results = await client.catalog.validate_resource(
                 name=kvdb_id,
                 format=DEFAULT_KVDB_FORMAT,
                 content=payload,
@@ -281,25 +292,30 @@ async def update_kvdb(policy_type: Optional[str] = None,
             )
             validate_response_or_raise(validation_results, 8002)
 
-            update_results = client.content.update_resource(
+            update_results = await client.content.update_resource(
                 name=kvdb_id,
                 content=payload,
-                policy_type=pt
+                policy_type=pt,
+                display_name=display_name
             )
             validate_response_or_raise(update_results, 8006)
 
+        updated_ok = True
         result.affected_items.append(kvdb_id)
 
     except WazuhError as exc:
         result.add_failed_item(id_=kvdb_id, error=exc)
     except WazuhException as e:
-        if getattr(e, 'code', None) == 2802:
-            pass
-        else:
+        if getattr(e, 'code', None) != 2802:
             raise e
     finally:
-        # Restore original file if backup exists
-        exists(backup_file) and safe_move(backup_file, asset_file_path)
+        if exists(backup_file):
+            if not updated_ok:
+                # Restore original file on failure
+                safe_move(backup_file, asset_file_path)
+            else:
+                # Cleanup backup on success
+                remove(backup_file)
 
     result.total_affected_items = len(result.affected_items)
     return result
@@ -308,7 +324,7 @@ async def update_kvdb(policy_type: Optional[str] = None,
 @expose_resources(actions=['kvdbs:delete'], resources=['*:*:*'])
 async def delete_kvdbs(policy_type: Optional[str] = None,
                        ids: Optional[List[str]] = None) -> AffectedItemsWazuhResult:
-    """Delete one or more KVDBs (IO→Engine flow, igual que decoders.delete).
+    """Delete one or more KVDBs.
 
     Parameters
     ----------
@@ -320,7 +336,7 @@ async def delete_kvdbs(policy_type: Optional[str] = None,
     Returns
     -------
     AffectedItemsWazuhResult
-        Confirmation with affected ids (some_msg semantics si algunos no existen).
+        Confirmation with affected ids.
     """
     result = AffectedItemsWazuhResult(
         all_msg='KVDBs deleted successfully',
@@ -339,9 +355,10 @@ async def delete_kvdbs(policy_type: Optional[str] = None,
             for _id in ids or []:
                 asset_file_path = generate_asset_file_path(_id, pt)
                 backup_file = f'{asset_file_path}.backup'
+                deleted_ok = False
 
                 try:
-                    # If the file does not exist, mark as failed
+                    # File must exist to delete
                     if not exists(asset_file_path):
                         raise WazuhError(8005)
 
@@ -355,19 +372,25 @@ async def delete_kvdbs(policy_type: Optional[str] = None,
                     except IOError as exc:
                         raise WazuhError(1907) from exc
 
-                    delete_results = client.content.delete_resource(
+                    delete_results = await client.content.delete_resource(
                         name=_id,
                         policy_type=pt
                     )
                     validate_response_or_raise(delete_results, 8007)
 
+                    deleted_ok = True
                     result.affected_items.append(_id)
 
                 except WazuhError as exc:
                     result.add_failed_item(id_=_id, error=exc)
                 finally:
-                    # Restore file from backup if something went wrong above
-                    exists(backup_file) and safe_move(backup_file, asset_file_path)
+                    if exists(backup_file):
+                        if not deleted_ok:
+                            # Restore file on failure
+                            safe_move(backup_file, asset_file_path)
+                        else:
+                            # Cleanup backup on success
+                            remove(backup_file)
 
         result.total_affected_items = len(result.affected_items)
         return result
