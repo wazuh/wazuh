@@ -190,7 +190,7 @@ TEST(SystemdUnitsProviderTest, CollectsUnitsSuccessfully)
     nlohmann::json unitsJson = provider.collect();
 
     ASSERT_EQ(unitsJson.size(), 1u);
-    EXPECT_EQ(unitsJson[0]["id"],             "test.service");
+    EXPECT_EQ(unitsJson[0]["id"],             "test");
     EXPECT_EQ(unitsJson[0]["description"],    "Test service description");
     EXPECT_EQ(unitsJson[0]["load_state"],     "loaded");
     EXPECT_EQ(unitsJson[0]["active_state"],   "active");
