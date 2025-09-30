@@ -1,7 +1,7 @@
 {
     "topicName": "engine_cti_store",
     "interval": 3600,
-    "ondemand": true,
+    "ondemand": false,
     "configData": {
         "consumerName": "Wazuh Engine",
         "contentSource": "cti-offset",
