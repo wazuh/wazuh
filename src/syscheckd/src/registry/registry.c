@@ -855,6 +855,7 @@ void fim_read_values(HKEY key_handle,
 
     value_data.arch = arch;
     value_data.path = path;
+    value_data.name = NULL;
     new.registry_entry.value = &value_data;
     new.registry_entry.key = NULL;
 
@@ -868,6 +869,7 @@ void fim_read_values(HKEY key_handle,
 
         configuration = fim_registry_configuration(path, arch);
         if (configuration == NULL) {
+            os_free(value_data.name);
             os_free(value_name_buffer);
             os_free(data_buffer);
             return;
@@ -878,7 +880,16 @@ void fim_read_values(HKEY key_handle,
             break;
         }
 
-        new.registry_entry.value->name = wide_to_utf8(value_name_buffer);
+        os_free(value_data.name);
+
+        char *value_name_utf8 = wide_to_utf8(value_name_buffer);
+
+        if (value_name_utf8 == NULL) {
+            mdebug1("Failed to convert value name to UTF-8");
+            continue;
+        }
+
+        new.registry_entry.value->name = value_name_utf8;
         new.registry_entry.value->type = data_type <= REG_QWORD ? data_type : REG_UNKNOWN;
         new.registry_entry.value->size = data_size;
         new.registry_entry.value->last_event = time(NULL);
@@ -892,9 +903,9 @@ void fim_read_values(HKEY key_handle,
 
         if (fim_registry_validate_ignore(value_path, configuration, 0)) {
             os_free(value_path);
-            os_free(value_data.name);
             continue;
         }
+
         os_free(value_path);
 
         if (fim_check_restrict(new.registry_entry.value->name, configuration->restrict_value)) {
@@ -994,8 +1005,12 @@ void fim_open_key(HKEY root_key_handle,
 
     access_rights = KEY_READ | (arch == ARCH_32BIT ? KEY_WOW64_32KEY : KEY_WOW64_64KEY);
 
-    WCHAR *sub_key_wide;
-    sub_key_wide = auto_to_wide(sub_key);
+    WCHAR *sub_key_wide = auto_to_wide(sub_key);
+
+    if (sub_key_wide == NULL) {
+        mdebug1("Failed to convert registry key to wide character: '%s'", sub_key);
+        return;
+    }
 
     LONG reg_result = RegOpenKeyExW(root_key_handle, sub_key_wide, 0, access_rights, &current_key_handle);
     os_free(sub_key_wide);
@@ -1026,6 +1041,11 @@ void fim_open_key(HKEY root_key_handle,
         }
 
         char *sub_key_name_utf8 = wide_to_utf8(sub_key_name_b);
+
+        if (sub_key_name_utf8 == NULL) {
+            mdebug1("Failed to convert sub key name to UTF-8");
+            continue;
+        }
 
         new_full_key_length = strlen(full_key) + strlen(sub_key_name_utf8) + 2;
 
