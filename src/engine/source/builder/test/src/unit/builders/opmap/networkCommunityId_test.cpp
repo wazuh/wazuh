@@ -37,12 +37,13 @@ json::Json
 successCidForFlow(const std::string& saddr, const std::string& daddr, uint16_t sport, uint16_t dport, uint8_t proto)
 {
     auto result = base::utils::CommunityId::getCommunityIdV1(saddr, daddr, sport, dport, proto, 0);
-    if (!std::holds_alternative<std::string>(result))
+    if (base::isError(result))
     {
-        throw std::runtime_error("Failed to compute community ID for test expectation");
+        throw std::runtime_error(
+            fmt::format("Failed to compute community ID for test expectation: {}", base::getError(result).message));
     }
 
-    const auto encoded = fmt::format("\"{}\"", std::get<std::string>(result));
+    const auto encoded = fmt::format("\"{}\"", base::getResponse(result));
     return json::Json(encoded.c_str());
 }
 

@@ -12,7 +12,6 @@ metadata:
   keywords:
     - network
     - community-id
-    - flow
 
 helper_type: map
 
@@ -29,20 +28,14 @@ arguments:
     type: number
     generate: integer
     source: reference
-    min: 0
-    max: 65535
   destination_port:
     type: number
     generate: integer
     source: reference
-    min: 0
-    max: 65535
   protocol:
     type: number
     generate: integer
-    source: reference # Includes values or references (their names start with $)
-    min: 0
-    max: 255
+    source: both # Includes values or references (their names start with $)
 
 is_variadic: false
 
@@ -84,8 +77,8 @@ test:
   - arguments:
       source_ip: 192.0.2.1
       destination_ip: 198.51.100.2
-      source_port: 8    # ICMP type
-      destination_port: 0    # ICMP code
+      source_port: 8 # ICMP type
+      destination_port: 0 # ICMP code
       protocol: 1
     should_pass: true
     expected: 1:zFLKq9oekfjLhmre/zOf0XYYjVE=

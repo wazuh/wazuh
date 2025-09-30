@@ -62,16 +62,28 @@ uint32_t IPv4MaskUInt(const std::string& maskStr)
     return maskUInt;
 }
 
-bool checkStrIsIPv4(const std::string& ip)
+bool checkStrIsIPv4(const std::string& ip, std::array<uint8_t, 4>* outBytes)
 {
-    struct in_addr buf;
-    return inet_pton(AF_INET, ip.c_str(), &buf) == 1;
+    struct in_addr buf {};
+    if (inet_pton(AF_INET, ip.c_str(), &buf) != 1)
+        return false;
+
+    if (outBytes)
+        std::memcpy(outBytes->data(), &buf, outBytes->size());
+
+    return true;
 }
 
-bool checkStrIsIPv6(const std::string& ip)
+bool checkStrIsIPv6(const std::string& ip, std::array<uint8_t, 16>* outBytes)
 {
-    struct in6_addr buf;
-    return inet_pton(AF_INET6, ip.c_str(), &buf) == 1;
+    struct in6_addr buf {};
+    if (inet_pton(AF_INET6, ip.c_str(), &buf) != 1)
+        return false;
+
+    if (outBytes)
+        std::memcpy(outBytes->data(), &buf, outBytes->size());
+
+    return true;
 }
 
 bool isSpecialIPv4Address(const std::string& ip)
