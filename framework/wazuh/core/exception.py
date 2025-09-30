@@ -625,6 +625,10 @@ class WazuhException(Exception):
                 'remediation': 'Please verify the asset ID and ensure it exists in the system before making the request.'},
         8006: {'message': 'Engine error: Error uploading the decoder',
                 'remediation': 'Please check the decoder data and ensure it meets the required format before uploading.'},
+        8007: {'message': 'Engine error: Unable to retrieve the specified integrations. The requested integrations could not be found or there was an issue processing your request.',
+            'remediation': 'Please verify the integration names and ensure they exist in the system.'},
+        8008: {'message': 'Engine error: Error uploading the integration',
+               'remediation': 'Please check the integration data and ensure it meets the required format before uploading.'},
     }
 
     # Reserve agent upgrade custom errors
