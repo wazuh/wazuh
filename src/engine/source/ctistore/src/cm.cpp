@@ -9,7 +9,8 @@
 namespace cti::store
 {
 
-namespace {
+namespace
+{
 constexpr auto CTI_STORE_LOG_TAG = "cti-store";
 } // namespace
 
@@ -18,7 +19,6 @@ ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStar
 {
     LOG_INFO("Initializing CTI Store ContentManager");
 
-    // Initialize the content downloader with a callback to process downloaded content
     auto processingCallback = [this](const std::string& message) -> FileProcessingResult
     {
         return processDownloadedContent(message);
@@ -139,10 +139,6 @@ base::Name ContentManager::getPolicyDefaultParent() const
     return base::Name();
 }
 
-/************************************************************************************
- * Other method implementations can be added here
- ************************************************************************************/
-
 bool ContentManager::startSync()
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
@@ -177,7 +173,6 @@ bool ContentManager::isSyncRunning() const
     return m_downloader && m_downloader->isRunning();
 }
 
-
 void ContentManager::updateSyncInterval(size_t intervalSeconds)
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
@@ -204,17 +199,27 @@ void ContentManager::updateConfig(const ContentManagerConfig& config, bool resta
 
     LOG_INFO("Updating ContentManager configuration");
 
+    config.validate();
+
     m_config = config;
 
     if (m_downloader)
     {
-        m_downloader->updateConfig(config);
-
-        if (restart && m_downloader->isRunning())
+        try
         {
-            LOG_INFO("Restarting sync with new configuration");
-            m_downloader->stop();
-            m_downloader->start();
+            m_downloader->updateConfig(config);
+            if (restart && m_downloader->isRunning())
+            {
+                LOG_INFO("Restarting sync with new configuration");
+                m_downloader->stop();
+                m_downloader->start();
+            }
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("Failed to apply new configuration to ContentDownloader: {}", e.what());
+            // Re-throw so caller knows update failed and state is unchanged
+            throw;
         }
     }
 }
@@ -228,21 +233,16 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
         // Parse the message to determine the type of content
         json::Json parsedMessage(message.c_str());
 
-        if (!parsedMessage.exists("/paths") ||
-            !parsedMessage.exists("/type") ||
-            !parsedMessage.exists("/offset"))
+        if (!parsedMessage.exists("/paths") || !parsedMessage.exists("/type") || !parsedMessage.exists("/offset"))
         {
             throw std::runtime_error("Invalid message format");
         }
 
-    auto type = parsedMessage.getString("/type").value_or("");
-    auto offset = parsedMessage.getInt("/offset").value_or(0);
-    auto pathsMaybe = parsedMessage.getArray("/paths");
-    size_t pathsCount = pathsMaybe.has_value() ? pathsMaybe.value().size() : 0;
-    LOG_DEBUG("Downloaded message metadata: type='{}' starting_offset={} paths_count={}",
-          type,
-          offset,
-          pathsCount);
+        auto type = parsedMessage.getString("/type").value_or("");
+        auto offset = parsedMessage.getInt("/offset").value_or(0);
+        auto pathsMaybe = parsedMessage.getArray("/paths");
+        size_t pathsCount = pathsMaybe.has_value() ? pathsMaybe.value().size() : 0;
+        LOG_DEBUG("Downloaded message metadata: type='{}' starting_offset={} paths_count={}", type, offset, pathsCount);
 
         int processedOffset = offset;
         std::string hash = "";
@@ -272,7 +272,10 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                 while (std::getline(file, line))
                 {
                     ++lineNumber;
-                    if (line.empty()) { continue; }
+                    if (line.empty())
+                    {
+                        continue;
+                    }
                     try
                     {
                         json::Json content(line.c_str());
@@ -284,13 +287,16 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                         }
 
                         // Classification rules based on observed JSON lines retrieved from CTI platform:
-                        // Each line has: name, offset, version, inserted_at, payload{...}, type (policy|integration|decoder|kvdb)
-                        // Optional: integration_id when type != policy/integration itself (e.g. decoder, kvdb belongs to integration)
-                        // 'type' may appear either at root (e.g. some decoder entries) or under payload (policy, integration, kvdb)
-                        // Prefer /payload/type (observed format). Fallback to root /type if ever provided.
-                        auto contentType = content.getString("/payload/type").value_or(
-                            content.getString("/type").value_or(""));
-                        LOG_TRACE("Classifying line {}: type='{}'", lineNumber, contentType.empty() ? "<none>" : contentType.c_str());
+                        // Each line has: name, offset, version, inserted_at, payload{...}, type
+                        // (policy|integration|decoder|kvdb) Optional: integration_id when type != policy/integration
+                        // itself (e.g. decoder, kvdb belongs to integration) 'type' may appear either at root (e.g.
+                        // some decoder entries) or under payload (policy, integration, kvdb) Prefer /payload/type
+                        // (observed format). Fallback to root /type if ever provided.
+                        auto contentType =
+                            content.getString("/payload/type").value_or(content.getString("/type").value_or(""));
+                        LOG_TRACE("Classifying line {}: type='{}'",
+                                  lineNumber,
+                                  contentType.empty() ? "<none>" : contentType.c_str());
                         if (contentType.empty())
                         {
                             ++unclassifiedCount;
@@ -298,18 +304,26 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                         }
 
                         bool stored = true;
-                        if (contentType == "policy") {
+                        if (contentType == "policy")
+                        {
                             stored = storePolicy(content);
-                        } else if (contentType == "integration") {
+                        }
+                        else if (contentType == "integration")
+                        {
                             stored = storeIntegration(content);
-                        } else if (contentType == "decoder") {
+                        }
+                        else if (contentType == "decoder")
+                        {
                             stored = storeDecoder(content);
-                        } else if (contentType == "kvdb") {
+                        }
+                        else if (contentType == "kvdb")
+                        {
                             stored = storeKVDB(content);
                         }
                         else
                         {
-                            LOG_WARNING("Unknown content type '{}' on line {} in file {}", contentType, lineNumber, path);
+                            LOG_WARNING(
+                                "Unknown content type '{}' on line {} in file {}", contentType, lineNumber, path);
                             continue;
                         }
 
@@ -319,7 +333,8 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                         }
                         else
                         {
-                            LOG_WARNING("Failed to persist content type '{}' (line {} in {})", contentType, lineNumber, path);
+                            LOG_WARNING(
+                                "Failed to persist content type '{}' (line {} in {})", contentType, lineNumber, path);
                         }
                     }
                     catch (const std::exception& e)
@@ -329,7 +344,12 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                 }
                 if (unclassifiedCount > 0)
                 {
-                    LOG_WARNING("File '{}' processed with {} classified and {} unclassified lines (missing type). First bytes: '{}'", path, classifiedCount, unclassifiedCount, line.substr(0, 60));
+                    LOG_WARNING("File '{}' processed with {} classified and {} unclassified lines (missing type). "
+                                "First bytes: '{}'",
+                                path,
+                                classifiedCount,
+                                unclassifiedCount,
+                                line.substr(0, 60));
                 }
             }
         }
@@ -347,7 +367,8 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 bool ContentManager::storeIntegration(const json::Json& integration)
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
-    try {
+    try
+    {
         // TODO: Implement actual storage in database
         // This is a placeholder for the actual database storage implementation
 
@@ -356,7 +377,9 @@ bool ContentManager::storeIntegration(const json::Json& integration)
         auto title = integration.getString("/payload/document/title").value_or("");
         LOG_TRACE("Storing integration name='{}' title='{}'", name, title);
         return true;
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e)
+    {
         LOG_ERROR("Failed to store integration: {}", e.what());
         return false;
     }
@@ -365,7 +388,8 @@ bool ContentManager::storeIntegration(const json::Json& integration)
 bool ContentManager::storeDecoder(const json::Json& decoder)
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
-    try {
+    try
+    {
         // TODO: Implement actual storage in database
         // This is a placeholder for the actual database storage implementation
 
@@ -373,7 +397,9 @@ bool ContentManager::storeDecoder(const json::Json& decoder)
         auto module = decoder.getString("/payload/document/metadata/module").value_or("");
         LOG_TRACE("Storing decoder name='{}' module='{}'", name, module);
         return true;
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e)
+    {
         LOG_ERROR("Failed to store decoder: {}", e.what());
         return false;
     }
@@ -390,8 +416,8 @@ bool ContentManager::storeKVDB(const json::Json& kvdbData)
 
         auto name = kvdbData.getString("/name").value_or("unknown");
         // integration_id may be at root (decoder style) or inside payload for kvdb entries
-        auto integration = kvdbData.getString("/integration_id").value_or(
-            kvdbData.getString("/payload/integration_id").value_or(""));
+        auto integration =
+            kvdbData.getString("/integration_id").value_or(kvdbData.getString("/payload/integration_id").value_or(""));
         LOG_TRACE("Storing KVDB '{}' (integration='{}')", name, integration);
 
         return true;

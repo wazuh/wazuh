@@ -10,76 +10,184 @@
 namespace cti::store
 {
 
-namespace {
+namespace
+{
 constexpr auto CTI_STORE_LOG_TAG = "cti-store";
 } // namespace
 
 json::Json ContentManagerConfig::toJson() const
 {
-    // Using RapidJSON through json::Json
-    std::stringstream ss;
-    ss << "{\"topicName\":\"" << topicName << "\","
-       << "\"interval\":" << interval << ","
-       << "\"ondemand\":" << (onDemand ? "true" : "false") << ","
-       << "\"configData\":{"
-       << "\"consumerName\":\"" << consumerName << "\","
-       << "\"contentSource\":\"" << contentSource << "\","
-       << "\"compressionType\":\"" << compressionType << "\","
-       << "\"versionedContent\":\"" << versionedContent << "\","
-       << "\"deleteDownloadedContent\":" << (deleteDownloadedContent ? "true" : "false") << ","
-       << "\"url\":\"" << url << "\","
-       << "\"outputFolder\":\"" << outputFolder << "\","
-       << "\"contentFileName\":\"" << contentFileName << "\","
-       << "\"databasePath\":\"" << databasePath << "\","
-       << "\"offset\":" << offset
-       << "}}";
+    auto nj = this->toNlohmann();
+    return json::Json(nj.dump().c_str());
+}
 
-    return json::Json(ss.str().c_str());
+nlohmann::json ContentManagerConfig::toNlohmann() const
+{
+    nlohmann::json j;
+    j["topicName"] = topicName;
+    j["interval"] = interval;
+    j["ondemand"] = onDemand;
+    nlohmann::json cfg;
+    cfg["consumerName"] = consumerName;
+    cfg["contentSource"] = contentSource;
+    cfg["compressionType"] = compressionType;
+    cfg["versionedContent"] = versionedContent;
+    cfg["deleteDownloadedContent"] = deleteDownloadedContent;
+    cfg["url"] = url;
+    cfg["outputFolder"] = outputFolder;
+    cfg["contentFileName"] = contentFileName;
+    cfg["databasePath"] = databasePath;
+    cfg["offset"] = offset;
+    j["configData"] = std::move(cfg);
+    return j;
 }
 
 void ContentManagerConfig::fromJson(const json::Json& config)
 {
     // Use JSON Pointer style paths consistently.
-    if (config.exists("/topicName")) { topicName = config.getString("/topicName").value_or(topicName); }
-    if (config.exists("/interval")) { interval = config.getInt("/interval").value_or(interval); }
-    if (config.exists("/ondemand")) { onDemand = config.getBool("/ondemand").value_or(onDemand); }
+    if (config.exists("/topicName"))
+    {
+        topicName = config.getString("/topicName").value_or(topicName);
+    }
+    if (config.exists("/interval"))
+    {
+        interval = config.getInt("/interval").value_or(interval);
+    }
+    if (config.exists("/ondemand"))
+    {
+        onDemand = config.getBool("/ondemand").value_or(onDemand);
+    }
 
     if (config.exists("/configData"))
     {
-        if (config.exists("/configData/consumerName")) { consumerName = config.getString("/configData/consumerName").value_or(consumerName); }
-        if (config.exists("/configData/contentSource")) { contentSource = config.getString("/configData/contentSource").value_or(contentSource); }
-        if (config.exists("/configData/compressionType")) { compressionType = config.getString("/configData/compressionType").value_or(compressionType); }
-        if (config.exists("/configData/versionedContent")) { versionedContent = config.getString("/configData/versionedContent").value_or(versionedContent); }
-        if (config.exists("/configData/deleteDownloadedContent")) { deleteDownloadedContent = config.getBool("/configData/deleteDownloadedContent").value_or(deleteDownloadedContent); }
-        if (config.exists("/configData/url")) { url = config.getString("/configData/url").value_or(url); }
-        if (config.exists("/configData/outputFolder")) { outputFolder = config.getString("/configData/outputFolder").value_or(outputFolder); }
-        if (config.exists("/configData/contentFileName")) { contentFileName = config.getString("/configData/contentFileName").value_or(contentFileName); }
-        if (config.exists("/configData/databasePath")) { databasePath = config.getString("/configData/databasePath").value_or(databasePath); }
-        if (config.exists("/configData/offset")) { offset = config.getInt("/configData/offset").value_or(offset); }
+        if (config.exists("/configData/consumerName"))
+        {
+            consumerName = config.getString("/configData/consumerName").value_or(consumerName);
+        }
+        if (config.exists("/configData/contentSource"))
+        {
+            contentSource = config.getString("/configData/contentSource").value_or(contentSource);
+        }
+        if (config.exists("/configData/compressionType"))
+        {
+            compressionType = config.getString("/configData/compressionType").value_or(compressionType);
+        }
+        if (config.exists("/configData/versionedContent"))
+        {
+            versionedContent = config.getString("/configData/versionedContent").value_or(versionedContent);
+        }
+        if (config.exists("/configData/deleteDownloadedContent"))
+        {
+            deleteDownloadedContent =
+                config.getBool("/configData/deleteDownloadedContent").value_or(deleteDownloadedContent);
+        }
+        if (config.exists("/configData/url"))
+        {
+            url = config.getString("/configData/url").value_or(url);
+        }
+        if (config.exists("/configData/outputFolder"))
+        {
+            outputFolder = config.getString("/configData/outputFolder").value_or(outputFolder);
+        }
+        if (config.exists("/configData/contentFileName"))
+        {
+            contentFileName = config.getString("/configData/contentFileName").value_or(contentFileName);
+        }
+        if (config.exists("/configData/databasePath"))
+        {
+            databasePath = config.getString("/configData/databasePath").value_or(databasePath);
+        }
+        if (config.exists("/configData/offset"))
+        {
+            offset = config.getInt("/configData/offset").value_or(offset);
+        }
     }
 }
 
-ContentDownloader::ContentDownloader(const ContentManagerConfig& config,
-                                     FileProcessingCallback fileProcessingCallback)
+void ContentManagerConfig::validate() const
+{
+    if (topicName.empty())
+    {
+        throw std::runtime_error("ContentManagerConfig: topicName cannot be empty");
+    }
+    if (interval <= 0)
+    {
+        throw std::runtime_error("ContentManagerConfig: interval must be > 0");
+    }
+    if (consumerName.empty())
+    {
+        throw std::runtime_error("ContentManagerConfig: consumerName cannot be empty");
+    }
+    if (contentSource.empty())
+    {
+        throw std::runtime_error("ContentManagerConfig: contentSource cannot be empty");
+    }
+
+    static const std::array<std::string, 3> allowedSources {"cti-offset", "offline", "cti-api"};
+    const bool sourceOk = std::any_of(
+        allowedSources.begin(), allowedSources.end(), [&](const std::string& v) { return v == contentSource; });
+    if (!sourceOk)
+    {
+        throw std::runtime_error("ContentManagerConfig: unsupported contentSource: " + contentSource);
+    }
+
+    if (compressionType.empty())
+    {
+        throw std::runtime_error("ContentManagerConfig: compressionType cannot be empty");
+    }
+    if (versionedContent.empty())
+    {
+        throw std::runtime_error("ContentManagerConfig: versionedContent cannot be empty");
+    }
+    if (outputFolder.empty())
+    {
+        throw std::runtime_error("ContentManagerConfig: outputFolder cannot be empty");
+    }
+    if (databasePath.empty())
+    {
+        throw std::runtime_error("ContentManagerConfig: databasePath cannot be empty");
+    }
+    if (offset < 0)
+    {
+        throw std::runtime_error("ContentManagerConfig: offset must be >= 0");
+    }
+
+    // URL validation: only a basic scheme check (http/https) unless contentSource == offline
+    if (contentSource != "offline")
+    {
+        if (url.empty())
+        {
+            throw std::runtime_error("ContentManagerConfig: url cannot be empty for non-offline sources");
+        }
+        if (!(url.rfind("http://", 0) == 0 || url.rfind("https://", 0) == 0))
+        {
+            throw std::runtime_error("ContentManagerConfig: url must start with http:// or https://");
+        }
+    }
+}
+
+ContentDownloader::ContentDownloader(const ContentManagerConfig& config, FileProcessingCallback fileProcessingCallback)
     : m_config(config)
     , m_fileProcessingCallback(fileProcessingCallback)
 {
-    try {
-        if (!m_config.basePath.empty())
+    if (!m_config.basePath.empty())
+    {
+        std::filesystem::path base {m_config.basePath};
+        const auto makeAbsolute = [&](const std::string& value) -> std::string
         {
-            std::filesystem::path base {m_config.basePath};
-            const auto makeAbsolute = [&](const std::string& value) -> std::string
+            if (value.empty())
             {
-                if (value.empty()) { return value; }
-                std::filesystem::path p {value};
-                if (p.is_absolute()) { return p.string(); }
-                return (base / p).string();
-            };
-            m_config.outputFolder = makeAbsolute(m_config.outputFolder);
-            m_config.databasePath = makeAbsolute(m_config.databasePath);
-        }
-    } catch (const std::exception& e) {
-        LOG_WARNING("CTI Store: failed to resolve relative paths using basePath '{}': {}", m_config.basePath, e.what());
+                return value;
+            }
+            std::filesystem::path p {value};
+            if (p.is_absolute())
+            {
+                return p.string();
+            }
+            return (base / p).string();
+        };
+        m_config.outputFolder = makeAbsolute(m_config.outputFolder);
+        m_config.databasePath = makeAbsolute(m_config.databasePath);
     }
 
     LOG_DEBUG("CTI Store ContentDownloader initializing with topic: {}", m_config.topicName);
@@ -92,22 +200,21 @@ ContentDownloader::ContentDownloader(const ContentManagerConfig& config,
         };
     }
 
-    // Create directories
-    try {
-        if (!m_config.outputFolder.empty()) { std::filesystem::create_directories(m_config.outputFolder); }
-        if (!m_config.databasePath.empty()) { std::filesystem::create_directories(m_config.databasePath); }
-    } catch (const std::exception& e) {
-        const std::string basePrefix = "/var/ossec/engine/cti_store";
-        if ((m_config.outputFolder.rfind(basePrefix, 0) == 0 || m_config.databasePath.rfind(basePrefix, 0) == 0) &&
-            std::string(e.what()).find("Permission denied") != std::string::npos)
+    try
+    {
+        if (!m_config.outputFolder.empty())
         {
-            LOG_WARNING("Permission denied creating default CTI store directories. Continuing. Paths: output='{}' db='{}'", m_config.outputFolder, m_config.databasePath);
+            std::filesystem::create_directories(m_config.outputFolder);
         }
-        else
+        if (!m_config.databasePath.empty())
         {
-            LOG_ERROR("Failed to create necessary directories: {}", e.what());
-            throw;
+            std::filesystem::create_directories(m_config.databasePath);
         }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Failed to create CTI store directories: {}", e.what());
+        throw;
     }
 }
 
@@ -133,32 +240,15 @@ bool ContentDownloader::start()
     {
         LOG_INFO("Starting CTI Store ContentDownloader");
 
-        // Convert configuration to nlohmann::json for ContentRegister
-        nlohmann::json nlohmannConfig;
-        nlohmannConfig["topicName"] = m_config.topicName;
-        nlohmannConfig["interval"] = m_config.interval;
-        nlohmannConfig["ondemand"] = m_config.onDemand;
+        // Validate config before proceeding to register creation.
+        m_config.validate();
 
-        nlohmann::json configData;
-        configData["consumerName"] = m_config.consumerName;
-        configData["contentSource"] = m_config.contentSource;
-        configData["compressionType"] = m_config.compressionType;
-        configData["versionedContent"] = m_config.versionedContent;
-        configData["deleteDownloadedContent"] = m_config.deleteDownloadedContent;
-        configData["url"] = m_config.url;
-        configData["outputFolder"] = m_config.outputFolder;
-        configData["contentFileName"] = m_config.contentFileName;
-        configData["databasePath"] = m_config.databasePath;
-        configData["offset"] = m_config.offset;
-
-        nlohmannConfig["configData"] = configData;
+        // Usar método centralizado para construir la configuración JSON
+        auto nlohmannConfig = m_config.toNlohmann();
 
         // Initialize ContentRegister with the file processing callback
-        m_contentRegister = std::make_unique<ContentRegister>(
-            m_config.topicName,
-            nlohmannConfig,
-            m_fileProcessingCallback
-        );
+        m_contentRegister =
+            std::make_unique<ContentRegister>(m_config.topicName, nlohmannConfig, m_fileProcessingCallback);
 
         m_isRunning = true;
         m_shouldStop = false;
@@ -197,7 +287,6 @@ bool ContentDownloader::isRunning() const
     return m_isRunning;
 }
 
-
 void ContentDownloader::updateInterval(size_t newInterval)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -219,17 +308,11 @@ ContentManagerConfig ContentDownloader::getConfig() const
 
 void ContentDownloader::updateConfig(const ContentManagerConfig& config)
 {
+    config.validate();
+
     std::lock_guard<std::mutex> lock(m_mutex);
 
     m_config = config;
-
-    // If running, restart with new configuration
-    if (m_isRunning)
-    {
-        LOG_INFO("Restarting ContentDownloader with new configuration");
-        stop();
-        start();
-    }
 }
 
 FileProcessingResult ContentDownloader::processMessage(const std::string& message)
@@ -241,9 +324,7 @@ FileProcessingResult ContentDownloader::processMessage(const std::string& messag
         // Parse the message as JSON using RapidJSON
         json::Json parsedMessage(message.c_str());
 
-        if (!parsedMessage.exists("/paths") ||
-            !parsedMessage.exists("/type") ||
-            !parsedMessage.exists("/offset"))
+        if (!parsedMessage.exists("/paths") || !parsedMessage.exists("/type") || !parsedMessage.exists("/offset"))
         {
             throw std::runtime_error("Invalid message. Missing required fields.");
         }
@@ -271,7 +352,8 @@ FileProcessingResult ContentDownloader::defaultFileProcessingCallback(const std:
         if (m_shouldStop || !std::get<2>(result))
         {
             LOG_DEBUG("Content update process interrupted or failed. Offset: {}, Hash: {}",
-                     std::get<0>(result), std::get<1>(result));
+                      std::get<0>(result),
+                      std::get<1>(result));
             return result;
         }
 
@@ -285,9 +367,8 @@ FileProcessingResult ContentDownloader::defaultFileProcessingCallback(const std:
     }
 }
 
-FileProcessingResult ContentDownloader::processContentFiles(const json::Json& parsedMessage,
-                                                           const std::string& type,
-                                                           int offset)
+FileProcessingResult
+ContentDownloader::processContentFiles(const json::Json& parsedMessage, const std::string& type, int offset)
 {
     int currentOffset = offset;
     std::string hash = "";
