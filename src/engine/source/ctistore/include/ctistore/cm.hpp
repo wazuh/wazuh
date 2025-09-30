@@ -1,8 +1,8 @@
 #ifndef _CTI_STORE_CM
 #define _CTI_STORE_CM
 
-#include <ctistore/icmreader.hpp>
 #include <ctistore/contentDownloader.hpp>
+#include <ctistore/icmreader.hpp>
 
 #include <memory>
 #include <shared_mutex>
@@ -24,8 +24,7 @@ public:
      * @param config Configuration for the content downloader
      * @param autoStart If true, starts the downloader automatically
      */
-    explicit ContentManager(const ContentManagerConfig& config = ContentManagerConfig{},
-                           bool autoStart = false);
+    explicit ContentManager(const ContentManagerConfig& config = ContentManagerConfig {}, bool autoStart = false);
 
     /**
      * @brief Destructor
@@ -62,7 +61,6 @@ public:
 
     /** @copydoc ICMReader::getPolicyDefaultParent */
     base::Name getPolicyDefaultParent() const override;
-
 
     /************************************************************************************
      * Other public methods or other interfaces can be added here
