@@ -134,6 +134,7 @@ struct CTIStorageDB::Impl
 
     struct ColumnFamilyHandles
     {
+        CFHandle defaultCF;
         CFHandle metadata;
         CFHandle policy;
         CFHandle integration;
@@ -360,6 +361,7 @@ void CTIStorageDB::Impl::initializeColumnFamilies(const std::string& dbPath, boo
         throw std::runtime_error("Unexpected number of column family handles");
     }
 
+    m_cfHandles.defaultCF = CFHandle(handles[0], m_db.get());
     m_cfHandles.metadata = CFHandle(handles[1], m_db.get());
     m_cfHandles.policy = CFHandle(handles[2], m_db.get());
     m_cfHandles.integration = CFHandle(handles[3], m_db.get());
@@ -421,6 +423,7 @@ void CTIStorageDB::Impl::shutdown()
     flushOptions.wait = true; // Wait for flush to complete
 
     std::vector<rocksdb::ColumnFamilyHandle*> columnFamilies;
+    if (m_cfHandles.defaultCF.get()) columnFamilies.push_back(m_cfHandles.defaultCF.get());
     if (m_cfHandles.metadata.get()) columnFamilies.push_back(m_cfHandles.metadata.get());
     if (m_cfHandles.policy.get()) columnFamilies.push_back(m_cfHandles.policy.get());
     if (m_cfHandles.integration.get()) columnFamilies.push_back(m_cfHandles.integration.get());
@@ -445,6 +448,7 @@ void CTIStorageDB::Impl::shutdown()
 
     // Destroy column family handles before closing the database
     // This prevents the CFHandle destructor from trying to destroy handles after DB is closed
+    m_cfHandles.defaultCF = CFHandle();
     m_cfHandles.metadata = CFHandle();
     m_cfHandles.policy = CFHandle();
     m_cfHandles.integration = CFHandle();
