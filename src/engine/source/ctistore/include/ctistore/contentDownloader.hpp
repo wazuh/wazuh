@@ -9,6 +9,7 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <external/nlohmann/json.hpp>
 
 // Forward declaration of global ContentRegister (defined in shared_modules/content_manager)
 class ContentRegister;
@@ -34,7 +35,7 @@ struct ContentManagerConfig
 {
     std::string topicName {"engine_cti_store"};
     int interval {3600}; // seconds
-    bool onDemand {true};
+    bool onDemand {false};
     std::string basePath {};
 
     // Config data
@@ -55,9 +56,20 @@ struct ContentManagerConfig
     json::Json toJson() const;
 
     /**
+     * @brief Build an nlohmann::json object representing the config
+     */
+    nlohmann::json toNlohmann() const;
+
+    /**
      * @brief Load configuration from JSON
      */
     void fromJson(const json::Json& config);
+
+    /**
+     * @brief Validate semantic correctness of the configuration.
+     * Throws std::runtime_error describing the first violation found.
+     */
+    void validate() const;
 };
 
 /**
@@ -137,9 +149,7 @@ private:
      * @param offset Starting offset
      * @return Processing result
      */
-    FileProcessingResult processContentFiles(const json::Json& parsedMessage,
-                                             const std::string& type,
-                                             int offset);
+    FileProcessingResult processContentFiles(const json::Json& parsedMessage, const std::string& type, int offset);
 
     /**
      * @brief Store content in local database

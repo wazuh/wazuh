@@ -1,9 +1,9 @@
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-#include <ctistore/contentDownloader.hpp>
-#include <ctistore/cm.hpp>
 #include <base/name.hpp>
+#include <ctistore/cm.hpp>
+#include <ctistore/contentDownloader.hpp>
 
 #include <filesystem>
 #include <fstream>
@@ -83,11 +83,65 @@ TEST_F(ContentDownloaderTest, ConfigurationFromJsonConversion)
     EXPECT_EQ(config.databasePath, "/tmp/test_db");
 }
 
+TEST_F(ContentDownloaderTest, ToNlohmannConsistency)
+{
+    ContentManagerConfig cfg;
+    cfg.topicName = "tn";
+    cfg.interval = 42;
+    cfg.onDemand = true;
+    cfg.consumerName = "C";
+    cfg.outputFolder = "out";
+    cfg.databasePath = "db";
+    cfg.offset = 7;
+
+    auto nj = cfg.toNlohmann();
+    auto ej = cfg.toJson();
+
+    EXPECT_EQ(nj["topicName"].get<std::string>(), ej.getString("/topicName").value());
+    EXPECT_EQ(nj["interval"].get<int>(), ej.getInt("/interval").value());
+    EXPECT_EQ(nj["ondemand"].get<bool>(), ej.getBool("/ondemand").value());
+    EXPECT_EQ(nj["configData"]["consumerName"].get<std::string>(), ej.getString("/configData/consumerName").value());
+    EXPECT_EQ(nj["configData"]["offset"].get<int>(), ej.getInt("/configData/offset").value());
+}
+
+TEST(ContentManagerConfigValidationTest, ValidDefaultConfig)
+{
+    ContentManagerConfig cfg; // defaults are valid
+    EXPECT_NO_THROW(cfg.validate());
+}
+
+TEST(ContentManagerConfigValidationTest, InvalidInterval)
+{
+    ContentManagerConfig cfg;
+    cfg.interval = 0;
+    EXPECT_THROW(cfg.validate(), std::runtime_error);
+}
+
+TEST(ContentManagerConfigValidationTest, InvalidURLForCTISource)
+{
+    ContentManagerConfig cfg;
+    cfg.url = "ftp://invalid"; // not http/https
+    EXPECT_THROW(cfg.validate(), std::runtime_error);
+}
+
+TEST(ContentManagerConfigValidationTest, OfflineAllowsMissingHTTP)
+{
+    ContentManagerConfig cfg;
+    cfg.contentSource = "offline";
+    cfg.url.clear(); // allowed
+    EXPECT_NO_THROW(cfg.validate());
+}
+
+TEST(ContentManagerConfigValidationTest, AcceptsNonRawCompressionType)
+{
+    ContentManagerConfig cfg;
+    cfg.compressionType = "gzip"; // Should be accepted; content_manager handles decompression
+    EXPECT_NO_THROW(cfg.validate());
+}
+
 TEST_F(ContentDownloaderTest, ContentDownloaderConstruction)
 {
-    EXPECT_NO_THROW({
-        ContentDownloader downloader(testConfig);
-    });
+    EXPECT_NO_THROW({ ContentDownloader downloader(testConfig); });
 
     // Verify directories were created
     EXPECT_TRUE(std::filesystem::exists(testConfig.outputFolder));
@@ -117,12 +171,32 @@ TEST_F(ContentDownloaderTest, UpdateInterval)
     ContentDownloader downloader(testConfig);
 
     size_t newInterval = 7200;
-    EXPECT_NO_THROW({
-        downloader.updateInterval(newInterval);
-    });
+    EXPECT_NO_THROW({ downloader.updateInterval(newInterval); });
 
     auto config = downloader.getConfig();
     EXPECT_EQ(config.interval, newInterval);
+}
+
+TEST_F(ContentDownloaderTest, UpdateConfigRejectsInvalid)
+{
+    ContentDownloader downloader(testConfig);
+    ContentManagerConfig bad = testConfig;
+    bad.interval = 0; // invalid
+    EXPECT_THROW(downloader.updateConfig(bad), std::runtime_error);
+    // Original config remains
+    auto current = downloader.getConfig();
+    EXPECT_EQ(current.interval, testConfig.interval);
+}
+
+TEST(ContentManagerTest, ManagerUpdateConfigRejectsInvalid)
+{
+    ContentManagerConfig cfg; // defaults valid
+    ContentManager manager(cfg, false);
+    ContentManagerConfig bad = cfg;
+    bad.interval = 0; // invalid
+    EXPECT_THROW(manager.updateConfig(bad, false), std::runtime_error);
+    auto stored = manager.getConfig();
+    EXPECT_EQ(stored.interval, cfg.interval);
 }
 
 TEST_F(ContentDownloaderTest, ProcessMessageWithInvalidFormat)
@@ -132,9 +206,9 @@ TEST_F(ContentDownloaderTest, ProcessMessageWithInvalidFormat)
     std::string invalidMessage = R"({"invalid": "format"})";
     auto result = downloader.processMessage(invalidMessage);
 
-    EXPECT_EQ(std::get<0>(result), 0); // offset
+    EXPECT_EQ(std::get<0>(result), 0);  // offset
     EXPECT_EQ(std::get<1>(result), ""); // hash
-    EXPECT_FALSE(std::get<2>(result)); // status
+    EXPECT_FALSE(std::get<2>(result));  // status
 }
 
 TEST_F(ContentDownloaderTest, ProcessMessageWithValidOffsetFormat)
@@ -148,7 +222,8 @@ TEST_F(ContentDownloaderTest, ProcessMessageWithValidOffsetFormat)
     file.close();
 
     std::string validMessage = R"({
-        "paths": [")" + testFile + R"("],
+        "paths": [")" + testFile
+                               + R"("],
         "type": "offsets",
         "offset": 0
     })";
@@ -157,7 +232,7 @@ TEST_F(ContentDownloaderTest, ProcessMessageWithValidOffsetFormat)
 
     // The processing should succeed even if storage is not fully implemented
     EXPECT_EQ(std::get<0>(result), 100); // offset from file content
-    EXPECT_TRUE(std::get<2>(result)); // status should be true
+    EXPECT_TRUE(std::get<2>(result));    // status should be true
 }
 
 TEST_F(ContentDownloaderTest, ProcessMessageWithRawType)
@@ -172,7 +247,8 @@ TEST_F(ContentDownloaderTest, ProcessMessageWithRawType)
     file.close();
 
     std::string rawMessage = R"({
-        "paths": [")" + testFile + R"("],
+        "paths": [")" + testFile
+                             + R"("],
         "type": "raw",
         "offset": 0
     })";
@@ -189,7 +265,7 @@ TEST(ContentManagerConfigTest, DefaultValues)
     ContentManagerConfig config; // default constructed
     EXPECT_EQ(config.topicName, "engine_cti_store");
     EXPECT_EQ(config.interval, 3600);
-    EXPECT_TRUE(config.onDemand);
+    EXPECT_FALSE(config.onDemand);
     EXPECT_EQ(config.consumerName, "Wazuh Engine");
     EXPECT_EQ(config.contentSource, "cti-offset");
     EXPECT_EQ(config.outputFolder, "content");
@@ -238,8 +314,8 @@ TEST_F(ContentDownloaderTest, RelativePathsResolvedAgainstBasePath)
 
     EXPECT_TRUE(effective.outputFolder.find(baseRoot) == 0);
     EXPECT_TRUE(effective.databasePath.find(baseRoot) == 0);
-    EXPECT_EQ(effective.outputFolder, baseRoot + std::string{"/content"});
-    EXPECT_EQ(effective.databasePath, baseRoot + std::string{"/rocksdb"});
+    EXPECT_EQ(effective.outputFolder, baseRoot + std::string {"/content"});
+    EXPECT_EQ(effective.databasePath, baseRoot + std::string {"/rocksdb"});
 
     EXPECT_TRUE(std::filesystem::exists(effective.outputFolder));
     EXPECT_TRUE(std::filesystem::exists(effective.databasePath));
@@ -305,4 +381,36 @@ TEST(ContentManagerTest, SyncOperations)
     // Clean up
     std::filesystem::remove_all(config.databasePath);
     std::filesystem::remove_all(config.outputFolder);
+}
+
+TEST(ContentManagerTest, UpdateConfigWithRestartRestartsRunningSync)
+{
+    ContentManagerConfig cfg;
+    cfg.databasePath = "/tmp/cti_restart_db_" + std::to_string(std::time(nullptr));
+    cfg.outputFolder = "/tmp/cti_restart_content_" + std::to_string(std::time(nullptr));
+    cfg.interval = 2; // small interval
+
+    ContentManager manager(cfg, false);
+
+    // Start sync (may not actually run if ContentRegister unavailable, so guard with check)
+    manager.startSync();
+    bool wasRunning = manager.isSyncRunning();
+
+    // Prepare new valid config with different interval to force update
+    ContentManagerConfig updated = cfg;
+    updated.interval = cfg.interval + 5;
+
+    manager.updateConfig(updated, true);
+
+    auto after = manager.getConfig();
+    EXPECT_EQ(after.interval, updated.interval);
+
+    // If originally running, it should still (or again) be running after restart attempt
+    if (wasRunning)
+    {
+        EXPECT_TRUE(manager.isSyncRunning());
+    }
+
+    std::filesystem::remove_all(cfg.databasePath);
+    std::filesystem::remove_all(cfg.outputFolder);
 }
