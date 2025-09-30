@@ -761,6 +761,7 @@ ABSEILCPP_LIB = $(EXTERNAL_ABSEILCPP)build/build_result/lib*/libabsl_*.a
 RE2_LIB = $(EXTERNAL_RE2)build/libre2.a
 SIMDJSON_LIB = $(EXTERNAL_SIMDJSON)build/libsimdjson.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
+FLATBUFFERS_FLATC = $(EXTERNAL_FLATBUFFERS)build/flatc
 SPDLOG_LIB = $(EXTERNAL_SPDLOG)build/libspdlog.a
 YAMLCPP_LIB = $(EXTERNAL_YAMLCPP)build/libyaml-cpp.a
 PUGIXML_LIB = $(EXTERNAL_PUGIXML)build/libpugixml.a
@@ -921,6 +922,7 @@ ${SIMDJSON_LIB}:
 ### flatbuffers ###
 ${FLATBUFFERS_LIB}:
 	cd $(EXTERNAL_FLATBUFFERS) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0 -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+	test -f ${FLATBUFFERS_FLATC} || (echo "ERROR: flatc compiler not found after building flatbuffers. Expected at: ${FLATBUFFERS_FLATC}" && exit 1)
 
 ### spdlog ###
 ${SPDLOG_LIB}:
