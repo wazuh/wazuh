@@ -2029,9 +2029,6 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
     auto sportRef = *std::static_pointer_cast<Reference>(opArgs[2]);
     auto dportRef = *std::static_pointer_cast<Reference>(opArgs[3]);
 
-    std::optional<Reference> protoRef {};
-    std::optional<uint8_t> protoLiteral {};
-
     const auto& validator = buildCtx->validator();
 
     auto ensureStringRef = [&validator](const Reference& ref)
@@ -2067,20 +2064,22 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
     ensureNumericRef(sportRef);
     ensureNumericRef(dportRef);
 
+    const std::string saddrRefPath = saddrRef.jsonPath();
+    const std::string daddrRefPath = daddrRef.jsonPath();
+    const std::string sportRefPath = sportRef.jsonPath();
+    const std::string dportRefPath = dportRef.jsonPath();
+
+    std::string protoRefPath;
+    std::optional<uint8_t> protoLiteral {};
+
     if (opArgs[4]->isReference())
     {
         const auto ref = *std::static_pointer_cast<Reference>(opArgs[4]);
         if (validator.hasField(ref.dotPath()))
         {
-            const auto type = validator.getJsonType(ref.dotPath());
-            if (type != json::Json::Type::Number)
-            {
-                throw std::runtime_error(fmt::format("Expected 'number' reference but got reference '{}' of type '{}'",
-                                                     ref.dotPath(),
-                                                     json::Json::typeToStr(type)));
-            }
+            ensureNumericRef(ref);
         }
-        protoRef = ref;
+        protoRefPath = ref.jsonPath();
     }
     else
     {
@@ -2103,17 +2102,13 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
     const auto name = buildCtx->context().opName;
     const auto successTrace = fmt::format("{} -> Success", name);
 
-    const auto missingTrace = [name](const Reference& ref)
+    const auto missingTrace = [name](const std::string& path)
     {
-        return fmt::format("{} -> Reference '{}' not found", name, ref.dotPath());
+        return fmt::format("{} -> Reference '{}' not found", name, path);
     };
-    const auto numberTrace = [name](const Reference& ref)
+    const auto numberTrace = [name](const std::string& path)
     {
-        return fmt::format("{} -> Reference '{}' must be a number", name, ref.dotPath());
-    };
-    const auto invalidIPTrace = [name](const Reference& ref)
-    {
-        return fmt::format("{} -> Invalid IP format in '{}'", name, ref.dotPath());
+        return fmt::format("{} -> Reference '{}' must be a number", name, path);
     };
 
     const auto protoOutOfRangeTrace = fmt::format("{} -> network.iana_number out of range (expected 0..255)", name);
@@ -2123,32 +2118,19 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
         std::string saddr;
         std::string daddr;
 
-        auto readIp = [&](const Reference& ref,
-                          const std::string& missingMsg,
-                          const std::string& invalidMsg,
-                          std::string& out) -> std::optional<std::string>
+        const std::optional<std::string> saddrOpt = event->getString(saddrRefPath);
+        if (!saddrOpt)
         {
-            const auto valueOpt = event->getString(ref.jsonPath());
-            if (!valueOpt)
-                return missingMsg;
-
-            const auto& value = valueOpt.value();
-            if (!::utils::ip::checkStrIsIPv4(value) && !::utils::ip::checkStrIsIPv6(value))
-                return invalidMsg;
-
-            out = value;
-            return std::nullopt;
-        };
-
-        if (const auto err = readIp(saddrRef, missingTrace(saddrRef), invalidIPTrace(saddrRef), saddr))
-        {
-            RETURN_FAILURE(runState, json::Json {}, *err);
+            RETURN_FAILURE(runState, json::Json {}, missingTrace(saddrRefPath));
         }
+        saddr = saddrOpt.value();
 
-        if (const auto err = readIp(daddrRef, missingTrace(daddrRef), invalidIPTrace(daddrRef), daddr))
+        const std::optional<std::string> daddrOpt = event->getString(daddrRefPath);
+        if (!daddrOpt)
         {
-            RETURN_FAILURE(runState, json::Json {}, *err);
+            RETURN_FAILURE(runState, json::Json {}, missingTrace(daddrRefPath));
         }
+        daddr = daddrOpt.value();
 
         uint8_t proto = 0;
         if (protoLiteral)
@@ -2157,10 +2139,10 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
         }
         else
         {
-            const auto opt64 = event->getIntAsInt64(protoRef.value().jsonPath());
+            const auto opt64 = event->getIntAsInt64(protoRefPath);
             if (!opt64)
             {
-                RETURN_FAILURE(runState, json::Json {}, missingTrace(protoRef.value()));
+                RETURN_FAILURE(runState, json::Json {}, missingTrace(protoRefPath));
             }
 
             const auto value = opt64.value();
@@ -2175,22 +2157,22 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
         int64_t sport = 0;
         int64_t dport = 0;
 
-        if (const auto sportOpt = event->getIntAsInt64(sportRef.jsonPath()))
+        if (const auto sportOpt = event->getIntAsInt64(sportRefPath))
         {
             sport = sportOpt.value();
         }
         else if (event->exists(sportRef.jsonPath()))
         {
-            RETURN_FAILURE(runState, json::Json {}, numberTrace(sportRef));
+            RETURN_FAILURE(runState, json::Json {}, numberTrace(sportRefPath));
         }
 
-        if (const auto dportOpt = event->getIntAsInt64(dportRef.jsonPath()))
+        if (const auto dportOpt = event->getIntAsInt64(dportRefPath))
         {
             dport = dportOpt.value();
         }
         else if (event->exists(dportRef.jsonPath()))
         {
-            RETURN_FAILURE(runState, json::Json {}, numberTrace(dportRef));
+            RETURN_FAILURE(runState, json::Json {}, numberTrace(dportRefPath));
         }
 
         const auto cid = base::utils::CommunityId::getCommunityIdV1(saddr, daddr, sport, dport, proto, defaultSeed);
