@@ -18,7 +18,7 @@ static void * wm_command_main(wm_command_t * command);    // Module main functio
 #endif
 static void wm_command_destroy(wm_command_t * command);   // Destroy data
 cJSON *wm_command_dump(const wm_command_t * command);
-int validate_command_checksums(wm_command_t * command); // Validate checksums
+int validate_command_checksums(wm_command_t * command, const char * full_path); // Validate checksums
 
 // Command module context definition
 
@@ -45,9 +45,10 @@ void * wm_command_main(wm_command_t * command) {
     int usec = 1000000 / wm_max_eps;
     char *command_cpy;
     char *binary;
-    char *full_path;
+    char *full_path = NULL;
     char **argv;
     char * timestamp = NULL;
+    bool verify_command = command->md5_hash || command->sha1_hash || command->sha256_hash;
 
     if (!command->enabled) {
         mtinfo(WM_COMMAND_LOGTAG, "Module command:%s is disabled. Exiting.", command->tag);
@@ -61,9 +62,7 @@ void * wm_command_main(wm_command_t * command) {
     }
 #endif
 
-    // Verify command
-    if (command->md5_hash || command->sha1_hash || command->sha256_hash) {
-
+    if (verify_command) {
         command_cpy = strdup(command->command);
 
         argv = w_strtok(command_cpy);
@@ -87,12 +86,12 @@ void * wm_command_main(wm_command_t * command) {
         snprintf(command->full_command, strlen(full_path) + strlen(command->command) - strlen(binary) + 1, "%s %s", full_path, command->command + strlen(binary) + 1);
         free_strarray(argv);
 
-        if (validate_command_checksums(command) != 0) {
+        if (validate_command_checksums(command, full_path) != 0) {
+            os_free(full_path);
             pthread_exit(NULL);
         }
 
         free(command_cpy);
-        free(full_path);
 
     } else {
         command->full_command = strdup(command->command);
@@ -119,6 +118,10 @@ void * wm_command_main(wm_command_t * command) {
 
         if (command->queue_fd < 0) {
             mterror(WM_COMMAND_LOGTAG, "Can't connect to queue.");
+            if (verify_command) {
+                os_free(full_path);
+            }
+
             pthread_exit(NULL);
         }
     }
@@ -139,10 +142,12 @@ void * wm_command_main(wm_command_t * command) {
             w_sleep_until(next_scan_time);
         }
 
-        mtinfo(WM_COMMAND_LOGTAG, "Verifying command checksum '%s'.", command->tag);
-
-        if (validate_command_checksums(command) != 0 && !command->skip_verification) {
-            pthread_exit(NULL);
+        if (full_path != NULL && verify_command && !command->skip_verification) {
+            mtinfo(WM_COMMAND_LOGTAG, "Verifying command checksum '%s'.", command->tag);
+            if (validate_command_checksums(command, full_path) != 0) {
+                os_free(full_path);
+                pthread_exit(NULL);
+            }
         }
 
         mtinfo(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
@@ -185,6 +190,7 @@ void * wm_command_main(wm_command_t * command) {
         mtdebug1(WM_COMMAND_LOGTAG, "Command '%s' finished.", command->tag);
     } while (FOREVER());
 
+    os_free(full_path);
     free(extag);
 #ifdef WIN32
     return 0;
@@ -193,9 +199,9 @@ void * wm_command_main(wm_command_t * command) {
 #endif
 }
 
-int validate_command_checksums(wm_command_t * command) {
+int validate_command_checksums(wm_command_t * command, const char * full_path) {
     if (command->md5_hash && command->md5_hash[0]) {
-        if (wm_validate_command(command->full_command, command->md5_hash, MD5SUM) != 1) {
+        if (wm_validate_command(full_path, command->md5_hash, MD5SUM) != 1) {
             if (command->skip_verification) {
                 mtwarn(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command '%s'. Skipping...", command->full_command);
                 return 0;
@@ -203,10 +209,11 @@ int validate_command_checksums(wm_command_t * command) {
             mterror(WM_COMMAND_LOGTAG, "MD5 checksum verification failed for command '%s'.", command->full_command);
             return -1;
         }
+        mtdebug1(WM_COMMAND_LOGTAG, "MD5 checksum verification was successful for command '%s'.", command->full_command);
     }
 
     if (command->sha1_hash && command->sha1_hash[0]) {
-        if (wm_validate_command(command->full_command, command->sha1_hash, SHA1SUM) != 1) {
+        if (wm_validate_command(full_path, command->sha1_hash, SHA1SUM) != 1) {
             if (command->skip_verification) {
                 mtwarn(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command '%s'. Skipping...", command->full_command);
                 return 0;
@@ -214,10 +221,11 @@ int validate_command_checksums(wm_command_t * command) {
             mterror(WM_COMMAND_LOGTAG, "SHA1 checksum verification failed for command '%s'.", command->full_command);
             return -1;
         }
+        mtdebug1(WM_COMMAND_LOGTAG, "SHA1 checksum verification was successful for command '%s'.", command->full_command);
     }
 
     if (command->sha256_hash && command->sha256_hash[0]) {
-        if (wm_validate_command(command->full_command, command->sha256_hash, SHA256SUM) != 1) {
+        if (wm_validate_command(full_path, command->sha256_hash, SHA256SUM) != 1) {
             if (command->skip_verification) {
                 mtwarn(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command '%s'. Skipping...", command->full_command);
                 return 0;
@@ -225,9 +233,9 @@ int validate_command_checksums(wm_command_t * command) {
             mterror(WM_COMMAND_LOGTAG, "SHA256 checksum verification failed for command '%s'.", command->full_command);
             return -1;
         }
+        mtdebug1(WM_COMMAND_LOGTAG, "SHA256 checksum verification was successful for command '%s'.", command->full_command);
     }
 
-    mtdebug1(WM_COMMAND_LOGTAG, "Checksum verification was successful for command '%s'.", command->full_command);
     return 0;
 }
 
