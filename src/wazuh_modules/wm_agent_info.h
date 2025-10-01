@@ -18,6 +18,7 @@
 
 #define WM_AGENT_INFO_LOGTAG ARGV0 ":agent-info"
 #define AGENT_INFO_WM_NAME   "agent-info"
+#define AGENT_INFO_LIB_NAME  "agent_info"
 
 typedef struct wm_agent_info_t
 {
