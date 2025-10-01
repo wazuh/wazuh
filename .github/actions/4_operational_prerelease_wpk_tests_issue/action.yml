@@ -67,12 +67,12 @@ runs:
 
         We aim to test each WPK package on a modern platform that supports it.
 
-        | Platform   | Suggested OS           |
-        |------------|------------------------|
-        | DEB        | Ubuntu 24.04           |
-        | RPM        | AlmaLinux 9            |
-        | MSI        | Windows 11             |
-        | PKG x86_64 | macOS 15 Sonoma @arm64 |
+        | Platform | Suggested OS          |
+        |----------|-----------------------|
+        | DEB      | Ubuntu 24.04          |
+        | RPM      | AlmaLinux 9           |
+        | MSI      | Windows 11            |
+        | PKG      | macOS 26 Tahoe @arm64 |
 
         ## Download the manager package
 
