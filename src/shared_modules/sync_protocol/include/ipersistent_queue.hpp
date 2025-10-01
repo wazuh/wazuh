@@ -29,7 +29,8 @@ enum class Operation : int
 enum class Mode : int
 {
     FULL  = MODE_FULL,  ///< Full synchronization mode.
-    DELTA = MODE_DELTA  ///< Delta synchronization mode.
+    DELTA = MODE_DELTA, ///< Delta synchronization mode.
+    CHECK = MODE_CHECK  ///< Integrity check mode.
 };
 
 /// @brief Represents a persisted message used in module synchronization.
