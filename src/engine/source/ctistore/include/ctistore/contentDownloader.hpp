@@ -137,28 +137,6 @@ public:
     FileProcessingResult processMessage(const std::string& message);
 
 private:
-    /**
-     * @brief Default file processing callback
-     */
-    FileProcessingResult defaultFileProcessingCallback(const std::string& message);
-
-    /**
-     * @brief Process downloaded content files
-     * @param parsedMessage The parsed JSON message containing paths
-     * @param type Type of content (offsets or raw)
-     * @param offset Starting offset
-     * @return Processing result
-     */
-    FileProcessingResult processContentFiles(const json::Json& parsedMessage, const std::string& type, int offset);
-
-    /**
-     * @brief Store content in local database
-     * @param content Content to store
-     * @return true if stored successfully
-     */
-    bool storeContent(const json::Json& content);
-
-private:
     ContentManagerConfig m_config;
     FileProcessingCallback m_fileProcessingCallback;
     std::unique_ptr<ContentRegister> m_contentRegister;

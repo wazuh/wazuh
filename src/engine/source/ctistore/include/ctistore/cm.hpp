@@ -103,19 +103,18 @@ public:
     void updateConfig(const ContentManagerConfig& config, bool restart = true);
 
 private:
-    /**
-     * @brief Process downloaded content and store in database
-     * @param message Message from content downloader
-     * @return Processing result
-     */
+    // Internal unified processing function invoked by downloader callback
     FileProcessingResult processDownloadedContent(const std::string& message);
 
-public: // Test support (non-API): expose processing for unit tests
-    /**
-     * @brief Test-only helper to invoke internal processing logic directly.
-     * Not part of the public runtime API; intended for unit tests.
-     */
-    FileProcessingResult testProcessMessage(const std::string& message) { return processDownloadedContent(message); }
+public: // Test support: delegate to downloader
+    FileProcessingResult testProcessMessage(const std::string& message)
+    {
+        if (m_downloader)
+        {
+            return m_downloader->processMessage(message);
+        }
+        return {0, "", false};
+    }
 
     /**
      * @brief Store integration asset in local database
