@@ -67,21 +67,27 @@ runs:
 
         We aim to test each WPK package on a modern platform that supports it.
 
-        | Platform   | Suggested OS           |
-        |------------|------------------------|
-        | DEB        | Ubuntu 24.04           |
-        | RPM        | AlmaLinux 9            |
-        | MSI        | Windows 11             |
-        | PKG x86_64 | macOS 15 Sonoma @arm64 |
+        | Platform | Suggested OS          |
+        |----------|-----------------------|
+        | DEB      | Ubuntu 24.04          |
+        | RPM      | AlmaLinux 9           |
+        | MSI      | Windows 11            |
+        | PKG      | macOS 26 Tahoe @arm64 |
+
+        ## Download the manager package
+
+        \`\`\`shell
+        curl -LsO https://packages-dev.wazuh.com/pre-release/apt/pool/main/w/wazuh-manager/wazuh-manager_${RELEASE}-1_amd64.deb
+        curl -LsO https://packages-dev.wazuh.com/pre-release/yum/wazuh-manager-${RELEASE}-1.x86_64.rpm
+        \`\`\`
 
         ## Download the WPK packages
 
         \`\`\`shell
-        cd /var/ossec/tmp
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/deb/amd64/wazuh_agent_v$RELEASE_linux_amd64.deb.wpk
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/rpm/x86_64/wazuh_agent_v$RELEASE_linux_x86_64.rpm.wpk
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/intel64/wazuh_agent_v$RELEASE_macos_intel64.pkg.wpk
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/windows/wazuh_agent_v$RELEASE_windows.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/deb/amd64/wazuh_agent_v${RELEASE}_linux_amd64.deb.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/rpm/x86_64/wazuh_agent_v${RELEASE}_linux_x86_64.rpm.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/intel64/wazuh_agent_v${RELEASE}_macos_intel64.pkg.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/windows/wazuh_agent_v${RELEASE}_windows.wpk
         \`\`\`
 
         ## Report procedure
