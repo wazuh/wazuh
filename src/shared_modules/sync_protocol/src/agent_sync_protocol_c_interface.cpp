@@ -144,6 +144,34 @@ extern "C" {
         }
     }
 
+    bool asp_check_index_integrity(AgentSyncProtocolHandle* handle,
+                                    const char* index,
+                                    const char* checksum,
+                                    unsigned int sync_timeout,
+                                    unsigned int retries,
+                                    size_t max_eps)
+    {
+        try
+        {
+            if (!handle || !index || !checksum) return false;
+
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+            return wrapper->impl->checkIndexIntegrity(index,
+                                                      checksum,
+                                                      std::chrono::seconds(sync_timeout),
+                                                      retries,
+                                                      max_eps);
+        }
+        catch (const std::exception& ex)
+        {
+            return false;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
     bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length)
     {
         try
