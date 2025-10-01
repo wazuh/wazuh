@@ -74,8 +74,6 @@ x-rbac-catalog:
       description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
     'decoder:file':
       description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-    'kvdbs':
-      description: "User-defined KVDBs"
     'rule:file':
       description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
     'policy:id':
@@ -1958,16 +1956,10 @@ components:
         - type: object
           description: "KVDB asset descriptor and content"
           required:
-            - type
             - id
             - name
             - content
           properties:
-            type:
-              type: string
-              description: "Asset type. Always 'kvdb'."
-              enum:
-                - kvdb
             integration_id:
               type: string
               nullable: true
@@ -10253,7 +10245,6 @@ paths:
               example:
                 data:
                   affected_items:
-                    - type: kvdb
                       id: ip_reputation
                       integration_id: threatintel_v1
                       name: "IP Reputation"
@@ -10297,7 +10288,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ItemKVDB'
             example:
-              type: kvdb
               id: kvdb_id
               integration_id: integration_a_id
               name: "Example KVDB"
@@ -10367,7 +10357,6 @@ paths:
               example:
                 data:
                   affected_items:
-                    - type: kvdb
                       id: kvdb_id
                       integration_id: integration_a_id
                       name: "Example KVDB"
