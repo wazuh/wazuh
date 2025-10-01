@@ -203,6 +203,8 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1)
 
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)
 {
+    mdebug1("Read_AGENT_INFO: Starting to read configuration for node '%s'", node->element);
+
     wmodule** wmodules = (wmodule**)d1;
     wmodule* cur_wmodule;
     xml_node** children = NULL;
@@ -211,6 +213,7 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)
     // Allocate memory
     if ((cur_wmodule = *wmodules))
     {
+        mdebug2("Read_AGENT_INFO: Existing wmodules found, checking for duplicates");
         cur_wmodule_exists = *wmodules;
         int found = 0;
 
@@ -220,6 +223,7 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)
             {
                 if (strcmp(cur_wmodule_exists->tag, node->element) == 0)
                 {
+                    mdebug2("Read_AGENT_INFO: Found existing module with tag '%s', reusing it", node->element);
                     cur_wmodule = cur_wmodule_exists;
                     found = 1;
                     break;
@@ -230,6 +234,7 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)
 
         if (!found)
         {
+            mdebug2("Read_AGENT_INFO: No existing module found, creating new module");
             while (cur_wmodule->next) cur_wmodule = cur_wmodule->next;
 
             os_calloc(1, sizeof(wmodule), cur_wmodule->next);
@@ -237,7 +242,10 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)
         }
     }
     else
+    {
+        mdebug2("Read_AGENT_INFO: No wmodules exist, allocating first module");
         *wmodules = cur_wmodule = calloc(1, sizeof(wmodule));
+    }
 
     if (!cur_wmodule)
     {
@@ -245,23 +253,33 @@ int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1)
         return (OS_INVALID);
     }
 
+    mdebug2("Read_AGENT_INFO: Successfully allocated/retrieved wmodule");
+
     // Get children
     if (children = OS_GetElementsbyNode(xml, node), !children)
     {
         mdebug1("Empty configuration for module '%s'", node->element);
     }
+    else
+    {
+        mdebug2("Read_AGENT_INFO: Found child elements for module '%s'", node->element);
+    }
 
     // Agent Info Module
     if (!strcmp(node->element, WM_AGENT_INFO_CONTEXT.name))
     {
+        mdebug1("Read_AGENT_INFO: Calling wm_agent_info_read for module '%s'", node->element);
         if (wm_agent_info_read(xml, children, cur_wmodule) < 0)
         {
+            merror("Read_AGENT_INFO: Failed to read agent info configuration");
             OS_ClearNode(children);
             return OS_INVALID;
         }
+        mdebug1("Read_AGENT_INFO: Successfully read agent info configuration");
     }
 
     OS_ClearNode(children);
+    mdebug1("Read_AGENT_INFO: Completed reading configuration for node '%s'", node->element);
     return 0;
 }
 
