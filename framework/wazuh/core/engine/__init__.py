@@ -11,6 +11,7 @@ from wazuh.core.exception import WazuhEngineError
 
 from wazuh.core.engine.catalog import CatalogModule
 from wazuh.core.engine.content import ContentModule
+from wazuh.core.engine.integrations_order import IntegrationsOrderModule
 
 logger = getLogger('wazuh')
 
@@ -34,6 +35,7 @@ class Engine:
         # Register Engine modules here
         self.catalog = CatalogModule(self._client)
         self.content = ContentModule(self._client)
+        self.integrations_order = IntegrationsOrderModule(self._client)
 
     async def close(self) -> None:
         """Close the Engine client."""

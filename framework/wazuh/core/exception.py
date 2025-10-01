@@ -629,6 +629,15 @@ class WazuhException(Exception):
             'remediation': 'Please verify the integration names and ensure they exist in the system.'},
         8008: {'message': 'Engine error: Error uploading the integration',
                'remediation': 'Please check the integration data and ensure it meets the required format before uploading.'},
+        # Integrations Order specific errors
+        8009: {'message': 'Integrations order file already exists.',
+               'remediation': 'Please remove the existing integrations order file before creating a new one.'},
+        8010: {'message': 'Integrations order file does not exist.',
+               'remediation': 'Please ensure the integrations order file exists before attempting this operation.'},
+        8011: {'message': 'Error validating integrations order with the engine.',
+               'remediation': 'Please check the integrations order content and try again.'},
+        8012: {'message': 'Error deleting integrations order from the engine.',
+               'remediation': 'Please check the integrations order file and engine status.'},
     }
 
     # Reserve agent upgrade custom errors
