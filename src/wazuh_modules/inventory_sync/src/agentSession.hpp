@@ -153,7 +153,7 @@ public:
      * @param data Parsed flatbuffer metadata (e.g., sequence number).
      * @param dataRaw Raw binary payload of the chunk.
      */
-    void handleData(Wazuh::SyncSchema::Data const* data, flatbuffers::Vector<uint8_t> const* dataRaw)
+    void handleData(Wazuh::SyncSchema::DataValue const* data, flatbuffers::Vector<uint8_t> const* dataRaw)
     {
         if (data == nullptr)
         {

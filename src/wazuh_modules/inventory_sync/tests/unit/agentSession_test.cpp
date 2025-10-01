@@ -41,7 +41,7 @@ protected:
     {
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_size(size);
-        startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
+        startBuilder.add_mode(Wazuh::SyncSchema::Mode_ModuleFull);
         return startBuilder.Finish();
     }
 
@@ -119,7 +119,7 @@ TEST_F(AgentSessionTest, Constructor_NullModule)
 {
     Wazuh::SyncSchema::StartBuilder startBuilder(builder);
     startBuilder.add_size(10);
-    startBuilder.add_mode(Wazuh::SyncSchema::Mode_Full);
+    startBuilder.add_mode(Wazuh::SyncSchema::Mode_ModuleFull);
     auto startMsg = startBuilder.Finish();
 
     builder.Finish(startMsg);
@@ -185,14 +185,14 @@ TEST_F(AgentSessionTest, HandleData_Success)
     std::vector<int8_t> testData = {0x01, 0x02, 0x03, 0x04};
     auto dataVector = dataBuilder.CreateVector(testData);
 
-    Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
+    Wazuh::SyncSchema::DataValueBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
     dataMsgBuilder.add_session(sessionId);
     dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
 
-    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::Data>(dataBuilder.GetBufferPointer());
+    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::DataValue>(dataBuilder.GetBufferPointer());
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(0);
@@ -224,14 +224,14 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndNotReceived)
     std::vector<int8_t> testData = {0x01, 0x02, 0x03, 0x04};
     auto dataVector = dataBuilder.CreateVector(testData);
 
-    Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
+    Wazuh::SyncSchema::DataValueBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
     dataMsgBuilder.add_session(sessionId);
     dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
 
-    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::Data>(dataBuilder.GetBufferPointer());
+    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::DataValue>(dataBuilder.GetBufferPointer());
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(0); // End not received, should not push
@@ -266,14 +266,14 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndReceived)
     std::vector<int8_t> testData = {0x01, 0x02, 0x03, 0x04};
     auto dataVector = dataBuilder.CreateVector(testData);
 
-    Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
+    Wazuh::SyncSchema::DataValueBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
     dataMsgBuilder.add_session(sessionId);
     dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
 
-    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::Data>(dataBuilder.GetBufferPointer());
+    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::DataValue>(dataBuilder.GetBufferPointer());
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
@@ -329,14 +329,14 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetEmpty)
     std::vector<int8_t> testData = {0x01, 0x02, 0x03, 0x04};
     auto dataVector = dataBuilder.CreateVector(testData);
 
-    Wazuh::SyncSchema::DataBuilder dataMsgBuilder(dataBuilder);
+    Wazuh::SyncSchema::DataValueBuilder dataMsgBuilder(dataBuilder);
     dataMsgBuilder.add_seq(0);
     dataMsgBuilder.add_session(sessionId);
     dataMsgBuilder.add_data(dataVector);
     auto dataMsg = dataMsgBuilder.Finish();
     dataBuilder.Finish(dataMsg);
 
-    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::Data>(dataBuilder.GetBufferPointer());
+    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::DataValue>(dataBuilder.GetBufferPointer());
 
     EXPECT_CALL(mockStore, put(_, _)).Times(1);
     session.handleData(data, reinterpret_cast<const flatbuffers::Vector<uint8_t>*>(data->data()));
