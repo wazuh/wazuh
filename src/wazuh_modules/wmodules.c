@@ -10,6 +10,7 @@
  */
 
 #include "wmodules.h"
+#include "wm_agent_info.h"
 #include "os_crypto/md5/md5_op.h"
 #include "os_crypto/sha1/sha1_op.h"
 #include "os_crypto/sha256/sha256_op.h"
@@ -31,6 +32,7 @@ static const void *default_modules[] = {
     wm_agent_upgrade_read,
 #ifndef CLIENT
     wm_task_manager_read,
+    wm_agent_info_read
 #endif
     NULL
 };
