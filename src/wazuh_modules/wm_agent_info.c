@@ -16,6 +16,7 @@
 #include "logging_helper.h"
 
 #include <stdio.h>
+#include <dlfcn.h>
 
 static const char* XML_ENABLED = "enabled";
 static const char* XML_INTERVAL = "interval";
@@ -158,11 +159,16 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     }
 
     // Get module handle and function pointers
-    if (agent_info_module = so_get_module_handle(AGENT_INFO_WM_NAME), agent_info_module)
+    mdebug1("Attempting to load library: lib%s.so", AGENT_INFO_LIB_NAME);
+    if (agent_info_module = so_get_module_handle(AGENT_INFO_LIB_NAME), agent_info_module)
     {
+        mdebug1("Successfully loaded agent-info library");
         agent_info_start_ptr = so_get_function_sym(agent_info_module, "agent_info_start");
         agent_info_stop_ptr = so_get_function_sym(agent_info_module, "agent_info_stop");
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
+
+        mdebug2("Function pointers - start: %p, stop: %p, set_log: %p",
+                agent_info_start_ptr, agent_info_stop_ptr, agent_info_set_log_function_ptr);
 
         // Set the logging function pointer in the agent-info module
         if (agent_info_set_log_function_ptr)
@@ -172,7 +178,8 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     }
     else
     {
-        merror("Can't get agent-info module handle.");
+        merror("Can't get agent-info module handle for library: lib%s.so", AGENT_INFO_LIB_NAME);
+        merror("dlopen error: %s", dlerror());
         return NULL;
     }
 
