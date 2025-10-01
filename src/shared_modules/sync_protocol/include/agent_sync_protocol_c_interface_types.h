@@ -31,7 +31,8 @@ typedef enum
 typedef enum
 {
     MODE_FULL  = 0,  ///< Full synchronization
-    MODE_DELTA = 1   ///< Delta synchronization
+    MODE_DELTA = 1,  ///< Delta synchronization
+    MODE_CHECK = 2   ///< Integrity check mode
 } Mode_t;
 
 /// @brief Opaque handle to the AgentSyncProtocol C++ object.

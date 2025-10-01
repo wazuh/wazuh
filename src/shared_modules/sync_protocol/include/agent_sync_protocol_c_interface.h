@@ -73,6 +73,22 @@ bool asp_sync_module(AgentSyncProtocolHandle* handle,
                      unsigned int sync_retries,
                      size_t max_eps);
 
+/// @brief Checks the integrity of a module index with the server.
+///
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param index The index/table to check.
+/// @param checksum The calculated checksum for the index.
+/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
+/// @param sync_retries The maximum number of attempts for re-sending messages.
+/// @param max_eps The maximum event reporting throughput. 0 means disabled.
+/// @return true if the integrity check was successfully completed; false otherwise.
+bool asp_check_index_integrity(AgentSyncProtocolHandle* handle,
+                                const char* index,
+                                const char* checksum,
+                                unsigned int sync_timeout,
+                                unsigned int sync_retries,
+                                size_t max_eps);
+
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.
 /// @param data Pointer to the FlatBuffer-encoded message.

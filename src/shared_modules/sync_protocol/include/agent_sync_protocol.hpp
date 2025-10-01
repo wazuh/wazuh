@@ -46,6 +46,13 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
 
+        /// @copydoc IAgentSyncProtocol::checkIndexIntegrity
+        bool checkIndexIntegrity(const std::string& index,
+                                 const std::string& checksum,
+                                 std::chrono::seconds timeout,
+                                 unsigned int retries,
+                                 size_t maxEps) override;
+
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
         /// @param length Size of the FlatBuffer message in bytes.
@@ -107,6 +114,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool sendDataMessages(uint64_t session,
                               const std::vector<PersistedData>& data,
                               size_t maxEps);
+
+        /// @brief Sends a checksum module message to the server
+        /// @param session Session id
+        /// @param index Index name
+        /// @param checksum Checksum value
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @return True on success, false on failure
+        bool sendChecksumMessage(uint64_t session,
+                                 const std::string& index,
+                                 const std::string& checksum,
+                                 size_t maxEps);
 
         /// @brief Sends an end message to the server
         /// @param session Session id
