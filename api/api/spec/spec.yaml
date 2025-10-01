@@ -10218,9 +10218,9 @@ paths:
     get:
       tags:
         - KVDBs
-      summary: "List or get KVDBs"
+      summary: "List KVDB resources"
       description: "Return KVDBs."
-      operationId: api.controllers.kvdbs_controller.get_kvdbs
+      operationId: api.controllers.kvdb_controller.get_kvdbs
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:read'
       parameters:
@@ -10274,7 +10274,7 @@ paths:
         - KVDBs
       summary: "Create a KVDB"
       description: "Create a KVDB."
-      operationId: api.controllers.kvdbs_controller.post_kvdbs
+      operationId: api.controllers.kvdb_controller.post_kvdbs
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:create'
       parameters:
@@ -10328,7 +10328,7 @@ paths:
         - KVDBs
       summary: "Update a KVDB"
       description: "Update a KVDB."
-      operationId: api.controllers.kvdbs_controller.put_kvdbs
+      operationId: api.controllers.kvdb_controller.put_kvdbs
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:update'
       parameters:
@@ -10386,7 +10386,7 @@ paths:
         - KVDBs
       summary: "Delete KVDBs"
       description: "Delete one or more KVDBs."
-      operationId: api.controllers.kvdbs_controller.delete_kvdbs
+      operationId: api.controllers.kvdb_controller.delete_kvdbs
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/kvdbs:delete'
       parameters:

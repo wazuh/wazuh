@@ -8,7 +8,8 @@ from connexion.lifecycle import ConnexionResponse
 
 from api.controllers.util import json_response
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
-from wazuh import kvdbs
+from api.models.kvdb_model import KVDBCreateModel, KVDBUpdateModel
+from wazuh import kvdb
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh-api')
@@ -17,8 +18,8 @@ logger = logging.getLogger('wazuh-api')
 async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
                     offset: int = 0, limit: int = None, select: list = None,
                     sort: str = None, search: str = None, q: str = None,
-                    distinct: bool = False, type_: str = None, kvdb_id: list = None) -> ConnexionResponse:
-    """List or get KVDBs.
+                    distinct: bool = False, policy_type: str = None, kvdb_id: list = None) -> ConnexionResponse:
+    """List KVDB resources.
 
     Parameters
     ----------
@@ -41,7 +42,7 @@ async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
         Query to filter results by.
     distinct : bool
         Look for distinct values.
-    type_ : str
+    policy_type : str
         Policy type. Allowed values: 'testing' | 'production'.
     kvdb_id : list[str]
         Filter by KVDB IDs (e.g. kvdb_id=foo&kvdb_id=bar).
@@ -52,7 +53,7 @@ async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
         API response.
     """
     f_kwargs = {
-        'policy_type': type_,
+        'policy_type': policy_type,
         'ids': kvdb_id if kvdb_id else None,
         'offset': offset,
         'limit': limit,
@@ -67,7 +68,7 @@ async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
     }
 
     dapi = DistributedAPI(
-        f=kvdbs.list_kvdbs,
+        f=kvdb.list_kvdbs,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_master',
         is_async=True,
@@ -81,14 +82,13 @@ async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
 
 
 async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = False,
-                     type_: str = None) -> ConnexionResponse:
-    """Create a KVDB (master node only).
+                     policy_type: str = None) -> ConnexionResponse:
+    """Create a KVDB.
 
     Parameters
     ----------
     body : dict
         JSON body with the KVDB item to create. Expected fields:
-          - type: "kvdb"
           - id: str
           - integration_id: str (optional)
           - name: str
@@ -97,7 +97,7 @@ async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool =
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    type_ : str
+    policy_type : str
         Policy type. Allowed values: 'testing' | 'production'.
 
     Returns
@@ -106,12 +106,14 @@ async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool =
         API response.
     """
     f_kwargs = {
-        'policy_type': type_,
+        'policy_type': policy_type,
         'item': body or {}
     }
+    
+    KVDBCreateModel.from_dict(body or {})
 
     dapi = DistributedAPI(
-        f=kvdbs.create_kvdb,
+        f=kvdb.create_kvdb,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_master',
         is_async=True,
@@ -125,7 +127,7 @@ async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool =
 
 
 async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = False,
-                    type_: str = None) -> ConnexionResponse:
+                    policy_type: str = None) -> ConnexionResponse:
     """Update a KVDB (master node only).
 
     Parameters
@@ -140,7 +142,7 @@ async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = 
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    type_ : str
+    policy_type : str
         Policy type. Allowed values: 'testing' | 'production'.
 
     Returns
@@ -149,12 +151,14 @@ async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = 
         API response.
     """
     f_kwargs = {
-        'policy_type': type_,
+        'policy_type': policy_type,
         'item': body or {}
     }
 
+    KVDBUpdateModel.from_dict(body or {})
+
     dapi = DistributedAPI(
-        f=kvdbs.update_kvdb,
+        f=kvdb.update_kvdb,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_master',
         is_async=True,
@@ -168,7 +172,7 @@ async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = 
 
 
 async def delete_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
-                       type_: str = None, kvdb_id: list = None) -> ConnexionResponse:
+                       policy_type: str = None, kvdb_id: list = None) -> ConnexionResponse:
     """Delete one or more KVDBs (master node only).
 
     Parameters
@@ -177,7 +181,7 @@ async def delete_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    type_ : str
+    policy_type : str
         Policy type. Allowed values: 'testing' | 'production'.
     kvdb_id : list[str]
         KVDB IDs to delete (e.g. kvdb_id=foo&kvdb_id=bar).
@@ -188,12 +192,12 @@ async def delete_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
         API response.
     """
     f_kwargs = {
-        'policy_type': type_,
+        'policy_type': policy_type,
         'ids': kvdb_id if kvdb_id else None
     }
 
     dapi = DistributedAPI(
-        f=kvdbs.delete_kvdbs,
+        f=kvdb.delete_kvdbs,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_master',
         is_async=True,
