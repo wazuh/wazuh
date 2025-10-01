@@ -184,7 +184,7 @@ target_link_libraries(builder_utest
     streamlogger::mocks
     wIndexerConnector::mocks
 )
-gtest_discover_tests(builder_utest)
+gtest_discover_tests(builder_utest DISCOVERY_TIMEOUT 60)
 
 if(ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
     target_compile_definitions(builder_utest PRIVATE ENGINE_ENABLE_REVERSE_ORDER_DECODERS_FEATURE)
