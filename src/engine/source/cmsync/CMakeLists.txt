@@ -12,6 +12,7 @@ add_library(cmsync::icmsync ALIAS cmsync_icmsync)
 # Implementation
 add_library(cmsync_cmsync STATIC
     ${SRC_DIR}/cm.cpp
+    ${SRC_DIR}/coreoutput.cpp
 )
 target_include_directories(cmsync_cmsync
     PUBLIC
