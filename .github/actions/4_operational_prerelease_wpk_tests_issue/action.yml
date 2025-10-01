@@ -77,11 +77,10 @@ runs:
         ## Download the WPK packages
 
         \`\`\`shell
-        cd /var/ossec/tmp
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/deb/amd64/wazuh_agent_v$RELEASE_linux_amd64.deb.wpk
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/rpm/x86_64/wazuh_agent_v$RELEASE_linux_x86_64.rpm.wpk
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/intel64/wazuh_agent_v$RELEASE_macos_intel64.pkg.wpk
-        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/windows/wazuh_agent_v$RELEASE_windows.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/deb/amd64/wazuh_agent_v${RELEASE}_linux_amd64.deb.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/linux/rpm/x86_64/wazuh_agent_v${RELEASE}_linux_x86_64.rpm.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/macos/pkg/intel64/wazuh_agent_v${RELEASE}_macos_intel64.pkg.wpk
+        curl -LsO https://packages-dev.wazuh.com/pre-release/wpk/windows/wazuh_agent_v${RELEASE}_windows.wpk
         \`\`\`
 
         ## Report procedure
