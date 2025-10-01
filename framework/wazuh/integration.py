@@ -235,9 +235,9 @@ def delete_integration(names: List[str], policy_type: PolicyType):
     WazuhError
         If the integration does not exist or file/engine operations fail (codes: 8005, 1019, 1907, 8007).
     """
-    result = AffectedItemsWazuhResult(all_msg='Decoder file was successfully deleted',
-                                      some_msg='Some decoders were not returned',
-                                      none_msg='Could not delete decoder file')
+    result = AffectedItemsWazuhResult(all_msg='Integration file was successfully deleted',
+                                      some_msg='Some integrations were not returned',
+                                      none_msg='Could not delete integration file')
 
     for name in names:
         backup_file = ''
