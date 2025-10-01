@@ -78,7 +78,7 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
 bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
     // Validate synchronization mode
-    if (mode != Mode::FULL && mode != Mode::DELTA)
+    if (mode != Mode::FULL && mode != Mode::DELTA && mode != Mode::CHECK)
     {
         m_logger(LOG_ERROR, "Invalid synchronization mode: " + std::to_string(static_cast<int>(mode)));
         return false;
@@ -186,6 +186,56 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
     return success;
 }
 
+bool AgentSyncProtocol::checkIndexIntegrity(const std::string& index,
+                                            const std::string& checksum,
+                                            std::chrono::seconds timeout,
+                                            unsigned int retries,
+                                            size_t maxEps)
+{
+    if (!ensureQueueAvailable())
+    {
+        m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
+        return false;
+    }
+
+    clearSyncState();
+
+    // Step 1: Send Start message with mode ModuleCheck
+    std::vector<std::string> indices = {index};
+    if (!sendStartAndWaitAck(Mode::CHECK, 0, indices, timeout, retries, maxEps))
+    {
+        m_logger(LOG_ERROR, "Failed to send Start message for integrity check");
+        clearSyncState();
+        return false;
+    }
+
+    // Step 2: Send ChecksumModule message
+    if (!sendChecksumMessage(m_syncState.session, index, checksum, maxEps))
+    {
+        m_logger(LOG_ERROR, "Failed to send ChecksumModule message");
+        clearSyncState();
+        return false;
+    }
+
+    m_logger(LOG_DEBUG, "ChecksumModule message sent for index: " + index);
+
+    // Step 3: Send End message and wait for EndAck
+    bool success = false;
+    std::vector<PersistedData> emptyData; // No data to send for integrity check
+    if (sendEndAndWaitAck(m_syncState.session, timeout, retries, emptyData, maxEps))
+    {
+        success = true;
+        m_logger(LOG_DEBUG, "Module integrity check completed successfully for index: " + index);
+    }
+    else
+    {
+        m_logger(LOG_WARNING, "Module integrity check failed for index: " + index);
+    }
+
+    clearSyncState();
+    return success;
+}
+
 bool AgentSyncProtocol::ensureQueueAvailable()
 {
     try
@@ -222,9 +272,19 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         flatbuffers::FlatBufferBuilder builder;
 
         // Translate DB mode to Schema mode
-        const auto protocolMode = (mode == Mode::FULL)
-                                  ? Wazuh::SyncSchema::Mode::ModuleFull
-                                  : Wazuh::SyncSchema::Mode::ModuleDelta;
+        Wazuh::SyncSchema::Mode protocolMode;
+        if (mode == Mode::FULL)
+        {
+            protocolMode = Wazuh::SyncSchema::Mode::ModuleFull;
+        }
+        else if (mode == Mode::DELTA)
+        {
+            protocolMode = Wazuh::SyncSchema::Mode::ModuleDelta;
+        }
+        else // Mode::CHECK
+        {
+            protocolMode = Wazuh::SyncSchema::Mode::ModuleCheck;
+        }
 
         // Create hardcoded agent information
         auto architecture = builder.CreateString("hardcoded_architecture");
@@ -373,6 +433,45 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
     catch (const std::exception& e)
     {
         m_logger(LOG_ERROR, std::string("Exception when sending Data messages: ") + e.what());
+    }
+
+    return false;
+}
+
+bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
+                                            const std::string& index,
+                                            const std::string& checksum,
+                                            size_t maxEps)
+{
+    try
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        auto indexStr = builder.CreateString(index);
+        auto checksumStr = builder.CreateString(checksum);
+
+        Wazuh::SyncSchema::ChecksumModuleBuilder checksumBuilder(builder);
+        checksumBuilder.add_session(session);
+        checksumBuilder.add_index(indexStr);
+        checksumBuilder.add_checksum(checksumStr);
+        auto checksumOffset = checksumBuilder.Finish();
+
+        auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::ChecksumModule, checksumOffset.Union());
+        builder.Finish(message);
+
+        const uint8_t* buffer_ptr = builder.GetBufferPointer();
+        const size_t buffer_size = builder.GetSize();
+        std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+
+        if (!sendFlatBufferMessageAsString(messageVector, maxEps))
+        {
+            return false;
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Exception when sending ChecksumModule message: ") + e.what());
     }
 
     return false;
