@@ -13,6 +13,7 @@
 #include "wazuh_modules/agent_info/include/agent_info.h"
 #include "wazuh_modules/wmodules.h"
 #include "sym_load.h"
+#include "logging_helper.h"
 
 #include <stdio.h>
 
@@ -36,10 +37,35 @@ static const char* XML_INTERVAL = "interval";
 #define mdebug1(msg, ...) _mtdebug1(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 
+// Logging callback function for agent-info module
+static void agent_info_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag) {
+    switch(level) {
+        case LOG_DEBUG:
+            mdebug1("%s", log);
+            break;
+        case LOG_DEBUG_VERBOSE:
+            mdebug2("%s", log);
+            break;
+        case LOG_INFO:
+            minfo("%s", log);
+            break;
+        case LOG_WARNING:
+            mwarn("%s", log);
+            break;
+        case LOG_ERROR:
+            merror("%s", log);
+            break;
+        default:
+            minfo("%s", log);
+            break;
+    }
+}
+
 // Module handle and function pointers
 void *agent_info_module = NULL;
 agent_info_start_func agent_info_start_ptr = NULL;
 agent_info_stop_func agent_info_stop_ptr = NULL;
+agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 
 // Reading function
 int wm_agent_info_read(const OS_XML* xml, xml_node** nodes, wmodule* module)
@@ -136,6 +162,13 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     {
         agent_info_start_ptr = so_get_function_sym(agent_info_module, "agent_info_start");
         agent_info_stop_ptr = so_get_function_sym(agent_info_module, "agent_info_stop");
+        agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
+
+        // Set the logging function pointer in the agent-info module
+        if (agent_info_set_log_function_ptr)
+        {
+            agent_info_set_log_function_ptr(agent_info_log_callback);
+        }
     }
     else
     {
