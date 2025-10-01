@@ -9,6 +9,8 @@
 #include <base/json.hpp>
 #include <base/name.hpp>
 
+#include <ctistore/icmreader.hpp>
+
 namespace cm::sync
 {
 
@@ -17,7 +19,7 @@ class ICMSync
 public:
     virtual ~ICMSync() = default;
 
-    virtual void deploy() = 0;
+    virtual void deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore) = 0;
 };
 
 } // namespace cm::sync

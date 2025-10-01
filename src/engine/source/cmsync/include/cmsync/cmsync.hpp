@@ -35,7 +35,7 @@ public:
      * ICMSync interface implementation
      ************************************************************************************/
     /** @copydoc ICMSync::deploy */
-    void deploy() override;
+    void deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore) override;
 
     /************************************************************************************
      * Other public methods or other interfaces can be added here
@@ -55,7 +55,7 @@ private:
     std::unique_ptr<CoreOutputReader> m_coreOutputReader {};   ///< Helper to raw read core output files
 
     // Clean catalog
-    void cleanCatalog(const std::string& ns);
+    void cleanCatalog(const std::string& ns, const std::vector<api::catalog::Resource::Type>& typesToClean);
 
     // Clean KVDB TODO: Separe KVDB between CTI and User (Maybe ns?)
     void cleanAllKVDB();
@@ -67,12 +67,19 @@ private:
     void cleanAllRoutesAndEnvironments();
 
     // Add KVDB from CM
+    void pushKVDBsFromCM(const std::shared_ptr<cti::store::ICMReader>& ctiStore);
 
     // Add the content of the catalog
     void pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& ctiStore);
 
     // Create the policy
     void pushPolicysFromCM(const std::shared_ptr<cti::store::ICMReader>& ctiStore);
+
+    // Load the core filter if not exists
+    void loadCoreFilter();
+
+    // Push outputs to the policy
+    void pushOutputsToPolicy();
 
     // Add routes and environments to the orchestrator
     void loadDefaultRoute();

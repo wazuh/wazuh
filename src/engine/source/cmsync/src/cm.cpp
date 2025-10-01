@@ -26,9 +26,50 @@ namespace cm::sync
 /************************************************************************************
  * ICMSync interface implementation
  ************************************************************************************/
-void CMSync::deploy()
+void CMSync::deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore)
 {
-    return;
+    namespace acns = api::catalog;
+
+    // Validate the outputs
+    wazuhCoreOutput(true);
+
+    // TODO: We need validate the new ruleset before remove the old ones
+
+    // Remove all decoders and integrations from the catalog.
+    cleanCatalog(m_ctiNS, {acns::Resource::Type::decoder, acns::Resource::Type::integration});
+
+    // Remove all outputs from the catalog.
+    cleanCatalog(m_systemNS, {acns::Resource::Type::output});
+
+    // Remove all policies
+    cleanAllPolicys();
+
+    // Remove all routes and environments from the orchestrator (policy instances).
+    cleanAllRoutesAndEnvironments();
+
+    // Delete all KVDB.
+    cleanAllKVDB();
+
+    // Load KVDB from Content Manager.
+    pushKVDBsFromCM(ctiStore);
+
+    // Load the outputs (May be use kvdb?) from local files.
+    wazuhCoreOutput(false);
+
+    // Load decoders and integrations from Content Manager.
+    pushAssetsFromCM(ctiStore);
+
+    // Load the filter if not exists.
+    loadCoreFilter();
+
+    // Create the security policy.
+    pushPolicysFromCM(ctiStore);
+
+    // Add core outputs to the policy
+    pushOutputsToPolicy();
+
+    // Create the route.
+    loadDefaultRoute();
 }
 
 CMSync::CMSync(const std::shared_ptr<api::catalog::ICatalog>& catalog,
@@ -62,14 +103,14 @@ CMSync::CMSync(const std::shared_ptr<api::catalog::ICatalog>& catalog,
     // Check if output path exists and is a directory
     m_coreOutputReader = std::make_unique<CoreOutputReader>(outputPath);
 }
+
 /************************************************************************************
  * Other public methods or other interfaces can be added here
  ************************************************************************************/
 
 // Clean catalog
-void CMSync::cleanCatalog(const std::string& ns)
+void CMSync::cleanCatalog(const std::string& ns, const std::vector<api::catalog::Resource::Type>& typesToClean)
 {
-    // use alias for api::catalog namespace
     namespace acns = api::catalog;
 
     const auto catalog = m_catalog.lock();
@@ -77,23 +118,27 @@ void CMSync::cleanCatalog(const std::string& ns)
     {
         throw std::runtime_error("Catalog instance is no longer available");
     }
-
-    // Create decoder resource for CTI assets decoder collection
-    acns::Resource decoderResource {acns::Resource::typeToStr(acns::Resource::Type::decoder),
-                                    acns::Resource::Format::json};
-
-    // Check if exists decoders in the CTI namespace
-    if (!catalog->collectionExists(decoderResource, ns))
+    // For each type, delete all resources of that type in the namespace
+    for (const auto& type : typesToClean)
     {
-        // No decoders to delete
-        return;
-    }
+        acns::Resource resource {acns::Resource::typeToStr(type), acns::Resource::Format::json};
 
-    // Delete all decoders in the CTI namespace
-    const auto error = catalog->deleteResource(decoderResource, ns);
-    if (error)
-    {
-        throw std::runtime_error(fmt::format("Failed to clean decoders in namespace '{}': {}", ns, error->message));
+        // Check if exists resources of this type in the namespace
+        if (!catalog->collectionExists(resource, ns))
+        {
+            // No resources to delete
+            continue;
+        }
+
+        // Delete all resources of this type in the namespace
+        const auto error = catalog->deleteResource(resource, ns);
+        if (error)
+        {
+            throw std::runtime_error(fmt::format("Failed to clean resources of type '{}' in namespace '{}': {}",
+                                                 acns::Resource::typeToStr(type),
+                                                 ns,
+                                                 error->message));
+        }
     }
 }
 
@@ -108,6 +153,17 @@ void CMSync::cleanAllKVDB()
 
     // List all DBs
     const auto dbs = kvdbManager->listDBs(false);
+
+    // Check if KVDB are in use
+    for (const auto& dbname : dbs)
+    {
+        const auto refCount = kvdbManager->getKVDBHandlersCount(dbname);
+        if (refCount > 0)
+        {
+            throw std::runtime_error(
+                fmt::format("Cannot delete KVDB '{}', it is in use by {} handlers", dbname, refCount));
+        }
+    }
 
     // Delete all DBs
     for (const auto& db : dbs)
@@ -189,6 +245,58 @@ void CMSync::cleanAllRoutesAndEnvironments()
             std::string errorMsg =
                 fmt::format("Failed to delete test entry '{}': {}", testEntry.name(), error->message);
             throw std::runtime_error(errorMsg);
+        }
+    }
+}
+
+void CMSync::pushKVDBsFromCM(const std::shared_ptr<cti::store::ICMReader>& ctiStore)
+{
+
+    // TODO: load all KVDB from CM Store, in the future we can filter by integration
+    if (!ctiStore)
+    {
+        throw std::invalid_argument("CTI Store instance is null");
+    }
+
+    const auto kvdbManager = m_kvdbManager.lock();
+    if (!kvdbManager)
+    {
+        throw std::runtime_error("KVDB Manager instance is no longer available");
+    }
+    // List all KVDB in the CM Store
+    const auto kvdbList = ctiStore->listKVDB();
+
+    for (const auto& kvdbName : kvdbList)
+    {
+        if (!ctiStore->kvdbExists(kvdbName))
+        {
+            throw std::runtime_error(fmt::format("KVDB '{}' does not exist in CM Store", kvdbName));
+        }
+
+        // Dump the KVDB content from the CM Store
+        json::Json kvdbContent;
+        try
+        {
+            kvdbContent = ctiStore->kvdbDump(kvdbName);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error(fmt::format("Failed to dump KVDB '{}' from CM Store,: {}", kvdbName, e.what()));
+        }
+
+        // Create the KVDB in the KVDB Manager from the dumped content
+        const auto error = kvdbManager->createDB(kvdbName);
+        if (error)
+        {
+            throw std::runtime_error(
+                fmt::format("Failed to create KVDB '{}' in KVDB Manager: {}", kvdbName, error->message));
+        }
+
+        const auto loadError = kvdbManager->loadDBFromJson(kvdbName, kvdbContent);
+        if (loadError)
+        {
+            throw std::runtime_error(
+                fmt::format("Failed to load content into KVDB '{}' in KVDB Manager: {}", kvdbName, loadError->message));
         }
     }
 }
@@ -372,6 +480,100 @@ void CMSync::pushPolicysFromCM(const std::shared_ptr<cti::store::ICMReader>& cms
     }
 }
 
+void CMSync::pushOutputsToPolicy()
+{
+    const auto policyManager = m_policyManager.lock();
+    if (!policyManager)
+    {
+        throw std::runtime_error("Policy Manager instance is no longer available");
+    }
+
+    const auto catalog = m_catalog.lock();
+    if (!catalog)
+    {
+        throw std::runtime_error("Catalog instance is no longer available");
+    }
+
+    // Get all output from system namespace in the catalog
+    const auto jlist =
+        catalog->getResource(api::catalog::Resource {"output", api::catalog::Resource::Format::json}, m_systemNS);
+
+    if (base::isError(jlist))
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to get output list from catalog: {}", base::getError(jlist).message));
+    }
+
+    const auto outputs = json::Json(base::getResponse(jlist).c_str());
+    if (!outputs.isArray())
+    {
+        throw std::runtime_error("Invalid output list from catalog, not an array");
+    }
+
+    auto outputArray = outputs.getArray().value();
+    std::vector<base::Name> outputNames;
+    outputNames.reserve(outputArray.size()); // Prevent multiple allocations
+
+    for (const auto& jName : outputArray)
+    {
+        // Get and validate the asset name
+        const auto assetNameStr = jName.getString();
+        if (!assetNameStr)
+        {
+            throw std::runtime_error("Invalid not string entry in output array from catalog");
+        }
+
+        try
+        {
+            outputNames.push_back(fmt::format("output/{}/0", assetNameStr.value()));
+        }
+        catch (const std::runtime_error& e)
+        {
+            throw std::runtime_error(fmt::format(
+                "Invalid asset name '{}' in output array from catalog: {}", assetNameStr.value(), e.what()));
+        }
+    }
+
+    // Add all outputs to the default policy
+    for (const auto& outputName : outputNames)
+    {
+        auto res = policyManager->addAsset(G_POLICY_NAME, store::NamespaceId(m_systemNS), outputName);
+        if (base::isError(res))
+        {
+            throw std::runtime_error(fmt::format("Failed to add output asset '{}' to policy '{}': {}",
+                                                 outputName.fullName(),
+                                                 G_POLICY_NAME.fullName(),
+                                                 base::getError(res).message));
+        }
+    }
+}
+
+void CMSync::loadCoreFilter()
+{
+    const auto catalog = m_catalog.lock();
+    if (!catalog)
+    {
+        throw std::runtime_error("Catalog instance is no longer available");
+    }
+
+    // Check if filter already exists
+    api::catalog::Resource filterResource {G_FILTER_NAME, api::catalog::Resource::Format::json};
+    if (catalog->collectionExists(filterResource, m_systemNS))
+    {
+        // Filter already exists
+        return;
+    }
+
+    // Create allow-all filter
+    const auto filterContent = getAllowAllFilter().str();
+    const auto error = catalog->postResource(filterResource, m_systemNS, filterContent);
+    if (base::isError(error))
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to create filter '{}': {}", G_FILTER_NAME.fullName(), base::getError(error).message));
+    }
+}
+
 // Add routes and environments to the orchestrator
 void CMSync::loadDefaultRoute()
 {
@@ -392,7 +594,7 @@ void CMSync::loadDefaultRoute()
         const auto error = defaultEnv.validate();
         if (error)
         {
-            throw std::runtime_error(fmt::format("Default environment is not valid: {}", error->message));
+            throw std::runtime_error(fmt::format("Failed to validate default environment: {}", error->message));
         }
 
         const auto respOrError = orchestrator->postEntry(defaultEnv);
@@ -430,8 +632,10 @@ void CMSync::wazuhCoreOutput(bool onlyValidate) const
                                         : catalog->postResource(outputResource, m_systemNS, fileContent);
         if (base::isError(error))
         {
-            throw std::runtime_error(
-                fmt::format("Failed to {} output '{}': {}", onlyValidate ? "validate" : "push", assetName.toStr(), base::getError(error).message));
+            throw std::runtime_error(fmt::format("Failed to {} output '{}': {}",
+                                                 onlyValidate ? "validate" : "push",
+                                                 assetName.toStr(),
+                                                 base::getError(error).message));
         }
     }
 }

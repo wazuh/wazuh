@@ -6,7 +6,7 @@ set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 # INTERFACE
 add_library(cmsync_icmsync INTERFACE)
 target_include_directories(cmsync_icmsync INTERFACE ${IFACE_DIR})
-target_link_libraries(cmsync_icmsync INTERFACE base)
+target_link_libraries(cmsync_icmsync INTERFACE base ctistore::ictistore)
 add_library(cmsync::icmsync ALIAS cmsync_icmsync)
 
 # Implementation
@@ -22,7 +22,6 @@ target_link_libraries(cmsync_cmsync
     PUBLIC
     base
     cmsync::icmsync
-    ctistore::ictistore
     api::catalog::icatalog
     api::policy::ipolicy
     kvdb::ikvdb
