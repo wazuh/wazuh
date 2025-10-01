@@ -228,134 +228,156 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 {
     try
     {
-        LOG_DEBUG("Processing downloaded CTI content");
-
-        // Parse the message to determine the type of content
+        LOG_DEBUG("CTI: processing downloaded content message");
         json::Json parsedMessage(message.c_str());
-
         if (!parsedMessage.exists("/paths") || !parsedMessage.exists("/type") || !parsedMessage.exists("/offset"))
         {
-            throw std::runtime_error("Invalid message format");
+            throw std::runtime_error("Invalid message format: missing required fields (paths,type,offset)");
         }
 
-        auto type = parsedMessage.getString("/type").value_or("");
-        auto offset = parsedMessage.getInt("/offset").value_or(0);
-        auto pathsMaybe = parsedMessage.getArray("/paths");
-        size_t pathsCount = pathsMaybe.has_value() ? pathsMaybe.value().size() : 0;
-        LOG_DEBUG("Downloaded message metadata: type='{}' starting_offset={} paths_count={}", type, offset, pathsCount);
+        const auto type = parsedMessage.getString("/type").value_or("");
+        int startingOffset = parsedMessage.getInt("/offset").value_or(0);
+        auto pathsArray = parsedMessage.getArray("/paths");
+        size_t pathCount = pathsArray.has_value() ? pathsArray->size() : 0;
+        LOG_DEBUG("CTI message meta: type='{}' starting_offset={} paths_count={}", type, startingOffset, pathCount);
 
-        int processedOffset = offset;
-        std::string hash = "";
+        int currentOffset = startingOffset;
+        std::string hash;
         bool success = true;
 
-        // Process each file in the paths array
-        auto pathsArray = parsedMessage.getArray("/paths");
-        if (pathsArray.has_value())
+        if (type == "offsets")
         {
-            for (const auto& pathValue : pathsArray.value())
+            // Incremental update: process each file, offset advances monotonically but may arrive out of order.
+            if (pathsArray.has_value())
             {
-                auto path = json::Json(pathValue).getString().value_or("");
-                LOG_DEBUG("Processing file: {}", path);
-
-                std::ifstream file(path);
-                if (!file.is_open())
+                for (const auto& pathValue : pathsArray.value())
                 {
-                    LOG_ERROR("Failed to open file: {}", path);
-                    success = false;
-                    break;
-                }
-
-                std::string line;
-                size_t lineNumber {0};
-                size_t unclassifiedCount {0};
-                size_t classifiedCount {0};
-                while (std::getline(file, line))
-                {
-                    ++lineNumber;
-                    if (line.empty())
+                    const auto path = json::Json(pathValue).getString().value_or("");
+                    LOG_DEBUG("CTI offsets: processing file {}", path);
+                    std::ifstream file(path);
+                    if (!file.is_open())
                     {
-                        continue;
+                        LOG_ERROR("Unable to open offsets file: {}", path);
+                        success = false;
+                        break;
                     }
-                    try
+                    std::string line;
+                    size_t lineNumber {0};
+                    while (std::getline(file, line))
                     {
-                        json::Json content(line.c_str());
-
-                        // Update offset first if present to be resilient to partial failures
-                        if (content.exists("/offset"))
+                        ++lineNumber;
+                        if (line.empty())
                         {
-                            processedOffset = content.getInt("/offset").value_or(processedOffset);
-                        }
-
-                        // Classification rules based on observed JSON lines retrieved from CTI platform:
-                        // Each line has: name, offset, version, inserted_at, payload{...}, type
-                        // (policy|integration|decoder|kvdb) Optional: integration_id when type != policy/integration
-                        // itself (e.g. decoder, kvdb belongs to integration) 'type' may appear either at root (e.g.
-                        // some decoder entries) or under payload (policy, integration, kvdb) Prefer /payload/type
-                        // (observed format). Fallback to root /type if ever provided.
-                        auto contentType =
-                            content.getString("/payload/type").value_or(content.getString("/type").value_or(""));
-                        LOG_TRACE("Classifying line {}: type='{}'",
-                                  lineNumber,
-                                  contentType.empty() ? "<none>" : contentType.c_str());
-                        if (contentType.empty())
-                        {
-                            ++unclassifiedCount;
-                            continue; // skip silently; we'll summarize after loop
-                        }
-
-                        bool stored = true;
-                        if (contentType == "policy")
-                        {
-                            stored = storePolicy(content);
-                        }
-                        else if (contentType == "integration")
-                        {
-                            stored = storeIntegration(content);
-                        }
-                        else if (contentType == "decoder")
-                        {
-                            stored = storeDecoder(content);
-                        }
-                        else if (contentType == "kvdb")
-                        {
-                            stored = storeKVDB(content);
-                        }
-                        else
-                        {
-                            LOG_WARNING(
-                                "Unknown content type '{}' on line {} in file {}", contentType, lineNumber, path);
                             continue;
                         }
-
-                        if (stored)
+                        try
                         {
-                            ++classifiedCount;
+                            json::Json content(line.c_str());
+                            if (content.exists("/offset"))
+                            {
+                                currentOffset = content.getInt("/offset").value_or(currentOffset);
+                            }
+                            // classify & store
+                            auto contentType =
+                                content.getString("/payload/type").value_or(content.getString("/type").value_or(""));
+                            if (!contentType.empty())
+                            {
+                                bool stored = true;
+                                if (contentType == "policy")
+                                    stored = storePolicy(content);
+                                else if (contentType == "integration")
+                                    stored = storeIntegration(content);
+                                else if (contentType == "decoder")
+                                    stored = storeDecoder(content);
+                                else if (contentType == "kvdb")
+                                    stored = storeKVDB(content);
+                                else
+                                    LOG_WARNING(
+                                        "Offsets: unknown content type '{}' ({}:{})", contentType, path, lineNumber);
+                                if (!stored)
+                                {
+                                    LOG_WARNING(
+                                        "Failed to store content type '{}' ({}:{})", contentType, path, lineNumber);
+                                }
+                            }
                         }
-                        else
+                        catch (const std::exception& e)
                         {
-                            LOG_WARNING(
-                                "Failed to persist content type '{}' (line {} in {})", contentType, lineNumber, path);
+                            LOG_ERROR("Error parsing offsets line {} in {}: {}", lineNumber, path, e.what());
                         }
                     }
-                    catch (const std::exception& e)
-                    {
-                        LOG_ERROR("Error processing content line {} in {}: {}", lineNumber, path, e.what());
-                    }
-                }
-                if (unclassifiedCount > 0)
-                {
-                    LOG_WARNING("File '{}' processed with {} classified and {} unclassified lines (missing type). "
-                                "First bytes: '{}'",
-                                path,
-                                classifiedCount,
-                                unclassifiedCount,
-                                line.substr(0, 60));
                 }
             }
         }
+        else if (type == "raw")
+        {
+            // Snapshot download: expect exactly one consolidated file.
+            if (pathCount != 1)
+            {
+                throw std::runtime_error("raw message must contain exactly one path");
+            }
+            const auto path = json::Json(pathsArray->at(0)).getString().value_or("");
+            LOG_INFO("CTI snapshot: processing consolidated file {}", path);
+            // TODO: clear existing persisted data (when RocksDB integration merged)
+            std::ifstream file(path);
+            if (!file.is_open())
+            {
+                throw std::runtime_error("Unable to open raw file: " + path);
+            }
+            std::string line;
+            size_t lineNumber {0};
+            while (std::getline(file, line))
+            {
+                ++lineNumber;
+                if (line.empty())
+                    continue;
+                try
+                {
+                    json::Json content(line.c_str());
+                    if (content.exists("/offset"))
+                    {
+                        // Highest offset across the entire snapshot
+                        currentOffset = std::max(currentOffset, content.getInt("/offset").value_or(currentOffset));
+                    }
+                    auto contentType =
+                        content.getString("/payload/type").value_or(content.getString("/type").value_or(""));
+                    if (!contentType.empty())
+                    {
+                        bool stored = true;
+                        if (contentType == "policy")
+                            stored = storePolicy(content);
+                        else if (contentType == "integration")
+                            stored = storeIntegration(content);
+                        else if (contentType == "decoder")
+                            stored = storeDecoder(content);
+                        else if (contentType == "kvdb")
+                            stored = storeKVDB(content);
+                        else
+                            LOG_WARNING("Raw: unknown content type '{}' ({}:{})", contentType, path, lineNumber);
+                        if (!stored)
+                        {
+                            LOG_WARNING("Failed to store content type '{}' ({}:{})", contentType, path, lineNumber);
+                        }
+                    }
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_ERROR("Error parsing raw line {} in {}: {}", lineNumber, path, e.what());
+                }
+            }
+            // Extract hash if provided (offline scenario)
+            if (parsedMessage.exists("/fileMetadata/hash"))
+            {
+                hash = parsedMessage.getString("/fileMetadata/hash").value_or("");
+            }
+        }
+        else
+        {
+            throw std::runtime_error("Unknown message type: " + type);
+        }
 
-        LOG_INFO("Processed CTI content up to offset: {}", processedOffset);
-        return {processedOffset, hash, success};
+        LOG_INFO("CTI processed up to offset {} (type='{}')", currentOffset, type);
+        return {currentOffset, hash, success};
     }
     catch (const std::exception& e)
     {
