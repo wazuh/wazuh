@@ -190,16 +190,6 @@ ContentDownloader::ContentDownloader(const ContentManagerConfig& config, FilePro
         m_config.databasePath = makeAbsolute(m_config.databasePath);
     }
 
-    LOG_DEBUG("CTI Store ContentDownloader initializing with topic: {}", m_config.topicName);
-
-    if (!m_fileProcessingCallback)
-    {
-        m_fileProcessingCallback = [this](const std::string& message) -> FileProcessingResult
-        {
-            return defaultFileProcessingCallback(message);
-        };
-    }
-
     try
     {
         if (!m_config.outputFolder.empty())
@@ -216,6 +206,8 @@ ContentDownloader::ContentDownloader(const ContentManagerConfig& config, FilePro
         LOG_ERROR("Failed to create CTI store directories: {}", e.what());
         throw;
     }
+
+    LOG_DEBUG("CTI Store ContentDownloader initializing with topic: {}", m_config.topicName);
 }
 
 ContentDownloader::~ContentDownloader()
@@ -317,208 +309,12 @@ void ContentDownloader::updateConfig(const ContentManagerConfig& config)
 
 FileProcessingResult ContentDownloader::processMessage(const std::string& message)
 {
-    try
+    if (!m_fileProcessingCallback)
     {
-        LOG_DEBUG("Processing message from Content Manager");
-
-        // Parse the message as JSON using RapidJSON
-        json::Json parsedMessage(message.c_str());
-
-        if (!parsedMessage.exists("/paths") || !parsedMessage.exists("/type") || !parsedMessage.exists("/offset"))
-        {
-            throw std::runtime_error("Invalid message. Missing required fields.");
-        }
-
-        auto type = parsedMessage.getString("/type").value_or("");
-        auto offset = parsedMessage.getInt("/offset").value_or(0);
-
-        return processContentFiles(parsedMessage, type, offset);
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("Error processing message: {}", e.what());
+        LOG_ERROR("No processing callback set in ContentDownloader");
         return {0, "", false};
     }
-}
-
-FileProcessingResult ContentDownloader::defaultFileProcessingCallback(const std::string& message)
-{
-    try
-    {
-        LOG_INFO("Starting CTI content update process");
-
-        auto result = processMessage(message);
-
-        if (m_shouldStop || !std::get<2>(result))
-        {
-            LOG_DEBUG("Content update process interrupted or failed. Offset: {}, Hash: {}",
-                      std::get<0>(result),
-                      std::get<1>(result));
-            return result;
-        }
-
-        LOG_INFO("CTI content update process completed successfully");
-        return result;
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("Error in file processing callback: {}", e.what());
-        return {0, "", false};
-    }
-}
-
-FileProcessingResult
-ContentDownloader::processContentFiles(const json::Json& parsedMessage, const std::string& type, int offset)
-{
-    int currentOffset = offset;
-    std::string hash = "";
-
-    try
-    {
-        if (type == "offsets")
-        {
-            // Process incremental updates
-            auto pathsArray = parsedMessage.getArray("/paths");
-            if (pathsArray.has_value())
-            {
-                for (const auto& pathValue : pathsArray.value())
-                {
-                    if (m_shouldStop)
-                    {
-                        LOG_DEBUG("Processing interrupted by stop signal");
-                        break;
-                    }
-
-                    auto pathStr = json::Json(pathValue).getString().value_or("");
-                    LOG_DEBUG("Processing file: {}", pathStr);
-
-                    // Read and process the file
-                    std::ifstream file(pathStr);
-                    if (!file.is_open())
-                    {
-                        throw std::runtime_error("Unable to open file: " + pathStr);
-                    }
-
-                    std::string line;
-                    while (std::getline(file, line) && !m_shouldStop)
-                    {
-                        json::Json item(line.c_str());
-
-                        // Store the content
-                        if (!storeContent(item))
-                        {
-                            LOG_WARNING("Failed to store content item");
-                        }
-
-                        // Update offset if available
-                        if (item.exists("/offset"))
-                        {
-                            currentOffset = item.getInt("/offset").value_or(currentOffset);
-                        }
-                    }
-                }
-            }
-        }
-        else if (type == "raw")
-        {
-            // Process full download
-            LOG_INFO("Processing raw content (full download)");
-
-            // Clear existing data for full refresh
-            // This would typically clear the database
-
-            auto pathsArray = parsedMessage.getArray("/paths");
-            if (pathsArray.has_value())
-            {
-                for (const auto& pathValue : pathsArray.value())
-                {
-                    if (m_shouldStop)
-                    {
-                        LOG_DEBUG("Processing interrupted by stop signal");
-                        return {0, "", true};
-                    }
-
-                    auto pathStr = json::Json(pathValue).getString().value_or("");
-                    LOG_DEBUG("Processing raw file: {}", pathStr);
-
-                    std::ifstream file(pathStr);
-                    if (!file.is_open())
-                    {
-                        throw std::runtime_error("Unable to open file: " + pathStr);
-                    }
-
-                    std::string line;
-                    int lineCount = 0;
-
-                    while (std::getline(file, line) && !m_shouldStop)
-                    {
-                        if (++lineCount % 1000 == 0)
-                        {
-                            LOG_DEBUG("Processed {} lines", lineCount);
-                        }
-
-                        json::Json item(line.c_str());
-
-                        // Update offset to the highest value
-                        if (item.exists("/offset"))
-                        {
-                            int itemOffset = item.getInt("/offset").value_or(0);
-                            currentOffset = std::max(currentOffset, itemOffset);
-                        }
-
-                        // Store the content
-                        if (!storeContent(item))
-                        {
-                            LOG_WARNING("Failed to store content item at line {}", lineCount);
-                        }
-                    }
-
-                    LOG_INFO("Processed {} lines from raw file", lineCount);
-                }
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Unknown message type: " + type);
-        }
-
-        LOG_DEBUG("Last offset processed: {}", currentOffset);
-        return {currentOffset, hash, true};
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("Error processing content files: {}", e.what());
-        return {currentOffset, hash, false};
-    }
-}
-
-bool ContentDownloader::storeContent(const json::Json& content)
-{
-    try
-    {
-        // This is where the content would be stored in the local database
-        // The actual storage implementation would depend on the database backend
-        // For now, this is a placeholder
-
-        if (!content.exists("/name"))
-        {
-            LOG_WARNING("Content item missing 'name' field");
-            return false;
-        }
-
-        auto name = content.getString("/name").value_or("unknown");
-        LOG_TRACE("Storing content item: {}", name);
-
-        // TODO: Implement actual database storage
-        // This would integrate with the ICMReader interface implementation
-
-        return true;
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("Error storing content: {}", e.what());
-        return false;
-    }
+    return m_fileProcessingCallback(message);
 }
 
 } // namespace cti::store

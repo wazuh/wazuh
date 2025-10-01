@@ -201,61 +201,37 @@ TEST(ContentManagerTest, ManagerUpdateConfigRejectsInvalid)
 
 TEST_F(ContentDownloaderTest, ProcessMessageWithInvalidFormat)
 {
-    ContentDownloader downloader(testConfig);
-
+    ContentManager cm(testConfig, false);
     std::string invalidMessage = R"({"invalid": "format"})";
-    auto result = downloader.processMessage(invalidMessage);
-
-    EXPECT_EQ(std::get<0>(result), 0);  // offset
-    EXPECT_EQ(std::get<1>(result), ""); // hash
-    EXPECT_FALSE(std::get<2>(result));  // status
+    auto result = cm.testProcessMessage(invalidMessage);
+    EXPECT_EQ(std::get<0>(result), 0);
+    EXPECT_EQ(std::get<1>(result), "");
+    EXPECT_FALSE(std::get<2>(result));
 }
 
 TEST_F(ContentDownloaderTest, ProcessMessageWithValidOffsetFormat)
 {
-    ContentDownloader downloader(testConfig);
-
-    // Create a test file with content
+    ContentManager cm(testConfig, false);
     std::string testFile = testDir + "/test_content.json";
     std::ofstream file(testFile);
-    file << R"({"name": "test_asset", "offset": 100, "data": "test_data"})" << std::endl;
+    file << R"({"name": "test_asset", "offset": 100, "payload":{"type":"decoder"}})" << std::endl;
     file.close();
-
-    std::string validMessage = R"({
-        "paths": [")" + testFile
-                               + R"("],
-        "type": "offsets",
-        "offset": 0
-    })";
-
-    auto result = downloader.processMessage(validMessage);
-
-    // The processing should succeed even if storage is not fully implemented
-    EXPECT_EQ(std::get<0>(result), 100); // offset from file content
-    EXPECT_TRUE(std::get<2>(result));    // status should be true
+    std::string validMessage = std::string("{\"paths\":[\"") + testFile + "\"],\"type\":\"offsets\",\"offset\":0}";
+    auto result = cm.testProcessMessage(validMessage);
+    EXPECT_EQ(std::get<0>(result), 100);
+    EXPECT_TRUE(std::get<2>(result));
 }
 
 TEST_F(ContentDownloaderTest, ProcessMessageWithRawType)
 {
-    ContentDownloader downloader(testConfig);
-
-    // Create a test file with raw content
+    ContentManager cm(testConfig, false);
     std::string testFile = testDir + "/test_raw.json";
     std::ofstream file(testFile);
-    file << R"({"name": "asset1", "offset": 50})" << std::endl;
-    file << R"({"name": "asset2", "offset": 150})" << std::endl;
+    file << R"({"name": "asset1", "offset": 50, "payload":{"type":"policy"}})" << std::endl;
+    file << R"({"name": "asset2", "offset": 150, "payload":{"type":"integration"}})" << std::endl;
     file.close();
-
-    std::string rawMessage = R"({
-        "paths": [")" + testFile
-                             + R"("],
-        "type": "raw",
-        "offset": 0
-    })";
-
-    auto result = downloader.processMessage(rawMessage);
-
-    // Should return the highest offset
+    std::string rawMessage = std::string("{\"paths\":[\"") + testFile + "\"],\"type\":\"raw\",\"offset\":0}";
+    auto result = cm.testProcessMessage(rawMessage);
     EXPECT_EQ(std::get<0>(result), 150);
     EXPECT_TRUE(std::get<2>(result));
 }
