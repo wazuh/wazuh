@@ -3,6 +3,17 @@
 
 #include <memory>
 
+/* Agent Info db directory */
+#ifndef WAZUH_UNIT_TESTING
+#define AGENT_INFO_DB_DISK_PATH "queue/agent_info/agent_info.db"
+#else
+#ifndef WIN32
+#define AGENT_INFO_DB_DISK_PATH    "./agent_info.db"
+#else
+#define AGENT_INFO_DB_DISK_PATH    ".\\agent_info.db"
+#endif // WIN32
+#endif // WAZUH_UNIT_TESTING
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -13,9 +24,11 @@ extern "C"
 
     void agent_info_start(const struct wm_agent_info_t* agent_info_config)
     {
+        (void)agent_info_config; // Mark as unused for now
+
         if (!g_agent_info_impl)
         {
-            g_agent_info_impl = std::make_unique<AgentInfoImpl>();
+            g_agent_info_impl = std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH);
         }
         g_agent_info_impl->start();
     }
