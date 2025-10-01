@@ -1,6 +1,7 @@
 #include "agent_info.h"
 #include "agent_info_impl.hpp"
 #include "logging_helper.hpp"
+#include <dbsync.hpp>
 
 #include <memory>
 
@@ -29,6 +30,11 @@ extern "C"
 
         if (!g_agent_info_impl)
         {
+            // Initialize DBSync logging before creating DBSync instances
+            DBSync::initialize([](const std::string& msg) {
+                LoggingHelper::getInstance().log(LOG_DEBUG, msg.c_str());
+            });
+
             g_agent_info_impl = std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH);
         }
         g_agent_info_impl->start();
