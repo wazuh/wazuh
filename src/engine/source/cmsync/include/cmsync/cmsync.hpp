@@ -1,72 +1,33 @@
 #ifndef _CM_SYNC_CMSYNC
 #define _CM_SYNC_CMSYNC
 
-#include <string>
 #include <memory>
+#include <string>
 
 #include <api/catalog/icatalog.hpp>
 #include <api/policy/ipolicy.hpp>
+#include <ctistore/icmreader.hpp>
 #include <kvdb/ikvdbmanager.hpp>
 #include <router/iapi.hpp>
-#include <ctistore/icmreader.hpp>
 
 #include <cmsync/icmsync.hpp>
 
-
 namespace cm::sync
 {
+
+// Forward declarations
+class CoreOutputReader;
 
 // TODO: Documentation
 class CMSync : public ICMSync
 {
 public:
-    //CMSync() = delete;
-    CMSync() = default; // TODO: Delete
+    CMSync() = delete;
     explicit CMSync(const std::shared_ptr<api::catalog::ICatalog>& catalog,
                     const std::shared_ptr<kvdbManager::IKVDBManager>& kvdbManager,
                     const std::shared_ptr<api::policy::IPolicy>& policyManager,
                     const std::shared_ptr<router::IOrchestratorAPI>& orchestrator,
-                    const std::string& outputPath
-                )
-
-        : m_catalog(catalog)
-        , m_kvdbManager(kvdbManager)
-        , m_policyManager(policyManager)
-        , m_orchestrator(orchestrator)
-    {
-        if (!catalog)
-        {
-            throw std::invalid_argument("Catalog instance is null");
-        }
-        if (!kvdbManager)
-        {
-            throw std::invalid_argument("KVDB Manager instance is null");
-        }
-        if (!policyManager)
-        {
-            throw std::invalid_argument("Policy Manager instance is null");
-        }
-        if (!orchestrator)
-        {
-            throw std::invalid_argument("Orchestrator instance is null");
-        }
-
-        // Check if output path exists and is a directory
-        m_outputPath = std::filesystem::path(outputPath);
-        if (!std::filesystem::exists(m_outputPath))
-        {
-            throw std::invalid_argument(fmt::format("Output configuration path '{}' does not exist", outputPath));
-        }
-
-        if (!std::filesystem::is_directory(m_outputPath))
-        {
-            throw std::invalid_argument(
-                fmt::format("Output configuration path '{}' is not a directory", outputPath));
-        }
-
-        // Normalize path
-        m_outputPath = std::filesystem::canonical(m_outputPath);
-    }
+                    const std::string& outputPath);
 
     ~CMSync() override = default;
 
@@ -76,24 +37,22 @@ public:
     /** @copydoc ICMSync::deploy */
     void deploy() override;
 
-
     /************************************************************************************
      * Other public methods or other interfaces can be added here
      ************************************************************************************/
-    
+
+     void wazuhCoreOutput(bool onlyValidate = false) const;
 
 private:
-
-    const std::string m_ctiNS = "cti"; ///< Namespace for CTI assets in the catalog
+    const std::string m_ctiNS = "cti";       ///< Namespace for CTI assets in the catalog
     const std::string m_systemNS = "system"; ///< Namespace for system assets in the catalog
-    const base::Name m_policyName {"policy/wazuh/0"};
-    
-    std::weak_ptr<api::catalog::ICatalog> m_catalog {}; ///< Weak pointer to the catalog instance
-    std::weak_ptr<api::policy::IPolicy> m_policyManager {}; ///< Weak pointer to the policy manager instance
-    std::weak_ptr<kvdbManager::IKVDBManager> m_kvdbManager {}; ///< Weak pointer to the KVDB manager instance
-    std::weak_ptr<router::IOrchestratorAPI> m_orchestrator {}; ///< Weak pointer to the orchestrator instance
-    std::filesystem::path m_outputPath {}; ///< Path of directory to load YML output files.
 
+    // Dependency instances
+    std::weak_ptr<api::catalog::ICatalog> m_catalog {};        ///< Catalog handler
+    std::weak_ptr<api::policy::IPolicy> m_policyManager {};    ///< Policy handler
+    std::weak_ptr<kvdbManager::IKVDBManager> m_kvdbManager {}; ///< KVDB Manager handler
+    std::weak_ptr<router::IOrchestratorAPI> m_orchestrator {}; ///< Orchestrator handler
+    std::unique_ptr<CoreOutputReader> m_coreOutputReader {};   ///< Helper to raw read core output files
 
     // Clean catalog
     void cleanCatalog(const std::string& ns);
@@ -120,7 +79,6 @@ private:
 
     // Add wazuh-core integration to the catalog
     void pushWazuhCoreIntegration();
-
 };
 
 } // namespace cm::sync
