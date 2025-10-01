@@ -102,9 +102,9 @@ class InventorySyncFacadeImpl final
         if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
         {
             auto syncMessage = Wazuh::SyncSchema::GetMessage(message->data()->data());
-            if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Data)
+            if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataValue)
             {
-                const auto data = syncMessage->content_as<Wazuh::SyncSchema::Data>();
+                const auto data = syncMessage->content_as<Wazuh::SyncSchema::DataValue>();
                 if (!data)
                 {
                     throw InventorySyncException("Invalid data message");
@@ -292,7 +292,7 @@ public:
                     preIndexerAction();
 
                     // Send delete by query to indexer if mode is full.
-                    if (res.context->mode == Wazuh::SyncSchema::Mode_Full)
+                    if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
                     {
                         logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting by query...");
                         m_indexerConnector->deleteByQuery(res.context->moduleName, res.context->agentId);
@@ -311,7 +311,7 @@ public:
                         if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
                         {
                             auto message = Wazuh::SyncSchema::GetMessage(value.data());
-                            auto data = message->content_as_Data();
+                            auto data = message->content_as_DataValue();
                             if (!data)
                             {
                                 throw InventorySyncException("Invalid data message");
