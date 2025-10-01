@@ -850,6 +850,22 @@ InstallCommon()
         fi
     fi
 
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f wazuh_modules/agent_info/build/lib/libagent_info.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/agent_info/build/lib/libagent_info.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libagent_info.dylib ${INSTALLDIR}/lib/libagent_info.dylib
+        fi
+    elif [ -f wazuh_modules/agent_info/build/lib/libagent_info.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh_modules/agent_info/build/lib/libagent_info.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_info.so
+        fi
+    fi
+
 
     if [ -f libstdc++.so.6 ]
     then
