@@ -27,6 +27,9 @@ void RegistryValue::createFimEntry()
             value->path = const_cast<char*>(m_path.c_str());
             value->size = m_size;
             value->value = const_cast<char*>(m_identifier.c_str());
+            value->type = m_type;
+            value->architecture = m_architecture;
+            value->version = m_version;
             std::snprintf(value->hash_md5, sizeof(value->hash_md5), "%s", m_md5.c_str());
             std::snprintf(value->hash_sha1, sizeof(value->hash_sha1), "%s", m_sha1.c_str());
             std::snprintf(value->hash_sha256, sizeof(value->hash_sha256), "%s", m_sha256.c_str());
@@ -68,6 +71,7 @@ void RegistryValue::createJSON()
     data["hash_sha1"] = m_sha1;
     data["hash_sha256"] = m_sha256;
     data["type"] = m_type;
+    data["version"] = m_version;
 
     conf["data"] = nlohmann::json::array({data});
 
