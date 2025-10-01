@@ -13,6 +13,8 @@ constexpr std::string_view STORE_PATH = "analysisd.store_path";
 
 constexpr std::string_view KVDB_PATH = "analysisd.kvdb_path";
 
+constexpr std::string_view CTI_PATH = "analysisd.cti_path";
+
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
 constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";
 constexpr std::string_view INDEXER_PASSWORD = "analysisd.indexer_password";

@@ -12,6 +12,7 @@ add_library(ctistore::ictistore ALIAS ctistore_ictistore)
 # Implementation
 add_library(ctistore_ctistore STATIC
     ${SRC_DIR}/cm.cpp
+    ${SRC_DIR}/ctistoragedb.cpp
 )
 target_include_directories(ctistore_ctistore
     PUBLIC
@@ -23,6 +24,7 @@ target_link_libraries(ctistore_ctistore
     ctistore::ictistore
     PRIVATE
     urlrequest
+    rocksdb
 )
 add_library(ctistore::ctistore ALIAS ctistore_ctistore)
 
@@ -55,14 +57,16 @@ gtest_discover_tests(ctistore_utest)
 
 add_executable(ctistore_ctest
     ${COMPONENT_SRC_DIR}/cm_test.cpp
+    ${COMPONENT_SRC_DIR}/ctistoragedb_test.cpp
 )
 
-target_link_libraries(ctistore_ctest PRIVATE ctistore::ctistore GTest::gtest_main)
+target_link_libraries(ctistore_ctest PRIVATE ctistore::ctistore GTest::gtest_main GTest::gmock rocksdb)
+target_include_directories(ctistore_ctest PRIVATE ${SRC_DIR})
 gtest_discover_tests(ctistore_ctest)
 
 endif(ENGINE_BUILD_TEST)
 
-# Benchmarks 
+# Benchmarks
 # TODO: Enable or delete
 if(ENGINE_BUILD_BENCHMARK)
 
@@ -76,6 +80,7 @@ target_link_libraries(ctistore_bench INTERFACE ctistore::ctistore benchmark::ben
 add_library(ctistore::bench ALIAS ctistore_bench)
 add_executable(ctistore_benchmark
     ${BENCH_SRC_DIR}/cm_bench.cpp
+    ${BENCH_SRC_DIR}/ctistoragedb_bench.cpp
 )
 
 target_include_directories(ctistore_benchmark
