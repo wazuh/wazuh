@@ -82,12 +82,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sends a start message to the server
         /// @param mode Sync mode
         /// @param dataSize Size of data to send
+        /// @param uniqueIndices Vector of unique indices to be synchronized
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
         /// @return True on success, false on failure or timeout
         bool sendStartAndWaitAck(Mode mode,
                                  size_t dataSize,
+                                 const std::vector<std::string>& uniqueIndices,
                                  const std::chrono::seconds timeout,
                                  unsigned int retries,
                                  size_t maxEps);
