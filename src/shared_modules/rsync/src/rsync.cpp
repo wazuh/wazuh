@@ -19,8 +19,7 @@
 
 namespace Log
 {
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
     GLOBAL_LOG_FUNCTION;
 };
 
@@ -53,14 +52,14 @@ EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t logFunction)
 {
     RemoteSync::initializeFullLogFunction(
         [logFunction](const int logLevel,
-                      const std::string & tag,
-                      const std::string & file,
+                      const char* tag,
+                      const char* file,
                       const int line,
-                      const std::string & func,
-                      const std::string & logMessage,
+                      const char* func,
+                      const char* logMessage,
                       va_list args)
     {
-        logFunction(logLevel, tag.c_str(), file.c_str(), line, func.c_str(), logMessage.c_str(), args);
+        logFunction(logLevel, tag, file, line, func, logMessage, args);
     });
 }
 
@@ -243,9 +242,7 @@ void RemoteSync::initialize(std::function<void(const std::string&)> logFunction)
 }
 
 void RemoteSync::initializeFullLogFunction(
-    const std::function <
-    void(const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list) > &
-    logFunction)
+    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>& logFunction)
 {
     Log::assignLogFunction(logFunction);
 }

@@ -76,14 +76,14 @@ int main(const int argc, const char* argv[])
         }
 
         const auto logFunction = [&logFile](const int logLevel,
-                                            const std::string& tag,
+                                            const char* tag,
                                             std::string_view file,
                                             const int line,
-                                            const std::string& func,
-                                            const std::string& message,
+                                            const char* func,
+                                            const char* message,
                                             va_list args)
         {
-            auto pos = file.find_last_of('/');
+            auto pos = std::string(file).find_last_of('/');
             if (pos != std::string::npos)
             {
                 pos++;
@@ -94,7 +94,7 @@ int main(const int argc, const char* argv[])
             }
             std::string_view fileName = file.substr(pos, file.size() - pos);
             char formattedStr[MAX_LEN] = {0};
-            vsnprintf(formattedStr, MAX_LEN, message.c_str(), args);
+            vsnprintf(formattedStr, MAX_LEN, message, args);
 
             std::lock_guard lock(G_MUTEX);
             // Create a timestamp for the log
