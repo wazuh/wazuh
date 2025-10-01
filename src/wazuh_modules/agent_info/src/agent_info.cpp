@@ -1,5 +1,6 @@
 #include "agent_info.h"
 #include "agent_info_impl.hpp"
+#include "logging_helper.hpp"
 
 #include <memory>
 
@@ -39,6 +40,16 @@ extern "C"
         {
             g_agent_info_impl->stop();
             g_agent_info_impl.reset();
+        }
+    }
+
+    void agent_info_set_log_function(log_callback_t log_callback)
+    {
+        if (log_callback)
+        {
+            LoggingHelper::setLogCallback([log_callback](const modules_log_level_t level, const char* log) {
+                log_callback(level, log, "agent-info");
+            });
         }
     }
 
