@@ -74,6 +74,13 @@ runs:
         | MSI        | Windows 11             |
         | PKG x86_64 | macOS 15 Sonoma @arm64 |
 
+        ## Download the manager package
+
+        \`\`\`shell
+        curl -LsO https://packages-dev.wazuh.com/pre-release/apt/pool/main/w/wazuh-manager/wazuh-manager_${RELEASE}-1_amd64.deb
+        curl -LsO https://packages-dev.wazuh.com/pre-release/yum/wazuh-manager-${RELEASE}-1.x86_64.rpm
+        \`\`\`
+
         ## Download the WPK packages
 
         \`\`\`shell
