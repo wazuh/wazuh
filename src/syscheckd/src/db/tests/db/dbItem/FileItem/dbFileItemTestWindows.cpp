@@ -44,6 +44,7 @@ void FileItemTest::SetUp()
     data->size = 4925;
     data->uid = const_cast<char*>("0");
     data->owner = const_cast<char*>("fakeUser");
+    data->version = 1;
     fimEntryTest->file_entry.data = data;
     json = {{"attributes", "10"},
             {"checksum", "a2fbef8f81af27155dcee5e3927ff6243593b91a"},
@@ -68,7 +69,8 @@ void FileItemTest::SetUp()
              "data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"},
             {"size", 4925},
             {"uid", "0"},
-            {"owner", "fakeUser"}};
+            {"owner", "fakeUser"},
+            {"version", 1}};
 }
 
 void FileItemTest::TearDown()

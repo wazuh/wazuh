@@ -27,6 +27,7 @@ void RegistryKeyTest::SetUp()
     key->permissions = const_cast<char*>("-rw-rw-r--");
     key->uid = const_cast<char*>("0");
     key->owner = const_cast<char*>("fakeUser");
+    key->version = 1;
     fimEntryTest->registry_entry.key = key;
 }
 
@@ -107,7 +108,7 @@ TEST_F(RegistryKeyTest, getJSONWithJSONCtrReportOldData)
     const nlohmann::json oldDataJson = R"(
             {
                 "data":[{"architecture":"[x64]","checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a","gid":"0","group_":"root",
-                "mtime":1578075431,"path":"HKEY_LOCAL_MACHINE\\SOFTWARE","permissions":"-rw-rw-r--","uid":"0", "owner":"fakeUser"}],
+                "mtime":1578075431,"path":"HKEY_LOCAL_MACHINE\\SOFTWARE","permissions":"-rw-rw-r--","uid":"0", "owner":"fakeUser","version":1}],
                 "table":"registry_key","options":{"return_old_data": true}
             }
         )"_json;
