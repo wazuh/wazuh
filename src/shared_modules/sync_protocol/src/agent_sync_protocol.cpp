@@ -14,6 +14,7 @@
 
 #include <flatbuffers/flatbuffers.h>
 #include <thread>
+#include <set>
 
 constexpr char SYNC_MQ = 's';
 
@@ -124,9 +125,17 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
         dataToSync[i].seq = i;
     }
 
+    // Extract unique indices from dataToSync
+    std::set<std::string> uniqueIndicesSet;
+    for (const auto& item : dataToSync)
+    {
+        uniqueIndicesSet.insert(item.index);
+    }
+    std::vector<std::string> uniqueIndices(uniqueIndicesSet.begin(), uniqueIndicesSet.end());
+
     bool success = false;
 
-    if (sendStartAndWaitAck(mode, dataToSync.size(), timeout, retries, maxEps))
+    if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, timeout, retries, maxEps))
     {
         if (sendDataMessages(m_syncState.session, dataToSync, maxEps))
         {
@@ -203,6 +212,7 @@ bool AgentSyncProtocol::ensureQueueAvailable()
 
 bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t dataSize,
+                                            const std::vector<std::string>& uniqueIndices,
                                             const std::chrono::seconds timeout,
                                             unsigned int retries,
                                             size_t maxEps)
@@ -211,15 +221,54 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
     {
         flatbuffers::FlatBufferBuilder builder;
 
-        Wazuh::SyncSchema::StartBuilder startBuilder(builder);
-
         // Translate DB mode to Schema mode
         const auto protocolMode = (mode == Mode::FULL)
                                   ? Wazuh::SyncSchema::Mode::ModuleFull
                                   : Wazuh::SyncSchema::Mode::ModuleDelta;
 
+        // Create hardcoded agent information
+        auto architecture = builder.CreateString("hardcoded_architecture");
+        auto hostname = builder.CreateString("hardcoded_hostname");
+        auto osname = builder.CreateString("hardcoded_osname");
+        auto ostype = builder.CreateString("hardcoded_ostype");
+        auto osversion = builder.CreateString("hardcoded_osversion");
+        auto agentversion = builder.CreateString("hardcoded_agentversion");
+        auto agentname = builder.CreateString("hardcoded_agentname");
+        auto agentid = builder.CreateString("hardcoded_agentid");
+        auto checksum_metadata = builder.CreateString("hardcoded_checksum_metadata");
+        auto global_version = builder.CreateString("hardcoded_global_version");
+
+        // Create groups vector
+        std::vector<flatbuffers::Offset<flatbuffers::String>> groups_vec;
+        groups_vec.push_back(builder.CreateString("hardcoded_group1"));
+        groups_vec.push_back(builder.CreateString("hardcoded_group2"));
+        auto groups = builder.CreateVector(groups_vec);
+
+        // Create index vector from uniqueIndices parameter
+        std::vector<flatbuffers::Offset<flatbuffers::String>> index_vec;
+        for (const auto& idx : uniqueIndices)
+        {
+            index_vec.push_back(builder.CreateString(idx));
+        }
+        auto indices = builder.CreateVector(index_vec);
+
+        Wazuh::SyncSchema::StartBuilder startBuilder(builder);
         startBuilder.add_mode(protocolMode);
         startBuilder.add_size(static_cast<uint64_t>(dataSize));
+        startBuilder.add_index(indices);
+        startBuilder.add_first(true);
+        startBuilder.add_architecture(architecture);
+        startBuilder.add_hostname(hostname);
+        startBuilder.add_osname(osname);
+        startBuilder.add_ostype(ostype);
+        startBuilder.add_osversion(osversion);
+        startBuilder.add_agentversion(agentversion);
+        startBuilder.add_agentname(agentname);
+        startBuilder.add_agentid(agentid);
+        startBuilder.add_groups(groups);
+        startBuilder.add_checksum_metadata(checksum_metadata);
+        startBuilder.add_global_version(global_version);
+
         auto startOffset = startBuilder.Finish();
 
         auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::Start, startOffset.Union());
