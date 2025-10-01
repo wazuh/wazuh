@@ -7,13 +7,35 @@
 // Helper functions and definitions
 namespace
 {
-const base::Name G_POLICY_NAME {"policy/wazuh/0"};
-const base::Name G_FILTER_NAME {"filter/allow-all/0"}; // Filter for route
+const base::Name G_POLICY_NAME {"policy/wazuh/0"};     ///< Default policy name
+const base::Name G_FILTER_NAME {"filter/allow-all/0"}; ///< Filter that allows all events
 
+/**
+ * @brief Get a shared pointer from a weak pointer or throw an exception if the pointer is expired
+ * @tparam T Type of the pointer
+ * @param weakPtr Weak pointer to get the shared pointer from
+ * @param name Name of the instance to include in the exception message
+ * @return const auto Shared pointer
+ */
+template<typename T>
+auto getHandlerOrThrow(const std::weak_ptr<T>& weakPtr, std::string_view name)
+{
+    const auto ptr = weakPtr.lock();
+    if (!ptr)
+    {
+        throw std::runtime_error(fmt::format("{} instance is no longer available", name));
+    }
+    return ptr;
+}
+
+/**
+ * @brief Get a filter that allows all events
+ * @return json::Json JSON representation of the filter
+ */
 json::Json getAllowAllFilter()
 {
-    json::Json filter {};
     // TODO: Move "/name" to common header
+    json::Json filter {};
     filter.setString(G_FILTER_NAME.fullName(), "/name");
     return filter;
 }
@@ -30,7 +52,7 @@ void CMSync::deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore)
 {
     namespace acns = api::catalog;
 
-    // Validate the outputs
+    // Load from files and validate the core outputs
     wazuhCoreOutput(true);
 
     // TODO: We need validate the new ruleset before remove the old ones
@@ -59,7 +81,7 @@ void CMSync::deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore)
     // Load decoders and integrations from Content Manager.
     pushAssetsFromCM(ctiStore);
 
-    // Load the filter if not exists.
+    // Load the allow-all filter if not exists.
     loadCoreFilter();
 
     // Create the security policy.
@@ -113,11 +135,8 @@ void CMSync::cleanCatalog(const std::string& ns, const std::vector<api::catalog:
 {
     namespace acns = api::catalog;
 
-    const auto catalog = m_catalog.lock();
-    if (!catalog)
-    {
-        throw std::runtime_error("Catalog instance is no longer available");
-    }
+    const auto catalog = getHandlerOrThrow(m_catalog, "Catalog");
+
     // For each type, delete all resources of that type in the namespace
     for (const auto& type : typesToClean)
     {
@@ -145,11 +164,7 @@ void CMSync::cleanCatalog(const std::string& ns, const std::vector<api::catalog:
 // Clean KVDB TODO: Separe KVDB between CTI and User (Maybe ns?)
 void CMSync::cleanAllKVDB()
 {
-    auto kvdbManager = m_kvdbManager.lock();
-    if (!kvdbManager)
-    {
-        throw std::runtime_error("KVDB Manager instance is no longer available");
-    }
+    auto kvdbManager = getHandlerOrThrow(m_kvdbManager, "KVDB Manager");
 
     // List all DBs
     const auto dbs = kvdbManager->listDBs(false);
@@ -180,11 +195,7 @@ void CMSync::cleanAllKVDB()
 // Remove policys from catalog
 void CMSync::cleanAllPolicys()
 {
-    const auto policyManager = m_policyManager.lock();
-    if (!policyManager)
-    {
-        throw std::runtime_error("Policy Manager instance is no longer available");
-    }
+    const auto policyManager = getHandlerOrThrow(m_policyManager, "Policy Manager");
 
     // List all policys
     const auto respOrError = policyManager->list();
@@ -213,11 +224,7 @@ void CMSync::cleanAllPolicys()
 // Remove route and environment from the orchestrator
 void CMSync::cleanAllRoutesAndEnvironments()
 {
-    const auto orchestrator = m_orchestrator.lock();
-    if (!orchestrator)
-    {
-        throw std::runtime_error("Orchestrator instance is no longer available");
-    }
+    const auto orchestrator = getHandlerOrThrow(m_orchestrator, "Orchestrator");
 
     // List all entries
     const auto entries = orchestrator->getEntries();
@@ -258,11 +265,7 @@ void CMSync::pushKVDBsFromCM(const std::shared_ptr<cti::store::ICMReader>& ctiSt
         throw std::invalid_argument("CTI Store instance is null");
     }
 
-    const auto kvdbManager = m_kvdbManager.lock();
-    if (!kvdbManager)
-    {
-        throw std::runtime_error("KVDB Manager instance is no longer available");
-    }
+    const auto kvdbManager = getHandlerOrThrow(m_kvdbManager, "KVDB Manager");
     // List all KVDB in the CM Store
     const auto kvdbList = ctiStore->listKVDB();
 
@@ -308,11 +311,7 @@ void CMSync::pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& cmst
         throw std::invalid_argument("CTI Store instance is null");
     }
 
-    const auto catalog = m_catalog.lock();
-    if (!catalog)
-    {
-        throw std::runtime_error("Catalog instance is no longer available");
-    }
+    const auto catalog = getHandlerOrThrow(m_catalog, "Catalog");
 
     // Get all integration from CM store
     const auto integrationList = cmstore->getAssetList(cti::store::AssetType::INTEGRATION);
@@ -447,11 +446,7 @@ void CMSync::pushPolicysFromCM(const std::shared_ptr<cti::store::ICMReader>& cms
         throw std::invalid_argument("CTI Store instance is null");
     }
 
-    const auto policyManager = m_policyManager.lock();
-    if (!policyManager)
-    {
-        throw std::runtime_error("Policy Manager instance is no longer available");
-    }
+    const auto policyManager = getHandlerOrThrow(m_policyManager, "Policy Manager");
 
     // Create the default policy
     {
@@ -482,17 +477,8 @@ void CMSync::pushPolicysFromCM(const std::shared_ptr<cti::store::ICMReader>& cms
 
 void CMSync::pushOutputsToPolicy()
 {
-    const auto policyManager = m_policyManager.lock();
-    if (!policyManager)
-    {
-        throw std::runtime_error("Policy Manager instance is no longer available");
-    }
-
-    const auto catalog = m_catalog.lock();
-    if (!catalog)
-    {
-        throw std::runtime_error("Catalog instance is no longer available");
-    }
+    const auto policyManager = getHandlerOrThrow(m_policyManager, "Policy Manager");
+    const auto catalog = getHandlerOrThrow(m_catalog, "Catalog");
 
     // Get all output from system namespace in the catalog
     const auto jlist =
@@ -550,11 +536,7 @@ void CMSync::pushOutputsToPolicy()
 
 void CMSync::loadCoreFilter()
 {
-    const auto catalog = m_catalog.lock();
-    if (!catalog)
-    {
-        throw std::runtime_error("Catalog instance is no longer available");
-    }
+    const auto catalog = getHandlerOrThrow(m_catalog, "Catalog");
 
     // Check if filter already exists
     api::catalog::Resource filterResource {G_FILTER_NAME, api::catalog::Resource::Format::json};
@@ -577,43 +559,34 @@ void CMSync::loadCoreFilter()
 // Add routes and environments to the orchestrator
 void CMSync::loadDefaultRoute()
 {
-    const auto orchestrator = m_orchestrator.lock();
-    if (!orchestrator)
-    {
-        throw std::runtime_error("Orchestrator instance is no longer available");
-    }
+    const auto orchestrator = getHandlerOrThrow(m_orchestrator, "Orchestrator");
 
     // Create the default environment
-    {
-        router::prod::EntryPost defaultEnv {
-            "default",     // name
-            G_POLICY_NAME, // policy
-            G_FILTER_NAME, // filter
-            255            // priority
-        };
-        const auto error = defaultEnv.validate();
-        if (error)
-        {
-            throw std::runtime_error(fmt::format("Failed to validate default environment: {}", error->message));
-        }
 
-        const auto respOrError = orchestrator->postEntry(defaultEnv);
-        if (base::isError(respOrError))
-        {
-            throw std::runtime_error(
-                fmt::format("Failed to create default environment: {}", base::getError(respOrError).message));
-        }
+    router::prod::EntryPost defaultEnv {
+        "default",     // name
+        G_POLICY_NAME, // policy
+        G_FILTER_NAME, // filter
+        255            // priority
+    };
+    const auto error = defaultEnv.validate();
+    if (error)
+    {
+        throw std::runtime_error(fmt::format("Failed to validate default environment: {}", error->message));
+    }
+
+    const auto respOrError = orchestrator->postEntry(defaultEnv);
+    if (base::isError(respOrError))
+    {
+        throw std::runtime_error(
+            fmt::format("Failed to create default environment: {}", base::getError(respOrError).message));
     }
 }
 
 void CMSync::wazuhCoreOutput(bool onlyValidate) const
 {
     namespace acns = api::catalog;
-    const auto catalog = m_catalog.lock();
-    if (!catalog)
-    {
-        throw std::runtime_error("Catalog instance is no longer available");
-    }
+    const auto catalog = getHandlerOrThrow(m_catalog, "Catalog");
 
     // Filter ouput in outputPath
     std::vector<std::filesystem::path> ymlFiles = m_coreOutputReader->getAllOutputFiles();
