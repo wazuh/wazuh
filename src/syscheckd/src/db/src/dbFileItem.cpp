@@ -38,6 +38,7 @@ void FileItem::createFimEntry()
             data->mtime = m_time;
             data->inode = m_inode;
             data->device = m_device;
+            data->version = m_version;
             std::snprintf(data->hash_md5, sizeof(data->hash_md5), "%s", m_md5.c_str());
             std::snprintf(data->hash_sha1, sizeof(data->hash_sha1), "%s", m_sha1.c_str());
             std::snprintf(data->hash_sha256, sizeof(data->hash_sha256), "%s", m_sha256.c_str());
@@ -85,6 +86,7 @@ void FileItem::createJSON()
     data["hash_sha1"] = m_sha1;
     data["hash_sha256"] = m_sha256;
     data["mtime"] = m_time;
+    data["version"] = m_version;
     conf["data"] = nlohmann::json::array({data});
 
     if (m_oldData)

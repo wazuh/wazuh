@@ -294,6 +294,9 @@ typedef struct fim_file_data {
 
     // Checksum
     os_sha1 checksum;
+
+    // Version for state tracking
+    int version;
 } fim_file_data;
 
 typedef struct fim_registry_key {
@@ -311,6 +314,9 @@ typedef struct fim_registry_key {
 
     // Checksum
     os_sha1 checksum;
+
+    // Version for state tracking
+    int version;
 } fim_registry_key;
 
 typedef struct fim_registry_value_data {
@@ -325,6 +331,9 @@ typedef struct fim_registry_value_data {
 
     // Checksum
     os_sha1 checksum;
+
+    // Version for state tracking
+    int version;
 } fim_registry_value_data;
 
 typedef struct fim_entry {
