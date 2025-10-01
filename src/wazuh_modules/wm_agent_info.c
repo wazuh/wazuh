@@ -158,7 +158,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     }
 
     // Get module handle and function pointers
-    if (agent_info_module = so_get_module_handle(AGENT_INFO_WM_NAME), agent_info_module)
+    if (agent_info_module = so_get_module_handle(AGENT_INFO_LIB_NAME), agent_info_module)
     {
         agent_info_start_ptr = so_get_function_sym(agent_info_module, "agent_info_start");
         agent_info_stop_ptr = so_get_function_sym(agent_info_module, "agent_info_stop");
