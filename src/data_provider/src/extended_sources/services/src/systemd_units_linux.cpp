@@ -179,11 +179,8 @@ bool SystemdUnitsProvider::getSystemdUnits(std::vector<SystemdUnit>& output)
             }
         }
 
-        const auto split = Utils::split(unit.id, '.');
-
-        if (split.size() == 2 && split[1] == "service")
+        if (Utils::endsWith(unit.id, ".service") && Utils::replaceLast(unit.id, ".service", ""))
         {
-            unit.id = std::move(split[0]);
             output.emplace_back(std::move(unit));
         }
 
