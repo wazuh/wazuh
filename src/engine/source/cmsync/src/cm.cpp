@@ -126,6 +126,8 @@ CMSync::CMSync(const std::shared_ptr<api::catalog::ICatalog>& catalog,
     m_coreOutputReader = std::make_unique<CoreOutputReader>(outputPath);
 }
 
+CMSync::~CMSync() = default;
+
 /************************************************************************************
  * Other public methods or other interfaces can be added here
  ************************************************************************************/

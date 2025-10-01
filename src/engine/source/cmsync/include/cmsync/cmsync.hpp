@@ -81,7 +81,7 @@ public:
     /**
      * @brief Default destructor
      */
-    ~CMSync() override = default;
+    ~CMSync() override;
 
     /************************************************************************************
      * ICMSync interface implementation

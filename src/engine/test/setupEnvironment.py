@@ -20,6 +20,7 @@ def setup_engine(engine_src_dir, environment_dir):
         os.path.join(environment_dir, 'queue/sockets'),
         os.path.join(environment_dir, 'kvdb'),
         os.path.join(environment_dir, 'logs'),
+        os.path.join(environment_dir, 'outputs'),  # For CM/CTI output files
     ]
 
     for directory in dirs_to_create:

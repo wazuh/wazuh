@@ -25,6 +25,7 @@
 #include <builder/builder.hpp>
 #include <conf/conf.hpp>
 #include <conf/keys.hpp>
+#include <cmsync/cmsync.hpp>
 #include <defs/defs.hpp>
 #include <eMessages/eMessage.h>
 #include <geo/downloader.hpp>
@@ -230,6 +231,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<wiconnector::WIndexerConnector> indexerConnector;
     std::shared_ptr<httpsrv::Server> apiServer;
     std::shared_ptr<archiver::Archiver> archiver;
+    std::shared_ptr<cm::sync::CMSync> cmsync;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
 
     try
@@ -573,6 +575,16 @@ int main(int argc, char* argv[])
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
+        }
+
+        // Content Manager
+        {
+            cmsync = std::make_shared<cm::sync::CMSync>(catalog,
+                                                        kvdbManager,
+                                                        policyManager,
+                                                        orchestrator,
+                                                        confManager.get<std::string>(conf::key::CMSYNC_OUTPUT_PATH));
+            LOG_INFO("Content Manager Sync initialized.");
         }
 
         // UDP Servers
