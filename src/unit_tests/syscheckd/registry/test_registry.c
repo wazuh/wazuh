@@ -896,7 +896,7 @@ static void test_fim_registry_key_transaction_callback_insert(){
     notify_scan = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\", \"version\":1}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
@@ -910,7 +910,7 @@ static void test_fim_registry_key_transaction_callback_modify(){
     notify_scan = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\", \"version\":1}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
@@ -924,7 +924,7 @@ static void test_fim_registry_key_transaction_callback_delete(){
     notify_scan = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = DELETED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\", \"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\", \"version\":1}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_key_txn_context_t user_data = {.key = NULL, .evt_data = &event_data};
 
@@ -1005,7 +1005,7 @@ static void test_fim_registry_value_transaction_callback_insert(){
     notify_scan = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = INSERTED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"version\":1}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
@@ -1019,7 +1019,7 @@ static void test_fim_registry_value_transaction_callback_modify(){
     notify_scan = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"version\":1}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 
@@ -1033,7 +1033,7 @@ static void test_fim_registry_value_transaction_callback_modify_with_diff(){
     notify_scan = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = MODIFIED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"version\":1}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = "test diff string"};
 
@@ -1047,7 +1047,7 @@ static void test_fim_registry_value_transaction_callback_delete(){
     notify_scan = 1;
     event_data_t event_data = {.mode = FIM_SCHEDULED, .report_event = true};
     ReturnTypeCallback resultType = DELETED;
-    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\"}";
+    const char* json_string = "{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"version\":1}";
     const cJSON* result_json = cJSON_Parse(json_string);
     fim_val_txn_context_t user_data = {.data = NULL, .evt_data = &event_data, .diff = NULL};
 

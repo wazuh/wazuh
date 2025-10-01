@@ -279,12 +279,26 @@ STATIC void registry_key_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    // Add state modified_at field for stateful event only
+    // Add state modified_at and document_version fields for stateful event only
     cJSON* state = cJSON_CreateObject();
     if (state != NULL) {
         char modified_at_time[32];
         get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
         cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+
+        // Add document_version for state tracking
+        if (event_data->key != NULL) {
+            cJSON_AddNumberToObject(state, "document_version", event_data->key->version);
+        } else {
+            cJSON *version_aux = cJSON_GetObjectItem(result_json, "version");
+            if (version_aux != NULL) {
+                cJSON_AddNumberToObject(state, "document_version", version_aux->valueint);
+            } else {
+                mdebug1("Couldn't find version for '%s", path);
+                goto end; // LCOV_EXCL_LINE
+            }
+        }
+
         cJSON_AddItemToObject(stateful_event, "state", state);
     }
 
@@ -496,12 +510,26 @@ STATIC void registry_value_transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    // Add state modified_at field for stateful event only
+    // Add state modified_at and document_version fields for stateful event only
     cJSON* state = cJSON_CreateObject();
     if (state != NULL) {
         char modified_at_time[32];
         get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
         cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+
+        // Add document_version for state tracking
+        if (event_data->data != NULL) {
+            cJSON_AddNumberToObject(state, "document_version", event_data->data->version);
+        } else {
+            cJSON *version_aux = cJSON_GetObjectItem(result_json, "version");
+            if (version_aux != NULL) {
+                cJSON_AddNumberToObject(state, "document_version", version_aux->valueint);
+            } else {
+                mdebug1("Couldn't find version for '%s", path);
+                goto end; // LCOV_EXCL_LINE
+            }
+        }
+
         cJSON_AddItemToObject(stateful_event, "state", state);
     }
 

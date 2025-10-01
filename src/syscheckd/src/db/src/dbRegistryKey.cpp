@@ -32,6 +32,7 @@ void RegistryKey::createFimEntry()
             key->path = const_cast<char*>(m_identifier.c_str());
             key->permissions = const_cast<char*>(m_permissions.c_str());
             key->owner = const_cast<char*>(m_owner.c_str());
+            key->version = m_version;
 
             fim->registry_entry.key = key;
             m_fimEntry = std::unique_ptr<fim_entry, FimRegistryKeyDeleter>(fim);
@@ -69,6 +70,7 @@ void RegistryKey::createJSON()
     data["owner"] = m_owner;
     data["group_"] = m_group;
     data["mtime"] = m_time;
+    data["version"] = m_version;
 
     conf["data"] = nlohmann::json::array({data});
 
