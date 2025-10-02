@@ -2868,7 +2868,7 @@ static int wm_sca_check_hash(OSHash * const cis_db_hash, const char * const resu
         return 0;
     }
     if (cJSON_IsNumber(pm_id)) {
-        sprintf(id_hashed, "%g", pm_id->valuedouble);
+        snprintf(id_hashed, sizeof(id_hashed), "%g", pm_id->valuedouble);
     } else {
         return 0;
     }
