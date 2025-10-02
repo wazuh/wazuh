@@ -68,7 +68,6 @@ public:
     ByteView getIpBytes() const noexcept;
     std::uint16_t getPort() const noexcept;
     IpFamily getFamily() const noexcept;
-    bool hasPort() const noexcept;
 
     friend bool operator<(const NetworkEndpoint& lhs, const NetworkEndpoint& rhs) noexcept;
 
@@ -101,10 +100,6 @@ NetworkEndpoint::IpFamily NetworkEndpoint::getFamily() const noexcept
 {
     return m_family;
 }
-bool NetworkEndpoint::hasPort() const noexcept
-{
-    return m_port != 0;
-}
 
 void NetworkEndpoint::ParseIpAddress(std::string_view ip)
 {
@@ -133,19 +128,13 @@ void NetworkEndpoint::ParseIpAddress(std::string_view ip)
 
 bool operator<(const NetworkEndpoint& lhs, const NetworkEndpoint& rhs) noexcept
 {
-    if (lhs.getFamily() != rhs.getFamily())
-        return lhs.getFamily() < rhs.getFamily();
-
     const auto lb = lhs.getIpBytes();
     const auto rb = rhs.getIpBytes();
 
     if (!std::equal(lb.begin(), lb.end(), rb.begin()))
         return std::lexicographical_compare(lb.begin(), lb.end(), rb.begin(), rb.end());
 
-    if (lhs.hasPort() != rhs.hasPort())
-        return lhs.hasPort() < rhs.hasPort();
-
-    if (lhs.hasPort() && rhs.hasPort() && (lhs.getPort() != rhs.getPort()))
+    if (lhs.getPort() != rhs.getPort())
         return lhs.getPort() < rhs.getPort();
 
     return false;
@@ -251,13 +240,13 @@ bool validatePortsForProto(std::uint8_t protoIana, std::int64_t sport, std::int6
     {
         if (sport <= 0 || sport > TRANSPORT_PORT_MAX)
         {
-            outErr = "source.port out of range (expected 0..65535)";
+            outErr = "source.port out of range (expected 1..65535)";
             return false;
         }
 
         if (dport <= 0 || dport > TRANSPORT_PORT_MAX)
         {
-            outErr = "destination.port out of range (expected 0..65535)";
+            outErr = "destination.port out of range (expected 1..65535)";
             return false;
         }
 
@@ -317,6 +306,11 @@ base::RespOrError<std::string> getCommunityIdV1(
 
         NetworkEndpoint src(saddr, static_cast<std::uint16_t>(sport));
         NetworkEndpoint dst(daddr, static_cast<std::uint16_t>(dport));
+
+        if (src.getFamily() != dst.getFamily())
+        {
+            return base::Error{"Algorithm requires both IPs to be of the same family (IPv4 or IPv6)"};
+        }
 
         if (dst < src)
             std::swap(src, dst);

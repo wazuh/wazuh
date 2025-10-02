@@ -201,6 +201,11 @@ INSTANTIATE_TEST_SUITE_P(
              makeDefaultArgs(),
              FAILURE(operationFailure())),
         MapT(
+            R"({"source":{"ip":"192.168.0.1","port":12345},"destination":{"ip":"2001:db8::1","port":80},"network":{"iana_number":6}})",
+            opBuilderHelperNetworkCommunityId,
+            makeDefaultArgs(),
+            FAILURE(operationFailure())),
+        MapT(
             R"({"source":{"ip":"192.168.0.1","port":12345},"destination":{"ip":80,"port":80},"network":{"iana_number":6}})",
             opBuilderHelperNetworkCommunityId,
             makeDefaultArgs(),
