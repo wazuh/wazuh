@@ -1,0 +1,22 @@
+name: output/indexer-apache-tomcat/0
+
+metadata:
+  module: wazuh
+  title: Indexer output event for apache-tomcat
+  description: Output integrations events to wazuh-indexer
+  compatibility: >
+    This decoder has been tested on Wazuh version 5.0
+  versions:
+    - ""
+  author:
+    name: Wazuh, Inc.
+    date: 2024/12/01
+  references:
+    - ""
+
+check:
+  - wazuh.decoders: array_contains_any(apache-tomcat-access,apache-tomcat-catalina-localhost, apache-tomcat-connection-pool,apache-tomcat-cache, apache-tomcat-memory,apache-tomcat-request, apache-tomcat-session,apache-tomcat-thread-pool)
+
+outputs:
+  - wazuh-indexer:
+      index: wazuh-events-apache-tomcat

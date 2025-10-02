@@ -1,0 +1,22 @@
+name: output/indexer/0
+
+metadata:
+  module: wazuh
+  title: Indexer output event
+  description: Output integrations events to wazuh-indexer
+  compatibility: >
+    This decoder has been tested on Wazuh version 5.0
+  versions:
+    - ""
+  author:
+    name: Wazuh, Inc.
+    date: 2024/12/01
+  references:
+    - ""
+
+check:
+  - wazuh.decoders: array_not_contains_any(zeek-capture_loss,zeek-conn,zeek-dce_rpc,zeek-dhcp,zeek-dnp3,zeek-dns,zeek-dpd,zeek-files,zeek-ftp,zeek-http,zeek-intel,zeek-irc,zeek-kerberos,zeek-known_certs,zeek-known_hosts,zeek-known_services,zeek-modbus,zeek-mysql,zeek-notice,zeek-ntlm,zeek-ntp,zeek-ocsp,zeek-pe,zeek-radius,zeek-rdp,zeek-rfb,zeek-signature,zeek-sip,zeek-smb_cmd,zeek-smb_files,zeek-smb_mapping,zeek-smtp,zeek-snmp,zeek-socks,zeek-software,zeek-ssh,zeek-ssl,zeek-stats,zeek-syslog,zeek-traceroute,zeek-tunnel,zeek-weird,zeek-x509,snort-json,snort-plaintext,snort-plaintext-syslog,snort-plaintext-csv,iptables,checkpoint,microsoft-exchange-server-httpproxy,microsoft-exchange-server-imap4-pop3,microsoft-exchange-server-messagetracking,microsoft-exchange-server-smtp,azure-activity,azure-audit,azure-firewall,azure-identity-protection,azure-graphactivity,azure-springcloud,azure-provisioning,azure-platform,azure-signin,azure-application-gateway,suricata,azure-app-service-app,azure-app-service-audit,azure-app-service-console,azure-app-service-http,azure-app-service-ipsec-audit,azure-app-service-platform,modsecurity-apache,modsecurity-nginx,amazon-security-lake-event,oracle-weblogic,iis,apache-tomcat-access,apache-tomcat-catalina-localhost,apache-tomcat-connection-pool,apache-tomcat-cache,apache-tomcat-memory,apache-tomcat-request,apache-tomcat-session,apache-tomcat-thread-pool,pfsense-dhcp,pfsense-firewall,pfsense-php-fpm,pfsense-unbound,fortinet-start,fortinet-traffic,fortinet-event,fortinet-utm,fortinet-end,springboot-gc,springboot-http-trace,microsoft-dhcp,microsoft-dhcpv6,cisco-umbrella-auditlog,cisco-umbrella-cloudfirewall,cisco-umbrella-dlplogs,cisco-umbrella-dnslogs,cisco-umbrella-intrusionlogs,cisco-umbrella-iplogs,cisco-umbrella-proxylogs,websphere,windows-security,windows-sysmon,windows-powershell,windows-event,windows-powershell-operational,cisco-asa-non-syslog,cisco-asa,cisco-asa-access-list,cisco-asa-url-access,cisco-asa-sip,cisco-asa-ipaa,cisco-asa-device-info,cisco-asa-group-user-connection,cisco-asa-network-connection,macos-uls,f5-bigip-afm,f5-bigip-apm,f5-bigip-asm,f5-bigip-avr,f5-bigip-bot-dos,f5-bigip-ihealthinfo,f5-bigip-ltm,f5-bigip-system,squid-access,microsoft-dnsserver-analytical,microsoft-dnsserver-audit,auditd,gcp-audit,gcp-compute,gcp-dns,gcp-firewall,gcp-loadbalancinglogs,gcp-vpcflow,azure-metrics-compute-vm,azure-metrics-compute-vm-scaleset,azure-metrics-container-instance,azure-metrics-container-service,azure-metrics-container-registry,azure-metrics-database-account,azure-metrics-storage-account,azure-metrics-monitor)
+
+outputs:
+  - wazuh-indexer:
+      index: wazuh-alerts

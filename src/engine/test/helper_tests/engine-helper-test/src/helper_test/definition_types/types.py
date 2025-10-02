@@ -4,7 +4,7 @@ from enum import Enum
 import random
 import re
 
-MAXIMUM_NUMBER_OF_ARGUMENTS = 40
+MAXIMUM_NUMBER_OF_ARGUMENTS = 150
 
 
 class Source(Enum):
