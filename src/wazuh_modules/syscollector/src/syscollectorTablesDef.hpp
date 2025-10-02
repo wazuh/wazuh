@@ -22,6 +22,7 @@ constexpr auto OS_SQL_STATEMENT
     os_patch TEXT,
     os_build TEXT,
     os_platform TEXT,
+    os_type TEXT,
     os_kernel_name TEXT,
     os_kernel_release TEXT,
     os_kernel_version TEXT,
