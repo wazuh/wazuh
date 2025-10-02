@@ -11,6 +11,7 @@
 
 #include "inventorySync_generated.h"
 #include "ipersistent_queue.hpp"
+#include "agent_sync_protocol_types.hpp"
 
 #include <string>
 #include <chrono>
@@ -47,18 +48,19 @@ class IAgentSyncProtocol
         /// @return true if the sync was successfully processed; false otherwise.
         virtual bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
 
-        /// @brief Check the integrity of a module index with the server
+        /// @brief Checks if a module index requires full synchronization
         /// @param index The index/table to check
         /// @param checksum The calculated checksum for the index
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
-        /// @return true if the integrity check was successfully completed; false otherwise.
-        virtual bool checkIndexIntegrity(const std::string& index,
-                                         const std::string& checksum,
-                                         std::chrono::seconds timeout,
-                                         unsigned int retries,
-                                         size_t maxEps) = 0;
+        /// @return true if full sync is required (checksum mismatch); false if integrity is valid.
+        virtual bool requiresFullSync(const std::string& index,
+                                      const std::string& checksum,
+                                      std::chrono::seconds timeout,
+                                      unsigned int retries,
+                                      size_t maxEps) = 0;
+
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;

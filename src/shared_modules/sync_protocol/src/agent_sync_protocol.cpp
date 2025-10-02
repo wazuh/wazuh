@@ -186,16 +186,16 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
     return success;
 }
 
-bool AgentSyncProtocol::checkIndexIntegrity(const std::string& index,
-                                            const std::string& checksum,
-                                            std::chrono::seconds timeout,
-                                            unsigned int retries,
-                                            size_t maxEps)
+bool AgentSyncProtocol::requiresFullSync(const std::string& index,
+                                         const std::string& checksum,
+                                         std::chrono::seconds timeout,
+                                         unsigned int retries,
+                                         size_t maxEps)
 {
     if (!ensureQueueAvailable())
     {
         m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
-        return false;
+        return false; // Return false as this is not a checksum error from manager
     }
 
     clearSyncState();
@@ -206,7 +206,7 @@ bool AgentSyncProtocol::checkIndexIntegrity(const std::string& index,
     {
         m_logger(LOG_ERROR, "Failed to send Start message for integrity check");
         clearSyncState();
-        return false;
+        return false; // Return false as this is not a checksum error from manager
     }
 
     // Step 2: Send ChecksumModule message
@@ -214,27 +214,46 @@ bool AgentSyncProtocol::checkIndexIntegrity(const std::string& index,
     {
         m_logger(LOG_ERROR, "Failed to send ChecksumModule message");
         clearSyncState();
-        return false;
+        return false; // Return false as this is not a checksum error from manager
     }
 
     m_logger(LOG_DEBUG, "ChecksumModule message sent for index: " + index);
 
     // Step 3: Send End message and wait for EndAck
-    bool success = false;
+    SyncResult syncResult;
     std::vector<PersistedData> emptyData; // No data to send for integrity check
-    if (sendEndAndWaitAck(m_syncState.session, timeout, retries, emptyData, maxEps))
+    if (sendEndAndWaitAck(m_syncState.session, timeout, retries, emptyData, maxEps, &syncResult))
     {
-        success = true;
         m_logger(LOG_DEBUG, "Module integrity check completed successfully for index: " + index);
+        clearSyncState();
+        return false; // Integrity is valid, no sync required
     }
     else
     {
-        m_logger(LOG_WARNING, "Module integrity check failed for index: " + index);
-    }
+        // Only return true if manager explicitly reported Status=Error (CHECKSUM_ERROR)
+        // All other errors (communication, timeout, etc.) should return false
+        bool result = (syncResult == SyncResult::CHECKSUM_ERROR);
 
-    clearSyncState();
-    return success;
+        // Provide detailed error information based on the sync result
+        switch (syncResult)
+        {
+            case SyncResult::COMMUNICATION_ERROR:
+                m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - Manager is offline");
+                break;
+            case SyncResult::CHECKSUM_ERROR:
+                m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - Checksum validation failed, full sync required");
+                break;
+            case SyncResult::UNKNOWN_ERROR:
+            default:
+                m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - Unknown error");
+                break;
+        }
+
+        clearSyncState();
+        return result;
+    }
 }
+
 
 bool AgentSyncProtocol::ensureQueueAvailable()
 {
@@ -481,7 +500,8 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                                           const std::chrono::seconds timeout,
                                           unsigned int retries,
                                           const std::vector<PersistedData>& dataToSync,
-                                          size_t maxEps)
+                                          size_t maxEps,
+                                          SyncResult* result)
 {
     try
     {
@@ -523,6 +543,10 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 if (m_syncState.syncFailed)
                 {
+                    if (result)
+                    {
+                        *result = m_syncState.lastSyncResult;
+                    }
                     m_logger(LOG_ERROR, "Synchronization failed: Manager reported an error status.");
                     return false;
                 }
@@ -573,6 +597,10 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 if (m_syncState.endAckReceived)
                 {
+                    if (result)
+                    {
+                        *result = m_syncState.lastSyncResult;
+                    }
                     m_logger(LOG_DEBUG, "EndAck received.");
                     return true;
                 }
@@ -694,11 +722,23 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                             endAck->status() == Wazuh::SyncSchema::Status::Offline)
                     {
                         m_logger(LOG_ERROR, "Received EndAck with error status. Aborting synchronization.");
+
+                        // Store the specific error type for detailed reporting
+                        if (endAck->status() == Wazuh::SyncSchema::Status::Offline)
+                        {
+                            m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
+                        }
+                        else if (endAck->status() == Wazuh::SyncSchema::Status::Error)
+                        {
+                            m_syncState.lastSyncResult = SyncResult::CHECKSUM_ERROR;
+                        }
+
                         m_syncState.syncFailed = true;
                         m_syncState.cv.notify_all();
                         break;
                     }
 
+                    m_syncState.lastSyncResult = SyncResult::SUCCESS;
                     m_syncState.endAckReceived = true;
                     m_syncState.cv.notify_all();
 
