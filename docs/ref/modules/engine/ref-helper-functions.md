@@ -9085,7 +9085,8 @@ Port requirements by protocol:
   - TCP/UDP/SCTP: ports are mandatory and must be in 0..65535.
   - ICMP/ICMPv6: type/code are optional; if provided they must be in 0..255; otherwise 0/0 is used.
   - Other protocols: ports are optional (0..65535).
-The helper validates references, types, and ranges; on failure the target is left untouched.
+Both addresses must belong to the same IP family (IPv4 or IPv6).
+The helper validates references, types, families, and ranges; on failure the target is left untouched.
 
 
 ## Keywords
@@ -9353,6 +9354,44 @@ normalize:
   "destination_ip": "10.0.0.5",
   "source_port": 70000,
   "destination_port": 80
+}
+```
+
+*The operation was performed with errors*
+
+### Example 8
+
+Reject endpoints from mixed IP families
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "2001:db8::1",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 6
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "2001:db8::1",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 6
 }
 ```
 
