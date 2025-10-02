@@ -214,7 +214,8 @@ TEST_F(ContentDownloaderTest, ProcessMessageWithValidOffsetFormat)
     ContentManager cm(testConfig, false);
     std::string testFile = testDir + "/test_content.json";
     std::ofstream file(testFile);
-    file << R"({"name": "test_asset", "offset": 100, "payload":{"type":"decoder"}})" << std::endl;
+    file << R"({"data":[{"offset":100,"type":"create","payload":{"type":"decoder","document":{"id":"dec1"}}}]})"
+         << std::endl;
     file.close();
     std::string validMessage = std::string("{\"paths\":[\"") + testFile + "\"],\"type\":\"offsets\",\"offset\":0}";
     auto result = cm.testProcessMessage(validMessage);

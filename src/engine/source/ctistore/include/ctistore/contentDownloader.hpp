@@ -44,10 +44,11 @@ struct ContentManagerConfig
     std::string compressionType {"raw"};
     std::string versionedContent {"cti-api"};
     bool deleteDownloadedContent {true};
-    std::string url {"https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_test_5.0/consumers/decoders_test_5.0"};
+    // std::string url {"https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_test_5.0/consumers/decoders_test_5.0"};
+    std::string url {"https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_development_0.0.1/consumers/decoders_development_0.0.1"};
     std::string outputFolder {"content"};
-    std::string contentFileName {"api_file.json"};
-    std::string databasePath {"rocksdb"};
+    std::string contentFileName {"cti_content.json"};
+    std::string databasePath {"offset_database"};
     int offset {0};
 
     /**
