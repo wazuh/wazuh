@@ -40,7 +40,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", (wazuhRoot / "engine/kvdb/").c_str());
 
     // Content Manager
-    addUnit<std::string>(key::CMSYNC_OUTPUT_PATH, "WAZUH_CMSYNC_OUTPUT_PATH", (wazuhRoot / "etc/outputs").c_str());
+    addUnit<std::string>(key::CMSYNC_OUTPUT_PATH, "WAZUH_CMSYNC_OUTPUT_PATH", (wazuhRoot / "engine/outputs").c_str());
 
     // CTI module
     addUnit<std::string>(key::CTI_PATH, "WAZUH_CTI_PATH", (wazuhRoot / "engine/cti/").c_str());

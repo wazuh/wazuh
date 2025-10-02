@@ -585,6 +585,9 @@ int main(int argc, char* argv[])
                                                         orchestrator,
                                                         confManager.get<std::string>(conf::key::CMSYNC_OUTPUT_PATH));
             LOG_INFO("Content Manager Sync initialized.");
+
+            // TODO: Remove this in next iterations, maybe, can be validate without winc?
+            // cmsync->wazuhCoreOutput(true);
         }
 
         // UDP Servers

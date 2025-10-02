@@ -981,8 +981,6 @@ installEngineStore()
     DEST_FULL_PATH=${INSTALLDIR}/engine
     ENGINE_SRC_PATH=./engine
 
-    # TODO: Get from content delivery, and if not available, use local store
-
     # Fallback store installation
     local STORE_PATH=${DEST_FULL_PATH}/store
     local KVDB_PATH=${DEST_FULL_PATH}/kvdb
@@ -1015,6 +1013,14 @@ installEngineStore()
 
     echo "Engine store installed successfully."
 
+    # Copy default *. output configuration files
+    local OUTPUTS_PATH=${DEST_FULL_PATH}/outputs
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${OUTPUTS_PATH}
+    cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${OUTPUTS_PATH}/"
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${OUTPUTS_PATH}
+    find ${OUTPUTS_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+
+    echo "Engine output configuration files installed successfully."
 }
 
 InstallLocal()
