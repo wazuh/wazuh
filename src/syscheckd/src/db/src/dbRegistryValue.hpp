@@ -49,13 +49,6 @@ class RegistryValue final : public DBItem
             m_sha1 = fim->registry_entry.value->hash_sha1;
             m_sha256 = fim->registry_entry.value->hash_sha256;
             m_version = fim->registry_entry.value->version;
-
-            // If version is 0 (new entry), set to 1
-            if (m_version == 0)
-            {
-                m_version = 1;
-            }
-
             createJSON();
             createFimEntry();
         }
@@ -72,13 +65,6 @@ class RegistryValue final : public DBItem
             m_architecture = fim.at("architecture");
             m_path = fim.at("path");
             m_version = fim.at("version");
-
-            // If version is 0 (new entry with DEFAULT not yet applied), set to 1
-            if (m_version == 0)
-            {
-                m_version = 1;
-            }
-
             createFimEntry();
             createJSON();
         }
