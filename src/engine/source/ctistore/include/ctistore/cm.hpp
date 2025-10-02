@@ -117,6 +117,13 @@ public: // Test support: delegate to downloader
     }
 
     /**
+     * @brief Store policy data in local database
+     * @param policyData Policy data to store
+     * @return true if stored successfully
+     */
+    bool storePolicy(const json::Json& policyData);
+
+    /**
      * @brief Store integration asset in local database
      * @param integration Integration JSON line
      * @return true if stored successfully
@@ -136,13 +143,6 @@ public: // Test support: delegate to downloader
      * @return true if stored successfully
      */
     bool storeKVDB(const json::Json& kvdbData);
-
-    /**
-     * @brief Store policy data in local database
-     * @param policyData Policy data to store
-     * @return true if stored successfully
-     */
-    bool storePolicy(const json::Json& policyData);
 
 private:
     std::unique_ptr<ContentDownloader> m_downloader;

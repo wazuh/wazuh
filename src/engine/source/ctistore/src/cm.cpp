@@ -1,7 +1,9 @@
 #include <ctistore/cm.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 
 #include <base/logging.hpp>
@@ -228,102 +230,210 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 {
     try
     {
-        LOG_DEBUG("CTI: processing downloaded content message");
+        LOG_TRACE("CTI: processing downloaded content message: {}", message);
+
         json::Json parsedMessage(message.c_str());
+
         if (!parsedMessage.exists("/paths") || !parsedMessage.exists("/type") || !parsedMessage.exists("/offset"))
         {
             throw std::runtime_error("Invalid message format: missing required fields (paths,type,offset)");
         }
 
         const auto type = parsedMessage.getString("/type").value_or("");
-        int startingOffset = parsedMessage.getInt("/offset").value_or(0);
         auto pathsArray = parsedMessage.getArray("/paths");
         size_t pathCount = pathsArray.has_value() ? pathsArray->size() : 0;
-        LOG_DEBUG("CTI message meta: type='{}' starting_offset={} paths_count={}", type, startingOffset, pathCount);
 
-        int currentOffset = startingOffset;
+        auto currentOffset = 0;
         std::string hash;
         bool success = true;
 
         if (type == "offsets")
         {
-            // Incremental update: process each file, offset advances monotonically but may arrive out of order.
+            // Incremental processing
+            size_t totalEntries {0};
+            size_t storedItems {0};
             if (pathsArray.has_value())
             {
                 for (const auto& pathValue : pathsArray.value())
                 {
                     const auto path = json::Json(pathValue).getString().value_or("");
-                    LOG_DEBUG("CTI offsets: processing file {}", path);
-                    std::ifstream file(path);
-                    if (!file.is_open())
+                    if (path.empty())
                     {
-                        LOG_ERROR("Unable to open offsets file: {}", path);
-                        success = false;
-                        break;
+                        LOG_WARNING("CTI offsets: encountered path entry without string value; skipping");
+                        continue;
                     }
-                    std::string line;
-                    size_t lineNumber {0};
-                    while (std::getline(file, line))
+
+                    LOG_TRACE("CTI offsets: processing file {}", path);
+
+                    auto readFile = [&](const std::string& p) -> std::string
                     {
-                        ++lineNumber;
-                        if (line.empty())
+                        std::ifstream f(p);
+                        if (!f.is_open())
                         {
+                            LOG_ERROR("Unable to open offsets file: {}", p);
+                            success = false;
+                            return {};
+                        }
+                        std::ostringstream oss;
+                        oss << f.rdbuf();
+                        return oss.str();
+                    };
+
+                    const auto raw = readFile(path);
+                    if (raw.empty())
+                    {
+                        if (success)
+                        {
+                            LOG_WARNING("Offsets file '{}' is empty", path);
+                        }
+                        continue;
+                    }
+
+                    try
+                    {
+                        json::Json root(raw.c_str());
+                        auto dataArray = root.getArray("/data");
+                        if (!dataArray.has_value())
+                        {
+                            LOG_ERROR("Offsets file '{}' missing or invalid /data array; skipping", path);
+                            success = false;
                             continue;
                         }
-                        try
+
+                        totalEntries += dataArray->size();
+
+                        for (size_t i = 0; i < dataArray->size(); ++i)
                         {
-                            json::Json content(line.c_str());
-                            if (content.exists("/offset"))
+                            try
                             {
-                                currentOffset = content.getInt("/offset").value_or(currentOffset);
-                            }
-                            // classify & store
-                            auto contentType =
-                                content.getString("/payload/type").value_or(content.getString("/type").value_or(""));
-                            if (!contentType.empty())
-                            {
-                                bool stored = true;
-                                if (contentType == "policy")
-                                    stored = storePolicy(content);
-                                else if (contentType == "integration")
-                                    stored = storeIntegration(content);
-                                else if (contentType == "decoder")
-                                    stored = storeDecoder(content);
-                                else if (contentType == "kvdb")
-                                    stored = storeKVDB(content);
-                                else
-                                    LOG_WARNING(
-                                        "Offsets: unknown content type '{}' ({}:{})", contentType, path, lineNumber);
-                                if (!stored)
+                                json::Json entryJson(dataArray->at(i));
+
+                                // operation type: create|update|delete
+                                const auto operationType = entryJson.getString("/type").value_or("");
+
+                                // asset type: policy|integration|decoder|kvdb
+                                const auto assetType = entryJson.getString("/payload/type").value_or("");
+
+                                if (entryJson.exists("/offset"))
                                 {
-                                    LOG_WARNING(
-                                        "Failed to store content type '{}' ({}:{})", contentType, path, lineNumber);
+                                    currentOffset = entryJson.getInt("/offset").value_or(currentOffset);
+                                }
+
+                                if (assetType.empty())
+                                {
+                                    LOG_WARNING("Offsets: entry #{} missing asset type (file='{}')", i, path);
+                                    continue;
+                                }
+
+                                if (operationType == "create")
+                                {
+                                    bool stored = true;
+                                    if (assetType == "policy")
+                                    {
+                                        stored = storePolicy(entryJson);
+                                    }
+                                    else if (assetType == "integration")
+                                    {
+                                        stored = storeIntegration(entryJson);
+                                    }
+                                    else if (assetType == "decoder")
+                                    {
+                                        stored = storeDecoder(entryJson);
+                                    }
+                                    else if (assetType == "kvdb")
+                                    {
+                                        stored = storeKVDB(entryJson);
+                                    }
+                                    else
+                                    {
+                                        LOG_WARNING(
+                                            "Offsets: unknown asset type '{}' (#{} file='{}')", assetType, i, path);
+                                        stored = false;
+                                    }
+
+                                    if (!stored)
+                                    {
+                                        LOG_WARNING(
+                                            "Offsets: failed to store asset type='{}' (#{} file='{}' offset={})",
+                                            assetType,
+                                            i,
+                                            path,
+                                            currentOffset);
+                                    }
+                                    else
+                                    {
+                                        ++storedItems;
+                                    }
+                                }
+                                else if (operationType == "update")
+                                {
+                                    // TODO: Implement update semantics (merge vs replace?) when persistence layer is
+                                    // added
+                                    LOG_TRACE("Offsets: TODO update op asset='{}' (#{} offset={})",
+                                              assetType,
+                                              i,
+                                              currentOffset);
+                                    continue; // For now do not treat update as create
+                                }
+                                else if (operationType == "delete")
+                                {
+                                    // TODO: Implement deletion semantics when storage backend is available (remove
+                                    // record / tombstone)
+                                    LOG_TRACE("Offsets: skip delete op asset='{}' (#{} offset={})",
+                                              assetType,
+                                              i,
+                                              currentOffset);
+                                    continue;
+                                }
+                                else
+                                {
+                                    LOG_WARNING("Offsets: unknown operation '{}' for asset='{}' (#{} file='{}')",
+                                                operationType,
+                                                assetType,
+                                                i,
+                                                path);
+                                    continue;
                                 }
                             }
+                            catch (const std::exception& e)
+                            {
+                                LOG_ERROR("Error parsing offsets entry #{} in '{}': {}", i, path, e.what());
+                            }
                         }
-                        catch (const std::exception& e)
-                        {
-                            LOG_ERROR("Error parsing offsets line {} in {}: {}", lineNumber, path, e.what());
-                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        LOG_ERROR("Error parsing offsets root in '{}': {}", path, e.what());
+                        success = false;
                     }
                 }
             }
+            LOG_DEBUG("CTI offsets summary: files={} entries={} stored_items={} final_offset={}",
+                      pathCount,
+                      totalEntries,
+                      storedItems,
+                      currentOffset);
         }
         else if (type == "raw")
         {
             // Snapshot download: expect exactly one consolidated file.
             if (pathCount != 1)
             {
-                throw std::runtime_error("raw message must contain exactly one path");
+                throw std::runtime_error("Raw message must contain exactly one path");
             }
+
             const auto path = json::Json(pathsArray->at(0)).getString().value_or("");
+
             LOG_INFO("CTI snapshot: processing consolidated file {}", path);
+
             // TODO: clear existing persisted data (when RocksDB integration merged)
+
             std::ifstream file(path);
             if (!file.is_open())
             {
                 throw std::runtime_error("Unable to open raw file: " + path);
             }
+
             std::string line;
             size_t lineNumber {0};
             while (std::getline(file, line))
@@ -334,26 +444,42 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                 try
                 {
                     json::Json content(line.c_str());
-                    if (content.exists("/offset"))
+                    if (!content.exists("/offset") || !content.exists("/name"))
                     {
-                        // Highest offset across the entire snapshot
-                        currentOffset = std::max(currentOffset, content.getInt("/offset").value_or(currentOffset));
+                        LOG_WARNING("Raw: entry missing required fields offset or name ({}:{})", path, lineNumber);
+                        continue;
                     }
-                    auto contentType =
-                        content.getString("/payload/type").value_or(content.getString("/type").value_or(""));
+
+                    // Offsets are not always in order, so we need to get the highest offset.
+                    currentOffset = std::max(currentOffset, content.getInt("/offset").value_or(0));
+
+                    content.setString(content.getString("/name").value_or(""), "/resource");
+
+                    auto contentType = content.getString("/payload/type").value_or("");
                     if (!contentType.empty())
                     {
                         bool stored = true;
                         if (contentType == "policy")
+                        {
                             stored = storePolicy(content);
+                        }
                         else if (contentType == "integration")
+                        {
                             stored = storeIntegration(content);
+                        }
                         else if (contentType == "decoder")
+                        {
                             stored = storeDecoder(content);
+                        }
                         else if (contentType == "kvdb")
+                        {
                             stored = storeKVDB(content);
+                        }
                         else
+                        {
                             LOG_WARNING("Raw: unknown content type '{}' ({}:{})", contentType, path, lineNumber);
+                        }
+
                         if (!stored)
                         {
                             LOG_WARNING("Failed to store content type '{}' ({}:{})", contentType, path, lineNumber);
@@ -365,6 +491,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                     LOG_ERROR("Error parsing raw line {} in {}: {}", lineNumber, path, e.what());
                 }
             }
+
             // Extract hash if provided (offline scenario)
             if (parsedMessage.exists("/fileMetadata/hash"))
             {
@@ -386,6 +513,27 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
     }
 }
 
+bool ContentManager::storePolicy(const json::Json& policyData)
+{
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
+    try
+    {
+        // TODO: Implement actual storage in database
+        // This is a placeholder for the actual database storage implementation
+
+        auto name = policyData.getString("/resource").value_or("unknown");
+        LOG_TRACE("Storing policy '{}'", name);
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Failed to store policy: {}", e.what());
+        return false;
+    }
+}
+
 bool ContentManager::storeIntegration(const json::Json& integration)
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
@@ -394,7 +542,7 @@ bool ContentManager::storeIntegration(const json::Json& integration)
         // TODO: Implement actual storage in database
         // This is a placeholder for the actual database storage implementation
 
-        auto name = integration.getString("/name").value_or("unknown");
+        auto name = integration.getString("/resource").value_or("unknown");
         // payload.document.* holds metadata
         auto title = integration.getString("/payload/document/title").value_or("");
         LOG_TRACE("Storing integration name='{}' title='{}'", name, title);
@@ -415,7 +563,7 @@ bool ContentManager::storeDecoder(const json::Json& decoder)
         // TODO: Implement actual storage in database
         // This is a placeholder for the actual database storage implementation
 
-        auto name = decoder.getString("/name").value_or("unknown");
+        auto name = decoder.getString("/resource").value_or("unknown");
         auto module = decoder.getString("/payload/document/metadata/module").value_or("");
         LOG_TRACE("Storing decoder name='{}' module='{}'", name, module);
         return true;
@@ -436,7 +584,7 @@ bool ContentManager::storeKVDB(const json::Json& kvdbData)
         // TODO: Implement actual storage in database
         // This is a placeholder for the actual database storage implementation
 
-        auto name = kvdbData.getString("/name").value_or("unknown");
+        auto name = kvdbData.getString("/resource").value_or("unknown");
         // integration_id may be at root (decoder style) or inside payload for kvdb entries
         auto integration =
             kvdbData.getString("/integration_id").value_or(kvdbData.getString("/payload/integration_id").value_or(""));
@@ -447,27 +595,6 @@ bool ContentManager::storeKVDB(const json::Json& kvdbData)
     catch (const std::exception& e)
     {
         LOG_ERROR("Failed to store KVDB: {}", e.what());
-        return false;
-    }
-}
-
-bool ContentManager::storePolicy(const json::Json& policyData)
-{
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
-
-    try
-    {
-        // TODO: Implement actual storage in database
-        // This is a placeholder for the actual database storage implementation
-
-        auto name = policyData.getString("/name").value_or("unknown");
-        LOG_TRACE("Storing policy '{}'", name);
-
-        return true;
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("Failed to store policy: {}", e.what());
         return false;
     }
 }
