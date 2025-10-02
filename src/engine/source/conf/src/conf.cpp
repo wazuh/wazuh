@@ -39,6 +39,9 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // KVDB module
     addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", (wazuhRoot / "engine/kvdb/").c_str());
 
+    // CTI module
+    addUnit<std::string>(key::CTI_PATH, "WAZUH_CTI_PATH", (wazuhRoot / "engine/cti/").c_str());
+
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
     addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");

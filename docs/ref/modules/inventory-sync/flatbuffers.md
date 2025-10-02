@@ -11,13 +11,54 @@ The inventory synchronization protocol is defined in flatbuffer schema files tha
 ```flatbuffers
 // Main message wrapper
 table Message {
-    content: MessageContent;
+    content: MessageType;
 }
 
-union MessageContent {
+union MessageType {
+    Data,
     Start,
-    Data, 
-    End
+    StartAck,
+    End,
+    EndAck,
+    ReqRet
+}
+
+table Data {
+    seq: ulong;
+    session: ulong;
+    operation: Operation;
+    id: string;
+    index: string;
+    data: [byte];
+}
+
+table Start {
+    mode: Mode;
+    size: ulong;
+}
+
+table StartAck {
+    status: Status;
+    session: ulong;
+}
+
+table End {
+    session: ulong;
+}
+
+table EndAck {
+    status: Status;
+    session: ulong;
+}
+
+table Pair {
+    begin: ulong;
+    end: ulong;
+}
+
+table ReqRet {
+    seq: [Pair];
+    session: ulong;
 }
 ```
 
@@ -29,21 +70,18 @@ Initiates a synchronization session with mode and agent information:
 table Start {
     mode: Mode;
     size: ulong;
-    module: string;
-    agent_id: ulong;
 }
 
-enum Mode : byte {
-    Full = 0,
-    Delta = 1
+enum Mode: byte {
+    Full,
+    Delta
 }
 ```
 
 **Fields:**
+
 - `mode`: Synchronization type (Full replaces all data, Delta applies changes)
 - `size`: The size of the inventory data being synchronized
-- `module`: Source module generating the inventory data (e.g., "syscollector", "fim")
-- `agent_id`: Unique identifier for the Wazuh agent
 
 ### Data Message
 
@@ -66,6 +104,7 @@ enum Operation : byte {
 ```
 
 **Fields:**
+
 - `seq`: Sequence number for the message
 - `session`: Session identifier linking messages to a synchronization session
 - `operation`: Type of operation (Upsert for insert/update, Delete for removal)
@@ -79,11 +118,12 @@ Signals completion of data transmission:
 
 ```flatbuffers
 table End {
-    session: uint64;
+    session: ulong;
 }
 ```
 
 **Fields:**
+
 - `session`: Session identifier to complete
 
 ### Response Messages
@@ -93,40 +133,80 @@ The module sends acknowledgment responses back to agents:
 ```flatbuffers
 table EndAck {
     status: Status;
-    session: uint64;
+    session: ulong;
 }
 
-enum Status : byte {
-    Ok = 0,
-    Error = 1
+enum Status: byte {
+    Ok,
+    PartialOk,
+    Error,
+    Offline
 }
 ```
 
 ## Message Validation
 
-The Inventory Sync module performs comprehensive validation of all flatbuffer messages:
+The Inventory Sync module performs comprehensive validation of all flatbuffer messages, that follows this schema:
+
+```flatbuffers
+table AgentInfo {
+    id: string;
+    name: string;
+    ip: string;
+    version: string;
+    module: string;
+    data: [ubyte];
+}
+
+root_type AgentInfo;
+```
 
 ### Buffer Verification
 
 ```cpp
-flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier)) {
-    // Process valid message
-    auto message = Wazuh::SyncSchema::GetMessage(dataRaw.data());
-} else {
+auto message = Wazuh::Sync::GetAgentInfo(dataRaw.data());
+
+if (message->id() == nullptr || message->module_() == nullptr)
+{
     throw InventorySyncException("Invalid message buffer");
 }
+
+auto agentId = message->id()->string_view();
+auto moduleName = message->module_()->string_view();
+
+auto agentName = message->name() ? message->name()->string_view() : std::string_view();
+auto agentIp = message->ip() ? message->ip()->string_view() : std::string_view();
+auto agentVersion = message->version() ? message->version()->string_view() : std::string_view();
+
+flatbuffers::Verifier verifier(message->data()->data(), message->data()->size());
 ```
 
 ### Content Type Validation
 
 ```cpp
-if (message->content_type() == Wazuh::SyncSchema::MessageType_Data) {
-    const auto data = message->content_as<Wazuh::SyncSchema::Data>();
-    if (!data) {
-        throw InventorySyncException("Invalid data message");
+if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+{
+    auto syncMessage = Wazuh::SyncSchema::GetMessage(message->data()->data());
+    if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Data)
+    {
+        // Process data message
     }
-    // Process data message
+    else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
+    {
+        // Process start message
+    }
+    else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
+    {
+        // Process end message
+    }
+    else
+    {
+        throw InventorySyncException("Unknown message contentype");
+    }
+}
+else
+{
+    throw InventorySyncException("Invalid message buffer");
 }
 ```
 
@@ -135,11 +215,13 @@ if (message->content_type() == Wazuh::SyncSchema::MessageType_Data) {
 FlatBuffers provide several performance advantages for inventory synchronization:
 
 ### Memory Efficiency
+
 - **Zero-copy deserialization**: Direct access to binary data without intermediate objects
 - **Compact representation**: Binary format more efficient than JSON or XML
 - **Minimal allocations**: Reduced garbage collection pressure
 
 ### Processing Speed
+
 - **Fast access**: Direct field access without parsing overhead
 - **Schema evolution**: Backward/forward compatibility for protocol updates
 - **Vectorization**: Efficient processing of arrays and nested structures
@@ -164,7 +246,7 @@ auto message = Wazuh::SyncSchema::GetMessage(buffer.data());
 if (message->content_type() == Wazuh::SyncSchema::MessageType_Data) {
     const auto seq = message->seq();
     const auto session = message->session();
-    
+
     // Process inventory data
 }
 ```
@@ -190,16 +272,19 @@ builder.Finish(message);
 The module implements robust error handling for flatbuffer operations:
 
 ### Buffer Corruption
+
 - Verification failure detection
 - Graceful error response to agents
 - Session cleanup on invalid messages
 
 ### Schema Mismatches
+
 - Version compatibility checking
 - Fallback handling for unsupported fields
 - Progressive schema evolution support
 
 ### Memory Safety
+
 - Bounds checking on all field access
 - Safe string and array iteration
 - Protection against malformed buffers
@@ -210,7 +295,7 @@ The flatbuffer messages integrate seamlessly with the Wazuh Router system:
 
 ```cpp
 m_inventorySubscription = std::make_unique<TRouterSubscriber>(
-    INVENTORY_SYNC_TOPIC, 
+    INVENTORY_SYNC_TOPIC,
     INVENTORY_SYNC_SUBSCRIBER_ID);
 
 m_inventorySubscription->subscribe(
