@@ -648,6 +648,8 @@ nlohmann::json SysInfo::getOsInfo() const
         std::make_shared<SysOsInfoProviderWindows>()
     };
     SysOsInfo::setOsInfo(spOsInfoProvider, ret);
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "windows";
     return ret;
 }
 
