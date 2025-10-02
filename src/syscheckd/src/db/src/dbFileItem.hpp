@@ -45,13 +45,6 @@ class FileItem final : public DBItem
             m_device = fim->file_entry.data->device;
             m_inode = fim->file_entry.data->inode;
             m_version = fim->file_entry.data->version;
-
-            // If version is 0 (new entry), set to 1
-            if (m_version == 0)
-            {
-                m_version = 1;
-            }
-
             m_attributes = fim->file_entry.data->attributes == NULL ? "" : fim->file_entry.data->attributes;
             m_owner = fim->file_entry.data->owner == NULL ? "" : fim->file_entry.data->owner;
             m_group = fim->file_entry.data->group == NULL ? "" : fim->file_entry.data->group;
@@ -79,13 +72,6 @@ class FileItem final : public DBItem
             m_device = fim.at("device");
             m_inode = fim.at("inode");
             m_version = fim.at("version");
-
-            // If version is 0 (new entry with DEFAULT not yet applied), set to 1
-            if (m_version == 0)
-            {
-                m_version = 1;
-            }
-
             m_attributes = fim.at("attributes");
             m_gid = fim.at("gid");
             m_group = fim.at("group_");

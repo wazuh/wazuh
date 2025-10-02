@@ -735,6 +735,12 @@ std::string SQLiteDBEngine::buildInsertDataSqlQuery(const std::string& table,
         {
             const auto& fieldName { std::get<TableHeader::Name>(field) };
 
+            // Skip version field if not in data, to use DEFAULT value (1 for new entries)
+            if (fieldName == "version" && !data.empty() && data.find(fieldName) == data.end())
+            {
+                continue;
+            }
+
             if (data.empty() || data.find(fieldName) != data.end())
             {
                 sql.append(fieldName + ",");
@@ -1601,6 +1607,23 @@ std::string SQLiteDBEngine::buildUpdatePartialDataSqlQuery(const std::string& ta
             {
                 sql += it.key() + "=?,";
             }
+        }
+
+        // Auto-increment version if table has version column and actual data changed
+        // Don't increment if only status field is being updated (status-only updates during scans)
+        const auto& tableFields = m_tableFields[table];
+        const bool hasVersion = std::any_of(tableFields.begin(), tableFields.end(),
+                                            [](const auto & field)
+        {
+            return std::get<TableHeader::Name>(field) == "version";
+        });
+
+        const bool onlyStatusUpdate = (data.size() == primaryKeyList.size() + 1) &&
+                                      data.find(STATUS_FIELD_NAME) != data.end();
+
+        if (hasVersion && data.find("version") == data.end() && !onlyStatusUpdate)
+        {
+            sql += "version=version+1,";
         }
 
         sql = sql.substr(0, sql.size() - 1); // Remove the last " , "

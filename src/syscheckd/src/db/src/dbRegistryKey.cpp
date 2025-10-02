@@ -70,7 +70,6 @@ void RegistryKey::createJSON()
     data["owner"] = m_owner;
     data["group_"] = m_group;
     data["mtime"] = m_time;
-    data["version"] = m_version;
 
     conf["data"] = nlohmann::json::array({data});
 

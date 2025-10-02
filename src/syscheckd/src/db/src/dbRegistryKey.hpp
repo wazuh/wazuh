@@ -51,13 +51,6 @@ class RegistryKey final : public DBItem
 
             m_time = fim->registry_entry.key->mtime;
             m_version = fim->registry_entry.key->version;
-
-            // If version is 0 (new entry), set to 1
-            if (m_version == 0)
-            {
-                m_version = 1;
-            }
-
             createJSON();
             createFimEntry();
         }
@@ -74,13 +67,6 @@ class RegistryKey final : public DBItem
             m_owner = fim.at("owner");
             m_time = fim.at("mtime");
             m_version = fim.at("version");
-
-            // If version is 0 (new entry with DEFAULT not yet applied), set to 1
-            if (m_version == 0)
-            {
-                m_version = 1;
-            }
-
             createFimEntry();
             createJSON();
         }
