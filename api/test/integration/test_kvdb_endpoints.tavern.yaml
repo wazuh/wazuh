@@ -1,0 +1,277 @@
+---
+test_name: KVDB - setup fixtures (create three items)
+
+stages:
+
+  - name: cleanup pre-existing A
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+  - name: cleanup pre-existing B
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_b"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+  - name: cleanup pre-existing C
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_c"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+  - name: create kvdb_a
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        id: "kvdb_a"
+        name: "dup"
+        content: { a: 1 }
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+  - name: create kvdb_b
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        id: "kvdb_b"
+        name: "dup"
+        content: { a: 2 }
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+  - name: create kvdb_c (uniq name)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        id: "kvdb_c"
+        name: "uniq"
+        content: { a: 3 }
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+---
+test_name: KVDB - GET with select should trim fields
+
+stages:
+  - name: select id,name (no content/type/integration_id)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&select=id,name&kvdb_id=kvdb_a"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+      validate:
+        - jmespath: data.total_affected_items
+          operator: eq
+          expected: 1
+        - jmespath: "data.affected_items[0].id"
+          operator: eq
+          expected: "kvdb_a"
+        - jmespath: "data.affected_items[0].content"
+          operator: eq
+          expected: null
+        - jmespath: "data.affected_items[0].integration_id"
+          operator: eq
+          expected: null
+        - jmespath: "data.affected_items[0].type"
+          operator: eq
+          expected: null
+
+---
+test_name: KVDB - GET sort asc/desc on id
+
+stages:
+  - name: sort ascending by id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=id&select=id"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      validate:
+        - jmespath: "data.affected_items[*].id"
+          operator: eq
+          expected: ["kvdb_a", "kvdb_b", "kvdb_c"]
+
+  - name: sort descending by id
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=-id&select=id"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      validate:
+        - jmespath: "data.affected_items[*].id"
+          operator: eq
+          expected: ["kvdb_c", "kvdb_b", "kvdb_a"]
+
+---
+test_name: KVDB - GET pagination with offset/limit
+
+stages:
+  - name: sorted then page (offset=1, limit=1) -> should return kvdb_b
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=id&offset=1&limit=1&select=id"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+      validate:
+        - jmespath: "data.affected_items | length(@)"
+          operator: eq
+          expected: 1
+        - jmespath: "data.affected_items[0].id"
+          operator: eq
+          expected: "kvdb_b"
+
+---
+test_name: KVDB - GET search (by name field)
+
+stages:
+  - name: search 'uniq' should return only kvdb_c
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&search=uniq&select=id,name"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      validate:
+        - jmespath: data.total_affected_items
+          operator: eq
+          expected: 1
+        - jmespath: "data.affected_items[0].id"
+          operator: eq
+          expected: "kvdb_c"
+        - jmespath: "data.affected_items[0].name"
+          operator: eq
+          expected: "uniq"
+
+---
+test_name: KVDB - GET distinct with select=name (two dup + one uniq)
+
+stages:
+  - name: select=name&distinct=true should return unique names {dup, uniq}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&select=name&distinct=true"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+      validate:
+        - jmespath: data.total_affected_items
+          operator: eq
+          expected: 2
+        - jmespath: "contains(data.affected_items[*].name, 'dup')"
+          operator: eq
+          expected: true
+        - jmespath: "contains(data.affected_items[*].name, 'uniq')"
+          operator: eq
+          expected: true
+
+---
+test_name: KVDB - GET with advanced q filter
+
+stages:
+  - name: q=id=kvdb_b should match only kvdb_b
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&q=id=kvdb_b&select=id"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      validate:
+        - jmespath: data.total_affected_items
+          operator: eq
+          expected: 1
+        - jmespath: "data.affected_items[0].id"
+          operator: eq
+          expected: "kvdb_b"
+
+---
+test_name: KVDB - cleanup fixtures
+
+stages:
+  - name: delete A
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+  - name: delete B
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_b"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+  - name: delete C
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_c"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200

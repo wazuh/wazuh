@@ -1,0 +1,81 @@
+---
+test_name: RBAC WHITE - /kvdbs allows read and write
+
+stages:
+
+  - name: cleanup pre-existing resource
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=rbac_kvdb_white"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_rbac_white_token}"
+    response:
+      status_code: 200
+
+  - name: POST /kvdbs (create)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_rbac_white_token}"
+        content-type: application/json
+      json:
+        id: "rbac_kvdb_white"
+        name: "rbac_white"
+        content: { key1: value1 }
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: ["rbac_kvdb_white"]
+
+  - name: GET /kvdbs (read single by filter)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=rbac_kvdb_white"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_rbac_white_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+    validate:
+      - jmespath: "data.total_affected_items"
+        operator: eq
+        expected: 1
+      - jmespath: "data.affected_items[0].id"
+        operator: eq
+        expected: "rbac_kvdb_white"
+
+  - name: PUT /kvdbs (update)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_rbac_white_token}"
+        content-type: application/json
+      json:
+        id: "rbac_kvdb_white"
+        name: "rbac_white_updated"
+        content: { key1: value2 }
+    response:
+      status_code: 200
+      json:
+        error: 0
+
+  - name: DELETE /kvdbs
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=rbac_kvdb_white"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_rbac_white_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
