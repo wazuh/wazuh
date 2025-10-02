@@ -44,6 +44,8 @@ jobs:
           ctest -V
           cd ../../wazuh_modules/sca/build
           ctest -V
+          cd ../../agent_info/build
+          ctest -V
           cd ../../../shared_modules/file_helper/build
           ctest -V
   build-sonoma:
@@ -81,6 +83,8 @@ jobs:
           cd ../../../syscheckd/build
           ctest -V
           cd ../../wazuh_modules/sca/build
+          ctest -V
+          cd ../../agent_info/build
           ctest -V
           cd ../../../shared_modules/file_helper/build
           ctest -V
