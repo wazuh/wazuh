@@ -77,8 +77,28 @@ protected:
 
         json::Json payload;
         payload.setObject();
-        payload.setString("Wazuh 5.0", "/title");
         payload.setString("policy", "/type");
+
+        json::Json document;
+        document.setObject();
+        document.setString("Wazuh 5.0", "/title");
+        document.setBool(true, "/enabled");
+
+        json::Json metadata;
+        metadata.setObject();
+        metadata.setString(name, "/id");
+        metadata.setString("Wazuh Inc.", "/author");
+        metadata.setString("2025-09-19T14:24:44Z", "/date");
+        metadata.setString("Policy description", "/description");
+        metadata.setString("", "/documentation");
+
+        json::Json references;
+        references.setArray();
+        references.appendString("https://wazuh.com");
+        metadata.set("/references", references);
+
+        document.set("/metadata", metadata);
+        payload.set("/document", document);
 
         json::Json integrations;
         integrations.setArray();
@@ -90,7 +110,7 @@ protected:
         return policy;
     }
 
-    json::Json createSampleIntegration(const std::string& id, const std::string& title)
+    json::Json createSampleIntegration(const std::string& id, const std::string& name)
     {
         json::Json integration;
         integration.setObject();
@@ -110,7 +130,7 @@ protected:
         document.setString("Integration description", "/description");
         document.setBool(true, "/enabled");
         document.setString(id, "/id");
-        document.setString(title, "/title");
+        document.setString(name, "/title");
 
         json::Json decoders;
         decoders.setArray();
@@ -135,7 +155,7 @@ protected:
         return integration;
     }
 
-    json::Json createSampleDecoder(const std::string& id, const std::string& title, const std::string& integrationId = "")
+    json::Json createSampleDecoder(const std::string& id, const std::string& name, const std::string& integrationId = "")
     {
         json::Json decoder;
         decoder.setObject();
@@ -158,7 +178,7 @@ protected:
         document.setString("2025-09-19T14:31:07Z", "/date");
         document.setBool(true, "/enabled");
         document.setString(id, "/id");
-        document.setString(title, "/title");
+        document.setString(name, "/name");
 
         json::Json definitions;
         definitions.setObject();
@@ -182,7 +202,7 @@ protected:
         return decoder;
     }
 
-    json::Json createSampleKVDB(const std::string& id, const std::string& title, const std::string& integrationId = "")
+    json::Json createSampleKVDB(const std::string& id, const std::string& name, const std::string& integrationId = "")
     {
         json::Json kvdb;
         kvdb.setObject();
@@ -205,7 +225,7 @@ protected:
         document.setString("2025-09-19T14:24:44Z", "/date");
         document.setBool(true, "/enabled");
         document.setString(id, "/id");
-        document.setString(title, "/title");
+        document.setString(name, "/title");
 
         json::Json content;
         content.setObject();
@@ -363,11 +383,19 @@ TEST_F(CTIStorageDBTest, KVDBDump)
     auto kvdb = createSampleKVDB("test_kvdb_id", "Test KVDB");
     m_storage->storeKVDB(kvdb);
 
-    auto content = m_storage->kvdbDump("test_kvdb_id");
+    auto kvdbDoc = m_storage->kvdbDump("test_kvdb_id");
 
-    EXPECT_EQ(content.getString("/key1").value_or(""), "value1");
-    EXPECT_EQ(content.getString("/key2").value_or(""), "value2");
-    EXPECT_EQ(content.getInt("/key3").value_or(0), 123);
+    // kvdbDump now returns the full document, not just content
+    auto payload = kvdbDoc.getJson("/payload");
+    ASSERT_TRUE(payload.has_value());
+    auto document = payload.value().getJson("/document");
+    ASSERT_TRUE(document.has_value());
+    auto content = document.value().getJson("/content");
+    ASSERT_TRUE(content.has_value());
+
+    EXPECT_EQ(content->getString("/key1").value_or(""), "value1");
+    EXPECT_EQ(content->getString("/key2").value_or(""), "value2");
+    EXPECT_EQ(content->getInt("/key3").value_or(0), 123);
 }
 
 TEST_F(CTIStorageDBTest, GetKVDBListByIntegration)
@@ -390,6 +418,12 @@ TEST_F(CTIStorageDBTest, GetKVDBListByIntegration)
 // Policy tests
 TEST_F(CTIStorageDBTest, GetPolicyIntegrationList)
 {
+    // Store integrations first so they can be resolved by title
+    auto integration1 = createSampleIntegration("integration_1", "Integration One");
+    auto integration2 = createSampleIntegration("integration_2", "Integration Two");
+    m_storage->storeIntegration(integration1);
+    m_storage->storeIntegration(integration2);
+
     auto policy = createSamplePolicy();
     m_storage->storePolicy(policy);
 
@@ -402,7 +436,8 @@ TEST_F(CTIStorageDBTest, GetPolicyIntegrationList)
         names.push_back(name.fullName());
     }
 
-    EXPECT_THAT(names, ::testing::UnorderedElementsAre("integration_1", "integration_2"));
+    // Now expects titles instead of IDs
+    EXPECT_THAT(names, ::testing::UnorderedElementsAre("Integration One", "Integration Two"));
 }
 
 TEST_F(CTIStorageDBTest, GetPolicyDefaultParent)
@@ -740,8 +775,14 @@ TEST_F(CTIStorageDBTest, DataIntegrityAfterReopen)
     auto retrievedIntegration = m_storage->getAsset(base::Name("test_integration"), "integration");
     EXPECT_EQ(retrievedIntegration.getString("/name").value_or(""), "test_integration");
 
-    auto retrievedContent = m_storage->kvdbDump("test_kvdb");
-    EXPECT_EQ(retrievedContent.getString("/key1").value_or(""), "value1");
+    auto retrievedKvdb = m_storage->kvdbDump("test_kvdb");
+    auto retrievedPayload = retrievedKvdb.getJson("/payload");
+    ASSERT_TRUE(retrievedPayload.has_value());
+    auto retrievedDocument = retrievedPayload.value().getJson("/document");
+    ASSERT_TRUE(retrievedDocument.has_value());
+    auto retrievedContent = retrievedDocument.value().getJson("/content");
+    ASSERT_TRUE(retrievedContent.has_value());
+    EXPECT_EQ(retrievedContent->getString("/key1").value_or(""), "value1");
 }
 
 // Thread Safety and Concurrency Tests

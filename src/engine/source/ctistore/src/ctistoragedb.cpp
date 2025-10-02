@@ -56,6 +56,7 @@ namespace constants
     constexpr std::string_view JSON_NAME = "/name";
     constexpr std::string_view JSON_PAYLOAD_TITLE = "/payload/title";
     constexpr std::string_view JSON_DOCUMENT_TITLE = "/payload/document/title";
+    constexpr std::string_view JSON_DOCUMENT_NAME = "/payload/document/name";
     constexpr std::string_view JSON_PAYLOAD_INTEGRATION_ID = "/payload/integration_id";
     constexpr std::string_view JSON_PAYLOAD_TYPE = "/payload/type";
     constexpr std::string_view JSON_PAYLOAD = "/payload";
@@ -82,17 +83,38 @@ namespace constants
     constexpr int MAX_BACKGROUND_JOBS = 4; // Maximum concurrent background compaction and flush jobs
 }
 
-// PIMPL implementation - contains all RocksDB-specific details
+/**
+ * @brief PIMPL (Pointer to Implementation) pattern implementation.
+ *
+ * This internal implementation class encapsulates all RocksDB-specific details,
+ * keeping the public interface clean and hiding implementation dependencies.
+ * It manages the database connection, column families, caching, and all storage operations.
+ */
 struct CTIStorageDB::Impl
 {
+    /**
+     * @brief RAII wrapper for RocksDB column family handles.
+     *
+     * Manages the lifetime of a column family handle, ensuring proper cleanup
+     * through RocksDB's DestroyColumnFamilyHandle API. Implements move-only
+     * semantics to prevent accidental handle duplication.
+     */
     class CFHandle
     {
     public:
         CFHandle() = default;
 
+        /**
+         * @brief Constructs a CFHandle from raw RocksDB pointers.
+         * @param handle The RocksDB column family handle to manage
+         * @param db The parent database instance for cleanup operations
+         */
         CFHandle(rocksdb::ColumnFamilyHandle* handle, rocksdb::DB* db)
             : m_handle(handle), m_db(db) {}
 
+        /**
+         * @brief Destroys the column family handle through RocksDB API.
+         */
         ~CFHandle()
         {
             if (m_handle && m_db) {
@@ -100,10 +122,13 @@ struct CTIStorageDB::Impl
             }
         }
 
-        // Move only
         CFHandle(const CFHandle&) = delete;
         CFHandle& operator=(const CFHandle&) = delete;
 
+        /**
+         * @brief Move constructor - transfers ownership of the handle.
+         * @param other The CFHandle to move from
+         */
         CFHandle(CFHandle&& other) noexcept
             : m_handle(other.m_handle), m_db(other.m_db)
         {
@@ -111,6 +136,11 @@ struct CTIStorageDB::Impl
             other.m_db = nullptr;
         }
 
+        /**
+         * @brief Move assignment operator - transfers ownership of the handle.
+         * @param other The CFHandle to move from
+         * @return Reference to this instance
+         */
         CFHandle& operator=(CFHandle&& other) noexcept
         {
             if (this != &other) {
@@ -125,6 +155,10 @@ struct CTIStorageDB::Impl
             return *this;
         }
 
+        /**
+         * @brief Gets the raw RocksDB column family handle.
+         * @return Pointer to the RocksDB ColumnFamilyHandle
+         */
         rocksdb::ColumnFamilyHandle* get() const { return m_handle; }
 
     private:
@@ -132,6 +166,18 @@ struct CTIStorageDB::Impl
         rocksdb::DB* m_db = nullptr;
     };
 
+    /**
+     * @brief Container for all column family handles used by the CTI storage.
+     *
+     * RocksDB column families provide logical partitioning within a single database,
+     * allowing separate configuration and optimization for different data types:
+     * - defaultCF: RocksDB required default column family (unused)
+     * - metadata: Name-to-ID mappings and relationship indexes
+     * - policy: Policy documents (cyber threat intelligence policies)
+     * - integration: Integration documents (data source integrations)
+     * - decoder: Decoder documents (log parsing decoders)
+     * - kvdb: Key-value database documents (lookup tables)
+     */
     struct ColumnFamilyHandles
     {
         CFHandle defaultCF;
@@ -142,64 +188,272 @@ struct CTIStorageDB::Impl
         CFHandle kvdb;
     };
 
-    std::unique_ptr<rocksdb::DB> m_db;                          ///< DB handle.
-    ColumnFamilyHandles m_cfHandles;                            ///< Column family handles.
-    std::shared_ptr<rocksdb::Cache> m_readCache;                ///< Optional shared block cache.
-    std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;///< Optional shared write buffer manager.
+    // ========== Member Variables ==========
 
-    // Thread safety: single-writer, multiple-reader pattern
-    mutable std::shared_mutex m_rwMutex;                        ///< Reader-writer mutex for thread safety.
+    /** @brief RocksDB database instance handle. */
+    std::unique_ptr<rocksdb::DB> m_db;
 
-    // Implementation methods
+    /** @brief All column family handles for logical data partitioning. */
+    ColumnFamilyHandles m_cfHandles;
+
+    /** @brief Shared LRU block cache for SST file reads (optional, for memory efficiency). */
+    std::shared_ptr<rocksdb::Cache> m_readCache;
+
+    /** @brief Shared write buffer manager across column families (optional, for memory control). */
+    std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;
+
+    /**
+     * @brief Reader-writer mutex for thread-safe access.
+     *
+     * Implements single-writer, multiple-reader concurrency pattern:
+     * - Write operations (store*, clear) acquire exclusive lock
+     * - Read operations (get*, exists*, list*) acquire shared lock
+     */
+    mutable std::shared_mutex m_rwMutex;
+
+    // ========== Database Lifecycle Methods ==========
+
+    /**
+     * @brief Initializes RocksDB and creates/opens all column families.
+     * @param dbPath Filesystem path to the RocksDB directory
+     * @param useSharedBuffers Whether to use shared memory buffers across column families
+     * @throws std::runtime_error if database cannot be opened or column families cannot be created
+     */
     void initializeColumnFamilies(const std::string& dbPath, bool useSharedBuffers);
+
+    /**
+     * @brief Retrieves the RocksDB handle for a specific column family.
+     * @param cf The column family enum value
+     * @return Raw pointer to the RocksDB ColumnFamilyHandle
+     * @throws std::runtime_error if the column family is invalid
+     */
     rocksdb::ColumnFamilyHandle* getColumnFamily(CTIStorageDB::ColumnFamily cf) const;
+
+    /**
+     * @brief Creates RocksDB options with optimized configuration.
+     * @return Configured rocksdb::Options struct with tuned parameters
+     */
     rocksdb::Options createRocksDBOptions() const;
+
+    /**
+     * @brief Gracefully shuts down the database, flushing pending writes.
+     */
     void shutdown();
 
-    std::string extractIdFromJson(const json::Json& doc) const;
-    std::string extractTitleFromJson(const json::Json& doc) const;
+    // ========== JSON Document Parsing ==========
 
-    // Metadata operations interface
+    /**
+     * @brief Extracts the unique identifier (ID) from a JSON document.
+     * @param doc The JSON document to parse
+     * @return The ID string from the /name field
+     * @throws std::runtime_error if the ID field is missing
+     */
+    std::string extractIdFromJson(const json::Json& doc) const;
+
+    /**
+     * @brief Extracts the human-readable name from a JSON document.
+     * @param doc The JSON document to parse
+     * @return The name string from payload/document/title (integration, policy, kvdb) or payload/document/name (decoder)
+     * @throws std::runtime_error if the name field is missing
+     */
+    std::string extractNameFromJson(const json::Json& doc) const;
+
+    // ========== Metadata Column Family Operations ==========
+
+    /**
+     * @brief Stores a key-value pair in the metadata column family.
+     * @param key The metadata key
+     * @param value The metadata value
+     * @return true if successful, false otherwise
+     */
     bool putMetadata(const std::string& key, const std::string& value);
+
+    /**
+     * @brief Retrieves a value from the metadata column family.
+     * @param key The metadata key to look up
+     * @return The value if found, std::nullopt otherwise
+     */
     std::optional<std::string> getMetadata(const std::string& key) const;
+
+    /**
+     * @brief Deletes a key-value pair from the metadata column family.
+     * @param key The metadata key to delete
+     * @return true if successful, false otherwise
+     */
     bool deleteMetadata(const std::string& key);
 
+    // ========== Core Storage Operations ==========
+
+    /**
+     * @brief Stores a document with automatic indexing by ID and name.
+     * @param doc The JSON document to store
+     * @param cf The target column family
+     * @param keyPrefix Prefix for the ID-based key (e.g., "integration:")
+     * @param namePrefix Prefix for the name-based metadata index (e.g., "name:integration:")
+     *
+     * Creates two entries:
+     * 1. [cf] keyPrefix + ID -> full JSON document
+     * 2. [metadata] namePrefix + name -> ID (for name-to-ID lookup)
+     */
     void storeWithIndex(const json::Json& doc,
                         CTIStorageDB::ColumnFamily cf,
                         const std::string& keyPrefix,
                         const std::string& namePrefix);
 
+    /**
+     * @brief Retrieves a document by ID or name.
+     * @param identifier The ID or name to look up
+     * @param cf The column family to search
+     * @param keyPrefix Prefix for ID-based lookup
+     * @param namePrefix Prefix for name-based metadata lookup
+     * @return The JSON document
+     * @throws std::runtime_error if not found
+     */
     json::Json getByIdOrName(const std::string& identifier,
                              CTIStorageDB::ColumnFamily cf,
                              const std::string& keyPrefix,
                              const std::string& namePrefix) const;
 
+    /**
+     * @brief Checks if a document exists by ID or name.
+     * @param identifier The ID or name to check
+     * @param cf The column family to search
+     * @param keyPrefix Prefix for ID-based lookup
+     * @param namePrefix Prefix for name-based metadata lookup
+     * @return true if the document exists, false otherwise
+     */
     bool existsByIdOrName(const std::string& identifier,
                           CTIStorageDB::ColumnFamily cf,
                           const std::string& keyPrefix,
                           const std::string& namePrefix) const;
 
+    // ========== Relationship Index Management ==========
+
+    /**
+     * @brief Updates metadata indexes for integration-decoder and integration-kvdb relationships.
+     * @param integrationDoc The integration document containing decoder and kvdb arrays
+     *
+     * Creates indexes:
+     * - idx:integration_decoders:<integration_id> -> comma-separated decoder IDs
+     * - idx:integration_kvdbs:<integration_id> -> comma-separated kvdb IDs
+     */
     void updateRelationshipIndexes(const json::Json& integrationDoc);
 
+    /**
+     * @brief Retrieves related asset IDs for an integration.
+     * @param integrationId The integration ID
+     * @param relationshipKey The metadata key prefix (e.g., "idx:integration_decoders:")
+     * @return Vector of related asset IDs
+     */
     std::vector<std::string> getRelatedAssets(const std::string& integrationId,
                                               const std::string& relationshipKey) const;
 
-    // Public API implementations
+    // ========== Public API Implementations ==========
+
+    /**
+     * @brief Stores a policy document.
+     * @param policyDoc JSON document with type="policy"
+     */
     void storePolicy(const json::Json& policyDoc);
+
+    /**
+     * @brief Stores an integration document with relationship indexing.
+     * @param integrationDoc JSON document with type="integration"
+     */
     void storeIntegration(const json::Json& integrationDoc);
+
+    /**
+     * @brief Stores a decoder document.
+     * @param decoderDoc JSON document with type="decoder"
+     */
     void storeDecoder(const json::Json& decoderDoc);
+
+    /**
+     * @brief Stores a KVDB document.
+     * @param kvdbDoc JSON document with type="kvdb"
+     */
     void storeKVDB(const json::Json& kvdbDoc);
+
+    /**
+     * @brief Lists all asset names of a specific type.
+     * @param assetType "integration", "decoder", or "policy"
+     * @return Vector of base::Name objects
+     */
     std::vector<base::Name> getAssetList(const std::string& assetType) const;
+
+    /**
+     * @brief Retrieves an asset document by name.
+     * @param name The asset name (supports namespace/name format)
+     * @param assetType "integration", "decoder", or "policy"
+     * @return The JSON document
+     */
     json::Json getAsset(const base::Name& name, const std::string& assetType) const;
+
+    /**
+     * @brief Checks if an asset exists.
+     * @param name The asset name
+     * @param assetType "integration", "decoder", or "policy"
+     * @return true if exists, false otherwise
+     */
     bool assetExists(const base::Name& name, const std::string& assetType) const;
+
+    /**
+     * @brief Lists all KVDB names.
+     * @return Vector of KVDB name strings
+     */
     std::vector<std::string> getKVDBList() const;
+
+    /**
+     * @brief Lists KVDBs belonging to a specific integration.
+     * @param integrationName The integration name
+     * @return Vector of KVDB name strings
+     */
     std::vector<std::string> getKVDBList(const base::Name& integrationName) const;
+
+    /**
+     * @brief Checks if a KVDB exists.
+     * @param kvdbName The KVDB name
+     * @return true if exists, false otherwise
+     */
     bool kvdbExists(const std::string& kvdbName) const;
+
+    /**
+     * @brief Retrieves the full content of a KVDB.
+     * @param kvdbName The KVDB name
+     * @return JSON document containing KVDB data
+     */
     json::Json kvdbDump(const std::string& kvdbName) const;
+
+    /**
+     * @brief Lists all integrations referenced by policies.
+     * @return Vector of integration names from policy documents
+     */
     std::vector<base::Name> getPolicyIntegrationList() const;
+
+    /**
+     * @brief Gets the default parent namespace for policies.
+     * @return Default parent name (typically "wazuh")
+     */
     base::Name getPolicyDefaultParent() const;
+
+    /**
+     * @brief Deletes all data from all column families.
+     */
     void clearAll();
+
+    /**
+     * @brief Gets the approximate number of keys in a column family.
+     * @param cf The column family to query
+     * @return Approximate key count
+     */
     size_t getStorageStats(CTIStorageDB::ColumnFamily cf) const;
+
+    /**
+     * @brief Validates that a document has the expected type field.
+     * @param doc The JSON document to validate
+     * @param expectedType The expected value of /payload/type
+     * @return true if valid, false otherwise
+     */
     bool validateDocument(const json::Json& doc, const std::string& expectedType) const;
 };
 
@@ -473,15 +727,47 @@ std::string CTIStorageDB::Impl::extractIdFromJson(const json::Json& doc) const
     return doc.getString(constants::JSON_NAME).value_or("");
 }
 
-std::string CTIStorageDB::Impl::extractTitleFromJson(const json::Json& doc) const
+std::string CTIStorageDB::Impl::extractNameFromJson(const json::Json& doc) const
 {
-    // Try payload/title first, then payload/document/title as fallback
-    std::string title = doc.getString(constants::JSON_PAYLOAD_TITLE).value_or("");
-    if (title.empty())
+    // Try common paths first to minimize type checking overhead
+    // Most documents (integration, kvdb) use /payload/document/title
+    auto title = doc.getString(constants::JSON_DOCUMENT_TITLE);
+    if (title)
     {
-        title = doc.getString(constants::JSON_DOCUMENT_TITLE).value_or("");
+        return *title;
     }
-    return title;
+
+    // Decoder uses /payload/document/name
+    auto name = doc.getString(constants::JSON_DOCUMENT_NAME);
+    if (name)
+    {
+        return *name;
+    }
+
+    // Policy new format uses /payload/title
+    title = doc.getString(constants::JSON_PAYLOAD_TITLE);
+    if (title)
+    {
+        return *title;
+    }
+
+    // If we get here, document is missing required field
+    // Determine type for better error message
+    auto typeOpt = doc.getString(constants::JSON_PAYLOAD_TYPE);
+    std::string type = typeOpt.value_or("unknown");
+
+    if (type == constants::DECODER_TYPE)
+    {
+        throw std::runtime_error("Decoder document missing required field: /payload/document/name");
+    }
+    else if (type == constants::POLICY_TYPE)
+    {
+        throw std::runtime_error("Policy document missing required field: /payload/title or /payload/document/title");
+    }
+    else
+    {
+        throw std::runtime_error("Document missing required field: /payload/document/title");
+    }
 }
 
 
@@ -491,7 +777,7 @@ void CTIStorageDB::Impl::storeWithIndex(const json::Json& doc,
                                         const std::string& namePrefix)
 {
     std::string id = extractIdFromJson(doc);
-    std::string title = extractTitleFromJson(doc);
+    std::string name = extractNameFromJson(doc);
 
     if (id.empty())
     {
@@ -510,10 +796,10 @@ void CTIStorageDB::Impl::storeWithIndex(const json::Json& doc,
         try
         {
             json::Json existingDoc(existingValue.c_str());
-            std::string previousTitle = extractTitleFromJson(existingDoc);
-            if (!previousTitle.empty() && previousTitle != title)
+            std::string previousName = extractNameFromJson(existingDoc);
+            if (!previousName.empty() && previousName != name)
             {
-                batch.Delete(getColumnFamily(ColumnFamily::METADATA), namePrefix + previousTitle);
+                batch.Delete(getColumnFamily(ColumnFamily::METADATA), namePrefix + previousName);
             }
         }
         catch (const std::exception& e)
@@ -528,9 +814,9 @@ void CTIStorageDB::Impl::storeWithIndex(const json::Json& doc,
 
     batch.Put(getColumnFamily(cf), primaryKey, docJson);
 
-    if (!title.empty())
+    if (!name.empty())
     {
-        batch.Put(getColumnFamily(ColumnFamily::METADATA), namePrefix + title, id);
+        batch.Put(getColumnFamily(ColumnFamily::METADATA), namePrefix + name, id);
     }
 
     auto status = m_db->Write(rocksdb::WriteOptions(), &batch);
@@ -851,7 +1137,7 @@ std::vector<base::Name> CTIStorageDB::Impl::getAssetList(const std::string& asse
         try
         {
             json::Json doc(it->value().ToString().c_str());
-            std::string title = extractTitleFromJson(doc);
+            std::string title = extractNameFromJson(doc);
             if (!title.empty())
             {
                 assets.emplace_back(title);
@@ -922,7 +1208,7 @@ std::vector<std::string> CTIStorageDB::Impl::getKVDBList() const
         try
         {
             json::Json doc(it->value().ToString().c_str());
-            std::string title = extractTitleFromJson(doc);
+            std::string title = extractNameFromJson(doc);
             if (!title.empty())
             {
                 kvdbs.push_back(title);
@@ -969,20 +1255,7 @@ json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
 {
     std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
 
-    json::Json kvdbDoc = getByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, std::string(constants::KVDB_PREFIX), std::string(constants::NAME_KVDB_PREFIX));
-
-    if (kvdbDoc.exists(constants::JSON_PAYLOAD_DOCUMENT_CONTENT))
-    {
-        auto content = kvdbDoc.getJson(constants::JSON_PAYLOAD_DOCUMENT_CONTENT);
-        if (content)
-        {
-            return *content;
-        }
-    }
-
-    json::Json empty;
-    empty.setObject();
-    return empty;
+    return getByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, std::string(constants::KVDB_PREFIX), std::string(constants::NAME_KVDB_PREFIX));
 }
 
 std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
@@ -1008,9 +1281,34 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
                 {
                     for (const auto& integration : *integrationArray)
                     {
-                        if (auto integrationStr = integration.getString())
+                        if (auto integrationId = integration.getString())
                         {
-                            integrations.emplace_back(*integrationStr);
+                            // Resolve integration ID to title/name
+                            try
+                            {
+                                std::string value;
+                                auto status = m_db->Get(ro, getColumnFamily(CTIStorageDB::ColumnFamily::INTEGRATION),
+                                                       std::string(constants::INTEGRATION_PREFIX) + *integrationId, &value);
+                                if (status.ok())
+                                {
+                                    json::Json integrationDoc(value.c_str());
+                                    std::string title = extractNameFromJson(integrationDoc);
+                                    if (!title.empty())
+                                    {
+                                        integrations.emplace_back(title);
+                                    }
+                                    else
+                                    {
+                                        // Fallback to ID if no title
+                                        integrations.emplace_back(*integrationId);
+                                    }
+                                }
+                            }
+                            catch (const std::exception& e)
+                            {
+                                LOG_WARNING("Failed to resolve integration ID {}: {}", *integrationId, e.what());
+                                integrations.emplace_back(*integrationId);
+                            }
                         }
                     }
                 }

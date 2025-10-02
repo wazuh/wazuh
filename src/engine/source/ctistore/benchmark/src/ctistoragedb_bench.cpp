@@ -62,8 +62,28 @@ public:
 
         json::Json payload;
         payload.setObject();
-        payload.setString("Wazuh 5.0", "/title");
         payload.setString("policy", "/type");
+
+        json::Json document;
+        document.setObject();
+        document.setString("Wazuh 5.0", "/title");
+        document.setBool(true, "/enabled");
+
+        json::Json metadata;
+        metadata.setObject();
+        metadata.setString(name, "/id");
+        metadata.setString("Wazuh Inc.", "/author");
+        metadata.setString("2025-09-26T10:00:00.000Z", "/date");
+        metadata.setString("Benchmark policy", "/description");
+        metadata.setString("", "/documentation");
+
+        json::Json references;
+        references.setArray();
+        references.appendString("https://wazuh.com");
+        metadata.set("/references", references);
+
+        document.set("/metadata", metadata);
+        payload.set("/document", document);
 
         json::Json integrations;
         integrations.setArray();
@@ -137,7 +157,7 @@ public:
         document.setString("2025-09-26T10:00:00.000Z", "/date");
         document.setBool(true, "/enabled");
         document.setString(id, "/id");
-        document.setString(title, "/title");
+        document.setString(title, "/name");
 
         json::Json definitions;
         definitions.setObject();
