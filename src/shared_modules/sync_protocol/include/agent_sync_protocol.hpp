@@ -46,12 +46,13 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
 
-        /// @copydoc IAgentSyncProtocol::checkIndexIntegrity
-        bool checkIndexIntegrity(const std::string& index,
-                                 const std::string& checksum,
-                                 std::chrono::seconds timeout,
-                                 unsigned int retries,
-                                 size_t maxEps) override;
+        /// @copydoc IAgentSyncProtocol::requiresFullSync
+        bool requiresFullSync(const std::string& index,
+                              const std::string& checksum,
+                              std::chrono::seconds timeout,
+                              unsigned int retries,
+                              size_t maxEps) override;
+
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
@@ -132,12 +133,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param retries The maximum number of re-send attempts.
         /// @param dataToSync The complete vector of data items being synchronized in the current session.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @param result Optional output parameter to capture the specific result status.
         /// @return True on success, false on failure or timeout
         bool sendEndAndWaitAck(uint64_t session,
                                const std::chrono::seconds timeout,
                                unsigned int retries,
                                const std::vector<PersistedData>& dataToSync,
-                               size_t maxEps);
+                               size_t maxEps,
+                               SyncResult* result = nullptr);
 
         /// @brief Receives an endack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -213,6 +216,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Unique identifier for the current synchronization session, received from the manager.
             uint64_t session = 0;
 
+            /// @brief Last sync operation result for detailed error reporting.
+            SyncResult lastSyncResult = SyncResult::SUCCESS;
+
             /// @brief Resets all internal flags and clears received ranges.
             ///
             /// This should be called before starting a new synchronization cycle.
@@ -225,6 +231,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 reqRetRanges.clear();
                 phase = SyncPhase::Idle;
                 session = 0;
+                lastSyncResult = SyncResult::SUCCESS;
             }
         };
 
