@@ -2067,7 +2067,7 @@ install_api: install_python
 ####################
 #### test ##########
 ####################
-CFLAGS_TEST=-g -O0 --coverage -fPIC -DWAZUH_UNIT_TESTING
+CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
 # Use sanitizers only on linux and when VALGRIND is not set
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
@@ -2104,6 +2104,9 @@ unit_tests/wrappers/externals/procpc/%.o: unit_tests/wrappers/externals/procpc/%
 
 unit_tests/wrappers/externals/sqlite/%.o: unit_tests/wrappers/externals/sqlite/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/externals/pcre2/%.o: unit_tests/wrappers/externals/pcre2/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -fPIC -c $^ -o $@
 
 unit_tests/wrappers/libc/%.o: unit_tests/wrappers/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
