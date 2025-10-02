@@ -1657,7 +1657,7 @@ build_sca: build_shared_modules build_sysinfo
 	cd ${SCA} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} .. && ${MAKE}
 
 #### Agent Info ##
-build_agent_info:
+build_agent_info: build_shared_modules build_sysinfo
 	cd ${AGENT_INFO} && mkdir -p build && cd build && cmake -DTARGET=${TARGET} ${CMAKE_OPTS} ${AGENT_INFO_TEST} ${AGENT_INFO_RELEASE_TYPE} .. && ${MAKE}
 
 #### Wazuh cmake ###
