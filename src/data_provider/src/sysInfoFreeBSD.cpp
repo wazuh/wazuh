@@ -210,6 +210,9 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["os_kernel_release"] = uts.release;
     }
 
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "unix";
+
     return ret;
 }
 
