@@ -2373,8 +2373,8 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
                 return OS_INVALID;
             }
 
-            if (!cJSON_IsString(id)) {
-                mdebug1("Malformed JSON: field 'id' must be a string");
+            if (!cJSON_IsNumber(id)) {
+                mdebug1("Malformed JSON: field 'id' must be a number");
                 cJSON_Delete(event);
                 return OS_INVALID;
             }

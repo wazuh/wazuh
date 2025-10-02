@@ -1714,9 +1714,9 @@ static void FillScanInfo(Eventinfo *lf,cJSON *scan_id,cJSON *name,cJSON *descrip
 
         if(cJSON_IsNumber(scan_id)){
             if(scan_id->valuedouble == (double)scan_id->valueint){
-                sprintf(value, "%d", scan_id->valueint);
+                snprintf(value, sizeof(value), "%d", scan_id->valueint);
             } else {
-                sprintf(value, "%lf", scan_id->valuedouble);
+                snprintf(value, sizeof(value), "%lf", scan_id->valuedouble);
             }
         } else {
             mdebug1("Unexpected 'sca.scan_id' type: %d.", scan_id->type);

@@ -628,16 +628,8 @@ static int wm_sca_check_policy(const cJSON * const policy, const cJSON * const c
             return 1;
         }
 
-        if (!cJSON_IsNumber(check_id))
-        {
+        if (!cJSON_IsNumber(check_id)) {
             mwarn("Invalid check ID type: must be a number.");
-            free(read_id);
-            return 1;
-        }
-
-        if (check_id->valueint <= 0) {
-            // Invalid ID
-            mwarn("Invalid check ID: %d", check_id->valueint);
             free(read_id);
             return 1;
         }
