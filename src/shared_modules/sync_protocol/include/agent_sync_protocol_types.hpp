@@ -15,3 +15,12 @@
 #include "agent_sync_protocol_c_interface_types.h"
 
 using LoggerFunc = std::function<void(modules_log_level_t, const std::string&)>;
+
+/// @brief Result status for sync operations, especially for integrity checks
+enum class SyncResult
+{
+    SUCCESS,            ///< Operation completed successfully
+    COMMUNICATION_ERROR, ///< Manager is offline or unreachable
+    CHECKSUM_ERROR,     ///< Checksum validation failed
+    UNKNOWN_ERROR       ///< Other errors
+};
