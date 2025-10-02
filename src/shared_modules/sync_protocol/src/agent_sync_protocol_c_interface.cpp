@@ -144,23 +144,23 @@ extern "C" {
         }
     }
 
-    bool asp_check_index_integrity(AgentSyncProtocolHandle* handle,
-                                    const char* index,
-                                    const char* checksum,
-                                    unsigned int sync_timeout,
-                                    unsigned int retries,
-                                    size_t max_eps)
+    bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
+                                 const char* index,
+                                 const char* checksum,
+                                 unsigned int sync_timeout,
+                                 unsigned int retries,
+                                 size_t max_eps)
     {
         try
         {
             if (!handle || !index || !checksum) return false;
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            return wrapper->impl->checkIndexIntegrity(index,
-                                                      checksum,
-                                                      std::chrono::seconds(sync_timeout),
-                                                      retries,
-                                                      max_eps);
+            return wrapper->impl->requiresFullSync(index,
+                                                   checksum,
+                                                   std::chrono::seconds(sync_timeout),
+                                                   retries,
+                                                   max_eps);
         }
         catch (const std::exception& ex)
         {
