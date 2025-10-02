@@ -49,6 +49,11 @@ void AgentInfoImpl::start()
 
 void AgentInfoImpl::stop()
 {
+    if (m_stopped)
+    {
+        return;
+    }
+    m_stopped = true;
     LoggingHelper::getInstance().log(LOG_INFO, "AgentInfo module stopped.");
 }
 
