@@ -157,9 +157,9 @@ checks:
     impact: "WARNING: If Container applications such as Docker, Kubernetes, Podman, Linux Containers (LXC), etc. are in use proceed with caution and consider the impact on containerized workloads, as disabling the overlayfs may severely disrupt containerization."
     remediation: "Run the following script to unload and disable the overlayfs module: - IF - the overlayfs kernel module is available in ANY installed kernel: - Create a file ending in .conf with install overlayfs /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with blacklist overlayfs in the /etc/modprobe.d/ directory - Run modprobe -r overlayfs 2>/dev/null; rmmod overlayfs 2>/dev/null to remove overlayfs from the kernel - IF - the overlayfs kernel module is not available on the system, or pre-compiled into the kernel, no remediation is necessary #!/usr/bin/env bash."
     references:
-        - 'https://docs.kernel.org/filesystems/overlayfs.html'
-        - 'https://wiki.archlinux.org/title/Overlay_filesystem'
-        - 'https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=overlayfs'
+      - 'https://docs.kernel.org/filesystems/overlayfs.html'
+      - 'https://wiki.archlinux.org/title/Overlay_filesystem'
+      - 'https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=overlayfs'
     compliance:
       - cis: ["1.1.1.6"]
       - cis_csc_v8: ["4.8"]
@@ -259,7 +259,7 @@ checks:
     impact: "This list may be quite extensive and covering all edges cases is difficult. Therefore, it's crucial to carefully consider the implications and dependencies before making any changes to the filesystem kernel module configurations."
     remediation: "- IF - the module is available in the running kernel: - Unload the filesystem kernel module from the kernel - Create a file ending in .conf with install filesystem kernel modules /bin/false in the /etc/modprobe.d/ directory - Create a file ending in .conf with deny list filesystem kernel modules in the /etc/modprobe.d/ directory WARNING: unloading, disabling or denylisting filesystem modules that are in use on the system maybe FATAL. It is extremely important to thoroughly review the filesystems returned by the audit before following the remediation procedure. Example of unloading the gfs2kernel module: # modprobe -r gfs2 2>/dev/null # rmmod gfs2 2>/dev/null Example of fully disabling the gfs2 kernel module."
     references:
-        - 'https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=filesystem'
+      - 'https://cve.mitre.org/cgi-bin/cvekey.cgi?keyword=filesystem'
     compliance:
       - cis: ["1.1.1.10"]
       - cis_csc_v8: ["4.8"]
@@ -304,9 +304,9 @@ checks:
     impact: "By design files saved to /tmp should have no expectation of surviving a reboot of the system. tmpfs is ram based and all files stored to tmpfs will be lost when the system is rebooted. If files need to be persistent through a reboot, they should be saved to /var/tmp not /tmp. Since the /tmp directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to tmpfs or a separate partition. Running out of /tmp space is a problem regardless of what kind of filesystem lies under it, but in a configuration where /tmp is not a separate file system it will essentially have the whole disk available, as the default installation only creates a single / partition. On the other hand, a RAM-based /tmp (as with tmpfs) will almost certainly be much smaller, which can lead to applications filling up the filesystem much more easily. Another alternative is to create a dedicated partition for /tmp from a separate volume or disk. One of the downsides of a disk-based dedicated partition is that it will be slower than tmpfs which is RAM-based."
     remediation: "First ensure that systemd is correctly configured to ensure that /tmp will be mounted at boot time. # systemctl unmask tmp.mount For specific configuration requirements of the /tmp mount for your environment, modify /etc/fstab. Example of using tmpfs with specific mount options: tmpfs /tmp 0 tmpfs defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 Note: the size=2G is an example of setting a specific size for tmpfs. Example of using a volume or disk with specific mount options. The source location of the volume or disk will vary depending on your environment: <device> /tmp <fstype> defaults,nodev,nosuid,noexec 0 0."
     references:
-        - 'https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/'
-        - 'https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html'
-        - 'https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt'
+      - 'https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/'
+      - 'https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html'
+      - 'https://www.kernel.org/doc/Documentation/filesystems/tmpfs.txt'
     compliance:
       - cis: ["1.1.2.1.1"]
       - cis_csc_v8: ["4.8"]
@@ -403,8 +403,8 @@ checks:
     impact: "Since the /dev/shm directory is intended to be world-writable, there is a risk of resource exhaustion if it is not bound to a separate partition. /dev/shm utilizing tmpfs can be resized using the size={size} parameter in the relevant entry in /etc/fstab."
     remediation: "For specific configuration requirements of the /dev/shm mount for your environment, modify /etc/fstab. Example: tmpfs /dev/shm defaults,rw,nosuid,nodev,noexec,relatime,size=2G 0 0 tmpfs."
     references:
-        - 'https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/'
-        - 'https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html'
+      - 'https://www.freedesktop.org/wiki/Software/systemd/APIFileSystems/'
+      - 'https://www.freedesktop.org/software/systemd/man/systemd-fstab-generator.html'
     compliance:
       - cis: ["1.1.2.2.1"]
       - cis_csc_v8: ["4.8"]
@@ -501,7 +501,7 @@ checks:
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /home. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
-        - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+      - 'http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
       - cis: ["1.1.2.3.1"]
       - cis_csc_v8: ["3.3"]
@@ -576,7 +576,7 @@ checks:
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
-        - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+      - 'http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
       - cis: ["1.1.2.4.1"]
       - cis_csc_v8: ["3.3"]
@@ -651,7 +651,7 @@ checks:
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/tmp. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
-        - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+      - 'http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
       - cis: ["1.1.2.5.1"]
       - cis_csc_v8: ["3.3"]
@@ -750,7 +750,7 @@ checks:
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing, or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log . For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
-        - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+      - 'http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
       - cis: ["1.1.2.6.1"]
       - cis_csc_v8: ["8.3"]
@@ -845,7 +845,7 @@ checks:
     impact: "Resizing filesystems is a common activity in cloud-hosted servers. Separate filesystem partitions may prevent successful resizing or may require the installation of additional tools solely for the purpose of resizing operations. The use of these additional tools may introduce their own security considerations."
     remediation: "For new installations, during installation create a custom partition setup and specify a separate partition for /var/log/audit. For systems that were previously installed, create a new partition and configure /etc/fstab as appropriate."
     references:
-        - 'http://tldp.org/HOWTO/LVM-HOWTO/'
+      - 'http://tldp.org/HOWTO/LVM-HOWTO/'
     compliance:
       - cis: ["1.1.2.7.1"]
       - cis_csc_v8: ["8.3"]
@@ -1327,7 +1327,7 @@ checks:
     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
     remediation: "- IF - A user profile is already created run the following commands to set and enable the text banner message on the login screen: # gsettings set org.gnome.login-screen banner-message-text 'Authorized uses only. All activity may be monitored and reported' # gsettings set org.gnome.login-screen banner-message-enable true Note: - banner-message-text may be set in accordance with local site policy - gsettings commands in this section MUST be done from a command window on a graphical desktop or an error will be returned. - The system must be restarted after all gsettings configurations have been set in order for CIS-CAT Assessor to appropriately assess. - OR/IF - A user profile does not exist: 1. Create or edit the gdm profile in the /etc/dconf/profile/gdm with the following lines: user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults Note: gdm is the name of a dconf database. 2. Create a gdm keyfile for machine-wide settings in /etc/dconf/db/gdm.d/01- banner-message: [org/gnome/login-screen] banner-message-enable=true banner-message-text='Type the banner message here.' 3. Update the system databases # dconf update Note: - Users must log out and back in again before the system-wide settings take effect. - There is no character limit for the banner message. gnome-shell autodetects longer stretches of text and enters two column mode. - The banner message cannot be read from an external file."
     references:
-        - 'https://help.gnome.org/admin/system-admin-guide/stable/login-banner.html.en'
+      - 'https://help.gnome.org/admin/system-admin-guide/stable/login-banner.html.en'
     compliance:
       - cis: ["1.7.2"]
       - mitre_mitigations: ["M1028"]
@@ -1346,7 +1346,7 @@ checks:
     rationale: "Displaying the user list eliminates half of the Userid/Password equation that an unauthorized person would need to log on."
     remediation: "- IF - A user profile exists run the following command to enable the disable-user- list: # gsettings set org.gnome.login-screen disable-user-list true Note: - gsettings commands in this section MUST be done from a command window on a graphical desktop or an error will be returned. - The system must be restarted after all gsettings configurations have been set in order for CIS-CAT Assessor to appropriately assess. - OR/IF - A user profile does not exist: 1. Create or edit the gdm profile in /etc/dconf/profile/gdm with the following lines: user-db:user system-db:gdm file-db:/usr/share/gdm/greeter-dconf-defaults Note: gdm is the name of a dconf database. 2. Create a gdm keyfile for machine-wide settings in /etc/dconf/db/gdm.d/00- login-screen: [org/gnome/login-screen] # Do not show the user list disable-user-list=true 3. Update the system databases: # dconf update Note: When the user profile is created or changed, the user will need to log out and log in again before the changes will be applied."
     references:
-        - 'https://help.gnome.org/admin/system-admin-guide/stable/login-userlist-'
+      - 'https://help.gnome.org/admin/system-admin-guide/stable/login-userlist-'
     compliance:
       - cis: ["1.7.3"]
       - mitre_mitigations: ["M1028"]
@@ -1366,8 +1366,8 @@ checks:
     rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended. Without locking down the system settings, user settings take precedence over the system settings."
     remediation: "1. To prevent the user from overriding these settings, create the file /etc/dconf/db/local.d/locks/00-screensaver with the following content: # Lock desktop screensaver settings /org/gnome/desktop/session/idle-delay /org/gnome/desktop/screensaver/lock-delay 2. Update the system databases: # dconf update Note: - A user profile must exist in order to apply locks. - Users must log out and back in again before the system-wide settings take effect."
     references:
-        - 'https://help.gnome.org/admin/system-admin-guide/stable/desktop-'
-        - 'https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en'
+      - 'https://help.gnome.org/admin/system-admin-guide/stable/desktop-'
+      - 'https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en'
     compliance:
       - cis: ["1.7.5"]
       - cis_csc_v8: ["4.3"]
@@ -1394,7 +1394,7 @@ checks:
     impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
     remediation: "- IF - A user profile exists run the following commands to ensure automatic mounting is disabled: # gsettings set org.gnome.desktop.media-handling automount false # gsettings set org.gnome.desktop.media-handling automount-open false Note: - gsettings commands in this section MUST be done from a command window on a graphical desktop or an error will be returned. - The system must be restarted after all gsettings configurations have been set in order for CIS-CAT Assessor to appropriately assess. - OR/IF - A user profile does not exist: 1. Create a file /etc/dconf/db/local.d/00-media-automount with following content: [org/gnome/desktop/media-handling] automount=false automount-open=false 2. After creating the file, apply the changes using below command : # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
     references:
-        - 'https://access.redhat.com/solutions/20107'
+      - 'https://access.redhat.com/solutions/20107'
     compliance:
       - cis: ["1.7.6"]
       - cis_csc_v8: ["10.3"]
@@ -1419,9 +1419,9 @@ checks:
     impact: "The use of portable hard drives is very common for workstation users."
     remediation: "1. To prevent the user from overriding these settings, create the file /etc/dconf/db/local.d/locks/00-media-automount with the following content: [org/gnome/desktop/media-handling] automount=false automount-open=false 2. Update the systems databases: # dconf update Note: - A user profile must exist in order to apply locks. - Users must log out and back in again before the system-wide settings take effect."
     references:
-        - 'https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en'
-        - 'https://manpages.ubuntu.com/manpages/trusty/man1/gsettings.1.html'
-        - 'https://access.redhat.com/solutions/20107'
+      - 'https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en'
+      - 'https://manpages.ubuntu.com/manpages/trusty/man1/gsettings.1.html'
+      - 'https://access.redhat.com/solutions/20107'
     compliance:
       - cis: ["1.7.7"]
       - mitre_mitigations: ["M1042"]
@@ -1549,7 +1549,7 @@ checks:
     impact: "There may be packages that are dependent on the isc-dhcp-server package. If the isc-dhcp-server package is removed, these dependent packages will be removed as well. Before removing the isc-dhcp-server package, review any dependent packages to determine if they are required on the system. - IF - a dependent package is required: stop and mask the isc-dhcp-server.service and isc-dhcp-server6.service leaving the isc-dhcp-server package installed."
     remediation: "Run the following commands to stop isc-dhcp-server.service and isc-dhcp-server6.service and remove the isc-dhcp-server package: # systemctl stop isc-dhcp-server.service isc-dhcp-server6.service # apt purge isc-dhcp-server - OR - - IF - the isc-dhcp-server package is required as a dependency: Run the following commands to stop and mask isc-dhcp-server.service and isc-dhcp-server6.service: # systemctl stop isc-dhcp-server.service isc-dhcp-server6.service # systemctl mask isc-dhcp-server isc-dhcp-server6.service."
     references:
-        - 'http://www.isc.org/software/dhcp.'
+      - 'http://www.isc.org/software/dhcp.'
     compliance:
       - cis: ["2.1.3"]
       - cis_csc_v8: ["4.8"]
@@ -1647,7 +1647,7 @@ checks:
     impact: "There may be packages that are dependent on the slapd package. If the slapd package is removed, these dependent packages will be removed as well. Before removing the slapd package, review any dependent packages to determine if they are required on the system. - IF - a dependent package is required: stop and mask the slapd.service leaving the slapd package installed."
     remediation: "Run the following commands to stop slapd.service and remove the slapd package: # systemctl stop slapd.service # apt purge slapd - OR - - IF - the slapd package is required as a dependency: Run the following commands to stop and mask slapd.service: # systemctl stop slapd.service # systemctl mask slapd.service."
     references:
-        - 'http://www.openldap.org.'
+      - 'http://www.openldap.org.'
     compliance:
       - cis: ["2.1.7"]
       - cis_csc_v8: ["4.8"]
@@ -1745,7 +1745,7 @@ checks:
     impact: "Removing the cups package, or disabling cups.socket and/or cups.service will prevent printing from the system, a common task for workstation systems. There may be packages that are dependent on the cups package. If the cups package is removed, these dependent packages will be removed as well. Before removing the cups package, review any dependent packages to determine if they are required on the system. - IF - a dependent package is required: stop and mask cups.socket and cups.service leaving the cups package installed."
     remediation: "Run the following commands to stop cups.socket and cups.service, and remove the cups package: # systemctl stop cups.socket cups.service # apt purge cups - OR - - IF - the cups package is required as a dependency: Run the following commands to stop and mask the cups.socket and cups.service: # systemctl stop cups.socket cups.service # systemctl mask cups.socket cups.service."
     references:
-        - 'http://www.cups.org'
+      - 'http://www.cups.org'
     compliance:
       - cis: ["2.1.11"]
       - cis_csc_v8: ["4.8"]
@@ -2147,8 +2147,8 @@ checks:
     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
     remediation: "Set NTP and/or FallbackNPT parameters to local site approved authoritative time server(s) in /etc/systemd/timesyncd.conf or a file in /etc/systemd/timesyncd.conf.d/ ending in .conf in the [Time] section: Example file: [Time] NTP=time.nist.gov # Uses the generic name for NIST's time servers FallbackNTP=time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov # Space separated list of NIST time servers Example script to create systemd drop-in configuration file: #!/usr/bin/env bash { a_settings=(\"NTP=time.nist.gov\" \"FallbackNTP=time-a-g.nist.gov time-b- g.nist.gov time-c-g.nist.gov\") [ ! -d /etc/systemd/timesyncd.conf.d/ ] && mkdir /etc/systemd/timesyncd.conf.d/ if grep -Psq -- '^\\h*\\[Time\\]' /etc/systemd/timesyncd.conf.d/60- timesyncd.conf; then printf '%s\\n' \"\" \"${a_settings[@]}\" >> /etc/systemd/timesyncd.conf.d/60-timesyncd.conf else printf '%s\\n' \"\" \"[Time]\" \"${a_settings[@]}\" >> /etc/systemd/timesyncd.conf.d/60-timesyncd.conf fi } Note: If this setting appears in a canonically later file, or later in the same file, the setting will be overwritten Run to following command to update the parameters in the service: # systemctl reload-or-restart systemd-journald."
     references:
-        - 'https://www.freedesktop.org/software/systemd/man/timesyncd.conf.html'
-        - 'https://tf.nist.gov/tf-cgi/servers.cgi'
+      - 'https://www.freedesktop.org/software/systemd/man/timesyncd.conf.html'
+      - 'https://tf.nist.gov/tf-cgi/servers.cgi'
     compliance:
       - cis: ["2.3.2.1"]
       - cis_csc_v8: ["8.4"]
@@ -2512,7 +2512,7 @@ checks:
     impact: "Many personal electronic devices (PEDs) use Bluetooth technology. For example, you may be able to operate your computer with a wireless keyboard. Disabling Bluetooth will prevent these devices from connecting to the system. There may be packages that are dependent on the bluez package. If the bluez package is removed, these dependent packages will be removed as well. Before removing the bluez package, review any dependent packages to determine if they are required on the system. -IF- a dependent package is required: stop and mask bluetooth.service leaving the bluez package installed."
     remediation: "Run the following commands to stop bluetooth.service, and remove the bluez package: # systemctl stop bluetooth.service # apt purge bluez - OR - - IF - the bluez package is required as a dependency: Run the following commands to stop and mask bluetooth.service: # systemctl stop bluetooth.service # systemctl mask bluetooth.service Note: A reboot may be required."
     references:
-        - 'https://www.cisa.gov/tips/st05-015'
+      - 'https://www.cisa.gov/tips/st05-015'
     compliance:
       - cis: ["3.1.3"]
       - cis_csc_v8: ["4.8"]
@@ -2890,10 +2890,10 @@ checks:
     impact: "The use of more than one firewall utility may produce unexpected results."
     remediation: "Remediating to a single firewall configuration is a complex process and involves several steps. The following provides the basic steps to follow for a single firewall configuration: 1. Determine which firewall utility best fits organizational needs 2. Follow the recommendations in the subsequent subsection for the single firewall to be used Note: Review the firewall subsection overview for the selected firewall to be used, it contains a script to simplify this process. 3. Return to this recommendation to ensure a single firewall configuration utility is in use."
     references:
-        - 'https://wiki.debian.org/DebianFirewall'
-        - 'https://wiki.ubuntu.com/UncomplicatedFirewall'
-        - 'https://assets.ubuntu.com/v1/544d9904-ubuntu-server-guide-2024-01-22.pdf'
-        - 'https://www.debian.org/doc/manuals/debian-reference/debian-reference.en.pdf'
+      - 'https://wiki.debian.org/DebianFirewall'
+      - 'https://wiki.ubuntu.com/UncomplicatedFirewall'
+      - 'https://assets.ubuntu.com/v1/544d9904-ubuntu-server-guide-2024-01-22.pdf'
+      - 'https://www.debian.org/doc/manuals/debian-reference/debian-reference.en.pdf'
     compliance:
       - cis: ["4.1.1"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2967,7 +2967,7 @@ checks:
     impact: "Changing firewall settings while connected over network can result in being locked out of the system."
     remediation: "Run the following command to unmask the ufw daemon: # systemctl unmask ufw.service Run the following command to enable and start the ufw daemon: # systemctl --now enable ufw.service active Run the following command to enable ufw: # ufw enable."
     references:
-        - 'http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html'
+      - 'http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html'
     compliance:
       - cis: ["4.2.3"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -2994,7 +2994,7 @@ checks:
     rationale: "Loopback traffic is generated between processes on machine and is typically critical to operation of the system. The loopback interface is the only place that loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6) traffic should be seen, all other interfaces should ignore traffic on this network as an anti-spoofing measure."
     remediation: "Run the following commands to configure the loopback interface to accept traffic: # ufw allow in on lo # ufw allow out on lo Run the following commands to configure all other interfaces to deny traffic to the loopback network: # ufw deny in from 127.0.0.0/8 # ufw deny in from ::1."
     references:
-        - 'https://manpages.ubuntu.com/manpages/jammy/en/man8/ufw-framework.8.html'
+      - 'https://manpages.ubuntu.com/manpages/jammy/en/man8/ufw-framework.8.html'
     compliance:
       - cis: ["4.2.4"]
       - cis_csc_v8: ["4.4", "4.5"]
@@ -3545,11 +3545,11 @@ checks:
     rationale: "Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised. - The Triple DES ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain clear text data via a birthday attack against a long-duration encrypted session, aka a \"Sweet32\" attack. - Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plain text data from an arbitrary block of cipher text in an SSH session via unknown vectors."
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the Ciphers line to contain a comma separated list of the site unapproved (weak) Ciphers preceded with a - above any Include entries: Example: Ciphers -3des-cbc,aes128-cbc,aes192-cbc,aes256-cbc,chacha20- poly1305@openssh.com - IF - CVE-2023-48795 has been addressed, and it meets local site policy, chacha20-poly1305@openssh.com may be removed from the list of excluded ciphers. Note: First occurrence of an option takes precedence. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location."
     references:
-        - 'https://nvd.nist.gov/vuln/detail/CVE-2023-48795'
-        - 'https://nvd.nist.gov/vuln/detail/CVE-2019-1543'
-        - 'https://nvd.nist.gov/vuln/detail/CVE-2016-2183'
-        - 'https://nvd.nist.gov/vuln/detail/CVE-2008-5161'
-        - 'https://www.openssh.com/txt/cbc.adv'
+      - 'https://nvd.nist.gov/vuln/detail/CVE-2023-48795'
+      - 'https://nvd.nist.gov/vuln/detail/CVE-2019-1543'
+      - 'https://nvd.nist.gov/vuln/detail/CVE-2016-2183'
+      - 'https://nvd.nist.gov/vuln/detail/CVE-2008-5161'
+      - 'https://www.openssh.com/txt/cbc.adv'
     compliance:
       - cis: ["5.1.6"]
       - cis_csc_v8: ["3.10"]
@@ -3672,7 +3672,7 @@ checks:
     rationale: "Key exchange methods that are considered weak should be removed. A key exchange method may be weak because too few bits are used, or the hashing algorithm is considered too weak. Using weak algorithms could expose connections to man-in-the-middle attacks."
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the KexAlgorithms line to contain a comma separated list of the site unapproved (weak) KexAlgorithms preceded with a - above any Include entries: Example: KexAlgorithms -diffie-hellman-group1-sha1,diffie-hellman-group14-sha1,diffie- hellman-group-exchange-sha1 Note: First occurrence of an option takes precedence. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location."
     references:
-        - 'https://ubuntu.com/server/docs/openssh-crypto-configuration'
+      - 'https://ubuntu.com/server/docs/openssh-crypto-configuration'
     compliance:
       - cis: ["5.1.12"]
       - cis_csc_v8: ["3.10"]
@@ -3714,7 +3714,7 @@ checks:
     rationale: "The INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. The VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
     remediation: "Edit the /etc/ssh/sshd_config file to set the LogLevel parameter to VERBOSE or INFO above any Include and Match entries as follows: LogLevel VERBOSE - OR - LogLevel INFO Note: First occurrence of an option takes precedence, Match set statements withstanding. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location."
     references:
-        - 'https://www.ssh.com/ssh/sshd_config/'
+      - 'https://www.ssh.com/ssh/sshd_config/'
     compliance:
       - cis: ["5.1.14"]
       - cis_csc_v8: ["8.2"]
@@ -3739,8 +3739,8 @@ checks:
     rationale: "MD5 and 96-bit MAC algorithms are considered weak and have been shown to increase exploitability in SSH downgrade attacks. Weak algorithms continue to have a great deal of attention as a weak spot that can be exploited with expanded computing power. An attacker that breaks the algorithm could take advantage of a MiTM position to decrypt the SSH tunnel and capture credentials and information."
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site unapproved (weak) MACs preceded with a - above any Include entries: Example: MACs -hmac-md5,hmac-md5-96,hmac-ripemd160,hmac-sha1-96,umac- 64@openssh.com,hmac-md5-etm@openssh.com,hmac-md5-96-etm@openssh.com,hmac- ripemd160-etm@openssh.com,hmac-sha1-96-etm@openssh.com,umac-64- etm@openssh.com,umac-128-etm@openssh.com - IF - CVE-2023-48795 has not been reviewed and addressed, the following etm MACs should be added to the exclude list: hmac-sha1-etm@openssh.com,hmac-sha2-256- etm@openssh.com,hmac-sha2-512-etm@openssh.com Note: First occurrence of an option takes precedence. If Include locations are enabled, used, and order of precedence is understood in your environment, the entry may be created in a file in Include location."
     references:
-        - 'https://nvd.nist.gov/vuln/detail/CVE-2023-48795'
-        - 'http://www.mitls.org/pages/attacks/SLOTH'
+      - 'https://nvd.nist.gov/vuln/detail/CVE-2023-48795'
+      - 'http://www.mitls.org/pages/attacks/SLOTH'
     compliance:
       - cis: ["5.1.15"]
       - cis_csc_v8: ["3.10"]
@@ -4027,7 +4027,7 @@ checks:
     rationale: "Setting a timeout value reduces the window of opportunity for unauthorized privileged access to another user."
     remediation: "If the currently configured timeout is larger than 15 minutes, edit the file listed in the audit section with visudo -f <PATH TO FILE> and modify the entry timestamp_timeout= to 15 minutes or less as per your site policy. The value is in minutes. This particular entry may appear on it's own, or on the same line as env_reset. See the following two examples: Defaults env_reset, timestamp_timeout=15 Defaults timestamp_timeout=15 Defaults env_reset."
     references:
-        - 'https://www.sudo.ws/man/1.9.0/sudoers.man.html'
+      - 'https://www.sudo.ws/man/1.9.0/sudoers.man.html'
     compliance:
       - cis: ["5.2.6"]
       - cis_csc_v8: ["5.4"]
@@ -4101,7 +4101,7 @@ checks:
     rationale: "Strong passwords reduce the risk of systems being hacked through brute force methods."
     remediation: "Run the following command to install libpam-pwquality: # apt install libpam-pwquality."
     references:
-        - 'https://packages.debian.org/buster/libpam-pwquality'
+      - 'https://packages.debian.org/buster/libpam-pwquality'
     compliance:
       - cis: ["5.3.1.3"]
     condition: all
@@ -4331,7 +4331,7 @@ checks:
     impact: "Passwords that are too complex in nature make it harder for users to remember, leading to bad practices. In addition, composition requirements provide no defense against common attack types such as social engineering or insecure storage of passwords."
     remediation: "Run the following command: # grep -Pl -- '\\bpam_pwquality\\.so\\h+([^#\\n\\r]+\\h+)?(minclass|[dulo]credit)\\b' /usr/share/pam-configs/* Edit any returned files and remove the minclass, dcredit, ucredit, lcredit, and ocredit arguments from the pam_pwquality.so line(s) Create or modify a file ending in .conf in the /etc/security/pwquality.conf.d/ directory or the file /etc/security/pwquality.conf and add or modify the following line(s) to set complexity according to local site policy: - minclass = _N_ - dcredit = _N_ # Value should be either 0 or a number proceeded by a minus (- ) symbol - ucredit = -1 # Value should be either 0 or a number proceeded by a minus (-) symbol - ocredit = -1 # Value should be either 0 or a number proceeded by a minus (-) symbol - lcredit = -1 # Value should be either 0 or a number proceeded by a minus (-) symbol Example 1 - Set minclass = 3: #!/usr/bin/env bash { sed -ri 's/^\\s*minclass\\s*=/# &/' /etc/security/pwquality.conf sed -ri 's/^\\s*[dulo]credit\\s*=/# &/' /etc/security/pwquality.conf [ ! -d /etc/security/pwquality.conf.d/ ] && mkdir /etc/security/pwquality.conf.d/ printf '\\n%s' \"minclass = 3\" > /etc/security/pwquality.conf.d/50- pwcomplexity.conf } Example 2 - set dcredit = -1, ucredit = -1, and lcredit = -1: #!/usr/bin/env bash { sed -ri 's/^\\s*minclass\\s*=/# &/' /etc/security/pwquality.conf sed -ri 's/^\\s*[dulo]credit\\s*=/# &/' /etc/security/pwquality.conf [ ! -d /etc/security/pwquality.conf.d/ ] && mkdir /etc/security/pwquality.conf.d/ printf '%s\\n' \"dcredit = -1\" \"ucredit = -1\" \"lcredit = -1\" > /etc/security/pwquality.conf.d/50-pwcomplexity.conf }."
     references:
-        - 'https://www.cisecurity.org/insights/white-papers/cis-password-policy-guide'
+      - 'https://www.cisecurity.org/insights/white-papers/cis-password-policy-guide'
     compliance:
       - cis: ["5.3.3.2.3"]
       - cis_csc_v8: ["5.2"]
@@ -5217,7 +5217,7 @@ checks:
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitive data is archived and protected."
     remediation: "Edit either /etc/rsyslog.conf or a dedicated .conf file in /etc/rsyslog.d/ and set $FileCreateMode to 0640 or more restrictive: $FileCreateMode 0640 Example script to create a drop-in configuration file in the default include location: #!/usr/bin/env bash { [ ! -d \"/etc/rsyslog.d/\" ] && mkdir /etc/rsyslog.d/ printf '%s\\n' \"\" \"\\$FileCreateMode 0640\" >> /etc/rsyslog.d/60-rsyslog.conf } Reload the service: # systemctl reload-or-restart rsyslog."
     references:
-        - 'https://www.rsyslog.com/doc/'
+      - 'https://www.rsyslog.com/doc/'
     compliance:
       - cis: ["6.1.3.4"]
       - cis_csc_v8: ["3.3", "8.2"]
@@ -5246,7 +5246,7 @@ checks:
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
     remediation: "Edit the rsyslog configuration and add the following line (where loghost.example.com is the name of your central log host). The target directive may either be a fully qualified domain name or an IP address. Example script to create a drop-in configuration file: #!/usr/bin/env bash { a_parameters=('*.* action(type=\"omfwd\" target=\"loghost.example.com\" port=\"514\" protocol=\"tcp\"' \\ ' action.resumeRetryCount=\"100\"' ' queue.type=\"LinkedList\" queue.size=\"1000\")') [ ! -d \"/etc/rsyslog.d/\" ] && mkdir /etc/rsyslod.d/ printf '%s\\n' \"\" \"${a_parameters[@]}\" >> /etc/rsyslog.d/60-rsyslog.conf } Run the following command to reload rsyslog.service: # systemctl reload-or-restart rsyslog.service."
     references:
-        - 'https://www.rsyslog.com/doc/'
+      - 'https://www.rsyslog.com/doc/'
     compliance:
       - cis: ["6.1.3.6"]
       - cis_csc_v8: ["8.2"]
@@ -5272,7 +5272,7 @@ checks:
     rationale: "If a client is configured to also receive data, thus turning it into a server, the client system is acting outside its operational boundary."
     remediation: "Unless the system's primary function is to serve as a logfile server , modify the files returned by the Audit Procedure and remove the specific lines highlighted by the audit. Verify none of the following entries are present in the rsyslog configuration. advanced format module(load=\"imtcp\") input(type=\"imtcp\" port=\"514\") deprecated legacy format $ModLoad imtcp $InputTCPServerRun Reload the service: # systemctl reload-or-restart rsyslog."
     references:
-        - 'https://www.rsyslog.com/doc/index.html'
+      - 'https://www.rsyslog.com/doc/index.html'
     compliance:
       - cis: ["6.1.3.7"]
       - cis_csc_v8: ["4.8"]
@@ -5615,7 +5615,7 @@ checks:
     rationale: "Monitoring system events that change network environments, such as sethostname and setdomainname, helps identify unauthorized alterations to host and domain names, which could compromise security settings reliant on these names. Changes to /etc/hosts can signal unauthorized attempts to alter machine associations with IP addresses, potentially redirecting users and processes to unintended destinations. Surveillance of /etc/issue and /etc/issue.net is crucial to detect intruders inserting false information to deceive users. Monitoring /etc/network/ reveals modifications to network interfaces or scripts that may jeopardize system availability or security. Additionally, tracking changes in the /etc/netplan/ directory ensures swift detection of unauthorized adjustments to network configurations. All audit records should be appropriately tagged for relevance."
     remediation: "Create audit rules Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify the system's network environment. Example: # printf \" -a always,exit -F arch=b64 -S sethostname,setdomainname -k system-locale -a always,exit -F arch=b32 -S sethostname,setdomainname -k system-locale -w /etc/issue -p wa -k system-locale -w /etc/issue.net -p wa -k system-locale -w /etc/hosts -p wa -k system-locale -w /etc/networks -p wa -k system-locale -w /etc/network/ -p wa -k system-locale -w /etc/netplan/ -p wa -k system-locale \" >> /etc/audit/rules.d/50-system_locale.rules Load audit rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
     references:
-        - 'https://netplan.io/faq'
+      - 'https://netplan.io/faq'
     compliance:
       - cis: ["6.2.3.5"]
       - cis_csc_v8: ["8.5"]
@@ -5687,8 +5687,8 @@ checks:
     rationale: "Unexpected changes to these files could be an indication that the system has been compromised and that an unauthorized user is attempting to hide their activities or compromise additional accounts."
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory, ending in .rules extension, with the relevant rules to monitor events that modify user/group information. Example: # printf \" -w /etc/group -p wa -k identity -w /etc/passwd -p wa -k identity -w /etc/gshadow -p wa -k identity -w /etc/shadow -p wa -k identity -w /etc/security/opasswd -p wa -k identity -w /etc/nsswitch.conf -p wa -k identity -w /etc/pam.conf -p wa -k identity -w /etc/pam.d -p wa -k identity \" >> /etc/audit/rules.d/50-identity.rules Merge and load the rules into active configuration: # augenrules --load Check if reboot is required. # if [[ $(auditctl -s | grep \"enabled\") =~ \"2\" ]]; then printf \"Reboot required to load rules\\n\"; fi."
     references:
-        - 'https://manpages.debian.org/bookworm/manpages/nsswitch.conf.5.en.html'
-        - 'https://access.redhat.com/documentation/en-'
+      - 'https://manpages.debian.org/bookworm/manpages/nsswitch.conf.5.en.html'
+      - 'https://access.redhat.com/documentation/en-'
     compliance:
       - cis: ["6.2.3.8"]
       - cis_csc_v8: ["8.5"]
@@ -6256,8 +6256,8 @@ checks:
     rationale: "Periodic file checking allows the system administrator to determine on a regular basis if critical files have been changed in an unauthorized fashion."
     remediation: "Run the following command to unmask dailyaidecheck.timer and dailyaidecheck.service: # systemctl unmask dailyaidecheck.timer dailyaidecheck.service Run the following command to enable and start dailyaidecheck.timer: # systemctl --now enable dailyaidecheck.timer."
     references:
-        - 'https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service'
-        - 'https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer'
+      - 'https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service'
+      - 'https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer'
     compliance:
       - cis: ["6.3.2"]
       - cis_csc_v8: ["8.5"]
