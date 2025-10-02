@@ -5302,6 +5302,7 @@ int wdb_parse_global_insert_agent(wdb_t * wdb, char * input, char * output) {
     cJSON *j_date_add = NULL;
 
     agent_data = cJSON_ParseWithOpts(input, &error, TRUE);
+    minfo("Agent insert request: %s", input);
     if (!agent_data) {
         mdebug1("Global DB Invalid JSON syntax when inserting agent.");
         mdebug2("Global DB JSON error near: %s", error);
