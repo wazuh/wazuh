@@ -21,43 +21,46 @@ extern "C"
 {
 #endif
 
-    // Global instance
-    static std::unique_ptr<AgentInfoImpl> g_agent_info_impl;
+// Global instance
+static std::unique_ptr<AgentInfoImpl> g_agent_info_impl;
 
-    void agent_info_start(const struct wm_agent_info_t* agent_info_config)
+void agent_info_start(const struct wm_agent_info_t* agent_info_config)
+{
+    (void)agent_info_config; // Mark as unused for now
+
+    if (!g_agent_info_impl)
     {
-        (void)agent_info_config; // Mark as unused for now
-
-        if (!g_agent_info_impl)
+        // Initialize DBSync logging before creating DBSync instances
+        DBSync::initialize([](const std::string & msg)
         {
-            // Initialize DBSync logging before creating DBSync instances
-            DBSync::initialize([](const std::string& msg) {
-                LoggingHelper::getInstance().log(LOG_DEBUG, msg.c_str());
-            });
+            LoggingHelper::getInstance().log(LOG_DEBUG, msg.c_str());
+        });
 
-            g_agent_info_impl = std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH);
-        }
-        g_agent_info_impl->start();
+        g_agent_info_impl = std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH);
     }
 
-    void agent_info_stop()
-    {
-        if (g_agent_info_impl)
-        {
-            g_agent_info_impl->stop();
-            g_agent_info_impl.reset();
-        }
-    }
+    g_agent_info_impl->start();
+}
 
-    void agent_info_set_log_function(log_callback_t log_callback)
+void agent_info_stop()
+{
+    if (g_agent_info_impl)
     {
-        if (log_callback)
-        {
-            LoggingHelper::setLogCallback([log_callback](const modules_log_level_t level, const char* log) {
-                log_callback(level, log, "agent-info");
-            });
-        }
+        g_agent_info_impl->stop();
+        g_agent_info_impl.reset();
     }
+}
+
+void agent_info_set_log_function(log_callback_t log_callback)
+{
+    if (log_callback)
+    {
+        LoggingHelper::setLogCallback([log_callback](const modules_log_level_t level, const char* log)
+        {
+            log_callback(level, log, "agent-info");
+        });
+    }
+}
 
 #ifdef __cplusplus
 }

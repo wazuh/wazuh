@@ -23,6 +23,7 @@ DELETE_FOLDER_DIC = {
     'syscheckd':                    ['build', 'src/db/smokeTests/output',
                                      'coverage_report'],
     'wazuh_modules/sca':            ['build'],
+    'wazuh_modules/agent_info':     ['build'],
 }
 
 
