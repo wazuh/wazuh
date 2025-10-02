@@ -24,4 +24,7 @@ private:
 
     /// @brief Pointer to IDBSync
     std::shared_ptr<IDBSync> m_dBSync;
+
+    /// @brief Flag to track if module has been stopped
+    bool m_stopped = false;
 };
