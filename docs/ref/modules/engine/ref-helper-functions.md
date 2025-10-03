@@ -75,6 +75,7 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [int_calculate](#int_calculate)
 - [ip_version](#ip_version)
 - [join](#join)
+- [network_community_id](#network_community_id)
 - [regex_extract](#regex_extract)
 - [sha1](#sha1)
 - [system_epoch](#system_epoch)
@@ -7209,7 +7210,7 @@ Null format format
 ```yaml
 normalize:
   - map:
-      - target_field: date_to_epoch($date, None)
+      - target_field: date_to_epoch($date, null)
 ```
 
 #### Input Event
@@ -9045,6 +9046,392 @@ normalize:
 ```
 
 *The operation was successful*
+
+
+
+---
+# network_community_id
+
+## Signature
+
+```
+
+field: network_community_id(source_ip, destination_ip, source_port, destination_port, protocol)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| source_ip | string | reference | Any IP |
+| destination_ip | string | reference | Any IP |
+| source_port | number | reference | Integers between `-2^63` and `2^63-1` |
+| destination_port | number | reference | Integers between `-2^63` and `2^63-1` |
+| protocol | number | value or reference | Integers between `-2^63` and `2^63-1` |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| string | Any string |
+
+
+## Description
+
+Produces the Community ID v1 (format `1:<base64>`) for a network flow using source/destination IPs,
+transport ports (or ICMP type/code), and the IANA protocol number. The seed is fixed to 0.
+Port requirements by protocol:
+  - TCP/UDP/SCTP: ports are mandatory and must be in 0..65535.
+  - ICMP/ICMPv6: type/code are optional; if provided they must be in 0..255; otherwise 0/0 is used.
+  - Other protocols: ports are optional (0..65535).
+Both addresses must belong to the same IP family (IPv4 or IPv6).
+The helper validates references, types, families, and ranges; on failure the target is left untouched.
+
+
+## Keywords
+
+- `network` 
+
+- `community-id` 
+
+## Examples
+
+### Example 1
+
+TCP/IPv4 flow (protocol literal), seed=0
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 6)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80,
+  "target_field": "1:JHvDxB6S6/K68OntUBf4DJZYvkM="
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+UDP/IPv4 flow (protocol literal), seed=0
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "10.1.1.1",
+  "destination_ip": "10.1.1.2",
+  "source_port": 5353,
+  "destination_port": 53,
+  "protocol": 17
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "10.1.1.1",
+  "destination_ip": "10.1.1.2",
+  "source_port": 5353,
+  "destination_port": 53,
+  "protocol": 17,
+  "target_field": "1:8JTDncPomK8OiyinJXhpO10W6EY="
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+IPv6 encapsulation flow (no ports), seed=0
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 41)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "2001:db8::1",
+  "destination_ip": "2001:db8::2",
+  "source_port": 0,
+  "destination_port": 0
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "2001:db8::1",
+  "destination_ip": "2001:db8::2",
+  "source_port": 0,
+  "destination_port": 0,
+  "target_field": "1:CXfAfp/8zYUwm/5DkEbJvPdJtcU="
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+ICMP echo request (type/code mapped to ports), seed=0
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.0.2.1",
+  "destination_ip": "198.51.100.2",
+  "source_port": 8,
+  "destination_port": 0,
+  "protocol": 1
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.0.2.1",
+  "destination_ip": "198.51.100.2",
+  "source_port": 8,
+  "destination_port": 0,
+  "protocol": 1,
+  "target_field": "1:zFLKq9oekfjLhmre/zOf0XYYjVE="
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Reject invalid source IP literal
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 6)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "not-an-ip",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "not-an-ip",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80
+}
+```
+
+*The operation was performed with errors*
+
+### Example 6
+
+Reject out-of-range protocol number (>255)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 300
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 300
+}
+```
+
+*The operation was performed with errors*
+
+### Example 7
+
+Reject transport port above 65535
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 6)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 70000,
+  "destination_port": 80
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "10.0.0.5",
+  "source_port": 70000,
+  "destination_port": 80
+}
+```
+
+*The operation was performed with errors*
+
+### Example 8
+
+Reject endpoints from mixed IP families
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, $protocol)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "2001:db8::1",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 6
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "192.168.0.1",
+  "destination_ip": "2001:db8::1",
+  "source_port": 12345,
+  "destination_port": 80,
+  "protocol": 6
+}
+```
+
+*The operation was performed with errors*
+
+### Example 9
+
+TCP puerto 0 inválido (dest)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 6)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "222.222.2.22",
+  "destination_ip": "222.222.2.22",
+  "source_port": 8,
+  "destination_port": 0
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "222.222.2.22",
+  "destination_ip": "222.222.2.22",
+  "source_port": 8,
+  "destination_port": 0
+}
+```
+
+*The operation was performed with errors*
 
 
 
@@ -11324,7 +11711,7 @@ No deletions when argument is null but target has no nulls
 ```yaml
 normalize:
   - map:
-      - target_field: delete_fields_with_value(None)
+      - target_field: delete_fields_with_value(null)
 ```
 
 #### Input Event

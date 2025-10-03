@@ -1,6 +1,7 @@
 #ifndef _IP_UTILS_H
 #define _IP_UTILS_H
 
+#include <array>
 #include <cstdint>
 #include <iostream>
 
@@ -40,7 +41,7 @@ uint32_t IPv4MaskUInt(const std::string& mask);
  * @return true if the string is a valid IPv4 address
  * @return false if the string is not a valid IPv4 address
  */
-bool checkStrIsIPv4(const std::string& ip);
+bool checkStrIsIPv4(const std::string& ip, std::array<uint8_t, 4>* outBytes = nullptr);
 
 /**
  * @brief Check if a string is a valid IPv6 address
@@ -49,7 +50,7 @@ bool checkStrIsIPv4(const std::string& ip);
  * @return true if the string is a valid IPv6 address
  * @return false if the string is not a valid IPv6 address
  */
-bool checkStrIsIPv6(const std::string& ip);
+bool checkStrIsIPv6(const std::string& ip, std::array<uint8_t, 16>* outBytes = nullptr);
 
 /**
  * @brief Check if a IPv4 is a special address

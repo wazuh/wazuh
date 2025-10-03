@@ -309,6 +309,15 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
 MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
                                         const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Produces the Community ID v1 ("1:<base64>") for a flow (ECS `network.community_id`).
+ * @param opArgs saddr, daddr, sport, dport, proto (reference or literal value).
+ * @param buildCtx Build context.
+ * @return MapOp mapper that emits the ID (seed defaults to 0).
+ */
+MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
+
 //*************************************************
 //*              Time tranform                    *
 //*************************************************
