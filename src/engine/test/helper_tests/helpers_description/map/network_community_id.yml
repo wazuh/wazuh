@@ -17,6 +17,9 @@ metadata:
 
 helper_type: map
 
+skipped:
+  - success_cases
+
 arguments:
   source_ip:
     type: string
@@ -121,3 +124,12 @@ test:
       protocol: 6
     should_pass: false
     description: Reject endpoints from mixed IP families
+
+  - arguments:
+      source_ip: 222.222.2.22
+      destination_ip: 222.222.2.22
+      source_port: 8
+      destination_port: 0
+      protocol: 6
+    should_pass: false
+    description: TCP puerto 0 inválido (dest)

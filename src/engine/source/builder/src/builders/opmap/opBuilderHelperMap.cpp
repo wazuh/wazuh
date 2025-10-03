@@ -2161,6 +2161,7 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
         {
             sport = sportOpt.value();
         }
+        // If the field exists but has an invalid value (cannot be parsed as int) we return an error.
         else if (event->exists(sportRef.jsonPath()))
         {
             RETURN_FAILURE(runState, json::Json {}, numberTrace(sportRefPath));
@@ -2170,6 +2171,7 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
         {
             dport = dportOpt.value();
         }
+        // If the field exists but has an invalid value (cannot be parsed as int) we return an error.
         else if (event->exists(dportRef.jsonPath()))
         {
             RETURN_FAILURE(runState, json::Json {}, numberTrace(dportRefPath));

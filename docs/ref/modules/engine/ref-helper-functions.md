@@ -9397,6 +9397,42 @@ normalize:
 
 *The operation was performed with errors*
 
+### Example 9
+
+TCP puerto 0 inválido (dest)
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: network_community_id($source_ip, $destination_ip, $source_port, $destination_port, 6)
+```
+
+#### Input Event
+
+```json
+{
+  "source_ip": "222.222.2.22",
+  "destination_ip": "222.222.2.22",
+  "source_port": 8,
+  "destination_port": 0
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_ip": "222.222.2.22",
+  "destination_ip": "222.222.2.22",
+  "source_port": 8,
+  "destination_port": 0
+}
+```
+
+*The operation was performed with errors*
+
 
 
 ---
