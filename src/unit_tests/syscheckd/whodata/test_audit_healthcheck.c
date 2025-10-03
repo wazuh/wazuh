@@ -36,6 +36,7 @@
 
 extern atomic_int_t audit_health_check_creation;
 extern atomic_int_t hc_thread_active;
+extern atomic_int_t hc_thread_finished;
 extern atomic_int_t audit_thread_active;
 extern pthread_mutex_t audit_hc_mutex;
 extern pthread_cond_t audit_hc_cond;
@@ -97,12 +98,19 @@ void prepare_post_audit_healthcheck_thread() {
     expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
     will_return(__wrap_audit_delete_rule, 1);
 
+    // Signal the secondary thread to stop and wait for it to finish
+    expect_function_call(__wrap_pthread_mutex_lock);
     expect_value(__wrap_atomic_int_set, atomic, &hc_thread_active);
     will_return(__wrap_atomic_int_set, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     will_return(__wrap_gettime, 1232);
-    expect_function_call(__wrap_pthread_cond_timedwait);
+    
+    // First check in while loop - thread is not finished (0), so exit loop
+    expect_value(__wrap_atomic_int_get, atomic, &hc_thread_finished);
+    will_return(__wrap_atomic_int_get, 1);
+    
     expect_function_call(__wrap_pthread_mutex_unlock);
 }
 
@@ -112,6 +120,10 @@ void test_audit_health_check_fail_to_add_rule(void **state) {
 
     expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
     expect_abspath(AUDIT_HEALTHCHECK_FILE, 1);
+
+    // Reset the finished flag expectation
+    expect_value(__wrap_atomic_int_set, atomic, &hc_thread_finished);
+    will_return(__wrap_atomic_int_set, 0);
 
     will_return(__wrap_audit_add_rule, -1);
 
@@ -131,6 +143,10 @@ void test_audit_health_check_fail_to_create_hc_file(void **state) {
 
     expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
     expect_abspath(AUDIT_HEALTHCHECK_FILE, 1);
+
+    // Reset the finished flag expectation
+    expect_value(__wrap_atomic_int_set, atomic, &hc_thread_finished);
+    will_return(__wrap_atomic_int_set, 0);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -167,6 +183,10 @@ void test_audit_health_check_no_creation_event_detected(void **state) {
 
     expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
     expect_abspath(AUDIT_HEALTHCHECK_FILE, 1);
+
+    // Reset the finished flag expectation
+    expect_value(__wrap_atomic_int_set, atomic, &hc_thread_finished);
+    will_return(__wrap_atomic_int_set, 0);
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
@@ -207,6 +227,10 @@ void test_audit_health_check_success(void **state) {
     expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
     expect_abspath(AUDIT_HEALTHCHECK_FILE, 1);
 
+    // Reset the finished flag expectation
+    expect_value(__wrap_atomic_int_set, atomic, &hc_thread_finished);
+    will_return(__wrap_atomic_int_set, 0);
+
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     __real_atomic_int_set(&hc_thread_active, 0);
@@ -239,6 +263,77 @@ void test_audit_health_check_success(void **state) {
     assert_int_equal(__real_atomic_int_get(&hc_thread_active), 0);
 }
 
+void test_audit_health_check_thread_wait_loop(void **state) {
+    int ret;
+
+    expect_abspath(AUDIT_HEALTHCHECK_DIR, 1);
+    expect_abspath(AUDIT_HEALTHCHECK_FILE, 1);
+
+    // Reset the finished flag expectation
+    expect_value(__wrap_atomic_int_set, atomic, &hc_thread_finished);
+    will_return(__wrap_atomic_int_set, 0);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    __real_atomic_int_set(&hc_thread_active, 0);
+
+    prepare_audit_healthcheck_thread();
+
+    expect_string(__wrap_wfopen, path, AUDIT_HEALTHCHECK_FILE);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
+
+    expect_value(__wrap_fclose, _File, 1);
+    will_return(__wrap_fclose, 0);
+
+    expect_value(__wrap_sleep, seconds, 1);
+    expect_value(__wrap_atomic_int_get, atomic, &audit_health_check_creation);
+    will_return(__wrap_atomic_int_get, 1);
+
+    // outside the loop
+    expect_value(__wrap_atomic_int_get, atomic, &audit_health_check_creation);
+    will_return(__wrap_atomic_int_get, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, FIM_HEALTHCHECK_SUCCESS);
+
+    // Cleanup phase with active thread scenario
+    expect_string(__wrap_unlink, file, AUDIT_HEALTHCHECK_FILE);
+    will_return(__wrap_unlink, 0);
+
+    expect_string(__wrap_audit_delete_rule, path, AUDIT_HEALTHCHECK_DIR);
+    expect_value(__wrap_audit_delete_rule, perms, PERMS);
+    expect_string(__wrap_audit_delete_rule, key, "wazuh_hc");
+    will_return(__wrap_audit_delete_rule, 1);
+
+    // Signal the secondary thread to stop and wait for it to finish
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_atomic_int_set, atomic, &hc_thread_active);
+    will_return(__wrap_atomic_int_set, 0);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    will_return(__wrap_gettime, 1232);
+    
+    // First check in while loop - thread is not finished (0), so enter loop
+    expect_value(__wrap_atomic_int_get, atomic, &hc_thread_finished);
+    will_return(__wrap_atomic_int_get, 0);
+    
+    // pthread_cond_timedwait is called
+    expect_function_call(__wrap_pthread_cond_timedwait);
+    
+    // Second check in while loop - thread is now finished (1), so exit loop
+    expect_value(__wrap_atomic_int_get, atomic, &hc_thread_finished);
+    will_return(__wrap_atomic_int_get, 1);
+    
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    ret = audit_health_check(123456);
+    assert_int_equal(ret, 0);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    assert_int_equal(__real_atomic_int_get(&hc_thread_active), 0);
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
@@ -246,6 +341,7 @@ int main(void) {
         cmocka_unit_test(test_audit_health_check_fail_to_create_hc_file),
         cmocka_unit_test(test_audit_health_check_no_creation_event_detected),
         cmocka_unit_test(test_audit_health_check_success),
+        cmocka_unit_test(test_audit_health_check_thread_wait_loop),
         };
 
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
