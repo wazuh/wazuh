@@ -1,0 +1,53 @@
+---
+test_name: RBAC BLACK - /kvdbs denies read and write
+
+stages:
+
+  - name: GET /kvdbs should be forbidden for black role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_rbac_black_token}"
+    response:
+      status_code: 403
+
+  - name: POST /kvdbs should be forbidden for black role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_rbac_black_token}"
+        content-type: application/json
+      json:
+        id: "rbac_kvdb_black"
+        name: "rbac_black"
+        content: { k: v }
+    response:
+      status_code: 403
+
+  - name: PUT /kvdbs should be forbidden for black role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_rbac_black_token}"
+        content-type: application/json
+      json:
+        id: "rbac_kvdb_black"
+        content: { k: v2 }
+    response:
+      status_code: 403
+
+  - name: DELETE /kvdbs should be forbidden for black role
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=rbac_kvdb_black"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_rbac_black_token}"
+    response:
+      status_code: 403

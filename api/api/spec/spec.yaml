@@ -74,8 +74,6 @@ x-rbac-catalog:
       description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
     'decoder:file':
       description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-    'list:file':
-      description: "Reference list files via its filename (i.e. list:file:audit-keys)"
     'rule:file':
       description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
     'policy:id':
@@ -310,30 +308,38 @@ x-rbac-catalog:
         actions: ['decoders:delete']
         resources: ['decoder:file:local_decoder.xml']
         effect: "allow"
-    'lists:read':
-      description: "Read CDB lists files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/list:file'
-      example:
-        actions: ['lists:read']
-        resources: ['list:file:audit-keys']
-        effect: "deny"
-    'lists:update':
-      description: "Update or upload CDB lists files"
+    'kvdbs:read':
+      description: "Read KVDBs"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['lists:update']
+        actions: ['kvdbs:read']
         resources: ['*:*:*']
         effect: "allow"
-    'lists:delete':
-      description: "Delete CDB lists files"
+    'kvdbs:create':
+      description: "Create KVDBs"
       resources:
-        - $ref: '#/x-rbac-catalog/resources/list:file'
+        - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
-        actions: ['lists:delete']
-        resources: ['list:file:audit-keys']
-        effect: "deny"
+        actions: ['kvdbs:create']
+        resources: ['*:*:*']
+        effect: "allow"
+    'kvdbs:update':
+      description: "Update KVDBs"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['kvdbs:update']
+        resources: ['*:*:*']
+        effect: "allow"
+    'kvdbs:delete':
+      description: "Delete KVDBs"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['kvdbs:delete']
+        resources: ['*:*:*']
+        effect: "allow"
     'logtest:run':
       description: "Run logtest tool or end a logtest session"
       resources:
@@ -963,32 +969,6 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/DecoderFile'
-
-    AllItemsResponseLists:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CDBList'
-
-    AllItemsResponseListsFiles:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/CDBListFile'
 
     AllItemsResponseRoles:
       allOf:
@@ -1968,6 +1948,59 @@ components:
               enum:
               - "yes"
               - "no"
+
+    # KVDB models
+    ItemKVDB:
+      allOf:
+        - $ref: '#/components/schemas/CommonRuleset'
+        - type: object
+          description: "KVDB asset descriptor and content"
+          required:
+            - id
+            - name
+            - content
+          properties:
+            integration_id:
+              type: string
+              nullable: true
+              description: "Optional integration owner ID"
+            content:
+              type: object
+              additionalProperties: true
+              description: "Key-Value map (or object) managed by the Engine"
+
+    KVDBUpsertRequest:
+      allOf:
+        - $ref: '#/components/schemas/CommonRuleset'
+        - type: object
+          required:
+            - id
+            - content
+          properties:
+            integration_id:
+              type: string
+              nullable: true
+            content:
+              type: object
+              additionalProperties: true
+
+    AllItempsResponseKVDBs:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponse'
+        - type: object
+          properties:
+            data:
+              allOf:
+                - $ref: '#/components/schemas/AllItemsResponse'
+                - type: object
+                  required:
+                    - affected_items
+                  properties:
+                    affected_items:
+                      type: array
+                      description: "KVDBs affected/returned by the API call"
+                      items:
+                        $ref: '#/components/schemas/ItemKVDB'
 
     # Logtest models
     LogtestRequest:
@@ -3994,33 +4027,6 @@ components:
         - $ref: '#/components/schemas/RulesetFile'
         - $ref: '#/components/schemas/RulesetStatus'
 
-    # Lists models
-    CDBList:
-      allOf:
-        - $ref: '#/components/schemas/RulesetFile'
-        - type: object
-          properties:
-            items:
-              type: array
-              items:
-                $ref: '#/components/schemas/CDBListPair'
-
-    CDBListPair:
-      type: object
-      required:
-        - key
-        - value
-      properties:
-        key:
-          type: string
-          description: "Value of the CDB list item key"
-        value:
-          type: string
-          description: "Value of the CDB list item value"
-
-    CDBListFile:
-      $ref: '#/components/schemas/RulesetFile'
-
     # Overview models
     OverviewAgents:
       type: object
@@ -4541,14 +4547,15 @@ components:
         default: 500
         minimum: 1
         maximum: 500
-    list_filename_path:
-      in: path
-      name: filename
-      description: "Filename (CDB list) to get/edit/delete."
-      required: true
+    kvdb_id:
+      in: query
+      name: kvdb_id
+      description: "Filter by KVDB IDs"
+      required: false
       schema:
-        type: string
-        format: cdb_filename_path
+        type: array
+        items:
+          type: string
     agents_list:
       in: query
       name: agents_list
@@ -5843,7 +5850,7 @@ components:
           - 'group:id'
           - 'node:id'
           - 'decoder:file'
-          - 'list:file'
+          - 'kvdbs'
           - 'rule:file'
           - 'policy:id'
           - 'role:id'
@@ -5895,8 +5902,8 @@ tags:
     description: "Ingestion endpoints"
   - name: Groups
     description: "Group of agents and centralized configurations"
-  - name: Lists
-    description: "CDB lists management"
+  - name: KVDBs
+    description: "User-defined KVDBs management"
   - name: Logtest
     description: "Logtest: testing and verification tool for rules and decoders"
   - name: Manager
@@ -9171,12 +9178,8 @@ paths:
                         rule_exclude:
                           - 0215-policy_rules.xml
                         list:
-                          - etc/lists/audit-keys
-                          - etc/lists/amazon/aws-eventnames
-                          - etc/lists/security-eventchannel
-                          - etc/lists/malicious-ioc/malware-hashes
-                          - etc/lists/malicious-ioc/malicious-ip
-                          - etc/lists/malicious-ioc/malicious-domains
+                          - etc/ruleset/kvdb/ip_reputation.json
+                          - etc/ruleset/kvdb/geoip_countries.json
                       auth:
                         disabled: no
                         port: "1515"
@@ -10211,121 +10214,48 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /lists:
+  /kvdbs:
     get:
       tags:
-        - Lists
-      summary: "Get CDB lists info"
-      description: "Return the contents of all CDB lists. Optionally, the result can be filtered by several criteria.
-      See available parameters for more details"
-      operationId: api.controllers.cdb_list_controller.get_lists
+        - KVDBs
+      summary: "List KVDB resources"
+      description: "Return KVDBs."
+      operationId: api.controllers.kvdb_controller.get_kvdbs
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:read'
       parameters:
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/kvdb_id'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/filename'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/distinct'
       responses:
         '200':
-          description: "Successfully got all CDB lists and the files where they are defined"
+          description: "KVDBs"
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
+                $ref: '#/components/schemas/AllItempsResponseKVDBs'
               example:
                 data:
                   affected_items:
-                    - items:
-                        - key: audit-wazuh-w
-                          value: write
-                        - key: audit-wazuh-r
-                          value: read
-                        - key: audit-wazuh-a
-                          value: attribute
-                        - key: audit-wazuh-x
-                          value: execute
-                        - key: audit-wazuh-c
-                          value: command
-                      relative_dirname: etc/lists
-                      filename: audit-keys
-                  total_affected_items: 4
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All specified lists were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /lists/files/{filename}:
-    get:
-      tags:
-        - Lists
-      summary: "Get CDB list file content"
-      description: "Return the content of a CDB list file. Only the filename can be specified. It will be searched
-      recursively if not found"
-      operationId: api.controllers.cdb_list_controller.get_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
-      parameters:
-        - $ref: '#/components/parameters/list_filename_path'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/raw'
-      responses:
-        '200':
-          description: "Successfully got CDB list"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseListsFiles'
-              example:
-                data:
-                  affected_items:
-                    - audit-wazuh-w: write
-                      audit-wazuh-r: read
-                      audit-wazuh-a: attribute
-                      audit-wazuh-x: execute
-                      audit-wazuh-c: command
+                      id: ip_reputation
+                      integration_id: threatintel_v1
+                      name: "IP Reputation"
+                      content:
+                        "1.2.3.4": "malicious"
+                        "5.6.7.8": "suspicious"
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "CDB list was returned"
+                message: "KVDBs returned"
                 error: 0
-            'text/plain':
-              schema:
-                type: string
-              example: |
-                audit-wazuh-w:write
-                audit-wazuh-r:read
-                audit-wazuh-a:attribute
-                audit-wazuh-x:execute
-                audit-wazuh-c:command
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10334,47 +10264,51 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-    put:
+
+    post:
       tags:
-        - Lists
-      summary: "Update CDB list file"
-      description: "Replace or upload a CDB list file with the data contained in the API request"
-      operationId: api.controllers.cdb_list_controller.put_file
+        - KVDBs
+      summary: "Create a KVDB"
+      description: "Create a KVDB."
+      operationId: api.controllers.kvdb_controller.post_kvdbs
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:update'
-        - $ref: '#/x-rbac-catalog/actions/lists:delete'
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:create'
       parameters:
-        - $ref: '#/components/parameters/list_filename_path'
+        - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/overwrite'
       requestBody:
-        description: "Content of the file to be uploaded"
         required: true
         content:
-          application/octet-stream:
+          application/json:
             schema:
-              type: string
-              format: binary
+              $ref: '#/components/schemas/ItemKVDB'
+            example:
+              id: kvdb_id
+              integration_id: integration_a_id
+              name: "Example KVDB"
+              content:
+                Key1: "Value1"
+                Key2: "Value2"
       responses:
         '200':
-          description: "Confirmation message"
+          description: "Created"
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
+                $ref: '#/components/schemas/ApiResponse'
               example:
                 data:
                   affected_items:
-                    - etc/lists/audit-keys
+                    - kvdb_id
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "CDB list file uploaded successfully"
+                message: "KVDB created"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10384,98 +10318,55 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-    delete:
-      tags:
-        - Lists
-      summary: "Delete CDB list file"
-      description: "Delete a specified CDB list file. Only the filename can be specified. It will be searched
-      recursively if not found"
-      operationId: api.controllers.cdb_list_controller.delete_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:delete'
-      parameters:
-        - $ref: '#/components/parameters/list_filename_path'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - $ref: '#/components/schemas/ConfirmationMessage'
-              example:
-                data:
-                  affected_items:
-                    - etc/lists/test
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "CDB list file was successfully deleted"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /lists/files:
-    get:
+    put:
       tags:
-        - Lists
-      summary: "Get CDB lists files"
-      description: "Return the path from all CDB lists. Use this method to know all the CDB lists and their location in
-      the filesystem relative to Wazuh installation folder"
-      operationId: api.controllers.cdb_list_controller.get_lists_files
+        - KVDBs
+      summary: "Update a KVDB"
+      description: "Update a KVDB."
+      operationId: api.controllers.kvdb_controller.put_kvdbs
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/lists:read'
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:update'
       parameters:
+        - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/filename'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KVDBUpsertRequest'
+            example:
+              id: kvdb_id
+              integration_id: integration_a_id
+              content:
+                Key1: "NewValue1"
+                Key3: "Value3"
       responses:
         '200':
-          description: "Successfully got CDB lists"
+          description: "Updated"
           content:
             application/json:
               schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseListsFiles'
+                $ref: '#/components/schemas/AllItempsResponseKVDBs'
               example:
                 data:
                   affected_items:
-                    - relative_dirname: etc/lists/amazon
-                      filename: aws-eventnames
-                    - relative_dirname: etc/lists/amazon
-                      filename: aws-sources
-                    - relative_dirname: etc/lists
-                      filename: audit-keys
-                    - relative_dirname: etc/lists
-                      filename: security-eventchannel
-                  total_affected_items: 4
+                      id: kvdb_id
+                      integration_id: integration_a_id
+                      name: "Example KVDB"
+                      content:
+                        Key1: "NewValue1"
+                        Key3: "Value3"
+                  total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: 'All specified paths were returned'
+                message: "KVDB updated"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -10485,6 +10376,51 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - KVDBs
+      summary: "Delete KVDBs"
+      description: "Delete one or more KVDBs."
+      operationId: api.controllers.kvdb_controller.delete_kvdbs
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/kvdbs:delete'
+      parameters:
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/kvdb_id'
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "Deleted"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                data:
+                  affected_items:
+                    - kvdb_id
+                    - kvdb_old
+                  total_affected_items: 2
+                  total_failed_items: 0
+                  failed_items: []
+                message: "KVDBs deleted"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
@@ -13954,8 +13890,6 @@ paths:
                     description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
                   "decoder:file":
                     description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-                  "list:file":
-                    description: "Reference list files via its filename (i.e. list:file:audit-keys)"
                   "rule:file":
                     description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
                   "policy:id":
