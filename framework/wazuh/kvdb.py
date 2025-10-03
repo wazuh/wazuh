@@ -1,6 +1,6 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from typing import Any
 import json
@@ -12,7 +12,7 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.exception import WazuhException, WazuhError
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.utils import process_array, full_copy, safe_move
-from wazuh.core.common import RULESET_PATH
+from wazuh.core.common import USER_TESTING_KVDB_PATH, USER_PRODUCTION_KVDB_PATH
 
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.utils import validate_response_or_raise
@@ -23,7 +23,6 @@ from wazuh.core.assets import save_asset_file
 
 DEFAULT_KVDB_FORMAT = ResourceFormat.JSON
 ENGINE_USER_NAMESPACE = 'user'
-KVDB_RULESET_DIR = os.path.join(RULESET_PATH, 'kvdb')
 
 
 def _to_policy_type(policy: str | None) -> PolicyType:
@@ -32,10 +31,31 @@ def _to_policy_type(policy: str | None) -> PolicyType:
 
 
 def generate_kvdb_file_path(resource_id: str, policy_type: PolicyType) -> str:
-    policy_dir = 'testing' if policy_type == PolicyType.TESTING else 'production'
-    base_dir = os.path.join(KVDB_RULESET_DIR, policy_dir)
-    os.makedirs(base_dir, exist_ok=True)
-    return os.path.join(base_dir, f'{resource_id}.json')
+    """Build the absolute path for a KVDB JSON file under the given policy.
+
+    Parameters
+    ----------
+    resource_id : str
+        KVDB identifier (filename without extension).
+    policy_type : PolicyType
+        TESTING or PRODUCTION scope.
+
+    Returns
+    -------
+    str
+        Full path to '<base>/resource_id.json'.
+
+    Raises
+    ------
+    WazuhError
+        1907 if the base directory is missing or not writable.
+    """
+    base_dir = USER_TESTING_KVDB_PATH if policy_type == PolicyType.TESTING else USER_PRODUCTION_KVDB_PATH
+    if not os.path.isdir(base_dir):
+        raise WazuhError(1907, f"KVDB base directory not found: '{base_dir}'")
+    if not os.access(base_dir, os.W_OK):
+        raise WazuhError(1907, f"KVDB base directory not writable: '{base_dir}'")
+    return os.path.join(base_dir, f"{resource_id}.json")
 
 @expose_resources(actions=['kvdbs:read'], resources=['*:*:*'])
 async def list_kvdbs(policy_type: str | None = None,
