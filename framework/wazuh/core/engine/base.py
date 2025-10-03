@@ -1,8 +1,7 @@
 import logging
 
-from httpx import AsyncClient, ConnectError, HTTPError, Timeout, TimeoutException, UnsupportedProtocol
+from httpx import AsyncClient, ConnectError, HTTPError, Timeout, TimeoutException, UnsupportedProtocol, HTTPStatusError, InvalidURL, NetworkError
 from wazuh.core.exception import WazuhEngineError
-
 
 DEFAULT_TIMEOUT = 5
 
@@ -15,10 +14,10 @@ class BaseModule:
     def __init__(self, client: AsyncClient) -> None:
         self._client = client
         self._logger = logging.getLogger('wazuh')
-    
+
     async def send(self, path: str, data: dict) -> dict:
         """Send a request to the engine.
-        
+
         Parameters
         ----------
         path : str
@@ -41,9 +40,13 @@ class BaseModule:
                 timeout=Timeout(DEFAULT_TIMEOUT)
             )
             response.raise_for_status()
-        except (TimeoutException, UnsupportedProtocol, ConnectError) as e:
+        except (TimeoutException, ConnectError, NetworkError) as e:
             raise WazuhEngineError(2800, extra_message=str(e))
-        except HTTPError as e:
+        except UnsupportedProtocol as e:
+            raise WazuhEngineError(2801, extra_message=str(e))
+        except InvalidURL as e:
+            raise WazuhEngineError(2802, extra_message=str(e))
+        except (HTTPStatusError, HTTPError) as e:
             raise WazuhEngineError(2803, extra_message=str(e))
         except Exception as e:
             raise WazuhEngineError(2804, extra_message=str(e))
