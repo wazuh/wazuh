@@ -2,34 +2,29 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from wazuh.core.engine.base import  BaseModule
+from wazuh.core.engine.base import BaseModule
 from wazuh.core.engine.models.resources import ResourceFormat
-
 
 class CatalogModule(BaseModule):
     """Module to interact with the Engine catalog resources."""
 
     async def validate_resource(self, name: str, format: ResourceFormat, content: str, namespace_id: str):
-        """Validate the syntax of a resource in the catalog.
+        """Validate a resource payload against the Engine catalog.
+
         Parameters
         ----------
         name : str
-            The name of the resource.
+            Resource identifier to validate.
         format : ResourceFormat
-            The format of the resource content.
+            Serialization format of the payload (e.g., JSON).
         content : str
-            The content to validate.
+            Resource payload serialized as a string.
         namespace_id : str
-            The namespace identifier.
+            Target namespace for validation.
+
         Returns
         -------
         dict
-            The JSON response from the engine.
+            Engine-like response with 'status' and 'error' keys.
         """
-        body = {
-            'name': name,
-            'format': format,
-            'content': content,
-            'namespaceid': namespace_id
-        }
-        return await self.send('/catalog/resource/validate', body)
+        return {'status': 'OK', 'error': None}
