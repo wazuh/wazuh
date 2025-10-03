@@ -247,7 +247,8 @@ TEST_F(SCAEventHandlerTest, GetChecksForPolicy)
                         "reason",
                         "condition",
                         "compliance",
-                        "rules"
+                        "rules",
+                        "version"
                     }
                 },
                 {"row_filter", "WHERE policy_id = 'polX'"}
@@ -390,6 +391,75 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_ValidInput2)
     EXPECT_TRUE(output["policy"].contains("description"));
     EXPECT_TRUE(output["policy"].contains("references"));
     EXPECT_TRUE(output["policy"].contains("file"));
+}
+
+TEST_F(SCAEventHandlerTest, ProcessStateful_WithVersion)
+{
+    const nlohmann::json input = {{"check",
+            {   {"checksum", "version_test_123"},
+                {"id", "chk_version"},
+                {"name", "Version tracking test check"},
+                {"description", "This check validates version tracking"},
+                {"rationale", "Ensures version is properly tracked"},
+                {"status", "passed"},
+                {"condition", "all"},
+                {"compliance", {"cis:1.1"}},
+                {"remediation", "No remediation needed"},
+                {"refs", "Ref1, Ref2"},
+                {"rules", {"Rule1"}},
+                {"version", 5}
+            }
+        },
+        {
+            "policy",
+            {   {"id", "pol_version"},
+                {"name", "Version Policy Test"},
+                {"rationale", "Testing version field"},
+                {"description", "Policy for version test"},
+                {"refs", "RefA"},
+                {"file", "version_policy.yml"}
+            }
+        },
+        {"result", 0}
+    };
+
+    const auto result = handler->ProcessStateful(input);
+    const auto& output = result.first;
+    const auto& operation = result.second;
+
+    // Validate the operation type
+    EXPECT_EQ(operation, MODIFIED);
+
+    // Verify checksum structure
+    EXPECT_EQ(output["checksum"]["hash"]["sha1"], "version_test_123");
+
+    // Verify check fields
+    EXPECT_EQ(output["check"]["id"], "chk_version");
+    EXPECT_EQ(output["check"]["name"], "Version tracking test check");
+    EXPECT_EQ(output["check"]["description"], "This check validates version tracking");
+    EXPECT_EQ(output["check"]["rationale"], "Ensures version is properly tracked");
+    EXPECT_EQ(output["check"]["status"], "passed");
+    EXPECT_EQ(output["check"]["condition"], "all");
+    EXPECT_TRUE(output["check"].contains("compliance"));
+    EXPECT_TRUE(output["check"].contains("remediation"));
+    EXPECT_TRUE(output["check"].contains("references"));
+    EXPECT_TRUE(output["check"].contains("rules"));
+
+    // Verify policy fields
+    EXPECT_EQ(output["policy"]["id"], "pol_version");
+    EXPECT_EQ(output["policy"]["name"], "Version Policy Test");
+    EXPECT_EQ(output["policy"]["rationale"], "Testing version field");
+    EXPECT_TRUE(output["policy"].contains("description"));
+    EXPECT_TRUE(output["policy"].contains("references"));
+    EXPECT_TRUE(output["policy"].contains("file"));
+
+    // Verify state contains modified_at
+    EXPECT_TRUE(output["state"].contains("modified_at"));
+
+    // Verify version is in state, not in check
+    EXPECT_TRUE(output["state"].contains("version"));
+    EXPECT_EQ(output["state"]["version"], 5);
+    EXPECT_FALSE(output["check"].contains("version"));
 }
 
 TEST_F(SCAEventHandlerTest, ProcessStateful_InvalidInput1)

@@ -132,6 +132,39 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
 
             // LCOV_EXCL_STOP
         }
+
+        // Mark checks as "Not run" when their policy changed (but check itself didn't)
+        for (const auto& policyEntry : modifiedPoliciesMap)
+        {
+            if (policyEntry.second["result"] == MODIFIED)
+            {
+                const std::string policyId = policyEntry.first;
+
+                for (const auto& checkJson : data["checks"])
+                {
+                    try
+                    {
+                        if (checkJson.contains("policy_id") && checkJson["policy_id"] == policyId)
+                        {
+                            const std::string checkId = checkJson["id"];
+
+                            // Skip if check was already modified by sync
+                            if (modifiedChecksMap.find(checkId) == modifiedChecksMap.end())
+                            {
+                                nlohmann::json checkData = checkJson;
+                                checkData["result"] = sca::CheckResultToString(sca::CheckResult::NotRun);
+                                UpdateCheckResult(checkData);
+                            }
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        LoggingHelper::getInstance().log(LOG_ERROR,
+                                                         std::string("Failed to mark check as Not run after policy change: ") + e.what());
+                    }
+                }
+            }
+        }
     }
     else
     {
