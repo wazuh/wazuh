@@ -4,6 +4,7 @@ from os import remove
 from os.path import exists
 
 from wazuh import WazuhError
+from wazuh.rbac.decorators import expose_resources
 from wazuh.core.assets import generate_asset_file_path, save_asset_file
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.models.integrations_order import IntegrationsOrder
@@ -15,6 +16,7 @@ from wazuh.core.utils import full_copy, safe_move
 DEFAULT_INTEGRATIONS_ORDER_FILENAME = 'integrations_order'
 DEFAULT_USER_NAMESPACE = 'user'
 
+@expose_resources(actions=['integrations:create'], resources=["*:*:*"])
 def create_integrations_order(order: IntegrationsOrder, policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Create a new integrations order resource.
 
@@ -65,6 +67,7 @@ def create_integrations_order(order: IntegrationsOrder, policy_type: PolicyType)
 
     return result
 
+@expose_resources(actions=['integrations:read'], resources=["*:*:*"])
 def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Retrieve the integrations order resource.
 
@@ -97,6 +100,7 @@ def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
 
     return results
 
+@expose_resources(actions=['integrations:create'], resources=["*:*:*"])
 def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Delete the integrations order resource.
 
