@@ -1,0 +1,135 @@
+# Name of the helper function
+name: network_community_id
+
+metadata:
+  description: |
+    Produces the Community ID v1 (format `1:<base64>`) for a network flow using source/destination IPs,
+    transport ports (or ICMP type/code), and the IANA protocol number. The seed is fixed to 0.
+    Port requirements by protocol:
+      - TCP/UDP/SCTP: ports are mandatory and must be in 0..65535.
+      - ICMP/ICMPv6: type/code are optional; if provided they must be in 0..255; otherwise 0/0 is used.
+      - Other protocols: ports are optional (0..65535).
+    Both addresses must belong to the same IP family (IPv4 or IPv6).
+    The helper validates references, types, families, and ranges; on failure the target is left untouched.
+  keywords:
+    - network
+    - community-id
+
+helper_type: map
+
+skipped:
+  - success_cases
+
+arguments:
+  source_ip:
+    type: string
+    generate: ip
+    source: reference
+  destination_ip:
+    type: string
+    generate: ip
+    source: reference
+  source_port:
+    type: number
+    generate: integer
+    source: reference
+  destination_port:
+    type: number
+    generate: integer
+    source: reference
+  protocol:
+    type: number
+    generate: integer
+    source: both # Includes values or references (their names start with $)
+
+is_variadic: false
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      source_ip: 192.168.0.1
+      destination_ip: 10.0.0.5
+      source_port: 12345
+      destination_port: 80
+      protocol: 6
+    should_pass: true
+    expected: 1:JHvDxB6S6/K68OntUBf4DJZYvkM=
+    description: TCP/IPv4 flow (protocol literal), seed=0
+
+  - arguments:
+      source_ip: 10.1.1.1
+      destination_ip: 10.1.1.2
+      source_port: 5353
+      destination_port: 53
+      protocol: 17
+    should_pass: true
+    expected: 1:8JTDncPomK8OiyinJXhpO10W6EY=
+    description: UDP/IPv4 flow (protocol literal), seed=0
+
+  - arguments:
+      source_ip: 2001:db8::1
+      destination_ip: 2001:db8::2
+      source_port: 0
+      destination_port: 0
+      protocol: 41
+    should_pass: true
+    expected: 1:CXfAfp/8zYUwm/5DkEbJvPdJtcU=
+    description: IPv6 encapsulation flow (no ports), seed=0
+
+  - arguments:
+      source_ip: 192.0.2.1
+      destination_ip: 198.51.100.2
+      source_port: 8    # ICMP type
+      destination_port: 0    # ICMP code
+      protocol: 1
+    should_pass: true
+    expected: 1:zFLKq9oekfjLhmre/zOf0XYYjVE=
+    description: ICMP echo request (type/code mapped to ports), seed=0
+
+  - arguments:
+      source_ip: not-an-ip
+      destination_ip: 10.0.0.5
+      source_port: 12345
+      destination_port: 80
+      protocol: 6
+    should_pass: false
+    description: Reject invalid source IP literal
+
+  - arguments:
+      source_ip: 192.168.0.1
+      destination_ip: 10.0.0.5
+      source_port: 12345
+      destination_port: 80
+      protocol: 300
+    should_pass: false
+    description: Reject out-of-range protocol number (>255)
+
+  - arguments:
+      source_ip: 192.168.0.1
+      destination_ip: 10.0.0.5
+      source_port: 70000
+      destination_port: 80
+      protocol: 6
+    should_pass: false
+    description: Reject transport port above 65535
+
+  - arguments:
+      source_ip: 192.168.0.1
+      destination_ip: 2001:db8::1
+      source_port: 12345
+      destination_port: 80
+      protocol: 6
+    should_pass: false
+    description: Reject endpoints from mixed IP families
+
+  - arguments:
+      source_ip: 222.222.2.22
+      destination_ip: 222.222.2.22
+      source_port: 8
+      destination_port: 0
+      protocol: 6
+    should_pass: false
+    description: TCP puerto 0 inválido (dest)
