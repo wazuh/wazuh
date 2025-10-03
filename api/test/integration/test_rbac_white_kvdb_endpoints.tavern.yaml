@@ -6,7 +6,7 @@ stages:
   - name: cleanup pre-existing resource
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=rbac_kvdb_white"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=rbac_kvdb_white"
       method: DELETE
       headers:
         Authorization: "Bearer {test_rbac_white_token}"
@@ -16,7 +16,7 @@ stages:
   - name: POST /kvdbs (create)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
       method: POST
       headers:
         Authorization: "Bearer {test_rbac_white_token}"
@@ -35,7 +35,7 @@ stages:
   - name: GET /kvdbs (read single by filter)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=rbac_kvdb_white"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=rbac_kvdb_white"
       method: GET
       headers:
         Authorization: "Bearer {test_rbac_white_token}"
@@ -54,7 +54,7 @@ stages:
   - name: PUT /kvdbs (update)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
       method: PUT
       headers:
         Authorization: "Bearer {test_rbac_white_token}"
@@ -71,7 +71,7 @@ stages:
   - name: DELETE /kvdbs
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=rbac_kvdb_white"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=rbac_kvdb_white"
       method: DELETE
       headers:
         Authorization: "Bearer {test_rbac_white_token}"

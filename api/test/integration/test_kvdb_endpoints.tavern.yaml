@@ -6,7 +6,7 @@ stages:
   - name: cleanup pre-existing A
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -16,7 +16,7 @@ stages:
   - name: cleanup pre-existing B
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_b"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_b"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -26,7 +26,7 @@ stages:
   - name: cleanup pre-existing C
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_c"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_c"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -36,7 +36,7 @@ stages:
   - name: create kvdb_a
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -53,7 +53,7 @@ stages:
   - name: create kvdb_b
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -70,7 +70,7 @@ stages:
   - name: create kvdb_c (uniq name)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
       method: POST
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -91,7 +91,7 @@ stages:
   - name: select id,name (no content/type/integration_id)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&select=id,name&kvdb_id=kvdb_a"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&select=id,name&kvdb_id=kvdb_a"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -123,7 +123,7 @@ stages:
   - name: sort ascending by id
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=id&select=id"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=id&select=id"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -137,7 +137,7 @@ stages:
   - name: sort descending by id
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=-id&select=id"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=-id&select=id"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -155,7 +155,7 @@ stages:
   - name: sorted then page (offset=1, limit=1) -> should return kvdb_b
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=id&offset=1&limit=1&select=id"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=id&offset=1&limit=1&select=id"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -178,7 +178,7 @@ stages:
   - name: search 'uniq' should return only kvdb_c
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&search=uniq&select=id,name"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&search=uniq&select=id,name"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -202,7 +202,7 @@ stages:
   - name: select=name&distinct=true should return unique names {dup, uniq}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&select=name&distinct=true"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&select=name&distinct=true"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -228,7 +228,7 @@ stages:
   - name: q=id=kvdb_b should match only kvdb_b
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&q=id=kvdb_b&select=id"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&q=id=kvdb_b&select=id"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -249,7 +249,7 @@ stages:
   - name: delete A
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_a"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -259,7 +259,7 @@ stages:
   - name: delete B
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_b"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_b"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -269,7 +269,7 @@ stages:
   - name: delete C
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?policy_type=testing&kvdb_id=kvdb_c"
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_c"
       method: DELETE
       headers:
         Authorization: "Bearer {test_login_token}"
