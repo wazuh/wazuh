@@ -9,6 +9,7 @@ from dataclasses import asdict
 from typing import Optional, List
 
 from wazuh import WazuhError
+from wazuh.rbac.decorators import expose_resources
 from wazuh.core.assets import generate_asset_file_path, save_asset_file
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.models.integration import Integration
@@ -21,7 +22,7 @@ from wazuh.core.utils import process_array, full_copy, safe_move
 DEFAULT_INTEGRATION_FORMAT = 'json'
 ENGINE_USER_NAMESPACE = 'user'
 
-
+@expose_resources(actions=['integrations:create'], resources=["*:*:*"])
 def create_integration(filename: str, integration: Integration, policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Create a new integration resource.
 
@@ -87,7 +88,7 @@ def create_integration(filename: str, integration: Integration, policy_type: Pol
 
     return result
 
-
+@expose_resources(actions=['integrations:read'], resources=["*:*:*"])
 def get_integrations(names: str, search: Optional[str], status: Optional[Status], policy_type:PolicyType) -> AffectedItemsWazuhResult:
     """Retrieve integration resources.
 
@@ -135,7 +136,7 @@ def get_integrations(names: str, search: Optional[str], status: Optional[Status]
 
         return results
 
-
+@expose_resources(actions=['integrations:update'], resources=["*:*:*"])
 def update_integration(filename: str, integration: Integration, policy_type: PolicyType):
     """Update an existing integration resource.
 
@@ -215,6 +216,7 @@ def update_integration(filename: str, integration: Integration, policy_type: Pol
     result.total_affected_items = len(result.affected_items)
     return result
 
+@expose_resources(actions=['integrations:delete'], resources=["*:*:*"])
 def delete_integration(names: List[str], policy_type: PolicyType):
     """Delete one or more integration resources.
 

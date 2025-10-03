@@ -345,6 +345,37 @@ x-rbac-catalog:
       example:
         actions: ['kvdbs:delete']
         resources: ['*:*:*']
+    'integrations:create':
+      description:
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'integrations:create' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'integrations:read':
+      description:
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'integrations:read' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'integrations:update':
+      description:
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'integrations:update' ]
+        resources: [ '*:*:*' ]
+        effect: "allow"
+    'integrations:delete':
+      description:
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: [ 'integrations:delete' ]
+        resources: [ '*:*:*' ]
         effect: "allow"
     'logtest:run':
       description: "Run logtest tool or end a logtest session"
