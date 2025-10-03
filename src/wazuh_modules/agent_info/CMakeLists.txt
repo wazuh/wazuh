@@ -53,6 +53,7 @@ include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
+include_directories(${SRC_FOLDER}/data_provider/include/)
 include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
