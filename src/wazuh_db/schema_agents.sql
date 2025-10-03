@@ -6,6 +6,8 @@
  * and/or modify it under the terms of GPLv2.
  */
 
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS fim_entry (
     full_path TEXT NOT NULL PRIMARY KEY,
     file TEXT,
@@ -460,8 +462,6 @@ CREATE TABLE IF NOT EXISTS sync_info (
     last_manager_checksum TEXT NOT NULL DEFAULT '',
     last_agent_checksum TEXT NOT NULL DEFAULT ''
 );
-
-BEGIN;
 
 INSERT INTO metadata (key, value) VALUES ('db_version', '16');
 INSERT INTO scan_info (module) VALUES ('fim');
