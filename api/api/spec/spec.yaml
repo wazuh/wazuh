@@ -291,7 +291,7 @@ x-rbac-catalog:
         resources: ['*:*:*']
         effect: "allow"
     'decoders:update':
-      description: "Update or create decoders"
+      description: "Update decoders"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -3971,6 +3971,9 @@ components:
     # Common engine ruleset model
     CommonRuleset:
       type: object
+      required:
+        - id
+        - name
       properties:
         id:
           type: string
@@ -3981,52 +3984,62 @@ components:
 
     # Decoders models
     Decoder:
-      type: object
-      required:
-        - name
-        - metadata
-      properties:
-        name:
-          type: string
-          description: Decoder name
-        metadata:
-          type: object
-          description: Decoder metadata
-          required:
-            - module
-            - title
-            - description
-            - compatibility
-            - versions
-            - author
-            - references
+      allOf:
+        - $ref: '#/components/schemas/CommonRuleset'
+        - type: object
           properties:
-            module:
+            type:
               type: string
-            title:
+              enum:
+                - decoder
+            integration_id:
+              type: string   
+            status:
               type: string
-            description:
-              type: string
-            compatibility:
-              type: string
-            versions:
-              type: array
-              items:
-                type: string
-            author:
+              enum:
+                - enabled
+                - disabled
+            document:
               type: object
-              required:
-                - name
-                - date
               properties:
-                name:
-                  type: string
-                date:
-                  type: string
-            references:
-              type: array
-              items:
-                type: string
+                metadata:
+                  type: object
+                  description: Decoder metadata
+                  required:
+                    - module
+                    - title
+                    - description
+                    - compatibility
+                    - versions
+                    - author
+                    - references
+                  properties:
+                    module:
+                      type: string
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    compatibility:
+                      type: string
+                    versions:
+                      type: array
+                      items:
+                        type: string
+                    author:
+                      type: object
+                      required:
+                        - name
+                        - date
+                      properties:
+                        name:
+                          type: string
+                        date:
+                          type: string
+                    references:
+                      type: array
+                      items:
+                        type: string
 
     # Overview models
     OverviewAgents:
@@ -12998,6 +13011,29 @@ paths:
         - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Decoder'
+            example:
+              type: decoder
+              id: decoder_id
+              integration_id: integration_id
+              name: Example new decoder
+              status: enabled
+              document:
+                metadata:
+                  author:
+                    date: date
+                    name: name
+                  compatibility: compatibility
+                  description: description
+                  module: module
+                  references: references
+                  title: title
+                  versions: versions
     delete:
       tags:
         - Decoders
