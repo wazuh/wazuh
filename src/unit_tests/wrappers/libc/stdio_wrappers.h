@@ -37,6 +37,7 @@ long int __wrap_ftell(FILE *__stream);
 
 int __wrap_fseek(FILE *stream, long offset, int whence);
 
+size_t __real_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 size_t __wrap_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream);
 
 int __wrap_remove(const char *filename);

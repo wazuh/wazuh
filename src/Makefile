@@ -759,7 +759,6 @@ ROCKSDB_LIB = $(EXTERNAL_ROCKSDB)build/librocksdb.so
 SIMDJSON_LIB = $(EXTERNAL_SIMDJSON)build/libsimdjson.a
 ABSEILCPP_LIB = $(EXTERNAL_ABSEILCPP)build/build_result/lib*/libabsl_*.a
 RE2_LIB = $(EXTERNAL_RE2)build/libre2.a
-SIMDJSON_LIB = $(EXTERNAL_SIMDJSON)build/libsimdjson.a
 FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 SPDLOG_LIB = $(EXTERNAL_SPDLOG)build/libspdlog.a
 YAMLCPP_LIB = $(EXTERNAL_YAMLCPP)build/libyaml-cpp.a
@@ -2105,6 +2104,9 @@ unit_tests/wrappers/externals/procpc/%.o: unit_tests/wrappers/externals/procpc/%
 
 unit_tests/wrappers/externals/sqlite/%.o: unit_tests/wrappers/externals/sqlite/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
+
+unit_tests/wrappers/externals/pcre2/%.o: unit_tests/wrappers/externals/pcre2/%.c
+	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -fPIC -c $^ -o $@
 
 unit_tests/wrappers/libc/%.o: unit_tests/wrappers/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
