@@ -20,10 +20,10 @@ sys.modules.setdefault('wazuh.rbac.orm', MagicMock())
 
 import wazuh.rbac.decorators
 from wazuh.tests.util import RBAC_bypasser
-from api.api.controllers.kvdb_controller import (
+from api.controllers.kvdb_controller import (
     get_kvdbs, post_kvdbs, put_kvdbs, delete_kvdbs
 )
-from wazuh import kvdbs
+from wazuh import kvdb
 
 # Bypass RBAC decorator
 wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -34,7 +34,6 @@ def teardown_module():
     _uid_patcher.stop()
     _gid_patcher.stop()
     sys.modules.pop('wazuh.rbac.orm', None)
-
 
 
 @pytest.mark.asyncio
@@ -62,7 +61,7 @@ async def test_get_kvdbs_defaults(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
     }
 
     mock_dapi.assert_called_once_with(
-        f=kvdbs.list_kvdbs,
+        f=kvdb.list_kvdbs,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
         is_async=True,
@@ -83,7 +82,7 @@ async def test_get_kvdbs_defaults(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.kvdb_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_kvdbs_with_ids(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_kvdbs' maps kvdb_id list to ids."""
-    result = await get_kvdbs(kvdb_id=['a', 'b'], policy_type='production', offset=5, limit=10)
+    result = await get_kvdbs(kvdb_id=['a', 'b'], type_='production', offset=5, limit=10)
 
     f_kwargs = {
         'policy_type': 'production',
@@ -101,7 +100,7 @@ async def test_get_kvdbs_with_ids(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
     }
 
     mock_dapi.assert_called_once_with(
-        f=kvdbs.list_kvdbs,
+        f=kvdb.list_kvdbs,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
         is_async=True,
@@ -121,12 +120,12 @@ async def test_get_kvdbs_with_ids(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
 @patch('api.controllers.kvdb_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_post_kvdbs(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'post_kvdbs' endpoint wiring."""
-    body = {"type": "kvdb", "id": "demo1", "name": "Demo", "content": {"k": "v"}}
-    result = await post_kvdbs(body=body, policy_type="testing")
+    body = {"id": "demo1", "name": "Demo", "content": {"k": "v"}}
+    result = await post_kvdbs(body=body, type_="testing")
 
     f_kwargs = {'policy_type': 'testing', 'item': body}
     mock_dapi.assert_called_once_with(
-        f=kvdbs.create_kvdb,
+        f=kvdb.create_kvdb,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
         is_async=True,
@@ -148,11 +147,11 @@ async def test_post_kvdbs(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
 async def test_put_kvdbs(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'put_kvdbs' endpoint wiring."""
     body = {"id": "demo1", "name": "Demo (updated)", "content": {"k2": "v2"}}
-    result = await put_kvdbs(body=body, policy_type="testing")
+    result = await put_kvdbs(body=body, type_="testing")
 
     f_kwargs = {'policy_type': 'testing', 'item': body}
     mock_dapi.assert_called_once_with(
-        f=kvdbs.update_kvdb,
+        f=kvdb.update_kvdb,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
         is_async=True,
@@ -173,11 +172,11 @@ async def test_put_kvdbs(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
 @patch('api.controllers.kvdb_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_kvdbs(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'delete_kvdbs' endpoint wiring."""
-    result = await delete_kvdbs(policy_type="testing", kvdb_id=['a', 'b', 'c'])
+    result = await delete_kvdbs(type_="testing", kvdb_id=['a', 'b', 'c'])
 
     f_kwargs = {'policy_type': 'testing', 'ids': ['a', 'b', 'c']}
     mock_dapi.assert_called_once_with(
-        f=kvdbs.delete_kvdbs,
+        f=kvdb.delete_kvdbs,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
         is_async=True,
