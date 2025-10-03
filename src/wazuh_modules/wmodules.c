@@ -29,7 +29,9 @@ int wm_debug_level;
  * */
 static const void *default_modules[] = {
     wm_agent_upgrade_read,
-#ifndef CLIENT
+#ifdef CLIENT
+    wm_agent_info_read,
+#else
     wm_task_manager_read,
 #endif
     NULL
