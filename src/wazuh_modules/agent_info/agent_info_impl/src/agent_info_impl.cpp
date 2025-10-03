@@ -1,6 +1,7 @@
 #include "agent_info_impl.hpp"
 
 #include <dbsync.hpp>
+#include <sysInfo.hpp>
 #include "logging_helper.hpp"
 
 const char* AGENT_METADATA_SQL_STATEMENT =
@@ -23,15 +24,12 @@ const char* AGENT_GROUPS_SQL_STATEMENT =
     "PRIMARY KEY (agent_id, group_name),"
     "FOREIGN KEY (agent_id) REFERENCES agent_metadata(agent_id) ON DELETE CASCADE);";
 
-AgentInfoImpl::AgentInfoImpl(std::string dbPath,
-                             std::shared_ptr<IDBSync> dbSync)
-    : m_dBSync(dbSync ? std::move(dbSync)
-               : std::make_shared<DBSync>(
-                   HostType::AGENT,
-                   DbEngineType::SQLITE3,
-                   dbPath,
-                   GetCreateStatement(),
-                   DbManagement::PERSISTENT))
+AgentInfoImpl::AgentInfoImpl(std::string dbPath, std::shared_ptr<IDBSync> dbSync, std::shared_ptr<ISysInfo> sysInfo)
+    : m_dBSync(
+          dbSync ? std::move(dbSync)
+          : std::make_shared<DBSync>(
+              HostType::AGENT, DbEngineType::SQLITE3, dbPath, GetCreateStatement(), DbManagement::PERSISTENT))
+    , m_sysInfo(sysInfo ? std::move(sysInfo) : std::make_shared<SysInfo>())
 {
     LoggingHelper::getInstance().log(LOG_INFO, "AgentInfo initialized.");
 }
