@@ -11,7 +11,6 @@ class CatalogModule(BaseModule):
 
     async def validate_resource(self, name: str, format: ResourceFormat, content: str, namespace_id: str):
         """Validate the syntax of a resource in the catalog.
-
         Parameters
         ----------
         name : str
@@ -22,7 +21,6 @@ class CatalogModule(BaseModule):
             The content to validate.
         namespace_id : str
             The namespace identifier.
-
         Returns
         -------
         dict
