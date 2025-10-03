@@ -5,14 +5,14 @@
 import json
 from os import remove
 from os.path import exists
-from dataclasses import asdict
 from typing import List, Optional
 
 from wazuh.rbac.decorators import expose_resources
 from wazuh.core.exception import WazuhError
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.utils import validate_response_or_raise
-from wazuh.core.engine.models.resources import ResourceFormat, Resource, Status, ResourceType
+from wazuh.core.engine.models.resources import (ResourceFormat, Status, ResourceType, ResourceError, 
+                                                resource_from_dict)
 from wazuh.core.engine.models.policies import PolicyType
 from wazuh.core.assets import save_asset_file, generate_asset_file_path
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -22,266 +22,170 @@ DEFAULT_DECODER_FORMAT = ResourceFormat.JSON
 ENGINE_USER_NAMESPACE = 'user'
 
 @expose_resources(actions=['decoders:create'], resources=["*:*:*"])
-async def create_decoder(filename: str, contents: Resource, policy_type: PolicyType) -> AffectedItemsWazuhResult:
-    """Create a new decoder resource.
-
-    Parameters
-    ----------
-    filename : str
-        The name of the decoder file.
-    contents : Resource
-        The decoder resource object.
-    policy_type : PolicyType
-        The policy type for the decoder.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Result object indicating success or failure.
-
-    Raises
-    ------
-    WazuhError
-        If the decoder file already exists (code 8001),
-        if validation fails (code 8002),
-        or if creation fails (code 8003).
-    """
+async def create_decoder(decoder_content: dict, policy_type: str) -> AffectedItemsWazuhResult:
+    """Create a new decoder resource."""
     result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
-                                      none_msg='Could not upload decoder'
-                                      )
-    file_contents_json = json.dumps(asdict(contents))
-    asset_file_path = generate_asset_file_path(filename, policy_type)
+                                      none_msg='Could not upload decoder')
+    filename = None
     try:
-        if exists(asset_file_path):
-            raise WazuhError(8001)
+        file_contents_json = json.dumps(decoder_content)
+        decoder_resource = resource_from_dict(decoder_content)
+        filename = decoder_resource.name
+        asset_file_path = generate_asset_file_path(filename, PolicyType(policy_type), ResourceType.DECODER)
 
-        # Create file
+        if exists(asset_file_path):
+            raise WazuhError(9001)
+
         save_asset_file(asset_file_path, file_contents_json)
 
         async with get_engine_client() as client:
-
-            # Validate contents
-            validation_results = client.catalog.validate_resource(
-                name=contents.name,
+            validation_results = await client.catalog.validate_resource(
+                name=decoder_resource.name,
                 format=DEFAULT_DECODER_FORMAT,
                 content=file_contents_json,
                 namespace_id=ENGINE_USER_NAMESPACE
             )
+            validate_response_or_raise(validation_results, 9002)
 
-            validate_response_or_raise(validation_results, 8002)
-
-            # Create the new resource
-            creation_results = client.content.create_resource(
+            creation_results = await client.content.create_resource(
                 type=ResourceType.DECODER,
                 format=DEFAULT_DECODER_FORMAT,
-                content=file_contents_json,
+                resource=decoder_resource,
                 policy_type=policy_type
             )
-
-            validate_response_or_raise(creation_results, 8003)
-
-        result.affected_items.append(filename)
-        result.total_affected_items = len(result.affected_items)
+            validate_response_or_raise(creation_results, 9003)
+            result.affected_items.append(filename)
+            result.total_affected_items = len(result.affected_items)
     except WazuhError as exc:
-        result.add_failed_item(id_=filename, error=exc)
-    finally:
-        exists(asset_file_path) and remove(asset_file_path)
-
+        filename and exists(asset_file_path) and remove(asset_file_path)
+        result.add_failed_item(id_=filename or 'unknown', error=exc)
+    except ResourceError as exc:
+        result.add_failed_item(id_="decoder cannot be created", error=exc)
     return result
 
 @expose_resources(actions=['decoders:read'], resources=["*:*:*"])
-async def get_decoders(names: List[str], search: Optional[str], status: Optional[Status], policy_type: PolicyType) -> AffectedItemsWazuhResult:
-    """Retrieve decoder resources.
-
-    Parameters
-    ----------
-    names : List[str]
-        List of decoder names to retrieve.
-    search : Optional[str]
-        Search text to filter decoders.
-    status : Optional[Status]
-        Status to filter decoders.
-    policy_type : PolicyType
-        The policy type for the decoders.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Result object containing the retrieved decoders.
-
-    Raises
-    ------
-    WazuhError
-        If decoder retrieval fails (code 8004).
-    """
+async def get_decoder(names: list, policy_type: str, status: Status,
+                      offset: Optional[int] = 0, limit: Optional[int] = 0,
+                      select: Optional[list] = None, sort_by: Optional[list] = None,
+                      sort_ascending: Optional[bool] = True, search_text: Optional[str] = None,
+                      complementary_search: Optional[bool] = False, search_in_fields: Optional[list] = None,
+                      q: Optional[str] = '', distinct: Optional[bool] = False) -> AffectedItemsWazuhResult:
+    """Get a list of available decoders."""
     results = AffectedItemsWazuhResult(none_msg='No decoder was returned',
                                       some_msg='Some decoders were not returned',
                                       all_msg='All selected decoders were returned')
+    retrieved_decoders = []
+    for name in names:
+        try:
+            async with get_engine_client() as client:
+                decoder_response = await client.content.get_resources(
+                    type=ResourceType.DECODER,
+                    name=name,
+                    policy_type=PolicyType(policy_type)
+                )
+                validate_response_or_raise(decoder_response, 9004)
+                retrieved_decoders.append(decoder_response['content'])
+        except WazuhError as exc:
+            results.add_failed_item(id_=name, error=exc)
 
-    async with get_engine_client() as client:
-        decoders_response = client.content.get_resources(
-            type=ResourceType.DECODER,
-            name_list=names,
-            policy_type=policy_type
-        )
-
-        validate_response_or_raise(decoders_response, 8004)
-
-        parsed_decoders = process_array(
-            decoders_response['content'],
-            search_text=search,
-            filters={'status': status} if status else None
-        )
-        results.affected_items = parsed_decoders['items']
-        results.total_affected_items = parsed_decoders['totalItems']
-
-        return results
+    parsed_decoders = process_array(retrieved_decoders, search_text=search_text,
+                                    search_in_fields=search_in_fields,
+                                    complementary_search=complementary_search,
+                                    sort_by=sort_by, sort_ascending=sort_ascending,
+                                    allowed_sort_fields=[], offset=offset,
+                                    select=select, limit=limit, q=q,
+                                    required_fields=[], allowed_select_fields=[],
+                                    distinct=distinct)
+    results.affected_items = parsed_decoders['items']
+    results.total_affected_items = parsed_decoders['totalItems']
+    return results
 
 @expose_resources(actions=['decoders:update'], resources=["*:*:*"])
-async def update_decoder(filename: str, contents: Resource, policy_type: PolicyType):
-    """Update an existing decoder resource.
-
-    Parameters
-    ----------
-    filename : str
-        The name of the decoder file.
-    contents : Resource
-        The decoder resource object.
-    policy_type : PolicyType
-        The policy type for the decoder.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Result object indicating success or failure.
-
-    Raises
-    ------
-    WazuhError
-        If the decoder file does not exist (code 8005),
-        if backup copy fails (code 1019),
-        if file deletion fails (code 1907),
-        if validation fails (code 8002),
-        or if update fails (code 8006).
-    """
+async def update_decoder(decoder_content: dict, policy_type: str):
+    """Update an existing decoder resource."""
     result = AffectedItemsWazuhResult(all_msg='Decoder was successfully uploaded',
-                                      none_msg='Could not upload decoder'
-                                      )
-
+                                      none_msg='Could not upload decoder')
+    filename = None
     backup_file = ''
-    asset_file_path = generate_asset_file_path(filename, policy_type)
     try:
-        if not exists(asset_file_path):
-            raise WazuhError(8005)
+        decoder_resource = resource_from_dict(decoder_content)
+        filename = decoder_resource['name']
+        asset_file_path = generate_asset_file_path(filename, PolicyType(policy_type), ResourceType.DECODER)
 
-        # Creates a backup copy
-        backup_file = f'{asset_file_path}.backup'
+        if not exists(asset_file_path):
+            raise WazuhError(9005)
+
         try:
             full_copy(asset_file_path, backup_file)
         except IOError as exc:
             raise WazuhError(1019) from exc
-
-        # Deletes the file
         try:
             remove(asset_file_path)
         except IOError as exc:
             raise WazuhError(1907) from exc
 
-        # Uploads the new file contents
-        file_contents_json =  json.dumps(asdict(contents))
+        file_contents_json = json.dumps(decoder_content)
         save_asset_file(asset_file_path, file_contents_json)
 
-        # Upload to Engine
         async with get_engine_client() as client:
-            # Validate contents
-            validation_results = client.catalog.validate_resource(
-                name=contents.name,
+            validation_results = await client.catalog.validate_resource(
+                name=decoder_content.get("name"),
                 format=DEFAULT_DECODER_FORMAT,
                 content=file_contents_json,
                 namespace_id=ENGINE_USER_NAMESPACE
             )
+            validate_response_or_raise(validation_results, 9002)
 
-            validate_response_or_raise(validation_results, 8002)
-
-            # Update contents
-            update_results = client.content.update_resource(
-                name=contents.name,
-                content=file_contents_json,
-                policy_type=policy_type
+            update_results = await client.content.update_resource(
+                resource=decoder_resource,
+                policy_type=PolicyType(policy_type)
             )
-
-            validate_response_or_raise(update_results, 8006)
+            validate_response_or_raise(update_results, 9006)
 
         result.affected_items.append(filename)
     except WazuhError as exc:
-        result.add_failed_item(id_=filename, error=exc)
-    finally:
-        exists(backup_file) and safe_move(backup_file, asset_file_path)
-
+        if exists(backup_file):
+            safe_move(backup_file, asset_file_path)
+        result.add_failed_item(id_=filename or 'unknown', error=exc)
+    except ResourceError as exc:
+        result.add_failed_item(id_="decoder cannot be created", error=exc)
+    else:
+        if exists(backup_file):
+            remove(backup_file)
     result.total_affected_items = len(result.affected_items)
     return result
 
 @expose_resources(actions=['decoders:delete'], resources=["*:*:*"])
-async def delete_decoders(names: List[str], policy_type: PolicyType):
-    """Delete decoder resources.
-
-    Parameters
-    ----------
-    names : List[str]
-        List of decoder names to delete.
-    policy_type : PolicyType
-        The policy type for the decoders.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Result object indicating success or failure.
-
-    Raises
-    ------
-    WazuhError
-        If the decoder file does not exist (code 8005),
-        if backup copy fails (code 1019),
-        if file deletion fails (code 1907),
-        or if deletion fails in the engine (code 8007).
-    """
+async def delete_decoder(names: List[str], policy_type: str):
+    """Delete decoder resources."""
     result = AffectedItemsWazuhResult(all_msg='Decoder file was successfully deleted',
                                       some_msg='Some decoders were not returned',
                                       none_msg='Could not delete decoder file')
-
     for name in names:
         backup_file = ''
-        asset_file_path = generate_asset_file_path(name, policy_type)
-
+        asset_file_path = generate_asset_file_path(name, PolicyType(policy_type), ResourceType.DECODER)
         try:
             if not exists(asset_file_path):
-                raise WazuhError(8005)
-
-            # Creates a backup copy
+                raise WazuhError(9005)
             backup_file = f'{asset_file_path}.backup'
             try:
                 full_copy(asset_file_path, backup_file)
             except IOError as exc:
                 raise WazuhError(1019) from exc
-
-            # Deletes the file
             try:
                 remove(asset_file_path)
             except IOError as exc:
                 raise WazuhError(1907) from exc
-
-            # Delete asset
             async with get_engine_client() as client:
-                delete_results = client.content.delete_resource(
+                delete_results = await client.content.delete_resource(
                     name=name,
-                    policy_type=policy_type
+                    policy_type=PolicyType(policy_type)
                 )
-
-                validate_response_or_raise(delete_results, 8007)
+                validate_response_or_raise(delete_results, 9007)
+            result.affected_items.append(name)
         except WazuhError as exc:
             result.add_failed_item(id_=name, error=exc)
         finally:
             exists(backup_file) and safe_move(backup_file, asset_file_path)
-
     result.total_affected_items = len(result.affected_items)
     return result

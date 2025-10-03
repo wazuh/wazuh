@@ -105,25 +105,6 @@ def expand_rules() -> set:
 
 
 @resource_cache()
-def expand_decoders() -> set:
-    """Return all ruleset decoder files in the system.
-
-    Returns
-    -------
-    set
-        Decoder files.
-    """
-    folders = [common.DECODERS_PATH, common.USER_DECODERS_PATH]
-    decoders = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.DECODERS_EXTENSION), files):
-                decoders.add(f)
-
-    return decoders
-
-
-@resource_cache()
 def expand_lists() -> set:
     """Return all CDB list files in the system.
 

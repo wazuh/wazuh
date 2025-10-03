@@ -6,23 +6,23 @@ from typing import List
 
 from wazuh.core.engine.base import BaseModule
 from wazuh.core.engine.models.policies import PolicyType
-from wazuh.core.engine.models.resources import ResourceType, ResourceFormat, Status
+from wazuh.core.engine.models.resources import ResourceType, ResourceFormat, Resource
 
 
 class ContentModule(BaseModule):
     """Module to interact with Engine content resources."""
 
-    async def create_resource(self, type: ResourceType, format: ResourceFormat, content: str, policy_type: PolicyType) -> dict:
+    async def create_resource(self, resource: Resource, type: ResourceType, format: ResourceFormat, policy_type: PolicyType) -> dict:
         """Create a new content resource.
 
         Parameters
         ----------
+        resource: Resource
+            The content of the resource.
         type : ResourceType
             The type of the resource to create.
         format : ResourceFormat
             The format of the resource content.
-        content : str
-            The content of the resource.
         policy_type : PolicyType
             The policy type for the resource.
 
@@ -33,15 +33,15 @@ class ContentModule(BaseModule):
         """
         return {'status': 'OK', 'error': None}
 
-    async def get_resources(self, type: ResourceType, name_list: List[str], policy_type: PolicyType) -> dict:
+    async def get_resources(self, type: ResourceType, name: str, policy_type: PolicyType) -> dict:
         """Retrieve a list of content resources.
 
         Parameters
         ----------
         type : ResourceType
             The type of resources to retrieve.
-        name_list : List[str]
-            List of resource names to retrieve.
+        name_list : str
+            Resource name to retrieve.
         policy_type : PolicyType
             The policy type for the resources.
 
@@ -57,7 +57,7 @@ class ContentModule(BaseModule):
         """
         return {'status': 'OK', 'error': None, 'content': []}
 
-    async def update_resource(self, name: str, content: str, policy_type: PolicyType) -> dict:
+    async def update_resource(self, resource: Resource) -> dict:
         """Update an existing content resource.
 
         Parameters

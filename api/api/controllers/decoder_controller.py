@@ -16,7 +16,7 @@ from wazuh.core.cluster.dapi.dapi import DistributedAPI
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_decoder(decoders_list: list = None, pretty: bool = False, wait_for_complete: bool = False,
+async def get_decoder(names: list = None, pretty: bool = False, wait_for_complete: bool = False,
                        offset: int = 0, limit: int = None, select: list = None, sort: str = None,
                        search: str = None, q: str = None, status: str = None, distinct: bool = False,
                        type: str = None) -> ConnexionResponse:
@@ -27,7 +27,7 @@ async def get_decoder(decoders_list: list = None, pretty: bool = False, wait_for
 
     Parameters
     ----------
-    decoders_list : list
+    names : list
         Filters by decoder name.
     pretty: bool
         Show results in human-readable format.
@@ -57,7 +57,7 @@ async def get_decoder(decoders_list: list = None, pretty: bool = False, wait_for
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'names': decoders_list,
+    f_kwargs = {'names': names,
                 'offset': offset,
                 'limit': limit,
                 'select': select,
@@ -107,7 +107,7 @@ async def create_decoder(body: bytes, pretty: bool = False, wait_for_complete: b
     Body.validate_content_type(request, expected_content_type='application/octet-stream')
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
-    f_kwargs = {'content': parsed_body,
+    f_kwargs = {'decoder_content': parsed_body,
                 'policy_type': type}
 
     dapi = DistributedAPI(f=decoder_framework.create_decoder,
@@ -147,7 +147,7 @@ async def update_decoder(body: bytes, pretty: bool = False, wait_for_complete: b
     Body.validate_content_type(request, expected_content_type='application/octet-stream')
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
-    f_kwargs = {'content': parsed_body,
+    f_kwargs = {'decoder_content': parsed_body,
                 'policy_type': type}
 
     dapi = DistributedAPI(f=decoder_framework.update_decoder,
@@ -163,13 +163,13 @@ async def update_decoder(body: bytes, pretty: bool = False, wait_for_complete: b
     return json_response(data, pretty=pretty)
 
 
-async def delete_decoder(decoders_list: list = None, pretty: bool = False, wait_for_complete: bool = False,
+async def delete_decoder(names: list = None, pretty: bool = False, wait_for_complete: bool = False,
                          type: str = None) -> ConnexionResponse:
     """Delete a decoder file.
 
     Parameters
     ----------
-    decoders_list : list
+    names : list
         Filters by decoder name.
     pretty : bool
         Show results in human-readable format.
@@ -183,7 +183,7 @@ async def delete_decoder(decoders_list: list = None, pretty: bool = False, wait_
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'names': decoders_list,
+    f_kwargs = {'names': names,
                 'policy_type': type}
 
     dapi = DistributedAPI(f=decoder_framework.delete_decoder,
