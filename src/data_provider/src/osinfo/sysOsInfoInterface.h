@@ -42,14 +42,16 @@ class SysOsInfo
         static void setOsInfo(const std::shared_ptr<ISysOsInfoProvider>& osInfoProvider,
                               nlohmann::json& output)
         {
+            const auto version = osInfoProvider->version();
             output["os_name"] = osInfoProvider->name();
             output["os_major"] = osInfoProvider->majorVersion();
             output["os_minor"] = osInfoProvider->minorVersion();
             output["os_build"] = osInfoProvider->build();
-            output["os_version"] = osInfoProvider->version();
+            output["os_version"] = version;
             output["hostname"] = osInfoProvider->nodeName();
             output["os_release"] = osInfoProvider->release();
             output["os_display_version"] = osInfoProvider->displayVersion();
+            output["release"] = version;
             output["architecture"] = osInfoProvider->machine();
             output["os_platform"] = "windows";
         }
