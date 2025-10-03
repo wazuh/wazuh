@@ -32,13 +32,13 @@ DOWNLOAD_CONTENT="y"                 \
 
 # Install python packages
 cd ${ENGINE_SRC}
-pip3 install ${ENGINE_SRC}/tools/api-communication
-pip3 install ${ENGINE_SRC}/tools/engine-suite
-pip3 install ${ENGINE_SRC}/test/engine-test-utils
-pip3 install ${ENGINE_SRC}/test/health_test/engine-health-test
-pip3 install ${ENGINE_SRC}/test/integration_tests/engine-it
-pip3 install ${ENGINE_SRC}/test/helper_tests/engine-helper-test
-pip3 install --upgrade requests
+pip3 install ${ENGINE_SRC}/tools/api-communication --break-system-packages
+pip3 install ${ENGINE_SRC}/tools/engine-suite  --break-system-packages
+pip3 install ${ENGINE_SRC}/test/engine-test-utils  --break-system-packages
+pip3 install ${ENGINE_SRC}/test/health_test/engine-health-test  --break-system-packages
+pip3 install ${ENGINE_SRC}/test/integration_tests/engine-it  --break-system-packages
+pip3 install ${ENGINE_SRC}/test/helper_tests/engine-helper-test  --break-system-packages
+pip3 install --upgrade requests  --break-system-packages
 
 
 # Launch the engine and save the PID
