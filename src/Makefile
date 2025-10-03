@@ -702,7 +702,7 @@ winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZU
 	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
 	cd win32/ && ./unix2dos.pl ../../VERSION.json > VERSION.json
 
-win32/shared_modules: $(WAZUHEXT_LIB)
+win32/shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
@@ -810,7 +810,7 @@ endif
 
 
 .PHONY: external test_external
-external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB)
+external: test_external $(EXTERNAL_LIBS) $(JEMALLOC_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 
 ifneq (,$(filter ${TEST},YES yes y Y 1)$(filter $(ENGINE_TEST),YES yes y Y 1))
 external: build_gtest build_benchmark
@@ -921,6 +921,7 @@ ${SIMDJSON_LIB}:
 ### flatbuffers ###
 ${FLATBUFFERS_LIB}:
 	cd $(EXTERNAL_FLATBUFFERS) && mkdir -p build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DFLATBUFFERS_BUILD_TESTS=0 -DFLATBUFFERS_INSTALL=0 -DCMAKE_POSITION_INDEPENDENT_CODE=1 && ${MAKE}
+	test -f $(EXTERNAL_FLATBUFFERS)build/flatc || (echo "ERROR: flatc compiler not found at: $(EXTERNAL_FLATBUFFERS)build/flatc" && exit 1)
 
 ### spdlog ###
 ${SPDLOG_LIB}:
@@ -1634,7 +1635,7 @@ config_o := $(config_c:.c=.o)
 config/%.o: config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-build_shared_modules: $(WAZUHEXT_LIB)
+build_shared_modules: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${SYNC_PROTOCOL} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYNC_PROTOCOL_TEST} ${SYNC_PROTOCOL_RELEASE_TYPE} .. && ${MAKE}
 	cd ${FILE_HELPER} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${FILE_HELPER_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
