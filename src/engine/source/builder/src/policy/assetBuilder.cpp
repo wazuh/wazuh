@@ -174,7 +174,8 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
         }
     }
 
-    // FIXME: The SUCCESS trace message is needed so test can parse if an asset succeeded or not
+    // TODO: The SUCCESS trace message is needed so test can parse if an asset succeeded or not
+    // Also allow empty assets witout check or parse stages (accept all)
     conditionExpressions.emplace_back(base::Term<base::EngineOp>::create(
         "AcceptAll", [](auto e) { return base::result::makeSuccess(e, "SUCCESS"); }));
 

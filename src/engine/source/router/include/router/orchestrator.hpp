@@ -25,9 +25,7 @@ class EnvironmentBuilder;
 class EntryConverter;
 
 // Change name to syncronizer
-class Orchestrator
-    : public IRouterAPI
-    , public ITesterAPI
+class Orchestrator : public IOrchestratorAPI
 {
 
 protected:

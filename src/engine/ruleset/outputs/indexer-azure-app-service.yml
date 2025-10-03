@@ -1,0 +1,22 @@
+name: output/indexer-azure-app-service/0
+
+metadata:
+  module: wazuh
+  title: Indexer output event for azure-app-service
+  description: Output integrations events to wazuh-indexer
+  compatibility: >
+    This decoder has been tested on Wazuh version 5.0
+  versions:
+    - ""
+  author:
+    name: Wazuh, Inc.
+    date: 2024/12/01
+  references:
+    - ""
+
+check:
+  - wazuh.decoders: array_contains_any(azure-app-service-app,azure-app-service-audit, azure-app-service-console,azure-app-service-http, azure-app-service-ipsec-audit,azure-app-service-platform)
+
+outputs:
+  - wazuh-indexer:
+      index: wazuh-events-azure-app-service
