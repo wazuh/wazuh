@@ -27,6 +27,7 @@ void RegistryKeyTest::SetUp()
     key->permissions = const_cast<char*>("-rw-rw-r--");
     key->uid = const_cast<char*>("0");
     key->owner = const_cast<char*>("fakeUser");
+    key->version = 1;
     fimEntryTest->registry_entry.key = key;
 }
 

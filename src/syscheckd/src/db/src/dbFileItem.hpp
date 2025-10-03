@@ -44,7 +44,7 @@ class FileItem final : public DBItem
             m_size = fim->file_entry.data->size;
             m_device = fim->file_entry.data->device;
             m_inode = fim->file_entry.data->inode;
-
+            m_version = fim->file_entry.data->version;
             m_attributes = fim->file_entry.data->attributes == NULL ? "" : fim->file_entry.data->attributes;
             m_owner = fim->file_entry.data->owner == NULL ? "" : fim->file_entry.data->owner;
             m_group = fim->file_entry.data->group == NULL ? "" : fim->file_entry.data->group;
@@ -71,6 +71,7 @@ class FileItem final : public DBItem
             m_size = fim.at("size");
             m_device = fim.at("device");
             m_inode = fim.at("inode");
+            m_version = fim.at("version");
             m_attributes = fim.at("attributes");
             m_gid = fim.at("gid");
             m_group = fim.at("group_");
@@ -103,6 +104,7 @@ class FileItem final : public DBItem
         unsigned long int m_device;
         unsigned long long int m_inode;
         time_t m_time;
+        int m_version;
         std::string m_attributes;
         std::string m_group;
         std::string m_md5;

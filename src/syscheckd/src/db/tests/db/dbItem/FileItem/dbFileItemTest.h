@@ -23,7 +23,6 @@ protected:
     void SetUp() override;
     void TearDown() override;
     fim_entry* fimEntryTest;
-    nlohmann::json json;
 };
 
 #endif //_FILEITEM_TEST_H

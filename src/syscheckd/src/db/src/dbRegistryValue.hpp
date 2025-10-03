@@ -48,6 +48,7 @@ class RegistryValue final : public DBItem
             m_md5 = fim->registry_entry.value->hash_md5;
             m_sha1 = fim->registry_entry.value->hash_sha1;
             m_sha256 = fim->registry_entry.value->hash_sha256;
+            m_version = fim->registry_entry.value->version;
             createJSON();
             createFimEntry();
         }
@@ -63,6 +64,7 @@ class RegistryValue final : public DBItem
             m_sha256 = fim.at("hash_sha256");
             m_architecture = fim.at("architecture");
             m_path = fim.at("path");
+            m_version = fim.at("version");
             createFimEntry();
             createJSON();
         }
@@ -86,6 +88,7 @@ class RegistryValue final : public DBItem
         std::string m_md5;
         std::string m_sha1;
         std::string m_sha256;
+        int m_version;
         std::unique_ptr<fim_entry, FimRegistryValueDeleter> m_fimEntry;
         std::unique_ptr<nlohmann::json> m_statementConf;
 

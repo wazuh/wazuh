@@ -42,7 +42,8 @@ constexpr auto CHECK_SQL_STATEMENT
     condition TEXT,
     compliance TEXT,
     rules TEXT,
-    regex_type TEXT DEFAULT 'pcre2');)"
+    regex_type TEXT DEFAULT 'pcre2',
+    version INTEGER NOT NULL DEFAULT 1);)"
 };
 
 SecurityConfigurationAssessment::SecurityConfigurationAssessment(
