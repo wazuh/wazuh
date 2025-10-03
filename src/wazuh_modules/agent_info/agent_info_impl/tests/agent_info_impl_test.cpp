@@ -3,9 +3,10 @@
 
 #include <agent_info_impl.hpp>
 
-#include <dbsync.hpp>
 #include "logging_helper.hpp"
+#include <dbsync.hpp>
 #include <mock_dbsync.hpp>
+#include <mock_sysinfo.hpp>
 
 #include <chrono>
 #include <memory>
@@ -123,4 +124,28 @@ TEST_F(AgentInfoImplTest, StopCalledInDestructorIsIdempotent)
     // Should only see destructor message, not another stop message
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo destroyed"));
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("AgentInfo module stopped")));
+}
+
+TEST_F(AgentInfoImplTest, ConstructorWithCustomSysInfoSucceeds)
+{
+    auto mockSysInfo = std::make_shared<MockSysInfo>();
+    m_logOutput.clear();
+
+    // Create AgentInfoImpl with custom SysInfo
+    auto agentInfo = std::make_shared<AgentInfoImpl>("test_path", m_mockDBSync, mockSysInfo);
+
+    EXPECT_NE(agentInfo, nullptr);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
+}
+
+TEST_F(AgentInfoImplTest, ConstructorWithDefaultDependenciesSucceeds)
+{
+    m_logOutput.clear();
+
+    // Create AgentInfoImpl without passing dbSync or sysInfo (creates defaults)
+    // Using in-memory database to avoid file I/O in tests
+    auto agentInfo = std::make_shared<AgentInfoImpl>(":memory:");
+
+    EXPECT_NE(agentInfo, nullptr);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
 }
