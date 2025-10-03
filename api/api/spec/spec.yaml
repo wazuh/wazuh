@@ -13890,8 +13890,6 @@ paths:
                     description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
                   "decoder:file":
                     description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
-                  "kvdbs":
-                    description: "User-defined KVDBs"
                   "rule:file":
                     description: "Reference rule files via its path (i.e. rule:file:0610-win-ms_logs_rules.xml)"
                   "policy:id":
