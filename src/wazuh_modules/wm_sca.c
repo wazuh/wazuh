@@ -2864,13 +2864,14 @@ static int wm_sca_check_hash(OSHash * const cis_db_hash, const char * const resu
     cJSON *pm_id = cJSON_GetObjectItem(check, "id");
     int alert = 1;
 
-    if (!pm_id) {
+    if (!pm_id || !cJSON_IsNumber(pm_id)) {
         return 0;
     }
-    if (cJSON_IsNumber(pm_id)) {
-        snprintf(id_hashed, sizeof(id_hashed), "%g", pm_id->valuedouble);
+
+    if(pm_id->valuedouble == (double)pm_id->valueint) {
+        snprintf(id_hashed, sizeof(id_hashed), "%d", pm_id->valueint);
     } else {
-        return 0;
+        snprintf(id_hashed, sizeof(id_hashed), "%lf", pm_id->valuedouble);
     }
 
     hashed_result = OSHash_Get(cis_db_hash, id_hashed);

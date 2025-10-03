@@ -1318,8 +1318,7 @@ static int CheckEventJSON(cJSON *event, cJSON **scan_id, cJSON **id, cJSON **nam
     int retval = 1;
     cJSON *obj;
 
-    *scan_id = cJSON_GetObjectItem(event, "id");
-    if (*scan_id == NULL) {
+    if (*scan_id = cJSON_GetObjectItem(event, "id"), !*scan_id) {
         merror("Malformed JSON: field 'id' not found.");
         return retval;
     }
@@ -1627,10 +1626,16 @@ static void FillCheckEventInfo(Eventinfo *lf, cJSON *scan_id, cJSON *id, cJSON *
                 value = comp->valuestring;
             } else if (cJSON_IsNumber(comp)) {
                 os_calloc(OS_SIZE_1024, sizeof(char), value);
-                snprintf(value, OS_SIZE_1024, "%g", comp->valuedouble);
+
+                if (comp->valuedouble == (double)(comp->valueint)) {
+                    snprintf(value, OS_SIZE_1024, "%d", comp->valueint);
+                } else {
+                    snprintf(value, OS_SIZE_1024, "%lf", comp->valuedouble);
+                }
+
                 free_value = 1;
             } else {
-                mwarn("Unexpected type for compliance field: %s", comp->string);
+                mwarn("Unexpected type for compliance field: %s. Expected string or number.", comp->string);
                 value = NULL;
             }
 
