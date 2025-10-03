@@ -1379,6 +1379,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     data->dev = statbuf->st_dev;
     data->options = configuration->options;
     data->last_event = time(NULL);
+    data->path = file;
     fim_get_checksum(data);
 
     return data;
@@ -1386,6 +1387,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
 
 void init_fim_data_entry(fim_file_data *data) {
     data->size = 0;
+    data->path = '\0';
     data->perm = NULL;
 #ifdef WIN32
     data->perm_json = NULL;
