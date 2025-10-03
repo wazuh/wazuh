@@ -150,6 +150,16 @@ protected:
     {
         return ::ERR_reason_error_string(e);
     }
+
+    inline void ERR_clear_error(void)
+    {
+        return ::ERR_clear_error();
+    }
+
+    inline unsigned long ERR_peek_error(void)
+    {
+        return ::ERR_peek_error();
+    }
 #pragma GCC diagnostic pop
 };
 
