@@ -39,7 +39,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // KVDB module
     addUnit<std::string>(key::KVDB_PATH, "WAZUH_KVDB_PATH", (wazuhRoot / "engine/kvdb/").c_str());
 
-    // CTI module
+    // CTI Store module
     addUnit<std::string>(key::CTI_PATH, "WAZUH_CTI_PATH", (wazuhRoot / "engine/cti/").c_str());
 
     // Indexer connector
