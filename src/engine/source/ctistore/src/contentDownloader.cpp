@@ -37,6 +37,7 @@ nlohmann::json ContentManagerConfig::toNlohmann() const
     cfg["outputFolder"] = outputFolder;
     cfg["contentFileName"] = contentFileName;
     cfg["databasePath"] = databasePath;
+    cfg["assetStorePath"] = assetStorePath;
     cfg["offset"] = offset;
     j["configData"] = std::move(cfg);
     return j;
@@ -97,6 +98,10 @@ void ContentManagerConfig::fromJson(const json::Json& config)
         {
             databasePath = config.getString("/configData/databasePath").value_or(databasePath);
         }
+        if (config.exists("/configData/assetStorePath"))
+        {
+            assetStorePath = config.getString("/configData/assetStorePath").value_or(assetStorePath);
+        }
         if (config.exists("/configData/offset"))
         {
             offset = config.getInt("/configData/offset").value_or(offset);
@@ -147,6 +152,7 @@ void ContentManagerConfig::validate() const
     {
         throw std::runtime_error("ContentManagerConfig: databasePath cannot be empty");
     }
+    // assetStorePath may be empty -> fallback later to databasePath
     if (offset < 0)
     {
         throw std::runtime_error("ContentManagerConfig: offset must be >= 0");
@@ -188,6 +194,10 @@ ContentDownloader::ContentDownloader(const ContentManagerConfig& config, FilePro
         };
         m_config.outputFolder = makeAbsolute(m_config.outputFolder);
         m_config.databasePath = makeAbsolute(m_config.databasePath);
+        if (!m_config.assetStorePath.empty())
+        {
+            m_config.assetStorePath = makeAbsolute(m_config.assetStorePath);
+        }
     }
 
     try
@@ -200,6 +210,10 @@ ContentDownloader::ContentDownloader(const ContentManagerConfig& config, FilePro
         {
             std::filesystem::create_directories(m_config.databasePath);
         }
+        // assetStorePath directory creation is intentionally omitted here.
+        // Rationale: Only the ContentManager opens and owns the CTI assets RocksDB.
+        // Keeping directory creation centralized in ContentManager avoids duplication
+        // and potential divergence if initialization rules change.
     }
     catch (const std::exception& e)
     {

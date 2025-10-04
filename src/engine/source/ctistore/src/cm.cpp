@@ -21,6 +21,56 @@ ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStar
 {
     LOG_INFO("Initializing CTI Store ContentManager");
 
+    try
+    {
+        if (!m_config.basePath.empty())
+        {
+            std::filesystem::path base {m_config.basePath};
+            const auto makeAbsolute = [&](const std::string& value) -> std::string
+            {
+                if (value.empty())
+                    return value;
+                std::filesystem::path p {value};
+                if (p.is_absolute())
+                    return p.string();
+                return (base / p).string();
+            };
+            m_config.outputFolder = makeAbsolute(m_config.outputFolder);
+            m_config.databasePath = makeAbsolute(m_config.databasePath);
+            if (!m_config.assetStorePath.empty())
+            {
+                m_config.assetStorePath = makeAbsolute(m_config.assetStorePath);
+            }
+        }
+
+        // Validate after normalization so that any path-dependent semantics are consistent.
+        m_config.validate();
+        if (m_config.databasePath.empty())
+        {
+            throw std::runtime_error("ContentManager: databasePath cannot be empty");
+        }
+
+        // Decide asset storage path (separate from offset DB if provided)
+        const std::string assetPath = m_config.assetStorePath.empty() ? m_config.databasePath : m_config.assetStorePath;
+
+        // Ensure directories exist prior to CTIStorageDB creation (it will also ensure internally, but we mirror
+        // downloader behavior).
+        if (!m_config.outputFolder.empty())
+        {
+            std::filesystem::create_directories(m_config.outputFolder);
+        }
+        std::filesystem::create_directories(m_config.databasePath); // offsets DB path (shared module)
+        std::filesystem::create_directories(assetPath);             // assets DB path
+
+        m_storage = std::make_unique<CTIStorageDB>(assetPath, true);
+        LOG_INFO("ContentManager: CTIStorageDB opened at '{}' (open={})", assetPath, m_storage->isOpen());
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Failed initializing CTIStorageDB: {}", e.what());
+        throw; // propagate - storage is mandatory for manager operation now
+    }
+
     auto processingCallback = [this](const std::string& message) -> FileProcessingResult
     {
         return processDownloadedContent(message);
@@ -47,21 +97,55 @@ std::vector<base::Name> ContentManager::getAssetList(cti::store::AssetType type)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    // TODO: Implement actual database query to retrieve asset list by type
-    // This will be implemented once the database backend is integrated
+    if (!m_storage || !m_storage->isOpen())
+    {
+        LOG_WARNING("getAssetList called but storage not initialized");
+        return {};
+    }
 
-    LOG_TRACE("Getting asset list for type: {}", static_cast<int>(type));
-    return {};
+    const char* typeStr = nullptr;
+    switch (type)
+    {
+        case AssetType::INTEGRATION: typeStr = "integration"; break;
+        case AssetType::DECODER: typeStr = "decoder"; break;
+        default: return {}; // unsupported
+    }
+
+    try
+    {
+        return m_storage->getAssetList(typeStr);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("getAssetList error for type='{}': {}", typeStr, e.what());
+        return {};
+    }
 }
 
 json::Json ContentManager::getAsset(const base::Name& name) const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    // TODO: Implement actual database query to retrieve asset by name
-    // This will be implemented once the database backend is integrated
+    if (!m_storage || !m_storage->isOpen())
+    {
+        LOG_WARNING("getAsset called but storage not initialized");
+        return json::Json();
+    }
 
-    LOG_TRACE("Getting asset: {}", name.toStr());
+    // We don't know the type, try in order (policy, integration, decoder)
+    static const std::vector<std::string> types {"integration", "decoder"};
+    for (const auto& t : types)
+    {
+        try
+        {
+            return m_storage->getAsset(name, t);
+        }
+        catch (...)
+        {
+            // ignore and try next
+        }
+    }
+    LOG_TRACE("Asset '{}' not found in any type", name.toStr());
     return json::Json();
 }
 
@@ -69,10 +153,25 @@ bool ContentManager::assetExists(const base::Name& name) const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    // TODO: Implement actual database query to check asset existence
-    // This will be implemented once the database backend is integrated
-
-    LOG_TRACE("Checking if asset exists: {}", name.toStr());
+    if (!m_storage || !m_storage->isOpen())
+    {
+        return false;
+    }
+    static const std::vector<std::string> types {"integration", "decoder"};
+    for (const auto& t : types)
+    {
+        try
+        {
+            if (m_storage->assetExists(name, t))
+            {
+                return true;
+            }
+        }
+        catch (...)
+        {
+            // ignore
+        }
+    }
     return false;
 }
 
@@ -80,65 +179,113 @@ std::vector<std::string> ContentManager::listKVDB() const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    // TODO: Implement actual database query to list all KVDBs
-    // This will be implemented once the database backend is integrated
-
-    LOG_TRACE("Listing all KVDBs");
-    return {};
+    if (!m_storage || !m_storage->isOpen())
+    {
+        return {};
+    }
+    try
+    {
+        return m_storage->getKVDBList();
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("listKVDB (all) error: {}", e.what());
+        return {};
+    }
 }
 
 std::vector<std::string> ContentManager::listKVDB(const base::Name& integrationName) const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    // TODO: Implement actual database query to list KVDBs by integration
-    // This will be implemented once the database backend is integrated
-
-    LOG_TRACE("Listing KVDBs for integration: {}", integrationName.toStr());
-    return {};
+    if (!m_storage || !m_storage->isOpen())
+    {
+        return {};
+    }
+    try
+    {
+        return m_storage->getKVDBList(integrationName);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("listKVDB (integration='{}') error: {}", integrationName.toStr(), e.what());
+        return {};
+    }
 }
 bool ContentManager::kvdbExists(const std::string& kdbName) const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    // TODO: Implement actual database query to check KVDB existence
-    // This will be implemented once the database backend is integrated
-
-    LOG_TRACE("Checking if KVDB exists: {}", kdbName);
-    return false;
+    if (!m_storage || !m_storage->isOpen())
+    {
+        return false;
+    }
+    try
+    {
+        return m_storage->kvdbExists(kdbName);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("kvdbExists('{}') error: {}", kdbName, e.what());
+        return false;
+    }
 }
 
 json::Json ContentManager::kvdbDump(const std::string& kdbName) const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    // TODO: Implement actual database query to dump KVDB content
-    // This will be implemented once the database backend is integrated
-
-    LOG_TRACE("Dumping KVDB: {}", kdbName);
-    return json::Json();
+    if (!m_storage || !m_storage->isOpen())
+    {
+        return json::Json();
+    }
+    try
+    {
+        return m_storage->kvdbDump(kdbName);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("kvdbDump('{}') error: {}", kdbName, e.what());
+        return json::Json();
+    }
 }
 
 std::vector<base::Name> ContentManager::getPolicyIntegrationList() const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    // TODO: Implement actual database query to get policy integration list
-    // This will be implemented once the database backend is integrated
-
-    LOG_TRACE("Getting policy integration list");
-    return {};
+    if (!m_storage || !m_storage->isOpen())
+    {
+        return {};
+    }
+    try
+    {
+        return m_storage->getPolicyIntegrationList();
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("getPolicyIntegrationList error: {}", e.what());
+        return {};
+    }
 }
 
 base::Name ContentManager::getPolicyDefaultParent() const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 
-    // TODO: Implement actual database query to get default parent
-    // This will be implemented once the database backend is integrated
-
-    LOG_TRACE("Getting policy default parent");
-    return base::Name();
+    if (!m_storage || !m_storage->isOpen())
+    {
+        return base::Name();
+    }
+    try
+    {
+        return m_storage->getPolicyDefaultParent();
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("getPolicyDefaultParent error: {}", e.what());
+        return base::Name();
+    }
 }
 
 bool ContentManager::startSync()
@@ -325,6 +472,8 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                                     continue;
                                 }
 
+                                entryJson.setString(entryJson.getString("/resource").value_or(""), "/name");
+
                                 if (operationType == "create")
                                 {
                                     bool stored = true;
@@ -453,7 +602,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                     // Offsets are not always in order, so we need to get the highest offset.
                     currentOffset = std::max(currentOffset, content.getInt("/offset").value_or(0));
 
-                    content.setString(content.getString("/name").value_or(""), "/resource");
+                    content.setString("create", "/type");
 
                     auto contentType = content.getString("/payload/type").value_or("");
                     if (!contentType.empty())
@@ -519,12 +668,14 @@ bool ContentManager::storePolicy(const json::Json& policyData)
 
     try
     {
-        // TODO: Implement actual storage in database
-        // This is a placeholder for the actual database storage implementation
-
-        auto name = policyData.getString("/resource").value_or("unknown");
-        LOG_TRACE("Storing policy '{}'", name);
-
+        if (!m_storage || !m_storage->isOpen())
+        {
+            LOG_ERROR("storePolicy called but storage not initialized");
+            return false;
+        }
+        m_storage->storePolicy(policyData);
+        auto name = policyData.getString("/name").value_or("");
+        LOG_TRACE("Stored policy '{}'", name);
         return true;
     }
     catch (const std::exception& e)
@@ -539,13 +690,15 @@ bool ContentManager::storeIntegration(const json::Json& integration)
     std::unique_lock<std::shared_mutex> lock(m_mutex);
     try
     {
-        // TODO: Implement actual storage in database
-        // This is a placeholder for the actual database storage implementation
-
-        auto name = integration.getString("/resource").value_or("unknown");
-        // payload.document.* holds metadata
+        if (!m_storage || !m_storage->isOpen())
+        {
+            LOG_ERROR("storeIntegration called but storage not initialized");
+            return false;
+        }
+        m_storage->storeIntegration(integration);
+        auto name = integration.getString("/name").value_or("");
         auto title = integration.getString("/payload/document/title").value_or("");
-        LOG_TRACE("Storing integration name='{}' title='{}'", name, title);
+        LOG_TRACE("Stored integration name='{}' title='{}'", name, title);
         return true;
     }
     catch (const std::exception& e)
@@ -560,12 +713,15 @@ bool ContentManager::storeDecoder(const json::Json& decoder)
     std::unique_lock<std::shared_mutex> lock(m_mutex);
     try
     {
-        // TODO: Implement actual storage in database
-        // This is a placeholder for the actual database storage implementation
-
-        auto name = decoder.getString("/resource").value_or("unknown");
+        if (!m_storage || !m_storage->isOpen())
+        {
+            LOG_ERROR("storeDecoder called but storage not initialized");
+            return false;
+        }
+        m_storage->storeDecoder(decoder);
+        auto name = decoder.getString("/name").value_or("");
         auto module = decoder.getString("/payload/document/metadata/module").value_or("");
-        LOG_TRACE("Storing decoder name='{}' module='{}'", name, module);
+        LOG_TRACE("Stored decoder name='{}' module='{}'", name, module);
         return true;
     }
     catch (const std::exception& e)
@@ -581,15 +737,16 @@ bool ContentManager::storeKVDB(const json::Json& kvdbData)
 
     try
     {
-        // TODO: Implement actual storage in database
-        // This is a placeholder for the actual database storage implementation
-
-        auto name = kvdbData.getString("/resource").value_or("unknown");
-        // integration_id may be at root (decoder style) or inside payload for kvdb entries
+        if (!m_storage || !m_storage->isOpen())
+        {
+            LOG_ERROR("storeKVDB called but storage not initialized");
+            return false;
+        }
+        m_storage->storeKVDB(kvdbData);
+        auto name = kvdbData.getString("/name").value_or("");
         auto integration =
             kvdbData.getString("/integration_id").value_or(kvdbData.getString("/payload/integration_id").value_or(""));
-        LOG_TRACE("Storing KVDB '{}' (integration='{}')", name, integration);
-
+        LOG_TRACE("Stored KVDB '{}' (integration='{}')", name, integration);
         return true;
     }
     catch (const std::exception& e)
