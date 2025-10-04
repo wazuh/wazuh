@@ -5,8 +5,10 @@
 #include <ctistore/cm.hpp>
 #include <ctistore/contentDownloader.hpp>
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <unistd.h>
 
 using namespace cti::store;
 using namespace testing;
@@ -23,6 +25,7 @@ protected:
         // Create test configuration
         testConfig.outputFolder = testDir + "/content";
         testConfig.databasePath = testDir + "/db";
+        testConfig.assetStorePath = testDir + "/assets";
         testConfig.interval = 60; // 1 minute for testing
         testConfig.onDemand = true;
         testConfig.topicName = "test_cti_store";
@@ -246,7 +249,9 @@ TEST(ContentManagerConfigTest, DefaultValues)
     EXPECT_EQ(config.consumerName, "Wazuh Engine");
     EXPECT_EQ(config.contentSource, "cti-offset");
     EXPECT_EQ(config.outputFolder, "content");
-    EXPECT_EQ(config.databasePath, "rocksdb");
+    EXPECT_EQ(config.contentFileName, "cti_content.json");
+    EXPECT_EQ(config.databasePath, "offset_database");
+    EXPECT_EQ(config.assetStorePath, "assets_database");
     EXPECT_TRUE(config.outputFolder.rfind("/var/ossec", 0) != 0);
     EXPECT_TRUE(config.databasePath.rfind("/var/ossec", 0) != 0);
 }
@@ -298,12 +303,60 @@ TEST_F(ContentDownloaderTest, RelativePathsResolvedAgainstBasePath)
     EXPECT_TRUE(std::filesystem::exists(effective.databasePath));
 }
 
+TEST(ContentManagerTest, RelativePathsResolvedInConstructor)
+{
+    auto ts = std::to_string(std::time(nullptr));
+    std::string baseRoot = std::string {"/tmp/cti_cm_rel_"} + ts + "/root";
+    cti::store::ContentManagerConfig cfg;
+    cfg.basePath = baseRoot;
+    cfg.outputFolder = "content"; // relative
+    cfg.databasePath = "rocksdb"; // relative
+
+    // Before construction, paths are still relative
+    ASSERT_EQ(cfg.outputFolder, "content");
+    ASSERT_EQ(cfg.databasePath, "rocksdb");
+
+    // Construct manager (should normalize + create directories + open DB)
+    cti::store::ContentManager manager(cfg, false);
+    auto effective = manager.getConfig();
+
+    EXPECT_TRUE(effective.outputFolder.find(baseRoot) == 0);
+    EXPECT_TRUE(effective.databasePath.find(baseRoot) == 0);
+    EXPECT_EQ(effective.outputFolder, baseRoot + std::string {"/content"});
+    EXPECT_EQ(effective.databasePath, baseRoot + std::string {"/rocksdb"});
+
+    EXPECT_TRUE(std::filesystem::exists(effective.outputFolder));
+    EXPECT_TRUE(std::filesystem::exists(effective.databasePath));
+
+    std::filesystem::remove_all(baseRoot);
+}
+
+TEST(ContentManagerTest, AssetStorePathOverridesDatabasePath)
+{
+    auto ts = std::to_string(std::time(nullptr));
+    ContentManagerConfig cfg;
+    cfg.basePath = std::string {"/tmp/cti_cm_asset_"} + ts;
+    cfg.outputFolder = "content";
+    cfg.databasePath = "offset_db";   // offsets
+    cfg.assetStorePath = "assets_db"; // assets
+
+    ContentManager manager(cfg, false);
+    auto effective = manager.getConfig();
+    EXPECT_TRUE(effective.assetStorePath.find(cfg.basePath) == 0);
+    EXPECT_NE(effective.assetStorePath, effective.databasePath);
+    EXPECT_TRUE(std::filesystem::exists(effective.assetStorePath));
+    EXPECT_TRUE(std::filesystem::exists(effective.databasePath));
+    std::filesystem::remove_all(cfg.basePath);
+}
+
 // Integration tests for ContentManager
 TEST(ContentManagerTest, BasicOperations)
 {
     ContentManagerConfig config;
-    config.databasePath = "/tmp/cti_test_db_" + std::to_string(std::time(nullptr));
-    config.outputFolder = "/tmp/cti_test_content_" + std::to_string(std::time(nullptr));
+    auto now = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    config.databasePath = "/tmp/cti_test_db_" + std::to_string(now);
+    config.outputFolder = "/tmp/cti_test_content_" + std::to_string(now);
+    config.assetStorePath = config.databasePath + std::string {"_assets_"} + std::to_string(::getpid());
 
     ContentManager manager(config, false);
 
@@ -321,11 +374,13 @@ TEST(ContentManagerTest, BasicOperations)
     EXPECT_FALSE(manager.kvdbExists("test_kvdb"));
 
     auto integrations = manager.getPolicyIntegrationList();
-    EXPECT_TRUE(integrations.empty());
+    // Should be empty on a brand new store. If not, print size for diagnostics.
+    ASSERT_TRUE(integrations.empty()) << "Expected empty policy integration list, got size=" << integrations.size();
 
     // Clean up
     std::filesystem::remove_all(config.databasePath);
     std::filesystem::remove_all(config.outputFolder);
+    std::filesystem::remove_all(config.assetStorePath);
 }
 
 TEST(ContentManagerTest, SyncOperations)
@@ -333,6 +388,7 @@ TEST(ContentManagerTest, SyncOperations)
     ContentManagerConfig config;
     config.databasePath = "/tmp/cti_sync_db_" + std::to_string(std::time(nullptr));
     config.outputFolder = "/tmp/cti_sync_content_" + std::to_string(std::time(nullptr));
+    config.assetStorePath = config.databasePath + std::string {"_assets"};
 
     ContentManager manager(config, false);
 
@@ -358,6 +414,7 @@ TEST(ContentManagerTest, SyncOperations)
     // Clean up
     std::filesystem::remove_all(config.databasePath);
     std::filesystem::remove_all(config.outputFolder);
+    std::filesystem::remove_all(config.assetStorePath);
 }
 
 TEST(ContentManagerTest, UpdateConfigWithRestartRestartsRunningSync)
@@ -365,6 +422,7 @@ TEST(ContentManagerTest, UpdateConfigWithRestartRestartsRunningSync)
     ContentManagerConfig cfg;
     cfg.databasePath = "/tmp/cti_restart_db_" + std::to_string(std::time(nullptr));
     cfg.outputFolder = "/tmp/cti_restart_content_" + std::to_string(std::time(nullptr));
+    cfg.assetStorePath = cfg.databasePath + std::string {"_assets"};
     cfg.interval = 2; // small interval
 
     ContentManager manager(cfg, false);
@@ -390,4 +448,5 @@ TEST(ContentManagerTest, UpdateConfigWithRestartRestartsRunningSync)
 
     std::filesystem::remove_all(cfg.databasePath);
     std::filesystem::remove_all(cfg.outputFolder);
+    std::filesystem::remove_all(cfg.assetStorePath);
 }
