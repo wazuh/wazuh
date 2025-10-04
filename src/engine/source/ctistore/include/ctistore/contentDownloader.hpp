@@ -49,6 +49,7 @@ struct ContentManagerConfig
     std::string outputFolder {"content"};
     std::string contentFileName {"cti_content.json"};
     std::string databasePath {"offset_database"};
+    std::string assetStorePath {"assets_database"};
     int offset {0};
 
     /**
