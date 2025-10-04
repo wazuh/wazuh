@@ -283,6 +283,10 @@ build_package() {
   --define "_init_scripts ${init_scripts}" --define "_sysconfdir ${sysconfdir}" --define "_version ${wazuh_version}" \
   --define "_release ${revision}" -bb ${rpm_build_dir}/SPECS/${package_name}-aix.spec
 
+  if [[ ${aix_major} = "6" ]]; then
+    mv ${ignored_lib}.backup ${ignored_lib}
+  fi
+
   # If they exist, remove the installed files in ${install_path}
   rm -rf ${install_path} /etc/ossec-init.conf
   find /etc/ -name "*wazuh*" -exec rm {} \;
