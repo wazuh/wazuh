@@ -3,6 +3,7 @@
 
 #include <ctistore/contentDownloader.hpp>
 #include <ctistore/icmreader.hpp>
+#include <ctistore/ctistoragedb.hpp>
 
 #include <memory>
 #include <shared_mutex>
@@ -148,6 +149,7 @@ private:
     std::unique_ptr<ContentDownloader> m_downloader;
     mutable std::shared_mutex m_mutex;
     ContentManagerConfig m_config;
+    std::unique_ptr<CTIStorageDB> m_storage;
 };
 
 } // namespace cti::store
