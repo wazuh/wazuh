@@ -74,7 +74,7 @@ TEST_F(SysNormalizerTest, excludeSingleItemNoMatch)
             "description": "com.apple.FaceTime",
             "group": "public.app-category.social-networking",
             "name": "FaceTime",
-            "version": "3.0"
+            "version_": "3.0"
         })")};
     nlohmann::json normalized(origJson);
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
@@ -89,7 +89,7 @@ TEST_F(SysNormalizerTest, excludeSingleItemMatch)
             "description": "com.apple.siri.launcher",
             "group": "public.app-category.utilities",
             "name": "Siri",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.removeExcluded("packages", inputJson);
@@ -103,7 +103,7 @@ TEST_F(SysNormalizerTest, normalizeSingleMicosoft)
             "description": "com.microsoft.antivirus",
             "group": "public.app-category.security",
             "name": "Microsoft Defender",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.normalize("packages", inputJson);
@@ -118,7 +118,7 @@ TEST_F(SysNormalizerTest, normalizeSingleMcAfee1)
             "description": "com.mcafee.antivirus",
             "group": "public.app-category.security",
             "name": "McAfee Antivirus For Mac",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.normalize("packages", inputJson);
@@ -134,7 +134,7 @@ TEST_F(SysNormalizerTest, normalizeSingleMcAfee2)
             "description": "com.mcafee.antivirus",
             "group": "public.app-category.security",
             "name": "McAfee Endpoint Protection For Mac",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.normalize("packages", inputJson);
@@ -150,7 +150,7 @@ TEST_F(SysNormalizerTest, normalizeSingleTotalDefense1)
             "description": "com.totaldefense.antivirus",
             "group": "public.app-category.security",
             "name": "TotalDefenseAntivirusforMac",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.normalize("packages", inputJson);
@@ -166,7 +166,7 @@ TEST_F(SysNormalizerTest, normalizeSingleTotalDefense2)
             "description": "com.totaldefense.antivirus",
             "group": "public.app-category.security",
             "name": "TotalDefenseOtherProductforMac",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.normalize("packages", inputJson);
@@ -182,7 +182,7 @@ TEST_F(SysNormalizerTest, normalizeSingleAVG1)
             "description": "com.avg.antivirus",
             "group": "public.app-category.security",
             "name": "AVGAntivirus",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.normalize("packages", inputJson);
@@ -198,7 +198,7 @@ TEST_F(SysNormalizerTest, normalizeSingleAVG2)
             "description": "com.avg.antivirus",
             "group": "public.app-category.security",
             "name": "AVGOtherProduct",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.normalize("packages", inputJson);
@@ -214,7 +214,7 @@ TEST_F(SysNormalizerTest, normalizeSingleKaspersky1)
             "description": "com.kaspersky.antivirus",
             "group": "public.app-category.security",
             "name": "Kaspersky Antivirus For Mac",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.normalize("packages", inputJson);
@@ -229,7 +229,7 @@ TEST_F(SysNormalizerTest, normalizeSingleKaspersky2)
             "description": "com.kaspersky.internetsecurity",
             "group": "public.app-category.security",
             "name": "Kaspersky Internet Security For Mac",
-            "version": "1.0"
+            "version_": "1.0"
         })"));
     SysNormalizer normalizer{TEST_CONFIG_FILE_NAME, "macos"};
     normalizer.normalize("packages", inputJson);

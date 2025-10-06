@@ -59,7 +59,7 @@ BSDPackageImpl::BSDPackageImpl(const std::shared_ptr<IPackageWrapper>& packageWr
 void BSDPackageImpl::buildPackageData(nlohmann::json& package)
 {
     package["name"] = m_packageWrapper->name();
-    package["version"] = m_packageWrapper->version();
+    package["version_"] = m_packageWrapper->version();
     package["category"] = m_packageWrapper->groups();
     package["description"] = m_packageWrapper->description();
     package["architecture"] = m_packageWrapper->architecture();

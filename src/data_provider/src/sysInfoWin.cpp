@@ -437,7 +437,7 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
 
                     packageJson["name"]         = std::move(name);
                     packageJson["description"]  = UNKNOWN_VALUE;
-                    packageJson["version"]      = version.empty() ? UNKNOWN_VALUE : std::move(version);
+                    packageJson["version_"]      = version.empty() ? UNKNOWN_VALUE : std::move(version);
                     packageJson["category"]     = UNKNOWN_VALUE;
                     packageJson["priority"]     = UNKNOWN_VALUE;
                     packageJson["size"]         = 0;
@@ -888,7 +888,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     auto fillList {[&callback, &set](nlohmann::json & data)
     {
         const std::string key {data.at("name").get_ref<const std::string&>() +
-                               data.at("version").get_ref<const std::string&>()};
+                               data.at("version_").get_ref<const std::string&>()};
         const auto result {set.insert(key)};
 
         if (result.second)
@@ -1237,7 +1237,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("author",              UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
@@ -1271,7 +1271,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
@@ -1305,7 +1305,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = UNKNOWN_VALUE;
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = UNKNOWN_VALUE;
             extensionItem["package_vendor"]            = UNKNOWN_VALUE;
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
