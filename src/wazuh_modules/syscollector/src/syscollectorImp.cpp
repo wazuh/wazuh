@@ -429,10 +429,10 @@ nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::stri
         nlohmann::json state;
         state["modified_at"] = Utils::getCurrentISO8601();
 
-        // Include version field in state for synchronization
+        // Include document_version field in state for synchronization
         if (data.contains("version"))
         {
-            state["version"] = data["version"];
+            state["document_version"] = data["version"];
         }
 
         ret["state"] = state;

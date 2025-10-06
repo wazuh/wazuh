@@ -383,10 +383,10 @@ std::pair<nlohmann::json, ReturnTypeCallback> SCAEventHandler::ProcessStateful(c
         nlohmann::json state;
         state["modified_at"] = Utils::getCurrentISO8601();
 
-        // Include version field in state for synchronization
+        // Include document_version field in state for synchronization
         if (check.contains("version"))
         {
-            state["version"] = check["version"];
+            state["document_version"] = check["version"];
             check.erase("version");
         }
 

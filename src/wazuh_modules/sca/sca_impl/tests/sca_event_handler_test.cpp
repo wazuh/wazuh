@@ -457,8 +457,8 @@ TEST_F(SCAEventHandlerTest, ProcessStateful_WithVersion)
     EXPECT_TRUE(output["state"].contains("modified_at"));
 
     // Verify version is in state, not in check
-    EXPECT_TRUE(output["state"].contains("version"));
-    EXPECT_EQ(output["state"]["version"], 5);
+    EXPECT_TRUE(output["state"].contains("document_version"));
+    EXPECT_EQ(output["state"]["document_version"], 5);
     EXPECT_FALSE(output["check"].contains("version"));
 }
 
