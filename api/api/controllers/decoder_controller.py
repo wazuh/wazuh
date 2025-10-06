@@ -30,7 +30,7 @@ async def get_decoder(decoder_id: list = None, type_: str = None, status: str = 
     names : list
         Filters by decoder name.
     type_: str
-        Policy type
+        Policy type.
     status : str
         Filters by status.
     pretty: bool
@@ -93,7 +93,7 @@ async def create_decoder(body: bytes, type_: str = None, pretty: bool = False,
     body : bytes
         Body request with the file content to be uploaded.
     type_: str
-        Policy type
+        Policy type.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -133,7 +133,7 @@ async def update_decoder(body: bytes, type_: str = None,  pretty: bool = False,
     body : bytes
         Body request with the file content to be uploaded.
     type_: str
-        Policy type
+        Policy type.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -173,7 +173,7 @@ async def delete_decoder(decoder_id: list = None,  type_: str = None, pretty: bo
     names : list
         Filters by decoder name.
     type_: str
-        Policy type
+        Policy type.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
