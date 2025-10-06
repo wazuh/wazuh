@@ -61,6 +61,10 @@ class IAgentSyncProtocol
                                       unsigned int retries,
                                       size_t maxEps) = 0;
 
+        /// @brief Clears the in-memory data queue.
+        ///
+        /// This method removes all entries from the in-memory vector used for recovery scenarios.
+        virtual void clearInMemoryData() = 0;
 
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;
