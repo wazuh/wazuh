@@ -44,8 +44,8 @@ struct ContentManagerConfig
     std::string compressionType {"raw"};
     std::string versionedContent {"cti-api"};
     bool deleteDownloadedContent {true};
-    // std::string url {"https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_test_5.0/consumers/decoders_test_5.0"};
-    std::string url {"https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_development_0.0.1/consumers/decoders_development_0.0.1"};
+    std::string url {"https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_development_0.0.1/consumers/"
+                     "decoders_development_0.0.1"};
     std::string outputFolder {"content"};
     std::string contentFileName {"cti_content.json"};
     std::string databasePath {"offset_database"};
@@ -72,6 +72,20 @@ struct ContentManagerConfig
      * Throws std::runtime_error describing the first violation found.
      */
     void validate() const;
+
+    /**
+     * @brief Normalize relative paths against basePath.
+     * Converts relative paths to absolute paths using basePath as base.
+     * Does nothing if basePath is empty.
+     */
+    void normalize();
+
+    /**
+     * @brief Create all necessary directories for the configuration.
+     * Creates outputFolder, databasePath, and optionally assetStorePath.
+     * @param includeAssetStore If true, also creates assetStorePath directory
+     */
+    void createDirectories(bool includeAssetStore = false) const;
 };
 
 /**
