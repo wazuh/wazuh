@@ -191,4 +191,23 @@ extern "C" {
         }
     }
 
+    void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle)
+    {
+        try
+        {
+            if (!handle) return;
+
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+            wrapper->impl->clearInMemoryData();
+        }
+        catch (const std::exception& ex)
+        {
+            return;
+        }
+        catch (...)
+        {
+            return;
+        }
+    }
+
 } // extern "C"

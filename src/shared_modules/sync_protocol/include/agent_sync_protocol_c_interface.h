@@ -96,6 +96,10 @@ bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
 /// @return true if parsed successfully, false on error.
 bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* data, size_t length);
 
+/// @brief Clears the in-memory data queue.
+/// @param handle Protocol handle.
+void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
+
 #ifdef __cplusplus
 }
 #endif

@@ -254,6 +254,11 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
     }
 }
 
+void AgentSyncProtocol::clearInMemoryData()
+{
+    m_inMemoryData.clear();
+}
+
 
 bool AgentSyncProtocol::ensureQueueAvailable()
 {
