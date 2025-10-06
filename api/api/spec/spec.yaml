@@ -4140,6 +4140,75 @@ components:
           items:
             $ref: '#/components/schemas/Agent'
 
+    # Integrations models
+    IntegrationCreateModel:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Integration type.
+        name:
+          type: string
+          description: Integration name.
+        id:
+          type: string
+          description: Integration ID.
+        description:
+          type: string
+          description: Integration description.
+        documentation:
+          type: string
+          description: Integration documentation.
+        status:
+          type: string
+          description: Integration status.
+        kvdbs:
+          type: array
+          items:
+            type: string
+          description: List of KVDBs associated with the integration.
+        decoders:
+          type: array
+          items:
+            type: string
+          description: List of decoders associated with the integration.
+      required:
+        - type
+        - name
+        - id
+        - description
+        - documentation
+        - status
+        - kvdbs
+        - decoders
+
+
+    # Integrations order models
+    IntegrationInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Integration ID.
+        name:
+          type: string
+          description: Integration name.
+      required:
+        - id
+        - name
+
+    IntegrationsOrder:
+      type: object
+      properties:
+        order:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrationInfo'
+          description: List of IntegrationInfo objects representing the order.
+      required:
+        - order
+
+
   securitySchemes:
     basicAuth:
       type: http
@@ -5203,6 +5272,23 @@ components:
       schema:
         type: boolean
         default: false
+    type:
+      in: query
+      name: type
+      description: Asset environment type.
+      required: true
+      schema:
+        type: string
+        enum:
+          - testing
+          - production
+    integrations_list:
+      in: query
+      name: integrations_list
+      description: List of integration IDs (comma-separated).
+      required: false
+      schema:
+        type: string
     node_type:
       in: query
       name: type
@@ -10256,6 +10342,287 @@ paths:
                   failed_items: []
                 message: "Active configuration was successfully read in specified node"
                 error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /integrations:
+    post:
+      tags:
+        - Integrations
+      summary: "Create a new integration"
+      description: "Creates a new integration asset"
+      operationId: api.controllers.integration_controller.create_integration
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/type'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationCreateModel'
+      responses:
+        '200':
+          description: Integration created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLists'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    get:
+      tags:
+        - Integrations
+      summary: "Get integrations"
+      description: "Get a list of integrations"
+      operationId: api.controllers.integration_controller.get_integrations
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:read'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/search'
+        - $ref: '#/components/parameters/integrations_list'
+      responses:
+        '200':
+          description: List of integrations
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLists'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    put:
+      tags:
+        - Integrations
+      summary: "Update integrations"
+      description: "Updates the contents of an Integration"
+      operationId: api.controllers.integration_controller.update_integration
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:update'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/type'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationCreateModel'
+      responses:
+        '200':
+          description: Integration updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLists'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - Integrations
+      summary: "Delete integrations"
+      description: "Delete a list of integrations"
+      operationId: api.controllers.integration_controller.delete_integration
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/integrations_list'
+      responses:
+        '200':
+          description: Integrations deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLists'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /integrations_order:
+    get:
+      tags:
+        - Integrations_order
+      summary: "Get list ofget integrations orders"
+      description: "Get list of integrations orders"
+      operationId: api.controllers.integrations_order_controller.get_integrations_order
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/type'
+      responses:
+        '200':
+          description: List of integration info
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLists'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    post:
+      tags:
+        - Integrations_order
+      summary: "Create integrations orders"
+      description: "Create a list of integrations orders"
+      operationId: api.controllers.integrations_order_controller.create_integrations_order
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:create'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/type'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/IntegrationInfo'
+      responses:
+        '200':
+          description: Integrations order created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLists'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '406':
+          $ref: '#/components/responses/WrongContentTypeResponse'
+        '413':
+          $ref: '#/components/responses/RequestTooLargeResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+    delete:
+      tags:
+        - Integrations_order
+      summary: "Delete integrations orders"
+      description: "Delete integrations orders"
+      operationId: api.controllers.integrations_order_controller.delete_integrations_order
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/integrations:delete'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+        - $ref: '#/components/parameters/type'
+      responses:
+        '200':
+          description: Integrations order deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponseLists'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
