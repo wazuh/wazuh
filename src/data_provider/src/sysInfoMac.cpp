@@ -449,7 +449,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {"PYPI", pypyMacOSPaths},
         {"NPM", UNIX_NPM_DEFAULT_BASE_DIRS}
     };
-    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
+    ModernFactoryPackagesCreator::getPackages(searchPaths, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const
