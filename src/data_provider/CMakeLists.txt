@@ -23,21 +23,6 @@ include(CheckCXXSourceCompiles)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-#Check if filesystem is available
-check_cxx_source_compiles("
-    #include <filesystem>
-    int main() {
-        std::filesystem::path p;
-        return 0;
-    }
-" HAS_FILESYSTEM)
-
-if(HAS_FILESYSTEM OR CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_definitions(-DHAS_STDFILESYSTEM=true)
-else()
-  add_definitions(-DHAS_STDFILESYSTEM=false)
-endif()
-
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual -Wunused -Wcast-align -Wformat=2 -fPIC")
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")

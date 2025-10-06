@@ -608,7 +608,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
     FactoryPackagesCreator::getPythonPackages(excludePaths);
 
-    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback, excludePaths);
+    ModernFactoryPackagesCreator::getPackages(searchPaths, callback, excludePaths);
 }
 
 nlohmann::json SysInfo::getHotfixes() const

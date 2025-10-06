@@ -912,7 +912,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {"NPM", getNodeDirectories()}
     };
 
-    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
+    ModernFactoryPackagesCreator::getPackages(searchPaths, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const
