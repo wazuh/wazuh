@@ -463,17 +463,19 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
             throw std::runtime_error(error);
         };
 
-        nlohmann::json currentMappings;
-        const auto onSuccess = [&currentMappings](const std::string& response)
+        const auto onSuccess = [](const std::string&)
         {
-            currentMappings = nlohmann::json::parse(response, nullptr, false);
+            // Not used
         };
 
         // Get current mappings.
+        nlohmann::json currentMappings;
         HTTPRequest::instance().get(
             RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_mapping"),
                                .secureCommunication = secureCommunication},
-            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            PostRequestParameters {.onSuccess = [&currentMappings](const std::string& response)
+                                   { currentMappings = nlohmann::json::parse(response, nullptr, false); },
+                                   .onError = onError},
             ConfigurationParameters {});
 
         if (currentMappings.is_discarded())
@@ -522,9 +524,27 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                 currentSettings[m_indexName]["settings"]["index"]["number_of_replicas"].get_ref<const std::string&>() +
                 R"(}}})";
 
-            // Clone index
-            logDebug2(IC_NAME, "Cloning index '%s' to '%s-backup'.", m_indexName.c_str(), m_indexName.c_str());
+            // Remove any previous backup if exists.
+            std::string currentIndices;
+            HTTPRequest::instance().get(
+                RequestParameters {.url = HttpURL(selector->getNext() + "/_cat/indices/"),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = [&currentIndices](const std::string& response)
+                                       { currentIndices = response; },
+                                       .onError = onError},
+                ConfigurationParameters {});
 
+            if (currentIndices.find(m_indexName + "-backup") != std::string::npos)
+            {
+                logDebug2(IC_NAME, "Deleting previous backup index '%s-backup'.", m_indexName.c_str());
+                HTTPRequest::instance().delete_(
+                    RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "-backup"),
+                                       .secureCommunication = secureCommunication},
+                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                    ConfigurationParameters {});
+            }
+
+            logDebug2(IC_NAME, "Cloning index '%s' to '%s-backup'.", m_indexName.c_str(), m_indexName.c_str());
             HTTPRequest::instance().put(RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName +
                                                                           "/_clone/" + m_indexName + "-backup"),
                                                            .data = cloneSettings,
@@ -553,13 +573,6 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                                          PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                          ConfigurationParameters {});
 
-            // Re-initialize Index in case no documents where reindexed.
-            HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
-                                                               .data = templateData.at("template"),
-                                                               .secureCommunication = secureCommunication},
-                                        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                        ConfigurationParameters {});
-
             // Delete backup index.
             logDebug2(IC_NAME, "Deleting backup index '%s-backup'.", m_indexName.c_str());
             HTTPRequest::instance().delete_(
@@ -568,6 +581,13 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                 ConfigurationParameters {});
         }
+
+        // Re-initialize Index in case no documents where reindexed.
+        HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+                                                           .data = templateData.at("template"),
+                                                           .secureCommunication = secureCommunication},
+                                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                    ConfigurationParameters {});
     }
     else
     {
