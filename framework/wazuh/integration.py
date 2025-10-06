@@ -10,7 +10,7 @@ from typing import Optional, List
 
 from wazuh import WazuhError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.assets import generate_asset_file_path, save_asset_file, generate_asset_filename
+from wazuh.core.assets import generate_integrations_file_path, save_asset_file, generate_asset_filename
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.models.integration import Integration
 from wazuh.core.engine.models.policies import PolicyType
@@ -49,7 +49,7 @@ def create_integration(integration: Integration, policy_type: PolicyType) -> Aff
 
     filename = generate_asset_filename(integration.id)
     file_contents_json = json.dumps(asdict(integration))
-    integration_path_file = generate_asset_file_path(filename, policy_type)
+    integration_path_file = generate_integrations_file_path(filename, policy_type)
 
 
     try:
@@ -162,7 +162,7 @@ def update_integration(integration: Integration, policy_type: PolicyType):
 
     backup_file = ''
     filename = generate_asset_filename(integration.id)
-    integration_file_path = generate_asset_file_path(filename, policy_type)
+    integration_file_path = generate_integrations_file_path(filename, policy_type)
     try:
         if not exists(integration_file_path):
             raise WazuhError(8005)
@@ -241,7 +241,7 @@ def delete_integration(names: List[str], policy_type: PolicyType):
 
     for name in names:
         backup_file = ''
-        integration_file_path = generate_asset_file_path(name, policy_type)
+        integration_file_path = generate_integrations_file_path(name, policy_type)
 
         try:
             if not exists(integration_file_path):
