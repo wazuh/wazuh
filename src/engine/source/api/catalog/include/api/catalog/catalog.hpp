@@ -144,6 +144,11 @@ public:
     bool collectionExists(const Resource& resource, const std::string& namespaceId) const override;
 
     /**
+     * @copydoc api::catalog::ICatalog::existAsset
+     */
+    bool existAsset(const base::Name& name, const std::string& namespaceId) const override;
+
+    /**
      * @copydoc api::catalog::ICatalog::validateResource
      */
     base::OptError

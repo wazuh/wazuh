@@ -163,7 +163,7 @@ private:
      *
      * @throws std::runtime_error If policy listing or deletion fails
      */
-    void cleanAllPolicys();
+    void cleanAllPolicies();
 
     /**
      * @brief Removes all routes and environments from the orchestrator
@@ -207,7 +207,7 @@ private:
      * @throws std::invalid_argument If ctiStore is null
      * @throws std::runtime_error If policy creation fails
      */
-    void pushPolicysFromCM(const std::shared_ptr<cti::store::ICMReader>& ctiStore);
+    void pushPoliciesFromCM(const std::shared_ptr<cti::store::ICMReader>& ctiStore);
 
     /**
      * @brief Creates and loads the core allow-all filter (used on default route)

@@ -64,7 +64,7 @@ void CMSync::deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore)
     cleanCatalog(m_systemNS, {acns::Resource::Type::output});
 
     // Remove all policies
-    cleanAllPolicys();
+    cleanAllPolicies();
 
     // Remove all routes and environments from the orchestrator (policy instances).
     cleanAllRoutesAndEnvironments();
@@ -85,7 +85,7 @@ void CMSync::deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore)
     loadCoreFilter();
 
     // Create the security policy.
-    pushPolicysFromCM(ctiStore);
+    pushPoliciesFromCM(ctiStore);
 
     // Add core outputs to the policy
     pushOutputsToPolicy();
@@ -194,23 +194,23 @@ void CMSync::cleanAllKVDB()
     }
 }
 
-// Remove policys from catalog
-void CMSync::cleanAllPolicys()
+// Remove policies from catalog
+void CMSync::cleanAllPolicies()
 {
     const auto policyManager = getHandlerOrThrow(m_policyManager, "Policy Manager");
 
-    // List all policys
+    // List all policies
     const auto respOrError = policyManager->list();
     if (base::isError(respOrError))
     {
-        // TODO: Maybe no are policys
-        throw std::runtime_error(fmt::format("Failed to list policys: {}", base::getError(respOrError).message));
+        // TODO: Maybe no are policies
+        throw std::runtime_error(fmt::format("Failed to list policies: {}", base::getError(respOrError).message));
     }
 
-    const auto& policys = base::getResponse(respOrError);
+    const auto& policies = base::getResponse(respOrError);
 
-    // Delete all policys
-    for (const auto& policy : policys)
+    // Delete all policies
+    for (const auto& policy : policies)
     {
         // TODO: Check reason of error
         const auto error = policyManager->del(policy);
@@ -441,7 +441,7 @@ void CMSync::pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& cmst
     }
 }
 
-void CMSync::pushPolicysFromCM(const std::shared_ptr<cti::store::ICMReader>& cmstore)
+void CMSync::pushPoliciesFromCM(const std::shared_ptr<cti::store::ICMReader>& cmstore)
 {
     if (!cmstore)
     {
@@ -542,7 +542,7 @@ void CMSync::loadCoreFilter()
 
     // Check if filter already exists
     api::catalog::Resource filterResource {G_FILTER_NAME, api::catalog::Resource::Format::json};
-    if (catalog->collectionExists(filterResource, m_systemNS))
+    if (catalog->existAsset(G_FILTER_NAME, m_systemNS))
     {
         // Filter already exists
         return;

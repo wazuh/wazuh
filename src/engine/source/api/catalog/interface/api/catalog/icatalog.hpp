@@ -76,6 +76,16 @@ public:
     virtual bool collectionExists(const Resource& resource, const std::string& namespaceId) const = 0;
 
     /**
+     * @brief Check if exists an asset in a namespace
+     * 
+     * @param name Name of the asset to check
+     * @param namespaceId Namespace name where the asset is located
+     * @return true if the asset exists in the namespace, false otherwise
+     * @throws std::runtime_error if the operation fails
+     */
+    virtual bool existAsset(const base::Name& name, const std::string& namespaceId) const = 0;
+
+    /**
      * @brief Validate an Asset
      *
      * Performs schema validation and builder validation
