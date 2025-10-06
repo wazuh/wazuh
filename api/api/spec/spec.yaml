@@ -4410,15 +4410,14 @@ components:
           enum:
             - wazuh-analysisd
             - wazuh-remoted
-    decoders_list:
+    decoder_id:
       in: query
-      name: decoders_list
-      description: "Decoders list"
+      name: decoder_id
+      description: "Decoder name"
       schema:
         type: array
         items:
           type: string
-          format: names
     description:
       in: query
       name: description
@@ -5072,6 +5071,16 @@ components:
             - never_connected
             - disconnected
         minItems: 1
+    status_resource:
+      in: query
+      name: status
+      description: "Filter by resource status"
+      required: true
+      schema:
+        type: string
+        enum:
+        - enabled
+        - disabled
     statusRLDParam:
       in: query
       name: status
@@ -12949,21 +12958,21 @@ paths:
         - Decoders
       summary: "Get decoders"
       description: "Get decoders"
-      operationId: api.controllers.decoder_controller.get_decoders
+      operationId: api.controllers.decoder_controller.get_decoder
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:read'
       parameters:
+        - $ref: '#/components/parameters/decoder_id'
         - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/status_resource'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/decoders_list'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
         - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/statusRLDParam'
         - $ref: '#/components/parameters/distinct'
       responses:
         '200':
@@ -12992,19 +13001,64 @@ paths:
         - Decoders
       summary: "Update decoders"
       description: "Update decoders"
-      operationId: api.controllers.decoder_controller.put_decoders
+      operationId: api.controllers.decoder_controller.update_decoder
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:update'
       parameters:
         - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Decoder'
+            example:
+              type: decoder
+              id: decoder_id
+              integration_id: integration_id
+              name: Example new decoder
+              status: enabled
+              document:
+                metadata:
+                  author:
+                    date: date
+                    name: name
+                  compatibility: compatibility
+                  description: description
+                  module: module
+                  references: references
+                  title: title
+                  versions: versions
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
     post:
       tags:
         - Decoders
       summary: "Create decoders"
       description: "Create decoders"
-      operationId: api.controllers.decoder_controller.post_decoders
+      operationId: api.controllers.decoder_controller.create_decoder
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:create'
       parameters:
@@ -13034,19 +13088,43 @@ paths:
                   references: references
                   title: title
                   versions: versions
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
     delete:
       tags:
         - Decoders
       summary: "Delete decoders"
       description: "Delete decoders"
-      operationId: api.controllers.decoder_controller.delete_decoders
+      operationId: api.controllers.decoder_controller.delete_decoder
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/decoders:delete'
       parameters:
+        - $ref: '#/components/parameters/decoder_id'
         - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/decoders_list'
+      responses:
+        '200':
+          description: "Confirmation message"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ApiResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AllItemsResponse'
   /events:
     post:
       tags:

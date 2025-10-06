@@ -47,7 +47,7 @@ def generate_asset_file_path(filename: str, policy_type: PolicyType, resource_ty
     str
         The full file path for the asset.
     """
-    base_path = path.join(common.USER_ASSETS_PATH, policy_type.dirname, resource_type.dirname)
+    base_path = path.join(common.USER_ASSETS_PATH, policy_type.dirname(), resource_type.dirname())
     safe_filename = generate_asset_filename(filename)
     if not safe_filename.endswith('.json'):
         safe_filename += '.json'
