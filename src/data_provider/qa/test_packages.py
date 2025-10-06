@@ -188,7 +188,7 @@ def test_packages_pypi():
         for pkg in filtered_pip_json_data:
             found = False
             for pkg2 in json_data['packages']:
-                if pkg['name'] == pkg2['name'] and pkg['version'] == pkg2['version']:
+                if pkg['name'] == pkg2['name'] and pkg['version'] == pkg2['version_']:
                     found = True
                     break
             assert found, f"The package {pkg['name']} is not found in the output of the binary"

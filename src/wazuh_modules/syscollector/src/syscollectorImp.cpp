@@ -425,9 +425,16 @@ nlohmann::json Syscollector::ecsData(const nlohmann::json& data, const std::stri
     {
         setJsonField(ret, data, "/checksum/hash/sha1", "checksum", true);
 
-        // Add state modified_at field for stateful events only
+        // Add state modified_at and version fields for stateful events only
         nlohmann::json state;
         state["modified_at"] = Utils::getCurrentISO8601();
+
+        // Include version field in state for synchronization
+        if (data.contains("version"))
+        {
+            state["version"] = data["version"];
+        }
+
         ret["state"] = state;
     }
 
@@ -497,7 +504,7 @@ nlohmann::json Syscollector::ecsPackageData(const nlohmann::json& originalData, 
     setJsonField(ret, originalData, "/package/source", "source", createFields);
     setJsonField(ret, originalData, "/package/type", "type", createFields);
     setJsonField(ret, originalData, "/package/vendor", "vendor", createFields);
-    setJsonField(ret, originalData, "/package/version", "version", createFields);
+    setJsonField(ret, originalData, "/package/version", "version_", createFields);
 
     return ret;
 }
@@ -704,7 +711,7 @@ nlohmann::json Syscollector::ecsBrowserExtensionsData(const nlohmann::json& orig
     setJsonField(ret, originalData, "/package/reference", "package_reference", createFields);
     setJsonField(ret, originalData, "/package/type", "package_type", createFields);
     setJsonField(ret, originalData, "/package/vendor", "package_vendor", createFields);
-    setJsonField(ret, originalData, "/package/version", "package_version", createFields);
+    setJsonField(ret, originalData, "/package/version", "package_version_", createFields);
     setJsonField(ret, originalData, "/package/visible", "package_visible", createFields, true);
     setJsonField(ret, originalData, "/user/id", "user_id", createFields);
 
@@ -1273,7 +1280,7 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
     else if (table == PACKAGES_TABLE)
     {
         std::string name = data.contains("name") ? data["name"].get<std::string>() : "";
-        std::string version = data.contains("version") ? data["version"].get<std::string>() : "";
+        std::string version = data.contains("version_") ? data["version_"].get<std::string>() : "";
         std::string architecture = data.contains("architecture") ? data["architecture"].get<std::string>() : "";
         std::string type = data.contains("type") ? data["type"].get<std::string>() : "";
         std::string path = data.contains("path") ? data["path"].get<std::string>() : "";
@@ -1337,7 +1344,7 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
         std::string user_id = data.contains("user_id") ? data["user_id"].get<std::string>() : "";
         std::string browser_profile_name = data.contains("browser_profile_name") ? data["browser_profile_name"].get<std::string>() : "";
         std::string package_name = data.contains("package_name") ? data["package_name"].get<std::string>() : "";
-        std::string package_version = data.contains("package_version") ? data["package_version"].get<std::string>() : "";
+        std::string package_version = data.contains("package_version_") ? data["package_version_"].get<std::string>() : "";
 
         ret = browser_name + ":" + user_id + ":" + browser_profile_name + ":" + package_name + ":" + package_version;
     }

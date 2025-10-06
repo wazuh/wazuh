@@ -39,7 +39,7 @@ class PYPI final
         {
             // Map to match fields
             static const std::map<std::string, std::string> PYPI_FIELDS {{"Name: ", "name"},
-                {"Version: ", "version"},
+                {"Version: ", "version_"},
                 {"Summary: ", "description"},
                 {"Home-page: ", "source"},
                 {"Author: ", "vendor"}};
@@ -83,7 +83,7 @@ class PYPI final
             });
 
             // Check if we have a name and version
-            if (packageInfo.contains("name") && packageInfo.contains("version"))
+            if (packageInfo.contains("name") && packageInfo.contains("version_"))
             {
                 callback(packageInfo);
             }
