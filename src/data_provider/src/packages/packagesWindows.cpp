@@ -26,7 +26,7 @@ WindowsPackageImpl::WindowsPackageImpl(const std::shared_ptr<IPackageWrapper>& p
 void WindowsPackageImpl::buildPackageData(nlohmann::json& package)
 {
     package["name"] = m_packageWrapper->name();
-    package["version"] = m_packageWrapper->version();
+    package["version_"] = m_packageWrapper->version();
     package["vendor"] = m_packageWrapper->vendor();
     auto installed = m_packageWrapper->install_time();
     package["installed"] = installed == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::timestampToISO8601(installed);

@@ -36,11 +36,11 @@ TEST_F(NPMTest, getPackages_ValidPackagesTest)
 
     auto callback = [&](nlohmann::json & json)
     {
-        if (json.at("name") == "TestPackage1" && json.at("version") == "1.0.0")
+        if (json.at("name") == "TestPackage1" && json.at("version_") == "1.0.0")
         {
             foundPackage1 = true;
         }
-        else if (json.at("name") == "TestPackage2" && json.at("version") == "2.0.0")
+        else if (json.at("name") == "TestPackage2" && json.at("version_") == "2.0.0")
         {
             foundPackage2 = true;
         }
@@ -164,11 +164,11 @@ TEST_F(NPMTest, getPackages_ValidPackageJson2Test)
     npm->getPackages(folders,
                      [&](nlohmann::json & j)
     {
-        if (j.at("name") == "TestPackage1" && j.at("version") == "1.0.0")
+        if (j.at("name") == "TestPackage1" && j.at("version_") == "1.0.0")
         {
             callbackCalledFirst = true;
         }
-        else if (j.at("name") == "TestPackage2" && j.at("version") == "1.0.0")
+        else if (j.at("name") == "TestPackage2" && j.at("version_") == "1.0.0")
         {
             callbackCalledSecond = true;
         }

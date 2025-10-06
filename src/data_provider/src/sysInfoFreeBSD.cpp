@@ -243,7 +243,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
             package["name"] = data[0];
             package["vendor"] = vendor;
-            package["version"] = data[2];
+            package["version_"] = data[2];
             package["installed"] = UNKNOWN_VALUE;
             package["path"] = UNKNOWN_VALUE;
             package["architecture"] = data[3];
