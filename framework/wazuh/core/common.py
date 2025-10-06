@@ -254,7 +254,7 @@ USER_LISTS_PATH = os.path.join(WAZUH_PATH, 'etc', 'lists')
 USER_RULES_PATH = os.path.join(WAZUH_PATH, 'etc', 'rules')
 USER_DECODERS_PATH = os.path.join(WAZUH_PATH, 'etc', 'decoders')
 
-USER_ASSETS_PATH = os.path.join(WAZUH_PATH, 'etc', 'assets')
+USER_ASSETS_PATH = os.path.join(WAZUH_PATH, 'etc', 'ruleset', 'assets')
 
 KVDB_BASE_PATH = os.path.join(WAZUH_PATH, 'etc', 'ruleset', 'kvdb')
 USER_TESTING_KVDB_PATH    = os.path.join(KVDB_BASE_PATH, 'testing')
