@@ -372,6 +372,7 @@ base::RespOrError<store::Col> Catalog::getCol(const Resource& resource, const st
     return col;
 }
 
+
 base::RespOrError<std::string> Catalog::getResource(const Resource& resource, const std::string& namespaceId) const
 {
     using Type = ::com::wazuh::api::engine::catalog::ResourceType;
@@ -494,6 +495,41 @@ base::OptError Catalog::deleteResource(const Resource& resource, const std::stri
 
     // Delete document
     return delDoc(resource);
+}
+
+bool Catalog::collectionExists(const Resource& resource, const std::string& namespaceId) const
+{
+    return m_store->existsCol(resource.m_name, store::NamespaceId {namespaceId});
+}
+
+bool Catalog::existAsset(const base::Name& name, const std::string& namespaceId) const
+{
+    try
+    {
+        store::NamespaceId nsId {namespaceId};
+        const auto existAsset = m_store->existsDoc(name);
+        if (!existAsset)
+        {
+            return false;
+        }
+        auto ns = m_store->getNamespace(name);
+        if (!ns)
+        {
+            throw std::runtime_error(fmt::format("Resource '{}' does not have an associated namespace", name));
+        }
+        if (ns.value() != nsId)
+        {
+            throw std::runtime_error(fmt::format("Resource '{}' does not exist in the '{}' namespace", name, namespaceId));
+        }
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format("Could not check if asset '{}' exists in namespace '{}': {}",
+                                             name.fullName(),
+                                             namespaceId,
+                                             e.what()));
+    }
 }
 
 base::OptError Catalog::validate(const Resource& item, const std::string& namespaceId, const json::Json& content) const

@@ -66,6 +66,26 @@ public:
     virtual base::OptError deleteResource(const Resource& resource, const std::string& namespaceId) = 0;
 
     /**
+     * @brief Check if a resource exists in a namespace
+     * 
+     * @param resource Resource identifying the item or collection to delete
+     * @param namespaceId Namespace name where the items are located, only needed if resource is a collection
+     * @return true if the resource exists in the namespace, false otherwise
+     * @throws std::runtime_error if the operation fails
+     */
+    virtual bool collectionExists(const Resource& resource, const std::string& namespaceId) const = 0;
+
+    /**
+     * @brief Check if exists an asset in a namespace
+     * 
+     * @param name Name of the asset to check
+     * @param namespaceId Namespace name where the asset is located
+     * @return true if the asset exists in the namespace, false otherwise
+     * @throws std::runtime_error if the operation fails
+     */
+    virtual bool existAsset(const base::Name& name, const std::string& namespaceId) const = 0;
+
+    /**
      * @brief Validate an Asset
      *
      * Performs schema validation and builder validation
@@ -83,6 +103,17 @@ public:
      * @return std::vector<store::NamespaceId> List of all namespaces
      */
     virtual std::vector<store::NamespaceId> getAllNamespaces() const = 0;
+
+    /******************************************************************************************************************
+     *                               Metods below are for CM sincronization only
+     *****************************************************************************************************************/
+
+    // virtual std::vector<base::Name> getAllAssetsNames(Resource::Type filterType, const std::string& namespaceId) const = 0;
+
+
+
+
+
 };
 } // namespace api::catalog
 

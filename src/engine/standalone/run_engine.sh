@@ -12,6 +12,7 @@ export WAZUH_ENGINE_STANDALONE="true"
 export WAZUH_STANDALONE_LOG_LEVEL="info"
 export WAZUH_STORE_PATH="${DATA_PATH}/store"
 export WAZUH_KVDB_PATH="${DATA_PATH}/kvdb"
+export WAZUH_CMSYNC_OUTPUT_PATH="${DATA_PATH}/outputs"
 export WAZUH_SERVER_API_SOCKET="${SOCKET_PATH}/engine-api.sock"
 export WAZUH_SERVER_EVENT_SOCKET="${SOCKET_PATH}/engine-prod-event.sock"
 export WAZUH_SERVER_ENRICHED_EVENTS_SOCKET="${SOCKET_PATH}/queue-http.sock"
@@ -20,6 +21,8 @@ export WAZUH_STREAMLOG_BASE_PATH="${LOG_PATH}"
 
 # If not exist create directories
 mkdir -p "$SOCKET_PATH" "$LOG_PATH"
+mkdir -p "${SCRIPT_DIR}/queue/indexer/" # For rocksdb indexer conector
+mkdir -p "${WAZUH_CMSYNC_OUTPUT_PATH}" # For cmsync output files
 
 "${SCRIPT_DIR}/bin/wazuh-engine" -f
 
