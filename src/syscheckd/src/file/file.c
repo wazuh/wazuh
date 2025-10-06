@@ -431,8 +431,9 @@ void fim_get_checksum(fim_file_data * data) {
 
     size = snprintf(0,
             0,
-            "%llu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
+            "%llu:%s:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
             data->size,
+            data->path,
             data->permissions ? data->permissions : "",
             data->attributes ? data->attributes : "",
             data->uid ? data->uid : "",
@@ -448,8 +449,9 @@ void fim_get_checksum(fim_file_data * data) {
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
             size + 1,
-            "%llu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
+            "%llu:%s:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
             data->size,
+            data->path,
             data->permissions ? data->permissions : "",
             data->attributes ? data->attributes : "",
             data->uid ? data->uid : "",
@@ -468,6 +470,7 @@ void fim_get_checksum(fim_file_data * data) {
 
 void init_fim_data_entry(fim_file_data *data) {
     data->size = 0;
+    data->path = NULL;
     data->permissions = NULL;
 #ifdef WIN32
     data->perm_json = NULL;
@@ -492,6 +495,7 @@ void free_file_data(fim_file_data * data) {
 #ifdef WIN32
     cJSON_Delete(data->perm_json);
 #endif
+    os_free(data->path);
     os_free(data->permissions);
     os_free(data->attributes);
     os_free(data->uid);
@@ -596,6 +600,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
 
     data->inode = statbuf->st_ino;
     data->device = statbuf->st_dev;
+    os_strdup(file, data->path);
     fim_get_checksum(data);
 
     return data;
