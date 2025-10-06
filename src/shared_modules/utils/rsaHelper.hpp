@@ -110,11 +110,9 @@ public:
                                                          reinterpret_cast<unsigned char*>(decryptedText.data()),
                                                          rsa,
                                                          RSA_PKCS1_PADDING);
-
-        unsigned long err = T::ERR_get_error();
-
-        if (decryptedLen < 0 || err != 0)
+        if (decryptedLen < 0)
         {
+            unsigned long err = T::ERR_get_error();
             std::string errMsg = "RSA decryption failed";
             if (err != 0)
             {
