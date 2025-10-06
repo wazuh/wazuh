@@ -7,6 +7,8 @@ from dataclasses import dataclass, asdict, is_dataclass
 from enum import Enum
 from typing import List, Dict, Any
 
+from wazuh.core.exception import WazuhError
+
 class ResourceType(str, Enum):
     """Enumeration for resource types in the catalog."""
     RULE = 'rule'
@@ -72,15 +74,15 @@ class Resource:
         
         Raises
         ------
-        ResourceError
+        WazuhError
             If any required field is missing or invalid.
         """
         try:
             type_ = ResourceType(data["type"])
         except KeyError:
-            raise ResourceError("Missing required field 'type' in resource data")
+            raise WazuhError(9002)
         except ValueError:
-            raise ResourceError(f"Invalid resource type: {data.get('type')}")
+            raise WazuhError(9002)
 
         if type_ == ResourceType.DECODER:
             try:
@@ -105,24 +107,11 @@ class Resource:
                     document=document,
                 )
             except KeyError as e:
-                raise ResourceError(f"Missing required field: {e}") from e
+                raise WazuhError(9002) from e
             except ValueError as e:
-                raise ResourceError(f"Invalid value for enum field: {e}") from e
-
-        elif type_ == ResourceType.KVDB:
-            try:
-                return KVDBResource(
-                    type=type_,
-                    id=data["id"],
-                    name=data["name"],
-                    integration_id=data["integration_id"],
-                    content=data["content"],
-                )
-            except KeyError as e:
-                raise ResourceError(f"Missing required field: {e}") from e
-
+                raise WazuhError(9002) from e
         else:
-            raise ResourceError(f"Unsupported resource type: {type_}")
+            raise WazuhError(9002)
         
     def to_dict(self) -> Dict:
         """Convert Resource (including nested dataclasses and enums) to a dictionary."""
@@ -156,7 +145,3 @@ class DecoderResource(Resource, WithIntegrationId):
     """Decoder resource."""
     status: Status
     document: Document
-
-class ResourceError(Exception):
-    """Custom exception for resource creation errors."""
-
