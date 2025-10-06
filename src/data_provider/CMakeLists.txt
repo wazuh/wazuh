@@ -140,7 +140,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
       "${CMAKE_SOURCE_DIR}/src/osinfo/sysOsParsers.cpp"
       "${CMAKE_SOURCE_DIR}/src/packages/packageLinux*.cpp"
       "${CMAKE_SOURCE_DIR}/src/packages/rpm*.cpp")
-  add_definitions(-DLINUX_TYPE=LinuxType::STANDARD) # Standard compilation in compatible systems
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   if(${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm64.*|ARM64.*")
     file(GLOB SYSINFO_SRC

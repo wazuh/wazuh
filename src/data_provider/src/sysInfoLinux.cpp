@@ -597,7 +597,7 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
-    FactoryPackagesCreator<LINUX_TYPE>::getPackages(callback);
+    FactoryPackagesCreator::getPackages(callback);
     std::map<std::string, std::set<std::string>> searchPaths =
     {
         {"PYPI", UNIX_PYPI_DEFAULT_BASE_DIRS},
@@ -606,7 +606,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
     std::unordered_set<std::string> excludePaths;
 
-    FactoryPackagesCreator<LINUX_TYPE>::getPythonPackages(excludePaths);
+    FactoryPackagesCreator::getPythonPackages(excludePaths);
 
     ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback, excludePaths);
 }
