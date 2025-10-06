@@ -10,7 +10,7 @@ from typing import Optional, List
 
 from wazuh import WazuhError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.assets import generate_asset_file_path, save_asset_file
+from wazuh.core.assets import generate_asset_file_path, save_asset_file, generate_asset_filename
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.models.integration import Integration
 from wazuh.core.engine.models.policies import PolicyType
@@ -23,13 +23,11 @@ DEFAULT_INTEGRATION_FORMAT = 'json'
 ENGINE_USER_NAMESPACE = 'user'
 
 @expose_resources(actions=['integrations:create'], resources=["*:*:*"])
-def create_integration(filename: str, integration: Integration, policy_type: PolicyType) -> AffectedItemsWazuhResult:
+def create_integration(integration: Integration, policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Create a new integration resource.
 
     Parameters
     ----------
-    filename : str
-        The filename for the integration resource.
     integration : Integration
         The integration object to be created.
     policy_type : PolicyType
@@ -49,6 +47,7 @@ def create_integration(filename: str, integration: Integration, policy_type: Pol
                                       none_msg='Could not upload Integration'
                                       )
 
+    filename = generate_asset_filename(integration.id)
     file_contents_json = json.dumps(asdict(integration))
     integration_path_file = generate_asset_file_path(filename, policy_type)
 
@@ -137,13 +136,11 @@ def get_integrations(names: str, search: Optional[str], status: Optional[Status]
         return results
 
 @expose_resources(actions=['integrations:update'], resources=["*:*:*"])
-def update_integration(filename: str, integration: Integration, policy_type: PolicyType):
+def update_integration(integration: Integration, policy_type: PolicyType):
     """Update an existing integration resource.
 
     Parameters
     ----------
-    filename : str
-        The filename of the integration to update.
     integration : Integration
         The updated integration object.
     policy_type : PolicyType
@@ -164,6 +161,7 @@ def update_integration(filename: str, integration: Integration, policy_type: Pol
                                       )
 
     backup_file = ''
+    filename = generate_asset_filename(integration.id)
     integration_file_path = generate_asset_file_path(filename, policy_type)
     try:
         if not exists(integration_file_path):
