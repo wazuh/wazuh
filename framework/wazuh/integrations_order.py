@@ -5,7 +5,7 @@ from os.path import exists
 
 from wazuh import WazuhError
 from wazuh.rbac.decorators import expose_resources
-from wazuh.core.assets import generate_asset_file_path, save_asset_file
+from wazuh.core.assets import generate_integrations_file_path, save_asset_file
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.models.integrations_order import IntegrationsOrder
 from wazuh.core.engine.models.policies import PolicyType
@@ -41,7 +41,7 @@ def create_integrations_order(order: IntegrationsOrder, policy_type: PolicyType)
                                       none_msg='Could not upload Integration order')
 
     file_contents_json = json.dumps(asdict(order))
-    integration_order_path_file = generate_asset_file_path(DEFAULT_INTEGRATIONS_ORDER_FILENAME, policy_type)
+    integration_order_path_file = generate_integrations_file_path(DEFAULT_INTEGRATIONS_ORDER_FILENAME, policy_type)
 
     try:
         if exists(integration_order_path_file):
@@ -124,7 +124,7 @@ def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResu
                                       none_msg='Could not delete integrations order file')
 
     backup_file = ''
-    integration_order_path_file = generate_asset_file_path(DEFAULT_INTEGRATIONS_ORDER_FILENAME, policy_type)
+    integration_order_path_file = generate_integrations_file_path(DEFAULT_INTEGRATIONS_ORDER_FILENAME, policy_type)
 
     try:
         if not exists(integration_order_path_file):

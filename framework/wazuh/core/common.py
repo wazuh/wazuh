@@ -260,6 +260,9 @@ KVDB_BASE_PATH = os.path.join(WAZUH_PATH, 'etc', 'ruleset', 'kvdb')
 USER_TESTING_KVDB_PATH    = os.path.join(KVDB_BASE_PATH, 'testing')
 USER_PRODUCTION_KVDB_PATH = os.path.join(KVDB_BASE_PATH, 'production')
 
+USER_TESTING_INTEGRATIONS_PATH = os.path.join(USER_TESTING_ASSETS_PATH, 'integrations')
+USER_PRODUCTION_INTEGRATIONS_PATH = os.path.join(USER_PRODUCTION_ASSETS_PATH, 'integrations')
+
 # ========================================== INSTALLATION UID PATH ====================================================
 SECURITY_PATH = os.path.join(WAZUH_PATH, 'api', 'configuration', 'security')
 INSTALLATION_UID_PATH = os.path.join(SECURITY_PATH, 'installation_uid')

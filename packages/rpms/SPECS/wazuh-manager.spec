@@ -787,6 +787,8 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/testing
 %dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/production/decoders
 %dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/testing/decoders
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/production/integrations
+%dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/assets/testing/integrations
 %dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb
 %dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb/production
 %dir %attr(750, root, wazuh) %{_localstatedir}/etc/ruleset/kvdb/testing
