@@ -53,6 +53,7 @@ include_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/)
 include_directories(${SRC_FOLDER}/shared_modules/utils/)
 include_directories(${SRC_FOLDER}/shared_modules/common/)
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/filesystem/include/)
+include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
 include_directories(${SRC_FOLDER}/data_provider/include/)
 include_directories(${SRC_FOLDER}/wazuh_modules/)
 include_directories(${CMAKE_SOURCE_DIR}/include)
@@ -62,6 +63,7 @@ link_directories(${SRC_FOLDER}/external/cJSON/)
 link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/file_helper/build/lib)
 link_directories(${SRC_FOLDER}/data_provider/build/lib)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
@@ -73,7 +75,7 @@ file(GLOB AGENT_INFO_SRC "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_library(agent_info SHARED ${AGENT_INFO_SRC} ${SRC_FOLDER}/${RESOURCE_OBJ})
 
-target_link_libraries(agent_info AGENT_INFO_IMPL)
+target_link_libraries(agent_info AGENT_INFO_IMPL FileIO FilesystemWrapper)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set_target_properties(
