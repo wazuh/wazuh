@@ -173,22 +173,38 @@ function Get-MSIProductVersion {
 
 # Stop UI and launch the MSI installer
 function install {
-    kill -processname win32ui -ErrorAction SilentlyContinue -Force
-    Stop-Service -Name "Wazuh"
+    # Try to stop win32ui
+    try {
+        Write-Output "$(Get-Date -format u) - Stopping win32ui process." >> .\upgrade\upgrade.log
+        Stop-Process -Name "win32ui" -Force -ErrorAction Stop
+    } catch {
+        Write-Output "$(Get-Date -format u) - Tried to stop process win32ui: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+    }
+
+    # Try to stop Wazuh service
+    try {
+        Write-Output "$(Get-Date -format u) - Stopping Wazuh service." >> .\upgrade\upgrade.log
+        Stop-Service -Name "Wazuh" -Force -ErrorAction Stop
+    } catch {
+        Write-Output "$(Get-Date -format u) - Tried to stop Wazuh service: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+    }
+
+    # Wait for Wazuh service to fully stop
+    Start-Sleep -Seconds 5
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
-    write-output "$(Get-Date -format u) - Starting upgrade process." >> .\upgrade\upgrade.log
+    Write-Output "$(Get-Date -format u) - Starting upgrade process." >> .\upgrade\upgrade.log
 
     try {
         $msiPath = (Get-Item ".\wazuh-agent*.msi").Name
 
         if ($msi_new_version -ne $null -and $msi_new_version -eq $current_version) {
-            write-output "$(Get-Date -format u) - Reinstalling the same version." >> .\upgrade\upgrade.log
+            Write-Output "$(Get-Date -format u) - Reinstalling the same version." >> .\upgrade\upgrade.log
         }
 
         Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $msiPath, '-quiet', '-norestart', '-log', 'installer.log') -Wait -NoNewWindow
 
     } catch {
-        write-output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        Write-Output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
         return $false
     }
 
@@ -221,7 +237,13 @@ if ($msi_new_version -ne $null) {
 
 
 # Ensure no other instance of msiexec is running by stopping them
-Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
+try {
+    $proc = Get-Process -Name "msiexec" -ErrorAction Stop
+    Stop-Process -InputObject $proc -Force -ErrorAction Stop
+    Write-Output "$(Get-Date -Format u) - Killed msiexec process(es)." >> .\upgrade\upgrade.log
+} catch {
+    Write-Output "$(Get-Date -Format u) - Tried to stop msiexec process: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+}
 
 # Install
 install
