@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import asyncio
 from typing import Dict, Tuple
 from httpx import AsyncClient
 
@@ -11,10 +12,13 @@ from wazuh.core.engine.models.resources import ResourceType, ResourceFormat, Res
 
 
 class ContentModule(BaseModule):
-    """Module to interact with Engine content resources."""
+    """Module to interact with Engine content resources (thread-safe shared version)."""
 
-    # In-memory storage: key = (resource_type, policy_type, resource_name)
+    # Shared in-memory storage: key = (resource_type, policy_type, resource_name)
     _db: Dict[Tuple[ResourceType, PolicyType, str], Resource] = {}
+
+    # Shared lock for thread-safety across all instances
+    _lock = asyncio.Lock()
 
     def __init__(self, client: AsyncClient):
         super().__init__(client)
@@ -24,38 +28,38 @@ class ContentModule(BaseModule):
     ) -> dict:
         """Create a new content resource."""
         key = (type, policy_type, resource.name)
-        if key in self._db:
-            return {"status": "ERROR", "error": f"Resource '{resource.name}' already exists"}
-        self._db[key] = resource
+        async with self._lock:
+            if key in self._db:
+                return {"status": "ERROR", "error": f"Resource '{resource.name}' already exists"}
+            self._db[key] = resource
         return {"status": "OK", "error": None}
 
     async def get_resources(self, type: ResourceType, name: str, policy_type: PolicyType) -> dict:
         """Retrieve a list of content resources."""
         key = (type, policy_type, name)
-        if key not in self._db:
-            return {"status": "ERROR", "error": f"Resource '{name}' not found"}
-        resource = self._db[key]
+        async with self._lock:
+            if key not in self._db:
+                return {"status": "ERROR", "error": f"Resource '{name}' not found"}
+            resource = self._db[key]
         return {"status": "OK", "error": None, "content": resource.to_dict()}
 
-    async def update_resource(self, resource: Resource) -> dict:
+    async def update_resource(
+        self, resource: Resource, type: ResourceType, format: ResourceFormat, policy_type: PolicyType
+    ) -> dict:
         """Update an existing content resource."""
-        updated = False
-        for key, stored_resource in self._db.items():
-            if stored_resource.name == resource.name:
-                self._db[key] = resource
-                updated = True
-                break
-        if not updated:
-            return {"status": "ERROR", "error": f"Resource '{resource.name}' not found"}
+        key = (type, policy_type, resource.name)
+        async with self._lock:
+            if key not in self._db:
+                return {"status": "ERROR", "error": f"Resource '{resource.name}' not found"}
+            self._db[key] = resource
         return {"status": "OK", "error": None}
 
     async def delete_resource(self, name: str, policy_type: PolicyType) -> dict:
         """Delete a content resource."""
-        deleted = False
-        for key in list(self._db.keys()):
-            if key[1] == policy_type and key[2] == name:
+        async with self._lock:
+            keys_to_delete = [key for key in self._db if key[1] == policy_type and key[2] == name]
+            if not keys_to_delete:
+                return {"status": "ERROR", "error": f"Resource '{name}' not found"}
+            for key in keys_to_delete:
                 del self._db[key]
-                deleted = True
-        if not deleted:
-            return {"status": "ERROR", "error": f"Resource '{name}' not found"}
         return {"status": "OK", "error": None}
