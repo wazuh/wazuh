@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from wazuh import WazuhError, decoder
-from wazuh.core.engine.models.resources import ResourceError, Status
+from wazuh.core.engine.models.resources import Status
 from wazuh.core.results import AffectedItemsWazuhResult
 
 
@@ -41,7 +41,7 @@ async def test_create_decoder_success(
 
 
 @pytest.mark.asyncio
-@patch("wazuh.decoder.Resource.from_dict", side_effect=ResourceError())
+@patch("wazuh.decoder.Resource.from_dict", side_effect=WazuhError(9006))
 async def test_create_decoder_bad_decoder_format(mock_resource):
     result = await decoder.create_decoder({}, "testing")
 
@@ -176,7 +176,10 @@ async def test_update_decoder_success(
     mock_path,
     mock_resource,
 ):
-    mock_resource.return_value = {"name": "my_decoder"}
+    fake_resource = MagicMock()
+    fake_resource.name = "my_decoder"
+    fake_resource.__getitem__.return_value = "my_decoder"
+    mock_resource.return_value = fake_resource
 
     mock_client = AsyncMock()
     mock_client.catalog.validate_resource.return_value = {"status": "OK"}
@@ -192,7 +195,7 @@ async def test_update_decoder_success(
 
 
 @pytest.mark.asyncio
-@patch("wazuh.decoder.Resource.from_dict", side_effect=ResourceError())
+@patch("wazuh.decoder.Resource.from_dict", side_effect=WazuhError(9006))
 async def test_update_decoder_bad_decoder(mock_resource):
     result = await decoder.update_decoder({}, "testing")
 
@@ -207,7 +210,10 @@ async def test_update_decoder_bad_decoder(mock_resource):
 @patch("wazuh.decoder.generate_asset_file_path", return_value="/fake/path/decoder.json")
 @patch("wazuh.decoder.exists", side_effect=[False, False])
 async def test_update_decoder_not_found(mock_exists, mock_path, mock_resource):
-    mock_resource.return_value = {"name": "missing"}
+    fake_resource = MagicMock()
+    fake_resource.name = "my_decoder"
+    fake_resource.__getitem__.return_value = "my_decoder"
+    mock_resource.return_value = fake_resource
 
     result = await decoder.update_decoder({"name": "missing"}, "testing")
 
@@ -220,11 +226,14 @@ async def test_update_decoder_not_found(mock_exists, mock_path, mock_resource):
 @patch("wazuh.decoder.full_copy", side_effect=IOError())
 @patch("wazuh.decoder.Resource.from_dict")
 @patch("wazuh.decoder.generate_asset_file_path", return_value="/fake/path/decoder.json")
-@patch("wazuh.decoder.exists", side_effect=[True, False])
+@patch("wazuh.decoder.exists", side_effect=[True, False, False])
 async def test_update_decoder_backup_fail(
     mock_exists, mock_path, mock_resource, mock_full_copy
 ):
-    mock_resource.return_value = {"name": "my_decoder"}
+    fake_resource = MagicMock()
+    fake_resource.name = "my_decoder"
+    fake_resource.__getitem__.return_value = "my_decoder"
+    mock_resource.return_value = fake_resource
 
     result = await decoder.update_decoder({"name": "my_decoder"}, "testing")
 
@@ -236,15 +245,18 @@ async def test_update_decoder_backup_fail(
 
 @pytest.mark.asyncio
 @patch("wazuh.decoder.safe_move")
-@patch("wazuh.decoder.remove", side_effect=IOError())
+@patch("wazuh.decoder.remove", side_effect=[IOError(), True])
 @patch("wazuh.decoder.full_copy")
 @patch("wazuh.decoder.Resource.from_dict")
 @patch("wazuh.decoder.generate_asset_file_path", return_value="/fake/path/decoder.json")
-@patch("wazuh.decoder.exists", side_effect=[True, True])
+@patch("wazuh.decoder.exists", side_effect=[True, True, True, True])
 async def test_update_decoder_delete_previous_fail(
     mock_exists, mock_path, mock_resource, mock_full_copy, mock_remove, mock_safe_move
 ):
-    mock_resource.return_value = {"name": "my_decoder"}
+    fake_resource = MagicMock()
+    fake_resource.name = "my_decoder"
+    fake_resource.__getitem__.return_value = "my_decoder"
+    mock_resource.return_value = fake_resource
 
     result = await decoder.update_decoder({"name": "my_decoder"}, "testing")
 
@@ -280,7 +292,7 @@ async def test_delete_decoder_success(
 @pytest.mark.asyncio
 @patch("wazuh.decoder.full_copy", side_effect=IOError())
 @patch("wazuh.decoder.generate_asset_file_path", return_value="/fake/path/decoder.json")
-@patch("wazuh.decoder.exists", side_effect=[True, False])
+@patch("wazuh.decoder.exists", side_effect=[True, False, False])
 async def test_delete_decoder_backup_fail(mock_exists, mock_path, mock_full_copy):
     result = await decoder.delete_decoder(names=["not_found"], policy_type="testing")
 
@@ -291,10 +303,10 @@ async def test_delete_decoder_backup_fail(mock_exists, mock_path, mock_full_copy
 
 @pytest.mark.asyncio
 @patch("wazuh.decoder.safe_move")
-@patch("wazuh.decoder.remove", side_effect=IOError())
+@patch("wazuh.decoder.remove", side_effect=[IOError(), True])
 @patch("wazuh.decoder.full_copy")
 @patch("wazuh.decoder.generate_asset_file_path", return_value="/fake/path/decoder.json")
-@patch("wazuh.decoder.exists", side_effect=[True, True])
+@patch("wazuh.decoder.exists", side_effect=[True, True, True])
 async def test_delete_decoder_delete_fail(
     mock_exists, mock_path, mock_full_copy, mock_remove, mock_safe_move
 ):

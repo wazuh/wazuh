@@ -11,7 +11,7 @@ from wazuh.rbac.decorators import expose_resources
 from wazuh.core.exception import WazuhError
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.utils import validate_response_or_raise
-from wazuh.core.engine.models.resources import ResourceFormat, Status, ResourceType, ResourceError, Resource
+from wazuh.core.engine.models.resources import ResourceFormat, Status, ResourceType, Resource
 from wazuh.core.engine.models.policies import PolicyType
 from wazuh.core.assets import save_asset_file, generate_asset_file_path
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -58,8 +58,7 @@ async def create_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
     except WazuhError as exc:
         filename and exists(asset_file_path) and remove(asset_file_path)
         result.add_failed_item(id_=filename or "unknown", error=exc)
-    except ResourceError as exc:
-        result.add_failed_item(id_="decoder cannot be created", error=exc)
+
     return result
 
 
@@ -90,7 +89,9 @@ async def get_decoder(
         try:
             async with get_engine_client() as client:
                 decoder_response = await client.content.get_resources(
-                    type=ResourceType.DECODER, name=name, policy_type=PolicyType(policy_type)
+                    name=name,
+                    type=ResourceType.DECODER,
+                    policy_type=PolicyType(policy_type),
                 )
                 validate_response_or_raise(decoder_response, 9004)
                 retrieved_decoders.append(decoder_response["content"])
@@ -125,7 +126,7 @@ async def update_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
 
     try:
         decoder_resource = Resource.from_dict(decoder_content)
-        filename = decoder_resource["name"]
+        filename = decoder_resource.name
         asset_file_path = generate_asset_file_path(filename, PolicyType(policy_type), ResourceType.DECODER)
 
         # Ensure the decoder file exists before attempting update
@@ -152,7 +153,7 @@ async def update_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
         # Validate and update in the engine
         async with get_engine_client() as client:
             validation_results = await client.catalog.validate_resource(
-                name=decoder_content.get("name"),
+                name=decoder_resource.name,
                 format=DEFAULT_DECODER_FORMAT,
                 content=file_contents_json,
                 namespace_id=ENGINE_USER_NAMESPACE,
@@ -160,31 +161,25 @@ async def update_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
             validate_response_or_raise(validation_results, 9002)
 
             update_results = await client.content.update_resource(
-                resource=decoder_resource, policy_type=PolicyType(policy_type)
+                type=ResourceType.DECODER,
+                format=DEFAULT_DECODER_FORMAT,
+                resource=decoder_resource,
+                policy_type=policy_type,
             )
             validate_response_or_raise(update_results, 9006)
-
-        # Success: remove the backup file
-        if exists(backup_file):
-            remove(backup_file)
 
         result.affected_items.append(filename)
 
     except WazuhError as exc:
         # If there is a backup, restore the original file
-        if backup_file and exists(backup_file):
-            safe_move(backup_file, asset_file_path)
+        backup_file and exists(backup_file) and safe_move(backup_file, asset_file_path)
         result.add_failed_item(id_=filename or "unknown", error=exc)
 
-    except ResourceError as exc:
-        # Restore original file if backup exists
-        if backup_file and exists(backup_file):
-            safe_move(backup_file, asset_file_path)
-        result.add_failed_item(id_="decoder cannot be updated", error=exc)
-
-    else:
-        result.total_affected_items = len(result.affected_items)
-
+    finally:
+        # Remove the backup
+        backup_file and exists(backup_file) and remove(backup_file)
+        
+    result.total_affected_items = len(result.affected_items)
     return result
 
 
@@ -216,8 +211,12 @@ async def delete_decoder(names: List[str], policy_type: str):
                 validate_response_or_raise(delete_results, 9007)
             result.affected_items.append(name)
         except WazuhError as exc:
+            # Restore the backup
+            backup_file and exists(backup_file) and safe_move(backup_file, asset_file_path)
             result.add_failed_item(id_=name, error=exc)
         finally:
-            exists(backup_file) and safe_move(backup_file, asset_file_path)
+            # Remove the backup
+            backup_file and exists(backup_file) and remove(backup_file)
+
     result.total_affected_items = len(result.affected_items)
     return result
