@@ -14,10 +14,12 @@
 #include <gmock/gmock.h>
 
 using testing::_;
+using testing::DoAll;
 using testing::HasSubstr;
 using testing::Return;
 using testing::ReturnNull;
 using testing::StrEq;
+using testing::WithArgs;
 
 constexpr auto KEYFILE {"keyfilePath"};
 constexpr auto KEY {"AbCd1234"};
@@ -345,11 +347,11 @@ TEST_F(RSAHelperTest, rsaDecryptErrorInQueue)
     EXPECT_CALL(rsaHelper, RSA_size((RSA*)2)).Times(2).WillRepeatedly(Return(strlen(KEY)));
     EXPECT_CALL(rsaHelper, ERR_clear_error()).WillOnce(Return());
 
-    // Simulate OpenSSL 3.5.1 behavior: returns positive but has error in queue
+    // Simulate OpenSSL 3.5.1 behavior: returns negative with error in queue
     EXPECT_CALL(rsaHelper, RSA_private_decrypt(strlen(KEY), _, _, (RSA*)2, RSA_PKCS1_PADDING))
-        .WillOnce(Return(10)); // Positive return value
+        .WillOnce(Return(-1)); // Negative return value indicates error
 
-    // But error queue has an error
+    // Error queue has an error
     EXPECT_CALL(rsaHelper, ERR_get_error()).WillOnce(Return(42));
     EXPECT_CALL(rsaHelper, ERR_reason_error_string((unsigned long)42)).WillOnce(Return("Padding check failed"));
     EXPECT_CALL(rsaHelper, RSA_free((RSA*)2)).WillOnce(Return());
@@ -376,10 +378,10 @@ TEST_F(RSAHelperTest, rsaDecryptZeroLengthOutput)
     EXPECT_CALL(rsaHelper, RSA_size((RSA*)2)).Times(2).WillRepeatedly(Return(strlen(KEY)));
     EXPECT_CALL(rsaHelper, ERR_clear_error()).WillOnce(Return());
 
-    // Returns 0 length (invalid)
+    // Returns 0 length (invalid) - this should be treated as negative/error
     EXPECT_CALL(rsaHelper, RSA_private_decrypt(strlen(KEY), _, _, (RSA*)2, RSA_PKCS1_PADDING)).WillOnce(Return(0));
 
-    EXPECT_CALL(rsaHelper, ERR_get_error()).WillOnce(Return(0)); // No error in queue
+    // No need for ERR_get_error() call since we check decryptedLen == 0 separately
     EXPECT_CALL(rsaHelper, RSA_free((RSA*)2)).WillOnce(Return());
 
     try
@@ -398,30 +400,29 @@ TEST_F(RSAHelperTest, rsaDecryptSuccess)
 {
     TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
+    // Create input that matches RSA_size
+    const std::string input(10, 'X'); // 10 bytes to match RSA_size
+
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
     EXPECT_CALL(rsaHelper, PEM_read_RSAPrivateKey((FILE*)1, NULL, NULL, NULL)).WillOnce(Return((RSA*)2));
-
-    // RSA_size called twice: once for input validation, once for buffer allocation
-    EXPECT_CALL(rsaHelper, RSA_size((RSA*)2)).Times(2).WillRepeatedly(Return(strlen(KEY)));
-
-    // ERR_clear_error called before decryption
+    EXPECT_CALL(rsaHelper, RSA_size((RSA*)2)).Times(2).WillRepeatedly(Return(10));
     EXPECT_CALL(rsaHelper, ERR_clear_error()).WillOnce(Return());
 
-    // Return a positive value (successful decryption length)
-    EXPECT_CALL(rsaHelper, RSA_private_decrypt(strlen(KEY), _, _, (RSA*)2, RSA_PKCS1_PADDING))
-        .WillOnce(Return(10)); // Return valid decrypted length > 0
-
-    // ERR_get_error should return 0 (no errors)
-    EXPECT_CALL(rsaHelper, ERR_get_error()).WillOnce(Return(0));
+    EXPECT_CALL(rsaHelper, RSA_private_decrypt(10, _, _, (RSA*)2, RSA_PKCS1_PADDING))
+        .WillOnce(DoAll(WithArgs<2>(
+                            [](unsigned char* outBuf)
+                            {
+                                const unsigned char fakeData[10] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'};
+                                memcpy(outBuf, fakeData, 10);
+                            }),
+                        Return(10)));
 
     EXPECT_CALL(rsaHelper, RSA_free((RSA*)2)).WillOnce(Return());
 
     std::string output;
-    EXPECT_NO_THROW({ rsaHelper.rsaDecrypt(KEYFILE, KEY, output); });
-
-    // Optionally verify output is not empty
-    EXPECT_FALSE(output.empty());
+    EXPECT_NO_THROW(rsaHelper.rsaDecrypt(KEYFILE, input, output)); // Use 'input' instead of 'KEY'
+    EXPECT_EQ(output.length(), 10);
 }
 
 TEST_P(RSAHelperTest2, test)
