@@ -53,6 +53,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                               unsigned int retries,
                               size_t maxEps) override;
 
+        /// @copydoc IAgentSyncProtocol::clearInMemoryData
+        void clearInMemoryData() override;
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
