@@ -106,6 +106,7 @@ namespace chrome
         {ChromeBrowserType::GoogleChromeDev, "AppData\\Local\\Google\\Chrome Dev\\User Data"},
         {ChromeBrowserType::GoogleChromeCanary, "AppData\\Local\\Google\\Chrome SxS\\User Data"},
         {ChromeBrowserType::Brave, "AppData\\Roaming\\brave"},
+        {ChromeBrowserType::Brave, "AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data"},
         {ChromeBrowserType::Chromium, "AppData\\Local\\Chromium"},
         {ChromeBrowserType::Yandex, "AppData\\Local\\Yandex\\YandexBrowser\\User Data"},
         {ChromeBrowserType::Edge, "AppData\\Local\\Microsoft\\Edge\\User Data"},
