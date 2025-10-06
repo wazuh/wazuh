@@ -23,25 +23,8 @@ ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStar
 
     try
     {
-        if (!m_config.basePath.empty())
-        {
-            std::filesystem::path base {m_config.basePath};
-            const auto makeAbsolute = [&](const std::string& value) -> std::string
-            {
-                if (value.empty())
-                    return value;
-                std::filesystem::path p {value};
-                if (p.is_absolute())
-                    return p.string();
-                return (base / p).string();
-            };
-            m_config.outputFolder = makeAbsolute(m_config.outputFolder);
-            m_config.databasePath = makeAbsolute(m_config.databasePath);
-            if (!m_config.assetStorePath.empty())
-            {
-                m_config.assetStorePath = makeAbsolute(m_config.assetStorePath);
-            }
-        }
+        // Normalize paths
+        m_config.normalize();
 
         // Validate after normalization so that any path-dependent semantics are consistent.
         m_config.validate();
@@ -50,17 +33,10 @@ ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStar
             throw std::runtime_error("ContentManager: databasePath cannot be empty");
         }
 
+        m_config.createDirectories(true);
+
         // Decide asset storage path (separate from offset DB if provided)
         const std::string assetPath = m_config.assetStorePath.empty() ? m_config.databasePath : m_config.assetStorePath;
-
-        // Ensure directories exist prior to CTIStorageDB creation (it will also ensure internally, but we mirror
-        // downloader behavior).
-        if (!m_config.outputFolder.empty())
-        {
-            std::filesystem::create_directories(m_config.outputFolder);
-        }
-        std::filesystem::create_directories(m_config.databasePath); // offsets DB path (shared module)
-        std::filesystem::create_directories(assetPath);             // assets DB path
 
         m_storage = std::make_unique<CTIStorageDB>(assetPath, true);
         LOG_INFO("ContentManager: CTIStorageDB opened at '{}' (open={})", assetPath, m_storage->isOpen());
@@ -466,16 +442,16 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                                     currentOffset = entryJson.getInt("/offset").value_or(currentOffset);
                                 }
 
-                                if (assetType.empty())
-                                {
-                                    LOG_WARNING("Offsets: entry #{} missing asset type (file='{}')", i, path);
-                                    continue;
-                                }
-
                                 entryJson.setString(entryJson.getString("/resource").value_or(""), "/name");
 
                                 if (operationType == "create")
                                 {
+                                    if (assetType.empty())
+                                    {
+                                        LOG_WARNING("Offsets: entry #{} missing asset type (file='{}')", i, path);
+                                        continue;
+                                    }
+
                                     bool stored = true;
                                     if (assetType == "policy")
                                     {

@@ -109,6 +109,60 @@ void ContentManagerConfig::fromJson(const json::Json& config)
     }
 }
 
+void ContentManagerConfig::normalize()
+{
+    if (basePath.empty())
+    {
+        return;
+    }
+
+    std::filesystem::path base {basePath};
+    const auto makeAbsolute = [&](const std::string& value) -> std::string
+    {
+        if (value.empty())
+        {
+            return value;
+        }
+        std::filesystem::path p {value};
+        if (p.is_absolute())
+        {
+            return p.string();
+        }
+        return (base / p).string();
+    };
+
+    outputFolder = makeAbsolute(outputFolder);
+    databasePath = makeAbsolute(databasePath);
+    if (!assetStorePath.empty())
+    {
+        assetStorePath = makeAbsolute(assetStorePath);
+    }
+}
+
+void ContentManagerConfig::createDirectories(bool includeAssetStore) const
+{
+    try
+    {
+        if (!outputFolder.empty())
+        {
+            std::filesystem::create_directories(outputFolder);
+        }
+        if (!databasePath.empty())
+        {
+            std::filesystem::create_directories(databasePath);
+        }
+        if (includeAssetStore && !assetStorePath.empty())
+        {
+            std::filesystem::create_directories(assetStorePath);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Failed to create CTI store directories: {}", e.what());
+        throw;
+    }
+}
+
 void ContentManagerConfig::validate() const
 {
     if (topicName.empty())
@@ -176,50 +230,11 @@ ContentDownloader::ContentDownloader(const ContentManagerConfig& config, FilePro
     : m_config(config)
     , m_fileProcessingCallback(fileProcessingCallback)
 {
-    if (!m_config.basePath.empty())
-    {
-        std::filesystem::path base {m_config.basePath};
-        const auto makeAbsolute = [&](const std::string& value) -> std::string
-        {
-            if (value.empty())
-            {
-                return value;
-            }
-            std::filesystem::path p {value};
-            if (p.is_absolute())
-            {
-                return p.string();
-            }
-            return (base / p).string();
-        };
-        m_config.outputFolder = makeAbsolute(m_config.outputFolder);
-        m_config.databasePath = makeAbsolute(m_config.databasePath);
-        if (!m_config.assetStorePath.empty())
-        {
-            m_config.assetStorePath = makeAbsolute(m_config.assetStorePath);
-        }
-    }
+    // Normalize paths
+    m_config.normalize();
 
-    try
-    {
-        if (!m_config.outputFolder.empty())
-        {
-            std::filesystem::create_directories(m_config.outputFolder);
-        }
-        if (!m_config.databasePath.empty())
-        {
-            std::filesystem::create_directories(m_config.databasePath);
-        }
-        // assetStorePath directory creation is intentionally omitted here.
-        // Rationale: Only the ContentManager opens and owns the CTI assets RocksDB.
-        // Keeping directory creation centralized in ContentManager avoids duplication
-        // and potential divergence if initialization rules change.
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("Failed to create CTI store directories: {}", e.what());
-        throw;
-    }
+    // Create necessary directories
+    m_config.createDirectories(false);
 
     LOG_DEBUG("CTI Store ContentDownloader initializing with topic: {}", m_config.topicName);
 }
@@ -249,7 +264,6 @@ bool ContentDownloader::start()
         // Validate config before proceeding to register creation.
         m_config.validate();
 
-        // Usar método centralizado para construir la configuración JSON
         auto nlohmannConfig = m_config.toNlohmann();
 
         // Initialize ContentRegister with the file processing callback
