@@ -10,7 +10,6 @@ include_directories(
     ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/src
     ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/include
     ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/tests
-    ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/tests/mocks
     ${SRC_FOLDER}/shared_modules/dbsync/tests/mocks
     ${SRC_FOLDER}/shared_modules/file_helper/filesystem/tests/mocks
     ${SRC_FOLDER}/shared_modules/file_helper/file_io/tests/mocks
