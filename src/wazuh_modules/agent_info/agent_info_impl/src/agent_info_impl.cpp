@@ -3,11 +3,42 @@
 #include "defs.h"
 #include "logging_helper.hpp"
 #include "stringHelper.h"
+#include "hashHelper.h"
+#include "timeHelper.h"
 
 #include <dbsync.hpp>
 #include <file_io_utils.hpp>
 #include <filesystem_wrapper.hpp>
 #include <sysInfo.hpp>
+
+#include <map>
+
+constexpr auto QUEUE_SIZE = 4096;
+constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
+constexpr auto AGENT_GROUPS_TABLE = "agent_groups";
+
+// Map DBSync callback results to operation strings for stateless events
+static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
+{
+    {MODIFIED, "modified"},
+    {DELETED, "deleted"},
+    {INSERTED, "created"},
+};
+
+// Map DBSync callback results to Operation enums for stateful events
+static const std::map<ReturnTypeCallback, Operation> OPERATION_STATES_MAP
+{
+    {MODIFIED, Operation::MODIFY},
+    {DELETED, Operation::DELETE_},
+    {INSERTED, Operation::CREATE},
+};
+
+// Map tables to their index names in the agent sync protocol
+static const std::map<std::string, std::string> INDEX_MAP
+{
+    {AGENT_METADATA_TABLE, "wazuh-states-agent-metadata"},
+    {AGENT_GROUPS_TABLE, "wazuh-states-agent-groups"},
+};
 
 const char* AGENT_METADATA_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_metadata ("
@@ -30,6 +61,9 @@ const char* AGENT_GROUPS_SQL_STATEMENT =
     "FOREIGN KEY (agent_id) REFERENCES agent_metadata(agent_id) ON DELETE CASCADE);";
 
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
+                             std::function<void(const std::string&)> reportDiffFunction,
+                             std::function<void(const std::string&, Operation, const std::string&, const std::string&)> persistDiffFunction,
+                             std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                              std::shared_ptr<IDBSync> dbSync,
                              std::shared_ptr<ISysInfo> sysInfo,
                              std::shared_ptr<IFileIOUtils> fileIO,
@@ -41,8 +75,18 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
     , m_sysInfo(sysInfo ? std::move(sysInfo) : std::make_shared<SysInfo>())
     , m_fileIO(fileIO ? std::move(fileIO) : std::make_shared<file_io::FileIOUtils>())
     , m_fileSystem(fileSystem ? std::move(fileSystem) : std::make_shared<file_system::FileSystemWrapper>())
+    , m_reportDiffFunction(std::move(reportDiffFunction))
+    , m_persistDiffFunction(std::move(persistDiffFunction))
+    , m_logFunction(std::move(logFunction))
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "AgentInfo initialized.");
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, "AgentInfo initialized.");
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, "AgentInfo initialized.");
+    }
 }
 
 AgentInfoImpl::~AgentInfoImpl()
@@ -138,17 +182,22 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["host_os_version"] = osInfo["os_version"];
     }
 
-    // Calculate checksum (simple approach for now)
-    agentMetadata["checksum"] = std::to_string(std::hash<std::string> {}(agentMetadata.dump()));
+    // Calculate checksum
+    agentMetadata["checksum"] = calculateMetadataChecksum(agentMetadata);
 
-    // Insert agent metadata into database
-    nlohmann::json insertData;
-    insertData["table"] = "agent_metadata";
-    insertData["data"] = nlohmann::json::array({agentMetadata});
+    // Update agent metadata using dbsync to detect changes and emit events
+    updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
 
-    m_dBSync->insertData(insertData);
+    auto logMsg = std::string("Agent metadata populated successfully");
 
-    LoggingHelper::getInstance().log(LOG_INFO, "Agent metadata populated successfully");
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, logMsg);
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, logMsg);
+    }
 
     // Read agent groups from merged.mg
     std::vector<std::string> groups = readAgentGroups();
@@ -164,20 +213,27 @@ void AgentInfoImpl::populateAgentMetadata()
         groupsData.push_back(groupEntry);
     }
 
-    nlohmann::json insertGroups;
-    insertGroups["table"] = "agent_groups";
-    insertGroups["data"] = groupsData;
+    // Update agent groups using dbsync to detect changes and emit events
+    updateChanges(AGENT_GROUPS_TABLE, groupsData);
 
-    m_dBSync->insertData(insertGroups);
+    std::string groupLogMsg;
 
     if (groups.empty())
     {
-        LoggingHelper::getInstance().log(LOG_INFO, "Agent groups cleared (no groups found)");
+        groupLogMsg = "Agent groups cleared (no groups found)";
     }
     else
     {
-        LoggingHelper::getInstance().log(
-            LOG_INFO, "Agent groups populated successfully: " + std::to_string(groups.size()) + " groups");
+        groupLogMsg = "Agent groups populated successfully: " + std::to_string(groups.size()) + " groups";
+    }
+
+    if (m_logFunction)
+    {
+        m_logFunction(LOG_INFO, groupLogMsg);
+    }
+    else
+    {
+        LoggingHelper::getInstance().log(LOG_INFO, groupLogMsg);
     }
 }
 
@@ -275,4 +331,230 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
     }
 
     return groups;
+}
+
+void AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json& values)
+{
+    const auto callback = [this, table](ReturnTypeCallback result, const nlohmann::json & data)
+    {
+        if (result == INSERTED || result == MODIFIED || result == DELETED)
+        {
+            notifyChange(result, data, table);
+        }
+    };
+
+    try
+    {
+        DBSyncTxn txn{m_dBSync->handle(), nlohmann::json{table}, 0, QUEUE_SIZE, callback};
+
+        nlohmann::json input;
+        input["table"] = table;
+        input["data"] = values;
+        input["options"]["return_old_data"] = true;
+
+        txn.syncTxnRow(input);
+        txn.getDeletedRows(callback);
+    }
+    catch (const std::exception& e)
+    {
+        std::string errorMsg = "Error updating changes for table " + table + ": " + e.what();
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, errorMsg);
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, errorMsg);
+        }
+    }
+}
+
+void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
+{
+    try
+    {
+        nlohmann::json eventData = result == MODIFIED && data.contains("new") ? data["new"] : data;
+        nlohmann::json ecsFormattedData = ecsData(eventData, table);
+
+        // Persist stateful event
+        auto indexIt = INDEX_MAP.find(table);
+
+        if (indexIt != INDEX_MAP.end() && m_persistDiffFunction)
+        {
+            std::string hashId = calculateHashId(eventData, table);
+            m_persistDiffFunction(hashId, OPERATION_STATES_MAP.at(result), indexIt->second, ecsFormattedData.dump());
+        }
+
+        // Remove checksum from ECS data before sending stateless event
+        if (ecsFormattedData.contains("checksum"))
+        {
+            ecsFormattedData.erase("checksum");
+        }
+
+        // Report stateless event
+        if (m_reportDiffFunction)
+        {
+            nlohmann::json statelessEvent;
+            statelessEvent["module"] = "agent_info";
+            statelessEvent["type"] = table;
+            statelessEvent["data"] = ecsFormattedData;
+            statelessEvent["data"]["event"]["type"] = OPERATION_MAP.at(result);
+            statelessEvent["data"]["event"]["created"] = Utils::getCurrentISO8601();
+
+            // Add previous data for MODIFIED events
+            if (result == MODIFIED && data.contains("old"))
+            {
+                nlohmann::json oldEcsData = ecsData(data["old"], table);
+                // Add changed fields tracking
+                std::vector<std::string> changedFields;
+
+                for (auto& [key, value] : ecsFormattedData.items())
+                {
+                    if (!oldEcsData.contains(key) || oldEcsData[key] != value)
+                    {
+                        changedFields.push_back(key);
+                    }
+                }
+
+                statelessEvent["data"]["event"]["changed_fields"] = changedFields;
+            }
+
+            m_reportDiffFunction(statelessEvent.dump());
+
+            std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result);
+
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_DEBUG_VERBOSE, debugMsg);
+            }
+            else
+            {
+                LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, debugMsg);
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        std::string errorMsg = "Error processing event for table " + table + ": " + e.what();
+
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, errorMsg);
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_ERROR, errorMsg);
+        }
+    }
+}
+
+void AgentInfoImpl::notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
+{
+    processEvent(result, data, table);
+}
+
+std::string AgentInfoImpl::calculateMetadataChecksum(const nlohmann::json& metadata) const
+{
+    // Build a deterministic string from metadata fields (excluding checksum itself)
+    std::string checksumInput;
+
+    // Add fields in a specific order for deterministic checksum
+    std::vector<std::string> fields =
+    {
+        "agent_id", "agent_name", "agent_version",
+        "host_architecture", "host_hostname",
+        "host_os_name", "host_os_type", "host_os_platform", "host_os_version"
+    };
+
+    for (const auto& field : fields)
+    {
+        if (metadata.contains(field))
+        {
+            checksumInput += metadata[field].is_string() ? metadata[field].get<std::string>() : metadata[field].dump();
+            checksumInput += ":";
+        }
+    }
+
+    // Use SHA-1 hash (consistent with other modules)
+    Utils::HashData hash(Utils::HashType::Sha1);
+    hash.update(checksumInput.c_str(), checksumInput.size());
+    return Utils::asciiToHex(hash.hash());
+}
+
+std::string AgentInfoImpl::calculateHashId(const nlohmann::json& data, const std::string& table) const
+{
+    std::string hashInput;
+
+    if (table == AGENT_METADATA_TABLE)
+    {
+        // Use agent_id as the primary key
+        if (data.contains("agent_id"))
+        {
+            hashInput = table + ":" + data["agent_id"].get<std::string>();
+        }
+    }
+    else if (table == AGENT_GROUPS_TABLE)
+    {
+        // Use combination of agent_id and group_name as composite key
+        if (data.contains("agent_id") && data.contains("group_name"))
+        {
+            hashInput = table + ":" + data["agent_id"].get<std::string>() + ":" + data["group_name"].get<std::string>();
+        }
+    }
+
+    // Return SHA-1 hash of the input (consistent with other modules)
+    Utils::HashData hash(Utils::HashType::Sha1);
+    hash.update(hashInput.c_str(), hashInput.size());
+    return Utils::asciiToHex(hash.hash());
+}
+
+nlohmann::json AgentInfoImpl::ecsData(const nlohmann::json& data, const std::string& table) const
+{
+    nlohmann::json ecsFormatted;
+
+    if (table == AGENT_METADATA_TABLE)
+    {
+        // Map agent_metadata fields to ECS format
+        if (data.contains("agent_id"))
+            ecsFormatted["agent"]["id"] = data["agent_id"];
+
+        if (data.contains("agent_name"))
+            ecsFormatted["agent"]["name"] = data["agent_name"];
+
+        if (data.contains("agent_version"))
+            ecsFormatted["agent"]["version"] = data["agent_version"];
+
+        if (data.contains("host_architecture"))
+            ecsFormatted["host"]["architecture"] = data["host_architecture"];
+
+        if (data.contains("host_hostname"))
+            ecsFormatted["host"]["hostname"] = data["host_hostname"];
+
+        if (data.contains("host_os_name"))
+            ecsFormatted["host"]["os"]["name"] = data["host_os_name"];
+
+        if (data.contains("host_os_type"))
+            ecsFormatted["host"]["os"]["type"] = data["host_os_type"];
+
+        if (data.contains("host_os_platform"))
+            ecsFormatted["host"]["os"]["platform"] = data["host_os_platform"];
+
+        if (data.contains("host_os_version"))
+            ecsFormatted["host"]["os"]["version"] = data["host_os_version"];
+
+        if (data.contains("checksum"))
+            ecsFormatted["checksum"] = data["checksum"];
+    }
+    else if (table == AGENT_GROUPS_TABLE)
+    {
+        // Map agent_groups fields to ECS format
+        if (data.contains("agent_id"))
+            ecsFormatted["agent"]["id"] = data["agent_id"];
+
+        if (data.contains("group_name"))
+            ecsFormatted["agent"]["groups"] = nlohmann::json::array({data["group_name"]});
+    }
+
+    return ecsFormatted;
 }
