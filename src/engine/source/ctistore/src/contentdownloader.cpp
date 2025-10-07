@@ -1,4 +1,4 @@
-#include <ctistore/contentDownloader.hpp>
+#include <ctistore/contentdownloader.hpp>
 
 #include <filesystem>
 #include <fstream>

@@ -13,7 +13,7 @@ add_library(ctistore::ictistore ALIAS ctistore_ictistore)
 add_library(ctistore_ctistore STATIC
     ${SRC_DIR}/cm.cpp
     ${SRC_DIR}/ctistoragedb.cpp
-    ${SRC_DIR}/contentDownloader.cpp
+    ${SRC_DIR}/contentdownloader.cpp
 )
 target_include_directories(ctistore_ctistore
     PUBLIC
@@ -47,7 +47,7 @@ add_library(ctistore::mocks ALIAS ctistore_mocks)
 
 add_executable(ctistore_utest
     ${UNIT_SRC_DIR}/cm_test.cpp
-    ${UNIT_SRC_DIR}/contentDownloader_test.cpp
+    ${UNIT_SRC_DIR}/contentdownloader_test.cpp
 )
 target_link_libraries(ctistore_utest
     PRIVATE

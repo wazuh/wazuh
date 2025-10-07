@@ -3,7 +3,7 @@
 
 #include <base/name.hpp>
 #include <ctistore/cm.hpp>
-#include <ctistore/contentDownloader.hpp>
+#include <ctistore/contentdownloader.hpp>
 
 #include <chrono>
 #include <filesystem>
