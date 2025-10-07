@@ -580,6 +580,10 @@
       "array": false,
       "type": "keyword"
     },
+    "dll.code_signature.thumbprint_sha256": {
+      "array": false,
+      "type": "keyword"
+    },
     "dll.code_signature.timestamp": {
       "array": false,
       "type": "date"
@@ -625,6 +629,14 @@
       "type": "keyword"
     },
     "dll.name": {
+      "array": false,
+      "type": "keyword"
+    },
+    "dll.origin_referrer_url": {
+      "array": false,
+      "type": "keyword"
+    },
+    "dll.origin_url": {
       "array": false,
       "type": "keyword"
     },
@@ -1100,6 +1112,10 @@
       "array": false,
       "type": "keyword"
     },
+    "file.code_signature.thumbprint_sha256": {
+      "array": false,
+      "type": "keyword"
+    },
     "file.code_signature.timestamp": {
       "array": false,
       "type": "date"
@@ -1416,6 +1432,14 @@
       "array": false,
       "type": "keyword"
     },
+    "file.origin_referrer_url": {
+      "array": false,
+      "type": "keyword"
+    },
+    "file.origin_url": {
+      "array": false,
+      "type": "keyword"
+    },
     "file.owner": {
       "array": false,
       "type": "keyword"
@@ -1627,6 +1651,110 @@
     "file.x509.version_number": {
       "array": false,
       "type": "keyword"
+    },
+    "gen_ai.agent.description": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.agent.id": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.agent.name": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.operation.name": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.output.type": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.request.choice.count": {
+      "array": false,
+      "type": "integer"
+    },
+    "gen_ai.request.encoding_formats": {
+      "array": false,
+      "type": "nested"
+    },
+    "gen_ai.request.frequency_penalty": {
+      "array": false,
+      "type": "double"
+    },
+    "gen_ai.request.max_tokens": {
+      "array": false,
+      "type": "integer"
+    },
+    "gen_ai.request.model": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.request.presence_penalty": {
+      "array": false,
+      "type": "double"
+    },
+    "gen_ai.request.seed": {
+      "array": false,
+      "type": "integer"
+    },
+    "gen_ai.request.stop_sequences": {
+      "array": false,
+      "type": "nested"
+    },
+    "gen_ai.request.temperature": {
+      "array": false,
+      "type": "double"
+    },
+    "gen_ai.request.top_k": {
+      "array": false,
+      "type": "double"
+    },
+    "gen_ai.request.top_p": {
+      "array": false,
+      "type": "double"
+    },
+    "gen_ai.response.finish_reasons": {
+      "array": false,
+      "type": "nested"
+    },
+    "gen_ai.response.id": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.response.model": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.system": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.token.type": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.tool.call.id": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.tool.name": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.tool.type": {
+      "array": false,
+      "type": "keyword"
+    },
+    "gen_ai.usage.input_tokens": {
+      "array": false,
+      "type": "integer"
+    },
+    "gen_ai.usage.output_tokens": {
+      "array": false,
+      "type": "integer"
     },
     "group.domain": {
       "array": false,
@@ -2324,6 +2452,10 @@
       "array": false,
       "type": "keyword"
     },
+    "process.code_signature.thumbprint_sha256": {
+      "array": false,
+      "type": "keyword"
+    },
     "process.code_signature.timestamp": {
       "array": false,
       "type": "date"
@@ -2980,6 +3112,10 @@
       "array": false,
       "type": "keyword"
     },
+    "process.parent.code_signature.thumbprint_sha256": {
+      "array": false,
+      "type": "keyword"
+    },
     "process.parent.code_signature.timestamp": {
       "array": false,
       "type": "date"
@@ -3384,10 +3520,6 @@
       "array": false,
       "type": "long"
     },
-    "process.parent.pgid": {
-      "array": false,
-      "type": "long"
-    },
     "process.parent.pid": {
       "array": false,
       "type": "long"
@@ -3577,10 +3709,6 @@
       "type": "long"
     },
     "process.pe.sections.virtual_size": {
-      "array": false,
-      "type": "long"
-    },
-    "process.pgid": {
       "array": false,
       "type": "long"
     },
@@ -4420,6 +4548,10 @@
       "array": false,
       "type": "keyword"
     },
+    "threat.enrichments.indicator.file.code_signature.thumbprint_sha256": {
+      "array": false,
+      "type": "keyword"
+    },
     "threat.enrichments.indicator.file.code_signature.timestamp": {
       "array": false,
       "type": "date"
@@ -4669,6 +4801,14 @@
       "type": "date"
     },
     "threat.enrichments.indicator.file.name": {
+      "array": false,
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.file.origin_referrer_url": {
+      "array": false,
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.file.origin_url": {
       "array": false,
       "type": "keyword"
     },
@@ -5276,6 +5416,10 @@
       "array": false,
       "type": "keyword"
     },
+    "threat.indicator.file.code_signature.thumbprint_sha256": {
+      "array": false,
+      "type": "keyword"
+    },
     "threat.indicator.file.code_signature.timestamp": {
       "array": false,
       "type": "date"
@@ -5525,6 +5669,14 @@
       "type": "date"
     },
     "threat.indicator.file.name": {
+      "array": false,
+      "type": "keyword"
+    },
+    "threat.indicator.file.origin_referrer_url": {
+      "array": false,
+      "type": "keyword"
+    },
+    "threat.indicator.file.origin_url": {
       "array": false,
       "type": "keyword"
     },

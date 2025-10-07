@@ -960,6 +960,12 @@
         "string"
       ]
     },
+    "dll.code_signature.thumbprint_sha256": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCertificate SHA256 hash that uniquely identifies the code signer.",
+      "type": [
+        "string"
+      ]
+    },
     "dll.code_signature.timestamp": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nDate and time when the code signature was generated and signed.",
       "type": [
@@ -1032,6 +1038,18 @@
     },
     "dll.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the library.\nThis generally maps to the name of the file on disk.",
+      "type": [
+        "string"
+      ]
+    },
+    "dll.origin_referrer_url": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL of the webpage that linked to the dll file.",
+      "type": [
+        "string"
+      ]
+    },
+    "dll.origin_url": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL where the dll file is hosted.",
       "type": [
         "string"
       ]
@@ -1881,6 +1899,12 @@
         "string"
       ]
     },
+    "file.code_signature.thumbprint_sha256": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCertificate SHA256 hash that uniquely identifies the code signer.",
+      "type": [
+        "string"
+      ]
+    },
     "file.code_signature.timestamp": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nDate and time when the code signature was generated and signed.",
       "type": [
@@ -2452,7 +2476,7 @@
       ]
     },
     "file.mime_type": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using https://www.iana.org/assignments/media-types/media-types.xhtml[IANA official types], where possible. When more than one type is applicable, the most specific type should be used.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using IANA official types: https://www.iana.org/assignments/media-types/media-types.xhtml, where possible. When more than one type is applicable, the most specific type should be used.",
       "type": [
         "string"
       ]
@@ -2471,6 +2495,18 @@
     },
     "file.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the file including the extension, without the directory.",
+      "type": [
+        "string"
+      ]
+    },
+    "file.origin_referrer_url": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL of the webpage that linked to the file.",
+      "type": [
+        "string"
+      ]
+    },
+    "file.origin_url": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL where the file is hosted.",
       "type": [
         "string"
       ]
@@ -2830,7 +2866,7 @@
       ]
     },
     "file.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -2928,6 +2964,188 @@
     "file.x509.version_number": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of x509 format.",
       "type": [
+        "string"
+      ]
+    },
+    "gen_ai.agent.description": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFree-form description of the GenAI agent provided by the application.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.agent.id": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe unique identifier of the GenAI agent.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.agent.name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nHuman-readable name of the GenAI agent provided by the application.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.operation.name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the operation being performed.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.output.type": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nRepresents the content type requested by the client.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.request.choice.count": {
+      "description": "Module: ecs\nIndexerType: integer\nArray: False\n\nThe target number of candidate completions to return.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "gen_ai.request.encoding_formats": {
+      "description": "Module: ecs\nIndexerType: nested\nArray: False\n\nThe encoding formats requested in an embeddings operation, if specified.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "object",
+        "string"
+      ]
+    },
+    "gen_ai.request.frequency_penalty": {
+      "description": "Module: ecs\nIndexerType: double\nArray: False\n\nThe frequency penalty setting for the GenAI request.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "gen_ai.request.max_tokens": {
+      "description": "Module: ecs\nIndexerType: integer\nArray: False\n\nThe maximum number of tokens the model generates for a request.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "gen_ai.request.model": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the GenAI model a request is being made to.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.request.presence_penalty": {
+      "description": "Module: ecs\nIndexerType: double\nArray: False\n\nThe presence penalty setting for the GenAI request.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "gen_ai.request.seed": {
+      "description": "Module: ecs\nIndexerType: integer\nArray: False\n\nRequests with same seed value more likely to return same result.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "gen_ai.request.stop_sequences": {
+      "description": "Module: ecs\nIndexerType: nested\nArray: False\n\nList of sequences that the model will use to stop generating further tokens.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "object",
+        "string"
+      ]
+    },
+    "gen_ai.request.temperature": {
+      "description": "Module: ecs\nIndexerType: double\nArray: False\n\nThe temperature setting for the GenAI request.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "gen_ai.request.top_k": {
+      "description": "Module: ecs\nIndexerType: double\nArray: False\n\nThe top_k sampling setting for the GenAI request.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "gen_ai.request.top_p": {
+      "description": "Module: ecs\nIndexerType: double\nArray: False\n\nThe top_p sampling setting for the GenAI request.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "gen_ai.response.finish_reasons": {
+      "description": "Module: ecs\nIndexerType: nested\nArray: False\n\nArray of reasons the model stopped generating tokens, corresponding to each generation received.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "object",
+        "string"
+      ]
+    },
+    "gen_ai.response.id": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe unique identifier for the completion.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.response.model": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the model that generated the response.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.system": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe Generative AI product as identified by the client or server instrumentation.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.token.type": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of token being counted.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.tool.call.id": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe tool call identifier.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.tool.name": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the tool utilized by the agent.",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.tool.type": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nType of the tool utilized by the agent",
+      "type": [
+        "string"
+      ]
+    },
+    "gen_ai.usage.input_tokens": {
+      "description": "Module: ecs\nIndexerType: integer\nArray: False\n\nThe number of tokens used in the GenAI input (prompt).",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "gen_ai.usage.output_tokens": {
+      "description": "Module: ecs\nIndexerType: integer\nArray: False\n\nThe number of tokens used in the GenAI response (completion).",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "number",
         "string"
       ]
     },
@@ -4059,6 +4277,12 @@
     },
     "process.code_signature.team_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe team identifier used to sign the process.\nThis is used to identify the team or vendor of a software product. The field is relevant to Apple *OS only.",
+      "type": [
+        "string"
+      ]
+    },
+    "process.code_signature.thumbprint_sha256": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCertificate SHA256 hash that uniquely identifies the code signer.",
       "type": [
         "string"
       ]
@@ -5276,6 +5500,12 @@
         "string"
       ]
     },
+    "process.parent.code_signature.thumbprint_sha256": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCertificate SHA256 hash that uniquely identifies the code signer.",
+      "type": [
+        "string"
+      ]
+    },
     "process.parent.code_signature.timestamp": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nDate and time when the code signature was generated and signed.",
       "type": [
@@ -6051,14 +6281,6 @@
         "array"
       ]
     },
-    "process.parent.pgid": {
-      "description": "Module: ecs\nIndexerType: long\nArray: False\n\nDeprecated for removal in next major version release. This field is superseded by `process.group_leader.pid`.\nIdentifier of the group of processes the process belongs to.",
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-      "type": [
-        "number",
-        "string"
-      ]
-    },
     "process.parent.pid": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nProcess id.",
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
@@ -6417,14 +6639,6 @@
       "type": [
         "string",
         "array"
-      ]
-    },
-    "process.pgid": {
-      "description": "Module: ecs\nIndexerType: long\nArray: False\n\nDeprecated for removal in next major version release. This field is superseded by `process.group_leader.pid`.\nIdentifier of the group of processes the process belongs to.",
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-      "type": [
-        "number",
-        "string"
       ]
     },
     "process.pid": {
@@ -7700,6 +7914,49 @@
         "array"
       ]
     },
+    "threat.indicator.file.code_signature.flags": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
+      "type": [
+        "string"
+      ]
+    },
+    "threat.indicator.file.code_signature.thumbprint_sha256": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCertificate SHA256 hash that uniquely identifies the code signer.",
+      "type": [
+        "string"
+      ]
+    },
+    "threat.indicator.file.hash.cdhash": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
+      "type": [
+        "string"
+      ]
+    },
+    "threat.indicator.file.origin_referrer_url": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL of the webpage that linked to the file.",
+      "type": [
+        "string"
+      ]
+    },
+    "threat.indicator.file.origin_url": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL where the file is hosted.",
+      "type": [
+        "string"
+      ]
+    },
+    "threat.indicator.id": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe ID of the indicator used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®. This field can have multiple values to allow for the identification of the same indicator across systems that use different ID formats.\nWhile not required, a common approach is to use a STIX 2.x indicator ID.",
+      "items": {
+        "type": [
+          "string"
+        ]
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
+    },
     "tls.cipher": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nString indicating the cipher used during the current connection.",
       "type": [
@@ -7930,7 +8187,7 @@
       ]
     },
     "tls.client.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -8264,7 +8521,7 @@
       ]
     },
     "tls.server.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]

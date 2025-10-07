@@ -243,6 +243,12 @@
                   "string"
                 ]
               },
+              "file.code_signature.thumbprint_sha256": {
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCertificate SHA256 hash that uniquely identifies the code signer.",
+                "type": [
+                  "string"
+                ]
+              },
               "file.code_signature.timestamp": {
                 "description": "Module: ecs\nIndexerType: date\nArray: False\n\nDate and time when the code signature was generated and signed.",
                 "type": [
@@ -677,7 +683,7 @@
                 ]
               },
               "file.mime_type": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using https://www.iana.org/assignments/media-types/media-types.xhtml[IANA official types], where possible. When more than one type is applicable, the most specific type should be used.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using IANA official types: https://www.iana.org/assignments/media-types/media-types.xhtml, where possible. When more than one type is applicable, the most specific type should be used.",
                 "type": [
                   "string"
                 ]
@@ -696,6 +702,18 @@
               },
               "file.name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the file including the extension, without the directory.",
+                "type": [
+                  "string"
+                ]
+              },
+              "file.origin_referrer_url": {
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL of the webpage that linked to the file.",
+                "type": [
+                  "string"
+                ]
+              },
+              "file.origin_url": {
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL where the file is hosted.",
                 "type": [
                   "string"
                 ]
@@ -1055,7 +1073,7 @@
                 ]
               },
               "file.x509.serial_number": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
                 "type": [
                   "string"
                 ]
@@ -1579,7 +1597,7 @@
                 ]
               },
               "x509.serial_number": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
                 "type": [
                   "string"
                 ]
@@ -1857,12 +1875,6 @@
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "boolean",
-        "string"
-      ]
-    },
-    "threat.indicator.file.code_signature.flags": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
-      "type": [
         "string"
       ]
     },
@@ -2269,12 +2281,6 @@
         "string"
       ]
     },
-    "threat.indicator.file.hash.cdhash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
-      "type": [
-        "string"
-      ]
-    },
     "threat.indicator.file.hash.md5": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
       "type": [
@@ -2324,7 +2330,7 @@
       ]
     },
     "threat.indicator.file.mime_type": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using https://www.iana.org/assignments/media-types/media-types.xhtml[IANA official types], where possible. When more than one type is applicable, the most specific type should be used.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using IANA official types: https://www.iana.org/assignments/media-types/media-types.xhtml, where possible. When more than one type is applicable, the most specific type should be used.",
       "type": [
         "string"
       ]
@@ -2702,7 +2708,7 @@
       ]
     },
     "threat.indicator.file.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -2873,19 +2879,6 @@
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe time zone of the location, such as IANA time zone name.",
       "type": [
         "string"
-      ]
-    },
-    "threat.indicator.id": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe ID of the indicator used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®. This field can have multiple values to allow for the identification of the same indicator across systems that use different ID formats.\nWhile not required, a common approach is to use a STIX 2.x indicator ID.",
-      "items": {
-        "type": [
-          "string"
-        ]
-      },
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-      "type": [
-        "string",
-        "array"
       ]
     },
     "threat.indicator.ip": {
@@ -3239,7 +3232,7 @@
       ]
     },
     "threat.indicator.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
