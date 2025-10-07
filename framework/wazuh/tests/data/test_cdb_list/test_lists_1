@@ -1,5 +1,0 @@
-test-wazuh-w:write
-test-wazuh-r:read
-test-wazuh-a:attribute
-test-wazuh-x:execute
-test-wazuh-c:command

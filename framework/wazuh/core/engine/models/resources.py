@@ -4,41 +4,23 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
+from typing import List, Optional, Dict, Any
 
-class ResourceType(Enum, str):
-    """Enumeration for resource types in the catalog.
-
-    Values
-    ------
-    RULE : str
-        Rule resource type.
-    DECODER : str
-        Decoder resource type.
-    INTEGRATION : str
-        Integration resource type.
-    """
+class ResourceType(str, Enum):
+    """Enumeration for resource types in the catalog."""
     RULE = 'rule'
     DECODER = 'decoder'
+    KVDB = 'kvdb'
     INTEGRATION = 'integration'
 
-class ResourceFormat(Enum, str):
-    """Enumeration for resource formats in the catalog.
-
-    Values
-    ------
-    JSON : str
-        JSON format.
-    YAML : str
-        YAML format.
-    YML : str
-        YML format.
-    """
+class ResourceFormat(str, Enum):
+    """Enumeration for resource formats in the catalog."""
     JSON = 'json'
     YAML = 'yaml'
     YML = 'yml'
+    XML = 'xml'
 
-class Status(Enum, str):
+class Status(str, Enum):
     """Enumeration for resource status values."""
     ENABLED = 'enabled'
     DISABLED = 'disabled'
@@ -67,10 +49,23 @@ class Document:
 
 @dataclass
 class Resource:
-    """Class representing a resource in the catalog."""
+    """Base resource model."""
     type: ResourceType
-    integration_id: str
     id: str
     name: str
+
+@dataclass
+class WithIntegrationId:
+    """Adds integration_id to resources."""
+    integration_id: str
+
+@dataclass
+class KVDBResource(Resource, WithIntegrationId):
+    """KVDB resource."""
+    content: Dict[str, Any]
+
+@dataclass
+class DecoderResource(Resource, WithIntegrationId):
+    """Decoder resource."""
     status: Status
     document: Document

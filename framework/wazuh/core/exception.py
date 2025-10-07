@@ -355,25 +355,31 @@ class WazuhException(Exception):
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
 
-        # CDB List: 1800 - 1899
-        1800: {'message': 'Bad format in CDB list {path}'},
-        1801: {'message': 'Wrong \'path\' parameter',
-               'remediation': 'Please, provide a correct path'},
-        1802: {'message': 'Lists file not found',
-               'remediation': 'Please, use `GET /lists/files` to find all available lists'},
-        1803: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you have read permissions over the file'
-               },
-        1804: {'message': 'Error reading lists file',
-               'remediation': 'Please, make sure you provide a correct filepath'
-               },
-        1805: {'message': 'File with the same name already exists in a subdirectory.',
-               'remediation': 'Please, make sure to use a name which is not repeated. '
-               },
-        1806: {'message': 'Error trying to create CDB list file.'
-               },
-        1810: {'message': 'Upgrade module\'s reserved exception IDs (1810-1899). '
-                          'The error message will be the output of upgrade module'},
+       # KVDB: 1800 - 1899
+       1800: {'message': "Invalid KVDB payload: unexpected field(s)",
+              'remediation': "Send only allowed keys: id, name, content, integration_id."
+              },
+       1801: {'message': "Invalid KVDB payload: field must be a non-empty string",
+              'remediation': "Provide a string with length > 0."
+              },
+       1802: {'message': "Invalid KVDB payload: field must be a string or null",
+              'remediation': "Provide a string value or null."
+              },
+       1803: {'message': "Invalid KVDB payload: field must be an object",
+              'remediation': "Provide a JSON object (dictionary)."
+              },
+       1804: {'message': "Mutations only allowed in testing policy",
+              'remediation': "Use type=testing for create/update/delete operations."
+              },
+       1805: {'message': "Missing request body",
+              'remediation': "Provide a JSON body with the required fields."
+              },
+       1806: {'message': "Invalid KVDB payload",
+              'remediation': "Required: id (string) and content (object)."
+              },
+       1807: {'message': "Missing ids to delete",
+              'remediation': "Provide at least one kvdb_id to delete."
+              },
 
         # Manager:
         1901: {'message': '\'execq\' socket has not been created'
@@ -630,7 +636,7 @@ class WazuhException(Exception):
     # Reserve agent upgrade custom errors
     ERRORS.update({key: {'message': 'Vulnerability scan\'s reserved exception IDs (8001-9000). '
                                     'The error message will be the output of vulnerability scan module'}
-                   for key in range(8001, 9000)})
+                   for key in range(8007, 9000)})
 
     def __init__(self, code: int, extra_message: str = None, extra_remediation: str = None, cmd_error: bool = False,
                  dapi_errors: dict = None, title: str = None, type: str = None):
