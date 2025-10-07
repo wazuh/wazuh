@@ -227,6 +227,32 @@ public:
     base::Name getPolicyDefaultParent() const;
 
     /**
+     * @brief Get a policy document by its ID or title.
+     *
+     * @param name Policy identifier (can be an ID or a title).
+     * @return Parsed JSON policy document.
+     * @throw std::runtime_error if not found or on read error.
+     */
+    json::Json getPolicy(const base::Name& name) const;
+
+    /**
+     * @brief List all available policy names (titles).
+     *
+     * @return Vector of policy Names (titles).
+     * @throw std::runtime_error on read error.
+     */
+    std::vector<base::Name> getPolicyList() const;
+
+    /**
+     * @brief Check if a policy exists by ID or title.
+     *
+     * @param name Policy identifier (can be an ID or a title).
+     * @return true if the policy exists; false otherwise.
+     * @throw std::runtime_error on read error.
+     */
+    bool policyExists(const base::Name& name) const;
+
+    /**
      * @brief Remove all data from all column families.
      *
      * Intended for testing or re-initialization scenarios.

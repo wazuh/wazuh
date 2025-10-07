@@ -62,6 +62,7 @@ namespace constants
     constexpr std::string_view JSON_PAYLOAD = "/payload";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT = "/payload/document";
     constexpr std::string_view JSON_PAYLOAD_INTEGRATIONS = "/payload/integrations";
+    constexpr std::string_view JSON_PAYLOAD_DOCUMENT_INTEGRATIONS = "/payload/document/integrations";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_DECODERS = "/payload/document/decoders";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_KVDBS = "/payload/document/kvdbs";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_CONTENT = "/payload/document/content";
@@ -464,6 +465,26 @@ struct CTIStorageDB::Impl
     base::Name getPolicyDefaultParent() const;
 
     /**
+     * @brief Gets a policy document by ID or title.
+     * @param name Policy identifier
+     * @return JSON policy document
+     */
+    json::Json getPolicy(const base::Name& name) const;
+
+    /**
+     * @brief Lists all available policy names.
+     * @return Vector of policy names
+     */
+    std::vector<base::Name> getPolicyList() const;
+
+    /**
+     * @brief Checks if a policy exists.
+     * @param name Policy identifier
+     * @return true if exists, false otherwise
+     */
+    bool policyExists(const base::Name& name) const;
+
+    /**
      * @brief Deletes all data from all column families.
      */
     void clearAll();
@@ -774,7 +795,11 @@ std::string CTIStorageDB::Impl::extractNameFromJson(const json::Json& doc) const
         return *name;
     }
 
-    // Policy new format uses /payload/title
+    // TODO: Policy dual format support - remove legacy format support once all policies migrated
+    // Policy can have two formats:
+    // - Flat format: /payload/title (legacy)
+    // - Nested format: /payload/document/title (preferred, already checked above)
+    // Keeping both for backward compatibility
     title = doc.getString(constants::JSON_PAYLOAD_TITLE);
     if (title)
     {
@@ -1092,6 +1117,21 @@ base::Name CTIStorageDB::getPolicyDefaultParent() const
     return m_pImpl->getPolicyDefaultParent();
 }
 
+json::Json CTIStorageDB::getPolicy(const base::Name& name) const
+{
+    return m_pImpl->getPolicy(name);
+}
+
+std::vector<base::Name> CTIStorageDB::getPolicyList() const
+{
+    return m_pImpl->getPolicyList();
+}
+
+bool CTIStorageDB::policyExists(const base::Name& name) const
+{
+    return m_pImpl->policyExists(name);
+}
+
 void CTIStorageDB::clearAll()
 {
     m_pImpl->clearAll();
@@ -1314,41 +1354,54 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
         try
         {
             json::Json doc(it->value().ToString().c_str());
-            if (doc.exists(constants::JSON_PAYLOAD_INTEGRATIONS))
+
+            // TODO: Policy dual format support - try both paths for integrations
+            // Preferred format: /payload/document/integrations (nested)
+            // Legacy format: /payload/integrations (flat)
+            std::optional<std::vector<json::Json>> integrationArray;
+
+            // Try nested format first (preferred)
+            if (doc.exists(constants::JSON_PAYLOAD_DOCUMENT_INTEGRATIONS))
             {
-                auto integrationArray = doc.getArray(constants::JSON_PAYLOAD_INTEGRATIONS);
-                if (integrationArray)
+                integrationArray = doc.getArray(constants::JSON_PAYLOAD_DOCUMENT_INTEGRATIONS);
+            }
+            // Fallback to legacy flat format
+            else if (doc.exists(constants::JSON_PAYLOAD_INTEGRATIONS))
+            {
+                integrationArray = doc.getArray(constants::JSON_PAYLOAD_INTEGRATIONS);
+            }
+
+            if (integrationArray && !integrationArray->empty())
+            {
+                for (const auto& integration : *integrationArray)
                 {
-                    for (const auto& integration : *integrationArray)
+                    if (auto integrationId = integration.getString())
                     {
-                        if (auto integrationId = integration.getString())
+                        // Resolve integration ID to title/name
+                        try
                         {
-                            // Resolve integration ID to title/name
-                            try
+                            std::string value;
+                            auto status = m_db->Get(ro, getColumnFamily(CTIStorageDB::ColumnFamily::INTEGRATION),
+                                                   std::string(constants::INTEGRATION_PREFIX) + *integrationId, &value);
+                            if (status.ok())
                             {
-                                std::string value;
-                                auto status = m_db->Get(ro, getColumnFamily(CTIStorageDB::ColumnFamily::INTEGRATION),
-                                                       std::string(constants::INTEGRATION_PREFIX) + *integrationId, &value);
-                                if (status.ok())
+                                json::Json integrationDoc(value.c_str());
+                                std::string title = extractNameFromJson(integrationDoc);
+                                if (!title.empty())
                                 {
-                                    json::Json integrationDoc(value.c_str());
-                                    std::string title = extractNameFromJson(integrationDoc);
-                                    if (!title.empty())
-                                    {
-                                        integrations.emplace_back(title);
-                                    }
-                                    else
-                                    {
-                                        // Fallback to ID if no title
-                                        integrations.emplace_back(*integrationId);
-                                    }
+                                    integrations.emplace_back(title);
+                                }
+                                else
+                                {
+                                    // Fallback to ID if no title
+                                    integrations.emplace_back(*integrationId);
                                 }
                             }
-                            catch (const std::exception& e)
-                            {
-                                LOG_WARNING("Failed to resolve integration ID {}: {}", *integrationId, e.what());
-                                integrations.emplace_back(*integrationId);
-                            }
+                        }
+                        catch (const std::exception& e)
+                        {
+                            LOG_WARNING("Failed to resolve integration ID {}: {}", *integrationId, e.what());
+                            integrations.emplace_back(*integrationId);
                         }
                     }
                 }
@@ -1368,6 +1421,56 @@ base::Name CTIStorageDB::Impl::getPolicyDefaultParent() const
     // Note: This is a constant value, no lock needed but added for consistency
     std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
     return base::Name(std::string(constants::DEFAULT_PARENT));
+}
+
+json::Json CTIStorageDB::Impl::getPolicy(const base::Name& name) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+    return getByIdOrName(name.fullName(),
+                        CTIStorageDB::ColumnFamily::POLICY,
+                        std::string(constants::POLICY_PREFIX),
+                        std::string(constants::NAME_POLICY_PREFIX));
+}
+
+std::vector<base::Name> CTIStorageDB::Impl::getPolicyList() const
+{
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
+    std::vector<base::Name> policies;
+    rocksdb::ReadOptions ro;
+    ro.total_order_seek = true;
+    auto it = std::unique_ptr<rocksdb::Iterator>(
+        m_db->NewIterator(ro, getColumnFamily(CTIStorageDB::ColumnFamily::POLICY)));
+    constexpr auto prefix = constants::POLICY_PREFIX;
+
+    for (it->Seek(prefix); it->Valid() &&
+         it->key().ToString().compare(0, prefix.size(), prefix) == 0; it->Next())
+    {
+        try
+        {
+            json::Json doc(it->value().ToString().c_str());
+            std::string title = extractNameFromJson(doc);
+            if (!title.empty())
+            {
+                policies.emplace_back(title);
+            }
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING("Failed to parse policy document while listing: {}", e.what());
+        }
+    }
+
+    return policies;
+}
+
+bool CTIStorageDB::Impl::policyExists(const base::Name& name) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+    return existsByIdOrName(name.fullName(),
+                           CTIStorageDB::ColumnFamily::POLICY,
+                           std::string(constants::POLICY_PREFIX),
+                           std::string(constants::NAME_POLICY_PREFIX));
 }
 
 void CTIStorageDB::Impl::clearAll()

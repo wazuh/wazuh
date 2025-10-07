@@ -63,6 +63,27 @@ public:
     /** @copydoc ICMReader::getPolicyDefaultParent */
     base::Name getPolicyDefaultParent() const override;
 
+    /**
+     * @brief Get a policy document by its ID or title
+     * @param name Policy identifier (ID or title)
+     * @return Policy JSON document
+     * @throw std::runtime_error if not found or on error
+     */
+    json::Json getPolicy(const base::Name& name) const;
+
+    /**
+     * @brief List all available policy names (titles)
+     * @return Vector of policy Names
+     */
+    std::vector<base::Name> getPolicyList() const;
+
+    /**
+     * @brief Check if a policy exists by ID or title
+     * @param name Policy identifier (ID or title)
+     * @return true if exists, false otherwise
+     */
+    bool policyExists(const base::Name& name) const;
+
     /************************************************************************************
      * Other public methods or other interfaces can be added here
      ************************************************************************************/
