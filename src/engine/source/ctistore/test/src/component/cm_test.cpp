@@ -16,6 +16,7 @@ TEST(ContentManagerTest, init)
     cti::store::ContentManagerConfig cfg;
     cfg.outputFolder = (tmpBase / "content").string();
     cfg.databasePath = (tmpBase / "rocksdb").string();
+    cfg.assetStorePath = (tmpBase / "assets").string();
 
     std::unique_ptr<cti::store::ContentManager> cm;
     ASSERT_NO_THROW({ cm = std::make_unique<cti::store::ContentManager>(cfg, false); });
