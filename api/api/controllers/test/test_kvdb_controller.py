@@ -123,7 +123,15 @@ async def test_post_kvdbs(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_req
     body = {"id": "demo1", "name": "Demo", "content": {"k": "v"}}
     result = await post_kvdbs(body=body, type_="testing")
 
-    f_kwargs = {'policy_type': 'testing', 'item': body}
+    f_kwargs = {
+        'policy_type': 'testing',
+        'item': {
+            'id': 'demo1',
+            'name': 'Demo',
+            'content': {'k': 'v'},
+            'integration_id': None
+        }
+    }
     mock_dapi.assert_called_once_with(
         f=kvdb.create_kvdb,
         f_kwargs=mock_remove.return_value,
@@ -149,7 +157,15 @@ async def test_put_kvdbs(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_requ
     body = {"id": "demo1", "name": "Demo (updated)", "content": {"k2": "v2"}}
     result = await put_kvdbs(body=body, type_="testing")
 
-    f_kwargs = {'policy_type': 'testing', 'item': body}
+    f_kwargs = {
+        'policy_type': 'testing',
+        'item': {
+            'id': 'demo1',
+            'name': 'Demo (updated)',
+            'content': {'k2': 'v2'},
+            'integration_id': None
+        }
+    }
     mock_dapi.assert_called_once_with(
         f=kvdb.update_kvdb,
         f_kwargs=mock_remove.return_value,
@@ -185,5 +201,46 @@ async def test_delete_kvdbs(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_r
         rbac_permissions=mock_request.context['token_info']['rbac_policies']
     )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["kvdb_controller"], indirect=True)
+@patch('api.controllers.kvdb_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.kvdb_controller.remove_nones_to_dict')
+@patch('api.controllers.kvdb_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.kvdb_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_delete_kvdbs_defaults(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
+    """Verify 'delete_kvdbs' default wiring (no ids, no type)."""
+    result = await delete_kvdbs()
+
+    f_kwargs = {'policy_type': None, 'ids': None}
+    mock_dapi.assert_called_once_with(
+        f=kvdb.delete_kvdbs,
+        f_kwargs=mock_remove.return_value,
+        request_type='local_master',
+        is_async=True,
+        wait_for_complete=False,
+        logger=ANY,
+        rbac_permissions=mock_request.context['token_info']['rbac_policies']
+    )
+    mock_exc.assert_called_once_with(mock_dfunc.return_value)
+    mock_remove.assert_called_once_with(f_kwargs)
+    assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["kvdb_controller"], indirect=True)
+@patch('api.controllers.kvdb_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.kvdb_controller.remove_nones_to_dict')
+@patch('api.controllers.kvdb_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.kvdb_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_post_kvdbs_with_integration_id(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
+    """Ensure integration_id is forwarded when provided."""
+    body = {"id": "demo1", "name": "Demo", "content": {"k": "v"}, "integration_id": "int-123"}
+    result = await post_kvdbs(body=body, type_="testing")
+
+    f_kwargs = {'policy_type': 'testing', 'item': body}
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, ConnexionResponse)

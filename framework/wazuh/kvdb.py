@@ -170,9 +170,9 @@ async def create_kvdb(policy_type: str,
         Confirmation with affected ids (or failed_items if exists/error).
     """
     if policy_type != 'testing':
-        raise WazuhError(4000, 'Mutations only allowed in testing policy')
+        raise WazuhError(1804)
     if not item:
-        raise WazuhError(4000, 'Missing request body')
+        raise WazuhError(1805)
 
     result = AffectedItemsWazuhResult(
         all_msg='KVDB was successfully created',
@@ -185,7 +185,7 @@ async def create_kvdb(policy_type: str,
     integration_id = item.get('integration_id')
 
     if not kvdb_id or not isinstance(content_obj, dict):
-        raise WazuhError(4000, 'Invalid KVDB payload')
+        raise WazuhError(1806)
 
     payload = json.dumps(content_obj, ensure_ascii=False)
     pt = _to_policy_type(policy_type)
@@ -226,8 +226,6 @@ async def create_kvdb(policy_type: str,
         result.affected_items.append(kvdb_id)
         result.total_affected_items = 1
 
-    except WazuhError:
-        raise
     except WazuhException as e:
         if getattr(e, 'code', None) == 2802:
             result.total_affected_items = 0
@@ -262,9 +260,9 @@ async def update_kvdb(policy_type: str,
         Confirmation with affected ids.
     """
     if policy_type != 'testing':
-        raise WazuhError(4000, 'Mutations only allowed in testing policy')
+        raise WazuhError(1804)
     if not item:
-        raise WazuhError(4000, 'Missing request body')
+        raise WazuhError(1805)
 
     result = AffectedItemsWazuhResult(
         all_msg='KVDB was successfully updated',
@@ -276,7 +274,7 @@ async def update_kvdb(policy_type: str,
     content_obj = item.get('content')
 
     if not kvdb_id or not isinstance(content_obj, dict):
-        raise WazuhError(4000, 'Invalid KVDB payload')
+        raise WazuhError(1806)
 
     payload = json.dumps(content_obj, ensure_ascii=False)
     pt = _to_policy_type(policy_type)
@@ -323,8 +321,6 @@ async def update_kvdb(policy_type: str,
         updated_ok = True
         result.affected_items.append(kvdb_id)
 
-    except WazuhError:
-        raise
     except WazuhException as e:
         if getattr(e, 'code', None) != 2802:
             raise e
@@ -357,9 +353,9 @@ async def delete_kvdbs(policy_type: str,
         Confirmation with affected ids.
     """
     if policy_type != 'testing':
-        raise WazuhError(4000, 'Mutations only allowed in testing policy')
+        raise WazuhError(1804)
     if not ids:
-        raise WazuhError(4000, 'Missing ids to delete')
+        raise WazuhError(1807)
 
     result = AffectedItemsWazuhResult(
         all_msg='KVDBs deleted successfully',

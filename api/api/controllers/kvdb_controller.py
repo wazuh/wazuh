@@ -54,7 +54,7 @@ async def get_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
     """
     f_kwargs = {
         'policy_type': type_,
-        'ids': kvdb_id if kvdb_id else None,
+        'ids': kvdb_id,
         'offset': offset,
         'limit': limit,
         'select': select,
@@ -105,13 +105,12 @@ async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool =
     ConnexionResponse
         API response.
     """
+    model = KVDBCreateModel.from_dict(body)
     f_kwargs = {
         'policy_type': type_,
-        'item': body or {}
+        'item': model.to_dict()
     }
     
-    KVDBCreateModel.from_dict(body or {})
-
     dapi = DistributedAPI(
         f=kvdb.create_kvdb,
         f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -128,7 +127,7 @@ async def post_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool =
 
 async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = False,
                     type_: str = None) -> ConnexionResponse:
-    """Update a KVDB (master node only).
+    """Update a KVDB.
 
     Parameters
     ----------
@@ -150,12 +149,11 @@ async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = 
     ConnexionResponse
         API response.
     """
+    model = KVDBUpdateModel.from_dict(body)
     f_kwargs = {
         'policy_type': type_,
-        'item': body or {}
+        'item': model.to_dict()
     }
-
-    KVDBUpdateModel.from_dict(body or {})
 
     dapi = DistributedAPI(
         f=kvdb.update_kvdb,
@@ -173,7 +171,7 @@ async def put_kvdbs(body: dict, pretty: bool = False, wait_for_complete: bool = 
 
 async def delete_kvdbs(pretty: bool = False, wait_for_complete: bool = False,
                        type_: str = None, kvdb_id: list = None) -> ConnexionResponse:
-    """Delete one or more KVDBs (master node only).
+    """Delete one or more KVDBs.
 
     Parameters
     ----------

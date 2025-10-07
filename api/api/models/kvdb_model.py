@@ -22,25 +22,25 @@ class _Validators:
         """Raise if payload contains properties not listed in allowed_keys."""
         extra = set(body.keys()) - allowed_keys
         if extra:
-            raise WazuhError(4000, f"Invalid KVDB payload: unexpected field(s): {', '.join(sorted(extra))}")
+            raise WazuhError(1800)
 
     @staticmethod
     def _check_non_empty_str(value: Optional[str], field: str):
         """Raise if value is not a non-empty string."""
         if not isinstance(value, str) or not value:
-            raise WazuhError(4000, f"Invalid KVDB payload: '{field}' must be a non-empty string")
+            raise WazuhError(1801)
 
     @staticmethod
     def _check_optional_str_or_none(value, field: str):
         """Raise if value is neither None nor a string."""
         if value is not None and not isinstance(value, str):
-            raise WazuhError(4000, f"Invalid KVDB payload: '{field}' must be a string or null")
+            raise WazuhError(1802)
 
     @staticmethod
     def _check_object(value, field: str):
         """Raise if value is not a JSON object (dict)."""
         if not isinstance(value, dict):
-            raise WazuhError(4000, f"Invalid KVDB payload: '{field}' must be an object")
+            raise WazuhError(1803)
 
 
 class KVDBCreateModel(Body):

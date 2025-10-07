@@ -1,9 +1,9 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch, ANY
 import pytest
 
 from wazuh.core.exception import WazuhError
@@ -45,65 +45,62 @@ class FakeEngineCM:
 
 
 @pytest.mark.asyncio
-async def test_list_kvdbs_ok(monkeypatch):
+@patch('framework.wazuh.kvdb.process_array')
+@patch('framework.wazuh.kvdb.validate_response_or_raise')
+@patch('framework.wazuh.kvdb.get_engine_client')
+async def test_list_kvdbs_ok(mock_get_client, mock_validate, mock_process):
     """Ensure list_kvdbs queries the engine and processes the array correctly."""
     items_from_engine = {"status": "OK", "content": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}]}
     processed = {"items": [{"id": "a"}, {"id": "b"}], "totalItems": 2}
 
-    fake = FakeEngineClient()
-
-    # Minimal patches for listing path
-    monkeypatch.setattr(kvdb, "get_engine_client", lambda: FakeEngineCM(fake))
-    monkeypatch.setattr(kvdb, "validate_response_or_raise", lambda *_args, **_kw: None)
-    monkeypatch.setattr(kvdb, "process_array", lambda *_args, **_kw: processed)
+    fake = FakeEngineClient(get_resources_return=items_from_engine)
+    mock_get_client.return_value = FakeEngineCM(fake)
+    mock_process.return_value = processed
 
     res = await kvdb.list_kvdbs(policy_type="production")
 
     assert res.affected_items == processed["items"]
     assert res.total_affected_items == processed["totalItems"]
-    # Ensure the engine was queried
     fake.content.get_resources.assert_awaited()
+    mock_validate.assert_called()
+    mock_process.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_create_requires_testing_policy():
-    """Verify create fails outside 'testing' policy (error 4000)."""
+    """Verify create fails outside 'testing' policy (error 1804)."""
     body = {"type": "kvdb", "id": "100", "name": "demo1", "content": {"k": "v"}}
     with pytest.raises(WazuhError) as exc:
         await kvdb.create_kvdb(policy_type="production", item=body)
-    assert getattr(exc.value, "code", None) == 4000
+    assert getattr(exc.value, "code", None) == 1804
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("bad_body", [
-    {"type": "kvdb", "name": "No ID", "content": {"k": "v"}},
-    {"type": "kvdb", "id": "100", "name": "Bad content", "content": "not-a-dict"},
+    {"type": "kvdb", "name": "No ID", "content": {"k": "v"}},                   # missing id
+    {"type": "kvdb", "id": "100", "name": "Bad content", "content": "str"},     # content not dict
 ])
 async def test_create_validates_payload(bad_body):
-    """Verify invalid payloads raise error 4000 in create."""
+    """Verify invalid payloads raise error 1806 in create."""
     with pytest.raises(WazuhError) as exc:
         await kvdb.create_kvdb(policy_type="testing", item=bad_body)
-    assert getattr(exc.value, "code", None) == 4000
+    assert getattr(exc.value, "code", None) == 1806
 
 
 @pytest.mark.asyncio
-async def test_create_success(monkeypatch, tmp_path):
+@patch('framework.wazuh.kvdb.validate_response_or_raise')
+@patch('framework.wazuh.kvdb.get_engine_client')
+@patch('framework.wazuh.kvdb.remove')
+@patch('framework.wazuh.kvdb.save_asset_file')
+@patch('framework.wazuh.kvdb.exists', return_value=False)
+@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+async def test_create_success(mock_gen_path, mock_exists, mock_save, mock_remove, mock_get_client, mock_validate, tmp_path):
     """Create a KVDB successfully and confirm validation and engine calls."""
     body = {"type": "kvdb", "id": "100", "name": "demo1", "content": {"k": "v"}}
     fake = FakeEngineClient()
-
-    # Force asset path into tmp and simulate non-existing file
     asset_path = tmp_path / "100.json"
-    monkeypatch.setattr(kvdb, "generate_kvdb_file_path", lambda _id, _pt: str(asset_path))
-    monkeypatch.setattr(kvdb, "exists", lambda path: False)
-
-    # File operations as no-ops
-    monkeypatch.setattr(kvdb, "save_asset_file", lambda path, payload: None)
-    monkeypatch.setattr(kvdb, "remove", lambda path: None)
-
-    # Engine + validations
-    monkeypatch.setattr(kvdb, "get_engine_client", lambda: FakeEngineCM(fake))
-    monkeypatch.setattr(kvdb, "validate_response_or_raise", lambda *_args, **_kw: None)
+    mock_gen_path.return_value = str(asset_path)
+    mock_get_client.return_value = FakeEngineCM(fake)
 
     res = await kvdb.create_kvdb(policy_type="testing", item=body)
 
@@ -111,54 +108,51 @@ async def test_create_success(monkeypatch, tmp_path):
     assert res.total_affected_items == 1
     assert res.total_failed_items == 0
 
+    mock_exists.assert_called()
+    mock_save.assert_called_once_with(str(asset_path), ANY)
     fake.catalog.validate_resource.assert_awaited()
     fake.content.create_resource.assert_awaited()
 
 
 @pytest.mark.asyncio
 async def test_update_requires_testing_policy():
-    """Verify update fails outside 'testing' policy (error 4000)."""
+    """Verify update fails outside 'testing' policy (error 1804)."""
     body = {"id": "100", "name": "demo1 (v2)", "content": {"k2": "v2"}}
     with pytest.raises(WazuhError) as exc:
         await kvdb.update_kvdb(policy_type="production", item=body)
-    assert getattr(exc.value, "code", None) == 4000
+    assert getattr(exc.value, "code", None) == 1804
 
 
 @pytest.mark.asyncio
-async def test_update_missing_asset(monkeypatch, tmp_path):
+@patch('framework.wazuh.kvdb.exists', return_value=False)
+@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+async def test_update_missing_asset(mock_gen_path, mock_exists, tmp_path):
     """Verify update fails when asset file does not exist (error 8005)."""
     body = {"id": "100", "name": "demo1 (v2)", "content": {"k2": "v2"}}
-
-    # Asset file does not exist
     asset_path = tmp_path / "100.json"
-    monkeypatch.setattr(kvdb, "generate_kvdb_file_path", lambda _id, _pt: str(asset_path))
-    monkeypatch.setattr(kvdb, "exists", lambda path: False)
+    mock_gen_path.return_value = str(asset_path)
 
     with pytest.raises(WazuhError) as exc:
         await kvdb.update_kvdb(policy_type="testing", item=body)
-    assert getattr(exc.value, "code", None) == 8005  # Asset does not exist
+    assert getattr(exc.value, "code", None) == 8005
 
 
 @pytest.mark.asyncio
-async def test_update_success(monkeypatch, tmp_path):
+@patch('framework.wazuh.kvdb.validate_response_or_raise')
+@patch('framework.wazuh.kvdb.get_engine_client')
+@patch('framework.wazuh.kvdb.safe_move')
+@patch('framework.wazuh.kvdb.save_asset_file')
+@patch('framework.wazuh.kvdb.remove')
+@patch('framework.wazuh.kvdb.full_copy')
+@patch('framework.wazuh.kvdb.exists', return_value=True)
+@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+async def test_update_success(mock_gen_path, mock_exists, mock_full_copy, mock_remove, mock_save, mock_safe_move, mock_get_client, mock_validate, tmp_path):
     """Update a KVDB successfully and confirm engine and file ops are called."""
     body = {"id": "100", "name": "demo1 (v2)", "content": {"k2": "v2"}}
     fake = FakeEngineClient()
-
-    # Asset exists
     asset_path = tmp_path / "100.json"
-    monkeypatch.setattr(kvdb, "generate_kvdb_file_path", lambda _id, _pt: str(asset_path))
-    monkeypatch.setattr(kvdb, "exists", lambda path: True)
-
-    # File operations as no-ops (backup, remove, write, restore)
-    monkeypatch.setattr(kvdb, "full_copy", lambda src, dst: None)
-    monkeypatch.setattr(kvdb, "remove", lambda path: None)
-    monkeypatch.setattr(kvdb, "save_asset_file", lambda path, payload: None)
-    monkeypatch.setattr(kvdb, "safe_move", lambda src, dst: None)
-
-    # Engine + validations
-    monkeypatch.setattr(kvdb, "get_engine_client", lambda: FakeEngineCM(fake))
-    monkeypatch.setattr(kvdb, "validate_response_or_raise", lambda *_args, **_kw: None)
+    mock_gen_path.return_value = str(asset_path)
+    mock_get_client.return_value = FakeEngineCM(fake)
 
     res = await kvdb.update_kvdb(policy_type="testing", item=body)
 
@@ -166,24 +160,29 @@ async def test_update_success(monkeypatch, tmp_path):
     assert res.total_affected_items == 1
     assert res.total_failed_items == 0
 
+    # backup created
+    mock_full_copy.assert_called_once()
+    # original removed and/or backup cleaned
+    mock_remove.assert_called()
+    mock_save.assert_called_once_with(str(asset_path), ANY)
     fake.catalog.validate_resource.assert_awaited()
     fake.content.update_resource.assert_awaited()
 
 
 @pytest.mark.asyncio
 async def test_delete_requires_testing_policy():
-    """Verify delete fails outside 'testing' policy (error 4000)."""
+    """Verify delete fails outside 'testing' policy (error 1804)."""
     with pytest.raises(WazuhError) as exc:
         await kvdb.delete_kvdbs(policy_type="production", ids=["a", "b"])
-    assert getattr(exc.value, "code", None) == 4000
+    assert getattr(exc.value, "code", None) == 1804
 
 
 @pytest.mark.asyncio
-async def test_delete_missing_asset(monkeypatch, tmp_path):
+@patch('framework.wazuh.kvdb.exists', return_value=False)
+@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+async def test_delete_missing_asset(mock_gen_path, mock_exists, tmp_path):
     """Verify delete reports failures when files do not exist."""
-    # Assets do not exist
-    monkeypatch.setattr(kvdb, "generate_kvdb_file_path", lambda _id, _pt: str(tmp_path / f"{_id}.json"))
-    monkeypatch.setattr(kvdb, "exists", lambda path: False)
+    mock_gen_path.side_effect = lambda _id, _pt: str(tmp_path / f"{_id}.json")
 
     res = await kvdb.delete_kvdbs(policy_type="testing", ids=["a", "b"])
 
@@ -193,22 +192,18 @@ async def test_delete_missing_asset(monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_delete_ok_calls_engine_per_id(monkeypatch, tmp_path):
+@patch('framework.wazuh.kvdb.validate_response_or_raise')
+@patch('framework.wazuh.kvdb.get_engine_client')
+@patch('framework.wazuh.kvdb.safe_move')
+@patch('framework.wazuh.kvdb.remove')
+@patch('framework.wazuh.kvdb.full_copy')
+@patch('framework.wazuh.kvdb.exists', return_value=True)
+@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+async def test_delete_ok_calls_engine_per_id(mock_gen_path, mock_exists, mock_full_copy, mock_remove, mock_safe_move, mock_get_client, mock_validate, tmp_path):
     """Verify delete calls the engine once per id and returns affected ids."""
     fake = FakeEngineClient()
-
-    # Assets exist
-    monkeypatch.setattr(kvdb, "generate_kvdb_file_path", lambda _id, _pt: str(tmp_path / f"{_id}.json"))
-    monkeypatch.setattr(kvdb, "exists", lambda path: True)
-
-    # File operations as no-ops
-    monkeypatch.setattr(kvdb, "full_copy", lambda src, dst: None)
-    monkeypatch.setattr(kvdb, "remove", lambda path: None)
-    monkeypatch.setattr(kvdb, "safe_move", lambda src, dst: None)
-
-    # Engine
-    monkeypatch.setattr(kvdb, "get_engine_client", lambda: FakeEngineCM(fake))
-    monkeypatch.setattr(kvdb, "validate_response_or_raise", lambda *_args, **_kw: None)
+    mock_gen_path.side_effect = lambda _id, _pt: str(tmp_path / f"{_id}.json")
+    mock_get_client.return_value = FakeEngineCM(fake)
 
     res = await kvdb.delete_kvdbs(policy_type="testing", ids=["a", "b"])
 
