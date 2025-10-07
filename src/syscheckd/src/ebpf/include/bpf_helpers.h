@@ -30,6 +30,8 @@ struct file_event {
     __u32 ppid;
     __u32 uid;
     __u32 gid;
+    __u32 euid;
+    __u32 login_uid;
     uint64_t inode;
     uint64_t dev;
     char comm[TASK_COMM_LEN];
@@ -49,6 +51,8 @@ struct dynamic_file_event {
     uint32_t ppid;
     uint32_t uid;
     uint32_t gid;
+    uint32_t euid;
+    uint32_t login_uid;
     uint64_t inode;
     uint64_t dev;
 };
