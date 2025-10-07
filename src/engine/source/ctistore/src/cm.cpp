@@ -264,6 +264,64 @@ base::Name ContentManager::getPolicyDefaultParent() const
     }
 }
 
+json::Json ContentManager::getPolicy(const base::Name& name) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+
+    if (!m_storage || !m_storage->isOpen())
+    {
+        LOG_WARNING("getPolicy called but storage not initialized");
+        return json::Json();
+    }
+    try
+    {
+        return m_storage->getPolicy(name);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("getPolicy('{}') error: {}", name.fullName(), e.what());
+        throw;
+    }
+}
+
+std::vector<base::Name> ContentManager::getPolicyList() const
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+
+    if (!m_storage || !m_storage->isOpen())
+    {
+        return {};
+    }
+    try
+    {
+        return m_storage->getPolicyList();
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("getPolicyList error: {}", e.what());
+        return {};
+    }
+}
+
+bool ContentManager::policyExists(const base::Name& name) const
+{
+    std::shared_lock<std::shared_mutex> lock(m_mutex);
+
+    if (!m_storage || !m_storage->isOpen())
+    {
+        return false;
+    }
+    try
+    {
+        return m_storage->policyExists(name);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("policyExists('{}') error: {}", name.fullName(), e.what());
+        return false;
+    }
+}
+
 bool ContentManager::startSync()
 {
     std::unique_lock<std::shared_mutex> lock(m_mutex);
