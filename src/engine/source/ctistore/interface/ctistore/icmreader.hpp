@@ -115,6 +115,29 @@ public:
      * @throw std::runtime_error on error (if unable to read the store, etc)
      */
     virtual base::Name getPolicyDefaultParent() const = 0;
+
+    /**
+     * @brief Get a policy document by its ID or title
+     * @param name Policy identifier (can be an ID or a title)
+     * @return json::Json Policy JSON document
+     * @throw std::runtime_error if not found or on error
+     */
+    virtual json::Json getPolicy(const base::Name& name) const = 0;
+
+    /**
+     * @brief List all available policy names (titles)
+     * @return std::vector<base::Name> Vector of policy Names (titles)
+     * @throw std::runtime_error on error (if unable to read the store, etc)
+     */
+    virtual std::vector<base::Name> getPolicyList() const = 0;
+
+    /**
+     * @brief Check if a policy exists by ID or title
+     * @param name Policy identifier (can be an ID or a title)
+     * @return true if the policy exists, false otherwise
+     * @throw std::runtime_error on error (if unable to read the store, etc)
+     */
+    virtual bool policyExists(const base::Name& name) const = 0;
 };
 
 } // namespace cti::store

@@ -14,6 +14,19 @@ namespace cti::store
 namespace
 {
 constexpr auto CTI_STORE_LOG_TAG = "cti-store";
+
+// Helper function to convert AssetType enum to string
+constexpr std::string_view assetTypeToString(cti::store::AssetType type) noexcept
+{
+    switch (type)
+    {
+        case cti::store::AssetType::INTEGRATION: return "integration";
+        case cti::store::AssetType::DECODER: return "decoder";
+        case cti::store::AssetType::ERROR_TYPE: return "";
+    }
+    return "";
+}
+
 } // namespace
 
 ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStart)
@@ -69,27 +82,24 @@ ContentManager::~ContentManager()
 }
 
 // ICMReader interface implementations
+// Note: No mutex needed for read operations - CTIStorageDB is already thread-safe
 std::vector<base::Name> ContentManager::getAssetList(cti::store::AssetType type) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         LOG_WARNING("getAssetList called but storage not initialized");
         return {};
     }
 
-    const char* typeStr = nullptr;
-    switch (type)
+    auto typeStr = assetTypeToString(type);
+    if (typeStr.empty())
     {
-        case AssetType::INTEGRATION: typeStr = "integration"; break;
-        case AssetType::DECODER: typeStr = "decoder"; break;
-        default: return {}; // unsupported
+        return {}; // unsupported type
     }
 
     try
     {
-        return m_storage->getAssetList(typeStr);
+        return m_storage->getAssetList(std::string(typeStr));
     }
     catch (const std::exception& e)
     {
@@ -100,21 +110,20 @@ std::vector<base::Name> ContentManager::getAssetList(cti::store::AssetType type)
 
 json::Json ContentManager::getAsset(const base::Name& name) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         LOG_WARNING("getAsset called but storage not initialized");
         return json::Json();
     }
 
-    // We don't know the type, try in order (policy, integration, decoder)
-    static const std::vector<std::string> types {"integration", "decoder"};
+    // We don't know the type, try in order (integration, decoder)
+    // Using constexpr array with string_view for zero-cost abstraction
+    static constexpr std::array<std::string_view, 2> types {"integration", "decoder"};
     for (const auto& t : types)
     {
         try
         {
-            return m_storage->getAsset(name, t);
+            return m_storage->getAsset(name, std::string(t));
         }
         catch (...)
         {
@@ -127,18 +136,16 @@ json::Json ContentManager::getAsset(const base::Name& name) const
 
 bool ContentManager::assetExists(const base::Name& name) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         return false;
     }
-    static const std::vector<std::string> types {"integration", "decoder"};
+    static constexpr std::array<std::string_view, 2> types {"integration", "decoder"};
     for (const auto& t : types)
     {
         try
         {
-            if (m_storage->assetExists(name, t))
+            if (m_storage->assetExists(name, std::string(t)))
             {
                 return true;
             }
@@ -153,8 +160,6 @@ bool ContentManager::assetExists(const base::Name& name) const
 
 std::vector<std::string> ContentManager::listKVDB() const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         return {};
@@ -172,8 +177,6 @@ std::vector<std::string> ContentManager::listKVDB() const
 
 std::vector<std::string> ContentManager::listKVDB(const base::Name& integrationName) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         return {};
@@ -190,8 +193,6 @@ std::vector<std::string> ContentManager::listKVDB(const base::Name& integrationN
 }
 bool ContentManager::kvdbExists(const std::string& kdbName) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         return false;
@@ -209,8 +210,6 @@ bool ContentManager::kvdbExists(const std::string& kdbName) const
 
 json::Json ContentManager::kvdbDump(const std::string& kdbName) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         return json::Json();
@@ -228,8 +227,6 @@ json::Json ContentManager::kvdbDump(const std::string& kdbName) const
 
 std::vector<base::Name> ContentManager::getPolicyIntegrationList() const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         return {};
@@ -247,8 +244,6 @@ std::vector<base::Name> ContentManager::getPolicyIntegrationList() const
 
 base::Name ContentManager::getPolicyDefaultParent() const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         return base::Name();
@@ -266,8 +261,6 @@ base::Name ContentManager::getPolicyDefaultParent() const
 
 json::Json ContentManager::getPolicy(const base::Name& name) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         LOG_WARNING("getPolicy called but storage not initialized");
@@ -286,8 +279,6 @@ json::Json ContentManager::getPolicy(const base::Name& name) const
 
 std::vector<base::Name> ContentManager::getPolicyList() const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         return {};
@@ -305,8 +296,6 @@ std::vector<base::Name> ContentManager::getPolicyList() const
 
 bool ContentManager::policyExists(const base::Name& name) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
     if (!m_storage || !m_storage->isOpen())
     {
         return false;
@@ -351,8 +340,8 @@ void ContentManager::stopSync()
 
 bool ContentManager::isSyncRunning() const
 {
-    std::shared_lock<std::shared_mutex> lock(m_mutex);
-
+    // No lock needed - m_downloader is fixed after construction
+    // and isRunning() is thread-safe
     return m_downloader && m_downloader->isRunning();
 }
 
@@ -756,8 +745,6 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 
 bool ContentManager::storePolicy(const json::Json& policyData)
 {
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
-
     try
     {
         if (!m_storage || !m_storage->isOpen())
@@ -779,7 +766,6 @@ bool ContentManager::storePolicy(const json::Json& policyData)
 
 bool ContentManager::storeIntegration(const json::Json& integration)
 {
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
     try
     {
         if (!m_storage || !m_storage->isOpen())
@@ -802,7 +788,6 @@ bool ContentManager::storeIntegration(const json::Json& integration)
 
 bool ContentManager::storeDecoder(const json::Json& decoder)
 {
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
     try
     {
         if (!m_storage || !m_storage->isOpen())
@@ -825,8 +810,6 @@ bool ContentManager::storeDecoder(const json::Json& decoder)
 
 bool ContentManager::storeKVDB(const json::Json& kvdbData)
 {
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
-
     try
     {
         if (!m_storage || !m_storage->isOpen())
@@ -850,8 +833,6 @@ bool ContentManager::storeKVDB(const json::Json& kvdbData)
 
 bool ContentManager::deleteAsset(const std::string& resourceId)
 {
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
-
     try
     {
         if (!m_storage || !m_storage->isOpen())
@@ -880,8 +861,6 @@ bool ContentManager::deleteAsset(const std::string& resourceId)
 
 bool ContentManager::updateAsset(const std::string& resourceId, const json::Json& operations)
 {
-    std::unique_lock<std::shared_mutex> lock(m_mutex);
-
     try
     {
         if (!m_storage || !m_storage->isOpen())
