@@ -145,11 +145,11 @@ extern "C" {
     }
 
     bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                                 const char* index,
-                                 const char* checksum,
-                                 unsigned int sync_timeout,
-                                 unsigned int retries,
-                                 size_t max_eps)
+                                const char* index,
+                                const char* checksum,
+                                unsigned int sync_timeout,
+                                unsigned int retries,
+                                size_t max_eps)
     {
         try
         {
