@@ -15,6 +15,7 @@
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <grp.h>
@@ -498,7 +499,8 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
             HTTPRequest::instance().put(
                 RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_block/write"),
                                        .secureCommunication = secureCommunication},
-                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                PostRequestParameters {.onSuccess = [this](const std::string& response) { m_blockedIndex = true; },
+                                       .onError = onError},
                 ConfigurationParameters {});
 
             // Get settings of the index.
@@ -554,10 +556,12 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
 
             // Delete index
             logDebug2(IC_NAME, "Deleting index '%s'.", m_indexName.c_str());
-            HTTPRequest::instance().delete_(RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName),
-                                                               .secureCommunication = secureCommunication},
-                                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                                            ConfigurationParameters {});
+            HTTPRequest::instance().delete_(
+                RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+                                   .secureCommunication = secureCommunication},
+                PostRequestParameters {.onSuccess = [this](const std::string& response) { m_blockedIndex = false; },
+                                       .onError = onError},
+                ConfigurationParameters {});
 
             // Reindex data.
             std::string reindexData = R"({"source":{"index":")" + m_indexName + "-backup" + R"("},"dest":{"index":")" +
@@ -567,11 +571,19 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
                       m_indexName.c_str(),
                       m_indexName.c_str(),
                       reindexData.c_str());
+
+            auto start = std::chrono::high_resolution_clock::now();
             HTTPRequest::instance().post(RequestParameters {.url = HttpURL(selector->getNext() + "/_reindex"),
                                                             .data = reindexData,
                                                             .secureCommunication = secureCommunication},
                                          PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                          ConfigurationParameters {});
+            auto end = std::chrono::high_resolution_clock::now();
+
+            logInfo(IC_NAME,
+                    "It tooks '%ld' seconds to reindex the index '%s'.",
+                    std::chrono::duration_cast<std::chrono::seconds>(end - start).count(),
+                    m_indexName.c_str());
 
             // Delete backup index.
             logDebug2(IC_NAME, "Deleting backup index '%s-backup'.", m_indexName.c_str());
@@ -586,12 +598,57 @@ void IndexerConnector::validateMappings(const nlohmann::json& templateData,
         HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
                                                            .data = templateData.at("template"),
                                                            .secureCommunication = secureCommunication},
-                                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                    PostRequestParameters {
+                                        .onSuccess = onSuccess,
+                                        .onError =
+                                            [](const std::string& error, const long statusCode)
+                                        {
+                                            if (statusCode != HTTP_BAD_REQUEST)
+                                            {
+                                                std::string errorMessage = error;
+                                                if (statusCode != NOT_USED)
+                                                {
+                                                    logError(
+                                                        IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                                                    throw std::runtime_error(error);
+                                                }
+                                            }
+                                        },
+                                    },
                                     ConfigurationParameters {});
     }
     else
     {
         throw std::runtime_error("Invalid template.");
+    }
+}
+
+void IndexerConnector::rollbackIndexChanges(const std::shared_ptr<ServerSelector>& selector,
+                                            const SecureCommunication& secureCommunication)
+{
+    if (m_blockedIndex)
+    {
+        const auto onError = [](const std::string& error, const long statusCode)
+        {
+            logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+            throw std::runtime_error(error);
+        };
+
+        const auto onSuccess = [](const std::string&)
+        {
+            // Not used
+        };
+
+        // Unblock write operations to the index.
+        logDebug2(IC_NAME, "Unblocking write operations to index '%s'.", m_indexName.c_str());
+        HTTPRequest::instance().put(
+            RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName + "/_settings"),
+                               .data = R"({"index":{"blocks":{"write":false}}})",
+                               .secureCommunication = secureCommunication},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            ConfigurationParameters {});
+
+        m_blockedIndex = false;
     }
 }
 
@@ -645,6 +702,7 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     catch (const std::exception& e)
     {
         logWarn(IC_NAME, "Failed to reindex for: %s. %s", m_indexName.c_str(), e.what());
+        rollbackIndexChanges(selector, secureCommunication);
         // Fallback legacy mechanism. Create new mappings after update.
         if (!updateMappingsData.empty())
         {

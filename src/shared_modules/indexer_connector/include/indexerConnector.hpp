@@ -60,6 +60,7 @@ class EXPORTED IndexerConnector final
     uint32_t m_successCount {0};
     bool m_error413FirstTime {false};
     const bool m_useSeekDelete;
+    bool m_blockedIndex {false};
 
     /**
      * @brief Intialize method used to load template data and initialize the index.
@@ -197,6 +198,15 @@ public:
     void validateMappings(const nlohmann::json& templateData,
                           const std::shared_ptr<ServerSelector>& selector,
                           const SecureCommunication& secureCommunication);
+
+    /**
+     * @brief Rollback index changes in case of failure during reindexing.
+     *
+     * @param selector Server selector.
+     * @param secureCommunication Secure communication.
+     */
+    void rollbackIndexChanges(const std::shared_ptr<ServerSelector>& selector,
+                              const SecureCommunication& secureCommunication);
 };
 
 #endif // _INDEXER_CONNECTOR_HPP
