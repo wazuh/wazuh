@@ -78,7 +78,7 @@ namespace chrome
         {ChromeBrowserType::Brave, ".config/BraveSoftware/Brave-Browser"},
         {ChromeBrowserType::Chromium, ".config/chromium"},
         {ChromeBrowserType::Chromium, "snap/chromium/common/chromium"},
-        {ChromeBrowserType::Yandex, ".config/yandex-browser-beta"},
+        {ChromeBrowserType::Yandex, ".config/yandex-browser"},
         {ChromeBrowserType::Opera, ".config/opera"},
         {ChromeBrowserType::Vivaldi, ".config/vivaldi"},
     };
