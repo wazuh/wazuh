@@ -146,8 +146,8 @@ class ContentModule(BaseModule):
                 items.append({
                     "type": ResourceType.KVDB.value,
                     "id": rid,
-                    "name": meta_name,                  # <-- ya no será null si hay meta
-                    "integration_id": meta_integration, # <-- idem
+                    "name": meta_name,
+                    "integration_id": meta_integration,
                     "content": content
                 })
         return {"status": "OK", "error": None, "content": items}
