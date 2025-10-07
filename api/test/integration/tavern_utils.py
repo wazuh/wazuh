@@ -409,7 +409,7 @@ def test_validate_vd_scans(response, first_node_name, first_node_count, second_n
     assert all(node in response.json()["data"]["affected_items"] for node in nodes)
 
 
-def check_agentd_started(response, agents_list):
+def check_agentd_started(response, agents_list, restarted=True):
     """Wait until all the agents have their agentd process started correctly. This will avoid race conditions caused by
     agents reconnections before restarting.
 
@@ -418,9 +418,9 @@ def check_agentd_started(response, agents_list):
     response : Request response
     agents_list : list
         List of expected agents to be restarted.
+    restarted: bool
     """
     timestamp_regex = re.compile(r'^\d\d\d\d/\d\d/\d\d\s\d\d:\d\d:\d\d')
-    agentd_started_regex = re.compile(r'agentd.+Started')
 
     def get_timestamp(log):
         """Get timestamp from log.
@@ -443,6 +443,11 @@ def check_agentd_started(response, agents_list):
 
     for agent_id in agents_list:
         tries = 0
+        agentd_started_regex = (
+            re.compile(r"agentd.+Started")
+            if restarted or agent_id in ["005", "006", "007", "008"]
+            else re.compile(r"agentd.+Reload")
+        )
         while tries < 80:
             try:
                 # Save agentd logs in a list
@@ -498,7 +503,7 @@ def check_agent_active_status(agents_list):
         raise SystemError(f"Agents {non_active_agents} have a status different to active after restarting")
 
 
-def healthcheck_agent_restart(response, agents_list):
+def healthcheck_agent_restart(response, agents_list, restarted=True):
     """Wait until the restart process is finished for every agent in the given list.
 
     Parameters
@@ -506,9 +511,11 @@ def healthcheck_agent_restart(response, agents_list):
     response : Request response
     agents_list : list
         List of expected agents to be restarted.
+    restarted: bool
+        Indicates whether the agents are restarted or reloaded. Default: True
     """
     # Wait for agentd daemon start (up to 80 seconds)
-    check_agentd_started(response, agents_list)
+    check_agentd_started(response, agents_list, restarted)
     # Wait for cluster synchronization process (20 seconds)
     time.sleep(20)
     # Wait for active agent status (up to 25 seconds)
