@@ -68,11 +68,6 @@ namespace constants
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_KVDBS = "/payload/document/kvdbs";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_CONTENT = "/payload/document/content";
 
-    // JSON Patch operation types (RFC 6902)
-    constexpr std::string_view PATCH_OP_ADD = "add";
-    constexpr std::string_view PATCH_OP_REMOVE = "remove";
-    constexpr std::string_view PATCH_OP_REPLACE = "replace";
-
     // Memory configuration
     constexpr size_t READ_CACHE_SIZE = 32 * 1024 * 1024;  // LRU cache size for reading blocks from SST files (32MB)
     constexpr size_t WRITE_BUFFER_SIZE = 64 * 1024 * 1024; // Total memory budget for write buffers across all column families (64MB)
