@@ -40,6 +40,7 @@ struct file_event {
     __u32 ppid;
     __u32 uid;
     __u32 gid;
+    __u32 euid;
     __u32 login_uid;
     __u64 inode;
     __u64 dev;
@@ -303,6 +304,10 @@ statfunc void submit_event(const char *filename,
     __u64 uid_gid = bpf_get_current_uid_gid();
     evt->uid = uid_gid >> 32;
     evt->gid = uid_gid;
+
+    /* Effective UID */
+    kuid_t euid = BPF_CORE_READ(current_task, cred, euid);
+    evt->euid = euid.val;
 
     /* Login UID (audit UID) */
     kuid_t loginuid;
