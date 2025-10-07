@@ -14,9 +14,12 @@
 #include <openssl/sha.h>
 #include <re2/re2.h>
 
+#include <base/utils/communityId.hpp>
 #include <base/utils/ipUtils.hpp>
 #include <base/utils/stringUtils.hpp>
 
+#include "base/error.hpp"
+#include "builders/builders.hpp"
 #include "syntax.hpp"
 
 namespace
@@ -2012,7 +2015,181 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
         RETURN_SUCCESS(runState, resultJson, successTrace);
     };
 }
+// field: + community.id
+MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 5);
+    builder::builders::utils::assertRef(opArgs, 0, 1, 2, 3);
 
+    constexpr uint16_t defaultSeed = 0;
+
+    auto saddrRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+    auto daddrRef = *std::static_pointer_cast<Reference>(opArgs[1]);
+    auto sportRef = *std::static_pointer_cast<Reference>(opArgs[2]);
+    auto dportRef = *std::static_pointer_cast<Reference>(opArgs[3]);
+
+    const auto& validator = buildCtx->validator();
+
+    auto ensureStringRef = [&validator](const Reference& ref)
+    {
+        if (validator.hasField(ref.dotPath()))
+        {
+            const auto type = validator.getJsonType(ref.dotPath());
+            if (type != json::Json::Type::String)
+            {
+                throw std::runtime_error(fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                                     ref.dotPath(),
+                                                     json::Json::typeToStr(type)));
+            }
+        }
+    };
+
+    auto ensureNumericRef = [&validator](const Reference& ref)
+    {
+        if (validator.hasField(ref.dotPath()))
+        {
+            const auto type = validator.getType(ref.dotPath());
+            if (type != schemf::Type::INTEGER && type != schemf::Type::SHORT && type != schemf::Type::LONG)
+            {
+                throw std::runtime_error(fmt::format("Expected numeric reference but got reference '{}' of type '{}'",
+                                                     ref.dotPath(),
+                                                     schemf::typeToStr(type)));
+            }
+        }
+    };
+
+    ensureStringRef(saddrRef);
+    ensureStringRef(daddrRef);
+    ensureNumericRef(sportRef);
+    ensureNumericRef(dportRef);
+
+    const std::string saddrRefPath = saddrRef.jsonPath();
+    const std::string daddrRefPath = daddrRef.jsonPath();
+    const std::string sportRefPath = sportRef.jsonPath();
+    const std::string dportRefPath = dportRef.jsonPath();
+
+    std::string protoRefPath;
+    std::optional<uint8_t> protoLiteral {};
+
+    if (opArgs[4]->isReference())
+    {
+        const auto ref = *std::static_pointer_cast<Reference>(opArgs[4]);
+        if (validator.hasField(ref.dotPath()))
+        {
+            ensureNumericRef(ref);
+        }
+        protoRefPath = ref.jsonPath();
+    }
+    else
+    {
+        const auto protoOpt = std::static_pointer_cast<Value>(opArgs[4])->value().getIntAsInt64();
+
+        if (!protoOpt.has_value())
+        {
+            throw std::runtime_error("Expected 'network.iana_number' argument to be a number");
+        }
+
+        const auto proto64 = protoOpt.value();
+        if (proto64 < 0 || proto64 > std::numeric_limits<uint8_t>::max())
+        {
+            throw std::runtime_error("network.iana_number out of range (expected 0..255)");
+        }
+
+        protoLiteral = static_cast<uint8_t>(proto64);
+    }
+
+    const auto name = buildCtx->context().opName;
+    const auto successTrace = fmt::format("{} -> Success", name);
+
+    const auto missingTrace = [name](const std::string& path)
+    {
+        return fmt::format("{} -> Reference '{}' not found", name, path);
+    };
+    const auto numberTrace = [name](const std::string& path)
+    {
+        return fmt::format("{} -> Reference '{}' must be a number", name, path);
+    };
+
+    const auto protoOutOfRangeTrace = fmt::format("{} -> network.iana_number out of range (expected 0..255)", name);
+
+    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+    {
+        std::string saddr;
+        std::string daddr;
+
+        const std::optional<std::string> saddrOpt = event->getString(saddrRefPath);
+        if (!saddrOpt)
+        {
+            RETURN_FAILURE(runState, json::Json {}, missingTrace(saddrRefPath));
+        }
+        saddr = saddrOpt.value();
+
+        const std::optional<std::string> daddrOpt = event->getString(daddrRefPath);
+        if (!daddrOpt)
+        {
+            RETURN_FAILURE(runState, json::Json {}, missingTrace(daddrRefPath));
+        }
+        daddr = daddrOpt.value();
+
+        uint8_t proto = 0;
+        if (protoLiteral)
+        {
+            proto = protoLiteral.value();
+        }
+        else
+        {
+            const auto opt64 = event->getIntAsInt64(protoRefPath);
+            if (!opt64)
+            {
+                RETURN_FAILURE(runState, json::Json {}, missingTrace(protoRefPath));
+            }
+
+            const auto value = opt64.value();
+            if (value < 0 || value > std::numeric_limits<uint8_t>::max())
+            {
+                RETURN_FAILURE(runState, json::Json {}, protoOutOfRangeTrace);
+            }
+
+            proto = static_cast<uint8_t>(value);
+        }
+
+        int64_t sport = 0;
+        int64_t dport = 0;
+
+        if (const auto sportOpt = event->getIntAsInt64(sportRefPath))
+        {
+            sport = sportOpt.value();
+        }
+        // If the field exists but has an invalid value (cannot be parsed as int) we return an error.
+        else if (event->exists(sportRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, numberTrace(sportRefPath));
+        }
+
+        if (const auto dportOpt = event->getIntAsInt64(dportRefPath))
+        {
+            dport = dportOpt.value();
+        }
+        // If the field exists but has an invalid value (cannot be parsed as int) we return an error.
+        else if (event->exists(dportRef.jsonPath()))
+        {
+            RETURN_FAILURE(runState, json::Json {}, numberTrace(dportRefPath));
+        }
+
+        const auto cid = base::utils::CommunityId::getCommunityIdV1(saddr, daddr, sport, dport, proto, defaultSeed);
+
+        if (base::isError(cid))
+        {
+            const auto failureTrace = fmt::format("{} -> {}", name, base::getError(cid).message);
+            RETURN_FAILURE(runState, json::Json {}, failureTrace);
+        }
+
+        json::Json result;
+        result.setString(std::get<std::string>(cid));
+        RETURN_SUCCESS(runState, result, successTrace);
+    };
+}
 //*************************************************
 //*              Time tranform                    *
 //*************************************************
