@@ -1,12 +1,12 @@
 #ifndef _CTI_STORE_CM
 #define _CTI_STORE_CM
 
-#include <ctistore/contentDownloader.hpp>
-#include <ctistore/icmreader.hpp>
-#include <ctistore/ctistoragedb.hpp>
-
 #include <memory>
 #include <shared_mutex>
+
+#include <ctistore/contentDownloader.hpp>
+#include <ctistore/ctistoragedb.hpp>
+#include <ctistore/icmreader.hpp>
 
 namespace cti::store
 {
@@ -88,6 +88,18 @@ public:
     void stopSync();
 
     /**
+     * @brief Perform complete shutdown of ContentManager
+     *
+     * Stops content synchronization and closes the CTI storage database gracefully.
+     * This method ensures that all pending operations are flushed to disk and all
+     * resources are properly released.
+     *
+     * Should be called during engine shutdown to ensure clean database closure.
+     * After calling this method, no further operations should be performed.
+     */
+    void shutdown();
+
+    /**
      * @brief Check if synchronization is running
      * @return true if sync is active
      */
@@ -103,7 +115,7 @@ public:
      * @brief Get current configuration
      * @return Current configuration
      */
-    ContentManagerConfig getConfig() const;
+    const ContentManagerConfig& getConfig() const;
 
     /**
      * @brief Update configuration

@@ -10,11 +10,6 @@
 namespace cti::store
 {
 
-namespace
-{
-constexpr auto CTI_STORE_LOG_TAG = "cti-store";
-} // namespace
-
 json::Json ContentManagerConfig::toJson() const
 {
     auto nj = this->toNlohmann();
@@ -296,7 +291,12 @@ void ContentDownloader::stop()
     LOG_INFO("Stopping CTI Store ContentDownloader");
 
     m_shouldStop = true;
+
+    // Destroy ContentRegister, which internally stops scheduler thread and waits for its completion.
+    // The ContentRegister destructor chain ensures proper cleanup:
+    // ContentRegister -> ContentProvider -> Action::stopActionScheduler() -> thread.join()
     m_contentRegister.reset();
+
     m_isRunning = false;
 
     LOG_INFO("CTI Store ContentDownloader stopped");
