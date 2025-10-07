@@ -12,7 +12,7 @@
 #include <rocksDBSharedBuffers.hpp>
 #include <rocksdb/slice_transform.h>
 #include <base/logging.hpp>
-#include <external/nlohmann/json.hpp>
+#include <json.hpp>
 
 namespace cti::store
 {
