@@ -5,7 +5,7 @@
 from typing import List
 from api.models.base_model_ import Body, Model
 
-class IntegrationInfo(Model):
+class IntegrationInfoModel(Model):
     """
     IntegrationInfo model.
 
@@ -74,7 +74,7 @@ class IntegrationInfo(Model):
         """
         self._name = value
 
-class IntegrationsOrder(Body):
+class IntegrationsOrderModel(Body):
     """
     IntegrationsOrder body model.
 
@@ -83,9 +83,9 @@ class IntegrationsOrder(Body):
     order : List[IntegrationInfo]
         List of IntegrationInfo objects representing the order.
     """
-    def __init__(self, order: List[IntegrationInfo]):
+    def __init__(self, order: List[IntegrationInfoModel]):
         self.swagger_types = {
-            'order': List[IntegrationInfo]
+            'order': List[IntegrationInfoModel]
         }
         self.attribute_map = {
             'order': 'order'
@@ -95,7 +95,7 @@ class IntegrationsOrder(Body):
     # --- properties ---
 
     @property
-    def order(self) -> List[IntegrationInfo]:
+    def order(self) -> List[IntegrationInfoModel]:
         """Order getter.
 
         Returns
@@ -106,7 +106,7 @@ class IntegrationsOrder(Body):
         return self._order
 
     @order.setter
-    def order(self, value: List[IntegrationInfo]):
+    def order(self, value: List[IntegrationInfoModel]):
         """Order setter.
 
         Parameters

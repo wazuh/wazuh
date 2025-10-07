@@ -8,9 +8,9 @@ from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
 from api.controllers.util import json_response, JSON_CONTENT_TYPE
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
+from api.util import remove_nones_to_dict, raise_if_exc
 from api.models.base_model_ import Body
-from api.models.integrations_order_model import IntegrationsOrder
+from api.models.integrations_order_model import IntegrationsOrderModel
 from wazuh import integrations_order
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.engine.models.integrations_order import IntegrationsOrder
@@ -35,7 +35,7 @@ async def create_integrations_order(type_: str, pretty: bool = False, wait_for_c
         API response.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    body_dict = await IntegrationsOrder.get_kwargs(request)
+    body_dict = await IntegrationsOrderModel.get_kwargs(request)
     model = IntegrationsOrder(**body_dict)
 
     f_kwargs = {

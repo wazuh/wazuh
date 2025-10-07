@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import json
 from dataclasses import asdict
 from os import remove
@@ -17,7 +21,7 @@ DEFAULT_INTEGRATIONS_ORDER_FILENAME = 'integrations_order'
 DEFAULT_USER_NAMESPACE = 'user'
 
 @expose_resources(actions=['integrations:create'], resources=["*:*:*"])
-def create_integrations_order(order: IntegrationsOrder, policy_type: PolicyType) -> AffectedItemsWazuhResult:
+async def create_integrations_order(order: IntegrationsOrder, policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Create a new integrations order resource.
 
     Parameters
@@ -68,7 +72,7 @@ def create_integrations_order(order: IntegrationsOrder, policy_type: PolicyType)
     return result
 
 @expose_resources(actions=['integrations:read'], resources=["*:*:*"])
-def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
+async def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Retrieve the integrations order resource.
 
     Parameters
@@ -101,7 +105,7 @@ def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
     return results
 
 @expose_resources(actions=['integrations:create'], resources=["*:*:*"])
-def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
+async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Delete the integrations order resource.
 
     Parameters
@@ -150,6 +154,8 @@ def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResu
             )
 
             validate_response_or_raise(delete_results, 8012)
+
+        result.affected_items.append(DEFAULT_INTEGRATIONS_ORDER_FILENAME)
     except WazuhError as exc:
         result.add_failed_item(id_=DEFAULT_INTEGRATIONS_ORDER_FILENAME, error=exc)
     finally:
