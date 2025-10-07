@@ -68,6 +68,7 @@ protected:
 
     json::Json createSamplePolicy(const std::string& name = "policy_1", int version = 1)
     {
+        // Creates policy in nested format (preferred): /payload/document/title and /payload/document/integrations
         json::Json policy;
         policy.setObject();
         policy.setString(name, "/name");
@@ -98,7 +99,33 @@ protected:
         metadata.set("/references", references);
 
         document.set("/metadata", metadata);
+
+        json::Json integrations;
+        integrations.setArray();
+        integrations.appendString("integration_1");
+        integrations.appendString("integration_2");
+        document.set("/integrations", integrations);
+
         payload.set("/document", document);
+        policy.set("/payload", payload);
+        return policy;
+    }
+
+    json::Json createSamplePolicyLegacy(const std::string& name = "policy_legacy_1", const std::string& title = "Wazuh Legacy Policy")
+    {
+        // Creates policy in legacy flat format: /payload/title and /payload/integrations (no document wrapper)
+        // TODO: Remove once all policies migrated to nested format
+        json::Json policy;
+        policy.setObject();
+        policy.setString(name, "/name");
+        policy.setInt(1, "/offset");
+        policy.setInt(1, "/version");
+        policy.setString("2025-09-19T14:35:57.830144Z", "/inserted_at");
+
+        json::Json payload;
+        payload.setObject();
+        payload.setString("policy", "/type");
+        payload.setString(title, "/title");
 
         json::Json integrations;
         integrations.setArray();
@@ -1727,4 +1754,297 @@ TEST_F(CTIStorageDBTest, UpdateAssetAcrossColumnFamilies)
 
     auto updatedPolicy = m_storage->getAsset(base::Name("policy_1"), "policy");
     EXPECT_FALSE(updatedPolicy.getBool("/payload/document/enabled").value_or(true));
+}
+
+// ============================================================================
+// Policy Access Tests
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, GetPolicyById)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Get by ID
+    auto retrieved = m_storage->getPolicy(base::Name("policy_1"));
+    EXPECT_TRUE(retrieved.exists("/name"));
+    EXPECT_EQ(retrieved.getString("/name").value_or(""), "policy_1");
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
+}
+
+TEST_F(CTIStorageDBTest, GetPolicyByTitle)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Get by title
+    auto retrieved = m_storage->getPolicy(base::Name("Wazuh 5.0"));
+    EXPECT_TRUE(retrieved.exists("/name"));
+    EXPECT_EQ(retrieved.getString("/name").value_or(""), "policy_1");
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
+}
+
+TEST_F(CTIStorageDBTest, GetPolicyNonExistent)
+{
+    // Try to get non-existent policy
+    EXPECT_THROW(m_storage->getPolicy(base::Name("non_existent")), std::runtime_error);
+}
+
+TEST_F(CTIStorageDBTest, GetPolicyList)
+{
+    // Store multiple policies
+    auto policy1 = createSamplePolicy("policy_1", 1);
+    auto policy2 = createSamplePolicy("policy_2", 2);
+    auto policy3 = createSamplePolicy("policy_3", 3);
+
+    m_storage->storePolicy(policy1);
+    m_storage->storePolicy(policy2);
+    m_storage->storePolicy(policy3);
+
+    // Get list
+    auto policies = m_storage->getPolicyList();
+    EXPECT_EQ(policies.size(), 3);
+
+    // All should have the same title "Wazuh 5.0" as created by createSamplePolicy
+    std::vector<std::string> titles;
+    for (const auto& p : policies)
+    {
+        titles.push_back(p.fullName());
+    }
+    EXPECT_THAT(titles, ::testing::Each("Wazuh 5.0"));
+}
+
+TEST_F(CTIStorageDBTest, GetPolicyListEmpty)
+{
+    // Get list when no policies exist
+    auto policies = m_storage->getPolicyList();
+    EXPECT_EQ(policies.size(), 0);
+}
+
+TEST_F(CTIStorageDBTest, PolicyExistsById)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Check by ID
+    EXPECT_TRUE(m_storage->policyExists(base::Name("policy_1")));
+    EXPECT_FALSE(m_storage->policyExists(base::Name("non_existent")));
+}
+
+TEST_F(CTIStorageDBTest, PolicyExistsByTitle)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Check by title
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+    EXPECT_FALSE(m_storage->policyExists(base::Name("Non Existent Title")));
+}
+
+TEST_F(CTIStorageDBTest, PolicyAccessAfterUpdate)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Update the policy title
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/payload/document/title", "/path");
+    op.setString("Updated Policy Title", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("policy_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Should still exist by ID
+    EXPECT_TRUE(m_storage->policyExists(base::Name("policy_1")));
+
+    // Get by ID and verify new title
+    auto retrieved = m_storage->getPolicy(base::Name("policy_1"));
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Updated Policy Title");
+
+    // List should show new title
+    auto policies = m_storage->getPolicyList();
+    EXPECT_EQ(policies.size(), 1);
+    EXPECT_EQ(policies[0].fullName(), "Updated Policy Title");
+}
+
+TEST_F(CTIStorageDBTest, PolicyAccessAfterDelete)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->policyExists(base::Name("policy_1")));
+    EXPECT_EQ(m_storage->getPolicyList().size(), 1);
+
+    // Delete it
+    bool deleted = m_storage->deleteAsset("policy_1");
+    EXPECT_TRUE(deleted);
+
+    // Should no longer exist
+    EXPECT_FALSE(m_storage->policyExists(base::Name("policy_1")));
+    EXPECT_FALSE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+
+    // List should be empty
+    EXPECT_EQ(m_storage->getPolicyList().size(), 0);
+
+    // Get should throw
+    EXPECT_THROW(m_storage->getPolicy(base::Name("policy_1")), std::runtime_error);
+}
+
+// ============================================================================
+// Policy Dual Format Support Tests
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, PolicyNestedFormatSupport)
+{
+    // Store policy with nested format (preferred): /payload/document/title
+    auto policy = createSamplePolicy("policy_nested", 1);
+    m_storage->storePolicy(policy);
+
+    // Should be retrievable by title
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+
+    // Get policy and verify structure
+    auto retrieved = m_storage->getPolicy(base::Name("policy_nested"));
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
+
+    // Verify integrations in nested format
+    auto integrations = retrieved.getArray("/payload/document/integrations");
+    EXPECT_TRUE(integrations.has_value());
+    EXPECT_EQ(integrations->size(), 2);
+}
+
+TEST_F(CTIStorageDBTest, PolicyLegacyFlatFormatSupport)
+{
+    // Store policy with legacy flat format: /payload/title
+    auto policyLegacy = createSamplePolicyLegacy("policy_flat", "Legacy Flat Title");
+    m_storage->storePolicy(policyLegacy);
+
+    // Should be retrievable by title
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Legacy Flat Title")));
+
+    // Get policy and verify structure
+    auto retrieved = m_storage->getPolicy(base::Name("policy_flat"));
+    EXPECT_EQ(retrieved.getString("/payload/title").value_or(""), "Legacy Flat Title");
+
+    // Verify integrations in flat format
+    auto integrations = retrieved.getArray("/payload/integrations");
+    EXPECT_TRUE(integrations.has_value());
+    EXPECT_EQ(integrations->size(), 2);
+}
+
+TEST_F(CTIStorageDBTest, PolicyMixedFormatsCoexist)
+{
+    // Store both formats
+    auto policyNested = createSamplePolicy("policy_nested", 1);
+    auto policyFlat = createSamplePolicyLegacy("policy_flat", "Flat Policy");
+
+    m_storage->storePolicy(policyNested);
+    m_storage->storePolicy(policyFlat);
+
+    // Both should exist
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Flat Policy")));
+
+    // List should contain both
+    auto policyList = m_storage->getPolicyList();
+    EXPECT_EQ(policyList.size(), 2);
+
+    std::vector<std::string> titles;
+    for (const auto& p : policyList)
+    {
+        titles.push_back(p.fullName());
+    }
+    EXPECT_THAT(titles, ::testing::UnorderedElementsAre("Wazuh 5.0", "Flat Policy"));
+}
+
+TEST_F(CTIStorageDBTest, PolicyIntegrationListBothFormats)
+{
+    // Store integrations first
+    auto integration1 = createSampleIntegration("integration_1", "Integration One");
+    auto integration2 = createSampleIntegration("integration_2", "Integration Two");
+    m_storage->storeIntegration(integration1);
+    m_storage->storeIntegration(integration2);
+
+    // Store policies in both formats
+    auto policyNested = createSamplePolicy("policy_nested", 1);
+    auto policyFlat = createSamplePolicyLegacy("policy_flat", "Flat Policy");
+
+    m_storage->storePolicy(policyNested);
+    m_storage->storePolicy(policyFlat);
+
+    // Get policy integration list (should resolve from both formats)
+    auto integrations = m_storage->getPolicyIntegrationList();
+
+    // Should have 4 total (2 from each policy, with duplicates)
+    // Note: Current implementation doesn't deduplicate
+    EXPECT_GE(integrations.size(), 2);
+
+    // Verify that integration titles are resolved
+    std::vector<std::string> integrationNames;
+    for (const auto& name : integrations)
+    {
+        integrationNames.push_back(name.fullName());
+    }
+    EXPECT_THAT(integrationNames, ::testing::Contains("Integration One"));
+    EXPECT_THAT(integrationNames, ::testing::Contains("Integration Two"));
+}
+
+TEST_F(CTIStorageDBTest, PolicyUpdatePreservesFormat)
+{
+    // Store policy in legacy flat format
+    auto policyFlat = createSamplePolicyLegacy("policy_flat", "Original Title");
+    m_storage->storePolicy(policyFlat);
+
+    // Update the title
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/payload/title", "/path");
+    op.setString("Updated Flat Title", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("policy_flat", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify update worked and format is preserved
+    auto retrieved = m_storage->getPolicy(base::Name("policy_flat"));
+    EXPECT_EQ(retrieved.getString("/payload/title").value_or(""), "Updated Flat Title");
+
+    // Should be findable by new title
+    auto policyList = m_storage->getPolicyList();
+    EXPECT_EQ(policyList.size(), 1);
+    EXPECT_EQ(policyList[0].fullName(), "Updated Flat Title");
+}
+
+TEST_F(CTIStorageDBTest, PolicyDeleteBothFormats)
+{
+    // Store policies in both formats
+    auto policyNested = createSamplePolicy("policy_nested", 1);
+    auto policyFlat = createSamplePolicyLegacy("policy_flat", "Flat Policy");
+
+    m_storage->storePolicy(policyNested);
+    m_storage->storePolicy(policyFlat);
+
+    // Delete both
+    EXPECT_TRUE(m_storage->deleteAsset("policy_nested"));
+    EXPECT_TRUE(m_storage->deleteAsset("policy_flat"));
+
+    // Both should be gone
+    EXPECT_FALSE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+    EXPECT_FALSE(m_storage->policyExists(base::Name("Flat Policy")));
+    EXPECT_EQ(m_storage->getPolicyList().size(), 0);
 }
