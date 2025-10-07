@@ -83,11 +83,11 @@ bool asp_sync_module(AgentSyncProtocolHandle* handle,
 /// @param max_eps The maximum event reporting throughput. 0 means disabled.
 /// @return true if full sync is required (checksum mismatch); false if integrity is valid.
 bool asp_requires_full_sync(AgentSyncProtocolHandle* handle,
-                             const char* index,
-                             const char* checksum,
-                             unsigned int sync_timeout,
-                             unsigned int sync_retries,
-                             size_t max_eps);
+                            const char* index,
+                            const char* checksum,
+                            unsigned int sync_timeout,
+                            unsigned int sync_retries,
+                            size_t max_eps);
 
 /// @brief Parses a response buffer encoded in FlatBuffer format.
 /// @param handle Protocol handle.

@@ -127,10 +127,12 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
 
     // Extract unique indices from dataToSync
     std::set<std::string> uniqueIndicesSet;
+
     for (const auto& item : dataToSync)
     {
         uniqueIndicesSet.insert(item.index);
     }
+
     std::vector<std::string> uniqueIndices(uniqueIndicesSet.begin(), uniqueIndicesSet.end());
 
     bool success = false;
@@ -202,6 +204,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
 
     // Step 1: Send Start message with mode ModuleCheck
     std::vector<std::string> indices = {index};
+
     if (!sendStartAndWaitAck(Mode::CHECK, 0, indices, timeout, retries, maxEps))
     {
         m_logger(LOG_ERROR, "Failed to send Start message for integrity check");
@@ -222,6 +225,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
     // Step 3: Send End message and wait for EndAck
     SyncResult syncResult;
     std::vector<PersistedData> emptyData; // No data to send for integrity check
+
     if (sendEndAndWaitAck(m_syncState.session, timeout, retries, emptyData, maxEps, &syncResult))
     {
         m_logger(LOG_DEBUG, "Module integrity check completed successfully for index: " + index);
@@ -240,9 +244,11 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
             case SyncResult::COMMUNICATION_ERROR:
                 m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - Manager is offline");
                 break;
+
             case SyncResult::CHECKSUM_ERROR:
                 m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - Checksum validation failed, full sync required");
                 break;
+
             case SyncResult::UNKNOWN_ERROR:
             default:
                 m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - Unknown error");
@@ -297,6 +303,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
         // Translate DB mode to Schema mode
         Wazuh::SyncSchema::Mode protocolMode;
+
         if (mode == Mode::FULL)
         {
             protocolMode = Wazuh::SyncSchema::Mode::ModuleFull;
@@ -330,10 +337,12 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
         // Create index vector from uniqueIndices parameter
         std::vector<flatbuffers::Offset<flatbuffers::String>> index_vec;
+
         for (const auto& idx : uniqueIndices)
         {
             index_vec.push_back(builder.CreateString(idx));
         }
+
         auto indices = builder.CreateVector(index_vec);
 
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
@@ -552,6 +561,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                     {
                         *result = m_syncState.lastSyncResult;
                     }
+
                     m_logger(LOG_ERROR, "Synchronization failed: Manager reported an error status.");
                     return false;
                 }
@@ -606,6 +616,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                     {
                         *result = m_syncState.lastSyncResult;
                     }
+
                     m_logger(LOG_DEBUG, "EndAck received.");
                     return true;
                 }
