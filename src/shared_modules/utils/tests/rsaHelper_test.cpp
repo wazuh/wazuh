@@ -410,11 +410,11 @@ TEST_F(RSAHelperTest, rsaDecryptSuccess)
     EXPECT_CALL(rsaHelper, ERR_clear_error()).WillOnce(Return());
 
     EXPECT_CALL(rsaHelper, RSA_private_decrypt(10, _, _, (RSA*)2, RSA_PKCS1_PADDING))
-        .WillOnce(DoAll(WithArgs<2>(
-                            [](unsigned char* outBuf)
+        .WillOnce(DoAll(WithArgs<0, 2>(
+                            [](int flen, unsigned char* outBuf)
                             {
                                 const unsigned char fakeData[10] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'};
-                                memcpy(outBuf, fakeData, 10);
+                                memcpy(outBuf, fakeData, flen < 10 ? flen : 10);
                             }),
                         Return(10)));
 
