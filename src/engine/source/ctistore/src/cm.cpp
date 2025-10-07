@@ -13,8 +13,6 @@ namespace cti::store
 
 namespace
 {
-constexpr auto CTI_STORE_LOG_TAG = "cti-store";
-
 // Helper function to convert AssetType enum to string
 constexpr std::string_view assetTypeToString(cti::store::AssetType type) noexcept
 {
@@ -62,6 +60,12 @@ ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStar
 
     auto processingCallback = [this](const std::string& message) -> FileProcessingResult
     {
+        // Check if stop was requested before starting processing
+        if (m_downloader && m_downloader->shouldStop())
+        {
+            LOG_DEBUG("ContentManager: stop requested, aborting content processing");
+            return {0, "", false};
+        }
         return processDownloadedContent(message);
     };
 
@@ -75,9 +79,9 @@ ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStar
 
 ContentManager::~ContentManager()
 {
-    if (isSyncRunning())
+    if (isSyncRunning() || (m_storage && m_storage->isOpen()))
     {
-        stopSync();
+        shutdown();
     }
 }
 
@@ -338,6 +342,37 @@ void ContentManager::stopSync()
     }
 }
 
+void ContentManager::shutdown()
+{
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
+    LOG_INFO("Shutting down CTI Store ContentManager");
+
+    // 1. Stop content synchronization if running
+    if (m_downloader && m_downloader->isRunning())
+    {
+        LOG_DEBUG("Stopping content downloader");
+        m_downloader->stop();
+    }
+
+    // 2. Close CTI storage database gracefully
+    if (m_storage && m_storage->isOpen())
+    {
+        LOG_DEBUG("Closing CTI storage database");
+        try
+        {
+            m_storage->shutdown();
+            LOG_INFO("CTI storage database closed successfully");
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("Failed to shutdown CTI storage database: {}", e.what());
+        }
+    }
+
+    LOG_INFO("CTI Store ContentManager shutdown completed");
+}
+
 bool ContentManager::isSyncRunning() const
 {
     // No lock needed - m_downloader is fixed after construction
@@ -359,7 +394,7 @@ void ContentManager::updateSyncInterval(size_t intervalSeconds)
     }
 }
 
-ContentManagerConfig ContentManager::getConfig() const
+const ContentManagerConfig& ContentManager::getConfig() const
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
     return m_config;
@@ -426,6 +461,13 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
             {
                 for (const auto& pathValue : pathsArray.value())
                 {
+                    // Check if stop was requested before processing next file
+                    if (m_downloader && m_downloader->shouldStop())
+                    {
+                        LOG_INFO("CTI offsets: processing interrupted by stop request (offset={})", currentOffset);
+                        return {currentOffset, "", true};
+                    }
+
                     const auto path = json::Json(pathValue).getString().value_or("");
                     if (path.empty())
                     {
@@ -474,6 +516,15 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 
                         for (size_t i = 0; i < dataArray->size(); ++i)
                         {
+                            // Check if stop was requested
+                            if (m_downloader && m_downloader->shouldStop())
+                            {
+                                LOG_INFO("CTI offsets: processing interrupted by stop request at entry {} (offset={})", 
+                                         i, currentOffset);
+                                // Return current progress - offset will be saved
+                                return {currentOffset, "", true};
+                            }
+
                             try
                             {
                                 json::Json entryJson(dataArray->at(i));
@@ -669,6 +720,16 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
             while (std::getline(file, line))
             {
                 ++lineNumber;
+
+                // Check if stop was requested
+                if (m_downloader && m_downloader->shouldStop())
+                {
+                    LOG_INFO("CTI snapshot: processing interrupted by stop request at line {} (offset={})",
+                             lineNumber, currentOffset);
+                    // Return current progress - offset will be saved so we can resume later
+                    return {currentOffset, hash, true};
+                }
+
                 if (line.empty())
                     continue;
                 try

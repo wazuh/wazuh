@@ -18,8 +18,6 @@ add_library(ctistore_ctistore STATIC
 target_include_directories(ctistore_ctistore
     PUBLIC
     ${INC_DIR}
-    # Needed so that includes like <external/nlohmann/json.hpp> (from shared content_manager headers) resolve
-    ${SRC_FOLDER}
 )
 target_link_libraries(ctistore_ctistore
     PUBLIC

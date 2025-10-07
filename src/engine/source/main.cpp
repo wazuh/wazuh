@@ -539,6 +539,14 @@ int main(int argc, char* argv[])
             ctiCfg.basePath = baseCtiPath;
             ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, true);
             LOG_INFO("CTI Store initialized.");
+            exitHandler.add(
+                [ctiStoreManager]()
+                {
+                    if (ctiStoreManager)
+                    {
+                        ctiStoreManager->shutdown();
+                    }
+                });
         }
 
         // Create and configure the api endpints

@@ -7,9 +7,10 @@
 #include <mutex>
 #include <string>
 
+#include <json.hpp> // nlohmann
+
 #include <base/json.hpp>
 #include <base/logging.hpp>
-#include <external/nlohmann/json.hpp>
 
 // Forward declaration of global ContentRegister (defined in shared_modules/content_manager)
 class ContentRegister;
@@ -126,6 +127,15 @@ public:
      * @return true if running
      */
     bool isRunning() const;
+
+    /**
+     * @brief Check if stop was requested
+     * @return true if stop was requested
+     */
+    bool shouldStop() const
+    {
+        return m_shouldStop.load();
+    }
 
     /**
      * @brief Update the download interval

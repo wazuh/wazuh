@@ -13,7 +13,7 @@
 #define _CONTENT_REGISTER_HPP
 
 #include "sharedDefs.hpp"
-#include <external/nlohmann/json.hpp>
+#include <json.hpp>
 #include <memory>
 #include <shared_mutex>
 #include <string_view>
