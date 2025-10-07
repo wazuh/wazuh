@@ -23,7 +23,7 @@ DEFAULT_INTEGRATION_FORMAT = 'json'
 ENGINE_USER_NAMESPACE = 'user'
 
 @expose_resources(actions=['integrations:create'], resources=["*:*:*"])
-def create_integration(integration: Integration, policy_type: PolicyType) -> AffectedItemsWazuhResult:
+async def create_integration(integration: Integration, policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Create a new integration resource.
 
     Parameters
@@ -88,7 +88,7 @@ def create_integration(integration: Integration, policy_type: PolicyType) -> Aff
     return result
 
 @expose_resources(actions=['integrations:read'], resources=["*:*:*"])
-def get_integrations(names: str, search: Optional[str], status: Optional[Status], policy_type:PolicyType) -> AffectedItemsWazuhResult:
+async def get_integrations(names: str, search: Optional[str], status: Optional[Status], policy_type:PolicyType) -> AffectedItemsWazuhResult:
     """Retrieve integration resources.
 
     Parameters
@@ -136,7 +136,7 @@ def get_integrations(names: str, search: Optional[str], status: Optional[Status]
         return results
 
 @expose_resources(actions=['integrations:update'], resources=["*:*:*"])
-def update_integration(integration: Integration, policy_type: PolicyType):
+async def update_integration(integration: Integration, policy_type: PolicyType):
     """Update an existing integration resource.
 
     Parameters
@@ -215,7 +215,7 @@ def update_integration(integration: Integration, policy_type: PolicyType):
     return result
 
 @expose_resources(actions=['integrations:delete'], resources=["*:*:*"])
-def delete_integration(names: List[str], policy_type: PolicyType):
+async def delete_integration(names: List[str], policy_type: PolicyType):
     """Delete one or more integration resources.
 
     Parameters
@@ -268,6 +268,8 @@ def delete_integration(names: List[str], policy_type: PolicyType):
                 )
 
                 validate_response_or_raise(delete_results, 8007)
+
+            result.affected_items.append(name)
         except WazuhError as exc:
             result.add_failed_item(id_=name, error=exc)
         finally:
