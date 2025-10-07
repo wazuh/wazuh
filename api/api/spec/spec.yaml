@@ -17468,8 +17468,8 @@ paths:
                   total_affected_items: 307
                   total_failed_items: 0
                   failed_items: []
-                  message: "All specified syscollector information was returned"
-                  error: 0
+                message: "All specified syscollector information was returned"
+                error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
