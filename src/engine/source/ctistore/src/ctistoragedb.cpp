@@ -12,6 +12,7 @@
 #include <rocksDBSharedBuffers.hpp>
 #include <rocksdb/slice_transform.h>
 #include <base/logging.hpp>
+#include <external/nlohmann/json.hpp>
 
 namespace cti::store
 {
@@ -1712,119 +1713,53 @@ bool CTIStorageDB::Impl::updateAsset(const std::string& resourceId, const json::
         return false;
     }
 
-    // Parse the document
-    json::Json doc;
+    // Parse the document using nlohmann::json for RFC 6902 JSON Patch support
+    nlohmann::json jsonData;
     try
     {
-        doc = json::Json(docValue.c_str());
+        jsonData = nlohmann::json::parse(docValue);
     }
     catch (const std::exception& e)
     {
         throw std::runtime_error("Failed to parse existing asset document: " + std::string(e.what()));
     }
 
-    // Apply each JSON Patch operation
-    for (const auto& opValue : *opsArray)
+    // Convert operations from base::json::Json to nlohmann::json
+    nlohmann::json patchOperations;
+    try
     {
-        json::Json operation(opValue);
+        // Serialize base::json::Json operations to string and parse with nlohmann::json
+        std::string opsStr = operations.str();
+        patchOperations = nlohmann::json::parse(opsStr);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error("Failed to convert patch operations: " + std::string(e.what()));
+    }
 
-        auto op = operation.getString("/op");
-        auto path = operation.getString("/path");
+    // Apply JSON Patch operations in-place (RFC 6902 compliant)
+    // This will throw an exception if any operation is invalid per RFC 6902
+    try
+    {
+        jsonData.patch_inplace(patchOperations);
+        LOG_TRACE("Successfully applied {} patch operations to asset", opsArray->size());
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Failed to apply JSON Patch operations: {}", e.what());
+        throw std::runtime_error("JSON Patch application failed: " + std::string(e.what()));
+    }
 
-        if (!op || !path)
-        {
-            LOG_WARNING("Skipping invalid patch operation: missing 'op' or 'path'");
-            continue;
-        }
-
-        try
-        {
-            if (*op == constants::PATCH_OP_REPLACE || *op == constants::PATCH_OP_ADD)
-            {
-                if (!operation.exists("/value"))
-                {
-                    LOG_WARNING("Skipping '{}' operation: missing 'value' field", *op);
-                    continue;
-                }
-
-                // Determine the type of value and set accordingly
-                auto valueType = operation.type("/value");
-
-                if (valueType == json::Json::Type::String)
-                {
-                    auto valueStr = operation.getString("/value");
-                    if (valueStr)
-                    {
-                        doc.setString(*valueStr, *path);
-                    }
-                }
-                else if (valueType == json::Json::Type::Number)
-                {
-                    auto valueInt = operation.getInt("/value");
-                    if (valueInt)
-                    {
-                        doc.setInt(*valueInt, *path);
-                    }
-                }
-                else if (valueType == json::Json::Type::Boolean)
-                {
-                    auto valueBool = operation.getBool("/value");
-                    if (valueBool)
-                    {
-                        doc.setBool(*valueBool, *path);
-                    }
-                }
-                else if (valueType == json::Json::Type::Object || valueType == json::Json::Type::Array)
-                {
-                    // For complex types (objects/arrays), create a new Json from the value
-                    // Get the value as a sub-document string and re-parse
-                    json::Json valueJson;
-                    if (operation.exists("/value"))
-                    {
-                        // Extract the value portion as JSON string
-                        std::string opStr = operation.str();
-                        // Parse the operation to extract just the value
-                        // This is a workaround - ideally we'd have a better way to extract sub-JSON
-                        try
-                        {
-                            json::Json tempOp(opStr.c_str());
-                            // We can't directly extract, so we'll use set with a sub-document approach
-                            // For now, log a warning and skip complex value updates
-                            LOG_WARNING("Complex value updates (objects/arrays) not fully supported for path '{}', type={}",
-                                        *path, static_cast<int>(valueType));
-                            continue;
-                        }
-                        catch (...)
-                        {
-                            LOG_WARNING("Failed to process complex value for path '{}'", *path);
-                            continue;
-                        }
-                    }
-                }
-                else
-                {
-                    LOG_WARNING("Unsupported value type for patch operation at path '{}'", *path);
-                    continue;
-                }
-
-                LOG_TRACE("Applied '{}' operation at path '{}'", *op, *path);
-            }
-            else if (*op == constants::PATCH_OP_REMOVE)
-            {
-                // Note: base::json may not have a direct remove method
-                // We could set to null or skip this operation
-                LOG_WARNING("'remove' operation not fully supported yet for path '{}'", *path);
-            }
-            else
-            {
-                LOG_WARNING("Unsupported patch operation: '{}'", *op);
-            }
-        }
-        catch (const std::exception& e)
-        {
-            LOG_ERROR("Failed to apply patch operation '{}' at path '{}': {}", *op, *path, e.what());
-            throw std::runtime_error("Patch application failed: " + std::string(e.what()));
-        }
+    // Convert back to base::json::Json for validation and storage
+    json::Json doc;
+    try
+    {
+        std::string updatedJsonStr = jsonData.dump();
+        doc = json::Json(updatedJsonStr.c_str());
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error("Failed to convert patched document back to base::json: " + std::string(e.what()));
     }
 
     // Validate the updated document
@@ -1835,7 +1770,7 @@ bool CTIStorageDB::Impl::updateAsset(const std::string& resourceId, const json::
 
     // Store the updated document back (reusing storeWithIndex logic would be ideal,
     // but we need to handle it directly here to maintain the lock)
-    const std::string updatedDoc = doc.str();
+    const std::string updatedDoc = jsonData.dump();
     rocksdb::WriteOptions wo;
     status = m_db->Put(wo, getColumnFamily(cf), primaryKey, updatedDoc);
 

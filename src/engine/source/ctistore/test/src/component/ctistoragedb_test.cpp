@@ -1679,7 +1679,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetInvalidOperation)
     auto integration = createSampleIntegration("integration_1", "Test Integration");
     m_storage->storeIntegration(integration);
 
-    // Create operations with missing value field
+    // Create operations with missing value field (invalid per RFC 6902)
     json::Json operations;
     operations.setArray();
 
@@ -1687,14 +1687,13 @@ TEST_F(CTIStorageDBTest, UpdateAssetInvalidOperation)
     op1.setObject();
     op1.setString("replace", "/op");
     op1.setString("/payload/document/title", "/path");
-    // Missing /value field
+    // Missing /value field - this violates RFC 6902
     operations.appendJson(op1);
 
-    // Should still succeed but skip invalid operations
-    bool updated = m_storage->updateAsset("integration_1", operations);
-    EXPECT_TRUE(updated);
+    // Should throw because the operation is invalid per RFC 6902
+    EXPECT_THROW(m_storage->updateAsset("integration_1", operations), std::runtime_error);
 
-    // Verify title is unchanged
+    // Verify title is unchanged (update was not applied)
     auto updatedAsset = m_storage->getAsset(base::Name("Test Integration"), "integration");
     auto title = updatedAsset.getString("/payload/document/title");
     EXPECT_TRUE(title.has_value());
