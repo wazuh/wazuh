@@ -268,8 +268,22 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                         // LCOV_EXCL_START
                         if (callback)
                         {
+                            // Add version field if table has it and entry doesn't
+                            nlohmann::json entryWithVersion = entry;
+                            const auto& tableFields = m_tableFields[table];
+                            const bool hasVersion = std::any_of(tableFields.begin(), tableFields.end(),
+                                                                [](const ColumnData & column)
+                            {
+                                return std::get<TableHeader::Name>(column) == "version";
+                            });
+
+                            if (hasVersion && !entryWithVersion.contains("version"))
+                            {
+                                entryWithVersion["version"] = 1;  // Default value from schema
+                            }
+
                             lock.unlock();
-                            callback(INSERTED, entry);
+                            callback(INSERTED, entryWithVersion);
                             lock.lock();
                         }
 
@@ -1437,6 +1451,13 @@ bool SQLiteDBEngine::getRowDiff(const std::vector<std::string>& primaryKeyList,
                     }
 
                     updatedData[value.first] = *it;
+                }
+                else if (value.first == "version")
+                {
+                    // Always include version field in updatedData (will be incremented by DB)
+                    // The DB does version=version+1, so we add 1 to the current value
+                    updatedData["version"] = object["version"].get<int>() + 1;
+                    oldData["version"] = object["version"];
                 }
             }
         }
