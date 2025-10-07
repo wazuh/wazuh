@@ -851,7 +851,7 @@ static void test_fim_registry_key_transaction_callback_empty_changed_attributes(
         .architecture = ARCH_64BIT,
     };
     ReturnTypeCallback resultType = MODIFIED;
-    const cJSON *result_json = cJSON_Parse("{\"new\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\"},\"old\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\"}}");
+    const cJSON *result_json = cJSON_Parse("{\"new\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"version\":2},\"old\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\",\"version\":1}}");
     fim_key_txn_context_t user_data = {.key = &key, .evt_data = &event_data};
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' does not have any modified fields. No event will be generated.");
@@ -959,7 +959,7 @@ static void test_fim_registry_value_transaction_callback_empty_changed_attribute
     value.architecture = ARCH_64BIT;
     value.value = "mock_value_name";
     ReturnTypeCallback resultType = MODIFIED;
-    const cJSON *result_json = cJSON_Parse("{\"new\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\"},\"old\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\",\"value\":\"mock_name_value\"}}");
+    const cJSON *result_json = cJSON_Parse("{\"new\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\",\"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"version\":2},\"old\":{\"path\":\"HKEY_LOCAL_MACHINE\\\\Software\\\\Classes\\\\batfile\", \"architecture\":\"[x64]\",\"value\":\"mock_name_value\",\"version\":1}}");
     fim_val_txn_context_t user_data = {.data = &value, .evt_data = &event_data, .diff = NULL};
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6954): Entry 'HKEY_LOCAL_MACHINE\\Software\\Classes\\batfile' does not have any modified fields. No event will be generated.");
