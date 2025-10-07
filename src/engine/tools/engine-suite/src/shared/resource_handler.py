@@ -53,7 +53,7 @@ class ResourceHandler:
         try:
             read = yaml.load(content, Loader=Loader)  # yaml.SafeLoader
         except yaml.YAMLError as e:
-            print(f"Error while reading YAML file:{e}")
+            raise e
         return read
 
     def _read(self, content: str, format: Format) -> dict:
@@ -110,8 +110,9 @@ class ResourceHandler:
         read = {}
         try:
             read = self._read(content, format)
-        except:
-            raise Exception(f'Failed to read {path.name}')
+        except Exception as e:
+            print(f'Failed to read {path.name}')
+            raise e
         return read
 
     def load_file(self, path_str: str, format: Format = Format.YML):
