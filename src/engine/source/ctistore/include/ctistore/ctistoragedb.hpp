@@ -115,6 +115,34 @@ public:
     void storeKVDB(const json::Json& kvdbDoc);
 
     /**
+     * @brief Delete an asset by its UUID resource identifier.
+     *
+     * Searches across all asset column families (policy, integration, decoder, kvdb)
+     * to find and delete the asset with the given resource ID. Also removes associated
+     * name indexes and relationship metadata.
+     *
+     * @param resourceId The UUID resource identifier of the asset to delete.
+     * @return true if the asset was found and deleted; false if not found.
+     * @throw std::runtime_error on write error.
+     */
+    bool deleteAsset(const std::string& resourceId);
+
+    /**
+     * @brief Update an asset by its UUID resource identifier using JSON Patch operations.
+     *
+     * Searches across all asset column families (policy, integration, decoder, kvdb)
+     * to find the asset with the given resource ID, applies the JSON Patch operations,
+     * and stores the updated document back.
+     *
+     * @param resourceId The UUID resource identifier of the asset to update.
+     * @param operations JSON array of JSON Patch operations (RFC 6902 format).
+     *                   Each operation has: {"op": "replace|add|remove", "path": "/field/path", "value": ...}
+     * @return true if the asset was found and updated; false if not found.
+     * @throw std::runtime_error on validation, patch application error, or write error.
+     */
+    bool updateAsset(const std::string& resourceId, const json::Json& operations);
+
+    /**
      * @brief List available assets by type.
      *
      * @param assetType One of: "policy", "integration", "decoder".

@@ -1352,3 +1352,379 @@ TEST_F(CTIStorageDBTest, ThreadSafetyBasicVerification)
     auto finalList = m_storage->getAssetList("integration");
     EXPECT_EQ(finalList.size(), 3 + numWriters * writesPerWriter);
 }
+
+// ============================================================================
+// Delete Asset Tests
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, DeleteAssetIntegration)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Test Integration"), "integration"));
+
+    // Delete by resource ID
+    bool deleted = m_storage->deleteAsset("integration_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify it no longer exists
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Test Integration"), "integration"));
+
+    // Verify it's not in the list
+    auto list = m_storage->getAssetList("integration");
+    EXPECT_EQ(list.size(), 0);
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetDecoder)
+{
+    // Store a decoder
+    auto decoder = createSampleDecoder("decoder_1", "test_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->assetExists(base::Name("test_decoder"), "decoder"));
+
+    // Delete by resource ID
+    bool deleted = m_storage->deleteAsset("decoder_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify it no longer exists
+    EXPECT_FALSE(m_storage->assetExists(base::Name("test_decoder"), "decoder"));
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetPolicy)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Wazuh 5.0"), "policy"));
+
+    // Delete by resource ID
+    bool deleted = m_storage->deleteAsset("policy_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify it no longer exists
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Wazuh 5.0"), "policy"));
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetKVDB)
+{
+    // Store a KVDB
+    auto kvdb = createSampleKVDB("kvdb_1", "Test KVDB");
+    m_storage->storeKVDB(kvdb);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->kvdbExists("Test KVDB"));
+
+    // Delete by resource ID
+    bool deleted = m_storage->deleteAsset("kvdb_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify it no longer exists
+    EXPECT_FALSE(m_storage->kvdbExists("Test KVDB"));
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetNonExistent)
+{
+    // Try to delete non-existent asset
+    bool deleted = m_storage->deleteAsset("non_existent_id");
+    EXPECT_FALSE(deleted);
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetWithRelationships)
+{
+    // Store an integration with relationships
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Verify relationship indexes exist by checking we can get KVDB list
+    auto kvdbList = m_storage->getKVDBList(base::Name("Test Integration"));
+    // Note: The KVDBs themselves don't exist, but the relationship index should be created
+
+    // Delete the integration
+    bool deleted = m_storage->deleteAsset("integration_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify the asset is deleted
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Test Integration"), "integration"));
+}
+
+TEST_F(CTIStorageDBTest, DeleteMultipleAssetsDifferentTypes)
+{
+    // Store multiple assets of different types
+    auto integration = createSampleIntegration("integration_1", "Integration 1");
+    auto decoder = createSampleDecoder("decoder_1", "decoder_1");
+    auto policy = createSamplePolicy("policy_1");
+    auto kvdb = createSampleKVDB("kvdb_1", "KVDB 1");
+
+    m_storage->storeIntegration(integration);
+    m_storage->storeDecoder(decoder);
+    m_storage->storePolicy(policy);
+    m_storage->storeKVDB(kvdb);
+
+    // Verify all exist
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Integration 1"), "integration"));
+    EXPECT_TRUE(m_storage->assetExists(base::Name("decoder_1"), "decoder"));
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Wazuh 5.0"), "policy"));
+    EXPECT_TRUE(m_storage->kvdbExists("KVDB 1"));
+
+    // Delete each one
+    EXPECT_TRUE(m_storage->deleteAsset("integration_1"));
+    EXPECT_TRUE(m_storage->deleteAsset("decoder_1"));
+    EXPECT_TRUE(m_storage->deleteAsset("policy_1"));
+    EXPECT_TRUE(m_storage->deleteAsset("kvdb_1"));
+
+    // Verify all are deleted
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Integration 1"), "integration"));
+    EXPECT_FALSE(m_storage->assetExists(base::Name("decoder_1"), "decoder"));
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Wazuh 5.0"), "policy"));
+    EXPECT_FALSE(m_storage->kvdbExists("KVDB 1"));
+}
+
+// ============================================================================
+// Update Asset Tests
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, UpdateAssetReplaceString)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Original Title");
+    m_storage->storeIntegration(integration);
+
+    // Create update operations to replace the title
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/payload/document/title", "/path");
+    op1.setString("Updated Title", "/value");
+    operations.appendJson(op1);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("integration_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify the update
+    auto updatedAsset = m_storage->getAsset(base::Name("integration_1"), "integration");
+    auto title = updatedAsset.getString("/payload/document/title");
+    EXPECT_TRUE(title.has_value());
+    EXPECT_EQ(*title, "Updated Title");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetReplaceBoolean)
+{
+    // Store a decoder
+    auto decoder = createSampleDecoder("decoder_1", "test_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Create update operations to disable it
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/payload/document/enabled", "/path");
+    op1.setBool(false, "/value");
+    operations.appendJson(op1);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("decoder_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify the update
+    auto updatedAsset = m_storage->getAsset(base::Name("test_decoder"), "decoder");
+    auto enabled = updatedAsset.getBool("/payload/document/enabled");
+    EXPECT_TRUE(enabled.has_value());
+    EXPECT_FALSE(*enabled);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetAddString)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Create update operations to add a new field
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("add", "/op");
+    op1.setString("/payload/document/new_field", "/path");
+    op1.setString("New Value", "/value");
+    operations.appendJson(op1);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("integration_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify the new field exists
+    auto updatedAsset = m_storage->getAsset(base::Name("Test Integration"), "integration");
+    auto newField = updatedAsset.getString("/payload/document/new_field");
+    EXPECT_TRUE(newField.has_value());
+    EXPECT_EQ(*newField, "New Value");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetMultipleOperations)
+{
+    // Store a decoder
+    auto decoder = createSampleDecoder("decoder_1", "test_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Create multiple update operations
+    json::Json operations;
+    operations.setArray();
+
+    // Operation 1: Replace check field
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/payload/document/check", "/path");
+    op1.setString("new_condition", "/value");
+    operations.appendJson(op1);
+
+    // Operation 2: Disable decoder
+    json::Json op2;
+    op2.setObject();
+    op2.setString("replace", "/op");
+    op2.setString("/payload/document/enabled", "/path");
+    op2.setBool(false, "/value");
+    operations.appendJson(op2);
+
+    // Apply updates
+    bool updated = m_storage->updateAsset("decoder_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify both updates
+    auto updatedAsset = m_storage->getAsset(base::Name("test_decoder"), "decoder");
+    auto check = updatedAsset.getString("/payload/document/check");
+    EXPECT_TRUE(check.has_value());
+    EXPECT_EQ(*check, "new_condition");
+
+    auto enabled = updatedAsset.getBool("/payload/document/enabled");
+    EXPECT_TRUE(enabled.has_value());
+    EXPECT_FALSE(*enabled);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetNonExistent)
+{
+    // Try to update non-existent asset
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/payload/document/title", "/path");
+    op1.setString("New Title", "/value");
+    operations.appendJson(op1);
+
+    bool updated = m_storage->updateAsset("non_existent_id", operations);
+    EXPECT_FALSE(updated);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetEmptyOperations)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Create empty operations array
+    json::Json operations;
+    operations.setArray();
+
+    // Should throw due to empty operations
+    EXPECT_THROW(m_storage->updateAsset("integration_1", operations), std::invalid_argument);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetInvalidOperation)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Create operations with missing value field
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/payload/document/title", "/path");
+    // Missing /value field
+    operations.appendJson(op1);
+
+    // Should still succeed but skip invalid operations
+    bool updated = m_storage->updateAsset("integration_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify title is unchanged
+    auto updatedAsset = m_storage->getAsset(base::Name("Test Integration"), "integration");
+    auto title = updatedAsset.getString("/payload/document/title");
+    EXPECT_TRUE(title.has_value());
+    EXPECT_EQ(*title, "Test Integration");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetAcrossColumnFamilies)
+{
+    // Store assets in different column families
+    auto integration = createSampleIntegration("integration_1", "Integration 1");
+    auto decoder = createSampleDecoder("decoder_1", "decoder_1");
+    auto policy = createSamplePolicy("policy_1");
+
+    m_storage->storeIntegration(integration);
+    m_storage->storeDecoder(decoder);
+    m_storage->storePolicy(policy);
+
+    // Update integration
+    json::Json ops1;
+    ops1.setArray();
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/payload/document/description", "/path");
+    op1.setString("Updated Integration", "/value");
+    ops1.appendJson(op1);
+    EXPECT_TRUE(m_storage->updateAsset("integration_1", ops1));
+
+    // Update decoder
+    json::Json ops2;
+    ops2.setArray();
+    json::Json op2;
+    op2.setObject();
+    op2.setString("replace", "/op");
+    op2.setString("/payload/document/check", "/path");
+    op2.setString("updated_check", "/value");
+    ops2.appendJson(op2);
+    EXPECT_TRUE(m_storage->updateAsset("decoder_1", ops2));
+
+    // Update policy
+    json::Json ops3;
+    ops3.setArray();
+    json::Json op3;
+    op3.setObject();
+    op3.setString("replace", "/op");
+    op3.setString("/payload/document/enabled", "/path");
+    op3.setBool(false, "/value");
+    ops3.appendJson(op3);
+    EXPECT_TRUE(m_storage->updateAsset("policy_1", ops3));
+
+    // Verify all updates
+    auto updatedIntegration = m_storage->getAsset(base::Name("Integration 1"), "integration");
+    EXPECT_EQ(updatedIntegration.getString("/payload/document/description").value_or(""), "Updated Integration");
+
+    auto updatedDecoder = m_storage->getAsset(base::Name("decoder_1"), "decoder");
+    EXPECT_EQ(updatedDecoder.getString("/payload/document/check").value_or(""), "updated_check");
+
+    auto updatedPolicy = m_storage->getAsset(base::Name("policy_1"), "policy");
+    EXPECT_FALSE(updatedPolicy.getBool("/payload/document/enabled").value_or(true));
+}

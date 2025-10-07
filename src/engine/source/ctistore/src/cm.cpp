@@ -492,23 +492,81 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                                 }
                                 else if (operationType == "update")
                                 {
-                                    // TODO: Implement update semantics (merge vs replace?) when persistence layer is
-                                    // added
-                                    LOG_TRACE("Offsets: TODO update op asset='{}' (#{} offset={})",
-                                              assetType,
-                                              i,
-                                              currentOffset);
-                                    continue; // For now do not treat update as create
+                                    // Get resource ID and patch operations
+                                    const auto resourceId = entryJson.getString("/resource").value_or("");
+                                    if (resourceId.empty())
+                                    {
+                                        LOG_WARNING("Offsets: update op missing resource ID (#{} file='{}')", i, path);
+                                        continue;
+                                    }
+
+                                    // Extract operations array (JSON Patch format)
+                                    if (!entryJson.exists("/operations"))
+                                    {
+                                        LOG_WARNING("Offsets: update op missing operations field (#{} file='{}')", i, path);
+                                        continue;
+                                    }
+
+                                    auto opsArray = entryJson.getArray("/operations");
+                                    if (!opsArray || opsArray->empty())
+                                    {
+                                        LOG_WARNING("Offsets: update op has empty operations array (#{} file='{}')", i, path);
+                                        continue;
+                                    }
+
+                                    // Create a JSON document from the operations array
+                                    json::Json operations;
+                                    operations.setArray();
+                                    for (const auto& op : *opsArray)
+                                    {
+                                        operations.appendJson(json::Json(op));
+                                    }
+
+                                    bool updated = updateAsset(resourceId, operations);
+                                    if (updated)
+                                    {
+                                        LOG_TRACE("Offsets: updated asset resource='{}' (#{} offset={})",
+                                                  resourceId,
+                                                  i,
+                                                  currentOffset);
+                                        ++storedItems;
+                                    }
+                                    else
+                                    {
+                                        LOG_WARNING("Offsets: failed to update asset resource='{}' (#{} file='{}' offset={})",
+                                                    resourceId,
+                                                    i,
+                                                    path,
+                                                    currentOffset);
+                                    }
                                 }
                                 else if (operationType == "delete")
                                 {
-                                    // TODO: Implement deletion semantics when storage backend is available (remove
-                                    // record / tombstone)
-                                    LOG_TRACE("Offsets: skip delete op asset='{}' (#{} offset={})",
-                                              assetType,
-                                              i,
-                                              currentOffset);
-                                    continue;
+                                    // Get resource ID for deletion
+                                    const auto resourceId = entryJson.getString("/resource").value_or("");
+                                    if (resourceId.empty())
+                                    {
+                                        LOG_WARNING("Offsets: delete op missing resource ID (#{} file='{}')", i, path);
+                                        continue;
+                                    }
+
+                                    bool deleted = deleteAsset(resourceId);
+                                    if (deleted)
+                                    {
+                                        LOG_TRACE("Offsets: deleted asset resource='{}' (#{} offset={})",
+                                                  resourceId,
+                                                  i,
+                                                  currentOffset);
+                                        ++storedItems;
+                                    }
+                                    else
+                                    {
+                                        LOG_WARNING("Offsets: failed to delete asset resource='{}' (#{} file='{}' offset={})",
+                                                    resourceId,
+                                                    i,
+                                                    path,
+                                                    currentOffset);
+                                    }
                                 }
                                 else
                                 {
@@ -728,6 +786,66 @@ bool ContentManager::storeKVDB(const json::Json& kvdbData)
     catch (const std::exception& e)
     {
         LOG_ERROR("Failed to store KVDB: {}", e.what());
+        return false;
+    }
+}
+
+bool ContentManager::deleteAsset(const std::string& resourceId)
+{
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
+    try
+    {
+        if (!m_storage || !m_storage->isOpen())
+        {
+            LOG_ERROR("deleteAsset called but storage not initialized");
+            return false;
+        }
+
+        bool deleted = m_storage->deleteAsset(resourceId);
+        if (deleted)
+        {
+            LOG_DEBUG("Deleted asset with resource ID: {}", resourceId);
+        }
+        else
+        {
+            LOG_TRACE("Asset with resource ID '{}' not found for deletion", resourceId);
+        }
+        return deleted;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Failed to delete asset '{}': {}", resourceId, e.what());
+        return false;
+    }
+}
+
+bool ContentManager::updateAsset(const std::string& resourceId, const json::Json& operations)
+{
+    std::unique_lock<std::shared_mutex> lock(m_mutex);
+
+    try
+    {
+        if (!m_storage || !m_storage->isOpen())
+        {
+            LOG_ERROR("updateAsset called but storage not initialized");
+            return false;
+        }
+
+        bool updated = m_storage->updateAsset(resourceId, operations);
+        if (updated)
+        {
+            LOG_DEBUG("Updated asset with resource ID: {}", resourceId);
+        }
+        else
+        {
+            LOG_TRACE("Asset with resource ID '{}' not found for update", resourceId);
+        }
+        return updated;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("Failed to update asset '{}': {}", resourceId, e.what());
         return false;
     }
 }

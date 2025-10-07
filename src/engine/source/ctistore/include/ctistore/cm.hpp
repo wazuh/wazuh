@@ -145,6 +145,21 @@ public: // Test support: delegate to downloader
      */
     bool storeKVDB(const json::Json& kvdbData);
 
+    /**
+     * @brief Delete an asset by its resource ID
+     * @param resourceId The UUID resource identifier
+     * @return true if deleted successfully, false if not found
+     */
+    bool deleteAsset(const std::string& resourceId);
+
+    /**
+     * @brief Update an asset by its resource ID using JSON Patch operations
+     * @param resourceId The UUID resource identifier
+     * @param operations JSON array of patch operations
+     * @return true if updated successfully, false if not found
+     */
+    bool updateAsset(const std::string& resourceId, const json::Json& operations);
+
 private:
     std::unique_ptr<ContentDownloader> m_downloader;
     mutable std::shared_mutex m_mutex;
