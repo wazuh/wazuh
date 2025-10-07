@@ -4,7 +4,7 @@
 #include <memory>
 #include <shared_mutex>
 
-#include <ctistore/contentDownloader.hpp>
+#include <ctistore/contentdownloader.hpp>
 #include <ctistore/ctistoragedb.hpp>
 #include <ctistore/icmreader.hpp>
 
