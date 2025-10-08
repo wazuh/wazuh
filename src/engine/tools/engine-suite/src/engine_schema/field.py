@@ -9,19 +9,40 @@ HELPER_REF_STR_PATTERN = f'{REF_STR_PATTERN}|{HELPER_STR_PATTERN}'
 
 
 class IndexerType(Enum):
+    # String-like
     KEYWORD = auto()
-    IP = auto()
-    LONG = auto()
-    OBJECT = auto()
-    GEO_POINT = auto()
-    NESTED = auto()
-    SCALED_FLOAT = auto()
     TEXT = auto()
-    BOOLEAN = auto()
-    DATE = auto()
-    FLOAT = auto()
-    ARRAY = auto()
+    MATCH_ONLY_TEXT = auto()
     WILDCARD = auto()
+    CONSTANT_KEYWORD = auto()
+
+    # IP / Geo / Date
+    IP = auto()
+    GEO_POINT = auto()
+    DATE = auto()
+    DATE_NANOS = auto()
+
+    # Boolean
+    BOOLEAN = auto()
+
+    # Numeric
+    LONG = auto()
+    INTEGER = auto()
+    SHORT = auto()
+    BYTE = auto()
+    UNSIGNED_LONG = auto()
+    FLOAT = auto()
+    HALF_FLOAT = auto()
+    DOUBLE = auto()
+    SCALED_FLOAT = auto()
+
+    # Objects
+    OBJECT = auto()
+    NESTED = auto()
+    FLATTENED = auto()
+
+    # Misc (not an ES mapping type, used internally elsewhere)
+    ARRAY = auto()
 
     def __str__(self):
         return f'{self.name}'.lower()
@@ -30,30 +51,61 @@ class IndexerType(Enum):
     def from_str(cls, name: str):
         if name == str(cls.KEYWORD):
             return cls.KEYWORD
-        elif name == str(cls.IP):
-            return cls.IP
-        elif name == str(cls.LONG):
-            return cls.LONG
-        elif name == str(cls.OBJECT):
-            return cls.OBJECT
-        elif name == str(cls.GEO_POINT):
-            return cls.GEO_POINT
-        elif name == str(cls.NESTED):
-            return cls.NESTED
-        elif name == str(cls.SCALED_FLOAT):
-            return cls.SCALED_FLOAT
         elif name == str(cls.TEXT):
             return cls.TEXT
-        elif name == str(cls.BOOLEAN):
-            return cls.BOOLEAN
-        elif name == str(cls.DATE):
-            return cls.DATE
-        elif name == str(cls.FLOAT):
-            return cls.FLOAT
-        elif name == str(cls.ARRAY):
-            return cls.ARRAY
+        elif name == str(cls.MATCH_ONLY_TEXT):
+            return cls.MATCH_ONLY_TEXT
         elif name == str(cls.WILDCARD):
             return cls.WILDCARD
+        elif name == str(cls.CONSTANT_KEYWORD):
+            return cls.CONSTANT_KEYWORD
+
+        # IP / Geo / Date
+        elif name == str(cls.IP):
+            return cls.IP
+        elif name == str(cls.GEO_POINT):
+            return cls.GEO_POINT
+        elif name == str(cls.DATE):
+            return cls.DATE
+        elif name == str(cls.DATE_NANOS):
+            return cls.DATE_NANOS
+
+        # Boolean
+        elif name == str(cls.BOOLEAN):
+            return cls.BOOLEAN
+
+        # Numeric
+        elif name == str(cls.LONG):
+            return cls.LONG
+        elif name == str(cls.INTEGER):
+            return cls.INTEGER
+        elif name == str(cls.SHORT):
+            return cls.SHORT
+        elif name == str(cls.BYTE):
+            return cls.BYTE
+        elif name == str(cls.UNSIGNED_LONG):
+            return cls.UNSIGNED_LONG
+        elif name == str(cls.FLOAT):
+            return cls.FLOAT
+        elif name == str(cls.HALF_FLOAT):
+            return cls.HALF_FLOAT
+        elif name == str(cls.DOUBLE):
+            return cls.DOUBLE
+        elif name == str(cls.SCALED_FLOAT):
+            return cls.SCALED_FLOAT
+
+        # Objects
+        elif name == str(cls.OBJECT):
+            return cls.OBJECT
+        elif name == str(cls.NESTED):
+            return cls.NESTED
+        elif name == str(cls.FLATTENED):
+            return cls.FLATTENED
+
+        # Misc
+        elif name == str(cls.ARRAY):
+            return cls.ARRAY
+
         else:
             raise Exception(f'"{name}" is not a valid IndexerType')
 
@@ -86,31 +138,35 @@ class JsonType(Enum):
 
 def indexer_to_json_type(indexer_type: IndexerType) -> JsonType:
     # Object types
-    if indexer_type == IndexerType.OBJECT:
-        return JsonType.OBJECT
-    if indexer_type == IndexerType.NESTED:
+    if indexer_type in {IndexerType.OBJECT, IndexerType.NESTED, IndexerType.FLATTENED}:
         return JsonType.OBJECT
 
     # String types
-    if indexer_type == IndexerType.DATE:
-        return JsonType.STRING
-    if indexer_type == IndexerType.IP:
-        return JsonType.STRING
-    if indexer_type == IndexerType.TEXT:
-        return JsonType.STRING
-    if indexer_type == IndexerType.GEO_POINT:
-        return JsonType.STRING
-    if indexer_type == IndexerType.KEYWORD:
-        return JsonType.STRING
-    if indexer_type == IndexerType.WILDCARD:
+    if indexer_type in {
+        IndexerType.DATE,
+        IndexerType.DATE_NANOS,
+        IndexerType.IP,
+        IndexerType.TEXT,
+        IndexerType.MATCH_ONLY_TEXT,
+        IndexerType.GEO_POINT,
+        IndexerType.KEYWORD,
+        IndexerType.WILDCARD,
+        IndexerType.CONSTANT_KEYWORD,
+    }:
         return JsonType.STRING
 
     # Numeric types
-    if indexer_type == IndexerType.LONG:
-        return JsonType.NUMBER
-    if indexer_type == IndexerType.SCALED_FLOAT:
-        return JsonType.NUMBER
-    if indexer_type == IndexerType.FLOAT:
+    if indexer_type in {
+        IndexerType.LONG,
+        IndexerType.INTEGER,
+        IndexerType.SHORT,
+        IndexerType.BYTE,
+        IndexerType.UNSIGNED_LONG,
+        IndexerType.SCALED_FLOAT,
+        IndexerType.FLOAT,
+        IndexerType.HALF_FLOAT,
+        IndexerType.DOUBLE,
+    }:
         return JsonType.NUMBER
 
     # Boolean types
