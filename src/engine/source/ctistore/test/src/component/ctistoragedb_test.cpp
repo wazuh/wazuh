@@ -320,9 +320,7 @@ TEST_F(CTIStorageDBTest, GetAssetById)
 
     EXPECT_EQ(retrieved.getString("/name").value_or(""), "test_integration_id");
 
-    auto payload = retrieved.getJson("/payload");
-    ASSERT_TRUE(payload.has_value());
-    auto document = payload.value().getJson("/document");
+    auto document = retrieved.getJson("/document");
     ASSERT_TRUE(document.has_value());
     EXPECT_EQ(document->getString("/title").value_or(""), "Test Integration");
 }
@@ -412,10 +410,8 @@ TEST_F(CTIStorageDBTest, KVDBDump)
 
     auto kvdbDoc = m_storage->kvdbDump("test_kvdb_id");
 
-    // kvdbDump now returns the full document, not just content
-    auto payload = kvdbDoc.getJson("/payload");
-    ASSERT_TRUE(payload.has_value());
-    auto document = payload.value().getJson("/document");
+    // kvdbDump now returns the full document with unwrapped payload
+    auto document = kvdbDoc.getJson("/document");
     ASSERT_TRUE(document.has_value());
     auto content = document.value().getJson("/content");
     ASSERT_TRUE(content.has_value());
@@ -803,9 +799,7 @@ TEST_F(CTIStorageDBTest, DataIntegrityAfterReopen)
     EXPECT_EQ(retrievedIntegration.getString("/name").value_or(""), "test_integration");
 
     auto retrievedKvdb = m_storage->kvdbDump("test_kvdb");
-    auto retrievedPayload = retrievedKvdb.getJson("/payload");
-    ASSERT_TRUE(retrievedPayload.has_value());
-    auto retrievedDocument = retrievedPayload.value().getJson("/document");
+    auto retrievedDocument = retrievedKvdb.getJson("/document");
     ASSERT_TRUE(retrievedDocument.has_value());
     auto retrievedContent = retrievedDocument.value().getJson("/content");
     ASSERT_TRUE(retrievedContent.has_value());
@@ -1530,7 +1524,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetReplaceString)
     json::Json op1;
     op1.setObject();
     op1.setString("replace", "/op");
-    op1.setString("/payload/document/title", "/path");
+    op1.setString("/document/title", "/path");
     op1.setString("Updated Title", "/value");
     operations.appendJson(op1);
 
@@ -1540,7 +1534,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetReplaceString)
 
     // Verify the update
     auto updatedAsset = m_storage->getAsset(base::Name("integration_1"), "integration");
-    auto title = updatedAsset.getString("/payload/document/title");
+    auto title = updatedAsset.getString("/document/title");
     EXPECT_TRUE(title.has_value());
     EXPECT_EQ(*title, "Updated Title");
 }
@@ -1558,7 +1552,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetReplaceBoolean)
     json::Json op1;
     op1.setObject();
     op1.setString("replace", "/op");
-    op1.setString("/payload/document/enabled", "/path");
+    op1.setString("/document/enabled", "/path");
     op1.setBool(false, "/value");
     operations.appendJson(op1);
 
@@ -1568,7 +1562,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetReplaceBoolean)
 
     // Verify the update
     auto updatedAsset = m_storage->getAsset(base::Name("test_decoder"), "decoder");
-    auto enabled = updatedAsset.getBool("/payload/document/enabled");
+    auto enabled = updatedAsset.getBool("/document/enabled");
     EXPECT_TRUE(enabled.has_value());
     EXPECT_FALSE(*enabled);
 }
@@ -1586,7 +1580,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetAddString)
     json::Json op1;
     op1.setObject();
     op1.setString("add", "/op");
-    op1.setString("/payload/document/new_field", "/path");
+    op1.setString("/document/new_field", "/path");
     op1.setString("New Value", "/value");
     operations.appendJson(op1);
 
@@ -1596,7 +1590,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetAddString)
 
     // Verify the new field exists
     auto updatedAsset = m_storage->getAsset(base::Name("Test Integration"), "integration");
-    auto newField = updatedAsset.getString("/payload/document/new_field");
+    auto newField = updatedAsset.getString("/document/new_field");
     EXPECT_TRUE(newField.has_value());
     EXPECT_EQ(*newField, "New Value");
 }
@@ -1615,7 +1609,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetMultipleOperations)
     json::Json op1;
     op1.setObject();
     op1.setString("replace", "/op");
-    op1.setString("/payload/document/check", "/path");
+    op1.setString("/document/check", "/path");
     op1.setString("new_condition", "/value");
     operations.appendJson(op1);
 
@@ -1623,7 +1617,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetMultipleOperations)
     json::Json op2;
     op2.setObject();
     op2.setString("replace", "/op");
-    op2.setString("/payload/document/enabled", "/path");
+    op2.setString("/document/enabled", "/path");
     op2.setBool(false, "/value");
     operations.appendJson(op2);
 
@@ -1633,11 +1627,11 @@ TEST_F(CTIStorageDBTest, UpdateAssetMultipleOperations)
 
     // Verify both updates
     auto updatedAsset = m_storage->getAsset(base::Name("test_decoder"), "decoder");
-    auto check = updatedAsset.getString("/payload/document/check");
+    auto check = updatedAsset.getString("/document/check");
     EXPECT_TRUE(check.has_value());
     EXPECT_EQ(*check, "new_condition");
 
-    auto enabled = updatedAsset.getBool("/payload/document/enabled");
+    auto enabled = updatedAsset.getBool("/document/enabled");
     EXPECT_TRUE(enabled.has_value());
     EXPECT_FALSE(*enabled);
 }
@@ -1651,7 +1645,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetNonExistent)
     json::Json op1;
     op1.setObject();
     op1.setString("replace", "/op");
-    op1.setString("/payload/document/title", "/path");
+    op1.setString("/document/title", "/path");
     op1.setString("New Title", "/value");
     operations.appendJson(op1);
 
@@ -1686,7 +1680,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetInvalidOperation)
     json::Json op1;
     op1.setObject();
     op1.setString("replace", "/op");
-    op1.setString("/payload/document/title", "/path");
+    op1.setString("/document/title", "/path");
     // Missing /value field - this violates RFC 6902
     operations.appendJson(op1);
 
@@ -1695,7 +1689,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetInvalidOperation)
 
     // Verify title is unchanged (update was not applied)
     auto updatedAsset = m_storage->getAsset(base::Name("Test Integration"), "integration");
-    auto title = updatedAsset.getString("/payload/document/title");
+    auto title = updatedAsset.getString("/document/title");
     EXPECT_TRUE(title.has_value());
     EXPECT_EQ(*title, "Test Integration");
 }
@@ -1717,7 +1711,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetAcrossColumnFamilies)
     json::Json op1;
     op1.setObject();
     op1.setString("replace", "/op");
-    op1.setString("/payload/document/description", "/path");
+    op1.setString("/document/description", "/path");
     op1.setString("Updated Integration", "/value");
     ops1.appendJson(op1);
     EXPECT_TRUE(m_storage->updateAsset("integration_1", ops1));
@@ -1728,7 +1722,7 @@ TEST_F(CTIStorageDBTest, UpdateAssetAcrossColumnFamilies)
     json::Json op2;
     op2.setObject();
     op2.setString("replace", "/op");
-    op2.setString("/payload/document/check", "/path");
+    op2.setString("/document/check", "/path");
     op2.setString("updated_check", "/value");
     ops2.appendJson(op2);
     EXPECT_TRUE(m_storage->updateAsset("decoder_1", ops2));
@@ -1739,20 +1733,20 @@ TEST_F(CTIStorageDBTest, UpdateAssetAcrossColumnFamilies)
     json::Json op3;
     op3.setObject();
     op3.setString("replace", "/op");
-    op3.setString("/payload/document/enabled", "/path");
+    op3.setString("/document/enabled", "/path");
     op3.setBool(false, "/value");
     ops3.appendJson(op3);
     EXPECT_TRUE(m_storage->updateAsset("policy_1", ops3));
 
     // Verify all updates
     auto updatedIntegration = m_storage->getAsset(base::Name("Integration 1"), "integration");
-    EXPECT_EQ(updatedIntegration.getString("/payload/document/description").value_or(""), "Updated Integration");
+    EXPECT_EQ(updatedIntegration.getString("/document/description").value_or(""), "Updated Integration");
 
     auto updatedDecoder = m_storage->getAsset(base::Name("decoder_1"), "decoder");
-    EXPECT_EQ(updatedDecoder.getString("/payload/document/check").value_or(""), "updated_check");
+    EXPECT_EQ(updatedDecoder.getString("/document/check").value_or(""), "updated_check");
 
     auto updatedPolicy = m_storage->getAsset(base::Name("policy_1"), "policy");
-    EXPECT_FALSE(updatedPolicy.getBool("/payload/document/enabled").value_or(true));
+    EXPECT_FALSE(updatedPolicy.getBool("/document/enabled").value_or(true));
 }
 
 // ============================================================================
@@ -1769,7 +1763,7 @@ TEST_F(CTIStorageDBTest, GetPolicyById)
     auto retrieved = m_storage->getPolicy(base::Name("policy_1"));
     EXPECT_TRUE(retrieved.exists("/name"));
     EXPECT_EQ(retrieved.getString("/name").value_or(""), "policy_1");
-    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
+    EXPECT_EQ(retrieved.getString("/document/title").value_or(""), "Wazuh 5.0");
 }
 
 TEST_F(CTIStorageDBTest, GetPolicyByTitle)
@@ -1782,7 +1776,7 @@ TEST_F(CTIStorageDBTest, GetPolicyByTitle)
     auto retrieved = m_storage->getPolicy(base::Name("Wazuh 5.0"));
     EXPECT_TRUE(retrieved.exists("/name"));
     EXPECT_EQ(retrieved.getString("/name").value_or(""), "policy_1");
-    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
+    EXPECT_EQ(retrieved.getString("/document/title").value_or(""), "Wazuh 5.0");
 }
 
 TEST_F(CTIStorageDBTest, GetPolicyNonExistent)
@@ -1856,7 +1850,7 @@ TEST_F(CTIStorageDBTest, PolicyAccessAfterUpdate)
     json::Json op;
     op.setObject();
     op.setString("replace", "/op");
-    op.setString("/payload/document/title", "/path");
+    op.setString("/document/title", "/path");
     op.setString("Updated Policy Title", "/value");
     operations.appendJson(op);
 
@@ -1868,7 +1862,7 @@ TEST_F(CTIStorageDBTest, PolicyAccessAfterUpdate)
 
     // Get by ID and verify new title
     auto retrieved = m_storage->getPolicy(base::Name("policy_1"));
-    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Updated Policy Title");
+    EXPECT_EQ(retrieved.getString("/document/title").value_or(""), "Updated Policy Title");
 
     // List should show new title
     auto policies = m_storage->getPolicyList();
@@ -1916,10 +1910,10 @@ TEST_F(CTIStorageDBTest, PolicyNestedFormatSupport)
 
     // Get policy and verify structure
     auto retrieved = m_storage->getPolicy(base::Name("policy_nested"));
-    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
+    EXPECT_EQ(retrieved.getString("/document/title").value_or(""), "Wazuh 5.0");
 
     // Verify integrations in nested format
-    auto integrations = retrieved.getArray("/payload/document/integrations");
+    auto integrations = retrieved.getArray("/document/integrations");
     EXPECT_TRUE(integrations.has_value());
     EXPECT_EQ(integrations->size(), 2);
 }
@@ -1933,12 +1927,12 @@ TEST_F(CTIStorageDBTest, PolicyLegacyFlatFormatSupport)
     // Should be retrievable by title
     EXPECT_TRUE(m_storage->policyExists(base::Name("Legacy Flat Title")));
 
-    // Get policy and verify structure
+    // Get policy and verify structure (payload is unwrapped, so /payload/title becomes /title)
     auto retrieved = m_storage->getPolicy(base::Name("policy_flat"));
-    EXPECT_EQ(retrieved.getString("/payload/title").value_or(""), "Legacy Flat Title");
+    EXPECT_EQ(retrieved.getString("/title").value_or(""), "Legacy Flat Title");
 
-    // Verify integrations in flat format
-    auto integrations = retrieved.getArray("/payload/integrations");
+    // Verify integrations in flat format (payload is unwrapped)
+    auto integrations = retrieved.getArray("/integrations");
     EXPECT_TRUE(integrations.has_value());
     EXPECT_EQ(integrations->size(), 2);
 }
@@ -2019,9 +2013,9 @@ TEST_F(CTIStorageDBTest, PolicyUpdatePreservesFormat)
     bool updated = m_storage->updateAsset("policy_flat", operations);
     EXPECT_TRUE(updated);
 
-    // Verify update worked and format is preserved
+    // Verify update worked and format is preserved (payload is unwrapped)
     auto retrieved = m_storage->getPolicy(base::Name("policy_flat"));
-    EXPECT_EQ(retrieved.getString("/payload/title").value_or(""), "Updated Flat Title");
+    EXPECT_EQ(retrieved.getString("/title").value_or(""), "Updated Flat Title");
 
     // Should be findable by new title
     auto policyList = m_storage->getPolicyList();

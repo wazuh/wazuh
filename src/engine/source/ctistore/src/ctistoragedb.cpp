@@ -992,7 +992,32 @@ json::Json CTIStorageDB::Impl::getByIdOrName(const std::string& identifier,
 
     try
     {
-        return json::Json(value.c_str());
+        json::Json doc(value.c_str());
+
+        // Unwrap /payload if it exists, but preserve top-level fields like /name
+        if (doc.exists("/payload"))
+        {
+            auto payload = doc.getJson("/payload");
+            if (payload.has_value())
+            {
+                json::Json result = payload.value();
+
+                // Preserve important top-level fields that are not in payload
+                if (doc.exists("/name"))
+                {
+                    auto name = doc.getString("/name");
+                    if (name.has_value())
+                    {
+                        result.setString(name.value(), "/name");
+                    }
+                }
+
+                return result;
+            }
+        }
+
+        // Fallback: return document as-is if no /payload wrapper
+        return doc;
     }
     catch (const std::exception& e)
     {
@@ -1730,6 +1755,32 @@ bool CTIStorageDB::Impl::updateAsset(const std::string& resourceId, const json::
     catch (const std::exception& e)
     {
         throw std::runtime_error("Failed to convert patch operations: " + std::string(e.what()));
+    }
+
+    // Adjust patch operation paths to account for /payload wrapper
+    // Operations come with paths like /document/... but we store /payload/document/...
+    for (auto& op : patchOperations)
+    {
+        if (op.contains("path") && op["path"].is_string())
+        {
+            std::string path = op["path"].get<std::string>();
+            // If path starts with /document, prefix it with /payload
+            if (path.rfind("/document", 0) == 0)
+            {
+                op["path"] = "/payload" + path;
+                LOG_TRACE("Adjusted patch path: {} -> {}", path, op["path"].get<std::string>());
+            }
+        }
+        // Also adjust "from" field for move/copy operations
+        if (op.contains("from") && op["from"].is_string())
+        {
+            std::string fromPath = op["from"].get<std::string>();
+            if (fromPath.rfind("/document", 0) == 0)
+            {
+                op["from"] = "/payload" + fromPath;
+                LOG_TRACE("Adjusted patch 'from' path: {} -> {}", fromPath, op["from"].get<std::string>());
+            }
+        }
     }
 
     // Apply JSON Patch operations in-place (RFC 6902 compliant)
