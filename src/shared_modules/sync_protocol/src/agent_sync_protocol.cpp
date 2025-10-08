@@ -339,7 +339,8 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             const std::vector<std::string>& uniqueIndices,
                                             const std::chrono::seconds timeout,
                                             unsigned int retries,
-                                            size_t maxEps)
+                                            size_t maxEps,
+                                            bool isFirst)
 {
     try
     {
@@ -380,7 +381,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         startBuilder.add_mode(protocolMode);
         startBuilder.add_size(static_cast<uint64_t>(dataSize));
         startBuilder.add_index(indices);
-        startBuilder.add_first(true);
+        startBuilder.add_first(isFirst);
         startBuilder.add_architecture(architecture);
         startBuilder.add_hostname(hostname);
         startBuilder.add_osname(osname);
