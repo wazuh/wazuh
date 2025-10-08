@@ -37,8 +37,27 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                const std::string& index,
                                const std::string& data) override;
 
+        /// @copydoc IAgentSyncProtocol::persistDifferenceInMemory
+        void persistDifferenceInMemory(const std::string& id,
+                                       Operation operation,
+                                       const std::string& index,
+                                       const std::string& data) override;
+
         /// @copydoc IAgentSyncProtocol::synchronizeModule
         bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
+
+        /// @copydoc IAgentSyncProtocol::requiresFullSync
+        bool requiresFullSync(const std::string& index,
+                              const std::string& checksum,
+                              std::chrono::seconds timeout,
+                              unsigned int retries,
+                              size_t maxEps) override;
+
+        /// @copydoc IAgentSyncProtocol::clearInMemoryData
+        void clearInMemoryData() override;
+
+        /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
+        bool synchronizeMetadataOrGroups(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
 
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
@@ -66,6 +85,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sent message counter for eps control
         std::atomic<size_t> m_msgSent{0};
 
+        /// @brief In-memory vector to store PersistedData for recovery scenarios
+        std::vector<PersistedData> m_inMemoryData;
+
         /// @brief Ensures that the queue is available
         /// @return True on success, false on failure
         bool ensureQueueAvailable();
@@ -73,15 +95,19 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Sends a start message to the server
         /// @param mode Sync mode
         /// @param dataSize Size of data to send
+        /// @param uniqueIndices Vector of unique indices to be synchronized
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @param isFirst Indicates if this is the first synchronization. Default is false.
         /// @return True on success, false on failure or timeout
         bool sendStartAndWaitAck(Mode mode,
                                  size_t dataSize,
+                                 const std::vector<std::string>& uniqueIndices,
                                  const std::chrono::seconds timeout,
                                  unsigned int retries,
-                                 size_t maxEps);
+                                 size_t maxEps,
+                                 bool isFirst = false);
 
         /// @brief Receives a startack message from the server
         /// @param timeout Timeout to wait for Ack
@@ -96,6 +122,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         bool sendDataMessages(uint64_t session,
                               const std::vector<PersistedData>& data,
                               size_t maxEps);
+
+        /// @brief Sends a checksum module message to the server
+        /// @param session Session id
+        /// @param index Index name
+        /// @param checksum Checksum value
+        /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @return True on success, false on failure
+        bool sendChecksumMessage(uint64_t session,
+                                 const std::string& index,
+                                 const std::string& checksum,
+                                 size_t maxEps);
 
         /// @brief Sends an end message to the server
         /// @param session Session id
@@ -149,6 +186,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             const std::vector<PersistedData>& sourceData,
             const std::vector<std::pair<uint64_t, uint64_t>>& ranges);
 
+        /// @brief Converts internal Mode enum to protocol schema Mode.
+        /// @param mode The internal Mode enum value.
+        /// @return The corresponding Wazuh::SyncSchema::Mode value.
+        Wazuh::SyncSchema::Mode toProtocolMode(Mode mode) const;
+
         /// @brief Synchronization state shared between threads during module sync.
         ///
         /// This structure holds synchronization primitives and state flags used to
@@ -184,6 +226,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
             /// @brief Unique identifier for the current synchronization session, received from the manager.
             uint64_t session = 0;
 
+            /// @brief Last sync operation result for detailed error reporting.
+            SyncResult lastSyncResult = SyncResult::SUCCESS;
+
             /// @brief Resets all internal flags and clears received ranges.
             ///
             /// This should be called before starting a new synchronization cycle.
@@ -196,6 +241,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                 reqRetRanges.clear();
                 phase = SyncPhase::Idle;
                 session = 0;
+                lastSyncResult = SyncResult::SUCCESS;
             }
         };
 
