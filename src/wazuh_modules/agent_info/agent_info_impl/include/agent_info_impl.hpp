@@ -38,27 +38,12 @@ class AgentInfoImpl
         void start();
         void stop();
 
-    private:
-        /// @brief Get the create statement for the database
-        std::string GetCreateStatement() const;
-
-        /// @brief Populate agent metadata table
-        void populateAgentMetadata();
-
-        /// @brief Read agent ID and name from client.keys file
-        /// @param agentId Output parameter for agent ID
-        /// @param agentName Output parameter for agent name
-        /// @return true if successful, false otherwise
-        bool readClientKeys(std::string& agentId, std::string& agentName) const;
-
-        /// @brief Read agent groups from merged.mg file
-        /// @return Vector of group names
-        std::vector<std::string> readAgentGroups() const;
-
-        /// @brief Update changes in database and emit events
-        /// @param table Table name
-        /// @param values Values to sync
-        void updateChanges(const std::string& table, const nlohmann::json& values);
+        /// @brief Persist a difference to the synchronization protocol
+        /// @param id Unique identifier for the difference
+        /// @param operation Type of operation (CREATE, MODIFY, DELETE)
+        /// @param index Index or table name
+        /// @param data Data payload
+        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
 
         /// @brief Process a database event and emit notifications
         /// @param result Type of change (INSERTED, MODIFIED, DELETED)

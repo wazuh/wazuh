@@ -14,6 +14,8 @@
 #include "wazuh_modules/wmodules.h"
 #include "sym_load.h"
 #include "logging_helper.h"
+#include "mq_op.h"
+#include "agent_sync_protocol_c_interface_types.h"
 
 #include <stdio.h>
 #include <dlfcn.h>
@@ -37,6 +39,17 @@ static const char* XML_INTERVAL = "interval";
 #define merror(msg, ...)  _mterror(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug1(msg, ...) _mtdebug1(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
 #define mdebug2(msg, ...) _mtdebug2(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+
+// Queue and synchronization variables
+static int g_agent_info_queue = 0;  // Output queue file descriptor
+static int g_shutting_down = 0;
+
+// Synchronization configuration
+static bool agent_info_enable_synchronization = false;
+
+// Sync protocol function pointer (called by wm_agent_info_persist_stateful)
+typedef void (*agent_info_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data);
+static agent_info_persist_diff_func agent_info_persist_diff_ptr = NULL;
 
 // Logging callback function for agent-info module
 static void agent_info_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag) {
@@ -62,11 +75,60 @@ static void agent_info_log_callback(const modules_log_level_t level, const char*
     }
 }
 
+// Check if module is shutting down
+static bool wm_agent_info_is_shutting_down() {
+    return g_shutting_down;
+}
+
+// Callback to send stateless messages
+static int wm_agent_info_send_stateless(const char* message) {
+    if (!message) {
+        return -1;
+    }
+
+    mdebug1("Sending agent-info event: %s", message);
+
+    if (SendMSGPredicated(g_agent_info_queue, message, WM_AGENT_INFO_LOGTAG, LOCALFILE_MQ, wm_agent_info_is_shutting_down) < 0) {
+        merror("Error sending message to queue");
+
+        if ((g_agent_info_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+            merror("Cannot restart agent-info message queue");
+            return -1;
+        }
+
+        // Try to send it again
+        if (SendMSGPredicated(g_agent_info_queue, message, WM_AGENT_INFO_LOGTAG, LOCALFILE_MQ, wm_agent_info_is_shutting_down) < 0) {
+            merror("Error sending message to queue after reconnection");
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+// Callback to persist stateful diffs (for synchronization)
+static int wm_agent_info_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message) {
+    if (!message) {
+        return -1;
+    }
+
+    if (agent_info_enable_synchronization && agent_info_persist_diff_ptr) {
+        mdebug2("Persisting agent-info event: %s", message);
+        agent_info_persist_diff_ptr(id, operation, index, message);
+    } else {
+        mdebug2("Agent-info synchronization is disabled or function not available");
+    }
+
+    return 0;
+}
+
 // Module handle and function pointers
 void *agent_info_module = NULL;
 agent_info_start_func agent_info_start_ptr = NULL;
 agent_info_stop_func agent_info_stop_ptr = NULL;
 agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
+agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
+agent_info_set_persist_function_func agent_info_set_persist_function_ptr = NULL;
 
 // Reading function
 int wm_agent_info_read(const OS_XML* xml, xml_node** nodes, wmodule* module)
@@ -158,6 +220,17 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         return NULL;
     }
 
+    // Initialize message queue
+    g_agent_info_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+    if (g_agent_info_queue < 0)
+    {
+        merror("Cannot initialize agent-info message queue.");
+        return NULL;
+    }
+
+    g_shutting_down = 0;
+    minfo("Agent-info message queue initialized successfully.");
+
     // Get module handle and function pointers
     if (agent_info_module = so_get_module_handle(AGENT_INFO_LIB_NAME), agent_info_module)
     {
@@ -165,14 +238,27 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_start_ptr = so_get_function_sym(agent_info_module, "agent_info_start");
         agent_info_stop_ptr = so_get_function_sym(agent_info_module, "agent_info_stop");
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
+        agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
+        agent_info_set_persist_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_persist_function");
 
-        mdebug2("Function pointers - start: %p, stop: %p, set_log: %p",
-                agent_info_start_ptr, agent_info_stop_ptr, agent_info_set_log_function_ptr);
+        // Get sync protocol function pointer
+        agent_info_persist_diff_ptr = so_get_function_sym(agent_info_module, "agent_info_persist_diff");
 
         // Set the logging function pointer in the agent-info module
         if (agent_info_set_log_function_ptr)
         {
             agent_info_set_log_function_ptr(agent_info_log_callback);
+        }
+
+        // Set the push functions for message handling (report and persist)
+        if (agent_info_set_report_function_ptr)
+        {
+            agent_info_set_report_function_ptr(wm_agent_info_send_stateless);
+        }
+
+        if (agent_info_set_persist_function_ptr)
+        {
+            agent_info_set_persist_function_ptr(wm_agent_info_persist_stateful);
         }
     }
     else
@@ -182,7 +268,10 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         return NULL;
     }
 
-    // Initialize the C++ implementation
+    minfo("Starting agent-info module...");
+
+    // Initialize the C++ implementation (this will create the AgentInfoImpl with the callbacks)
+    // This call will populate the agent metadata and send it to the queue
     if (agent_info_start_ptr)
     {
         agent_info_start_ptr(agent_info);
@@ -193,20 +282,20 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         return NULL;
     }
 
-    // Module main loop would go here
-    // For now, just sleep
-    while (1)
-    {
-        sleep(60); // Sleep for 1 minute
-        // TODO: Add periodic metadata collection/sync logic
-    }
+    minfo("Agent-info module started successfully.");
 
+    // The module has completed its initialization and metadata collection
+    // The thread will now exit as agent-info is a one-time collection module
     return NULL;
 }
 
 // Destroy function
 void wm_agent_info_destroy(wm_agent_info_t* agent_info)
 {
+    minfo("Destroying agent-info module.");
+
+    g_shutting_down = 1;
+
     if (agent_info)
     {
         if (agent_info_stop_ptr)
