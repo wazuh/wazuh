@@ -99,13 +99,15 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @param isFirst Indicates if this is the first synchronization. Default is false.
         /// @return True on success, false on failure or timeout
         bool sendStartAndWaitAck(Mode mode,
                                  size_t dataSize,
                                  const std::vector<std::string>& uniqueIndices,
                                  const std::chrono::seconds timeout,
                                  unsigned int retries,
-                                 size_t maxEps);
+                                 size_t maxEps,
+                                 bool isFirst = false);
 
         /// @brief Receives a startack message from the server
         /// @param timeout Timeout to wait for Ack
