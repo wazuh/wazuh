@@ -16,6 +16,7 @@
 #include "logging_helper.h"
 #include "mq_op.h"
 #include "agent_sync_protocol_c_interface_types.h"
+#include "rc.h"
 
 #include <stdio.h>
 #include <dlfcn.h>
@@ -47,9 +48,12 @@ static int g_shutting_down = 0;
 // Synchronization configuration
 static bool agent_info_enable_synchronization = false;
 
-// Sync protocol function pointer (called by wm_agent_info_persist_stateful)
+// Sync protocol function pointers
 typedef void (*agent_info_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data);
 static agent_info_persist_diff_func agent_info_persist_diff_ptr = NULL;
+
+typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
+static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
 
 // Logging callback function for agent-info module
 static void agent_info_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag) {
@@ -200,13 +204,44 @@ int wm_agent_info_read(const OS_XML* xml, xml_node** nodes, wmodule* module)
     return 0;
 }
 
+// Stop function
+void wm_agent_info_stop() {
+    g_shutting_down = 1;
+
+    if (agent_info_stop_ptr) {
+        agent_info_stop_ptr();
+    }
+}
+
+// Sync message function
+int wm_agent_info_sync_message(const char *command, size_t command_len) {
+    if (agent_info_enable_synchronization && agent_info_parse_response_ptr) {
+        size_t header_len = strlen(AGENT_INFO_SYNC_HEADER);
+        const uint8_t *data = (const uint8_t *)(command + header_len);
+        size_t data_len = command_len - header_len;
+
+        bool ret = false;
+        ret = agent_info_parse_response_ptr(data, data_len);
+
+        if (!ret) {
+            mdebug1("Error syncing module");
+            return -1;
+        }
+
+        return 0;
+    } else {
+        mdebug1("Agent-info synchronization is disabled or function not available");
+        return -1;
+    }
+}
+
 // Module context
 const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
                                           .start = wm_agent_info_main,
                                           .destroy = wm_agent_info_destroy,
                                           .dump = wm_agent_info_dump,
-                                          .sync = NULL,
-                                          .stop = NULL,
+                                          .sync = wm_agent_info_sync_message,
+                                          .stop = wm_agent_info_stop,
                                           .query = NULL};
 
 // Main module function (runs in its own thread)
@@ -241,8 +276,9 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_set_persist_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_persist_function");
 
-        // Get sync protocol function pointer
+        // Get sync protocol function pointers
         agent_info_persist_diff_ptr = so_get_function_sym(agent_info_module, "agent_info_persist_diff");
+        agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");
 
         // Set the logging function pointer in the agent-info module
         if (agent_info_set_log_function_ptr)
