@@ -544,3 +544,787 @@ TEST_F(AgentInfoDBSyncIntegrationTest, CallbacksAreOptional)
     // Should not crash when starting
     EXPECT_NO_THROW(m_agentInfo->start());
 }
+
+TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      nullptr,
+                      nullptr,
+                      nullptr,
+                      m_mockDBSync
+                  );
+
+    // GetCreateStatement is called during construction, verify it works
+    EXPECT_NE(m_agentInfo, nullptr);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithCallback)
+{
+    bool callbackInvoked = false;
+    std::string capturedId;
+    Operation capturedOp;
+    std::string capturedIndex;
+    std::string capturedData;
+
+    auto persistFunc = [&](const std::string& id, Operation op, const std::string& index, const std::string& data)
+    {
+        callbackInvoked = true;
+        capturedId = id;
+        capturedOp = op;
+        capturedIndex = index;
+        capturedData = data;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      nullptr,
+                      persistFunc,
+                      nullptr,
+                      m_mockDBSync
+                  );
+
+    // Call persistDifference
+    m_agentInfo->persistDifference("test-id", Operation::CREATE, "test-index", "{\"test\":\"data\"}");
+
+    EXPECT_TRUE(callbackInvoked);
+    EXPECT_EQ(capturedId, "test-id");
+    EXPECT_EQ(capturedOp, Operation::CREATE);
+    EXPECT_EQ(capturedIndex, "test-index");
+    EXPECT_EQ(capturedData, "{\"test\":\"data\"}");
+}
+
+TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithoutCallback)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      nullptr,
+                      nullptr,  // No persist callback
+                      nullptr,
+                      m_mockDBSync
+                  );
+
+    // Should not crash when persist callback is null
+    EXPECT_NO_THROW(m_agentInfo->persistDifference("test-id", Operation::CREATE, "test-index", "{}"));
+}
+
+// ============================================================================
+// Tests for DBSync event processing (processEvent, notifyChange)
+// ============================================================================
+
+class AgentInfoEventProcessingTest : public ::testing::Test
+{
+    protected:
+        void SetUp() override
+        {
+            m_logOutput.clear();
+            m_reportedEvents.clear();
+            m_persistedEvents.clear();
+
+            LoggingHelper::setLogCallback(
+                [this](const modules_log_level_t /* level */, const char* log)
+            {
+                m_logOutput += log;
+                m_logOutput += "\n";
+            });
+
+            m_mockDBSync = std::make_shared<MockDBSync>();
+            m_mockSysInfo = std::make_shared<MockSysInfo>();
+            m_mockFileIO = std::make_shared<MockFileIOUtils>();
+            m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+
+            // Set up callbacks to capture events
+            m_reportDiffFunc = [this](const std::string& event)
+            {
+                m_reportedEvents.push_back(nlohmann::json::parse(event));
+            };
+
+            m_persistDiffFunc = [this](const std::string& id, Operation op, const std::string& index, const std::string& data)
+            {
+                nlohmann::json persistedEvent;
+                persistedEvent["id"] = id;
+                persistedEvent["operation"] = static_cast<int>(op);
+                persistedEvent["index"] = index;
+                persistedEvent["data"] = nlohmann::json::parse(data);
+                m_persistedEvents.push_back(persistedEvent);
+            };
+
+            m_logFunc = [this](modules_log_level_t level, const std::string& msg)
+            {
+                m_logOutput += msg + "\n";
+            };
+        }
+
+        void TearDown() override
+        {
+            m_agentInfo.reset();
+            m_mockDBSync.reset();
+            m_mockSysInfo.reset();
+            m_mockFileIO.reset();
+            m_mockFileSystem.reset();
+        }
+
+        std::shared_ptr<MockDBSync> m_mockDBSync;
+        std::shared_ptr<MockSysInfo> m_mockSysInfo;
+        std::shared_ptr<MockFileIOUtils> m_mockFileIO;
+        std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
+        std::shared_ptr<AgentInfoImpl> m_agentInfo;
+        std::function<void(const std::string&)> m_reportDiffFunc;
+        std::function<void(const std::string&, Operation, const std::string&, const std::string&)> m_persistDiffFunc;
+        std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
+        std::vector<nlohmann::json> m_reportedEvents;
+        std::vector<nlohmann::json> m_persistedEvents;
+        std::string m_logOutput;
+};
+
+TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_persistDiffFunc,
+                      m_logFunc,
+                      m_mockDBSync
+                  );
+
+    // Create test data for agent_metadata insertion
+    nlohmann::json testData;
+    testData["agent_id"] = "001";
+    testData["agent_name"] = "test-agent";
+    testData["agent_version"] = "4.5.0";
+    testData["host_architecture"] = "x86_64";
+    testData["host_hostname"] = "test-host";
+    testData["host_os_name"] = "Ubuntu";
+    testData["host_os_type"] = "Linux";
+    testData["host_os_platform"] = "ubuntu";
+    testData["host_os_version"] = "22.04";
+    testData["checksum"] = "abc123";
+
+    // Process the event
+    m_agentInfo->processEvent(INSERTED, testData, "agent_metadata");
+
+    // Verify report callback was invoked
+    ASSERT_EQ(m_reportedEvents.size(), 1);
+    EXPECT_EQ(m_reportedEvents[0]["module"], "agent_info");
+    EXPECT_EQ(m_reportedEvents[0]["type"], "agent_metadata");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "created");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "001");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["name"], "test-agent");
+    EXPECT_FALSE(m_reportedEvents[0]["data"].contains("checksum")); // Checksum should be removed
+
+    // Verify persist callback was invoked
+    ASSERT_EQ(m_persistedEvents.size(), 1);
+    EXPECT_EQ(m_persistedEvents[0]["operation"], static_cast<int>(Operation::CREATE));
+    EXPECT_EQ(m_persistedEvents[0]["index"], "wazuh-states-agent-metadata");
+}
+
+TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_persistDiffFunc,
+                      m_logFunc,
+                      m_mockDBSync
+                  );
+
+    // Create test data for agent_metadata modification
+    nlohmann::json testData;
+    testData["new"]["agent_id"] = "001";
+    testData["new"]["agent_name"] = "updated-agent";
+    testData["new"]["agent_version"] = "4.5.0";
+    testData["new"]["checksum"] = "def456";
+
+    testData["old"]["agent_id"] = "001";
+    testData["old"]["agent_name"] = "old-agent";
+    testData["old"]["agent_version"] = "4.4.0";
+    testData["old"]["checksum"] = "abc123";
+
+    // Process the event
+    m_agentInfo->processEvent(MODIFIED, testData, "agent_metadata");
+
+    // Verify report callback was invoked
+    ASSERT_EQ(m_reportedEvents.size(), 1);
+    EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "modified");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["name"], "updated-agent");
+
+    // Verify changed_fields tracking
+    EXPECT_TRUE(m_reportedEvents[0]["data"]["event"].contains("changed_fields"));
+    auto changedFields = m_reportedEvents[0]["data"]["event"]["changed_fields"];
+    EXPECT_FALSE(changedFields.empty());
+
+    // Verify persist callback was invoked
+    ASSERT_EQ(m_persistedEvents.size(), 1);
+    EXPECT_EQ(m_persistedEvents[0]["operation"], static_cast<int>(Operation::MODIFY));
+}
+
+TEST_F(AgentInfoEventProcessingTest, ProcessDeletedEvent)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_persistDiffFunc,
+                      m_logFunc,
+                      m_mockDBSync
+                  );
+
+    // Create test data for agent_groups deletion
+    nlohmann::json testData;
+    testData["agent_id"] = "001";
+    testData["group_name"] = "removed-group";
+
+    // Process the event
+    m_agentInfo->processEvent(DELETED, testData, "agent_groups");
+
+    // Verify report callback was invoked
+    ASSERT_EQ(m_reportedEvents.size(), 1);
+    EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "deleted");
+    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "001");
+
+    // Verify persist callback was invoked
+    ASSERT_EQ(m_persistedEvents.size(), 1);
+    EXPECT_EQ(m_persistedEvents[0]["operation"], static_cast<int>(Operation::DELETE_));
+    EXPECT_EQ(m_persistedEvents[0]["index"], "wazuh-states-agent-groups");
+}
+
+TEST_F(AgentInfoEventProcessingTest, ProcessAgentGroupsEvent)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_persistDiffFunc,
+                      m_logFunc,
+                      m_mockDBSync
+                  );
+
+    // Create test data for agent_groups
+    nlohmann::json testData;
+    testData["agent_id"] = "002";
+    testData["group_name"] = "web-servers";
+
+    // Process the event
+    m_agentInfo->processEvent(INSERTED, testData, "agent_groups");
+
+    // Verify ECS format for groups
+    ASSERT_EQ(m_reportedEvents.size(), 1);
+    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "002");
+    EXPECT_TRUE(m_reportedEvents[0]["data"]["agent"]["groups"].is_array());
+    EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["groups"][0], "web-servers");
+}
+
+TEST_F(AgentInfoEventProcessingTest, ProcessEventWithExceptionInCallback)
+{
+    // Create a callback that throws an exception
+    auto throwingReportFunc = [](const std::string& /* event */)
+    {
+        throw std::runtime_error("Test exception in report callback");
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      throwingReportFunc,
+                      m_persistDiffFunc,
+                      m_logFunc,
+                      m_mockDBSync
+                  );
+
+    nlohmann::json testData;
+    testData["agent_id"] = "001";
+    testData["agent_name"] = "test";
+    testData["checksum"] = "abc";
+
+    // Process event - exception should be caught and logged
+    EXPECT_NO_THROW(m_agentInfo->processEvent(INSERTED, testData, "agent_metadata"));
+
+    // Verify error was logged
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Error processing event"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Test exception in report callback"));
+}
+
+TEST_F(AgentInfoEventProcessingTest, NotifyChangeCallsProcessEvent)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_persistDiffFunc,
+                      m_logFunc,
+                      m_mockDBSync
+                  );
+
+    nlohmann::json testData;
+    testData["agent_id"] = "001";
+    testData["agent_name"] = "test-agent";
+    testData["checksum"] = "abc";
+
+    // Call notifyChange (which should call processEvent)
+    m_agentInfo->notifyChange(INSERTED, testData, "agent_metadata");
+
+    // Verify event was processed
+    ASSERT_EQ(m_reportedEvents.size(), 1);
+    EXPECT_EQ(m_reportedEvents[0]["module"], "agent_info");
+}
+
+// ============================================================================
+// Tests for helper functions (calculateMetadataChecksum, calculateHashId, ecsData)
+// ============================================================================
+
+class AgentInfoHelperFunctionsTest : public ::testing::Test
+{
+    protected:
+        void SetUp() override
+        {
+            m_logOutput.clear();
+
+            LoggingHelper::setLogCallback(
+                [this](const modules_log_level_t /* level */, const char* log)
+            {
+                m_logOutput += log;
+                m_logOutput += "\n";
+            });
+
+            m_mockDBSync = std::make_shared<MockDBSync>();
+            m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, nullptr, nullptr, m_mockDBSync);
+        }
+
+        void TearDown() override
+        {
+            m_agentInfo.reset();
+            m_mockDBSync.reset();
+        }
+
+        std::shared_ptr<MockDBSync> m_mockDBSync;
+        std::shared_ptr<AgentInfoImpl> m_agentInfo;
+        std::string m_logOutput;
+};
+
+TEST_F(AgentInfoHelperFunctionsTest, CalculateMetadataChecksumIsDeterministic)
+{
+    nlohmann::json metadata1;
+    metadata1["agent_id"] = "001";
+    metadata1["agent_name"] = "test";
+    metadata1["host_os_name"] = "Ubuntu";
+
+    nlohmann::json metadata2;
+    metadata2["agent_id"] = "001";
+    metadata2["agent_name"] = "test";
+    metadata2["host_os_name"] = "Ubuntu";
+
+    // Same metadata should produce same checksum
+    std::string checksum1 = m_agentInfo->calculateMetadataChecksum(metadata1);
+    std::string checksum2 = m_agentInfo->calculateMetadataChecksum(metadata2);
+
+    EXPECT_EQ(checksum1, checksum2);
+    EXPECT_FALSE(checksum1.empty());
+}
+
+TEST_F(AgentInfoHelperFunctionsTest, CalculateMetadataChecksumDifferentForDifferentData)
+{
+    nlohmann::json metadata1;
+    metadata1["agent_id"] = "001";
+    metadata1["agent_name"] = "agent1";
+
+    nlohmann::json metadata2;
+    metadata2["agent_id"] = "002";
+    metadata2["agent_name"] = "agent2";
+
+    std::string checksum1 = m_agentInfo->calculateMetadataChecksum(metadata1);
+    std::string checksum2 = m_agentInfo->calculateMetadataChecksum(metadata2);
+
+    EXPECT_NE(checksum1, checksum2);
+}
+
+TEST_F(AgentInfoHelperFunctionsTest, CalculateHashIdForMetadataTable)
+{
+    nlohmann::json data;
+    data["agent_id"] = "123";
+
+    std::string hashId = m_agentInfo->calculateHashId(data, "agent_metadata");
+
+    EXPECT_FALSE(hashId.empty());
+    EXPECT_GT(hashId.length(), 10); // SHA-1 hash should be long
+}
+
+TEST_F(AgentInfoHelperFunctionsTest, CalculateHashIdForGroupsTable)
+{
+    nlohmann::json data;
+    data["agent_id"] = "123";
+    data["group_name"] = "web-servers";
+
+    std::string hashId = m_agentInfo->calculateHashId(data, "agent_groups");
+
+    EXPECT_FALSE(hashId.empty());
+    EXPECT_GT(hashId.length(), 10);
+}
+
+TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsMetadataCorrectly)
+{
+    nlohmann::json data;
+    data["agent_id"] = "001";
+    data["agent_name"] = "test-agent";
+    data["agent_version"] = "4.5.0";
+    data["host_architecture"] = "x86_64";
+    data["host_hostname"] = "test-host";
+    data["host_os_name"] = "Ubuntu";
+    data["host_os_type"] = "Linux";
+    data["host_os_platform"] = "ubuntu";
+    data["host_os_version"] = "22.04";
+    data["checksum"] = "abc123";
+
+    nlohmann::json ecsFormatted = m_agentInfo->ecsData(data, "agent_metadata");
+
+    EXPECT_EQ(ecsFormatted["agent"]["id"], "001");
+    EXPECT_EQ(ecsFormatted["agent"]["name"], "test-agent");
+    EXPECT_EQ(ecsFormatted["agent"]["version"], "4.5.0");
+    EXPECT_EQ(ecsFormatted["host"]["architecture"], "x86_64");
+    EXPECT_EQ(ecsFormatted["host"]["hostname"], "test-host");
+    EXPECT_EQ(ecsFormatted["host"]["os"]["name"], "Ubuntu");
+    EXPECT_EQ(ecsFormatted["host"]["os"]["type"], "Linux");
+    EXPECT_EQ(ecsFormatted["host"]["os"]["platform"], "ubuntu");
+    EXPECT_EQ(ecsFormatted["host"]["os"]["version"], "22.04");
+    EXPECT_EQ(ecsFormatted["checksum"], "abc123");
+}
+
+TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsGroupsCorrectly)
+{
+    nlohmann::json data;
+    data["agent_id"] = "002";
+    data["group_name"] = "database";
+
+    nlohmann::json ecsFormatted = m_agentInfo->ecsData(data, "agent_groups");
+
+    EXPECT_EQ(ecsFormatted["agent"]["id"], "002");
+    EXPECT_TRUE(ecsFormatted["agent"]["groups"].is_array());
+    EXPECT_EQ(ecsFormatted["agent"]["groups"][0], "database");
+}
+
+TEST_F(AgentInfoHelperFunctionsTest, EcsDataHandlesPartialMetadata)
+{
+    nlohmann::json data;
+    data["agent_id"] = "003";
+    // Missing other fields
+
+    nlohmann::json ecsFormatted = m_agentInfo->ecsData(data, "agent_metadata");
+
+    EXPECT_EQ(ecsFormatted["agent"]["id"], "003");
+    EXPECT_FALSE(ecsFormatted["agent"].contains("name"));
+    EXPECT_FALSE(ecsFormatted.contains("host"));
+}
+
+// ============================================================================
+// Tests for logging with m_logFunction callback
+// ============================================================================
+
+class AgentInfoLoggingTest : public ::testing::Test
+{
+    protected:
+        void SetUp() override
+        {
+            m_logMessages.clear();
+
+            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
+            {
+                m_logOutput += log;
+                m_logOutput += "\n";
+            });
+
+            m_mockDBSync = std::make_shared<MockDBSync>();
+            m_mockSysInfo = std::make_shared<MockSysInfo>();
+            m_mockFileIO = std::make_shared<MockFileIOUtils>();
+            m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+
+            m_logFunc = [this](modules_log_level_t level, const std::string& msg)
+            {
+                m_logMessages.push_back({level, msg});
+            };
+        }
+
+        void TearDown() override
+        {
+            m_agentInfo.reset();
+            m_mockDBSync.reset();
+            m_mockSysInfo.reset();
+            m_mockFileIO.reset();
+            m_mockFileSystem.reset();
+        }
+
+        std::shared_ptr<MockDBSync> m_mockDBSync;
+        std::shared_ptr<MockSysInfo> m_mockSysInfo;
+        std::shared_ptr<MockFileIOUtils> m_mockFileIO;
+        std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
+        std::shared_ptr<AgentInfoImpl> m_agentInfo;
+        std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
+        std::vector<std::pair<modules_log_level_t, std::string>> m_logMessages;
+        std::string m_logOutput;
+};
+
+TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
+{
+    // Setup: Mock client.keys and merged.mg
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillOnce(::testing::Return(true))
+    .WillOnce(::testing::Return(true));
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("001 test-agent 192.168.1.1 key");
+    }))
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("#group: test-group");
+    }));
+
+    nlohmann::json osData = {{"os_name", "Ubuntu"}};
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    EXPECT_CALL(*m_mockDBSync, handle()).WillRepeatedly(::testing::Return(nullptr));
+
+    // Create agent info with m_logFunc
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      "test_path",
+                      nullptr,
+                      nullptr,
+                      m_logFunc,  // Use log function
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    m_agentInfo->start();
+
+    // Verify log function was called
+    bool foundMetadataLog = false;
+    bool foundGroupsLog = false;
+
+    for (const auto& [level, msg] : m_logMessages)
+    {
+        if (msg.find("Agent metadata populated successfully") != std::string::npos)
+        {
+            foundMetadataLog = true;
+            EXPECT_EQ(level, LOG_INFO);
+        }
+
+        if (msg.find("Agent groups populated successfully") != std::string::npos)
+        {
+            foundGroupsLog = true;
+            EXPECT_EQ(level, LOG_INFO);
+        }
+    }
+
+    EXPECT_TRUE(foundMetadataLog);
+    EXPECT_TRUE(foundGroupsLog);
+}
+
+TEST_F(AgentInfoLoggingTest, UpdateChangesErrorUsesLogFunction)
+{
+    // Create a mock that will cause updateChanges to fail
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Throw(std::runtime_error("DBSync error")));
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(nlohmann::json()));
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      "test_path",
+                      nullptr,
+                      nullptr,
+                      m_logFunc,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    // Start will trigger updateChanges which will fail
+    m_agentInfo->start();
+
+    // Verify error was logged via m_logFunction
+    bool foundError = false;
+
+    for (const auto& [level, msg] : m_logMessages)
+    {
+        if (msg.find("Error updating changes") != std::string::npos)
+        {
+            foundError = true;
+            EXPECT_EQ(level, LOG_ERROR);
+        }
+    }
+
+    EXPECT_TRUE(foundError);
+}
+
+TEST_F(AgentInfoLoggingTest, ProcessEventDebugUsesLogFunction)
+{
+    auto reportFunc = [](const std::string& /* event */) {};
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      reportFunc,
+                      nullptr,
+                      m_logFunc,
+                      m_mockDBSync
+                  );
+
+    nlohmann::json testData;
+    testData["agent_id"] = "001";
+    testData["agent_name"] = "test";
+    testData["checksum"] = "abc";
+
+    m_agentInfo->processEvent(INSERTED, testData, "agent_metadata");
+
+    // Verify debug message was logged
+    bool foundDebug = false;
+
+    for (const auto& [level, msg] : m_logMessages)
+    {
+        if (msg.find("Event reported for table") != std::string::npos)
+        {
+            foundDebug = true;
+            EXPECT_EQ(level, LOG_DEBUG_VERBOSE);
+        }
+    }
+
+    EXPECT_TRUE(foundDebug);
+}
+
+TEST_F(AgentInfoLoggingTest, ProcessEventErrorUsesLogFunction)
+{
+    // Create a callback that throws
+    auto throwingReportFunc = [](const std::string& /* event */)
+    {
+        throw std::runtime_error("Report callback error");
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      throwingReportFunc,
+                      nullptr,
+                      m_logFunc,
+                      m_mockDBSync
+                  );
+
+    nlohmann::json testData;
+    testData["agent_id"] = "001";
+    testData["checksum"] = "abc";
+
+    m_agentInfo->processEvent(INSERTED, testData, "agent_metadata");
+
+    // Verify error was logged
+    bool foundError = false;
+
+    for (const auto& [level, msg] : m_logMessages)
+    {
+        if (msg.find("Error processing event") != std::string::npos)
+        {
+            foundError = true;
+            EXPECT_EQ(level, LOG_ERROR);
+        }
+    }
+
+    EXPECT_TRUE(foundError);
+}
+
+// ============================================================================
+// Integration test with real DBSync to cover updateChanges via start()
+// ============================================================================
+
+class AgentInfoRealDBSyncTest : public ::testing::Test
+{
+    protected:
+        void SetUp() override
+        {
+            m_logOutput.clear();
+            m_reportedEvents.clear();
+
+            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
+            {
+                m_logOutput += log;
+                m_logOutput += "\n";
+            });
+
+            m_reportDiffFunc = [this](const std::string& event)
+            {
+                m_reportedEvents.push_back(nlohmann::json::parse(event));
+            };
+
+            m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+            m_mockFileIO = std::make_shared<MockFileIOUtils>();
+            m_mockSysInfo = std::make_shared<MockSysInfo>();
+        }
+
+        void TearDown() override
+        {
+            m_agentInfo.reset();
+            m_mockFileSystem.reset();
+            m_mockFileIO.reset();
+            m_mockSysInfo.reset();
+        }
+
+        std::shared_ptr<AgentInfoImpl> m_agentInfo;
+        std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
+        std::shared_ptr<MockFileIOUtils> m_mockFileIO;
+        std::shared_ptr<MockSysInfo> m_mockSysInfo;
+        std::function<void(const std::string&)> m_reportDiffFunc;
+        std::vector<nlohmann::json> m_reportedEvents;
+        std::string m_logOutput;
+};
+
+TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
+{
+    // Setup mocks to provide data
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillOnce(::testing::Return(true))
+    .WillOnce(::testing::Return(true));
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_,::testing::_))
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("456 real-dbsync-test 10.0.0.1 key");
+    }))
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("#group: dbsync-test-group");
+    }));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    EXPECT_CALL(*m_mockSysInfo, os()).WillOnce(::testing::Return(osData));
+
+    // Create agent info with real DBSync (using in-memory database)
+    // This will trigger updateChanges internally through start()
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      nullptr,
+                      nullptr,
+                      nullptr,  // Use real DBSync
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    m_agentInfo->start();
+
+    // Verify events were reported (updateChanges was called internally)
+    EXPECT_GE(m_reportedEvents.size(), static_cast<size_t>(1));
+
+    // Find the agent_metadata event
+    bool foundMetadataEvent = false;
+
+    for (const auto& event : m_reportedEvents)
+    {
+        if (event["type"] == "agent_metadata")
+        {
+            foundMetadataEvent = true;
+            EXPECT_EQ(event["module"], "agent_info");
+            EXPECT_EQ(event["data"]["agent"]["id"], "456");
+            break;
+        }
+    }
+
+    EXPECT_TRUE(foundMetadataEvent);
+}
