@@ -172,6 +172,73 @@ void persist_policy_check(const char* policy_id, CheckResult* result) {
 }
 ```
 
+#### C++ Example - Recovery Using In-Memory Storage
+```cpp
+// Module recovery scenario
+void recoverModuleData() {
+    info("Starting module recovery process");
+
+    // Read recovery data from backup source
+    std::vector<RecoveryItem> recoveryItems = loadRecoveryData();
+
+    // Persist all recovery data in memory
+    for (const auto& item : recoveryItems) {
+        protocol->persistDifferenceInMemory(
+            item.id,
+            Operation::Create,
+            item.index,
+            item.data
+        );
+    }
+
+    info("Persisted %zu recovery items in memory", recoveryItems.size());
+
+    // Synchronize the in-memory data with the manager
+    bool success = protocol->synchronizeModule(
+        Mode::FULL,
+        std::chrono::seconds(60),
+        5,
+        2000
+    );
+
+    if (success) {
+        // Clear in-memory data after successful sync
+        protocol->clearInMemoryData();
+        info("Recovery completed successfully, in-memory data cleared");
+    } else {
+        error("Recovery synchronization failed, will retry later");
+    }
+}
+```
+
+#### C Example - Integrity Check Before Sync
+```c
+// Check if full sync is needed before synchronization
+bool should_perform_full_sync(const char* index) {
+    // Calculate checksum for the index
+    char checksum[65];
+    calculate_index_checksum(index, checksum);
+
+    // Check with manager if full sync is required
+    bool needs_full_sync = asp_requires_full_sync(
+        handle,
+        index,
+        checksum,
+        30,   // timeout in seconds
+        3,    // retries
+        1000  // max EPS
+    );
+
+    if (needs_full_sync) {
+        info("Checksum mismatch detected for index %s, full sync required", index);
+        return true;
+    } else {
+        info("Checksum valid for index %s, delta sync sufficient", index);
+        return false;
+    }
+}
+```
+
 ### Step 4: Process Manager Responses
 
 When the manager sends responses, you need to parse them using the protocol:
@@ -213,7 +280,7 @@ void on_message_received(const uint8_t* buffer, size_t length) {
 void performPeriodicSync() {
     // Delta sync with 30-second timeout, 3 retries, 1000 EPS limit
     bool success = protocol->synchronizeModule(
-        Mode::Delta,
+        Mode::DELTA,
         std::chrono::seconds(30),
         3,
         1000
@@ -253,6 +320,28 @@ void check_and_sync(size_t buffer_size) {
         if (!success) {
             error("Failed to synchronize module data");
         }
+    }
+}
+```
+
+#### C Example - Metadata Synchronization
+```c
+// Synchronize metadata at agent startup
+void sync_agent_metadata() {
+    info("Synchronizing agent metadata");
+
+    bool success = asp_sync_metadata_or_groups(
+        handle,
+        MODE_METADATA_DELTA,
+        30,  // timeout in seconds
+        3,   // retries
+        0    // no EPS limit
+    );
+
+    if (success) {
+        info("Agent metadata synchronized successfully");
+    } else {
+        error("Failed to synchronize agent metadata");
     }
 }
 ```
@@ -376,7 +465,7 @@ private:
 Always check return values and handle failures gracefully:
 
 ```cpp
-if (!protocol->synchronizeModule(Mode::Delta, timeout, retries, maxEps)) {
+if (!protocol->synchronizeModule(Mode::DELTA, timeout, retries, maxEps)) {
     // Log error
     error("Sync failed, scheduling retry");
 
@@ -491,3 +580,14 @@ auto protocol = std::make_unique<AgentSyncProtocol>(
    - Monitor queue size and implement flow control
    - Use EPS limiting to control memory usage
    - Implement periodic cleanup of old data
+   - Remember to call `clearInMemoryData()` after recovery syncs
+
+5. **Checksum Mismatch Issues**
+   - Ensure consistent checksum calculation algorithm
+   - Verify checksum is calculated for the correct index/table
+   - Check for data corruption in persistent storage
+
+6. **Metadata/Groups Sync Failures**
+   - Verify correct mode is used (METADATA_DELTA, METADATA_CHECK, GROUP_DELTA, GROUP_CHECK)
+   - Ensure no data messages are sent during metadata/groups sync
+   - Check manager logs for additional error details

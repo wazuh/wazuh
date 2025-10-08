@@ -13,7 +13,7 @@ The protocol supports both **full** and **delta synchronization modes**, enablin
 - **Session Management**: Unique session IDs track synchronization state between agent and manager
 - **Retry Mechanism**: Configurable retry attempts with exponential backoff for network resilience
 - **EPS Control**: Rate limiting to prevent overwhelming the manager with data
-- **Multiple Sync Modes**: Support for full and delta synchronization strategies
+- **Multiple Sync Modes**: Support for full, delta, integrity check, metadata, and groups synchronization
 
 ## Architecture Overview
 
@@ -69,10 +69,20 @@ To integrate the Agent Sync Protocol in your module:
 
 2. Create a protocol instance with your module name and database path
 
-3. Persist differences using `persistDifference()` or `asp_persist_diff()`
+3. Persist differences using:
+   - `persistDifference()` / `asp_persist_diff()` for database storage
+   - `persistDifferenceInMemory()` / `asp_persist_diff_in_memory()` for in-memory recovery
 
-4. Process manager responses with `parseResponseBuffer()` or `asp_parse_response()`
+4. Process manager responses with `parseResponseBuffer()` or `asp_parse_response_buffer()`
 
-5. Trigger synchronization with `synchronizeModule()` or `asp_sync_module()`
+5. Check data integrity (optional):
+   - `requiresFullSync()` / `asp_requires_full_sync()` to verify checksums
+
+6. Trigger synchronization with:
+   - `synchronizeModule()` / `asp_sync_module()` for module data
+   - `synchronizeMetadataOrGroups()` / `asp_sync_metadata_or_groups()` for metadata/groups
+
+7. Clean up in-memory data (if used):
+   - `clearInMemoryData()` / `asp_clear_in_memory_data()` after recovery
 
 See the [Integration Guide](integration-guide.md) for detailed examples.
