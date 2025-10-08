@@ -420,25 +420,34 @@ void CMSync::pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& cmst
             {
                 throw std::runtime_error(fmt::format("Decoder asset '{}' does not exist in CM Store", decoderName));
             }
-            const auto decoderAsset = cmstore->getAsset(decoderName);
+            const auto decoderAssetDoc = cmstore->getAsset(decoderName);
+            auto optDecoderAsset = decoderAssetDoc.getJson("/document");
+            if (!optDecoderAsset) {
+                throw std::runtime_error(fmt::format("Invalid decoder asset '{}', no '/document' field in {}",
+                                                        decoderName.toStr(),
+                                                        decoderAssetDoc.str()));
+            }
+
+            // Delete '/date', '/enabled' and '/id' fields if exists
+            optDecoderAsset->erase("/date");
+            optDecoderAsset->erase("/enabled");
+            optDecoderAsset->erase("/id");
+
 
             // Create decoder resource for CTI assets decoder collection
-            try
-            {
-                api::catalog::Resource decoderResource {decoderName, api::catalog::Resource::Format::json};
-                const auto error = catalog->postResource(decoderResource, m_ctiNS, decoderAsset.str());
-            }
-            catch (const std::exception& e)
+            api::catalog::Resource decoderResource {"decoder", api::catalog::Resource::Format::json};
+            const auto error = catalog->postResource(decoderResource, m_ctiNS, optDecoderAsset.value().str());
+            if (error)
             {
                 throw std::runtime_error(
-                    fmt::format("Failed to push decoder '{}' to catalog: {}", decoderName.toStr(), e.what()));
+                    fmt::format("Failed to push decoder '{}' to catalog: {}", decoderName.toStr(), error->message));
             }
         }
 
         // Push integration asset to catalog
         try
         {
-            api::catalog::Resource integrationResource {integrationName, api::catalog::Resource::Format::json};
+            api::catalog::Resource integrationResource {"integration", api::catalog::Resource::Format::json};
             const auto integrationAsset = cmstore->getAsset(integrationName);
             const auto error = catalog->postResource(integrationResource, m_ctiNS, integrationAsset.str());
         }

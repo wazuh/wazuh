@@ -171,6 +171,7 @@ std::string ContentManager::resolveNameFromUUID(const std::string& uuid) const
     }
 
     static const std::array<std::string, 2> types {"integration", "decoder"};
+    std::optional<std::string> errorMsg = std::nullopt;
 
     for (const auto& t : types)
     {
@@ -178,12 +179,17 @@ std::string ContentManager::resolveNameFromUUID(const std::string& uuid) const
         {
             return m_storage->resolveNameFromUUID(uuid, t);
         }
-        catch (...)
+        catch (const std::exception& e)
         {
             // ignore and try next
+            if (!errorMsg)
+            {
+                errorMsg = std::string("Error list: ");
+            }
+            errorMsg->append(fmt::format("[type='{}': {}] ", t, e.what()));
         }
     }
-    throw std::runtime_error(fmt::format("Asset with UUID '{}' not found", uuid));
+    throw std::runtime_error(fmt::format("Asset with UUID '{}' not found: {}", uuid, errorMsg ? *errorMsg : "unknown error"));
 }
 
 std::vector<std::string> ContentManager::listKVDB() const
