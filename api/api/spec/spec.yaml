@@ -10383,7 +10383,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10425,7 +10425,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10466,7 +10466,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10504,7 +10504,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10540,7 +10540,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10583,7 +10583,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
@@ -10622,7 +10622,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/AllItemsResponseLists'
+                        $ref: '#/components/schemas/AllItemsResponse'
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
