@@ -120,6 +120,16 @@ void AgentInfoImpl::stop()
     LoggingHelper::getInstance().log(LOG_INFO, "AgentInfo module stopped.");
 }
 
+void AgentInfoImpl::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
+{
+    // Call the persist diff function if it's set
+    // This is used by the synchronization protocol to persist state changes
+    if (m_persistDiffFunction)
+    {
+        m_persistDiffFunction(id, operation, index, data);
+    }
+}
+
 std::string AgentInfoImpl::GetCreateStatement() const
 {
     std::string ret;
