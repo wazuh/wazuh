@@ -66,6 +66,17 @@ class IAgentSyncProtocol
         /// This method removes all entries from the in-memory vector used for recovery scenarios.
         virtual void clearInMemoryData() = 0;
 
+        /// @brief Synchronizes metadata or groups with the server without sending data.
+        ///
+        /// This method handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
+        /// The sequence is: Start → StartAck → End → EndAck (no Data messages).
+        /// @param mode Synchronization mode (must be MetadataDelta, MetadataCheck, GroupDelta, or GroupCheck)
+        /// @param timeout Timeout duration for waiting for server responses
+        /// @param retries Number of retry attempts for each message
+        /// @param maxEps Maximum events per second (0 = unlimited)
+        /// @return true if synchronization completed successfully, false otherwise
+        virtual bool synchronizeMetadataOrGroups(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
+
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;
 

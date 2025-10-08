@@ -265,6 +265,61 @@ void AgentSyncProtocol::clearInMemoryData()
     m_inMemoryData.clear();
 }
 
+bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
+                                                    std::chrono::seconds timeout,
+                                                    unsigned int retries,
+                                                    size_t maxEps)
+{
+    // Validate synchronization mode - only allow metadata and group modes
+    if (mode != Mode::METADATA_DELTA && mode != Mode::METADATA_CHECK &&
+            mode != Mode::GROUP_DELTA && mode != Mode::GROUP_CHECK)
+    {
+        m_logger(LOG_ERROR, "Invalid synchronization mode for metadata/groups: " + std::to_string(static_cast<int>(mode)));
+        return false;
+    }
+
+    if (!ensureQueueAvailable())
+    {
+        m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
+        return false;
+    }
+
+    clearSyncState();
+
+    // For metadata and group modes, we don't send any data items
+    // We only send Start (with Size=0, First=false, and empty Index array) and End messages
+    std::vector<std::string> emptyIndices;
+    bool success = false;
+
+    // Step 1: Send Start message and wait for StartAck
+    if (sendStartAndWaitAck(mode, 0, emptyIndices, timeout, retries, maxEps))
+    {
+        // Step 2: Send End message and wait for EndAck (no Data messages)
+        std::vector<PersistedData> emptyData;
+
+        if (sendEndAndWaitAck(m_syncState.session, timeout, retries, emptyData, maxEps))
+        {
+            success = true;
+        }
+    }
+
+    if (success)
+    {
+        const std::string modeStr =
+            (mode == Mode::METADATA_DELTA) ? "MetadataDelta" :
+            (mode == Mode::METADATA_CHECK) ? "MetadataCheck" :
+            (mode == Mode::GROUP_DELTA) ? "GroupDelta" : "GroupCheck";
+
+        m_logger(LOG_DEBUG, "Synchronization completed successfully for mode: " + modeStr);
+    }
+    else
+    {
+        m_logger(LOG_WARNING, "Synchronization failed for metadata/groups mode");
+    }
+
+    clearSyncState();
+    return success;
+}
 
 bool AgentSyncProtocol::ensureQueueAvailable()
 {
@@ -302,20 +357,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         flatbuffers::FlatBufferBuilder builder;
 
         // Translate DB mode to Schema mode
-        Wazuh::SyncSchema::Mode protocolMode;
-
-        if (mode == Mode::FULL)
-        {
-            protocolMode = Wazuh::SyncSchema::Mode::ModuleFull;
-        }
-        else if (mode == Mode::DELTA)
-        {
-            protocolMode = Wazuh::SyncSchema::Mode::ModuleDelta;
-        }
-        else // Mode::CHECK
-        {
-            protocolMode = Wazuh::SyncSchema::Mode::ModuleCheck;
-        }
+        const auto protocolMode = toProtocolMode(mode);
 
         // Create hardcoded agent information
         auto architecture = builder.CreateString("hardcoded_architecture");
@@ -861,4 +903,25 @@ std::vector<PersistedData> AgentSyncProtocol::filterDataByRanges(
     }
 
     return result;
+}
+
+Wazuh::SyncSchema::Mode AgentSyncProtocol::toProtocolMode(Mode mode) const
+{
+    static const std::unordered_map<Mode, Wazuh::SyncSchema::Mode> modeMap =
+    {
+        {Mode::FULL, Wazuh::SyncSchema::Mode::ModuleFull},
+        {Mode::DELTA, Wazuh::SyncSchema::Mode::ModuleDelta},
+        {Mode::CHECK, Wazuh::SyncSchema::Mode::ModuleCheck},
+        {Mode::METADATA_DELTA, Wazuh::SyncSchema::Mode::MetadataDelta},
+        {Mode::METADATA_CHECK, Wazuh::SyncSchema::Mode::MetadataCheck},
+        {Mode::GROUP_DELTA, Wazuh::SyncSchema::Mode::GroupDelta},
+        {Mode::GROUP_CHECK, Wazuh::SyncSchema::Mode::GroupCheck}
+    };
+
+    if (const auto it = modeMap.find(mode); it != modeMap.end())
+    {
+        return it->second;
+    }
+
+    throw std::invalid_argument("Unknown Mode value: " + std::to_string(static_cast<int>(mode)));
 }

@@ -210,4 +210,30 @@ extern "C" {
         }
     }
 
+    bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
+                                     Mode_t mode,
+                                     unsigned int sync_timeout,
+                                     unsigned int retries,
+                                     size_t max_eps)
+    {
+        try
+        {
+            if (!handle) return false;
+
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+            return wrapper->impl->synchronizeMetadataOrGroups(static_cast<Mode>(mode),
+                                                              std::chrono::seconds(sync_timeout),
+                                                              retries,
+                                                              max_eps);
+        }
+        catch (const std::exception& ex)
+        {
+            return false;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
 } // extern "C"

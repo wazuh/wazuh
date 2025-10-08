@@ -56,6 +56,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::clearInMemoryData
         void clearInMemoryData() override;
 
+        /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
+        bool synchronizeMetadataOrGroups(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
+
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
         /// @param length Size of the FlatBuffer message in bytes.
@@ -182,6 +185,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         std::vector<PersistedData> filterDataByRanges(
             const std::vector<PersistedData>& sourceData,
             const std::vector<std::pair<uint64_t, uint64_t>>& ranges);
+
+        /// @brief Converts internal Mode enum to protocol schema Mode.
+        /// @param mode The internal Mode enum value.
+        /// @return The corresponding Wazuh::SyncSchema::Mode value.
+        Wazuh::SyncSchema::Mode toProtocolMode(Mode mode) const;
 
         /// @brief Synchronization state shared between threads during module sync.
         ///

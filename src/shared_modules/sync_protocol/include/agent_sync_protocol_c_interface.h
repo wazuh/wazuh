@@ -47,6 +47,7 @@ void asp_persist_diff(AgentSyncProtocolHandle* handle,
                       const char* data);
 
 /// @brief Persists a difference to in-memory vector instead of database.
+///
 /// This method is used for recovery scenarios where data should be kept in memory.
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param id Unique identifier for the data item.
@@ -99,6 +100,22 @@ bool asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uint8_t* d
 /// @brief Clears the in-memory data queue.
 /// @param handle Protocol handle.
 void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
+
+/// @brief Synchronizes metadata or groups with the server without sending data.
+///
+/// This function handles the following modes: MetadataDelta, MetadataCheck, GroupDelta, GroupCheck.
+/// The sequence is: Start → StartAck → End → EndAck (no Data messages).
+/// @param handle Pointer to the AgentSyncProtocol handle.
+/// @param mode Synchronization mode (must be MODE_METADATA_DELTA, MODE_METADATA_CHECK, MODE_GROUP_DELTA, or MODE_GROUP_CHECK)
+/// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
+/// @param sync_retries The maximum number of attempts for re-sending messages.
+/// @param max_eps The maximum event reporting throughput. 0 means disabled.
+/// @return true if synchronization completed successfully, false otherwise
+bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
+                                 Mode_t mode,
+                                 unsigned int sync_timeout,
+                                 unsigned int sync_retries,
+                                 size_t max_eps);
 
 #ifdef __cplusplus
 }
