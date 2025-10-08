@@ -71,7 +71,7 @@ public:
      * @return std::string Name of the asset
      * @throw std::runtime_error on error (if the asset does not exist, unable to read the store, etc)
      */
-    std::string resolvNameFromUUID(const std::string& uuid) const = 0;
+    virtual std::string resolveNameFromUUID(const std::string& uuid) const = 0;
 
     // TODO: Analize if we need to add metadata functions
     // virtual XXX getMetadata() const = 0;

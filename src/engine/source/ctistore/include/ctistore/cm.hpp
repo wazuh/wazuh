@@ -56,6 +56,9 @@ public:
     /** @copydoc ICMReader::assetExists */
     bool assetExists(const base::Name& name) const override;
 
+    /**     */
+    std::string resolveNameFromUUID(const std::string& uuid) const = 0;
+
     /** @copydoc ICMReader::listKVDB */
     std::vector<std::string> listKVDB() const override;
 
