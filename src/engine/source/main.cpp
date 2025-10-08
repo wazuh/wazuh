@@ -532,23 +532,6 @@ int main(int argc, char* argv[])
                             { archiver->deactivate(); });
         }
 
-        // CTI Store
-        {
-            const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
-            cti::store::ContentManagerConfig ctiCfg;
-            ctiCfg.basePath = baseCtiPath;
-            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, true);
-            LOG_INFO("CTI Store initialized.");
-            exitHandler.add(
-                [ctiStoreManager]()
-                {
-                    if (ctiStoreManager)
-                    {
-                        ctiStoreManager->shutdown();
-                    }
-                });
-        }
-
         // Create and configure the api endpints
         {
             apiServer = std::make_shared<httpsrv::Server>("API_SRV");
@@ -607,6 +590,34 @@ int main(int argc, char* argv[])
 
             // TODO: Remove this in next iterations, maybe, can be validate without winc?
             // cmsync->wazuhCoreOutput(true);
+        }
+
+        // CTI Store (initialized after CMSync to pass deploy callback)
+        {
+            const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
+            cti::store::ContentManagerConfig ctiCfg;
+            ctiCfg.basePath = baseCtiPath;
+
+            // Create callback using lambda wrapper around std::bind
+            // The lambda captures ctiStoreManager by reference, allowing it to be set after
+            auto deployCallback = [cmsync, &ctiStoreManager]()
+            {
+                // Use std::bind to call CMSync::deploy with ctiStoreManager
+                auto boundDeploy = std::bind(&cm::sync::CMSync::deploy, cmsync, ctiStoreManager);
+                boundDeploy();
+            };
+
+            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, true, deployCallback);
+            LOG_INFO("CTI Store initialized with CMSync deploy callback.");
+
+            exitHandler.add(
+                [ctiStoreManager]()
+                {
+                    if (ctiStoreManager)
+                    {
+                        ctiStoreManager->shutdown();
+                    }
+                });
         }
 
         // UDP Servers

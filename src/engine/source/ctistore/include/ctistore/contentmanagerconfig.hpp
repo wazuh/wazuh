@@ -22,6 +22,12 @@ using FileProcessingResult = std::tuple<int, std::string, bool>;
 using FileProcessingCallback = std::function<FileProcessingResult(const std::string& message)>;
 
 /**
+ * @brief Callback to notify when content is successfully downloaded and processed
+ * Simple notification - no parameters needed, just signals that new content is available
+ */
+using ContentDeployCallback = std::function<void()>;
+
+/**
  * @brief Configuration structure for Content Manager
  */
 struct ContentManagerConfig

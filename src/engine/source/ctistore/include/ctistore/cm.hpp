@@ -30,8 +30,11 @@ public:
      * @brief Constructor
      * @param config Configuration for the content downloader
      * @param autoStart If true, starts the downloader automatically
+     * @param deployCallback Optional callback to notify when content is successfully deployed
      */
-    explicit ContentManager(const ContentManagerConfig& config = ContentManagerConfig {}, bool autoStart = false);
+    explicit ContentManager(const ContentManagerConfig& config = ContentManagerConfig {},
+                            bool autoStart = false,
+                            ContentDeployCallback deployCallback = nullptr);
 
     /**
      * @brief Destructor
@@ -185,6 +188,7 @@ private:
     mutable std::shared_mutex m_mutex;
     ContentManagerConfig m_config;
     std::unique_ptr<CTIStorageDB> m_storage;
+    ContentDeployCallback m_deployCallback;
 };
 
 } // namespace cti::store
