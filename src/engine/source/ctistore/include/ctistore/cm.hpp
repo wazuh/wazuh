@@ -12,10 +12,12 @@
 namespace cti::store
 {
 class ContentDownloader;
-}
 
-namespace cti::store
-{
+/**
+ * @brief Callback to notify when content is successfully downloaded and processed
+ * Simple notification - no parameters needed, just signals that new content is available
+ */
+using ContentDeployCallback = std::function<void(const std::shared_ptr<cti::store::ICMReader>& ctiStore)>;
 
 /**
  * @brief ContentManager class - Main CTI Store manager
@@ -23,7 +25,7 @@ namespace cti::store
  * This class manages the CTI Store, providing access to downloaded assets
  * and handling content synchronization from the remote CTI platform.
  */
-class ContentManager : public ICMReader
+class ContentManager : public ICMReader, public std::enable_shared_from_this<ContentManager>
 {
 public:
     /**

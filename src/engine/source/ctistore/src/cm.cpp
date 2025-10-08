@@ -88,7 +88,6 @@ ContentManager::~ContentManager()
 }
 
 // ICMReader interface implementations
-// Note: No mutex needed for read operations - CTIStorageDB is already thread-safe
 std::vector<base::Name> ContentManager::getAssetList(cti::store::AssetType type) const
 {
     if (!m_storage || !m_storage->isOpen())
@@ -623,7 +622,6 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                                         continue;
                                     }
 
-                                    // Create a JSON document from the operations array
                                     json::Json operations;
                                     operations.setArray();
                                     for (const auto& op : *opsArray)
@@ -813,12 +811,11 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
             try
             {
                 LOG_DEBUG("CTI: notifying deploy callback");
-                m_deployCallback();
+                m_deployCallback(shared_from_this());
             }
             catch (const std::exception& e)
             {
                 LOG_ERROR("CTI: deploy callback failed: {}", e.what());
-                // Don't fail the whole operation if callback fails
             }
         }
 
