@@ -362,7 +362,7 @@ void CMSync::pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& cmst
 
                 std::string assetNameStr {};
                 try {
-                    assetNameStr = cmstore->resolvNameFromUUID(assetUUIDStr.value());
+                    assetNameStr = cmstore->resolveNameFromUUID(assetUUIDStr.value());
                 } catch (const std::exception& e) {
                     throw std::runtime_error(fmt::format("Failed to resolve asset name from UUID '{}' in integration '{}': {}",
                                                          assetUUIDStr.value(),

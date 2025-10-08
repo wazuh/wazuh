@@ -1288,6 +1288,35 @@ bool CTIStorageDB::Impl::assetExists(const base::Name& name, const std::string& 
     return existsByIdOrName(name.fullName(), cfIt->second, keyPrefixIt->second, namePrefixIt->second);
 }
 
+std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid) const
+{
+   std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+
+    auto cfIt = CTIStorageDB::getAssetTypeToColumnFamily().find(assetType);
+    if (cfIt == CTIStorageDB::getAssetTypeToColumnFamily().end())
+    {
+        throw std::invalid_argument("Invalid asset type: " + assetType);
+    }
+
+    auto keyPrefixIt = CTIStorageDB::getAssetTypeToKeyPrefix().find(assetType);
+    auto namePrefixIt = CTIStorageDB::getAssetTypeToNamePrefix().find(assetType);
+    if (keyPrefixIt == CTIStorageDB::getAssetTypeToKeyPrefix().end() || namePrefixIt == CTIStorageDB::getAssetTypeToNamePrefix().end())
+    {
+        throw std::invalid_argument("No prefix configuration for asset type: " + assetType);
+    }
+
+    try
+    {
+        json::Json doc = getByIdOrName(uuid, cfIt->second, keyPrefixIt->second, namePrefixIt->second);
+        return extractNameFromJson(doc);
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error("Failed to resolve name from UUID: " + std::string(e.what()));
+    }
+
+}
+
 std::vector<std::string> CTIStorageDB::Impl::getKVDBList() const
 {
     std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock

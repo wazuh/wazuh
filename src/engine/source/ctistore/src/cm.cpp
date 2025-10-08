@@ -163,6 +163,30 @@ bool ContentManager::assetExists(const base::Name& name) const
     return false;
 }
 
+std::string ContentManager::resolveNameFromUUID(const std::string& uuid) const
+{
+    if (!m_storage || !m_storage->isOpen())
+    {
+        LOG_WARNING("getAsset called but storage not initialized");
+        return json::Json();
+    }
+
+    static constexpr std::array<std::string_view, 2> types {"integration", "decoder"};
+    for (const auto& t : types)
+    {
+        try
+        {
+            return m_storage->getAsset(uuid, std::string(t));
+        }
+        catch (...)
+        {
+            // ignore and try next
+        }
+    }
+    LOG_TRACE("Asset '{}' not found in any type", uuid.toStr());
+    return json::Json();
+}
+
 std::vector<std::string> ContentManager::listKVDB() const
 {
     if (!m_storage || !m_storage->isOpen())
