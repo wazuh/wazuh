@@ -1316,7 +1316,12 @@ std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, con
     try
     {
         json::Json doc = getByIdOrName(uuid, cfIt->second, keyPrefixIt->second, namePrefixIt->second);
-        return extractNameFromJson(doc);
+        auto nameStr = doc.getString("/document/name");
+        if (nameStr)
+        {
+            return *nameStr;
+        }
+        throw std::runtime_error(fmt::format("Document for UUID {} missing /document/name field, doc: {}", uuid, doc.str()));
     }
     catch (const std::exception& e)
     {
