@@ -1,4 +1,4 @@
-#include <ctistore/contentdownloader.hpp>
+#include "contentdownloader.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -10,32 +10,32 @@
 namespace cti::store
 {
 
-json::Json ContentManagerConfig::toJson() const
-{
-    auto nj = this->toNlohmann();
-    return json::Json(nj.dump().c_str());
-}
-
-nlohmann::json ContentManagerConfig::toNlohmann() const
+nlohmann::json contentManagerConfigToNlohmann(const ContentManagerConfig& config)
 {
     nlohmann::json j;
-    j["topicName"] = topicName;
-    j["interval"] = interval;
-    j["ondemand"] = onDemand;
+    j["topicName"] = config.topicName;
+    j["interval"] = config.interval;
+    j["ondemand"] = config.onDemand;
     nlohmann::json cfg;
-    cfg["consumerName"] = consumerName;
-    cfg["contentSource"] = contentSource;
-    cfg["compressionType"] = compressionType;
-    cfg["versionedContent"] = versionedContent;
-    cfg["deleteDownloadedContent"] = deleteDownloadedContent;
-    cfg["url"] = url;
-    cfg["outputFolder"] = outputFolder;
-    cfg["contentFileName"] = contentFileName;
-    cfg["databasePath"] = databasePath;
-    cfg["assetStorePath"] = assetStorePath;
-    cfg["offset"] = offset;
+    cfg["consumerName"] = config.consumerName;
+    cfg["contentSource"] = config.contentSource;
+    cfg["compressionType"] = config.compressionType;
+    cfg["versionedContent"] = config.versionedContent;
+    cfg["deleteDownloadedContent"] = config.deleteDownloadedContent;
+    cfg["url"] = config.url;
+    cfg["outputFolder"] = config.outputFolder;
+    cfg["contentFileName"] = config.contentFileName;
+    cfg["databasePath"] = config.databasePath;
+    cfg["assetStorePath"] = config.assetStorePath;
+    cfg["offset"] = config.offset;
     j["configData"] = std::move(cfg);
     return j;
+}
+
+json::Json ContentManagerConfig::toJson() const
+{
+    auto nj = contentManagerConfigToNlohmann(*this);
+    return json::Json(nj.dump().c_str());
 }
 
 void ContentManagerConfig::fromJson(const json::Json& config)
@@ -259,7 +259,7 @@ bool ContentDownloader::start()
         // Validate config before proceeding to register creation.
         m_config.validate();
 
-        auto nlohmannConfig = m_config.toNlohmann();
+        auto nlohmannConfig = contentManagerConfigToNlohmann(m_config);
 
         // Initialize ContentRegister with the file processing callback
         m_contentRegister =
