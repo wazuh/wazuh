@@ -4,9 +4,15 @@
 #include <memory>
 #include <shared_mutex>
 
-#include <ctistore/contentdownloader.hpp>
+#include <ctistore/contentmanagerconfig.hpp>
 #include <ctistore/ctistoragedb.hpp>
 #include <ctistore/icmreader.hpp>
+
+// ContentDownloader forward declaration - implementation in src/
+namespace cti::store
+{
+class ContentDownloader;
+}
 
 namespace cti::store
 {
@@ -129,14 +135,7 @@ private:
     FileProcessingResult processDownloadedContent(const std::string& message);
 
 public: // Test support: delegate to downloader
-    FileProcessingResult testProcessMessage(const std::string& message)
-    {
-        if (m_downloader)
-        {
-            return m_downloader->processMessage(message);
-        }
-        return {0, "", false};
-    }
+    FileProcessingResult testProcessMessage(const std::string& message);
 
     /**
      * @brief Store policy data in local database

@@ -3,7 +3,7 @@
 
 #include <base/name.hpp>
 #include <ctistore/cm.hpp>
-#include <ctistore/contentdownloader.hpp>
+#include "contentdownloader.hpp"
 
 #include <chrono>
 #include <filesystem>
@@ -105,7 +105,7 @@ TEST_F(ContentDownloaderTest, ToNlohmannConsistency)
     cfg.databasePath = "db";
     cfg.offset = 7;
 
-    auto nj = cfg.toNlohmann();
+    auto nj = contentManagerConfigToNlohmann(cfg);
     auto ej = cfg.toJson();
 
     EXPECT_EQ(nj["topicName"].get<std::string>(), ej.getString("/topicName").value());

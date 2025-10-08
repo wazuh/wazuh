@@ -1,4 +1,5 @@
 #include <ctistore/cm.hpp>
+#include "contentdownloader.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -431,6 +432,15 @@ void ContentManager::updateConfig(const ContentManagerConfig& config, bool resta
     }
 }
 
+FileProcessingResult ContentManager::testProcessMessage(const std::string& message)
+{
+    if (m_downloader)
+    {
+        return m_downloader->processMessage(message);
+    }
+    return {0, "", false};
+}
+
 FileProcessingResult ContentManager::processDownloadedContent(const std::string& message)
 {
     try
@@ -519,7 +529,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                             // Check if stop was requested
                             if (m_downloader && m_downloader->shouldStop())
                             {
-                                LOG_INFO("CTI offsets: processing interrupted by stop request at entry {} (offset={})", 
+                                LOG_INFO("CTI offsets: processing interrupted by stop request at entry {} (offset={})",
                                          i, currentOffset);
                                 // Return current progress - offset will be saved
                                 return {currentOffset, "", true};
