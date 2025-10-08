@@ -255,8 +255,15 @@ TEST_F(SyscollectorImpTest, defaultCtor)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -454,8 +461,15 @@ TEST_F(SyscollectorImpTest, noHardware)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -567,8 +581,15 @@ TEST_F(SyscollectorImpTest, noOs)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -679,8 +700,15 @@ TEST_F(SyscollectorImpTest, noNetwork)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -778,8 +806,15 @@ TEST_F(SyscollectorImpTest, noPackages)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -890,8 +925,15 @@ TEST_F(SyscollectorImpTest, noPorts)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -1003,8 +1045,15 @@ TEST_F(SyscollectorImpTest, noPortsAll)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -1114,8 +1163,15 @@ TEST_F(SyscollectorImpTest, noProcesses)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -1226,8 +1282,15 @@ TEST_F(SyscollectorImpTest, noHotfixes)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -1338,8 +1401,15 @@ TEST_F(SyscollectorImpTest, noUsers)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -1450,8 +1520,15 @@ TEST_F(SyscollectorImpTest, noGroups)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -1562,8 +1639,15 @@ TEST_F(SyscollectorImpTest, noServices)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -1674,8 +1758,15 @@ TEST_F(SyscollectorImpTest, noBrowserExtensions)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -1833,8 +1924,15 @@ TEST_F(SyscollectorImpTest, portAllEnable)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -2012,8 +2110,15 @@ TEST_F(SyscollectorImpTest, portAllDisable)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -2119,8 +2224,15 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
@@ -2212,8 +2324,15 @@ TEST_F(SyscollectorImpTest, sanitizeJsonValues)
         {
             auto persist = nlohmann::json::parse(data);
 
+            // Validate that state object exists and contains document_version
             if (persist.contains("state"))
             {
+                EXPECT_TRUE(persist["state"].contains("document_version"));
+                EXPECT_TRUE(persist["state"].contains("modified_at"));
+                // Validate document_version is a positive integer
+                EXPECT_TRUE(persist["state"]["document_version"].is_number_integer());
+                EXPECT_GT(persist["state"]["document_version"].get<int>(), 0);
+                // Remove state before comparing with expected values (since modified_at is dynamic)
                 persist.erase("state");
             }
 
