@@ -38,7 +38,7 @@ class NPM final
             static const std::map<std::string, std::string> NPM_FIELDS
             {
                 {"name", "name"},
-                {"version", "version"},
+                {"version", "version_"},
                 {"description", "description"},
                 {"homepage", "source"},
             };
@@ -73,7 +73,7 @@ class NPM final
                         }
                     }
 
-                    if (packageInfo.contains("name") && packageInfo.contains("version"))
+                    if (packageInfo.contains("name") && packageInfo.contains("version_"))
                     {
                         callback(packageInfo);
                     }

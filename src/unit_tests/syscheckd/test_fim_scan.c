@@ -3397,7 +3397,7 @@ static void test_transaction_callback_add(void **state) {
 
     callback_ctx *txn_context = data->txn_context;
     fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
-    cJSON *result = cJSON_Parse("[{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\"}]");
+    cJSON *result = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"device\":64768,\"gid\":0,\"group_\":\"root\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"inode\":\"801978\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"permissions\":\"rw-r--r--\",\"size\":0,\"uid\":0,\"owner\":\"root\",\"version\":1}");
 
     txn_context->entry = &entry;
     data->dbsync_event = result;
@@ -3437,7 +3437,7 @@ static void test_transaction_callback_modify(void **state) {
     fim_entry entry = {.type = FIM_TYPE_FILE, .file_entry.path = path, .file_entry.data=&DEFAULT_FILE_DATA};
     txn_context->entry = &entry;
 
-    cJSON *result = cJSON_Parse("[{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0}}]");
+    cJSON *result = cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"version\":2},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0,\"version\":1}}");
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -3516,7 +3516,7 @@ static void test_transaction_callback_modify_report_changes(void **state) {
     txn_context->entry = &entry;
 
 
-    cJSON *result = cJSON_Parse("[{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0}}]");
+    cJSON *result = cJSON_Parse("{\"new\":{\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"mtime\":1645001693,\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"version\":2},\"old\":{\"checksum\":\"d0e2e27875639745261c5d1365eb6c9fb7319247\",\"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"mtime\":1645001030,\"path\":\"/etc/a_test_file.txt\",\"size\":0,\"version\":1}}");
     data->dbsync_event = result;
 
     // These functions are called every time transaction_callback calls fim_configuration_directory
@@ -3544,9 +3544,9 @@ static void test_transaction_callback_modify_report_changes(void **state) {
 static void test_transaction_callback_delete(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
 #ifndef TEST_WINAGENT
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #else
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #endif
 
     callback_ctx *txn_context = data->txn_context;
@@ -3580,10 +3580,10 @@ static void test_transaction_callback_delete_report_changes(void **state) {
     callback_ctx *txn_context = data->txn_context;
 #ifndef TEST_WINAGENT
     const char* path = "/etc/a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #else
     const char *path = "c:\\windows\\a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #endif
     data->dbsync_event = result;
 
@@ -3611,9 +3611,9 @@ static void test_transaction_callback_delete_report_changes(void **state) {
 static void test_transaction_callback_delete_full_db(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
 #ifndef TEST_WINAGENT
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #else
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #endif
 
     callback_ctx *txn_context = data->txn_context;
@@ -3645,10 +3645,10 @@ static void test_transaction_callback_full_db(void **state) {
     txn_data_t *data = (txn_data_t *) *state;
 #ifndef TEST_WINAGENT
     char* path = "/etc/a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"/etc/a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #else
     char *path = "c:\\windows\\a_test_file.txt";
-    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\"}");
+    cJSON *result = cJSON_Parse("{\"path\":\"c:\\\\windows\\\\a_test_file.txt\",\"size\":11,\"permissions\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\",\"owner\":\"root\",\"group_\":\"root\",\"inode\":\"801978\",\"mtime\":1645001693,\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"checksum\":\"cfdd740677ed8b250e93081e72b4d97b1c846fdc\",\"version\":1}");
 #endif
     char debug_msg[OS_SIZE_128] = {0};
 
