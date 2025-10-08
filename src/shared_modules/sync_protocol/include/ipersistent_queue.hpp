@@ -28,9 +28,13 @@ enum class Operation : int
 /// @brief Defines the type of synchronization mode.
 enum class Mode : int
 {
-    FULL  = MODE_FULL,  ///< Full synchronization mode.
-    DELTA = MODE_DELTA, ///< Delta synchronization mode.
-    CHECK = MODE_CHECK  ///< Integrity check mode.
+    FULL  = MODE_FULL,               ///< Full synchronization mode.
+    DELTA = MODE_DELTA,              ///< Delta synchronization mode.
+    CHECK = MODE_CHECK,              ///< Integrity check mode.
+    METADATA_DELTA = MODE_METADATA_DELTA, ///< Metadata delta synchronization mode.
+    METADATA_CHECK = MODE_METADATA_CHECK, ///< Metadata integrity check mode.
+    GROUP_DELTA = MODE_GROUP_DELTA,       ///< Group delta synchronization mode.
+    GROUP_CHECK = MODE_GROUP_CHECK        ///< Group integrity check mode.
 };
 
 /// @brief Represents a persisted message used in module synchronization.
