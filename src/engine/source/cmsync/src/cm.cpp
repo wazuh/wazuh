@@ -203,8 +203,9 @@ void CMSync::cleanAllPolicies()
     const auto respOrError = policyManager->list();
     if (base::isError(respOrError))
     {
-        // TODO: Maybe no are policies
-        throw std::runtime_error(fmt::format("Failed to list policies: {}", base::getError(respOrError).message));
+        // TODO: Maybe no are policies and is not an error
+        // We need differentiate between no policies and error, now we suppose that is no error
+        return;
     }
 
     const auto& policies = base::getResponse(respOrError);
@@ -328,7 +329,7 @@ void CMSync::pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& cmst
         try
         {
             const auto decodersPath =
-                "/decoders"; // builder::syntax::integration::DECODER_PATH TODO: Move to common header
+                "/document/decoders"; // builder::syntax::integration::DECODER_PATH TODO: Move to common header
             decoderDef = cmstore->getAsset(integrationName);
 
             if (!decoderDef.isObject())
@@ -352,24 +353,32 @@ void CMSync::pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& cmst
             for (const auto& jName : arrayList)
             {
                 // Get and validate the asset name
-                const auto assetNameStr = jName.getString();
-                if (!assetNameStr)
+                const auto assetUUIDStr = jName.getString();
+                if (!assetUUIDStr)
                 {
                     throw std::runtime_error(fmt::format(
                         "Invalid not string entry in '{}' array for integration '{}'", decodersPath, integrationName));
                 }
 
+                std::string assetNameStr {};
+                try {
+                    assetNameStr = cmstore->resolvNameFromUUID(assetUUIDStr.value());
+                } catch (const std::exception& e) {
+                    throw std::runtime_error(fmt::format("Failed to resolve asset name from UUID '{}' in integration '{}': {}",
+                                                         assetUUIDStr.value(),
+                                                         integrationName,
+                                                         e.what()));
+                }
+
                 base::Name assetName;
                 try
                 {
-                    assetName = base::Name(assetNameStr.value());
+                    assetName = base::Name(assetNameStr);
                 }
                 catch (const std::runtime_error& e)
                 {
-                    throw std::runtime_error(fmt::format("Invalid asset name '{}' in integration '{}': {}",
-                                                         assetNameStr.value(),
-                                                         integrationName,
-                                                         e.what()));
+                    throw std::runtime_error(fmt::format(
+                        "Invalid asset name '{}' in integration '{}': {}", assetNameStr, integrationName, e.what()));
                 }
 
                 // Assert the asset name is a decoder
@@ -602,7 +611,7 @@ void CMSync::wazuhCoreOutput(bool onlyValidate) const
     for (const auto& ymlFile : ymlFiles)
     {
         const auto [assetName, fileContent] = m_coreOutputReader->getOutputContent(ymlFile);
-        api::catalog::Resource outputResource {assetName, api::catalog::Resource::Format::yaml};
+        api::catalog::Resource outputResource {onlyValidate ? assetName : "output", api::catalog::Resource::Format::yaml};
         const auto error = onlyValidate ? catalog->validateResource(outputResource, m_systemNS, fileContent)
                                         : catalog->postResource(outputResource, m_systemNS, fileContent);
         if (base::isError(error))

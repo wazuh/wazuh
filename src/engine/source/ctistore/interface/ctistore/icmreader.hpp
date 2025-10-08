@@ -63,6 +63,16 @@ public:
      */
     virtual bool assetExists(const base::Name& name) const = 0;
 
+
+    /**
+     * @brief Resolve an asset name from its UUID
+     *
+     * @param uuid UUID of the asset to resolve
+     * @return std::string Name of the asset
+     * @throw std::runtime_error on error (if the asset does not exist, unable to read the store, etc)
+     */
+    std::string resolvNameFromUUID(const std::string& uuid) const = 0;
+
     // TODO: Analize if we need to add metadata functions
     // virtual XXX getMetadata() const = 0;
     // virtual XXX getAssetMetadata(const base::Name& name) const = 0;
