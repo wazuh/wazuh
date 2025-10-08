@@ -568,7 +568,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithCallback)
     std::string capturedIndex;
     std::string capturedData;
 
-    auto persistFunc = [&](const std::string& id, Operation op, const std::string& index, const std::string& data)
+    auto persistFunc = [&](const std::string & id, Operation op, const std::string & index, const std::string & data)
     {
         callbackInvoked = true;
         capturedId = id;
@@ -635,12 +635,12 @@ class AgentInfoEventProcessingTest : public ::testing::Test
             m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
 
             // Set up callbacks to capture events
-            m_reportDiffFunc = [this](const std::string& event)
+            m_reportDiffFunc = [this](const std::string & event)
             {
                 m_reportedEvents.push_back(nlohmann::json::parse(event));
             };
 
-            m_persistDiffFunc = [this](const std::string& id, Operation op, const std::string& index, const std::string& data)
+            m_persistDiffFunc = [this](const std::string & id, Operation op, const std::string & index, const std::string & data)
             {
                 nlohmann::json persistedEvent;
                 persistedEvent["id"] = id;
@@ -650,7 +650,7 @@ class AgentInfoEventProcessingTest : public ::testing::Test
                 m_persistedEvents.push_back(persistedEvent);
             };
 
-            m_logFunc = [this](modules_log_level_t level, const std::string& msg)
+            m_logFunc = [this](modules_log_level_t level, const std::string & msg)
             {
                 m_logOutput += msg + "\n";
             };
@@ -1033,7 +1033,7 @@ class AgentInfoLoggingTest : public ::testing::Test
             m_mockFileIO = std::make_shared<MockFileIOUtils>();
             m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
 
-            m_logFunc = [this](modules_log_level_t level, const std::string& msg)
+            m_logFunc = [this](modules_log_level_t level, const std::string & msg)
             {
                 m_logMessages.push_back({level, msg});
             };
@@ -1247,7 +1247,7 @@ class AgentInfoRealDBSyncTest : public ::testing::Test
                 m_logOutput += "\n";
             });
 
-            m_reportDiffFunc = [this](const std::string& event)
+            m_reportDiffFunc = [this](const std::string & event)
             {
                 m_reportedEvents.push_back(nlohmann::json::parse(event));
             };
@@ -1281,7 +1281,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
     .WillOnce(::testing::Return(true))
     .WillOnce(::testing::Return(true));
 
-    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_,::testing::_))
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
     .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
         callback("456 real-dbsync-test 10.0.0.1 key");
