@@ -40,7 +40,6 @@ json::Json ContentManagerConfig::toJson() const
 
 void ContentManagerConfig::fromJson(const json::Json& config)
 {
-    // Use JSON Pointer style paths consistently.
     if (config.exists("/topicName"))
     {
         topicName = config.getString("/topicName").value_or(topicName);
@@ -225,10 +224,7 @@ ContentDownloader::ContentDownloader(const ContentManagerConfig& config, FilePro
     : m_config(config)
     , m_fileProcessingCallback(fileProcessingCallback)
 {
-    // Normalize paths
     m_config.normalize();
-
-    // Create necessary directories
     m_config.createDirectories(false);
 
     LOG_DEBUG("CTI Store ContentDownloader initializing with topic: {}", m_config.topicName);
@@ -291,10 +287,6 @@ void ContentDownloader::stop()
     LOG_INFO("Stopping CTI Store ContentDownloader");
 
     m_shouldStop = true;
-
-    // Destroy ContentRegister, which internally stops scheduler thread and waits for its completion.
-    // The ContentRegister destructor chain ensures proper cleanup:
-    // ContentRegister -> ContentProvider -> Action::stopActionScheduler() -> thread.join()
     m_contentRegister.reset();
 
     m_isRunning = false;

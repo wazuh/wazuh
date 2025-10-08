@@ -748,7 +748,6 @@ void CTIStorageDB::Impl::shutdown()
     }
 
     // Destroy column family handles before closing the database
-    // This prevents the CFHandle destructor from trying to destroy handles after DB is closed
     m_cfHandles.defaultCF = CFHandle();
     m_cfHandles.metadata = CFHandle();
     m_cfHandles.policy = CFHandle();
@@ -791,11 +790,7 @@ std::string CTIStorageDB::Impl::extractNameFromJson(const json::Json& doc) const
         return *name;
     }
 
-    // TODO: Policy dual format support - remove legacy format support once all policies migrated
-    // Policy can have two formats:
-    // - Flat format: /payload/title (legacy)
-    // - Nested format: /payload/document/title (preferred, already checked above)
-    // Keeping both for backward compatibility
+    // Fallback to legacy flat format for backward compatibility
     title = doc.getString(constants::JSON_PAYLOAD_TITLE);
     if (title)
     {
@@ -1376,12 +1371,9 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
         {
             json::Json doc(it->value().ToString().c_str());
 
-            // TODO: Policy dual format support - try both paths for integrations
-            // Preferred format: /payload/document/integrations (nested)
-            // Legacy format: /payload/integrations (flat)
             std::optional<std::vector<json::Json>> integrationArray;
 
-            // Try nested format first (preferred)
+            // Try nested format first
             if (doc.exists(constants::JSON_PAYLOAD_DOCUMENT_INTEGRATIONS))
             {
                 integrationArray = doc.getArray(constants::JSON_PAYLOAD_DOCUMENT_INTEGRATIONS);
@@ -1439,8 +1431,7 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
 
 base::Name CTIStorageDB::Impl::getPolicyDefaultParent() const
 {
-    // Note: This is a constant value, no lock needed but added for consistency
-    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex);
     return base::Name(std::string(constants::DEFAULT_PARENT));
 }
 
@@ -1538,8 +1529,6 @@ size_t CTIStorageDB::Impl::getStorageStats(CTIStorageDB::ColumnFamily cf) const
 
 bool CTIStorageDB::Impl::validateDocument(const json::Json& doc, const std::string& expectedType) const
 {
-    // Note: validateDocument is a pure function that doesn't access database state
-    // No lock needed, but we could add shared lock for consistency if needed
     if (!doc.exists(constants::JSON_NAME) || extractIdFromJson(doc).empty())
     {
         return false;
@@ -1570,9 +1559,6 @@ bool CTIStorageDB::Impl::validateDocument(const json::Json& doc, const std::stri
 std::optional<std::pair<CTIStorageDB::ColumnFamily, std::string>>
 CTIStorageDB::Impl::findAssetColumnFamily(const std::string& resourceId) const
 {
-    // Search order: integration, decoder, policy, kvdb
-    // This matches the typical asset distribution and access patterns
-
     struct AssetTypeInfo {
         CTIStorageDB::ColumnFamily cf;
         std::string_view prefix;
@@ -1655,7 +1641,6 @@ bool CTIStorageDB::Impl::deleteAsset(const std::string& resourceId)
         // Continue with deletion even if we can't extract the name
     }
 
-    // Use WriteBatch for atomic deletion of primary key and secondary indexes
     rocksdb::WriteBatch batch;
     rocksdb::WriteOptions wo;
 
@@ -1783,8 +1768,7 @@ bool CTIStorageDB::Impl::updateAsset(const std::string& resourceId, const json::
         }
     }
 
-    // Apply JSON Patch operations in-place (RFC 6902 compliant)
-    // This will throw an exception if any operation is invalid per RFC 6902
+    // Apply JSON Patch operations (RFC 6902)
     try
     {
         jsonData.patch_inplace(patchOperations);

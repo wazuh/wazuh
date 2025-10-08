@@ -598,13 +598,9 @@ int main(int argc, char* argv[])
             cti::store::ContentManagerConfig ctiCfg;
             ctiCfg.basePath = baseCtiPath;
 
-            // Create callback using lambda wrapper around std::bind
-            // The lambda captures ctiStoreManager by reference, allowing it to be set after
-            auto deployCallback = [cmsync, &ctiStoreManager]()
+            auto deployCallback = [cmsync](const std::shared_ptr<cti::store::ICMReader>& cmstore)
             {
-                // Use std::bind to call CMSync::deploy with ctiStoreManager
-                auto boundDeploy = std::bind(&cm::sync::CMSync::deploy, cmsync, ctiStoreManager);
-                boundDeploy();
+                cmsync->deploy(cmstore);
             };
 
             ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, true, deployCallback);
