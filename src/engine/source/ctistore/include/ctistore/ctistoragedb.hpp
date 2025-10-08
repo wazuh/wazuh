@@ -171,6 +171,9 @@ public:
      */
     bool assetExists(const base::Name& name, const std::string& assetType) const;
 
+
+    std::string resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const;
+
     /**
      * @brief List all KVDB names.
      *
