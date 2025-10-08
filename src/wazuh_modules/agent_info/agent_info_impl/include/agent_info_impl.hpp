@@ -74,6 +74,28 @@ class AgentInfoImpl
         /// @return ECS-formatted data
         nlohmann::json ecsData(const nlohmann::json& data, const std::string& table) const;
 
+    private:
+        /// @brief Get the create statement for the database
+        std::string GetCreateStatement() const;
+
+        /// @brief Populate agent metadata table
+        void populateAgentMetadata();
+
+        /// @brief Read agent ID and name from client.keys file
+        /// @param agentId Output parameter for agent ID
+        /// @param agentName Output parameter for agent name
+        /// @return true if successful, false otherwise
+        bool readClientKeys(std::string& agentId, std::string& agentName) const;
+
+        /// @brief Read agent groups from merged.mg file
+        /// @return Vector of group names
+        std::vector<std::string> readAgentGroups() const;
+
+        /// @brief Update changes in database and emit events
+        /// @param table Table name
+        /// @param values Values to sync
+        void updateChanges(const std::string& table, const nlohmann::json& values);
+
         /// @brief Pointer to IDBSync
         std::shared_ptr<IDBSync> m_dBSync;
 
