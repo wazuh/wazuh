@@ -87,7 +87,6 @@ def test_aws_vpc_flow_bucket_get_ec2_client(mock_get_client):
     instance.get_ec2_client(region)
 
     mock_get_client.assert_called_once_with(
-                instance,
                 instance.access_key,
                 instance.secret_key,
                 instance.profile,

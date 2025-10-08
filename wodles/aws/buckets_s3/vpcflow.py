@@ -154,7 +154,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
     def get_ec2_client(self, region):
 
         ec2_client = self.get_client(
-            self,
             self.access_key,
             self.secret_key,
             self.profile,
