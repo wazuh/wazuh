@@ -1,0 +1,20 @@
+Source: wazuh-internal-tools
+Section: utils
+Priority: optional
+Maintainer: Wazuh Team <dev@wazuh.com>
+Build-Depends: debhelper-compat (= 13), dh-python, python3 (>= 3.10), python3-venv, python3-pip, git
+Standards-Version: 4.6.2
+Homepage: https://wazuh.com
+
+Package: wazuh-internal-tools
+Architecture: any
+Depends: ${misc:Depends}, python3 (>= 3.10)
+Description: Wazuh internal CLI tools (embedded Python virtual environment)
+ Wazuh’s internal command-line tools packaged for Debian/Ubuntu systems.
+ .
+ This package creates an embedded Python virtual environment under
+ /opt/wazuh-internal-tools/venv and installs wrapper scripts into /usr/bin
+ for convenient access to the CLIs.
+ .
+ The embedded venv isolates Python dependencies from the system interpreter,
+ improving reproducibility and reducing conflicts with system packages.
