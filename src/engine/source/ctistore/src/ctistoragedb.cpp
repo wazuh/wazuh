@@ -421,6 +421,9 @@ struct CTIStorageDB::Impl
      */
     bool assetExists(const base::Name& name, const std::string& assetType) const;
 
+
+    std::string resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const;
+
     /**
      * @brief Lists all KVDB names.
      * @return Vector of KVDB name strings
@@ -1058,6 +1061,11 @@ bool CTIStorageDB::assetExists(const base::Name& name, const std::string& assetT
     return m_pImpl->assetExists(name, assetType);
 }
 
+std::string CTIStorageDB::resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const
+{
+    return m_pImpl->resolveNameFromUUID(uuid, assetType);
+}
+
 std::vector<std::string> CTIStorageDB::getKVDBList() const
 {
     return m_pImpl->getKVDBList();
@@ -1288,7 +1296,7 @@ bool CTIStorageDB::Impl::assetExists(const base::Name& name, const std::string& 
     return existsByIdOrName(name.fullName(), cfIt->second, keyPrefixIt->second, namePrefixIt->second);
 }
 
-std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid) const
+std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, const std::string& assetType) const
 {
    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
 
