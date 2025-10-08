@@ -173,7 +173,7 @@ def main(argv):
                 message_processor = subscribers.sqs_message_processor.AWSS3MessageProcessor
             else:
                 raise Exception("Invalid type of subscriber")
-            profile = options.aws_profile or "default"
+            profile = options.aws_profile
             subscriber_queue = subscribers.sqs_queue.AWSSQSQueue(
                 external_id=options.external_id,
                 iam_role_arn=options.iam_role_arn,
