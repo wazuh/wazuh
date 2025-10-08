@@ -46,9 +46,10 @@ void agent_info_set_log_function(log_callback_t log_callback)
 void agent_info_set_report_function(report_callback_t report_callback)
 {
     g_report_callback = report_callback;
+
     if (g_report_callback)
     {
-        g_report_function_wrapper = [](const std::string& data)
+        g_report_function_wrapper = [](const std::string & data)
         {
             if (g_report_callback)
             {
@@ -61,17 +62,18 @@ void agent_info_set_report_function(report_callback_t report_callback)
 void agent_info_set_persist_function(persist_callback_t persist_callback)
 {
     g_persist_callback = persist_callback;
+
     if (g_persist_callback)
     {
-        g_persist_function_wrapper = [](const std::string& id, Operation operation, const std::string& index, const std::string& data)
+        g_persist_function_wrapper = [](const std::string & id, Operation operation, const std::string & index, const std::string & data)
         {
             if (g_persist_callback)
             {
                 // Convert C++ Operation enum to C Operation_t enum
                 Operation_t c_operation = (operation == Operation::CREATE) ? OPERATION_CREATE :
-                                         (operation == Operation::MODIFY) ? OPERATION_MODIFY :
-                                         (operation == Operation::DELETE_) ? OPERATION_DELETE :
-                                         OPERATION_NO_OP;
+                                          (operation == Operation::MODIFY) ? OPERATION_MODIFY :
+                                          (operation == Operation::DELETE_) ? OPERATION_DELETE :
+                                          OPERATION_NO_OP;
                 g_persist_callback(id.c_str(), c_operation, index.c_str(), data.c_str());
             }
         };
@@ -92,16 +94,16 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
 
         // Create log function wrapper
         std::function<void(const modules_log_level_t, const std::string&)> logFunction =
-            [](const modules_log_level_t level, const std::string& msg)
-            {
-                LoggingHelper::getInstance().log(level, msg.c_str());
-            };
+            [](const modules_log_level_t level, const std::string & msg)
+        {
+            LoggingHelper::getInstance().log(level, msg.c_str());
+        };
 
         g_agent_info_impl = std::make_unique<AgentInfoImpl>(
-            AGENT_INFO_DB_DISK_PATH,
-            g_report_function_wrapper,
-            g_persist_function_wrapper,
-            logFunction);
+                                AGENT_INFO_DB_DISK_PATH,
+                                g_report_function_wrapper,
+                                g_persist_function_wrapper,
+                                logFunction);
     }
 
     g_agent_info_impl->start();
