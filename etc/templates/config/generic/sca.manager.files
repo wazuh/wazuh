@@ -31,6 +31,7 @@ darwin/21/cis_apple_macOS_12.0.yml
 darwin/22/cis_apple_macOS_13.x.yml
 darwin/23/cis_apple_macOS_14.x.yml
 darwin/24/cis_apple_macOS_15.x.yml
+darwin/26/cis_apple_macOS_26.x.yml
 debian/cis_debian7.yml
 debian/cis_debian8.yml
 debian/cis_debian9.yml

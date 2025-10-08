@@ -503,6 +503,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/ruleset/sca/cis_apple_macOS_13.x.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_apple_macOS_14.x.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_apple_macOS_15.x.yml*,root,wazuh,640,file,-rw-r-----,,
+/var/ossec/ruleset/sca/cis_apple_macOS_26.x.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_centos6_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_centos7_linux.yml*,root,wazuh,640,file,-rw-r-----,,
 /var/ossec/ruleset/sca/cis_centos8_linux.yml*,root,wazuh,640,file,-rw-r-----,,
