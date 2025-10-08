@@ -1,0 +1,125 @@
+#!/bin/sh
+# postinst script for wazuh-internal-tools
+# Wazuh, Inc 2015
+
+set -eu
+
+PREFIX="/opt/wazuh-internal-tools"
+VENV="$PREFIX/venv"
+BIN="$VENV/bin"
+PY="$BIN/python"
+EMBEDDED_RT="$PREFIX/runtime/python"   # If absent, fallback to system Python
+
+# ------------------------------------------------------------------------------
+# Function: fix_site_packages_alignment
+# Purpose:
+#   Fix mismatched or misaligned 'site-packages' directory names when the
+#   installed Python minor version differs from the one used at build time.
+#
+# Example:
+#   The venv might contain /lib/python3.10/site-packages but the host Python is
+#   now 3.11, breaking imports. This function renames or patches accordingly.
+# ------------------------------------------------------------------------------
+fix_site_packages_alignment() {
+  # Detect the actual interpreter version (X.Y)
+  ver="$("$PY" -c 'import sys; print("{}.{}".format(sys.version_info[0], sys.version_info[1]))')"
+  want="$VENV/lib/python$ver"
+
+  # If the expected directory already exists, nothing to fix
+  if [ -d "$want" ]; then
+    return 0
+  fi
+
+  # Try to find any existing python3.* directory and rename it to the expected one
+  found="$(ls -1d "$VENV"/lib/python3.* 2>/dev/null | head -n1 || true)"
+  if [ -n "$found" ] && [ -d "$found" ]; then
+    echo "[postinst] Adjusting site-packages alignment: $(basename "$found") → python$ver"
+    mv "$found" "$want" || true
+  fi
+
+  # Safety fallback: inject the old path dynamically via sitecustomize.py
+  if [ ! -d "$want" ] || ! "$PY" -c "import sys; print(any('site-packages' in p for p in sys.path))" >/dev/null 2>&1; then
+    old="$(ls -1d "$VENV"/lib/python3.* 2>/dev/null | head -n1 || true)"
+    if [ -n "$old" ] && [ -d "$old/site-packages" ]; then
+      sp="$old/site-packages"
+      echo "[postinst] Injecting $sp into sys.path via sitecustomize.py"
+      mkdir -p "$want/site-packages" || true
+      cat >"$want/site-packages/sitecustomize.py" <<EOF
+import sys
+p = r"$sp"
+if p not in sys.path:
+    sys.path.insert(0, p)
+EOF
+      chmod 0644 "$want/site-packages/sitecustomize.py" || true
+    fi
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Function: fix_pyvenv_cfg
+# Purpose:
+#   Rebuild or correct the venv configuration file (pyvenv.cfg) to match the
+#   interpreter actually used by the embedded runtime or the host system.
+#
+#   Also ensures a python3 symlink exists in $VENV/bin for compatibility with
+#   scripts that invoke 'python3' directly.
+# ------------------------------------------------------------------------------
+fix_pyvenv_cfg() {
+  # Determine full and short (X.Y) version of the venv interpreter
+  full_ver="$("$PY" -c 'import sys; print("{}.{}.{}".format(*sys.version_info[:3]))')"
+  xy_ver="$("$PY" -c 'import sys; print("{}.{}".format(sys.version_info[0], sys.version_info[1]))')"
+
+  # Prefer the embedded runtime if available
+  if [ -x "$EMBEDDED_RT/bin/python$xy_ver" ]; then
+    home="$EMBEDDED_RT/bin"
+    exe="$EMBEDDED_RT/bin/python$xy_ver"
+  elif [ -x "$EMBEDDED_RT/bin/python3" ]; then
+    home="$EMBEDDED_RT/bin"
+    exe="$EMBEDDED_RT/bin/python3"
+  else
+    # No embedded runtime: fallback to the venv’s own Python
+    home="$(dirname "$PY")"
+    exe="$PY"
+  fi
+
+  # Write or overwrite a coherent pyvenv.cfg file
+  cat >"$VENV/pyvenv.cfg" <<EOF
+home = $home
+include-system-site-packages = false
+version = $full_ver
+executable = $exe
+EOF
+
+  # Guarantee a python3 symlink for backward compatibility
+  if [ ! -x "$BIN/python3" ] && [ -x "$PY" ]; then
+    ln -sf "python" "$BIN/python3" 2>/dev/null || true
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# Main logic — runs only during "configure" phase
+# ------------------------------------------------------------------------------
+case "${1:-configure}" in
+  configure)
+    # Ensure all CLI wrapper scripts are executable
+    for c in engine-catalog engine-archiver engine-decoder engine-geo \
+             engine-policy engine-router engine-schema engine-test \
+             engine-it engine-helper-test engine-health-test; do
+      [ -f "/usr/bin/$c" ] && chmod 0755 "/usr/bin/$c" || true
+    done
+
+    # If Python is missing, skip sanity checks
+    if [ ! -x "$PY" ]; then
+      echo "[postinst] WARNING: $PY not found; skipping import verification."
+      exit 0
+    fi
+
+    # Step 1: Fix misaligned site-packages (e.g., 3.10 → 3.11)
+    fix_site_packages_alignment
+
+    # Step 2: Update pyvenv.cfg to reflect the current interpreter
+    fix_pyvenv_cfg
+    ;;
+esac
+
+exit 0

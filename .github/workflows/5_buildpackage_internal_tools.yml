@@ -1,0 +1,135 @@
+name: Generate internal tools package
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - 'src/engine/test/**'
+      - 'src/engine/tools/**'
+      - 'src/engine/internal_packages/**'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'main'
+
+env:
+  PKG_TARGET_DIR: src/engine/internal_packages
+  SCRIPT: generate_package.sh
+  REVISION: "1"
+  TAG_NAME: "local"
+  GEN_CHECKSUM: "false"
+
+jobs:
+  build:
+    name: Build ${{ matrix.system }} / ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        system: [deb, rpm]
+        arch: [amd64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || '' }}
+
+      - name: Resolve extension
+        id: meta
+        shell: bash
+        run: |
+          [[ "${{ matrix.system }}" == "deb" ]] && EXT=deb || EXT=rpm
+          echo "EXT=$EXT" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Run generate_package.sh
+        working-directory: ${{ env.PKG_TARGET_DIR }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SYS="${{ matrix.system }}"
+          ARCH="${{ matrix.arch }}"
+          ARGS=( "--system" "$SYS" "-a" "$ARCH" "-s" "/tmp" "-r" "${{ env.REVISION }}" "-j" "$(nproc)" "--tag" "${{ env.TAG_NAME }}" "--verbose")
+          [[ "${{ env.GEN_CHECKSUM }}" == "true" ]] && ARGS+=( "--checksum" )
+          echo "Invoking: ./${{ env.SCRIPT }} ${ARGS[*]}"
+          ./"${{ env.SCRIPT }}" "${ARGS[@]}"
+
+      - name: Resolve artifact name (no rename)
+        id: stage
+        shell: bash
+        run: |
+          set -euo pipefail
+          COMMIT="${GITHUB_SHA::7}"
+          EXT="${{ steps.meta.outputs.EXT }}"
+
+          norm_arch_deb() {
+            case "$1" in
+              amd64|x86_64)  echo "amd64" ;;
+              arm64|aarch64) echo "arm64" ;;
+              *)             echo "$1" ;;
+            esac
+          }
+          norm_arch_rpm() {
+            case "$1" in
+              x86_64|aarch64) echo "$1" ;;
+              amd64)          echo "x86_64" ;;
+              arm64)          echo "aarch64" ;;
+              *)              echo "$1" ;;
+            esac
+          }
+
+          shopt -s nullglob
+          PKG=""
+
+          if [[ "$EXT" == "deb" ]]; then
+            for f in /tmp/wazuh-internal-tools*.deb; do
+              [[ -f "$f" ]] && PKG="$f" && break
+            done
+            [[ -n "$PKG" ]] || { echo "::error::no deb found in /tmp"; ls -l /tmp || true; exit 1; }
+            base="$(basename "$PKG")"
+            name="${base%%_*}"
+            verrev_arch="${base#*_}"
+            verrev="${verrev_arch%_*}"
+            arch="${verrev_arch#*_}"; arch="${arch%.deb}"
+            arch_out="$(norm_arch_deb "$arch")"
+            ART="${name}_${verrev}_${arch_out}_${COMMIT}.deb"
+          else
+            for f in /tmp/wazuh-internal-tools*.rpm; do
+              [[ -f "$f" ]] && PKG="$f" && break
+            done
+            [[ -n "$PKG" ]] || { echo "::error::no rpm found in /tmp"; ls -l /tmp || true; exit 1; }
+            base="$(basename "$PKG")"
+            core="${base%.rpm}"
+            arch="${core##*.}"
+            arch_out="$(norm_arch_rpm "$arch")"
+            nvr="${core%.*}"
+            name="${nvr%%-*}"
+            verrel="${nvr#*-}"
+            ART="${name}_${verrel}_${arch_out}_${COMMIT}.rpm"
+          fi
+
+          FILES="$PKG"
+          [[ -f "$PKG.sha512" ]] && FILES="$FILES"$'\n'"$PKG.sha512"
+
+          echo "artifact_name=$ART" >> "$GITHUB_OUTPUT"
+          printf "paths<<EOF\n%s\nEOF\n" "$FILES" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact (flat, matching artifact name)
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEST="/tmp/${{ steps.stage.outputs.artifact_name }}"
+          cp -f $(echo "${{ steps.stage.outputs.paths }}" | head -n1) "$DEST"
+          echo "Uploaded file: $DEST"
+          echo "upload_path=$DEST" >> "$GITHUB_OUTPUT"
+        id: uploadprep
+
+      - name: Upload to GitHub Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.stage.outputs.artifact_name }}
+          path: ${{ steps.uploadprep.outputs.upload_path }}
+          if-no-files-found: error
+
