@@ -34,4 +34,8 @@ class CatalogModule(BaseModule):
             'content': content,
             'namespaceid': namespace_id
         }
+
+        # TODO real validation pending
+        return {"status": "OK", "error": None}
+
         return await self.send('/catalog/resource/validate', body)

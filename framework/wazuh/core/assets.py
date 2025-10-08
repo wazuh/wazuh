@@ -10,6 +10,7 @@ from shutil import Error
 from wazuh import WazuhError, WazuhInternalError
 from wazuh.core import common, utils, results
 from wazuh.core.engine.models.policies import PolicyType
+from wazuh.core.engine.models.resources import ResourceType
 
 
 DEFAULT_PERMISSIONS = 0o660
@@ -29,7 +30,7 @@ def generate_asset_filename(filename: str) -> str:
     """
     return filename.strip('/').replace('/', '_').replace(' ', '_')
 
-def generate_asset_file_path(filename: str, policy_type: PolicyType) -> str:
+def generate_asset_file_path(filename: str, policy_type: PolicyType, resource_type: ResourceType) -> str:
     """Generate the full file path for an asset based on its policy type.
 
     Parameters
@@ -38,13 +39,15 @@ def generate_asset_file_path(filename: str, policy_type: PolicyType) -> str:
         The asset filename.
     policy_type : PolicyType
         The policy type for the asset.
+    resource_type : ResourceType
+        The policy type for the asset.
 
     Returns
     -------
     str
         The full file path for the asset.
     """
-    base_path = policy_type.get_base_path()
+    base_path = path.join(common.USER_ASSETS_PATH, policy_type.dirname(), resource_type.dirname())
     safe_filename = generate_asset_filename(filename)
     if not safe_filename.endswith('.json'):
         safe_filename += '.json'

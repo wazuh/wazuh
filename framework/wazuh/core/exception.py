@@ -620,17 +620,19 @@ class WazuhException(Exception):
                'remediation': 'Make sure you introduce the token within the field "token"'},
 
         # Engine
-        8000: {'message': 'Invalid policy type provided: {policy_type}. The specified policy type is not recognized by the engine.'},
-        8001: {'message': 'Asset upload failed: An asset with the same ID already exists in the system.',
+        9000: {'message': 'Invalid policy type provided: {policy_type}. The specified policy type is not recognized by the engine.'},
+        9001: {'message': 'Asset upload failed: An asset with the same ID already exists in the system.',
                'remediation': 'Please use a unique asset ID to upload a new asset.'},
-        8002: {'message': 'Asset syntax error: The provided asset data does not match the required format.'},
-        8003: {'message': 'Engine error: Unable to add the asset. Please check the asset data and try again.'},
-        8004: {'message': 'Engine error: Unable to retrieve the specified decoders. The requested decoders could not be found or there was an issue processing your request.',
+        9002: {'message': 'Asset syntax error: The provided asset data does not match the required format.'},
+        9003: {'message': 'Engine error: Unable to add the asset. Please check the asset data and try again.'},
+        9004: {'message': 'Engine error: Unable to retrieve the specified decoders. The requested decoders could not be found or there was an issue processing your request.',
                'remediation': 'Please verify the decoder names and ensure they exist in the system.'},
-        8005: {'message': 'Asset does not exist',
+        9005: {'message': 'Asset does not exist',
                 'remediation': 'Please verify the asset ID and ensure it exists in the system before making the request.'},
-        8006: {'message': 'Engine error: Error uploading the decoder',
+        9006: {'message': 'Engine error: Error uploading the decoder',
                 'remediation': 'Please check the decoder data and ensure it meets the required format before uploading.'},
+        9007: {'message': 'Engine error: Unable to delete the decoder.',
+                'remediation': 'Check the decoder ID and confirm it is present in the system.'}
     }
 
     # Reserve agent upgrade custom errors
