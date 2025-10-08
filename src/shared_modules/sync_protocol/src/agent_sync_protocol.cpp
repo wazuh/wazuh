@@ -78,7 +78,7 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
 bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
 {
     // Validate synchronization mode
-    if (mode != Mode::FULL && mode != Mode::DELTA && mode != Mode::CHECK)
+    if (mode != Mode::FULL && mode != Mode::DELTA)
     {
         m_logger(LOG_ERROR, "Invalid synchronization mode: " + std::to_string(static_cast<int>(mode)));
         return false;
@@ -223,10 +223,9 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
     m_logger(LOG_DEBUG, "ChecksumModule message sent for index: " + index);
 
     // Step 3: Send End message and wait for EndAck
-    SyncResult syncResult;
     std::vector<PersistedData> emptyData; // No data to send for integrity check
 
-    if (sendEndAndWaitAck(m_syncState.session, timeout, retries, emptyData, maxEps, &syncResult))
+    if (sendEndAndWaitAck(m_syncState.session, timeout, retries, emptyData, maxEps))
     {
         m_logger(LOG_DEBUG, "Module integrity check completed successfully for index: " + index);
         clearSyncState();
@@ -236,24 +235,14 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
     {
         // Only return true if manager explicitly reported Status=Error (CHECKSUM_ERROR)
         // All other errors (communication, timeout, etc.) should return false
-        bool result = (syncResult == SyncResult::CHECKSUM_ERROR);
+        bool result = (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR);
 
-        // Provide detailed error information based on the sync result
-        switch (syncResult)
-        {
-            case SyncResult::COMMUNICATION_ERROR:
-                m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - Manager is offline");
-                break;
+        std::string message =
+            (m_syncState.lastSyncResult == SyncResult::CHECKSUM_ERROR)
+            ? "Checksum validation failed, full sync required"
+            : "Manager is offline";
 
-            case SyncResult::CHECKSUM_ERROR:
-                m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - Checksum validation failed, full sync required");
-                break;
-
-            case SyncResult::UNKNOWN_ERROR:
-            default:
-                m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - Unknown error");
-                break;
-        }
+        m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - " + message);
 
         clearSyncState();
         return result;
@@ -556,8 +545,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                                           const std::chrono::seconds timeout,
                                           unsigned int retries,
                                           const std::vector<PersistedData>& dataToSync,
-                                          size_t maxEps,
-                                          SyncResult* result)
+                                          size_t maxEps)
 {
     try
     {
@@ -599,11 +587,6 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 if (m_syncState.syncFailed)
                 {
-                    if (result)
-                    {
-                        *result = m_syncState.lastSyncResult;
-                    }
-
                     m_logger(LOG_ERROR, "Synchronization failed: Manager reported an error status.");
                     return false;
                 }
@@ -654,11 +637,6 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 if (m_syncState.endAckReceived)
                 {
-                    if (result)
-                    {
-                        *result = m_syncState.lastSyncResult;
-                    }
-
                     m_logger(LOG_DEBUG, "EndAck received.");
                     return true;
                 }

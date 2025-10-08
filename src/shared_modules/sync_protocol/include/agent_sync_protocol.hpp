@@ -138,14 +138,12 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @param retries The maximum number of re-send attempts.
         /// @param dataToSync The complete vector of data items being synchronized in the current session.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
-        /// @param result Optional output parameter to capture the specific result status.
         /// @return True on success, false on failure or timeout
         bool sendEndAndWaitAck(uint64_t session,
                                const std::chrono::seconds timeout,
                                unsigned int retries,
                                const std::vector<PersistedData>& dataToSync,
-                               size_t maxEps,
-                               SyncResult* result = nullptr);
+                               size_t maxEps);
 
         /// @brief Receives an endack message from the server
         /// @param timeout Timeout to wait for Ack
