@@ -66,7 +66,7 @@ async def create_integration(integration: Integration, policy_type: PolicyType) 
                 namespace_id=ENGINE_USER_NAMESPACE
             )
 
-            validate_response_or_raise(validation_results, 8002)
+            validate_response_or_raise(validation_results, 9002)
 
             # Create the new integration
             creation_results = client.content.create_resource(
@@ -76,7 +76,7 @@ async def create_integration(integration: Integration, policy_type: PolicyType) 
                 policy_type=policy_type
             )
 
-            validate_response_or_raise(creation_results, 8003)
+            validate_response_or_raise(creation_results, 9003)
 
         result.affected_items.append(filename)
         result.total_affected_items = len(result.affected_items)
@@ -123,7 +123,7 @@ async def get_integrations(names: str, search: Optional[str], status: Optional[S
             policy_type=policy_type
         )
 
-        validate_response_or_raise(integrations_response, 8007)
+        validate_response_or_raise(integrations_response, 9008)
 
         parsed_decoders = process_array(
             integrations_response['content'],
@@ -194,7 +194,7 @@ async def update_integration(integration: Integration, policy_type: PolicyType):
                 namespace_id=ENGINE_USER_NAMESPACE
             )
 
-            validate_response_or_raise(validation_results, 8002)
+            validate_response_or_raise(validation_results, 9002)
 
             # Update contents
             update_results = client.content.update_resource(
@@ -203,7 +203,7 @@ async def update_integration(integration: Integration, policy_type: PolicyType):
                 policy_type=policy_type
             )
 
-            validate_response_or_raise(update_results, 8008)
+            validate_response_or_raise(update_results, 9009)
 
         result.affected_items.append(filename)
     except WazuhError as exc:
@@ -267,7 +267,7 @@ async def delete_integration(names: List[str], policy_type: PolicyType):
                     policy_type=policy_type
                 )
 
-                validate_response_or_raise(delete_results, 8007)
+                validate_response_or_raise(delete_results, 9008)
 
             result.affected_items.append(name)
         except WazuhError as exc:

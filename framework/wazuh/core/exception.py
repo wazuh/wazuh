@@ -632,7 +632,20 @@ class WazuhException(Exception):
         9006: {'message': 'Engine error: Error uploading the decoder',
                 'remediation': 'Please check the decoder data and ensure it meets the required format before uploading.'},
         9007: {'message': 'Engine error: Unable to delete the decoder.',
-                'remediation': 'Check the decoder ID and confirm it is present in the system.'}
+                'remediation': 'Check the decoder ID and confirm it is present in the system.'},
+        9008: {
+            'message': 'Engine error: Unable to retrieve the specified integrations. The requested integrations could not be found or there was an issue processing your request.',
+            'remediation': 'Please verify the integration names and ensure they exist in the system.'},
+        9009: {'message': 'Engine error: Error uploading the integration',
+               'remediation': 'Please check the integration data and ensure it meets the required format before uploading.'},
+        9010: {'message': 'Integrations order file already exists.',
+               'remediation': 'Please remove the existing integrations order file before creating a new one.'},
+        9011: {'message': 'Integrations order file does not exist.',
+               'remediation': 'Please ensure the integrations order file exists before attempting this operation.'},
+        9012: {'message': 'Error validating integrations order with the engine.',
+               'remediation': 'Please check the integrations order content and try again.'},
+        9013: {'message': 'Error deleting integrations order from the engine.',
+               'remediation': 'Please check the integrations order file and engine status.'},
     }
 
     # Reserve agent upgrade custom errors

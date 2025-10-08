@@ -49,7 +49,7 @@ async def create_integrations_order(order: IntegrationsOrder, policy_type: Polic
 
     try:
         if exists(integration_order_path_file):
-            raise WazuhError(8009)
+            raise WazuhError(9010)
 
         # Create file
         save_asset_file(integration_order_path_file, file_contents_json)
@@ -60,7 +60,7 @@ async def create_integrations_order(order: IntegrationsOrder, policy_type: Polic
                 policy_type=policy_type
             )
 
-            validate_response_or_raise(creation_results, 8011)
+            validate_response_or_raise(creation_results, 9012)
 
         result.affected_items.append(DEFAULT_INTEGRATIONS_ORDER_FILENAME)
         result.total_affected_items = len(result.affected_items)
@@ -132,7 +132,7 @@ async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWaz
 
     try:
         if not exists(integration_order_path_file):
-            raise WazuhError(8010)
+            raise WazuhError(9011)
 
         # Creates a backup copy
         backup_file = f'{integration_order_path_file}.backup'
@@ -153,7 +153,7 @@ async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWaz
                 policy_type=policy_type
             )
 
-            validate_response_or_raise(delete_results, 8012)
+            validate_response_or_raise(delete_results, 9013)
 
         result.affected_items.append(DEFAULT_INTEGRATIONS_ORDER_FILENAME)
     except WazuhError as exc:
