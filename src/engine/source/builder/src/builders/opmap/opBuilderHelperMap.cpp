@@ -15,6 +15,7 @@
 #include <re2/re2.h>
 
 #include <base/utils/communityId.hpp>
+#include <base/error.hpp>
 #include <base/utils/ipUtils.hpp>
 #include <base/utils/stringUtils.hpp>
 
@@ -1223,6 +1224,86 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
         json::Json resultJson;
         resultJson.setInt64(result);
         RETURN_SUCCESS(runState, resultJson, successTrace);
+    };
+}
+
+// field: +map_from_array_obj_nv/$<array_reference>
+MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+{
+    builder::builders::utils::assertSize(opArgs, 3);
+    builder::builders::utils::assertRef(opArgs, 0);
+
+    const auto arrayRef = *std::static_pointer_cast<Reference>(opArgs[0]);
+
+    if (buildCtx->validator().hasField(arrayRef.dotPath()))
+    {
+        if (!buildCtx->validator().isArray(arrayRef.dotPath()))
+        {
+            throw std::runtime_error(fmt::format(
+                "Expected 'array' reference but got reference '{}' wich is not an array", arrayRef.dotPath()));
+        }
+
+        auto jType = buildCtx->validator().getJsonType(arrayRef.dotPath());
+        if (jType != json::Json::Type::Object)
+        {
+            throw std::runtime_error(
+                fmt::format("Expected array of 'object' but got array of '{}'", json::Json::typeToStr(jType)));
+        }
+    }
+
+    builder::builders::utils::assertValue(opArgs, 1);
+    if (!std::static_pointer_cast<Value>(opArgs[1])->value().isString())
+    {
+        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[1])->value().typeName()));
+    }
+
+    const auto keyName = std::static_pointer_cast<Value>(opArgs[1])->value().getString().value();
+    if (keyName.empty() || keyName.front() != '/')
+    {
+        throw std::runtime_error("Key path cannot be an empty string and must start with '/' (JSON Pointer)");
+    }
+
+    builder::builders::utils::assertValue(opArgs, 2);
+    if (!std::static_pointer_cast<Value>(opArgs[2])->value().isString())
+    {
+        throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
+                                             std::static_pointer_cast<Value>(opArgs[2])->value().typeName()));
+    }
+    const auto fieldValue = std::static_pointer_cast<Value>(opArgs[2])->value().getString().value();
+    if (fieldValue.empty() || fieldValue.front() != '/')
+    {
+        throw std::runtime_error("Value path cannot be an empty string and must start with '/' (JSON Pointer)");
+    }
+
+    const std::string traceName = buildCtx->context().opName;
+    const std::string successTrace {fmt::format(TRACE_SUCCESS, traceName)};
+    const std::string failureArrNotFound = fmt::format(TRACE_REFERENCE_NOT_FOUND, traceName, arrayRef.dotPath());
+    const std::string failureNotArray =
+        fmt::format("{}array", fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, traceName, arrayRef.dotPath()));
+
+    return [=, runState = buildCtx->runState(), arrayPath = arrayRef.jsonPath()](base::ConstEvent event) -> MapResult
+    {
+        if (!event->exists(arrayPath))
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureArrNotFound);
+        }
+        const auto arrayOpt = event->getArray(arrayPath);
+        if (!arrayOpt.has_value())
+        {
+            RETURN_FAILURE(runState, json::Json {}, failureNotArray);
+        }
+
+        json::Json result;
+        result.setObject();
+        const auto insertsOrError = result.setObjectFromArray(arrayOpt.value(), keyName, fieldValue);
+        if (base::isError(insertsOrError))
+        {
+            const auto failureTrace = fmt::format("[{}] -> Failure: {}", traceName, base::getError(insertsOrError).message);
+            RETURN_FAILURE(runState, json::Json {}, failureTrace);
+        }
+
+        RETURN_SUCCESS(runState, result, successTrace);
     };
 }
 

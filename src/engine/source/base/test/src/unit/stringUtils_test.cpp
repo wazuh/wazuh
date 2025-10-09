@@ -198,6 +198,27 @@ TEST(join, defaut_separator_empty_strings_array_as_input)
     ASSERT_EQ(result, expected);
 }
 
+TEST(normalizeStr, KeepsAlphanumericCharacters)
+{
+    EXPECT_EQ(base::utils::string::normalizeStr("Alpha123"), "Alpha123");
+}
+
+TEST(normalizeStr, ReplacesSeparatorsWithUnderscore)
+{
+    EXPECT_EQ(base::utils::string::normalizeStr("Request.Type"), "Request_Type");
+    EXPECT_EQ(base::utils::string::normalizeStr("User Agent Name"), "User_Agent_Name");
+}
+
+TEST(normalizeStr, TrimsDuplicatedSeparators)
+{
+    EXPECT_EQ(base::utils::string::normalizeStr("__Key--Name__"), "Key_Name");
+}
+
+TEST(normalizeStr, ReturnsEmptyWhenNoAlphanumericCharacters)
+{
+    EXPECT_EQ(base::utils::string::normalizeStr("...___---"), "");
+}
+
 TEST(splitEscaped, SuccessDefaultValues)
 {
     std::string input = R"(+helper_function/param\/et\/er/param2/param3)";

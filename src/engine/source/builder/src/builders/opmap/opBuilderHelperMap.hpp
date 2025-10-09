@@ -296,6 +296,15 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
                                              const std::vector<OpArg>& opArgs,
                                              const std::shared_ptr<const IBuildCtx>& buildCtx);
 
+/**
+ * @brief Transforms an array of objects with 'key' and 'value' fields into a map (object).
+ * @param opArgs something
+ * @param buildCtx Build context.
+ * @return  something
+ */
+MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs,
+                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
+
 //*************************************************
 //*              IP tranform                      *
 //*************************************************

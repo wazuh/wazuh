@@ -2,6 +2,7 @@
 #define _STRING_UTILS_H
 
 #include <algorithm>
+#include <cctype>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -164,6 +165,16 @@ bool isNumber(const std::string& str);
 
 bool replaceAll(std::string& data, const std::string_view toSearch, const std::string_view toReplace);
 bool haveUpperCaseCharacters(const std::string& str);
+
+/**
+ * @brief Normalize a string into an identifier containing only alphanumeric characters separated by underscores.
+ *
+ * Replaces any non-alphanumeric sequence with a single underscore and trims leading/trailing underscores.
+ *
+ * @param input Raw string to normalize.
+ * @return std::string Normalized identifier. May be empty if the input does not contain alphanumeric characters.
+ */
+std::string normalizeStr(std::string_view input);
 
 } // namespace base::utils::string
 

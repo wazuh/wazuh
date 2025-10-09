@@ -5,6 +5,7 @@
 #include <string>
 
 #include <base/json.hpp>
+#include <base/error.hpp>
 #include <base/logging.hpp>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
@@ -2738,8 +2739,62 @@ INSTANTIATE_TEST_SUITE_P(Json,
                                            isEmptyT(false, R"({"a":[]})", "/a/0"),
                                            isEmptyT(false, R"({"a":""})", "/a/0"),
                                            isEmptyT(false, R"({"a":0})", "/a/0"),
-                                           isEmptyT(false, R"({"a":false})", "/a/0"),
-                                           isEmptyT(false, R"({"a":null})", "/a/0")));
+                                          isEmptyT(false, R"({"a":false})", "/a/0"),
+                                          isEmptyT(false, R"({"a":null})", "/a/0")));
+
+TEST(JsonSetObjectFromArray, PopulatesObjectWithNormalizedKeys)
+{
+    json::Json target;
+    target.setObject();
+
+    json::Json array {R"([
+        {"Name": "UserAgent", "Value": "Mozilla/5.0"},
+        {"Name": "Request.Type", "Value": "OAuth2"}
+    ])"};
+
+    const auto arr = array.getArray().value();
+    const auto result = target.setObjectFromArray(arr, "/Name", "/Value");
+
+    ASSERT_FALSE(base::isError(result));
+    EXPECT_EQ(target.getString("/UserAgent").value(), "Mozilla/5.0");
+    EXPECT_EQ(target.getString("/Request_Type").value(), "OAuth2");
+}
+
+TEST(JsonSetObjectFromArray, CopiesWholeElementWhenValuePointerIsRoot)
+{
+    json::Json target;
+    target.setObject();
+
+    json::Json array {R"([
+        {"Name": "Entry", "Nested": {"Key": "Value", "Number": 42}}
+    ])"};
+
+    const auto arr = array.getArray().value();
+    const auto result = target.setObjectFromArray(arr, "/Name", "/");
+
+    ASSERT_FALSE(base::isError(result));
+
+    const auto stored = target.getJson("/Entry").value();
+    EXPECT_EQ(stored.getString("/Name").value(), "Entry");
+    EXPECT_EQ(stored.getString("/Nested/Key").value(), "Value");
+    EXPECT_EQ(stored.getInt("/Nested/Number").value(), 42);
+}
+
+TEST(JsonSetObjectFromArray, ReturnsErrorWhenNoValidEntries)
+{
+    json::Json target;
+    target.setObject();
+
+    json::Json array {R"([
+        {"Other": "field"}
+    ])"};
+
+    const auto arr = array.getArray().value();
+    const auto result = target.setObjectFromArray(arr, "/Name", "/Value");
+
+    ASSERT_TRUE(base::isError(result));
+    EXPECT_EQ(base::getError(result).message, "Result map is empty");
+}
 
 class JsonValidParamTest : public ::testing::TestWithParam<std::pair<bool, std::string>>
 {

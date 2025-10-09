@@ -6,6 +6,7 @@
 #include "rapidjson/schema.h"
 
 #include <base/logging.hpp>
+#include <base/utils/stringUtils.hpp>
 #include <fmt/format.h>
 
 namespace
@@ -124,6 +125,65 @@ std::string Json::formatJsonPath(std::string_view dotPath, bool skipDot)
     }
 
     return ptrPath;
+}
+
+base::OptError Json::setObjectFromArray(const std::vector<Json>& sourceArray,
+                                        std::string_view keyPointer,
+                                        std::string_view valuePointer)
+{
+    try
+    {
+        size_t inserts {0};
+
+        for (const auto& element : sourceArray)
+        {
+            if (!element.isObject())
+            {
+                continue;
+            }
+
+            const auto keyOpt = element.getString(keyPointer);
+            if (!keyOpt.has_value() || keyOpt->empty())
+            {
+                continue;
+            }
+
+            const auto valueOpt = valuePointer == "/" ? element.getJson() : element.getJson(valuePointer);
+            if (!valueOpt.has_value())
+            {
+                continue;
+            }
+
+            const auto normalizedKey = base::utils::string::normalizeStr(*keyOpt);
+            if (normalizedKey.empty())
+            {
+                continue;
+            }
+
+            std::string targetPointer;
+            targetPointer.reserve(normalizedKey.size() + 1 + (valuePointer == "/" ? 0 : valuePointer.size()));
+            targetPointer.push_back('/');
+            targetPointer.append(normalizedKey);
+            if (valuePointer != "/")
+            {
+                targetPointer.append(valuePointer);
+            }
+
+            set(targetPointer, valueOpt.value());
+            ++inserts;
+        }
+
+        if (inserts == 0)
+        {
+            return base::Error {"Result map is empty"};
+        }
+
+        return base::noError();
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Failed to build object from array: {}", e.what())};
+    }
 }
 
 Json::Json(Json&& other) noexcept
