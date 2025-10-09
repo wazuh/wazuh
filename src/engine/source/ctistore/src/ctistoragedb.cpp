@@ -1,18 +1,19 @@
-#include <ctistore/ctistoragedb.hpp>
-
 #include <filesystem>
 #include <shared_mutex>
 #include <stdexcept>
 #include <unordered_map>
 
-#include <rocksdb/db.h>
-#include <rocksdb/write_batch.h>
-#include <rocksdb/filter_policy.h>
-#include <rocksdb/table.h>
-#include <rocksDBSharedBuffers.hpp>
-#include <rocksdb/slice_transform.h>
-#include <base/logging.hpp>
 #include <json.hpp>
+#include <rocksDBSharedBuffers.hpp>
+#include <rocksdb/db.h>
+#include <rocksdb/filter_policy.h>
+#include <rocksdb/slice_transform.h>
+#include <rocksdb/table.h>
+#include <rocksdb/write_batch.h>
+
+#include <base/logging.hpp>
+#include <ctistore/ctistoragedb.hpp>
+#include <ctistore/jsonpaths.hpp>
 
 namespace cti::store
 {
@@ -52,26 +53,6 @@ namespace constants
 
     // Default parent
     constexpr std::string_view DEFAULT_PARENT = "wazuh";
-
-    // JSON paths
-    constexpr std::string_view JSON_NAME = "/name";
-    constexpr std::string_view JSON_PAYLOAD_TITLE = "/payload/title";
-    constexpr std::string_view JSON_DOCUMENT_TITLE = "/payload/document/title";
-    constexpr std::string_view JSON_DOCUMENT_NAME = "/payload/document/name";
-    constexpr std::string_view JSON_PAYLOAD_INTEGRATION_ID = "/payload/integration_id";
-    constexpr std::string_view JSON_PAYLOAD_TYPE = "/payload/type";
-    constexpr std::string_view JSON_PAYLOAD = "/payload";
-    constexpr std::string_view JSON_PAYLOAD_DOCUMENT = "/payload/document";
-    constexpr std::string_view JSON_PAYLOAD_INTEGRATIONS = "/payload/integrations";
-    constexpr std::string_view JSON_PAYLOAD_DOCUMENT_INTEGRATIONS = "/payload/document/integrations";
-    constexpr std::string_view JSON_PAYLOAD_DOCUMENT_DECODERS = "/payload/document/decoders";
-    constexpr std::string_view JSON_PAYLOAD_DOCUMENT_KVDBS = "/payload/document/kvdbs";
-    constexpr std::string_view JSON_PAYLOAD_DOCUMENT_CONTENT = "/payload/document/content";
-
-    // JSON paths for unwrapped documents (after getByIdOrName strips /payload)
-    constexpr std::string_view JSON_UNWRAPPED_DOCUMENT_TITLE = "/document/title";
-    constexpr std::string_view JSON_UNWRAPPED_DOCUMENT_NAME = "/document/name";
-    constexpr std::string_view JSON_UNWRAPPED_DOCUMENT_CONTENT = "/document/content";
 
     // Memory configuration
     constexpr size_t READ_CACHE_SIZE = 32 * 1024 * 1024;  // LRU cache size for reading blocks from SST files (32MB)
@@ -778,28 +759,28 @@ void CTIStorageDB::Impl::shutdown()
 
 std::string CTIStorageDB::Impl::extractIdFromJson(const json::Json& doc) const
 {
-    return doc.getString(constants::JSON_NAME).value_or("");
+    return doc.getString(cti::store::jsonPath::NAME).value_or("");
 }
 
 std::string CTIStorageDB::Impl::extractNameFromJson(const json::Json& doc) const
 {
     // Try common paths first to minimize type checking overhead
     // Most documents (integration, kvdb) use /payload/document/title
-    auto title = doc.getString(constants::JSON_DOCUMENT_TITLE);
+    auto title = doc.getString(cti::store::jsonPath::PAYLOAD_DOCUMENT_TITLE);
     if (title)
     {
         return *title;
     }
 
     // Decoder uses /payload/document/name
-    auto name = doc.getString(constants::JSON_DOCUMENT_NAME);
+    auto name = doc.getString(cti::store::jsonPath::PAYLOAD_DOCUMENT_NAME);
     if (name)
     {
         return *name;
     }
 
     // Fallback to legacy flat format for backward compatibility
-    title = doc.getString(constants::JSON_PAYLOAD_TITLE);
+    title = doc.getString(cti::store::jsonPath::PAYLOAD_TITLE);
     if (title)
     {
         return *title;
@@ -807,7 +788,7 @@ std::string CTIStorageDB::Impl::extractNameFromJson(const json::Json& doc) const
 
     // If we get here, document is missing required field
     // Determine type for better error message
-    auto typeOpt = doc.getString(constants::JSON_PAYLOAD_TYPE);
+    auto typeOpt = doc.getString(cti::store::jsonPath::PAYLOAD_TYPE);
     std::string type = typeOpt.value_or("unknown");
 
     if (type == constants::DECODER_TYPE)
@@ -917,9 +898,9 @@ void CTIStorageDB::Impl::updateRelationshipIndexes(const json::Json& integration
 
     rocksdb::WriteBatch batch;
 
-    if (integrationDoc.exists(constants::JSON_PAYLOAD_DOCUMENT_DECODERS))
+    if (integrationDoc.exists(cti::store::jsonPath::PAYLOAD_DOCUMENT_DECODERS))
     {
-        auto decoders = integrationDoc.getArray(constants::JSON_PAYLOAD_DOCUMENT_DECODERS);
+    auto decoders = integrationDoc.getArray(cti::store::jsonPath::PAYLOAD_DOCUMENT_DECODERS);
         if (decoders)
         {
             json::Json decoderList;
@@ -937,9 +918,9 @@ void CTIStorageDB::Impl::updateRelationshipIndexes(const json::Json& integration
         }
     }
 
-    if (integrationDoc.exists(constants::JSON_PAYLOAD_DOCUMENT_KVDBS))
+    if (integrationDoc.exists(cti::store::jsonPath::PAYLOAD_DOCUMENT_KVDBS))
     {
-        auto kvdbs = integrationDoc.getArray(constants::JSON_PAYLOAD_DOCUMENT_KVDBS);
+    auto kvdbs = integrationDoc.getArray(cti::store::jsonPath::PAYLOAD_DOCUMENT_KVDBS);
         if (kvdbs)
         {
             json::Json kvdbList;
@@ -1323,14 +1304,14 @@ std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, con
         json::Json doc = getByIdOrName(uuid, cfIt->second, keyPrefixIt->second, namePrefixIt->second);
 
         // Try /document/title first (integrations, policies)
-        auto title = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_TITLE);
+    auto title = doc.getString(cti::store::jsonPath::UNWRAPPED_DOCUMENT_TITLE);
         if (title && !title->empty())
         {
             return *title;
         }
 
         // Try /document/name (decoders)
-        auto name = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_NAME);
+    auto name = doc.getString(cti::store::jsonPath::UNWRAPPED_DOCUMENT_NAME);
         if (name && !name->empty())
         {
             return *name;
@@ -1413,7 +1394,7 @@ json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
                                     std::string(constants::NAME_KVDB_PREFIX));
 
     // Extract only the content from /document/content
-    auto content = doc.getJson(constants::JSON_UNWRAPPED_DOCUMENT_CONTENT);
+    auto content = doc.getJson(cti::store::jsonPath::UNWRAPPED_DOCUMENT_CONTENT);
     if (content)
     {
         return *content;
@@ -1442,14 +1423,14 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
             std::optional<std::vector<json::Json>> integrationArray;
 
             // Try nested format first
-            if (doc.exists(constants::JSON_PAYLOAD_DOCUMENT_INTEGRATIONS))
+            if (doc.exists(cti::store::jsonPath::PAYLOAD_DOCUMENT_INTEGRATIONS))
             {
-                integrationArray = doc.getArray(constants::JSON_PAYLOAD_DOCUMENT_INTEGRATIONS);
+                integrationArray = doc.getArray(cti::store::jsonPath::PAYLOAD_DOCUMENT_INTEGRATIONS);
             }
             // Fallback to legacy flat format
-            else if (doc.exists(constants::JSON_PAYLOAD_INTEGRATIONS))
+            else if (doc.exists(cti::store::jsonPath::PAYLOAD_INTEGRATIONS))
             {
-                integrationArray = doc.getArray(constants::JSON_PAYLOAD_INTEGRATIONS);
+                integrationArray = doc.getArray(cti::store::jsonPath::PAYLOAD_INTEGRATIONS);
             }
 
             if (integrationArray && !integrationArray->empty())
@@ -1597,26 +1578,26 @@ size_t CTIStorageDB::Impl::getStorageStats(CTIStorageDB::ColumnFamily cf) const
 
 bool CTIStorageDB::Impl::validateDocument(const json::Json& doc, const std::string& expectedType) const
 {
-    if (!doc.exists(constants::JSON_NAME) || extractIdFromJson(doc).empty())
+    if (!doc.exists(cti::store::jsonPath::NAME) || extractIdFromJson(doc).empty())
     {
         return false;
     }
 
-    if (!doc.exists(constants::JSON_PAYLOAD))
+    if (!doc.exists(cti::store::jsonPath::PAYLOAD))
     {
         return false;
     }
 
-    if (doc.exists(constants::JSON_PAYLOAD_TYPE))
+    if (doc.exists(cti::store::jsonPath::PAYLOAD_TYPE))
     {
-        auto type = doc.getString(constants::JSON_PAYLOAD_TYPE);
+    auto type = doc.getString(cti::store::jsonPath::PAYLOAD_TYPE);
         if (type && *type != expectedType)
         {
             return false;
         }
     }
 
-    if (expectedType != std::string(constants::POLICY_TYPE) && !doc.exists(constants::JSON_PAYLOAD_DOCUMENT))
+    if (expectedType != std::string(constants::POLICY_TYPE) && !doc.exists(cti::store::jsonPath::PAYLOAD_DOCUMENT))
     {
         return false;
     }

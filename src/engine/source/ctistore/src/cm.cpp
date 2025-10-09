@@ -1,19 +1,23 @@
-#include <ctistore/cm.hpp>
-#include "contentdownloader.hpp"
-
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
 
 #include <base/logging.hpp>
+#include <ctistore/cm.hpp>
+#include <ctistore/jsonpaths.hpp>
+#include "contentdownloader.hpp"
 
 namespace cti::store
 {
 
 namespace
 {
+using namespace cti::store::jsonPath;
+
 // Helper function to convert AssetType enum to string
 constexpr std::string_view assetTypeToString(cti::store::AssetType type) noexcept
 {
@@ -189,7 +193,8 @@ std::string ContentManager::resolveNameFromUUID(const std::string& uuid) const
             errorMsg->append(fmt::format("[type='{}': {}] ", t, e.what()));
         }
     }
-    throw std::runtime_error(fmt::format("Asset with UUID '{}' not found: {}", uuid, errorMsg ? *errorMsg : "unknown error"));
+    throw std::runtime_error(
+        fmt::format("Asset with UUID '{}' not found: {}", uuid, errorMsg ? *errorMsg : "unknown error"));
 }
 
 std::vector<std::string> ContentManager::listKVDB() const
@@ -478,13 +483,14 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 
         json::Json parsedMessage(message.c_str());
 
-        if (!parsedMessage.exists("/paths") || !parsedMessage.exists("/type") || !parsedMessage.exists("/offset"))
+        if (!parsedMessage.exists(PATHS.data()) || !parsedMessage.exists(TYPE.data())
+            || !parsedMessage.exists(OFFSET.data()))
         {
             throw std::runtime_error("Invalid message format: missing required fields (paths,type,offset)");
         }
 
-        const auto type = parsedMessage.getString("/type").value_or("");
-        auto pathsArray = parsedMessage.getArray("/paths");
+        const auto type = parsedMessage.getString(TYPE.data()).value_or("");
+        auto pathsArray = parsedMessage.getArray(PATHS.data());
         size_t pathCount = pathsArray.has_value() ? pathsArray->size() : 0;
 
         auto currentOffset = 0;
@@ -543,7 +549,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                     try
                     {
                         json::Json root(raw.c_str());
-                        auto dataArray = root.getArray("/data");
+                        auto dataArray = root.getArray(DATA.data());
                         if (!dataArray.has_value())
                         {
                             LOG_ERROR("Offsets file '{}' missing or invalid /data array; skipping", path);
@@ -559,7 +565,8 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                             if (m_downloader && m_downloader->shouldStop())
                             {
                                 LOG_INFO("CTI offsets: processing interrupted by stop request at entry {} (offset={})",
-                                         i, currentOffset);
+                                         i,
+                                         currentOffset);
                                 // Return current progress - offset will be saved
                                 return {currentOffset, "", true};
                             }
@@ -569,17 +576,17 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                                 json::Json entryJson(dataArray->at(i));
 
                                 // operation type: create|update|delete
-                                const auto operationType = entryJson.getString("/type").value_or("");
+                                const auto operationType = entryJson.getString(TYPE.data()).value_or("");
 
                                 // asset type: policy|integration|decoder|kvdb
-                                const auto assetType = entryJson.getString("/payload/type").value_or("");
+                                const auto assetType = entryJson.getString(PAYLOAD_TYPE.data()).value_or("");
 
-                                if (entryJson.exists("/offset"))
+                                if (entryJson.exists(OFFSET.data()))
                                 {
-                                    currentOffset = entryJson.getInt("/offset").value_or(currentOffset);
+                                    currentOffset = entryJson.getInt(OFFSET.data()).value_or(currentOffset);
                                 }
 
-                                entryJson.setString(entryJson.getString("/resource").value_or(""), "/name");
+                                entryJson.setString(entryJson.getString(RESOURCE.data()).value_or(""), NAME.data());
 
                                 if (operationType == "create")
                                 {
@@ -630,7 +637,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                                 else if (operationType == "update")
                                 {
                                     // Get resource ID and patch operations
-                                    const auto resourceId = entryJson.getString("/resource").value_or("");
+                                    const auto resourceId = entryJson.getString(RESOURCE.data()).value_or("");
                                     if (resourceId.empty())
                                     {
                                         LOG_WARNING("Offsets: update op missing resource ID (#{} file='{}')", i, path);
@@ -638,16 +645,18 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                                     }
 
                                     // Extract operations array (JSON Patch format)
-                                    if (!entryJson.exists("/operations"))
+                                    if (!entryJson.exists(OPERATIONS.data()))
                                     {
-                                        LOG_WARNING("Offsets: update op missing operations field (#{} file='{}')", i, path);
+                                        LOG_WARNING(
+                                            "Offsets: update op missing operations field (#{} file='{}')", i, path);
                                         continue;
                                     }
 
-                                    auto opsArray = entryJson.getArray("/operations");
+                                    auto opsArray = entryJson.getArray(OPERATIONS.data());
                                     if (!opsArray || opsArray->empty())
                                     {
-                                        LOG_WARNING("Offsets: update op has empty operations array (#{} file='{}')", i, path);
+                                        LOG_WARNING(
+                                            "Offsets: update op has empty operations array (#{} file='{}')", i, path);
                                         continue;
                                     }
 
@@ -669,17 +678,18 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                                     }
                                     else
                                     {
-                                        LOG_WARNING("Offsets: failed to update asset resource='{}' (#{} file='{}' offset={})",
-                                                    resourceId,
-                                                    i,
-                                                    path,
-                                                    currentOffset);
+                                        LOG_WARNING(
+                                            "Offsets: failed to update asset resource='{}' (#{} file='{}' offset={})",
+                                            resourceId,
+                                            i,
+                                            path,
+                                            currentOffset);
                                     }
                                 }
                                 else if (operationType == "delete")
                                 {
                                     // Get resource ID for deletion
-                                    const auto resourceId = entryJson.getString("/resource").value_or("");
+                                    const auto resourceId = entryJson.getString(RESOURCE.data()).value_or("");
                                     if (resourceId.empty())
                                     {
                                         LOG_WARNING("Offsets: delete op missing resource ID (#{} file='{}')", i, path);
@@ -697,11 +707,12 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                                     }
                                     else
                                     {
-                                        LOG_WARNING("Offsets: failed to delete asset resource='{}' (#{} file='{}' offset={})",
-                                                    resourceId,
-                                                    i,
-                                                    path,
-                                                    currentOffset);
+                                        LOG_WARNING(
+                                            "Offsets: failed to delete asset resource='{}' (#{} file='{}' offset={})",
+                                            resourceId,
+                                            i,
+                                            path,
+                                            currentOffset);
                                     }
                                 }
                                 else
@@ -763,7 +774,8 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                 if (m_downloader && m_downloader->shouldStop())
                 {
                     LOG_INFO("CTI snapshot: processing interrupted by stop request at line {} (offset={})",
-                             lineNumber, currentOffset);
+                             lineNumber,
+                             currentOffset);
                     // Return current progress - offset will be saved so we can resume later
                     return {currentOffset, hash, true};
                 }
@@ -773,18 +785,18 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                 try
                 {
                     json::Json content(line.c_str());
-                    if (!content.exists("/offset") || !content.exists("/name"))
+                    if (!content.exists(OFFSET.data()) || !content.exists(NAME.data()))
                     {
                         LOG_WARNING("Raw: entry missing required fields offset or name ({}:{})", path, lineNumber);
                         continue;
                     }
 
                     // Offsets are not always in order, so we need to get the highest offset.
-                    currentOffset = std::max(currentOffset, content.getInt("/offset").value_or(0));
+                    currentOffset = std::max(currentOffset, content.getInt(OFFSET.data()).value_or(0));
 
                     content.setString("create", "/type");
 
-                    auto contentType = content.getString("/payload/type").value_or("");
+                    auto contentType = content.getString(PAYLOAD_TYPE.data()).value_or("");
                     if (!contentType.empty())
                     {
                         bool stored = true;
@@ -822,9 +834,9 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
             }
 
             // Extract hash if provided (offline scenario)
-            if (parsedMessage.exists("/fileMetadata/hash"))
+            if (parsedMessage.exists(FILE_METADATA_HASH.data()))
             {
-                hash = parsedMessage.getString("/fileMetadata/hash").value_or("");
+                hash = parsedMessage.getString(FILE_METADATA_HASH.data()).value_or("");
             }
         }
         else
