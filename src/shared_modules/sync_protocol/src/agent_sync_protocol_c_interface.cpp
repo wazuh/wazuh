@@ -238,4 +238,45 @@ extern "C" {
         }
     }
 
+    bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
+                               const char** indices,
+                               size_t indices_count,
+                               unsigned int sync_timeout,
+                               unsigned int retries,
+                               size_t max_eps)
+    {
+        try
+        {
+            if (!handle || !indices || indices_count == 0) return false;
+
+            // Convert C array of strings to C++ vector
+            std::vector<std::string> indices_vec;
+            indices_vec.reserve(indices_count);
+
+            for (size_t i = 0; i < indices_count; ++i)
+            {
+                if (indices[i])
+                {
+                    indices_vec.emplace_back(indices[i]);
+                }
+            }
+
+            if (indices_vec.empty()) return false;
+
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+            return wrapper->impl->notifyDataClean(indices_vec,
+                                                  std::chrono::seconds(sync_timeout),
+                                                  retries,
+                                                  max_eps);
+        }
+        catch (const std::exception& ex)
+        {
+            return false;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
 } // extern "C"

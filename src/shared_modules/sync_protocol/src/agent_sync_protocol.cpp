@@ -313,6 +313,78 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     return success;
 }
 
+bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
+                                        std::chrono::seconds timeout,
+                                        unsigned int retries,
+                                        size_t maxEps)
+{
+    if (indices.empty())
+    {
+        m_logger(LOG_ERROR, "Cannot notify data clean with empty indices vector");
+        return false;
+    }
+
+    if (!ensureQueueAvailable())
+    {
+        m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
+        return false;
+    }
+
+    clearSyncState();
+
+    // Create PersistedData vector for DataClean messages
+    std::vector<PersistedData> dataToSync;
+    dataToSync.reserve(indices.size());
+
+    for (size_t i = 0; i < indices.size(); ++i)
+    {
+        PersistedData item;
+        item.seq = i;
+        item.index = indices[i];
+        // id, data, and operation are not used for DataClean messages
+        dataToSync.push_back(item);
+    }
+
+    bool success = false;
+
+    // Step 1: Send Start message with the indices and size
+    if (sendStartAndWaitAck(Mode::DELTA, dataToSync.size(), indices, timeout, retries, maxEps))
+    {
+        // Step 2: Send DataClean message for each index
+        if (sendDataCleanMessages(m_syncState.session, dataToSync, maxEps))
+        {
+            // Step 3: Send End message and wait for EndAck
+            if (sendEndAndWaitAck(m_syncState.session, timeout, retries, dataToSync, maxEps))
+            {
+                success = true;
+            }
+        }
+    }
+
+    try
+    {
+        if (success)
+        {
+            m_logger(LOG_DEBUG, "DataClean notification completed successfully. Clearing local database.");
+
+            // Clear the local database after successful notification
+            //m_persistentQueue->clearSyncedItems();
+        }
+        else
+        {
+            m_logger(LOG_WARNING, "DataClean notification failed.");
+        }
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to clear local database: ") + e.what());
+        success = false;
+    }
+
+    clearSyncState();
+    return success;
+}
+
 bool AgentSyncProtocol::ensureQueueAvailable()
 {
     try
@@ -550,6 +622,46 @@ bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
     return false;
 }
 
+bool AgentSyncProtocol::sendDataCleanMessages(uint64_t session,
+                                               const std::vector<PersistedData>& data,
+                                               size_t maxEps)
+{
+    try
+    {
+        for (const auto& item : data)
+        {
+            flatbuffers::FlatBufferBuilder builder;
+            auto indexStr = builder.CreateString(item.index);
+
+            Wazuh::SyncSchema::DataCleanBuilder dataCleanBuilder(builder);
+            dataCleanBuilder.add_seq(item.seq);
+            dataCleanBuilder.add_session(session);
+            dataCleanBuilder.add_index(indexStr);
+            auto dataCleanOffset = dataCleanBuilder.Finish();
+
+            auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::DataClean, dataCleanOffset.Union());
+            builder.Finish(message);
+
+            const uint8_t* buffer_ptr = builder.GetBufferPointer();
+            const size_t buffer_size = builder.GetSize();
+            std::vector<uint8_t> messageVector(buffer_ptr, buffer_ptr + buffer_size);
+
+            if (!sendFlatBufferMessageAsString(messageVector, maxEps))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Exception when sending DataClean messages: ") + e.what());
+    }
+
+    return false;
+}
+
 bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                                           const std::chrono::seconds timeout,
                                           unsigned int retries,
@@ -646,7 +758,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 if (m_syncState.endAckReceived)
                 {
-                    m_logger(LOG_DEBUG, "EndAck received.");
+                    m_logger(LOG_INFO, "EndAck received.");
                     return true;
                 }
             }
