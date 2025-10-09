@@ -176,7 +176,7 @@ jobs:
         run: |
           SHORT_COMMIT=$(git rev-parse --short HEAD)
           REVISION=${{ inputs.revision }}
-          FLAGS="--verbose -t manager -s /tmp --dont-build-docker -j $(nproc) "
+          FLAGS="--verbose -t manager -s /tmp -j $(nproc) "
           if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
           if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
