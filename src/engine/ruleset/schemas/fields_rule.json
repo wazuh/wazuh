@@ -1,9 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "fields_rule.json",
-  "name": "schema/fields-rule/0",
-  "type": "object",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": false,
+  "name": "schema/fields-rule/0",
   "patternProperties": {
     "^_.+": {
       "description": "Custom variable.",
@@ -13,19 +12,19 @@
   "properties": {
     "event.risk_score": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nRisk score or priority of the event (e.g. security solutions). Use your system's original value here.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "event.risk_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nNormalized risk score or priority of the event, on a scale of 0 to 100.\nThis is mainly useful if you use more than one system that assigns risk scores, and you want to see a normalized value across all systems.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "host.risk.calculated_level": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
@@ -35,19 +34,19 @@
     },
     "host.risk.calculated_score": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "host.risk.calculated_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "host.risk.static_level": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
@@ -57,32 +56,32 @@
     },
     "host.risk.static_score": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "host.risk.static_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "rule.author": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nName, organization, or pseudonym of the author or authors who created the rule used to generate this event.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "rule.category": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA categorization value keyword used by the entity using the rule for detection of this event.",
@@ -140,35 +139,22 @@
     },
     "threat.enrichments": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nA list of associated indicators objects enriching the event, and the context of that association/enrichment.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
-        "type": [
-          "object",
-          "string"
-        ],
-        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "additionalProperties": false,
+        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "properties": {
           "indicator": {
-            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nObject containing associated indicators enriching the event.",
-            "type": [
-              "object",
-              "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "additionalProperties": false,
+            "description": "Module: ecs\nIndexerType: object\nArray: False\n\nObject containing associated indicators enriching the event.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "properties": {
               "as.number": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nUnique number allocated to the autonomous system. The autonomous system number (ASN) uniquely identifies each network on the Internet.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "as.organization.name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nOrganization name.",
@@ -202,16 +188,16 @@
               },
               "file.attributes": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of file attributes.\nAttributes names will vary by platform. Here's a non-exhaustive list of values that are expected in this field: archive, compressed, directory, encrypted, execute, hidden, read, readonly, system, write.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.code_signature.digest_algorithm": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe hashing algorithm used to sign the process.\nThis value can distinguish signatures when a file is signed multiple times by the same signer but with a different digest algorithm.",
@@ -221,11 +207,11 @@
               },
               "file.code_signature.exists": {
                 "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if a signature is present.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "boolean",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.code_signature.flags": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
@@ -257,6 +243,12 @@
                   "string"
                 ]
               },
+              "file.code_signature.thumbprint_sha256": {
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCertificate SHA256 hash that uniquely identifies the code signer.",
+                "type": [
+                  "string"
+                ]
+              },
               "file.code_signature.timestamp": {
                 "description": "Module: ecs\nIndexerType: date\nArray: False\n\nDate and time when the code signature was generated and signed.",
                 "type": [
@@ -265,19 +257,19 @@
               },
               "file.code_signature.trusted": {
                 "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nStores the trust status of the certificate chain.\nValidating the trust of the certificate chain may be complicated, and this field should only be populated by tools that actively check the status.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "boolean",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.code_signature.valid": {
                 "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if the digital signature is verified against the binary content.\nLeave unpopulated if a certificate was unchecked.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "boolean",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.created": {
                 "description": "Module: ecs\nIndexerType: date\nArray: False\n\nFile creation time.\nNote that not all filesystems store the creation time.",
@@ -335,18 +327,18 @@
               },
               "file.elf.exports": {
                 "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of exported element names and types.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "type": [
                     "object",
                     "string"
-                  ],
-                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-                }
+                  ]
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.elf.go_import_hash": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
@@ -356,35 +348,35 @@
               },
               "file.elf.go_imports": {
                 "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "object",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.elf.go_imports_names_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.elf.go_imports_names_var_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.elf.go_stripped": {
                 "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "boolean",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.elf.header.abi_version": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
@@ -406,11 +398,11 @@
               },
               "file.elf.header.entrypoint": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nHeader entrypoint of the ELF file.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.elf.header.object_version": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\n\"0x1\" for original ELF files.",
@@ -444,65 +436,56 @@
               },
               "file.elf.imports": {
                 "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "type": [
                     "object",
                     "string"
-                  ],
-                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-                }
+                  ]
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.elf.imports_names_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.elf.imports_names_var_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.elf.sections": {
                 "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
-                  "type": [
-                    "object",
-                    "string"
-                  ],
-                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "additionalProperties": false,
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "properties": {
                     "chi2": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nChi-square probability distribution of the section.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     },
                     "entropy": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     },
                     "flags": {
                       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List flags.",
@@ -524,11 +507,11 @@
                     },
                     "physical_size": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List physical size.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     },
                     "type": {
                       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List type.",
@@ -538,45 +521,45 @@
                     },
                     "var_entropy": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     },
                     "virtual_address": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     },
                     "virtual_size": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual size.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     }
-                  }
-                }
-              },
-              "file.elf.segments": {
-                "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each segment of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.segments.*`.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-                "items": {
+                  },
                   "type": [
                     "object",
                     "string"
-                  ],
-                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                  ]
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
+              },
+              "file.elf.segments": {
+                "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each segment of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.segments.*`.",
+                "items": {
                   "additionalProperties": false,
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "properties": {
                     "sections": {
                       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF object segment sections.",
@@ -590,21 +573,30 @@
                         "string"
                       ]
                     }
-                  }
-                }
-              },
-              "file.elf.shared_libraries": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of shared libraries used by this ELF object.",
+                  },
+                  "type": [
+                    "object",
+                    "string"
+                  ]
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "string",
                   "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                ]
+              },
+              "file.elf.shared_libraries": {
+                "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of shared libraries used by this ELF object.",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.elf.telfhash": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\ntelfhash symbol hash for ELF file.",
@@ -691,7 +683,7 @@
                 ]
               },
               "file.mime_type": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using https://www.iana.org/assignments/media-types/media-types.xhtml[IANA official types], where possible. When more than one type is applicable, the most specific type should be used.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using IANA official types: https://www.iana.org/assignments/media-types/media-types.xhtml, where possible. When more than one type is applicable, the most specific type should be used.",
                 "type": [
                   "string"
                 ]
@@ -710,6 +702,18 @@
               },
               "file.name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the file including the extension, without the directory.",
+                "type": [
+                  "string"
+                ]
+              },
+              "file.origin_referrer_url": {
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL of the webpage that linked to the file.",
+                "type": [
+                  "string"
+                ]
+              },
+              "file.origin_url": {
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe URL where the file is hosted.",
                 "type": [
                   "string"
                 ]
@@ -758,35 +762,35 @@
               },
               "file.pe.go_imports": {
                 "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "object",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.pe.go_imports_names_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.pe.go_imports_names_var_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.pe.go_stripped": {
                 "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "boolean",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.pe.imphash": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
@@ -802,34 +806,34 @@
               },
               "file.pe.imports": {
                 "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "type": [
                     "object",
                     "string"
-                  ],
-                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-                }
+                  ]
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.pe.imports_names_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.pe.imports_names_var_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.pe.original_file_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -851,26 +855,17 @@
               },
               "file.pe.sections": {
                 "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the PE file.\nThe keys that should be present in these objects are defined by sub-fields underneath `pe.sections.*`.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
-                  "type": [
-                    "object",
-                    "string"
-                  ],
-                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "additionalProperties": false,
+                  "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                   "properties": {
                     "entropy": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     },
                     "name": {
                       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
@@ -880,38 +875,47 @@
                     },
                     "physical_size": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List physical size.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     },
                     "var_entropy": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     },
                     "virtual_size": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
+                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                       "type": [
                         "number",
                         "string"
-                      ],
-                      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                      ]
                     }
-                  }
-                }
+                  },
+                  "type": [
+                    "object",
+                    "string"
+                  ]
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.size": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nFile size in bytes.\nOnly relevant when `file.type` is \"file\".",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.target_path": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nTarget path for symlinks.",
@@ -933,42 +937,42 @@
               },
               "file.x509.alternative_names": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of subject alternative names (SAN). Name types vary by certificate authority and certificate type but commonly contain IP addresses, DNS names (and wildcards), and email addresses.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.issuer.common_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of common name (CN) of issuing certificate authority.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.issuer.country": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of country \\(C) codes",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.issuer.distinguished_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDistinguished name (DN) of issuing certificate authority.",
@@ -978,55 +982,55 @@
               },
               "file.x509.issuer.locality": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of locality names (L)",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.issuer.organization": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizations (O) of issuing certificate authority.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.issuer.organizational_unit": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizational units (OU) of issuing certificate authority.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.issuer.state_or_province": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of state or province names (ST, S, or P)",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.not_after": {
                 "description": "Module: ecs\nIndexerType: date\nArray: False\n\nTime at which the certificate is no longer considered valid.",
@@ -1054,22 +1058,22 @@
               },
               "file.x509.public_key_exponent": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nExponent used to derive the public key. This is algorithm specific.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.x509.public_key_size": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "file.x509.serial_number": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
                 "type": [
                   "string"
                 ]
@@ -1082,29 +1086,29 @@
               },
               "file.x509.subject.common_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of common names (CN) of subject.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.subject.country": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of country \\(C) code",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.subject.distinguished_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDistinguished name (DN) of the certificate subject entity.",
@@ -1114,55 +1118,55 @@
               },
               "file.x509.subject.locality": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of locality names (L)",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.subject.organization": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizations (O) of subject.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.subject.organizational_unit": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizational units (OU) of subject.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.subject.state_or_province": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of state or province names (ST, S, or P)",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "file.x509.version_number": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of x509 format.",
@@ -1280,11 +1284,11 @@
               },
               "port": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nIdentifies a threat indicator as a port number (irrespective of direction).",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "provider": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the indicator's provider.",
@@ -1306,16 +1310,16 @@
               },
               "registry.data.strings": {
                 "description": "Module: ecs\nIndexerType: wildcard\nArray: True\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "registry.data.type": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nStandard registry type for encoding contents",
@@ -1349,19 +1353,19 @@
               },
               "scanner_stats": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nCount of AV/EDR vendors that successfully detected malicious file or URL.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "sightings": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nNumber of times this indicator was observed conducting threat activity.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "type": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nType of indicator as represented by Cyber Observable in STIX 2.0.",
@@ -1413,11 +1417,11 @@
               },
               "url.port": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPort of the request, such as 443.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "url.query": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe query field describes the query string of the request, such as \"q=elasticsearch\".\nThe `?` is excluded from the query string. If a URL contains no `?`, there is no query field. If there is a `?` but no query, the query field exists with an empty string. The `exists` query can be used to differentiate between the two cases.",
@@ -1457,42 +1461,42 @@
               },
               "x509.alternative_names": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of subject alternative names (SAN). Name types vary by certificate authority and certificate type but commonly contain IP addresses, DNS names (and wildcards), and email addresses.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.issuer.common_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of common name (CN) of issuing certificate authority.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.issuer.country": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of country \\(C) codes",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.issuer.distinguished_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDistinguished name (DN) of issuing certificate authority.",
@@ -1502,55 +1506,55 @@
               },
               "x509.issuer.locality": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of locality names (L)",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.issuer.organization": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizations (O) of issuing certificate authority.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.issuer.organizational_unit": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizational units (OU) of issuing certificate authority.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.issuer.state_or_province": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of state or province names (ST, S, or P)",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.not_after": {
                 "description": "Module: ecs\nIndexerType: date\nArray: False\n\nTime at which the certificate is no longer considered valid.",
@@ -1578,22 +1582,22 @@
               },
               "x509.public_key_exponent": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nExponent used to derive the public key. This is algorithm specific.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "x509.public_key_size": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "type": [
                   "number",
                   "string"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+                ]
               },
               "x509.serial_number": {
-                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+                "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
                 "type": [
                   "string"
                 ]
@@ -1606,29 +1610,29 @@
               },
               "x509.subject.common_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of common names (CN) of subject.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.subject.country": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of country \\(C) code",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.subject.distinguished_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDistinguished name (DN) of the certificate subject entity.",
@@ -1638,55 +1642,55 @@
               },
               "x509.subject.locality": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of locality names (L)",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.subject.organization": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizations (O) of subject.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.subject.organizational_unit": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizational units (OU) of subject.",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.subject.state_or_province": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of state or province names (ST, S, or P)",
-                "type": [
-                  "string",
-                  "array"
-                ],
-                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
                 "items": {
                   "type": [
                     "string"
                   ]
-                }
+                },
+                "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+                "type": [
+                  "string",
+                  "array"
+                ]
               },
               "x509.version_number": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of x509 format.",
@@ -1694,7 +1698,11 @@
                   "string"
                 ]
               }
-            }
+            },
+            "type": [
+              "object",
+              "string"
+            ]
           },
           "matched.atomic": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nIdentifies the atomic indicator value that matched a local environment endpoint or network event.",
@@ -1732,8 +1740,17 @@
               "string"
             ]
           }
-        }
-      }
+        },
+        "type": [
+          "object",
+          "string"
+        ]
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.feed.dashboard_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe saved object ID of the dashboard belonging to the threat feed for displaying dashboard links to threat feeds in Kibana.",
@@ -1766,43 +1783,43 @@
       ]
     },
     "threat.group.alias": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe alias(es) of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae group alias(es).",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe alias(es) of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® group alias(es).",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.group.id": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe id of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae group id.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe id of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® group id.",
       "type": [
         "string"
       ]
     },
     "threat.group.name": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae group name.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® group name.",
       "type": [
         "string"
       ]
     },
     "threat.group.reference": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe reference URL of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae group reference URL.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe reference URL of the group for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® group reference URL.",
       "type": [
         "string"
       ]
     },
     "threat.indicator.as.number": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nUnique number allocated to the autonomous system. The autonomous system number (ASN) uniquely identifies each network on the Internet.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.as.organization.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nOrganization name.",
@@ -1836,16 +1853,16 @@
     },
     "threat.indicator.file.attributes": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of file attributes.\nAttributes names will vary by platform. Here's a non-exhaustive list of values that are expected in this field: archive, compressed, directory, encrypted, execute, hidden, read, readonly, system, write.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.code_signature.digest_algorithm": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe hashing algorithm used to sign the process.\nThis value can distinguish signatures when a file is signed multiple times by the same signer but with a different digest algorithm.",
@@ -1855,15 +1872,9 @@
     },
     "threat.indicator.file.code_signature.exists": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if a signature is present.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "boolean",
-        "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-    },
-    "threat.indicator.file.code_signature.flags": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe flags used to sign the process.",
-      "type": [
         "string"
       ]
     },
@@ -1899,19 +1910,19 @@
     },
     "threat.indicator.file.code_signature.trusted": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nStores the trust status of the certificate chain.\nValidating the trust of the certificate chain may be complicated, and this field should only be populated by tools that actively check the status.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "boolean",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.code_signature.valid": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if the digital signature is verified against the binary content.\nLeave unpopulated if a certificate was unchecked.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "boolean",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.created": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nFile creation time.\nNote that not all filesystems store the creation time.",
@@ -1969,18 +1980,18 @@
     },
     "threat.indicator.file.elf.exports": {
       "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of exported element names and types.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
+        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "type": [
           "object",
           "string"
-        ],
-        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-      }
+        ]
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.elf.go_import_hash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in an ELF file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available here: https://github.com/elastic/toutoumomoma",
@@ -1990,35 +2001,35 @@
     },
     "threat.indicator.file.elf.go_imports": {
       "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "object",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.elf.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.elf.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.elf.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "boolean",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.elf.header.abi_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
@@ -2040,11 +2051,11 @@
     },
     "threat.indicator.file.elf.header.entrypoint": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nHeader entrypoint of the ELF file.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.elf.header.object_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\n\"0x1\" for original ELF files.",
@@ -2078,65 +2089,56 @@
     },
     "threat.indicator.file.elf.imports": {
       "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
+        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "type": [
           "object",
           "string"
-        ],
-        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-      }
+        ]
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.elf.imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.elf.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.elf.sections": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
-        "type": [
-          "object",
-          "string"
-        ],
-        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "additionalProperties": false,
+        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "properties": {
           "chi2": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nChi-square probability distribution of the section.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           },
           "entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           },
           "flags": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List flags.",
@@ -2158,11 +2160,11 @@
           },
           "physical_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List physical size.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           },
           "type": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List type.",
@@ -2172,45 +2174,45 @@
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           },
           "virtual_address": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual size.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           }
-        }
-      }
-    },
-    "threat.indicator.file.elf.segments": {
-      "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each segment of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.segments.*`.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-      "items": {
+        },
         "type": [
           "object",
           "string"
-        ],
-        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+        ]
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
+    },
+    "threat.indicator.file.elf.segments": {
+      "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each segment of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.segments.*`.",
+      "items": {
         "additionalProperties": false,
+        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "properties": {
           "sections": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF object segment sections.",
@@ -2224,21 +2226,30 @@
               "string"
             ]
           }
-        }
-      }
-    },
-    "threat.indicator.file.elf.shared_libraries": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of shared libraries used by this ELF object.",
+        },
+        "type": [
+          "object",
+          "string"
+        ]
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "string",
         "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      ]
+    },
+    "threat.indicator.file.elf.shared_libraries": {
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of shared libraries used by this ELF object.",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.elf.telfhash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\ntelfhash symbol hash for ELF file.",
@@ -2266,12 +2277,6 @@
     },
     "threat.indicator.file.group": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPrimary group name of the file.",
-      "type": [
-        "string"
-      ]
-    },
-    "threat.indicator.file.hash.cdhash": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nCode directory hash, utilized to uniquely identify and authenticate the integrity of the executable code.",
       "type": [
         "string"
       ]
@@ -2325,7 +2330,7 @@
       ]
     },
     "threat.indicator.file.mime_type": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using https://www.iana.org/assignments/media-types/media-types.xhtml[IANA official types], where possible. When more than one type is applicable, the most specific type should be used.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMIME type should identify the format of the file or stream of bytes using IANA official types: https://www.iana.org/assignments/media-types/media-types.xhtml, where possible. When more than one type is applicable, the most specific type should be used.",
       "type": [
         "string"
       ]
@@ -2392,35 +2397,35 @@
     },
     "threat.indicator.file.pe.go_imports": {
       "description": "Module: ecs\nIndexerType: object\nArray: False\n\nList of imported Go language element names and types.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "object",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.pe.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.pe.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.pe.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "boolean",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.pe.imphash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
@@ -2436,34 +2441,34 @@
     },
     "threat.indicator.file.pe.imports": {
       "description": "Module: ecs\nIndexerType: object\nArray: True\n\nList of imported element names and types.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
+        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "type": [
           "object",
           "string"
-        ],
-        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-      }
+        ]
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.pe.imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of imported element names and types.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.pe.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.pe.original_file_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -2485,26 +2490,17 @@
     },
     "threat.indicator.file.pe.sections": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the PE file.\nThe keys that should be present in these objects are defined by sub-fields underneath `pe.sections.*`.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
-        "type": [
-          "object",
-          "string"
-        ],
-        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "additionalProperties": false,
+        "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
         "properties": {
           "entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           },
           "name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
@@ -2514,38 +2510,47 @@
           },
           "physical_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List physical size.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
+            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
             "type": [
               "number",
               "string"
-            ],
-            "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+            ]
           }
-        }
-      }
+        },
+        "type": [
+          "object",
+          "string"
+        ]
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.size": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nFile size in bytes.\nOnly relevant when `file.type` is \"file\".",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.target_path": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nTarget path for symlinks.",
@@ -2567,42 +2572,42 @@
     },
     "threat.indicator.file.x509.alternative_names": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of subject alternative names (SAN). Name types vary by certificate authority and certificate type but commonly contain IP addresses, DNS names (and wildcards), and email addresses.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.issuer.common_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of common name (CN) of issuing certificate authority.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.issuer.country": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of country \\(C) codes",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.issuer.distinguished_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDistinguished name (DN) of issuing certificate authority.",
@@ -2612,55 +2617,55 @@
     },
     "threat.indicator.file.x509.issuer.locality": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of locality names (L)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.issuer.organization": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizations (O) of issuing certificate authority.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.issuer.organizational_unit": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizational units (OU) of issuing certificate authority.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.issuer.state_or_province": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of state or province names (ST, S, or P)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.not_after": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nTime at which the certificate is no longer considered valid.",
@@ -2688,22 +2693,22 @@
     },
     "threat.indicator.file.x509.public_key_exponent": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nExponent used to derive the public key. This is algorithm specific.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.x509.public_key_size": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.file.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -2716,29 +2721,29 @@
     },
     "threat.indicator.file.x509.subject.common_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of common names (CN) of subject.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.subject.country": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of country \\(C) code",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.subject.distinguished_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDistinguished name (DN) of the certificate subject entity.",
@@ -2748,55 +2753,55 @@
     },
     "threat.indicator.file.x509.subject.locality": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of locality names (L)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.subject.organization": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizations (O) of subject.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.subject.organizational_unit": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizational units (OU) of subject.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.subject.state_or_province": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of state or province names (ST, S, or P)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.file.x509.version_number": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of x509 format.",
@@ -2876,19 +2881,6 @@
         "string"
       ]
     },
-    "threat.indicator.id": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe ID of the indicator used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae. This field can have multiple values to allow for the identification of the same indicator across systems that use different ID formats.\nWhile not required, a common approach is to use a STIX 2.x indicator ID.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-      "items": {
-        "type": [
-          "string"
-        ]
-      }
-    },
     "threat.indicator.ip": {
       "description": "Module: ecs\nIndexerType: ip\nArray: False\n\nIdentifies a threat indicator as an IP address (irrespective of direction).",
       "type": [
@@ -2927,11 +2919,11 @@
     },
     "threat.indicator.port": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nIdentifies a threat indicator as a port number (irrespective of direction).",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.provider": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the indicator's provider.",
@@ -2953,16 +2945,16 @@
     },
     "threat.indicator.registry.data.strings": {
       "description": "Module: ecs\nIndexerType: wildcard\nArray: True\n\nContent when writing string types.\nPopulated as an array when writing string data to the registry. For single string registry types (REG_SZ, REG_EXPAND_SZ), this should be an array with one string. For sequences of string with REG_MULTI_SZ, this array will be variable length. For numeric data, such as REG_DWORD and REG_QWORD, this should be populated with the decimal representation (e.g `\"1\"`).",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.registry.data.type": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nStandard registry type for encoding contents",
@@ -2996,19 +2988,19 @@
     },
     "threat.indicator.scanner_stats": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nCount of AV/EDR vendors that successfully detected malicious file or URL.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.sightings": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nNumber of times this indicator was observed conducting threat activity.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.type": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nType of indicator as represented by Cyber Observable in STIX 2.0.",
@@ -3060,11 +3052,11 @@
     },
     "threat.indicator.url.port": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPort of the request, such as 443.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.url.query": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe query field describes the query string of the request, such as \"q=elasticsearch\".\nThe `?` is excluded from the query string. If a URL contains no `?`, there is no query field. If there is a `?` but no query, the query field exists with an empty string. The `exists` query can be used to differentiate between the two cases.",
@@ -3104,42 +3096,42 @@
     },
     "threat.indicator.x509.alternative_names": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of subject alternative names (SAN). Name types vary by certificate authority and certificate type but commonly contain IP addresses, DNS names (and wildcards), and email addresses.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.issuer.common_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of common name (CN) of issuing certificate authority.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.issuer.country": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of country \\(C) codes",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.issuer.distinguished_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDistinguished name (DN) of issuing certificate authority.",
@@ -3149,55 +3141,55 @@
     },
     "threat.indicator.x509.issuer.locality": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of locality names (L)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.issuer.organization": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizations (O) of issuing certificate authority.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.issuer.organizational_unit": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizational units (OU) of issuing certificate authority.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.issuer.state_or_province": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of state or province names (ST, S, or P)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.not_after": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nTime at which the certificate is no longer considered valid.",
@@ -3225,22 +3217,22 @@
     },
     "threat.indicator.x509.public_key_exponent": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nExponent used to derive the public key. This is algorithm specific.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.x509.public_key_size": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "threat.indicator.x509.serial_number": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this should be encoded in base 16 and formatted without colons and uppercase characters.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, this must be encoded in base 16 and formatted without colons and uppercase characters.",
       "type": [
         "string"
       ]
@@ -3253,29 +3245,29 @@
     },
     "threat.indicator.x509.subject.common_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of common names (CN) of subject.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.subject.country": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of country \\(C) code",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.subject.distinguished_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nDistinguished name (DN) of the certificate subject entity.",
@@ -3285,55 +3277,55 @@
     },
     "threat.indicator.x509.subject.locality": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of locality names (L)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.subject.organization": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizations (O) of subject.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.subject.organizational_unit": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of organizational units (OU) of subject.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.subject.state_or_province": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nList of state or province names (ST, S, or P)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.indicator.x509.version_number": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of x509 format.",
@@ -3342,171 +3334,171 @@
       ]
     },
     "threat.software.alias": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe alias(es) of the software for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK\u00ae associated software description.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe alias(es) of the software for a set of related intrusion activity that are tracked by a common name in the security community.\nWhile not required, you can use a MITRE ATT&CK® associated software description.",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.software.id": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe id of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use a MITRE ATT&CK\u00ae software id.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe id of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use a MITRE ATT&CK® software id.",
       "type": [
         "string"
       ]
     },
     "threat.software.name": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use a MITRE ATT&CK\u00ae software name.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use a MITRE ATT&CK® software name.",
       "type": [
         "string"
       ]
     },
     "threat.software.platforms": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe platforms of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use MITRE ATT&CK\u00ae software platform values.",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe platforms of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use MITRE ATT&CK® software platform values.",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.software.reference": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe reference URL of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use a MITRE ATT&CK\u00ae software reference URL.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe reference URL of the software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use a MITRE ATT&CK® software reference URL.",
       "type": [
         "string"
       ]
     },
     "threat.software.type": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK\u00ae.\nWhile not required, you can use a MITRE ATT&CK\u00ae software type.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of software used by this threat to conduct behavior commonly modeled using MITRE ATT&CK®.\nWhile not required, you can use a MITRE ATT&CK® software type.",
       "type": [
         "string"
       ]
     },
     "threat.tactic.id": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe id of tactic used by this threat. You can use a MITRE ATT&CK\u00ae tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/ )",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe id of tactic used by this threat. You can use a MITRE ATT&CK® tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/ )",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.tactic.name": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nName of the type of tactic used by this threat. You can use a MITRE ATT&CK\u00ae tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nName of the type of tactic used by this threat. You can use a MITRE ATT&CK® tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/)",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.tactic.reference": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe reference url of tactic used by this threat. You can use a MITRE ATT&CK\u00ae tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/ )",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe reference url of tactic used by this threat. You can use a MITRE ATT&CK® tactic, for example. (ex. https://attack.mitre.org/tactics/TA0002/ )",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.technique.id": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe id of technique used by this threat. You can use a MITRE ATT&CK\u00ae technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe id of technique used by this threat. You can use a MITRE ATT&CK® technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.technique.name": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe name of technique used by this threat. You can use a MITRE ATT&CK\u00ae technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe name of technique used by this threat. You can use a MITRE ATT&CK® technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.technique.reference": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe reference url of technique used by this threat. You can use a MITRE ATT&CK\u00ae technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe reference url of technique used by this threat. You can use a MITRE ATT&CK® technique, for example. (ex. https://attack.mitre.org/techniques/T1059/)",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.technique.subtechnique.id": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe full id of subtechnique used by this threat. You can use a MITRE ATT&CK\u00ae subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe full id of subtechnique used by this threat. You can use a MITRE ATT&CK® subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.technique.subtechnique.name": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe name of subtechnique used by this threat. You can use a MITRE ATT&CK\u00ae subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe name of subtechnique used by this threat. You can use a MITRE ATT&CK® subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "threat.technique.subtechnique.reference": {
-      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe reference url of subtechnique used by this threat. You can use a MITRE ATT&CK\u00ae subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nThe reference url of subtechnique used by this threat. You can use a MITRE ATT&CK® subtechnique, for example. (ex. https://attack.mitre.org/techniques/T1059/001/)",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     },
     "user.risk.calculated_level": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level calculated by an internal system as part of entity analytics and entity risk scoring.",
@@ -3516,19 +3508,19 @@
     },
     "user.risk.calculated_score": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "user.risk.calculated_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "user.risk.static_level": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
@@ -3538,19 +3530,19 @@
     },
     "user.risk.static_score": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "user.risk.static_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
         "number",
         "string"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+      ]
     },
     "vulnerability.severity": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe severity of the vulnerability can help with metrics and internal prioritization regarding remediation. For example (https://nvd.nist.gov/vuln-metrics/cvss)",
@@ -3560,16 +3552,17 @@
     },
     "wazuh.rules": {
       "description": "Module: schemas\nIndexerType: keyword\nArray: True\n\nTrace of the rules that matched for the event in order",
-      "type": [
-        "string",
-        "array"
-      ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "items": {
         "type": [
           "string"
         ]
-      }
+      },
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
+      "type": [
+        "string",
+        "array"
+      ]
     }
-  }
+  },
+  "type": "object"
 }
