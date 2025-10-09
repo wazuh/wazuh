@@ -1817,8 +1817,19 @@ bool CTIStorageDB::Impl::updateAsset(const std::string& resourceId, const json::
         if (op.contains("path") && op["path"].is_string())
         {
             std::string path = op["path"].get<std::string>();
+
+            // Special case: empty path with replace means replacing entire payload
+            if (path.empty() && op.contains("op") && op["op"].get<std::string>() == "replace")
+            {
+                // If value contains the new payload structure, wrap it properly
+                if (op.contains("value") && op["value"].is_object())
+                {
+                    op["path"] = "/payload";
+                    LOG_TRACE("Adjusted empty patch path to /payload for full replace");
+                }
+            }
             // If path starts with /document, prefix it with /payload
-            if (path.rfind("/document", 0) == 0)
+            else if (path.rfind("/document", 0) == 0)
             {
                 op["path"] = "/payload" + path;
                 LOG_TRACE("Adjusted patch path: {} -> {}", path, op["path"].get<std::string>());
