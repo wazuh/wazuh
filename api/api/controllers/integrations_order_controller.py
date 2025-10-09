@@ -10,7 +10,7 @@ from connexion.lifecycle import ConnexionResponse
 from api.controllers.util import json_response, JSON_CONTENT_TYPE
 from api.util import remove_nones_to_dict, raise_if_exc
 from api.models.base_model_ import Body
-from api.models.integrations_order_model import IntegrationsOrderModel
+from api.models.integrations_order_model import IntegrationsOrderModel, IntegrationInfoModel
 from wazuh import integrations_order
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.engine.models.integrations_order import IntegrationsOrder, IntegrationInfo
@@ -35,7 +35,7 @@ async def create_integrations_order(body: dict, type_: str, pretty: bool = False
         API response.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    orders_create_model = IntegrationsOrderModel(**body)
+    orders_create_model = IntegrationsOrderModel(order=[IntegrationInfoModel(id=order["id"], name=order["name"]) for order in body])
     model = IntegrationsOrder(order=[IntegrationInfo(id=order.id, name=order.name) for order in orders_create_model.order])
 
     f_kwargs = {
