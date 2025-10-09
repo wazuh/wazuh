@@ -61,6 +61,8 @@ This documentation provides an overview of the auxiliary functions available. Au
 
 ### Map
 
+- [array_extract_key_obj](#array_extract_key_obj)
+- [array_obj_to_mapkv](#array_obj_to_mapkv)
 - [as](#as)
 - [concat](#concat)
 - [concat_any](#concat_any)
@@ -6130,6 +6132,576 @@ check:
 ```
 
 *The check was performed with errors*
+
+
+
+---
+# array_extract_key_obj
+
+## Signature
+
+```
+
+field: array_extract_key_obj(source_array, key_pointer, new_value_pointer, old_value_pointer, skip_serializer)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| source_array | array | reference | Any string |
+| key_pointer | string | value | Any string |
+| new_value_pointer | string | value | Any string |
+| old_value_pointer | string | value | Any string |
+| skip_serializer | boolean | value | Any string |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Builds a map of extracted key objects from an array. Each element provides the key
+(via a JSON pointer) and both the new and old values (as JSON pointers, `/` for the full object).
+Keys are normalized to lowercase snake_case unless `skipSerializer` is true, in which
+case keys are kept verbatim. Entries missing a key or new value, or producing an empty key, are skipped.
+Old values that resolve to empty strings are omitted from the result.
+The helper returns an error when no entries are inserted.
+
+
+## Keywords
+
+- `array` 
+
+- `map` 
+
+- `extract` 
+
+- `changes` 
+
+## Examples
+
+### Example 1
+
+Builds map with normalized keys and both new/old values
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+```
+
+#### Input Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "RequiredResourceAccess",
+      "NewValue": "new-data",
+      "OldValue": "old-data"
+    },
+    {
+      "Name": "Included Updated Properties",
+      "NewValue": "RequiredResourceAccess",
+      "OldValue": ""
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "RequiredResourceAccess",
+      "NewValue": "new-data",
+      "OldValue": "old-data"
+    },
+    {
+      "Name": "Included Updated Properties",
+      "NewValue": "RequiredResourceAccess",
+      "OldValue": ""
+    }
+  ],
+  "target_field": {
+    "requiredresourceaccess": {
+      "NewValue": "new-data",
+      "OldValue": "old-data"
+    },
+    "included_updated_properties": {
+      "NewValue": "RequiredResourceAccess"
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Keeps keys verbatim when `skipSerializer` is true
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', True)
+```
+
+#### Input Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "RequiredResourceAccess",
+      "NewValue": "new-data",
+      "OldValue": "old-data"
+    },
+    {
+      "Name": "Included Updated Properties",
+      "NewValue": "RequiredResourceAccess",
+      "OldValue": ""
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "RequiredResourceAccess",
+      "NewValue": "new-data",
+      "OldValue": "old-data"
+    },
+    {
+      "Name": "Included Updated Properties",
+      "NewValue": "RequiredResourceAccess",
+      "OldValue": ""
+    }
+  ],
+  "target_field": {
+    "RequiredResourceAccess": {
+      "NewValue": "new-data",
+      "OldValue": "old-data"
+    },
+    "Included Updated Properties": {
+      "NewValue": "RequiredResourceAccess"
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Keeps entries that only provide a new value
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+```
+
+#### Input Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "AzurePolicyChange",
+      "NewValue": "Enabled"
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "AzurePolicyChange",
+      "NewValue": "Enabled"
+    }
+  ],
+  "target_field": {
+    "azurepolicychange": {
+      "NewValue": "Enabled"
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 4
+
+Discards old value when it resolves to blanks
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+```
+
+#### Input Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "AlertThreshold",
+      "NewValue": 10,
+      "OldValue": "  "
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "AlertThreshold",
+      "NewValue": 10,
+      "OldValue": "  "
+    }
+  ],
+  "target_field": {
+    "alertthreshold": {
+      "NewValue": 10
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 5
+
+Fails when new value is missing
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+```
+
+#### Input Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "RequiredResourceAccess",
+      "OldValue": "old-data"
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "RequiredResourceAccess",
+      "OldValue": "old-data"
+    }
+  ]
+}
+```
+
+*The operation was performed with errors*
+
+### Example 6
+
+Fails when array does not exist in the context
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: array_extract_key_obj($source_array, '/Name', '/NewValue', '/OldValue', False)
+```
+
+#### Input Event
+
+```json
+{
+  "source_array": "$.Missing"
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_array": "$.Missing"
+}
+```
+
+*The operation was performed with errors*
+
+
+
+---
+# array_obj_to_mapkv
+
+## Signature
+
+```
+
+field: array_obj_to_mapkv(source_array, key_pointer, value_pointer, skip_serializer)
+```
+
+## Arguments
+
+| parameter | Type | Source | Accepted values |
+| --------- | ---- | ------ | --------------- |
+| source_array | array | reference | Any string |
+| key_pointer | string | value | Any string |
+| value_pointer | string | value | Any string |
+| skip_serializer | boolean | value | Any string |
+
+
+## Outputs
+
+| Type | Possible values |
+| ---- | --------------- |
+| object | Any object |
+
+
+## Description
+
+Builds a map (object) from an array of objects. Each element provides the key
+(via a JSON pointer) and the value (another pointer, optionally `/` for the full object).
+Keys are normalized to lowercase snake_case unless `skipSerializer` is true, in which
+case keys are kept verbatim. Entries missing a key/value or producing an empty key
+are skipped. The helper returns an error when no entries are inserted.
+
+
+## Keywords
+
+- `array` 
+
+- `map` 
+
+- `key-value` 
+
+## Examples
+
+### Example 1
+
+Normalizes keys and extracts values using `/Value` pointer
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: array_obj_to_mapkv($source_array, '/Name', '/Value', False)
+```
+
+#### Input Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "UserAgent",
+      "Value": "Mozilla/5.0"
+    },
+    {
+      "Name": "Request.Type",
+      "Value": "OAuth2:Authorize"
+    },
+    {
+      "Name": "Included Updated Properties",
+      "Value": "RequiredResourceAccess"
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "UserAgent",
+      "Value": "Mozilla/5.0"
+    },
+    {
+      "Name": "Request.Type",
+      "Value": "OAuth2:Authorize"
+    },
+    {
+      "Name": "Included Updated Properties",
+      "Value": "RequiredResourceAccess"
+    }
+  ],
+  "target_field": {
+    "useragent": "Mozilla/5.0",
+    "request_type": "OAuth2:Authorize",
+    "included_updated_properties": "RequiredResourceAccess"
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 2
+
+Keeps keys verbatim when `skipSerializer` is true
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: array_obj_to_mapkv($source_array, '/Name', '/Value', True)
+```
+
+#### Input Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "UserAgent",
+      "Value": "Mozilla/5.0"
+    },
+    {
+      "Name": "KeepMeSignedIn",
+      "Value": true
+    },
+    {
+      "Name": "OptionalField",
+      "Value": null
+    },
+    {
+      "Name": "Roles",
+      "Value": [
+        "admin",
+        "user"
+      ]
+    },
+    {
+      "Name": "Meta",
+      "Value": {
+        "os": "linux",
+        "arch": "x64"
+      }
+    }
+  ]
+}
+```
+
+#### Outcome Event
+
+```json
+{
+  "source_array": [
+    {
+      "Name": "UserAgent",
+      "Value": "Mozilla/5.0"
+    },
+    {
+      "Name": "KeepMeSignedIn",
+      "Value": true
+    },
+    {
+      "Name": "OptionalField",
+      "Value": null
+    },
+    {
+      "Name": "Roles",
+      "Value": [
+        "admin",
+        "user"
+      ]
+    },
+    {
+      "Name": "Meta",
+      "Value": {
+        "os": "linux",
+        "arch": "x64"
+      }
+    }
+  ],
+  "target_field": {
+    "UserAgent": "Mozilla/5.0",
+    "KeepMeSignedIn": true,
+    "OptionalField": null,
+    "Roles": [
+      "admin",
+      "user"
+    ],
+    "Meta": {
+      "os": "linux",
+      "arch": "x64"
+    }
+  }
+}
+```
+
+*The operation was successful*
+
+### Example 3
+
+Fails when array does not exist in the context
+
+#### Asset
+
+```yaml
+normalize:
+  - map:
+      - target_field: array_obj_to_mapkv($source_array, '/Name', '/Value', False)
+```
+
+#### Input Event
+
+```json
+{
+  "source_array": null
+}
+```
+
+#### Outcome Event
+
+```json
+{}
+```
+
+*The operation was performed with errors*
 
 
 

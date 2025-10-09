@@ -1,0 +1,228 @@
+# Name of the helper function
+name: array_extract_key_obj
+
+metadata:
+  description: |
+    Builds a map of extracted key objects from an array. Each element provides the key
+    (via a JSON pointer) and both the new and old values (as JSON pointers, `/` for the full object).
+    Keys are normalized to lowercase snake_case unless `skipSerializer` is true, in which
+    case keys are kept verbatim. Entries missing a key or new value, or producing an empty key, are skipped.
+    Old values that resolve to empty strings are omitted from the result.
+    The helper returns an error when no entries are inserted.
+  keywords:
+    - array
+    - map
+    - extract
+    - changes
+
+helper_type: map
+
+skipped:
+  - success_cases
+
+is_variadic: false
+
+arguments:
+  source_array:
+    type: array
+    source: reference
+  key_pointer:
+    type: string
+    source: value
+  new_value_pointer:
+    type: string
+    source: value
+  old_value_pointer:
+    type: string
+    source: value
+  skip_serializer:
+    type: boolean
+    source: value
+    optional: true
+
+output:
+  type: object
+
+test:
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: RequiredResourceAccess
+            NewValue: new-data
+            OldValue: old-data
+          - Name: Included Updated Properties
+            NewValue: RequiredResourceAccess
+            OldValue: ""
+      key_pointer:
+        source: value
+        value: "/Name"
+      new_value_pointer:
+        source: value
+        value: "/NewValue"
+      old_value_pointer:
+        source: value
+        value: "/OldValue"
+      skip_serializer:
+        source: value
+        value: false
+    should_pass: true
+    expected:
+      requiredresourceaccess:
+        NewValue: new-data
+        OldValue: old-data
+      included_updated_properties:
+        NewValue: RequiredResourceAccess
+    description: Builds map with normalized keys and both new/old values
+    context: |
+      {
+        "ModifiedProperties": [
+          {"Name": "RequiredResourceAccess", "NewValue": "new-data", "OldValue": "old-data"},
+          {"Name": "Included Updated Properties", "NewValue": "RequiredResourceAccess", "OldValue": ""}
+        ]
+      }
+
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: RequiredResourceAccess
+            NewValue: new-data
+            OldValue: old-data
+          - Name: Included Updated Properties
+            NewValue: RequiredResourceAccess
+            OldValue: ""
+      key_pointer:
+        source: value
+        value: "/Name"
+      new_value_pointer:
+        source: value
+        value: "/NewValue"
+      old_value_pointer:
+        source: value
+        value: "/OldValue"
+      skip_serializer:
+        source: value
+        value: true
+    should_pass: true
+    expected:
+      RequiredResourceAccess:
+        NewValue: new-data
+        OldValue: old-data
+      Included Updated Properties:
+        NewValue: RequiredResourceAccess
+    description: Keeps keys verbatim when `skipSerializer` is true
+    context: |
+      {
+        "ModifiedProperties": [
+          {"Name": "RequiredResourceAccess", "NewValue": "new-data", "OldValue": "old-data"},
+          {"Name": "Included Updated Properties", "NewValue": "RequiredResourceAccess", "OldValue": ""}
+        ]
+      }
+
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: AzurePolicyChange
+            NewValue: Enabled
+      key_pointer:
+        source: value
+        value: "/Name"
+      new_value_pointer:
+        source: value
+        value: "/NewValue"
+      old_value_pointer:
+        source: value
+        value: "/OldValue"
+      skip_serializer:
+        source: value
+        value: false
+    should_pass: true
+    expected:
+      azurepolicychange:
+        NewValue: Enabled
+    description: Keeps entries that only provide a new value
+    context: |
+      {
+        "ModifiedProperties": [
+          {"Name": "AzurePolicyChange", "NewValue": "Enabled"}
+        ]
+      }
+
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: AlertThreshold
+            NewValue: 10
+            OldValue: "  "
+      key_pointer:
+        source: value
+        value: "/Name"
+      new_value_pointer:
+        source: value
+        value: "/NewValue"
+      old_value_pointer:
+        source: value
+        value: "/OldValue"
+      skip_serializer:
+        source: value
+        value: false
+    should_pass: true
+    expected:
+      alertthreshold:
+        NewValue: 10
+    description: Discards old value when it resolves to blanks
+    context: |
+      {
+        "ModifiedProperties": [
+          {"Name": "AlertThreshold", "NewValue": 10, "OldValue": "  "}
+        ]
+      }
+
+  - arguments:
+      source_array:
+        source: reference
+        value:
+          - Name: RequiredResourceAccess
+            OldValue: old-data
+      key_pointer:
+        source: value
+        value: "/Name"
+      new_value_pointer:
+        source: value
+        value: "/NewValue"
+      old_value_pointer:
+        source: value
+        value: "/OldValue"
+      skip_serializer:
+        source: value
+        value: false
+    should_pass: false
+    description: Fails when new value is missing
+    context: |
+      {
+        "ModifiedProperties": [
+          {"Name": "RequiredResourceAccess", "OldValue": "old-data"}
+        ]
+      }
+
+  - arguments:
+      source_array: "$.Missing"
+      key_pointer:
+        source: value
+        value: "/Name"
+      new_value_pointer:
+        source: value
+        value: "/NewValue"
+      old_value_pointer:
+        source: value
+        value: "/OldValue"
+      skip_serializer:
+        source: value
+        value: false
+    should_pass: false
+    description: Fails when array does not exist in the context
+    context: |
+      {}

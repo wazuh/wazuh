@@ -146,6 +146,8 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opmap/kvdb_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/mmdb_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/networkCommunityId_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/arrayObj_to_MapKv_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/array_extract_key_obj_test.cpp
 
     # Transform Builders
     ${UNIT_SRC_DIR}/builders/optransform/strTransform_test.cpp
