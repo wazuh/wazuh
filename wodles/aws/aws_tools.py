@@ -322,7 +322,7 @@ def arg_validate_security_lake_auth_params(
         error('Used a subscriber but no --external_id provided.')
         sys.exit(21)
     if profile is None:
-        debug('Used a subscriber but no --aws_profile provided, the "default" value will be used.', 2)
+        debug('Used a subscriber but no --aws_profile provided.', 2)
 
 
 def get_aws_config_params() -> configparser.RawConfigParser:
