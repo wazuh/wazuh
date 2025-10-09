@@ -984,6 +984,7 @@ installEngineStore()
     # Fallback store installation
     local STORE_PATH=${DEST_FULL_PATH}/store
     local KVDB_PATH=${DEST_FULL_PATH}/kvdb
+    local CTI_PATH=${DEST_FULL_PATH}/cti
     local SCHEMA_PATH=${STORE_PATH}/schema
     local ENGINE_SCHEMA_PATH=${SCHEMA_PATH}/engine-schema/
     local ENGINE_LOGPAR_TYPE_PATH=${SCHEMA_PATH}/wazuh-logpar-overrides
@@ -991,6 +992,7 @@ installEngineStore()
 
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_PATH}
     mkdir -p "${KVDB_PATH}"
+    mkdir -p "${CTI_PATH}"
     mkdir -p "${ENGINE_SCHEMA_PATH}"
     mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
     mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
@@ -1008,8 +1010,10 @@ installEngineStore()
 
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_PATH}
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${KVDB_PATH}
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${CTI_PATH}
     find ${STORE_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
     find ${KVDB_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+    find ${CTI_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 
     echo "Engine store installed successfully."
 
