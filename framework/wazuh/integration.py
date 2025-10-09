@@ -88,7 +88,7 @@ async def create_integration(integration: Integration, policy_type: PolicyType) 
     return result
 
 @expose_resources(actions=['integrations:read'], resources=["*:*:*"])
-async def get_integrations(names: List[str], search: Optional[str], status: Optional[Status], policy_type:PolicyType) -> AffectedItemsWazuhResult:
+async def get_integrations(policy_type:PolicyType, names: List[str] = None, search: Optional[str] = None, status: Optional[Status] = None) -> AffectedItemsWazuhResult:
     """Retrieve integration resources.
 
     Parameters

@@ -5288,7 +5288,9 @@ components:
       description: List of integration IDs (comma-separated).
       required: false
       schema:
-        type: string
+        type: array
+        items:
+          type: string
     node_type:
       in: query
       name: type

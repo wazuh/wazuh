@@ -66,7 +66,7 @@ async def create_integration(body: dict, type_: str, pretty: bool = False, wait_
 
     return json_response(data, pretty=pretty)
 
-async def get_integrations(type_: str, integrations_list: List[str], status: Optional[str] = None,
+async def get_integrations(type_: str, integrations_list: List[str] = None, status: Optional[str] = None,
                            search: Optional[str] = None, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get integrations.
 
@@ -179,7 +179,7 @@ async def delete_integration(type_: str, integrations_list: List[str], pretty: b
     """
     f_kwargs = {
         'policy_type': type_,
-        'integrations_list': integrations_list
+        'names': integrations_list
     }
 
     dapi = DistributedAPI(
