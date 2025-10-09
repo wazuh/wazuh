@@ -140,6 +140,19 @@ WriteConfigurationAssessment()
 }
 
 ##########
+# WriteAgentInfo()
+##########
+WriteAgentInfo()
+{
+    # Adding to the config file
+    AGENT_INFO_TEMPLATE=$(GetTemplate "wodle-agent-info.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
+    if [ ! "$AGENT_INFO_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
+      cat ${AGENT_INFO_TEMPLATE} >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
+}
+
+##########
 # InstallSecurityConfigurationAssessmentFiles()
 ##########
 InstallSecurityConfigurationAssessmentFiles()
@@ -371,6 +384,9 @@ WriteAgent()
     # Configuration assessment configuration
     WriteConfigurationAssessment
 
+    # Agent info configuration
+    WriteAgentInfo
+
     # Syscheck
     WriteSyscheck "agent"
 
@@ -467,6 +483,9 @@ WriteManager()
 
     # Configuration assessment
     WriteConfigurationAssessment
+
+    # Agent info configuration
+    WriteAgentInfo
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
