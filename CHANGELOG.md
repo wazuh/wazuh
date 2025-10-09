@@ -37,6 +37,7 @@ All notable changes to this project will be documented in this file.
 - Added browser extensions to the inventory data. ([#805](https://github.com/wazuh/wazuh-agent/issues/805))
 - Added services to the inventory data. ([#807](https://github.com/wazuh/wazuh-agent/issues/807))
 - Added missing AWS regions `us-gov-west-1` and `us-gov-east-1` to AWS wodle. ([#31418](https://github.com/wazuh/wazuh/pull/31418))
+- Included Windows kernel version information to IT Hygiene. ([#32413](https://github.com/wazuh/wazuh/pull/32413))
 
 #### Fixed
 
