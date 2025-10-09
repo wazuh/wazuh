@@ -28,8 +28,8 @@ class IntegrationCreateModel(Body):
     decoders : List[str]
         List of decoders associated with the integration.
     """
-    def __init__(self, type: str, name: str, id: str, description: str, documentation: str, status: str,
-                 kvdbs: List[str], decoders: List[str]):
+    def __init__(self, type: str = '', name: str = '', id: str = '', description: str = '', documentation: str = '', status: str = '',
+                 kvdbs: List[str] = None, decoders: List[str] = None):
         self.swagger_types = {
             'type': str,
             'name': str,
@@ -58,8 +58,8 @@ class IntegrationCreateModel(Body):
         self._description = description
         self._documentation = documentation
         self._status = status
-        self._kvdbs = kvdbs
-        self._decoders = decoders
+        self._kvdbs = kvdbs or []
+        self._decoders = decoders or []
 
     # --- properties ---
 
