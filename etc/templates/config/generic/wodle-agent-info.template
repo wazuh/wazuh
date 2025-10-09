@@ -1,0 +1,5 @@
+  <!-- Agent info -->
+  <agent-info>
+    <enabled>yes</enabled>
+    <interval>60</interval>
+  </agent-info>
