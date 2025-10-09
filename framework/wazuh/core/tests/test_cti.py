@@ -17,7 +17,7 @@ class TestCTIAuthTokenStatus:
             (CTIAuthTokenStatus.PENDING, "pending", "Registration process was not started and never tried."),
             (CTIAuthTokenStatus.POLLING, "polling", "Registration process is being carried out."),
             (CTIAuthTokenStatus.DENIED, "denied", "Registration process denied due to expired `device_code`."),
-            (CTIAuthTokenStatus.AVAILABLE, "available", "Registration process was finished successfuly."),
+            (CTIAuthTokenStatus.AVAILABLE, "available", "Registration process was finished successfully."),
         ],
     )
     def test_enum_descriptions(self, status, short_desc, long_desc):

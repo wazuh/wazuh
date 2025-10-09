@@ -268,6 +268,7 @@ default_policies:
     policies:
       resourceless:
         actions:
+          - cluster:auth
           - cluster:status
           - cluster:update_config
           - cluster:restart

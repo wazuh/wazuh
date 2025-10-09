@@ -202,6 +202,14 @@ x-rbac-catalog:
         actions: ['group:delete']
         resources: ['group:id:*']
         effect: "allow"
+    'cluster:auth':
+      description: "Initiate cluster authentication process"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['cluster:auth']
+        resources: ['*:*:*']
+        effect: "allow"
     'cluster:read':
       description: "Read Wazuh's cluster nodes configuration"
       resources:
@@ -1742,6 +1750,46 @@ components:
         hash: ab73af41699f13fdd81903b5f23d8d00
 
     ## Cluster models
+    ClusterAuthStatus:
+      type: string
+      description: "Cluster registration process status"
+      enum:
+        - pending
+        - polling
+        - denied
+        - available
+
+    ClusterAuthStart:
+      type: object
+      properties:
+        device_code:
+          type: string
+          description: "Device unique identifier"
+        interval:
+          type: integer
+          format: int32
+          description: "Access token polling interval"
+      example:
+        device_code: GmRhmhcxhwAzkoEqiMEg_DnyEysNkuNhszIySk9eS
+        interval: 5
+    
+    ClusterAuthStartResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            status:
+              $ref: '#/components/schemas/ClusterAuthStatus'
+            error:
+              type: integer
+              format: int32
+              description: "Error code"
+      example:
+        data:
+          status: polling
+          error: 0
+    
     ClusterNodeBasic:
       type: object
       properties:
@@ -3243,13 +3291,7 @@ components:
           type: object
           properties:
             status:
-              type: string
-              description: "Registration process status."
-              enum:
-              - pending
-              - polling
-              - denied
-              - available
+              $ref: '#/components/schemas/ClusterAuthStatus'
             details:
               type: string
               description: "Registration process details."
@@ -8430,6 +8472,47 @@ paths:
           $ref: '#/components/responses/ResourceNotFoundResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+  
+  /cluster/auth/start:
+    post:
+      tags:
+        - Cluster
+      summary: "Start cluster authentication"
+      description: "Start the authentication process to join a node to a cluster"
+      operationId: api.controllers.cluster_controller.start_auth
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/cluster:auth'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClusterAuthStart'
+      responses:
+        '200':
+          description: "Cluster authentication started"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "Cluster authentication started"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '409':
+          $ref: '#/components/responses/ConflictResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 

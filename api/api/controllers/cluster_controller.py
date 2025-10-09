@@ -28,6 +28,43 @@ from wazuh.core.results import AffectedItemsWazuhResult
 logger = logging.getLogger('wazuh-api')
 
 
+async def start_auth(pretty: bool = False, wait_for_complete: bool = False, device_code: str = None,
+                     interval: int = None) -> ConnexionResponse:
+    """Start cluster authentication process.
+    
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    device_code : str
+        Device unique identifier.
+    interval : int
+        Access token polling interval.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
+    f_kwargs = {
+        'device_code': device_code,
+        'interval': interval
+    }
+    dapi = DistributedAPI(f=cluster.start_auth,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_master',
+                          is_async=False,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
 async def get_cluster_node(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get basic information about the local node.
 

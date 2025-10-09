@@ -2,18 +2,45 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from time import sleep
 from typing import Union
+
+from api.constants import INSTALLATION_UID_KEY
+from api.signals import cti_context
 
 from wazuh.core import common
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.control import get_health, get_nodes, get_node_ruleset_integrity
 from wazuh.core.cluster.utils import get_cluster_status, read_config
+from wazuh.core.cti import get_cti_client, CTIAuthTokenStatus
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 node_id = get_node().get('node')
+
+
+@expose_resources(actions=['cluster:auth'], resources=['*:*:*'])
+def start_auth(device_code: str, interval: int) -> CTIAuthTokenStatus:
+    """Start cluster authentication process.
+    
+    Parameters
+    ----------
+    device_code : str
+        Device unique identifier.
+    interval : int
+        Access token polling interval.
+    """
+    while True:
+        client_id = cti_context[INSTALLATION_UID_KEY]
+
+        with get_cti_client() as cti_client:
+            status = cti_client.start_authentication(client_id, device_code)
+            if status != CTIAuthTokenStatus.PENDING:
+                return status
+        
+        sleep(interval)
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
