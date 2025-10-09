@@ -24,6 +24,17 @@ with patch('wazuh.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
+TEST_INTEGRATION_BODY = {
+    'type': 'integration',
+    'id': 'int1',
+    'name': 'Integration 1',
+    'documentation': 'doc',
+    'description': 'desc',
+    'status': 'enabled',
+    'kvdbs': [],
+    'decoders': []
+}
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["integration_controller"], indirect=True)
@@ -32,14 +43,25 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.integration_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.integration_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.integration_controller.Body.validate_content_type')
-@patch('api.controllers.integration_controller.IntegrationCreateModel.get_kwargs', return_value={'id': 'int1', 'name': 'Integration 1'})
+@patch('api.controllers.integration_controller.IntegrationCreateModel')
 @patch('api.controllers.integration_controller.Integration', return_value=MagicMock())
-async def test_create_integration(mock_model, mock_get_kwargs, mock_validate, mock_exc, mock_dapi,
+async def test_create_integration(mock_integration_model, mock_create_model_cls, mock_validate, mock_exc, mock_dapi,
                                   mock_remove, mock_dfunc, mock_request):
     """Verify 'create_integration' works as expected."""
-    result = await create_integration(type_='policy')
+    mock_instance = MagicMock()
+    mock_instance.type = TEST_INTEGRATION_BODY['type']
+    mock_instance.id = TEST_INTEGRATION_BODY['id']
+    mock_instance.name = TEST_INTEGRATION_BODY['name']
+    mock_instance.documentation = TEST_INTEGRATION_BODY['documentation']
+    mock_instance.description = TEST_INTEGRATION_BODY['description']
+    mock_instance.status = TEST_INTEGRATION_BODY['status']
+    mock_instance.kvdbs = TEST_INTEGRATION_BODY['kvdbs']
+    mock_instance.decoders = TEST_INTEGRATION_BODY['decoders']
+    mock_create_model_cls.return_value = mock_instance
+
+    result = await create_integration(body=TEST_INTEGRATION_BODY, type_='policy')
     f_kwargs = {
-        'integration': mock_model.return_value,
+        'integration': mock_integration_model.return_value,
         'policy_type': 'policy'
     }
     mock_dapi.assert_called_once_with(
@@ -92,14 +114,25 @@ async def test_get_integrations(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.integration_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.integration_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.integration_controller.Body.validate_content_type')
-@patch('api.controllers.integration_controller.IntegrationCreateModel.get_kwargs', return_value={'id': 'int1', 'name': 'Integration 1'})
+@patch('api.controllers.integration_controller.IntegrationCreateModel')
 @patch('api.controllers.integration_controller.Integration', return_value=MagicMock())
-async def test_update_integration(mock_model, mock_get_kwargs, mock_validate, mock_exc, mock_dapi,
+async def test_update_integration(mock_integration_model, mock_create_model_cls, mock_validate, mock_exc, mock_dapi,
                                   mock_remove, mock_dfunc, mock_request):
     """Verify 'update_integration' works as expected."""
-    result = await update_integration(type_='policy')
+    mock_instance = MagicMock()
+    mock_instance.type = TEST_INTEGRATION_BODY['type']
+    mock_instance.id = TEST_INTEGRATION_BODY['id']
+    mock_instance.name = TEST_INTEGRATION_BODY['name']
+    mock_instance.documentation = TEST_INTEGRATION_BODY['documentation']
+    mock_instance.description = TEST_INTEGRATION_BODY['description']
+    mock_instance.status = TEST_INTEGRATION_BODY['status']
+    mock_instance.kvdbs = TEST_INTEGRATION_BODY['kvdbs']
+    mock_instance.decoders = TEST_INTEGRATION_BODY['decoders']
+    mock_create_model_cls.return_value = mock_instance
+
+    result = await update_integration(body=TEST_INTEGRATION_BODY, type_='policy')
     f_kwargs = {
-        'integration': mock_model.return_value,
+        'integration': mock_integration_model.return_value,
         'policy_type': 'policy'
     }
     mock_dapi.assert_called_once_with(
@@ -127,7 +160,7 @@ async def test_delete_integration(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
     result = await delete_integration(type_='policy', integrations_list=['x'])
     f_kwargs = {
         'policy_type': 'policy',
-        'integrations_list': ['x']
+        'names': ['x']
     }
     mock_dapi.assert_called_once_with(
         f=integration_framework.delete_integration,
