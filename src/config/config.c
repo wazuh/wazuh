@@ -144,14 +144,10 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
         else if (strcmp(node[i]->element, osagent_info) == 0)
         {
-#ifdef CLIENT
             if ((modules & CWMODULE) && (Read_AGENT_INFO(xml, node[i], d1) < 0))
             {
                 goto fail;
             }
-#else
-            mwarn("%s configuration is only set in the agent.", node[i]->element);
-#endif
         }
         else if (strcmp(node[i]->element, osvulndetection) == 0)
         {
