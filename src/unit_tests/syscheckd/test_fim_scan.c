@@ -84,6 +84,7 @@ static OSList *removed_entries;
 fim_file_data DEFAULT_FILE_DATA = {
     // Checksum attributes
     .size = 0,
+    .path = "/var/test",
     .attributes = NULL,
     .uid = "1000",
     .gid = "1000",
@@ -891,9 +892,9 @@ static void test_fim_get_checksum(void **state) {
 
     fim_get_checksum(entry.file_entry.data);
 #ifdef TEST_WINAGENT
-    assert_string_equal(entry.file_entry.data->checksum, "6ec831114b5d930f19a90d7c34996e0fce4e7b84");
+    assert_string_equal(entry.file_entry.data->checksum, "579e3e74428e3926ea6952ff6945d43582d9eb95");
 #else
-    assert_string_equal(entry.file_entry.data->checksum, "98e039efc1b8490965e7e1247a9dc31cf7379051");
+    assert_string_equal(entry.file_entry.data->checksum, "6d10f63e2dc5d0d398ca53063d84e8ca3a3366f1");
 #endif
 }
 
@@ -903,6 +904,7 @@ static void test_fim_get_checksum_wrong_size(void **state) {
     fim_data->local_data = calloc(1, sizeof(fim_file_data));
 
     fim_data->local_data->size = -1;
+    fim_data->local_data->path = strdup("/var/test");
     fim_data->local_data->permissions = strdup("0664");
     fim_data->local_data->attributes = strdup("r--r--r--");
     fim_data->local_data->uid = strdup("100");
@@ -919,7 +921,7 @@ static void test_fim_get_checksum_wrong_size(void **state) {
 
     fim_get_checksum(fim_data->local_data);
 
-    assert_string_equal(fim_data->local_data->checksum, "0a0070d140761418be81531ad48f5909f410e161");
+    assert_string_equal(fim_data->local_data->checksum, "cabc9a9c81819b011164c0f908127b9f56b4c666");
 }
 
 static void test_fim_check_depth_success(void **state) {
