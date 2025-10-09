@@ -91,6 +91,8 @@ elseif(UNIX AND NOT APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 if(UNIT_TEST)
+  enable_testing()
+
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_link_libraries(agent_info -fprofile-arcs)
   else()
