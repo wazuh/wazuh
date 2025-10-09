@@ -134,7 +134,7 @@ agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_set_persist_function_func agent_info_set_persist_function_ptr = NULL;
 
 // Reading function
-int wm_agent_info_read(const OS_XML* xml, xml_node** nodes, wmodule* module)
+int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nodes, wmodule* module)
 {
     unsigned int i;
     wm_agent_info_t* agent_info;
@@ -235,13 +235,15 @@ int wm_agent_info_sync_message(const char *command, size_t command_len) {
 }
 
 // Module context
-const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
-                                          .start = wm_agent_info_main,
-                                          .destroy = wm_agent_info_destroy,
-                                          .dump = wm_agent_info_dump,
-                                          .sync = wm_agent_info_sync_message,
-                                          .stop = wm_agent_info_stop,
-                                          .query = NULL};
+const wm_context WM_AGENT_INFO_CONTEXT = {
+    .name = AGENT_INFO_WM_NAME,
+    .start = (wm_routine)wm_agent_info_main,
+    .destroy = (void(*)(void *))wm_agent_info_destroy,
+    .dump = (cJSON *(*)(const void *))wm_agent_info_dump,
+    .sync = wm_agent_info_sync_message,
+    .stop = (void(*)(void *))wm_agent_info_stop,
+    .query = NULL
+};
 
 // Main module function (runs in its own thread)
 void* wm_agent_info_main(wm_agent_info_t* agent_info)
