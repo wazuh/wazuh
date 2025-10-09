@@ -19,7 +19,6 @@
 #include "rc.h"
 
 #include <stdio.h>
-#include <dlfcn.h>
 
 static const char* XML_ENABLED = "enabled";
 static const char* XML_INTERVAL = "interval";
@@ -300,7 +299,6 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     else
     {
         merror("Can't get agent-info module handle for library: lib%s.so", AGENT_INFO_LIB_NAME);
-        merror("dlopen error: %s", dlerror());
         return NULL;
     }
 
