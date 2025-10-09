@@ -79,13 +79,27 @@ def create_index_from_template(template_path: Path):
 
         index_url = f"http://{GLOBAL_URL}/{index_name}"
 
-        # Delete index if it exists
-        delete_resp = requests.delete(index_url)
-        if delete_resp.status_code not in (200, 404):
-            raise RuntimeError(
-                f"Failed to delete index {index_name}: {delete_resp.status_code} {delete_resp.text}"
-            )
-        LOGGER.info(f"Index '{index_name}' deleted (if existed).")
+        retries = 10
+        for retry in range(retries):
+            # Delete index if it exists
+            delete_resp = requests.delete(index_url)
+            if delete_resp.status_code not in (200, 404):
+                raise RuntimeError(
+                    f"Failed to delete index {index_name}: {delete_resp.status_code} {delete_resp.text}"
+                )
+
+            # Check deletion
+            check_resp = requests.get(f"http://{GLOBAL_URL}/_cat/indices/{index_name}?format=json")
+            if check_resp.status_code == 200:
+                if not check_resp.json():
+                    break
+
+            if retry < retries - 1:
+                LOGGER.warning(f"Index '{index_name}' still exists after deletion (attempt {retry+1}/{retries}). Retrying...")
+                time.sleep(0.5*(retry+1))
+
+        else:
+            LOGGER.info(f"Index '{index_name}' deleted (if existed).")
 
         # Create index again
         create_resp = requests.put(index_url)
@@ -164,9 +178,22 @@ def clear_all_indices():
     Deletes all indices in OpenSearch before every test.
     """
     LOGGER.info("Clearing OpenSearch indices...")
-    resp = requests.delete(f"http://{GLOBAL_URL}/_all")
-    if resp.status_code not in (200, 404):
-        raise RuntimeError(f"Failed to delete indices: {resp.text}")
+
+    retries = 10
+    for retry in range(retries):
+        resp = requests.delete(f"http://{GLOBAL_URL}/_all")
+        if resp.status_code not in (200, 404):
+            raise RuntimeError(f"Failed to delete indices: {resp.text}")
+
+        response = requests.get(f"http://{GLOBAL_URL}/_cat/indices?format=json")
+        if response.status_code == 200:
+            indices = response.json()
+            if not indices:
+                break
+
+        if retry < retries - 1:
+            LOGGER.warning(f"Indices still exist after deletion (attempt {retry+1}/{retries}). Retrying...")
+            time.sleep(0.5*(retry+1))
     yield
 
 
