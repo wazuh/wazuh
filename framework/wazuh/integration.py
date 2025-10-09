@@ -117,9 +117,9 @@ async def get_integrations(policy_type:PolicyType, names: List[str] = None, sear
                                       all_msg='All selected integrations were returned')
 
     async with get_engine_client() as client:
-        integrations_response = client.content.get_multiple_resources(
+        integrations_response = await client.content.get_multiple_resources(
             type=ResourceType.INTEGRATION,
-            name=names,
+            names=names,
             policy_type=policy_type
         )
 
