@@ -687,7 +687,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-WINDOWS_LIBS:=win32/syscollector win32/sca win32/syscheck
+WINDOWS_LIBS:=win32/syscollector win32/sca win32/agent_info win32/syscheck
 WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe
 WINDOWS_ACTIVE_RESPONSES:=win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
@@ -724,6 +724,10 @@ win32/syscollector: win32/shared_modules win32/sysinfo win32/version-dll.o
 ### SCA ##
 win32/sca: win32/shared_modules win32/sysinfo
 	cd ${SCA} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SCA_TEST} ${SCA_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
+
+### agent_info ##
+win32/agent_info: win32/shared_modules win32/sysinfo
+	cd ${AGENT_INFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${AGENT_INFO_TEST} ${AGENT_INFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 win32/syscheck: win32/shared_modules $(WAZUHEXT_LIB)
 	cd ${SYSCHECK} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
