@@ -130,7 +130,7 @@ json::Json ContentManager::getAsset(const base::Name& name) const
         {
             return m_storage->getAsset(name, std::string(t));
         }
-        catch (...)
+        catch (const std::exception&)
         {
             // ignore and try next
         }
@@ -155,7 +155,7 @@ bool ContentManager::assetExists(const base::Name& name) const
                 return true;
             }
         }
-        catch (...)
+        catch (const std::exception&)
         {
             // ignore
         }

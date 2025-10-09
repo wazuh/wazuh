@@ -68,6 +68,11 @@ namespace constants
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_KVDBS = "/payload/document/kvdbs";
     constexpr std::string_view JSON_PAYLOAD_DOCUMENT_CONTENT = "/payload/document/content";
 
+    // JSON paths for unwrapped documents (after getByIdOrName strips /payload)
+    constexpr std::string_view JSON_UNWRAPPED_DOCUMENT_TITLE = "/document/title";
+    constexpr std::string_view JSON_UNWRAPPED_DOCUMENT_NAME = "/document/name";
+    constexpr std::string_view JSON_UNWRAPPED_DOCUMENT_CONTENT = "/document/content";
+
     // Memory configuration
     constexpr size_t READ_CACHE_SIZE = 32 * 1024 * 1024;  // LRU cache size for reading blocks from SST files (32MB)
     constexpr size_t WRITE_BUFFER_SIZE = 64 * 1024 * 1024; // Total memory budget for write buffers across all column families (64MB)
@@ -1316,18 +1321,27 @@ std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, con
     try
     {
         json::Json doc = getByIdOrName(uuid, cfIt->second, keyPrefixIt->second, namePrefixIt->second);
-        auto nameStr = doc.getString("/document/name");
-        if (nameStr)
+
+        // Try /document/title first (integrations, policies)
+        auto title = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_TITLE);
+        if (title && !title->empty())
         {
-            return *nameStr;
+            return *title;
         }
-        throw std::runtime_error(fmt::format("Document for UUID {} missing /document/name field, doc: {}", uuid, doc.str()));
+
+        // Try /document/name (decoders)
+        auto name = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_NAME);
+        if (name && !name->empty())
+        {
+            return *name;
+        }
+
+        throw std::runtime_error(fmt::format("Document for UUID '{}' missing title/name field", uuid));
     }
     catch (const std::exception& e)
     {
         throw std::runtime_error("Failed to resolve name from UUID: " + std::string(e.what()));
     }
-
 }
 
 std::vector<std::string> CTIStorageDB::Impl::getKVDBList() const
@@ -1399,7 +1413,7 @@ json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
                                     std::string(constants::NAME_KVDB_PREFIX));
 
     // Extract only the content from /document/content
-    auto content = doc.getJson("/document/content");
+    auto content = doc.getJson(constants::JSON_UNWRAPPED_DOCUMENT_CONTENT);
     if (content)
     {
         return *content;
