@@ -55,7 +55,7 @@ async def create_integrations_order(order: IntegrationsOrder, policy_type: Polic
         save_asset_file(integration_order_path_file, file_contents_json)
 
         async with get_engine_client() as client:
-            creation_results = client.integrations_order.create_order(
+            creation_results = await client.integrations_order.create_order(
                 content=file_contents_json,
                 policy_type=policy_type
             )
@@ -65,9 +65,9 @@ async def create_integrations_order(order: IntegrationsOrder, policy_type: Polic
         result.affected_items.append(DEFAULT_INTEGRATIONS_ORDER_FILENAME)
         result.total_affected_items = len(result.affected_items)
     except WazuhError as exc:
+        if exists(integration_order_path_file):
+            remove(integration_order_path_file)
         result.add_failed_item(id_=DEFAULT_INTEGRATIONS_ORDER_FILENAME, error=exc)
-    finally:
-        exists(integration_order_path_file) and remove(integration_order_path_file)
 
     return result
 
@@ -95,7 +95,7 @@ async def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhR
                                       all_msg='All selected integrations order were returned')
 
     async with get_engine_client() as client:
-        integrations_order_response = client.integrations_order.get_order(policy_type=policy_type)
+        integrations_order_response = await client.integrations_order.get_order(policy_type=policy_type)
 
         validate_response_or_raise(integrations_order_response, 8011)
 
@@ -149,7 +149,7 @@ async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWaz
 
         # Delete integrations order
         async with get_engine_client() as client:
-            delete_results = client.integrations_order.delete_order(
+            delete_results = await client.integrations_order.delete_order(
                 policy_type=policy_type
             )
 
@@ -157,9 +157,12 @@ async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWaz
 
         result.affected_items.append(DEFAULT_INTEGRATIONS_ORDER_FILENAME)
     except WazuhError as exc:
+        if backup_file and exists(backup_file):
+            safe_move(backup_file, integration_order_path_file)
         result.add_failed_item(id_=DEFAULT_INTEGRATIONS_ORDER_FILENAME, error=exc)
-    finally:
-        exists(backup_file) and safe_move(backup_file, integration_order_path_file)
+    else:
+        if backup_file and exists(backup_file):
+            remove(backup_file)
 
     result.total_affected_items = len(result.affected_items)
     return result

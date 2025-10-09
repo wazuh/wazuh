@@ -43,6 +43,9 @@ class ContentModule(BaseModule):
             resource = self._db[key]
         return {"status": "OK", "error": None, "content": resource.to_dict()}
 
+    async def get_multiple_resources(self, type: ResourceType, names: list[str], policy_type: PolicyType) -> dict:
+        return {"status": "OK", "error": None, "content": []}
+
     async def update_resource(
         self, resource: Resource, type: ResourceType, policy_type: PolicyType
     ) -> dict:
