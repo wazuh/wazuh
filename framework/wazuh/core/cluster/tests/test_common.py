@@ -1727,10 +1727,10 @@ def test_wazuh_json_encoder_default(mock_chmod, mock_chown, mock_gid, mock_uid):
 
     with patch('builtins.callable', return_value=False):
         # Test second condition
-        assert isinstance(wazuh_encoder.default(exception.WazuhException(3012)), dict)
-        assert wazuh_encoder.default(exception.WazuhException(3012)) == \
+        assert isinstance(wazuh_encoder.default(exception.WazuhException(3009)), dict)
+        assert wazuh_encoder.default(exception.WazuhException(3009)) == \
                {'__wazuh_exception__': {'__class__': 'WazuhException',
-                                        '__object__': {'type': 'about:blank', 'title': 'WazuhException', 'code': 3012,
+                                        '__object__': {'type': 'about:blank', 'title': 'WazuhException', 'code': 3009,
                                                        'extra_message': None, 'extra_remediation': None,
                                                        'cmd_error': False, 'dapi_errors': {}}}}
 

@@ -143,14 +143,16 @@ class AbstractServerHandler(c_common.Handler):
         if self.name in self.server.clients:
             self.name = ''
             raise exception.WazuhClusterError(3028, extra_message=data.decode())
-        elif self.name == self.server.configuration['node_name']:
+
+        if self.name == self.server.configuration['node_name']:
             raise exception.WazuhClusterError(3029)
-        else:
-            self.server.clients[self.name] = self
-            self.tag = f'{self.tag} {self.name}'
-            context_tag.set(self.tag)
-            self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
-            return b'ok', f'Client {self.name} added'.encode()
+
+        self.server.clients[self.name] = self
+        self.tag = f'{self.tag} {self.name}'
+        context_tag.set(self.tag)
+        self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
+
+        return b'ok', f'Client {self.name} added'.encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """Define response commands for servers.
@@ -280,6 +282,7 @@ class AbstractServer:
         # logging tag
         context_tag.set(self.tag)
         self.tasks = [self.check_clients_keepalive]
+        self.tasks_event = asyncio.Event()
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
         self.broadcast_results = {}
@@ -490,6 +493,8 @@ class AbstractServer:
         """
         keep_alive_logger = self.setup_task_logger("Keep alive")
         while True:
+            await self.tasks_event.wait()
+            
             keep_alive_logger.debug("Calculating.")
             curr_timestamp = utils.get_utc_now().timestamp()
             # Iterate all clients and close the connection when their last keepalive is older than allowed.

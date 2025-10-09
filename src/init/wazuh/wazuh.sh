@@ -23,7 +23,6 @@ CheckModuleIsEnabled(){
 
     # How to use it:
     #
-    # CheckModuleIsEnabled '<cluster>' '</cluster>' 'disabled'
     # CheckModuleIsEnabled '<sca>' '</sca>' 'enabled'
 
     open_label="$1"

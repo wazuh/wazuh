@@ -8,6 +8,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, call, patch
 import pytest
 from connexion.lifecycle import ConnexionResponse
 
+from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
 from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
@@ -20,8 +21,10 @@ with patch('wazuh.common.wazuh_uid'):
             get_healthcheck, get_info_node, get_log_node, get_log_summary_node,
             get_node_config, get_stats_analysisd_node, get_stats_hourly_node, get_daemon_stats_node,
             get_stats_node, get_stats_remoted_node, get_stats_weekly_node,
-            get_status, get_status_node, put_restart, update_configuration, get_nodes_ruleset_sync_status)
+            get_status, get_status_node, put_restart, update_configuration, get_nodes_ruleset_sync_status,
+            check_available_version)
         from wazuh import cluster, common, manager, stats, analysis
+        from wazuh.core.manager import query_update_check_service
         from wazuh.tests.util import RBAC_bypasser
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -716,3 +719,50 @@ async def test_update_configuration(mock_exc, mock_dapi, mock_remove, mock_dfunc
                 assert mock_exc.call_count == 2
                 mock_remove.assert_called_once_with(f_kwargs)
                 assert isinstance(result, ConnexionResponse)
+
+
+@pytest.mark.parametrize(
+        "force_query,dapi_call_count,update_check", ([True, 2, True], [True, 1, False], [False, 1, True])
+)
+@pytest.mark.asyncio
+@patch('api.controllers.cluster_controller.update_check_is_enabled')
+@patch('api.controllers.cluster_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
+@patch('api.controllers.cluster_controller.DistributedAPI.__init__', return_value=None)
+@patch('api.controllers.cluster_controller.raise_if_exc', return_value=CustomAffectedItems())
+async def test_check_available_version(
+    mock_exc,
+    mock_dapi,
+    mock_dfunc,
+    update_check_mock,
+    force_query,
+    dapi_call_count,
+    update_check,
+):
+    """Verify 'check_available_version' endpoint is working as expected."""
+    cti_context = {UPDATE_INFORMATION_KEY: {"foo": 1}, INSTALLATION_UID_KEY: "1234"}
+    update_check_mock.return_value = update_check
+
+    with patch('api.controllers.cluster_controller.cti_context', new=cti_context):
+        result = await check_available_version(force_query=force_query)
+        assert mock_dapi.call_count == dapi_call_count
+
+        if force_query and update_check:
+            mock_dapi.assert_any_call(
+                f=query_update_check_service,
+                f_kwargs={INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY]},
+                request_type='local_master',
+                is_async=True,
+                logger=ANY,
+            )
+            mock_exc.assert_any_call(mock_dfunc.return_value)
+
+        mock_dapi.assert_called_with(
+            f=manager.get_update_information,
+            f_kwargs={INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY],
+                      UPDATE_INFORMATION_KEY: cti_context[UPDATE_INFORMATION_KEY]},
+            request_type='local_master',
+            is_async=False,
+            logger=ANY,
+        )
+        mock_exc.assert_called_with(mock_dfunc.return_value)
+    assert isinstance(result, ConnexionResponse)

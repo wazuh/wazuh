@@ -26,7 +26,6 @@ stages:
               bind_addr: !anystr
               nodes: !anything
               hidden: !anystr
-              disabled: false
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -2428,3 +2427,219 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: GET /cluster/version/check with update_check disabled
+
+stages:
+
+  - name: Get wazuh version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      save:
+        json:
+          wazuh_version: data.api_version
+
+  - name: Get available updates
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_update_check_response
+        extra_kwargs:
+          current_version: "v{wazuh_version:s}"
+          update_check: false
+
+  - name: Get available updates with force option
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_query: "true"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_update_check_response
+        extra_kwargs:
+          current_version: "v{wazuh_version:s}"
+          update_check: false
+
+---
+test_name: GET /cluster/version/check with update_check enabled
+
+stages:
+  - name: Get wazuh version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      save:
+        json:
+          wazuh_version: data.api_version
+  
+  - name: Enable update check
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
+      method: PUT
+      data: "{valid_ossec_conf_with_update_check_enabled:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "master-node"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Restart master node to apply configuration changes
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "master-node"
+    response:
+      status_code: 202
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "master-node"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{restart_delay_cluster}"
+
+  - name: Get available updates
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:validate_update_check_response
+        extra_kwargs:
+          current_version: "v{wazuh_version:s}"
+          update_check: true
+
+  - name: Get available updates with force option
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_query: "true"
+    response:
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:validate_update_check_response
+        extra_kwargs:
+          current_version: "v{wazuh_version:s}"
+          update_check: true
+
+---
+test_name: GET /cluster/version/check with update_check service error
+
+stages:
+
+  - name: Set an invalid CTI url
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
+      method: PUT
+      data: "{ossec_conf_with_invalid_cti_url:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - "master-node"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Restart master node to apply configuration changes
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "master-node"
+    response:
+      status_code: 202
+      json:
+        error: 0
+        data:
+          affected_items:
+            - "master-node"
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{restart_delay_cluster}"
+
+  - name: Try to get available updates
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 500
+      json:
+        error: 2100
+
+  - name: Try to get available updates with force option
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_query: "true"
+    response:
+      status_code: 500
+      json:
+        error: 2100

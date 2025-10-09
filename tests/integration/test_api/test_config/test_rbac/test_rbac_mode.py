@@ -56,7 +56,7 @@ import requests
 from pathlib import Path
 
 from . import DB_SCHEMAS_FOLDER_PATH, CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
-from wazuh_testing.constants.api import CONFIGURATION_TYPES, MANAGER_INFORMATION_ROUTE
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.utils import login, get_base_url
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -156,7 +156,7 @@ def test_rbac_mode(test_configuration, test_metadata, add_configuration, add_use
     """
     expected_code = test_metadata['expected_code']
     authentication_headers, _ = login(user=test_user)
-    url = get_base_url() + MANAGER_INFORMATION_ROUTE
+    url = get_base_url() + '/cluster/node01/info'
 
     # Make a request to check the response status
     response = requests.get(url, headers=authentication_headers, verify=False)

@@ -51,7 +51,7 @@ import requests
 from pathlib import Path
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
-from wazuh_testing.constants.api import CONFIGURATION_TYPES, MANAGER_CONFIGURATION_ROUTE
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.utils import login, get_base_url
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
@@ -134,11 +134,11 @@ def test_upload_configuration(test_configuration, test_metadata, backup_wazuh_co
     expected_code = test_metadata['expected_code']
     body = test_metadata['body']
 
-    url = get_base_url()
+    url = get_base_url() + '/cluster/node01/configuration'
     authentication_headers, _ = login()
     authentication_headers['Content-Type'] = 'application/octet-stream'
 
-    response = requests.put(url + MANAGER_CONFIGURATION_ROUTE, headers=authentication_headers, verify=False, timeout=10,
+    response = requests.put(url, headers=authentication_headers, verify=False, timeout=10,
                              data=body)
     assert response.status_code == expected_code, f"Expected status code {expected_code}, but " \
                                                   f"{response.status_code} was returned: {response.json()}"

@@ -28,12 +28,10 @@ fi
 AUTHOR="Wazuh Inc."
 USE_JSON=false
 DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-execd wazuh-db wazuh-authd wazuh-apid"
-OP_DAEMONS="wazuh-clusterd"
 DEPRECATED_DAEMONS="ossec-authd"
 
 # Reverse order of daemons
 SDAEMONS=$(echo $DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
-OP_SDAEMONS=$(echo $OP_DAEMONS | awk '{ for (i=NF; i>1; i--) printf("%s ",$i); print $1; }')
 
 ## Locking for the start/stop
 LOCK="${DIR}/var/start-script-lock"
@@ -320,25 +318,24 @@ start_service()
         fi
     done
 
+    node_type=$(grep '<node_type>' ${DIR}/etc/ossec.conf | sed 's/<node_type>\(.*\)<\/node_type>/\1/' | tr -d ' ');
+    if [ -z $node_type ]; then
+        echo "Invalid cluster configuration, check the $DIR/etc/ossec.conf file."
+        unlock;
+        exit 1;
+    fi
+
     # We actually start them now.
     first=true
     if [ $USE_JSON = true ]; then
         echo -n '{"error":0,"data":['
     fi
     for i in ${SDAEMONS}; do
-        ## If wazuh-clusterd is disabled, don't try to start it.
-        if [ X"$i" = "Xwazuh-clusterd" ]; then
-             start_config="$(grep -n "<cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             end_config="$(grep -n "</cluster>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
-             if [ -n "${start_config}" ] && [ -n "${end_config}" ]; then
-                sed -n "${start_config},${end_config}p" ${DIR}/etc/ossec.conf | grep "<disabled>yes" >/dev/null 2>&1
-                if [ $? = 0 ]; then
-                    continue
-                fi
-             else
-                continue
-             fi
+        ## Only start the API daemon on the master node
+        if [ X"$i" = "Xwazuh-apid" ] && [ "$node_type" != "master" ]; then
+            continue
         fi
+
         ## If wazuh-authd is disabled, don't try to start it.
         if [ X"$i" = "Xwazuh-authd" ]; then
              start_config="$(grep -n "<auth>" ${DIR}/etc/ossec.conf | cut -d':' -f 1)"
@@ -375,22 +372,6 @@ start_service()
             fi
             if [ $? != 0 ]; then
                 failed=true
-            else
-                is_optional ${i};
-                if [ $? = 0 ]; then
-                    j=0;
-                    while [ $failed = false ]; do
-                        pstatus ${i};
-                        if [ $? = 1 ]; then
-                            break;
-                        fi
-                        sleep 1;
-                        j=`expr $j + 1`;
-                        if [ "$j" -ge "${MAX_ITERATION}" ]; then
-                            failed=true
-                        fi
-                    done
-                fi
             fi
             if [ $failed = true ]; then
                 if [ $USE_JSON = true ]; then
@@ -429,18 +410,6 @@ start_service()
         echo "Completed."
     fi
     rm -f ${DIR}/var/run/*.start
-}
-
-is_optional()
-{
-    daemon=$1
-    for op in ${OP_SDAEMONS}; do
-        # If the daemon is optional, don't check if it is running in background.
-        if [ X"$op" = X"$daemon" ]; then
-            return 1;
-        fi
-    done
-    return 0;
 }
 
 pstatus()

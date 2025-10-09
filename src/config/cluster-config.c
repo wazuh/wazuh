@@ -56,7 +56,6 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
     Config = (_Config *)d1;
     int i;
     int j;
-    int disable_cluster_info = 0;
 
     Config->hide_cluster_info = 0;
 
@@ -93,18 +92,18 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 merror("Detected a not allowed node type '%s'. Valid types are 'master' and 'worker'.", node[i]->content);
                 return OS_INVALID;
             }
-            os_strdup(node[i]->content, Config->node_type);
+            os_free(Config->node_type);
+            if (strcmp(node[i]->content, "client") == 0) {
+                mwarn("Deprecated node type 'client'. Using 'worker' instead.");
+                os_strdup("worker", Config->node_type);
+            } else {
+                os_strdup(node[i]->content, Config->node_type);
+            }
         } else if (!strcmp(node[i]->element, key)) {
         } else if (!strcmp(node[i]->element, socket_timeout)) {
         } else if (!strcmp(node[i]->element, connection_timeout)) {
         } else if (!strcmp(node[i]->element, disabled)) {
-            if (strcmp(node[i]->content, "yes") && strcmp(node[i]->content, "no")) {
-                merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", node[i]->content);
-                return OS_INVALID;
-            }
-            if (strcmp(node[i]->content, "yes") == 0) {
-                disable_cluster_info = 1;
-            }
+            mwarn("Detected a deprecated configuration for cluster. The 'disabled' option is not longer available.");
         } else if (!strcmp(node[i]->element, hidden)) {
             if (strcmp(node[i]->content, "yes") == 0) {
                 Config->hide_cluster_info = 1;
@@ -115,12 +114,11 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 return OS_INVALID;
             }
         } else if (!strcmp(node[i]->element, interval)) {
-            mwarn("Detected a deprecated configuration for cluster. Interval option is not longer available.");
+            mwarn("Detected a deprecated configuration for cluster. The 'interval' option is not longer available.");
         } else if (!strcmp(node[i]->element, nodes)) {
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
         } else if (!strcmp(node[i]->element, haproxy_helper)) {
-
             if (!(child = OS_GetElementsbyNode(xml, node[i]))) {
                 continue;
             }
@@ -134,7 +132,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     }
                 } else if (!strcmp(child[j]->element, frequency)) {
                 } else if (!strcmp(child[j]->element, haproxy_address)) {
-                    if (!strlen(node[i]->content)) {
+                    if (!strlen(child[j]->content)) {
                         merror("HAProxy address is missing in the configuration");
                         OS_ClearNode(child);
                         return OS_INVALID;
@@ -147,13 +145,13 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_user)) {
-                    if (!strlen(node[i]->content)) {
+                    if (!strlen(child[j]->content)) {
                         merror("HAProxy user is missing in the configuration");
                         OS_ClearNode(child);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_password)) {
-                    if (!strlen(node[i]->content)) {
+                    if (!strlen(child[j]->content)) {
                         merror("HAProxy password is missing in the configuration");
                         OS_ClearNode(child);
                         return OS_INVALID;
@@ -175,17 +173,13 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                     OS_ClearNode(child);
                     return OS_INVALID;
                 }
-
             }
-    } else {
-        merror(XML_INVELEM, node[i]->element);
-        return OS_INVALID;
+            OS_ClearNode(child);
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return OS_INVALID;
+        }
     }
 
-
-    if (disable_cluster_info)
-        Config->hide_cluster_info = 1;
-
-    }
     return 0;
 }

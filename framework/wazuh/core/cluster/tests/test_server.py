@@ -452,6 +452,7 @@ async def test_AbstractServer_check_clients_keepalive(sleep_mock):
                        return_value=logger):
                 abstract_server = AbstractServer(performance_test=1, concurrency_test=2, configuration={"test3": 3},
                                                  cluster_items={"test4": 4}, enable_ssl=True, logger=logger)
+                abstract_server.tasks_event.set()
                 tester = "check_clients_keepalive"
                 abstract_server.cluster_items = {"intervals": {"master": {"check_worker_lastkeepalive": tester}}}
                 try:

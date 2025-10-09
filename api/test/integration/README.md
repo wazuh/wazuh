@@ -56,30 +56,12 @@ finished. The execution of `api_test` is done automatically thanks to the `pytes
 In the `conftest.py` file, we can also find functions used to make the HTML report,
 configure [RBAC](#RBAC-API-integration-tests), etc.
 
-### Environment selection
-
-The Wazuh docker environment will have a different configuration depending on
-the [`pytest` mark](https://docs.pytest.org/en/6.2.x/mark.html) used to run the tests with.
-
-- If the `standalone` mark is specified, a Wazuh environment with **1 manager and 12 agents** will be built (no cluster)
-  .
-
-- If the `cluster` mark is specified, a Wazuh cluster setup with **3 managers and 12 agents** will be built.
-
-- If **no mark** is specified, a Wazuh cluster setup with **3 managers and 12 agents** will be built.
-
-The following table shows how these marks must be used with the `pytest` command and the environment they build:
+The environment is brought up automatically when running an API integration test. As seen in the table, the environment runs in **cluster** mode and tests are executed with `pytest`:
 
 | Command                          | Environment                                          |  
 |----------------------------------|------------------------------------------------------|
 | `pytest TEST_NAME`               | Wazuh cluster environment                            |  
-| `pytest -m cluster TEST_NAME`    | Wazuh cluster environment                            |
-| `pytest -m standalone TEST_NAME` | Wazuh environment with cluster disabled (standalone) | 
 
-Apart from choosing the environment to be built, the marks are also used to filter the API integration test cases. By
-default, tests without the `standalone` or `cluster` marks, will have both of them implicitly. Test cases with **only
-standalone** can only be passed in a Wazuh environment with cluster disabled and cases with **only cluster** mark can
-only be passed in a Wazuh cluster environment.
 
 Talking about [RBAC API integration tests](#RBAC-API-integration-tests), they don't have any marks, so there is no need
 to specify one when running them. If a mark is specified, no tests will be run due to the filters. In other words,
@@ -185,8 +167,6 @@ optional arguments:
                         Specify the keyword to filter tests out. Default None.
   -R {both,yes,no}, --rbac {both,yes,no}
                         Specify what to do with RBAC tests. Run everything, only RBAC ones or no RBAC. Default "both".
-  -m {both,standalone,cluster}, --mode {both,standalone,cluster}
-                        Specify where to pass API integration tests. Run tests in both environments, standalone environment or Wazuh cluster environment. Default "both".
   -i ITERATIONS, --iterations ITERATIONS
                         Specify how many times will every test be run. Default 1.
 ```

@@ -620,6 +620,9 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
 
         def __init__(self):
             self.configuration = {}
+            self.clients = {}
+            self.tasks_event = asyncio.Event()
+            self.tasks_event.set()
 
     master_handler.server = Server()
     master_handler.server.configuration["name"] = "cluster_name"
@@ -1430,6 +1433,9 @@ def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, log
     master_handler = get_master_handler()
     master_handler.logger = logging.getLogger("wazuh")
     master_handler.name = worker_name
+    master_handler.server.clients = {}
+    master_handler.server.tasks_event = asyncio.Event()
+    master_handler.server.tasks_event.set()
 
     class PendingTaskMock:
         """Auxiliary class."""
@@ -1589,6 +1595,7 @@ async def test_agent_groups_update(sleep_mock, perf_counter_mock):
 
     logger_mock = LoggerMock()
     master_class = get_master()
+    master_class.tasks_event.set()
 
     with patch("wazuh.core.cluster.master.Master.setup_task_logger",
                return_value=logger_mock) as setup_task_logger_mock:
@@ -1616,6 +1623,7 @@ async def test_master_file_status_update_ok(sleep_mock):
     """Check if the file status is properly obtained."""
 
     master_class = get_master()
+    master_class.tasks_event.set()
 
     class LoggerMock:
         """Auxiliary class."""
@@ -1673,6 +1681,7 @@ async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock
                                                 "node_type": "master"},
                                  cluster_items=cluster_items,
                                  enable_ssl=False)
+    master_class.tasks_event.set()
 
     class LoggerMock:
         """Auxiliary class."""
