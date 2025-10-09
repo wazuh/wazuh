@@ -889,9 +889,6 @@ IndexerConnector::IndexerConnector(
 
                 const auto onError = [this, &data, bulkSize, events](const std::string& error, const long statusCode)
                 {
-                    logWarn(IC_NAME, "onError callback triggered with status code: %ld", statusCode);
-                    logWarn(IC_NAME, "Error string length: %zu", error.length());
-
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
                         m_successCount = 0;
@@ -924,16 +921,10 @@ IndexerConnector::IndexerConnector(
                     }
                     else if (statusCode == HTTP_BAD_REQUEST)
                     {
-                        logWarn(IC_NAME, "HTTP_BAD_REQUEST detected - about to call handleIndexerInternalErrors");
-                        logWarn(IC_NAME, "Events size: %zu", events.size());
-
-                        logDebug2(IC_NAME, "Bad request - checking for bulk operation errors.");
 
                         // For bulk operations, a 400 can mean individual item errors
                         // Try to parse and handle internal errors
                         handleIndexerInternalErrors(error, events);
-
-                        logWarn(IC_NAME, "After handleIndexerInternalErrors call");
 
                         logWarn(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
                         throw std::runtime_error(error);
@@ -941,8 +932,7 @@ IndexerConnector::IndexerConnector(
                     else if (statusCode == HTTP_UNAUTHORIZED || statusCode == HTTP_FORBIDDEN ||
                              statusCode == HTTP_NOT_FOUND)
                     {
-                        logDebug2(IC_NAME, "Unauthorized, forbidden or not found.");
-                        logWarn(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                        handleIndexerInternalErrors(error, events);
                         throw std::runtime_error(error);
                     }
 
