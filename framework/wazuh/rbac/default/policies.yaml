@@ -253,6 +253,7 @@ default_policies:
     policies:
       resourceless:
         actions:
+          - cluster:auth
           - cluster:status
           - manager:read
           - manager:read_api_config

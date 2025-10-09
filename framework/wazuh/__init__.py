@@ -8,7 +8,7 @@ from time import strftime
 
 from wazuh.core import common
 from wazuh.core.wdb import WazuhDBConnection
-from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhInternalError
 from wazuh.core.cti import get_cti_client, CTIAuthTokenStatus
 
 """
@@ -44,7 +44,6 @@ class Wazuh:
         Initialize basic information and directories.
         :return:
         """
-
         self.version = f'v{__version__}'
         self.type = 'server'
         self.path = common.WAZUH_PATH
@@ -65,7 +64,6 @@ class Wazuh:
         return False
 
     def to_dict(self):
-
         return {'path': self.path,
                 'version': self.version,
                 'type': self.type,
@@ -101,7 +99,7 @@ class Wazuh:
 
         # CTI auth_token status
         try:
-            with get_cti_client as cti_client:
+            with get_cti_client() as cti_client:
                 self.cti_auth_token_status = cti_client.get_auth_token_status()
         except Exception:
             self.cti_auth_token_status = CTIAuthTokenStatus.PENDING
