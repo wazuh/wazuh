@@ -410,15 +410,10 @@ TEST_F(CTIStorageDBTest, KVDBDump)
 
     auto kvdbDoc = m_storage->kvdbDump("test_kvdb_id");
 
-    // kvdbDump now returns the full document with unwrapped payload
-    auto document = kvdbDoc.getJson("/document");
-    ASSERT_TRUE(document.has_value());
-    auto content = document.value().getJson("/content");
-    ASSERT_TRUE(content.has_value());
-
-    EXPECT_EQ(content->getString("/key1").value_or(""), "value1");
-    EXPECT_EQ(content->getString("/key2").value_or(""), "value2");
-    EXPECT_EQ(content->getInt("/key3").value_or(0), 123);
+    // kvdbDump now returns only the content object
+    EXPECT_EQ(kvdbDoc.getString("/key1").value_or(""), "value1");
+    EXPECT_EQ(kvdbDoc.getString("/key2").value_or(""), "value2");
+    EXPECT_EQ(kvdbDoc.getInt("/key3").value_or(0), 123);
 }
 
 TEST_F(CTIStorageDBTest, GetKVDBListByIntegration)
@@ -799,11 +794,7 @@ TEST_F(CTIStorageDBTest, DataIntegrityAfterReopen)
     EXPECT_EQ(retrievedIntegration.getString("/name").value_or(""), "test_integration");
 
     auto retrievedKvdb = m_storage->kvdbDump("test_kvdb");
-    auto retrievedDocument = retrievedKvdb.getJson("/document");
-    ASSERT_TRUE(retrievedDocument.has_value());
-    auto retrievedContent = retrievedDocument.value().getJson("/content");
-    ASSERT_TRUE(retrievedContent.has_value());
-    EXPECT_EQ(retrievedContent->getString("/key1").value_or(""), "value1");
+    EXPECT_EQ(retrievedKvdb.getString("/key1").value_or(""), "value1");
 }
 
 // Thread Safety and Concurrency Tests

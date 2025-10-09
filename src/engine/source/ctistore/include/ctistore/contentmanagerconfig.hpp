@@ -4,7 +4,6 @@
 #include <string>
 #include <tuple>
 #include <functional>
-#include <memory>
 
 #include <base/json.hpp>
 

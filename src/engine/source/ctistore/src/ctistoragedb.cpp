@@ -1391,9 +1391,21 @@ bool CTIStorageDB::Impl::kvdbExists(const std::string& kvdbName) const
 
 json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
 {
-    std::shared_lock<std::shared_mutex> lock(m_rwMutex); // Shared read lock
+    std::shared_lock<std::shared_mutex> lock(m_rwMutex);
 
-    return getByIdOrName(kvdbName, CTIStorageDB::ColumnFamily::KVDB, std::string(constants::KVDB_PREFIX), std::string(constants::NAME_KVDB_PREFIX));
+    json::Json doc = getByIdOrName(kvdbName,
+                                    CTIStorageDB::ColumnFamily::KVDB,
+                                    std::string(constants::KVDB_PREFIX),
+                                    std::string(constants::NAME_KVDB_PREFIX));
+
+    // Extract only the content from /document/content
+    auto content = doc.getJson("/document/content");
+    if (content)
+    {
+        return *content;
+    }
+
+    throw std::runtime_error("KVDB document missing content field");
 }
 
 std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
