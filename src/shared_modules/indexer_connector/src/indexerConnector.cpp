@@ -701,7 +701,10 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     }
     catch (const std::exception& e)
     {
-        logWarn(IC_NAME, "Failed to reindex for: %s. %s", m_indexName.c_str(), e.what());
+        logWarn(IC_NAME,
+                "Failed to reindex for: %s. %s. Updating mappings fallback mechanism.",
+                m_indexName.c_str(),
+                e.what());
         rollbackIndexChanges(selector, secureCommunication);
         // Fallback legacy mechanism. Create new mappings after update.
         if (!updateMappingsData.empty())
