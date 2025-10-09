@@ -38,6 +38,7 @@
 #include <streamlog/logger.hpp>
 #include <udgramsrv/udsrv.hpp>
 #include <wiconnector/windexerconnector.hpp>
+#include <ctistore/cm.hpp>
 // #include <metrics/manager.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <router/orchestrator.hpp>
@@ -233,6 +234,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<archiver::Archiver> archiver;
     std::shared_ptr<cm::sync::CMSync> cmsync;
     std::shared_ptr<httpsrv::Server> engineRemoteServer;
+    std::shared_ptr<cti::store::ContentManager> ctiStoreManager;
 
     try
     {
@@ -588,6 +590,30 @@ int main(int argc, char* argv[])
 
             // TODO: Remove this in next iterations, maybe, can be validate without winc?
             // cmsync->wazuhCoreOutput(true);
+        }
+
+        // CTI Store (initialized after CMSync to pass deploy callback)
+        {
+            const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
+            cti::store::ContentManagerConfig ctiCfg;
+            ctiCfg.basePath = baseCtiPath;
+
+            auto deployCallback = [cmsync](const std::shared_ptr<cti::store::ICMReader>& cmstore)
+            {
+                cmsync->deploy(cmstore);
+            };
+
+            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, true, deployCallback);
+            LOG_INFO("Content Manager Store initialized.");
+
+            exitHandler.add(
+                [ctiStoreManager]()
+                {
+                    if (ctiStoreManager)
+                    {
+                        ctiStoreManager->shutdown();
+                    }
+                });
         }
 
         // UDP Servers

@@ -78,6 +78,7 @@ jobs:
             src/libwazuhext.so
             src/libwazuhshared.so
             src/build/shared_modules/indexer_connector/libindexer_connector.so
+            src/build/shared_modules/content_manager/libcontent_manager.so
 
       - name: Upload rocksdb shared libraries
         uses: actions/upload-artifact@v4
@@ -132,6 +133,7 @@ jobs:
           wazuh-engine-standalone/data/store/schema/allowed-fields \
           wazuh-engine-standalone/data/kvdb \
           wazuh-engine-standalone/data/tzdb \
+          wazuh-engine-standalone/data/cti \
           wazuh-engine-standalone/schemas \
           wazuh-engine-standalone/logs \
           wazuh-engine-standalone/sockets
@@ -139,6 +141,7 @@ jobs:
         touch wazuh-engine-standalone/default-security-policy/.keep
         touch wazuh-engine-standalone/data/kvdb/.keep
         touch wazuh-engine-standalone/data/tzdb/.keep
+        touch wazuh-engine-standalone/data/cti/.keep
         touch wazuh-engine-standalone/logs/.keep
         touch wazuh-engine-standalone/sockets/.keep
         cp -r ${{ env.ENGINE_DIR }}/ruleset/schemas/engine-schema.json wazuh-engine-standalone/data/store/schema/engine-schema/0
@@ -155,6 +158,7 @@ jobs:
         cp ${{github.workspace}}/src/external/rocksdb/build/librocksdb.so.8 wazuh-engine-standalone/bin/lib
         cp ${{github.workspace}}/src/libwazuhext.so wazuh-engine-standalone/bin/lib
         cp ${{github.workspace}}/src/build/shared_modules/indexer_connector/libindexer_connector.so wazuh-engine-standalone/bin/lib
+        cp ${{github.workspace}}/src/build/shared_modules/content_manager/libcontent_manager.so wazuh-engine-standalone/bin/lib
         cp ${{github.workspace}}/src/build/engine/wazuh-engine wazuh-engine-standalone/bin/
         chmod +x wazuh-engine-standalone/bin/wazuh-engine
         cd ..
