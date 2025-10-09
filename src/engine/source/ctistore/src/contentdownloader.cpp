@@ -250,7 +250,7 @@ bool ContentDownloader::start()
 
     try
     {
-        LOG_INFO("Starting CTI Store ContentDownloader");
+        LOG_DEBUG("Starting CTI Store ContentDownloader");
 
         // Validate config before proceeding to register creation.
         m_config.validate();
@@ -264,12 +264,12 @@ bool ContentDownloader::start()
         m_isRunning = true;
         m_shouldStop = false;
 
-        LOG_INFO("CTI Store ContentDownloader started successfully");
+        LOG_DEBUG("CTI Store ContentDownloader started successfully");
         return true;
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR("Failed to start ContentDownloader: {}", e.what());
+        LOG_ERROR("Failed to start CTI Store ContentDownloader: {}", e.what());
         return false;
     }
 }
@@ -284,14 +284,14 @@ void ContentDownloader::stop()
         return;
     }
 
-    LOG_INFO("Stopping CTI Store ContentDownloader");
+    LOG_DEBUG("Stopping CTI Store ContentDownloader");
 
     m_shouldStop = true;
     m_contentRegister.reset();
 
     m_isRunning = false;
 
-    LOG_INFO("CTI Store ContentDownloader stopped");
+    LOG_DEBUG("CTI Store ContentDownloader stopped");
 }
 
 bool ContentDownloader::isRunning() const

@@ -604,7 +604,7 @@ int main(int argc, char* argv[])
             };
 
             ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, true, deployCallback);
-            LOG_INFO("CTI Store initialized with CMSync deploy callback.");
+            LOG_INFO("Content Manager Store initialized.");
 
             exitHandler.add(
                 [ctiStoreManager]()

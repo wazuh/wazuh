@@ -92,7 +92,7 @@ struct ContentManagerConfig
     // When true, the cleanup stage purges BOTH the downloads and contents folders
     // after the orchestration completes. This removes the compressed artifact and the
     // processed output files, leaving a clean state.
-    bool deleteDownloadedContent {false};
+    bool deleteDownloadedContent {true};
 
     // Base URL from which content will be downloaded (CTI API, snapshot, remote
     // file, etc.). For cti-offset and cti-snapshot points to the CTI context/consumer

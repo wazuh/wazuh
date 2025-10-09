@@ -56,12 +56,12 @@ ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStar
         const std::string assetPath = m_config.assetStorePath.empty() ? m_config.databasePath : m_config.assetStorePath;
 
         m_storage = std::make_unique<CTIStorageDB>(assetPath, true);
-        LOG_INFO("ContentManager: CTIStorageDB opened at '{}' (open={})", assetPath, m_storage->isOpen());
+        LOG_DEBUG("ContentManager: CTIStorageDB opened at '{}' (open={})", assetPath, m_storage->isOpen());
     }
     catch (const std::exception& e)
     {
         LOG_ERROR("Failed initializing CTIStorageDB: {}", e.what());
-        throw; // propagate - storage is mandatory for manager operation now
+        throw;
     }
 
     auto processingCallback = [this](const std::string& message) -> FileProcessingResult
@@ -397,7 +397,7 @@ void ContentManager::shutdown()
         try
         {
             m_storage->shutdown();
-            LOG_INFO("CTI storage database closed successfully");
+            LOG_DEBUG("CTI storage database closed successfully");
         }
         catch (const std::exception& e)
         {
@@ -479,7 +479,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 {
     try
     {
-        LOG_TRACE("CTI: processing downloaded content message: {}", message);
+        LOG_DEBUG("CTI: processing downloaded content message: {}", message);
 
         json::Json parsedMessage(message.c_str());
 
@@ -520,7 +520,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
                         continue;
                     }
 
-                    LOG_TRACE("CTI offsets: processing file {}", path);
+                    LOG_DEBUG("CTI offsets: processing file {}", path);
 
                     auto readFile = [&](const std::string& p) -> std::string
                     {
@@ -754,7 +754,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
 
             const auto path = json::Json(pathsArray->at(0)).getString().value_or("");
 
-            LOG_INFO("CTI snapshot: processing consolidated file {}", path);
+            LOG_DEBUG("CTI snapshot: processing consolidated file {}", path);
 
             // TODO: clear existing persisted data (when RocksDB integration merged)
 
@@ -844,7 +844,7 @@ FileProcessingResult ContentManager::processDownloadedContent(const std::string&
             throw std::runtime_error("Unknown message type: " + type);
         }
 
-        LOG_INFO("CTI processed up to offset {} (type='{}')", currentOffset, type);
+        LOG_DEBUG("CTI processed up to offset {} (type='{}')", currentOffset, type);
 
         // Notify CMSync if content was successfully deployed
         if (success && m_deployCallback)

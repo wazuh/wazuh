@@ -706,7 +706,7 @@ void CTIStorageDB::Impl::shutdown()
         return; // Already closed
     }
 
-    LOG_INFO("Initiating controlled shutdown of CTIStorageDB");
+    LOG_DEBUG("Initiating controlled shutdown of CTIStorageDB");
 
     // Flush all column families to ensure all data is persisted
     rocksdb::FlushOptions flushOptions;
@@ -754,7 +754,7 @@ void CTIStorageDB::Impl::shutdown()
     // Release the database handle
     m_db.reset();
 
-    LOG_INFO("CTIStorageDB shutdown completed successfully");
+    LOG_DEBUG("CTIStorageDB shutdown completed successfully");
 }
 
 std::string CTIStorageDB::Impl::extractIdFromJson(const json::Json& doc) const
@@ -1719,7 +1719,7 @@ bool CTIStorageDB::Impl::deleteAsset(const std::string& resourceId)
         throw std::runtime_error("Failed to delete asset: " + status.ToString());
     }
 
-    LOG_INFO("Successfully deleted asset type='{}' resource_id='{}'", assetType, resourceId);
+    LOG_DEBUG("Successfully deleted asset type='{}' resource_id='{}'", assetType, resourceId);
     return true;
 }
 
@@ -1875,7 +1875,7 @@ bool CTIStorageDB::Impl::updateAsset(const std::string& resourceId, const json::
         updateRelationshipIndexes(doc);
     }
 
-    LOG_INFO("Successfully updated asset type='{}' resource_id='{}' with {} operations",
+    LOG_DEBUG("Successfully updated asset type='{}' resource_id='{}' with {} operations",
              assetType, resourceId, opsArray->size());
     return true;
 }
