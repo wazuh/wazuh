@@ -5,13 +5,15 @@
 
 import os
 import sys
-import json
 from unittest.mock import patch, MagicMock, AsyncMock
-from wazuh.core.exception import WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhError
 
 import pytest
 
 DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data", "test_integrations_order")
+
+def failed_error_codes(result):
+    return {err.code for err in result.failed_items.keys()}
 
 with patch('wazuh.core.common.getgrnam'):
     with patch('wazuh.core.common.getpwnam'):
@@ -26,14 +28,13 @@ with patch('wazuh.core.common.getgrnam'):
         from wazuh.core.engine.models.integrations_order import IntegrationsOrder, IntegrationInfo
         from wazuh.core.engine.models.policies import PolicyType
         from wazuh.core.results import AffectedItemsWazuhResult
-        from wazuh.rbac.utils import RESOURCES_CACHE
 
 INTEGRATION_INFO_1 = IntegrationInfo(id="apache", name="Apache Integration")
-INTEGRATION_INFO_2 = IntegrationInfo(id="cisco", name="Cisco Integration")
+INTEGRRATION_INFO_2 = IntegrationInfo(id="cisco", name="Cisco Integration")
 INTEGRATION_INFO_3 = IntegrationInfo(id="nginx", name="Nginx Integration")
 
-INTEGRATIONS_ORDER_1 = IntegrationsOrder(order=[INTEGRATION_INFO_1, INTEGRATION_INFO_2])
-INTEGRATIONS_ORDER_2 = IntegrationsOrder(order=[INTEGRATION_INFO_2, INTEGRATION_INFO_3, INTEGRATION_INFO_1])
+INTEGRATIONS_ORDER_1 = IntegrationsOrder(order=[INTEGRATION_INFO_1, INTEGRRATION_INFO_2])
+INTEGRATIONS_ORDER_2 = IntegrationsOrder(order=[INTEGRRATION_INFO_2, INTEGRATION_INFO_3, INTEGRATION_INFO_1])
 INTEGRATIONS_ORDER_EMPTY = IntegrationsOrder(order=[])
 
 MOCK_ENGINE_RESPONSE_SUCCESS = {
@@ -82,7 +83,8 @@ async def test_create_integrations_order(mock_remove, mock_exists, mock_generate
     mock_generate_path.return_value = f"/path/to/{expected_filename}"
 
     mock_client = MagicMock()
-    mock_client.integrations_order.create_order.return_value = {'status': 'OK'}
+    mock_client.integrations_order = MagicMock()
+    mock_client.integrations_order.create_order = AsyncMock(return_value={'status': 'OK'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -112,6 +114,7 @@ async def test_create_integrations_order_file_exists_error(mock_remove, mock_exi
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 0
     assert len(result.failed_items) == 1
+    assert 9010 in failed_error_codes(result)
     mock_save_file.assert_not_called()
 
 
@@ -125,19 +128,20 @@ async def test_create_integrations_order_engine_error(mock_remove, mock_exists, 
                                                     mock_save_file, mock_get_client):
     """Test create_integrations_order with engine error."""
     mock_client = MagicMock()
-    mock_client.integrations_order.create_order.return_value = {'status': 'error', 'error': 'Engine error'}
+    mock_client.integrations_order = MagicMock()
+    mock_client.integrations_order.create_order = AsyncMock(return_value={'status': 'error', 'error': 'Engine error'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
     mock_context_manager.__aexit__.return_value = None
     mock_get_client.return_value = mock_context_manager
 
-    with patch('wazuh.integrations_order.validate_response_or_raise', side_effect=WazuhError(8011)):
+    with patch('wazuh.integrations_order.validate_response_or_raise', side_effect=WazuhError(9012)):
         result = await create_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
-
         assert isinstance(result, AffectedItemsWazuhResult)
         assert result.total_affected_items == 0
         assert len(result.failed_items) == 1
+        assert 9012 in failed_error_codes(result)
 
 
 @pytest.mark.asyncio
@@ -160,7 +164,8 @@ async def test_get_integrations_order(mock_get_client, policy_type, mock_respons
         Expected number of integrations returned.
     """
     mock_client = MagicMock()
-    mock_client.integrations_order.get_order.return_value = mock_response
+    mock_client.integrations_order = MagicMock()
+    mock_client.integrations_order.get_order = AsyncMock(return_value=mock_response)
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -182,7 +187,8 @@ async def test_get_integrations_order(mock_get_client, policy_type, mock_respons
 async def test_get_integrations_order_engine_error(mock_get_client):
     """Test get_integrations_order with engine error."""
     mock_client = MagicMock()
-    mock_client.integrations_order.get_order.return_value = {'status': 'error', 'error': 'Engine error'}
+    mock_client.integrations_order = MagicMock()
+    mock_client.integrations_order.get_order = AsyncMock(return_value={'status': 'error', 'error': 'Engine error'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -221,7 +227,8 @@ async def test_delete_integrations_order(mock_safe_move, mock_remove, mock_full_
     mock_generate_path.return_value = file_path
 
     mock_client = MagicMock()
-    mock_client.integrations_order.delete_order.return_value = {'status': 'OK'}
+    mock_client.integrations_order = MagicMock()
+    mock_client.integrations_order.delete_order = AsyncMock(return_value={'status': 'OK'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -234,7 +241,10 @@ async def test_delete_integrations_order(mock_safe_move, mock_remove, mock_full_
     assert result.total_affected_items == 1
     assert result.affected_items == [expected_filename]
     mock_full_copy.assert_called_once_with(file_path, f"{file_path}.backup")
-    mock_remove.assert_called_once_with(file_path)
+    # remove called for original file and backup file cleanup
+    assert mock_remove.call_count == 2
+    assert mock_remove.call_args_list[0].args[0] == file_path
+    assert mock_remove.call_args_list[1].args[0] == f"{file_path}.backup"
     mock_client.integrations_order.delete_order.assert_called_once()
 
 
@@ -248,6 +258,7 @@ async def test_delete_integrations_order_file_not_exists(mock_exists, mock_gener
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 0
     assert len(result.failed_items) == 1
+    assert 9011 in failed_error_codes(result)
 
 
 @pytest.mark.asyncio
@@ -260,6 +271,7 @@ async def test_delete_integrations_order_backup_error(mock_safe_move, mock_full_
                                                     mock_generate_path, mock_get_client):
     """Test delete_integrations_order with backup error."""
     mock_client = MagicMock()
+    mock_client.integrations_order = MagicMock()
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -271,6 +283,7 @@ async def test_delete_integrations_order_backup_error(mock_safe_move, mock_full_
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 0
     assert len(result.failed_items) == 1
+    assert 1019 in failed_error_codes(result)
 
 
 @pytest.mark.asyncio
@@ -284,6 +297,7 @@ async def test_delete_integrations_order_remove_error(mock_safe_move, mock_remov
                                                     mock_generate_path, mock_get_client):
     """Test delete_integrations_order with remove error."""
     mock_client = MagicMock()
+    mock_client.integrations_order = MagicMock()
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -295,6 +309,7 @@ async def test_delete_integrations_order_remove_error(mock_safe_move, mock_remov
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 0
     assert len(result.failed_items) == 1
+    assert 1907 in failed_error_codes(result)
 
 
 @pytest.mark.asyncio
@@ -308,19 +323,20 @@ async def test_delete_integrations_order_engine_error(mock_safe_move, mock_remov
                                                     mock_generate_path, mock_get_client):
     """Test delete_integrations_order with engine error."""
     mock_client = MagicMock()
-    mock_client.integrations_order.delete_order.return_value = {'status': 'error', 'error': 'Delete failed'}
+    mock_client.integrations_order = MagicMock()
+    mock_client.integrations_order.delete_order = AsyncMock(return_value={'status': 'error', 'error': 'Delete failed'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
     mock_context_manager.__aexit__.return_value = None
     mock_get_client.return_value = mock_context_manager
 
-    with patch('wazuh.integrations_order.validate_response_or_raise', side_effect=WazuhError(8012)):
+    with patch('wazuh.integrations_order.validate_response_or_raise', side_effect=WazuhError(9013)):
         result = await delete_integrations_order(PolicyType.PRODUCTION)
-
         assert isinstance(result, AffectedItemsWazuhResult)
         assert result.total_affected_items == 0
         assert len(result.failed_items) == 1
+        assert 9013 in failed_error_codes(result)
 
 
 @pytest.mark.asyncio
@@ -333,7 +349,8 @@ async def test_create_integrations_order_with_empty_order(mock_remove, mock_exis
                                                         mock_save_file, mock_get_client):
     """Test create_integrations_order with empty integrations list."""
     mock_client = MagicMock()
-    mock_client.integrations_order.create_order.return_value = {'status': 'OK'}
+    mock_client.integrations_order = MagicMock()
+    mock_client.integrations_order.create_order = AsyncMock(return_value={'status': 'OK'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -352,7 +369,8 @@ async def test_create_integrations_order_with_empty_order(mock_remove, mock_exis
 async def test_get_integrations_order_empty_response(mock_get_client):
     """Test get_integrations_order with empty response from engine."""
     mock_client = MagicMock()
-    mock_client.integrations_order.get_order.return_value = MOCK_ENGINE_RESPONSE_EMPTY
+    mock_client.integrations_order = MagicMock()
+    mock_client.integrations_order.get_order = AsyncMock(return_value=MOCK_ENGINE_RESPONSE_EMPTY)
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client

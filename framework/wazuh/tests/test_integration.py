@@ -111,8 +111,9 @@ async def test_create_integration(mock_remove, mock_exists, mock_generate_path, 
     mock_generate_path.return_value = f"/path/to/{expected_filename}"
 
     mock_client = MagicMock()
-    mock_client.catalog.validate_resource.return_value = {'status': 'OK'}
-    mock_client.content.create_resource.return_value = {'status': 'OK'}
+    # Async engine methods
+    mock_client.catalog.validate_resource = AsyncMock(return_value={'status': 'OK'})
+    mock_client.content.create_resource = AsyncMock(return_value={'status': 'OK'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -140,7 +141,7 @@ async def test_create_integration_validation_error(mock_remove, mock_exists, moc
                                                  mock_generate_filename, mock_save_file, mock_get_client):
     """Test create_integration with validation error."""
     mock_client = MagicMock()
-    mock_client.catalog.validate_resource.return_value = {'status': 'error', 'error': 'Validation failed'}
+    mock_client.catalog.validate_resource = AsyncMock(return_value={'status': 'error', 'error': 'Validation failed'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -166,8 +167,8 @@ async def test_create_integration_creation_error(mock_remove, mock_exists, mock_
                                                mock_generate_filename, mock_save_file, mock_get_client):
     """Test create_integration with creation error."""
     mock_client = MagicMock()
-    mock_client.catalog.validate_resource.return_value = {'status': 'OK'}
-    mock_client.content.create_resource.return_value = {'status': 'error', 'error': 'Creation failed'}
+    mock_client.catalog.validate_resource = AsyncMock(return_value={'status': 'OK'})
+    mock_client.content.create_resource = AsyncMock(return_value={'status': 'error', 'error': 'Creation failed'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -208,7 +209,7 @@ async def test_get_integrations(mock_process_array, mock_get_client,
         Expected number of integrations returned.
     """
     mock_client = MagicMock()
-    mock_client.content.get_resources.return_value = MOCK_ENGINE_RESPONSE_SUCCESS
+    mock_client.content.get_multiple_resources = AsyncMock(return_value=MOCK_ENGINE_RESPONSE_SUCCESS)
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -220,11 +221,11 @@ async def test_get_integrations(mock_process_array, mock_get_client,
         'totalItems': expected_count
     }
 
-    result = await get_integrations(names, search, status, PolicyType.PRODUCTION)
+    result = await get_integrations(PolicyType.PRODUCTION, names=[names], search=search, status=status)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == expected_count
-    mock_client.content.get_resources.assert_called_once()
+    mock_client.content.get_multiple_resources.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -232,7 +233,7 @@ async def test_get_integrations(mock_process_array, mock_get_client,
 async def test_get_integrations_engine_error(mock_get_client):
     """Test get_integrations with engine error."""
     mock_client = MagicMock()
-    mock_client.content.get_resources.return_value = {'status': 'error', 'error': 'Engine error'}
+    mock_client.content.get_multiple_resources = AsyncMock(return_value={'status': 'error', 'error': 'Engine error'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -241,7 +242,7 @@ async def test_get_integrations_engine_error(mock_get_client):
 
     with patch('wazuh.integration.validate_response_or_raise', side_effect=WazuhError(8007)):
         with pytest.raises(WazuhError) as exc_info:
-            await get_integrations("test", None, None, PolicyType.PRODUCTION)
+            await get_integrations(PolicyType.PRODUCTION, names=["test"], search=None, status=None)
         assert exc_info.value.code == 8007
 
 
@@ -251,7 +252,7 @@ async def test_get_integrations_engine_error(mock_get_client):
 async def test_get_integrations_empty_result(mock_process_array, mock_get_client):
     """Test get_integrations with empty result."""
     mock_client = MagicMock()
-    mock_client.content.get_resources.return_value = MOCK_ENGINE_RESPONSE_EMPTY
+    mock_client.content.get_multiple_resources = AsyncMock(return_value=MOCK_ENGINE_RESPONSE_EMPTY)
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -260,7 +261,7 @@ async def test_get_integrations_empty_result(mock_process_array, mock_get_client
 
     mock_process_array.return_value = {'items': [], 'totalItems': 0}
 
-    result = await get_integrations("nonexistent", None, None, PolicyType.PRODUCTION)
+    result = await get_integrations(PolicyType.PRODUCTION, names=["nonexistent"], search=None, status=None)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 0
@@ -300,8 +301,8 @@ async def test_update_integration(mock_safe_move, mock_full_copy, mock_remove, m
     mock_generate_path.return_value = file_path
 
     mock_client = MagicMock()
-    mock_client.catalog.validate_resource.return_value = {'status': 'OK'}
-    mock_client.content.update_resource.return_value = {'status': 'OK'}
+    mock_client.catalog.validate_resource = AsyncMock(return_value={'status': 'OK'})
+    mock_client.content.update_resource = AsyncMock(return_value={'status': 'OK'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -314,10 +315,14 @@ async def test_update_integration(mock_safe_move, mock_full_copy, mock_remove, m
     assert result.total_affected_items == 1
     assert result.affected_items == [filename]
     mock_full_copy.assert_called_once_with(file_path, f"{file_path}.backup")
-    mock_remove.assert_called_once_with(file_path)
     mock_save_file.assert_called_once()
     mock_client.catalog.validate_resource.assert_called_once()
     mock_client.content.update_resource.assert_called_once()
+
+    # Adjust remove assertions: one for original file, one for backup cleanup
+    remove_calls = [call_args.args[0] for call_args in mock_remove.call_args_list]
+    assert file_path in remove_calls  # original removal
+    assert f"{file_path}.backup" in remove_calls  # backup cleanup
 
 
 @pytest.mark.asyncio
@@ -348,6 +353,8 @@ async def test_update_integration_backup_error(mock_safe_move, mock_full_copy, m
     """Test update_integration with backup error."""
     # Mock the engine client
     mock_client = MagicMock()
+    mock_client.catalog.validate_resource = AsyncMock(return_value={'status': 'OK'})
+    mock_client.content.update_resource = AsyncMock(return_value={'status': 'OK'})
 
     # Mock the async context manager
     mock_context_manager = AsyncMock()
@@ -377,6 +384,8 @@ async def test_update_integration_remove_error(mock_safe_move, mock_full_copy, m
     """Test update_integration with remove error."""
     # Mock the engine client
     mock_client = MagicMock()
+    mock_client.catalog.validate_resource = AsyncMock(return_value={'status': 'OK'})
+    mock_client.content.update_resource = AsyncMock(return_value={'status': 'OK'})
 
     # Mock the async context manager
     mock_context_manager = AsyncMock()
@@ -417,7 +426,7 @@ async def test_delete_integration(mock_safe_move, mock_remove, mock_full_copy, m
     mock_generate_path.side_effect = [f"/path/to/{name}.json" for name in names]
 
     mock_client = MagicMock()
-    mock_client.content.delete_resource.return_value = {'status': 'OK'}
+    mock_client.content.delete_resource = AsyncMock(return_value={'status': 'OK'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -430,7 +439,7 @@ async def test_delete_integration(mock_safe_move, mock_remove, mock_full_copy, m
     assert result.total_affected_items == expected_success_count
     assert len(result.affected_items) == expected_success_count
     assert mock_full_copy.call_count == expected_success_count
-    assert mock_remove.call_count == expected_success_count
+    assert mock_remove.call_count == expected_success_count * 2
     mock_client.content.delete_resource.assert_called()
 
 
@@ -457,6 +466,7 @@ async def test_delete_integration_backup_error(mock_safe_move, mock_full_copy, m
     """Test delete_integration with backup error."""
     # Mock the engine client
     mock_client = MagicMock()
+    mock_client.content.delete_resource = AsyncMock(return_value={'status': 'OK'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -481,6 +491,7 @@ async def test_delete_integration_remove_error(mock_safe_move, mock_remove, mock
                                              mock_generate_path, mock_get_client):
     """Test delete_integration with remove error."""
     mock_client = MagicMock()
+    mock_client.content.delete_resource = AsyncMock(return_value={'status': 'OK'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -505,7 +516,7 @@ async def test_delete_integration_engine_error(mock_safe_move, mock_remove, mock
                                              mock_generate_path, mock_get_client):
     """Test delete_integration with engine error."""
     mock_client = MagicMock()
-    mock_client.content.delete_resource.return_value = {'status': 'error', 'error': 'Delete failed'}
+    mock_client.content.delete_resource = AsyncMock(return_value={'status': 'error', 'error': 'Delete failed'})
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -532,7 +543,7 @@ async def test_delete_integration_mixed_results(mock_exists, mock_generate_path)
 
     with patch('wazuh.integration.get_engine_client') as mock_get_client:
         mock_client = MagicMock()
-        mock_client.content.delete_resource.return_value = {'status': 'OK'}
+        mock_client.content.delete_resource = AsyncMock(return_value={'status': 'OK'})
 
         mock_context_manager = AsyncMock()
         mock_context_manager.__aenter__.return_value = mock_client
@@ -557,7 +568,7 @@ async def test_delete_integration_mixed_results(mock_exists, mock_generate_path)
 async def test_get_integrations_with_filters(mock_process_array, mock_get_client):
     """Test get_integrations with various filter combinations."""
     mock_client = MagicMock()
-    mock_client.content.get_resources.return_value = MOCK_ENGINE_RESPONSE_SUCCESS
+    mock_client.content.get_multiple_resources = AsyncMock(return_value=MOCK_ENGINE_RESPONSE_SUCCESS)
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -569,7 +580,7 @@ async def test_get_integrations_with_filters(mock_process_array, mock_get_client
         'totalItems': 1
     }
 
-    result = await get_integrations("*", None, Status.ENABLED, PolicyType.PRODUCTION)
+    result = await get_integrations(PolicyType.PRODUCTION, names=["*"], search=None, status=Status.ENABLED)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 1
@@ -587,7 +598,7 @@ async def test_get_integrations_with_filters(mock_process_array, mock_get_client
 async def test_get_integrations_with_search(mock_process_array, mock_get_client):
     """Test get_integrations with search functionality."""
     mock_client = MagicMock()
-    mock_client.content.get_resources.return_value = MOCK_ENGINE_RESPONSE_SUCCESS
+    mock_client.content.get_multiple_resources = AsyncMock(return_value=MOCK_ENGINE_RESPONSE_SUCCESS)
 
     mock_context_manager = AsyncMock()
     mock_context_manager.__aenter__.return_value = mock_client
@@ -599,7 +610,7 @@ async def test_get_integrations_with_search(mock_process_array, mock_get_client)
         'totalItems': 1
     }
 
-    result = await get_integrations("*", "apache", None, PolicyType.PRODUCTION)
+    result = await get_integrations(PolicyType.PRODUCTION, names=["*"], search="apache", status=None)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 1

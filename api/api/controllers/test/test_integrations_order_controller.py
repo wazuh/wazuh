@@ -23,6 +23,11 @@ with patch('wazuh.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
 
+TEST_ORDER_BODY = [
+    {"id": 1, "name": "apache"},
+    {"id": 2, "name": "cisco"}
+]
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["integrations_order_controller"], indirect=True)
@@ -31,14 +36,18 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.integrations_order_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.integrations_order_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.integrations_order_controller.Body.validate_content_type')
-@patch('api.controllers.integrations_order_controller.IntegrationsOrderModel.get_kwargs', return_value={'order': []})
+@patch('api.controllers.integrations_order_controller.IntegrationsOrderModel')
 @patch('api.controllers.integrations_order_controller.IntegrationsOrder', return_value=MagicMock())
-async def test_create_integrations_order(mock_model, mock_get_kwargs, mock_validate, mock_exc,
+async def test_create_integrations_order(mock_order_model, mock_model_cls, mock_validate, mock_exc,
                                          mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'create_integrations_order' works as expected."""
-    result = await create_integrations_order(type_='policy')
+    mock_instance = MagicMock()
+    mock_instance.order = [MagicMock(id=o['id'], name=o['name']) for o in TEST_ORDER_BODY]
+    mock_model_cls.return_value = mock_instance
+
+    result = await create_integrations_order(body=TEST_ORDER_BODY, type_='policy')
     f_kwargs = {
-        'order': mock_model.return_value,
+        'order': mock_order_model.return_value,
         'policy_type': 'policy'
     }
     mock_dapi.assert_called_once_with(
