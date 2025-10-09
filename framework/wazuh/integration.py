@@ -50,7 +50,6 @@ async def create_integration(integration: Integration, policy_type: PolicyType) 
     filename = generate_asset_filename(integration.id)
     file_contents_json = json.dumps(asdict(integration))
     integration_path_file = generate_integrations_file_path(filename, policy_type)
-    logger.info(integration_path_file)
 
 
     try:
