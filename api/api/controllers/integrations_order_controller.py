@@ -13,11 +13,11 @@ from api.models.base_model_ import Body
 from api.models.integrations_order_model import IntegrationsOrderModel
 from wazuh import integrations_order
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.engine.models.integrations_order import IntegrationsOrder
+from wazuh.core.engine.models.integrations_order import IntegrationsOrder, IntegrationInfo
 
 logger = logging.getLogger('wazuh-api')
 
-async def create_integrations_order(type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def create_integrations_order(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Create a new integrations order.
 
     Parameters
@@ -35,8 +35,8 @@ async def create_integrations_order(type_: str, pretty: bool = False, wait_for_c
         API response.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    body_dict = await IntegrationsOrderModel.get_kwargs(request)
-    model = IntegrationsOrder(**body_dict)
+    orders_create_model = IntegrationsOrderModel(**body)
+    model = IntegrationsOrder(order=[IntegrationInfo(id=order.id, name=order.name) for order in orders_create_model.order])
 
     f_kwargs = {
         'order': model,

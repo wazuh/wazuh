@@ -18,7 +18,7 @@ from wazuh.core.engine.models.integration import Integration
 
 logger = logging.getLogger('wazuh-api')
 
-async def create_integration(type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def create_integration(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Create a new integration.
 
     Parameters
@@ -36,8 +36,17 @@ async def create_integration(type_: str, pretty: bool = False, wait_for_complete
         API response.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    body_dict = await IntegrationCreateModel.get_kwargs(request)
-    model = Integration(**body_dict)
+    create_model = IntegrationCreateModel(**body)
+    model = Integration(
+        type=create_model.type,
+        id=create_model.id,
+        name=create_model.name,
+        documentation=create_model.documentation,
+        description=create_model.description,
+        status=create_model.status,
+        kvdbs=create_model.kvdbs,
+        decoders=create_model.decoders
+    )
 
     f_kwargs = {
         'integration': model,
@@ -101,7 +110,7 @@ async def get_integrations(type_: str, integrations_list: List[str], status: Opt
 
     return json_response(data, pretty=pretty)
 
-async def update_integration(type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def update_integration(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Update an existing integration.
 
     Parameters
@@ -119,8 +128,17 @@ async def update_integration(type_: str, pretty: bool = False, wait_for_complete
         API response.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    body_dict = await IntegrationCreateModel.get_kwargs(request)
-    model = Integration(**body_dict)
+    create_model = IntegrationCreateModel(**body)
+    model = Integration(
+        type=create_model.type,
+        id=create_model.id,
+        name=create_model.name,
+        documentation=create_model.documentation,
+        description=create_model.description,
+        status=create_model.status,
+        kvdbs=create_model.kvdbs,
+        decoders=create_model.decoders
+    )
 
     f_kwargs = {
         'integration': model,

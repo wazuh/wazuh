@@ -50,6 +50,7 @@ async def create_integration(integration: Integration, policy_type: PolicyType) 
     filename = generate_asset_filename(integration.id)
     file_contents_json = json.dumps(asdict(integration))
     integration_path_file = generate_integrations_file_path(filename, policy_type)
+    logger.info(integration_path_file)
 
 
     try:
@@ -59,7 +60,7 @@ async def create_integration(integration: Integration, policy_type: PolicyType) 
         async with get_engine_client() as client:
 
             # Validate contents
-            validation_results = client.catalog.validate_resource(
+            validation_results = await client.catalog.validate_resource(
                 name=integration.name,
                 format=DEFAULT_INTEGRATION_FORMAT,
                 content=file_contents_json,
@@ -69,10 +70,10 @@ async def create_integration(integration: Integration, policy_type: PolicyType) 
             validate_response_or_raise(validation_results, 9002)
 
             # Create the new integration
-            creation_results = client.content.create_resource(
+            creation_results = await client.content.create_resource(
+                resource=integration,
                 type=ResourceType.INTEGRATION,
                 format=DEFAULT_INTEGRATION_FORMAT,
-                content=file_contents_json,
                 policy_type=policy_type
             )
 
@@ -81,19 +82,19 @@ async def create_integration(integration: Integration, policy_type: PolicyType) 
         result.affected_items.append(filename)
         result.total_affected_items = len(result.affected_items)
     except WazuhError as exc:
+        if exists(integration_path_file):
+            remove(integration_path_file)
         result.add_failed_item(id_=filename, error=exc)
-    finally:
-        exists(integration_path_file) and remove(integration_path_file)
 
     return result
 
 @expose_resources(actions=['integrations:read'], resources=["*:*:*"])
-async def get_integrations(names: str, search: Optional[str], status: Optional[Status], policy_type:PolicyType) -> AffectedItemsWazuhResult:
+async def get_integrations(names: List[str], search: Optional[str], status: Optional[Status], policy_type:PolicyType) -> AffectedItemsWazuhResult:
     """Retrieve integration resources.
 
     Parameters
     ----------
-    names : str
+    names : List[str]
         Names of the integrations to retrieve.
     search : Optional[str]
         Search string to filter integrations.
@@ -117,9 +118,9 @@ async def get_integrations(names: str, search: Optional[str], status: Optional[S
                                       all_msg='All selected integrations were returned')
 
     async with get_engine_client() as client:
-        integrations_response = client.content.get_resources(
+        integrations_response = client.content.get_multiple_resources(
             type=ResourceType.INTEGRATION,
-            name_list=names,
+            name=names,
             policy_type=policy_type
         )
 
@@ -187,7 +188,7 @@ async def update_integration(integration: Integration, policy_type: PolicyType):
         # Upload to Engine
         async with get_engine_client() as client:
             # Validate contents
-            validation_results = client.catalog.validate_resource(
+            validation_results = await client.catalog.validate_resource(
                 name=integration.name,
                 format=DEFAULT_INTEGRATION_FORMAT,
                 content=file_contents_json,
@@ -197,9 +198,10 @@ async def update_integration(integration: Integration, policy_type: PolicyType):
             validate_response_or_raise(validation_results, 9002)
 
             # Update contents
-            update_results = client.content.update_resource(
-                name=integration.name,
-                content=file_contents_json,
+            update_results = await client.content.update_resource(
+                resource=integration,
+                type=ResourceType.INTEGRATION,
+                format=DEFAULT_INTEGRATION_FORMAT,
                 policy_type=policy_type
             )
 
@@ -207,9 +209,13 @@ async def update_integration(integration: Integration, policy_type: PolicyType):
 
         result.affected_items.append(filename)
     except WazuhError as exc:
+        if backup_file and exists(backup_file):
+            safe_move(backup_file, integration_file_path)
         result.add_failed_item(id_=filename, error=exc)
-    finally:
-        exists(backup_file) and safe_move(backup_file, integration_file_path)
+    else:
+        if backup_file and exists(backup_file):
+            remove(backup_file)
+
 
     result.total_affected_items = len(result.affected_items)
     return result
@@ -262,7 +268,7 @@ async def delete_integration(names: List[str], policy_type: PolicyType):
 
             # Delete asset
             async with get_engine_client() as client:
-                delete_results = client.content.delete_resource(
+                delete_results = await client.content.delete_resource(
                     name=name,
                     policy_type=policy_type
                 )
@@ -271,9 +277,12 @@ async def delete_integration(names: List[str], policy_type: PolicyType):
 
             result.affected_items.append(name)
         except WazuhError as exc:
+            if backup_file and exists(backup_file):
+                safe_move(backup_file, integration_file_path)
             result.add_failed_item(id_=name, error=exc)
-        finally:
-            exists(backup_file) and safe_move(backup_file, integration_file_path)
+        else:
+            if backup_file and exists(backup_file):
+                remove(backup_file)
 
     result.total_affected_items = len(result.affected_items)
     return result
