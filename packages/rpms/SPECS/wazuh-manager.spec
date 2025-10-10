@@ -696,6 +696,8 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-keystore
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc
 %attr(660, root, wazuh) %ghost %{_localstatedir}/etc/ossec.conf
+%attr(640, root, wazuh) %ghost %{_localstatedir}/etc/sslmanager.cert
+%attr(640, root, wazuh) %ghost %{_localstatedir}/etc/sslmanager.key
 %attr(640, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
