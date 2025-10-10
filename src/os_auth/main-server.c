@@ -820,7 +820,7 @@ static int handle_ssl_handshake(struct client *client) {
             mdebug2("SSL handshake in progress for socket=%d", client->socket);
             return 0;
         } else {
-            merror("SSL handshake failed for socket=%d: %s", client->socket, ERR_error_string(ERR_get_error(), NULL));
+            mdebug2("SSL handshake failed for socket=%d: %s", client->socket, ERR_error_string(ERR_get_error(), NULL));
             return -1;
         }
     }
@@ -974,7 +974,7 @@ void* run_remote_server(__attribute__((unused)) void *arg) {
                         continue;
                     }
 
-                    minfo("New connection from %s", new_client->ip);
+                    mdebug2("New connection from %s", new_client->ip);
 
                     new_client->ssl = SSL_new(ctx);
                     if (!new_client->ssl) {
