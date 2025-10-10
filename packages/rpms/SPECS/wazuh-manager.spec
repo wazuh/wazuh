@@ -344,6 +344,7 @@ if [ $1 = 1 ]; then
 
   # Generating ossec.conf file
   %{_localstatedir}/packages_files/manager_installation_scripts/gen_ossec.sh conf manager ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} %{_localstatedir} > %{_localstatedir}/etc/ossec.conf
+  chown root:wazuh %{_localstatedir}/etc/ossec.conf
 
   touch %{_localstatedir}/logs/active-responses.log
   touch %{_localstatedir}/logs/integrations.log
@@ -489,6 +490,9 @@ if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&
     semodule -e wazuh
   fi
 fi
+
+# Restore ossec.conf permissions after upgrading
+chmod 0660 %{_localstatedir}/etc/ossec.conf
 
 # Delete the installation files used to configure the manager
 rm -rf %{_localstatedir}/packages_files
@@ -691,7 +695,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh) %{_localstatedir}/bin/rbac_control
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-keystore
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc
-%attr(660, root, wazuh) %config(noreplace) %{_localstatedir}/etc/ossec.conf
+%attr(660, root, wazuh) %ghost %{_localstatedir}/etc/ossec.conf
 %attr(640, wazuh, wazuh) %config(noreplace) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh) %{_localstatedir}/etc/internal_options*
 %attr(640, root, wazuh) %config(noreplace) %{_localstatedir}/etc/local_internal_options.conf
