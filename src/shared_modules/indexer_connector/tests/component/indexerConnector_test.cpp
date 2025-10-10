@@ -87,19 +87,24 @@ static const auto C_IDX {2};
 static const auto C_PORT {7777};
 static const auto C_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(C_PORT)};
 
-// This struct keeps track of the log messages received during the tests.
+/**
+ * @brief Keeps track of the log messages received during the tests.
+ *
+ * This structure stores information about various error types and log counts
+ * encountered during indexer connector component tests.
+ */
 struct LogTestState
 {
-    std::atomic<int> errorLogsCount {0};                 //< Number of error logs received.
-    std::atomic<bool> foundMapperError {false};          //< Found mapper parsing exception.
-    std::atomic<bool> foundVersionConflictError {false}; //< Found version conflict exception.
-    std::atomic<bool> foundParseError {false};           //< Found parse error.
-    std::atomic<bool> foundUnknownReason {false};        //< Found unknown reason.
-    std::atomic<bool> foundUnknownType {false};          //< Found unknown type.
-    std::atomic<bool> dbRepaired {true};                 //< Database was repaired.
+    std::atomic<int> errorLogsCount {0};                 ///< Number of error logs received.
+    std::atomic<bool> foundMapperError {false};          ///< Found mapper parsing exception.
+    std::atomic<bool> foundVersionConflictError {false}; ///< Found version conflict exception.
+    std::atomic<bool> foundParseError {false};           ///< Found parse error.
+    std::atomic<bool> foundUnknownReason {false};        ///< Found unknown reason.
+    std::atomic<bool> foundUnknownType {false};          ///< Found unknown type.
+    std::atomic<bool> dbRepaired {true};                 ///< Database was repaired.
 
     /**
-     * @brief Reset the log test state.
+     * @brief Reset the log test state to default values.
      */
     void reset()
     {
