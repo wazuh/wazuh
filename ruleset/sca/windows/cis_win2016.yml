@@ -149,13 +149,13 @@ checks:
     impact: "All network users will need to authenticate before they can access shared resources. If you disable the Guest account and the Network Access: Sharing and Security Model option is set to Guest Only, network logons, such as those performed by the Microsoft Network Server (SMB Service), will fail. This policy setting should have little impact on most organizations because it is the default setting in Microsoft Windows 2000, Windows XP, and Windows Server™ 2003."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Guest account status."
     compliance:
-     - cis: ["2.3.1.2"]
-     - cis_csc_v8: ["4.7"]
-     - cis_csc_v7: ["16.8"]
-     - iso_27001-2013: ["A.9.2.1"]
-     - pci_dss_v3.2.1: ["2.1", "2.1.1"]
-     - pci_dss_v4.0: ["2.2.2", "2.3.1"]
-     - soc_2: ["CC6.3"]
+      - cis: ["2.3.1.2"]
+      - cis_csc_v8: ["4.7"]
+      - cis_csc_v7: ["16.8"]
+      - iso_27001-2013: ["A.9.2.1"]
+      - pci_dss_v3.2.1: ["2.1", "2.1.1"]
+      - pci_dss_v4.0: ["2.2.2", "2.3.1"]
+      - soc_2: ["CC6.3"]
     condition: all
     rules:
       - 'c:powershell -NoProfile -Command "[bool](Get-CimInstance -Query ''SELECT * FROM Win32_UserAccount WHERE LocalAccount = TRUE AND SID LIKE ''''S-1-5-21-%-501'''''' | Where-Object -Property Disabled)" -> r:True'
@@ -665,11 +665,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition: all
+    condition: any
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword -> 1'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword -> 0'
 
   ############################################
   # 2.3.9 Microsoft network server
@@ -766,9 +766,9 @@ checks:
       - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
-      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> SMBServerNameHardeningLevel'
-      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> r:^1$|^2$'
 
   ##################################
   # 2.3.10 Network access
