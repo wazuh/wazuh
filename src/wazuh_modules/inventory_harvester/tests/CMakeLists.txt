@@ -40,6 +40,7 @@ target_link_libraries(inventory_harvester_utest
     optimized gtest_main
     optimized gmock_main
     crypto
+    indexer_connector
 )
 
 target_include_directories(inventory_harvester_utest PRIVATE ${TEST_SRC_DIR} ${TEST_MOCK_DIR} ${OPENSSL_DIR})

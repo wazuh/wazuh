@@ -15,6 +15,7 @@
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
+#include "simdjson.h"
 #include <filesystem>
 #include <fstream>
 #include <grp.h>
@@ -31,6 +32,10 @@ constexpr auto ELEMENTS_PER_BULK {25000};
 constexpr auto MINIMAL_ELEMENTS_PER_BULK {5};
 
 constexpr auto HTTP_BAD_REQUEST {400};
+constexpr auto HTTP_UNAUTHORIZED {401};
+constexpr auto HTTP_FORBIDDEN {403};
+constexpr auto HTTP_NOT_FOUND {404};
+
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
@@ -197,6 +202,171 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append("\n");
     bulkData.append(data);
     bulkData.append("\n");
+}
+
+void IndexerConnector::handleIndexerInternalErrors(const std::string& response, const std::vector<std::string>& events)
+{
+
+    simdjson::ondemand::parser parser;
+    simdjson::padded_string paddedResponse(response);
+
+    simdjson::ondemand::document doc;
+    auto parseError = parser.iterate(paddedResponse).get(doc);
+    if (parseError)
+    {
+        logDebug2("Failed to parse the indexer response: %s", response.c_str());
+        return;
+    }
+
+    // Check for request-level error format first
+    auto errorFieldResult = doc["error"];
+    if (!errorFieldResult.error())
+    {
+        simdjson::ondemand::value errorValue;
+        auto getError = errorFieldResult.get(errorValue);
+        if (!getError)
+        {
+            handleRequestLevelError(errorValue);
+            return;
+        }
+    }
+
+    // Check for bulk API response format
+    bool hasErrors = false;
+    auto errorsField = doc["errors"];
+    if (!errorsField.error())
+    {
+        auto boolResult = errorsField.get_bool();
+        if (!boolResult.error())
+        {
+            hasErrors = boolResult.value();
+        }
+    }
+
+    if (!hasErrors)
+    {
+        logDebug2(IC_NAME, "Response: %s", response.c_str());
+        return;
+    }
+
+    // Handle bulk operation errors
+    handleBulkOperationErrors(doc, events);
+}
+
+void IndexerConnector::handleRequestLevelError(simdjson::ondemand::value& errorObj)
+{
+    std::string errorType = "Unknown type";
+    std::string errorReason = "Unknown reason";
+
+    // Get type
+    auto typeField = errorObj["type"];
+    if (!typeField.error())
+    {
+        std::string_view tempType;
+        auto typeError = typeField.get_string(tempType);
+        if (!typeError)
+        {
+            errorType = std::string(tempType);
+        }
+    }
+
+    // Get reason
+    auto reasonField = errorObj["reason"];
+    if (!reasonField.error())
+    {
+        std::string_view tempReason;
+        auto reasonError = reasonField.get_string(tempReason);
+        if (!reasonError)
+        {
+            errorReason = std::string(tempReason);
+        }
+    }
+
+    logWarn(IC_NAME, "Indexer request failed - type: '%s', reason: '%s'", errorType.c_str(), errorReason.c_str());
+}
+
+void IndexerConnector::handleBulkOperationErrors(simdjson::ondemand::document& doc,
+                                                 const std::vector<std::string>& events)
+{
+    // Check if "items" array exists
+    simdjson::ondemand::array items;
+    auto itemsError = doc["items"].get_array().get(items);
+    if (itemsError)
+    {
+        logDebug2(IC_NAME, "Bulk response missing 'items' array");
+        return;
+    }
+
+    // Verify event count matches response items
+    size_t itemCount = 0;
+    for (auto item : items)
+    {
+        ++itemCount;
+    }
+
+    if (events.size() != itemCount)
+    {
+        logDebug2(IC_NAME, "Event count mismatch - sent: %zu, received: %zu", events.size(), itemCount);
+        return;
+    }
+
+    // Re-iterate to process each item (simdjson arrays are single-pass)
+    auto items2 = doc["items"].get_array();
+    size_t index = 0;
+
+    for (auto itemValue : items2)
+    {
+        auto indexObj = itemValue["index"];
+        if (indexObj.error())
+        {
+            ++index;
+            continue;
+        }
+
+        auto errorObj = indexObj["error"];
+        if (errorObj.error())
+        {
+            // No error for this item - success
+            ++index;
+            continue;
+        }
+
+        // Extract error details
+        std::string errorType = "Unknown type";
+        std::string errorReason = "Unknown reason";
+
+        // Get type
+        auto typeField = errorObj["type"];
+        if (!typeField.error())
+        {
+            std::string_view tempType;
+            auto typeError = typeField.get_string(tempType);
+            if (!typeError)
+            {
+                errorType = std::string(tempType);
+            }
+        }
+
+        // Get reason
+        auto reasonField = errorObj["reason"];
+        if (!reasonField.error())
+        {
+            std::string_view tempReason;
+            auto reasonError = reasonField.get_string(tempReason);
+            if (!reasonError)
+            {
+                errorReason = std::string(tempReason);
+            }
+        }
+
+        logWarn(IC_NAME,
+                "Document indexing failed - type: '%s', reason: '%s', event: %s",
+                errorType.c_str(),
+                errorReason.c_str(),
+                events.at(index).c_str());
+
+        ++index;
+    }
 }
 
 bool IndexerConnector::abuseControl(const std::string& agentId)
@@ -577,6 +747,9 @@ IndexerConnector::IndexerConnector(
             // Accumulator for data to be sent to the indexer via bulk requests.
             std::string bulkData;
 
+            // Tracking events for error handling
+            std::vector<std::string> processedEvents;
+
             // Accumulator for data to be sent to the indexer via query requests.
             nlohmann::json queryData;
 
@@ -618,6 +791,7 @@ IndexerConnector::IndexerConnector(
                             if (!noIndex)
                             {
                                 builderBulkDelete(bulkData, key, m_indexName);
+                                processedEvents.push_back(key);
                             }
 
                             m_db->delete_(key);
@@ -631,6 +805,7 @@ IndexerConnector::IndexerConnector(
                         }
 
                         m_db->delete_(id);
+                        processedEvents.push_back(id);
                     }
                 }
                 else if (operation.compare("DELETED_BY_QUERY") == 0)
@@ -660,20 +835,23 @@ IndexerConnector::IndexerConnector(
                     if (!noIndex)
                     {
                         builderBulkIndex(bulkData, id, m_indexName, dataString);
+                        processedEvents.push_back(id);
                     }
                     m_db->put(id, dataString);
                 }
             }
 
             // Send data to the indexer to be processed.
-            const auto processData = [this, &secureCommunication](const std::string& data, const std::string& url)
+            const auto processData = [this, &secureCommunication](const std::string& data,
+                                                                  const std::string& url,
+                                                                  const std::vector<std::string>& events)
             {
                 const auto bulkSize = this->m_dispatcher->bulkSize();
                 constexpr auto SUCCESS_COUNT_TO_INCREASE_BULK_SIZE {5};
 
-                const auto onSuccess = [this, bulkSize](const std::string& response)
+                const auto onSuccess = [this, bulkSize, events](const std::string& response)
                 {
-                    logDebug2(IC_NAME, "Response: %s", response.c_str());
+                    handleIndexerInternalErrors(response, events);
 
                     // If the request was successful and the current bulk size is less than ELEMENTS_PER_BULK, increase
                     // the bulk size if the success count is SUCCESS_COUNT_TO_INCREASE_BULK_SIZE
@@ -709,7 +887,7 @@ IndexerConnector::IndexerConnector(
                     }
                 };
 
-                const auto onError = [this, &data, bulkSize](const std::string& error, const long statusCode)
+                const auto onError = [this, &data, bulkSize, events](const std::string& error, const long statusCode)
                 {
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
@@ -741,6 +919,23 @@ IndexerConnector::IndexerConnector(
                                                      "indexer.");
                         }
                     }
+                    else if (statusCode == HTTP_BAD_REQUEST)
+                    {
+
+                        // For bulk operations, a 400 can mean individual item errors
+                        // Try to parse and handle internal errors
+                        handleIndexerInternalErrors(error, events);
+
+                        logWarn(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                        throw std::runtime_error(error);
+                    }
+                    else if (statusCode == HTTP_UNAUTHORIZED || statusCode == HTTP_FORBIDDEN ||
+                             statusCode == HTTP_NOT_FOUND)
+                    {
+                        handleIndexerInternalErrors(error, events);
+                        throw std::runtime_error(error);
+                    }
+
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
                         logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
@@ -769,13 +964,13 @@ IndexerConnector::IndexerConnector(
             if (!bulkData.empty())
             {
                 const auto url = serverUrl + "/_bulk?refresh=wait_for";
-                processData(bulkData, url);
+                processData(bulkData, url, processedEvents);
             }
 
             if (!queryData.empty())
             {
                 const auto url = serverUrl + "/" + m_indexName + "/_delete_by_query";
-                processData(queryData.dump(), url);
+                processData(queryData.dump(), url, processedEvents);
             }
         },
         DATABASE_BASE_PATH + m_indexName,
