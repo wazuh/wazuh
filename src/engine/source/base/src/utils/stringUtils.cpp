@@ -228,38 +228,4 @@ bool haveUpperCaseCharacters(const std::string& str)
         std::begin(str), std::end(str), [](std::string::value_type character) { return std::isupper(character); });
 }
 
-std::string normalizeStr(std::string_view input)
-{
-    std::string normalized;
-    normalized.reserve(input.size());
-
-    bool lastWasSeparator {false};
-
-    for (const unsigned char ch : input)
-    {
-        if (std::isalnum(ch))
-        {
-            normalized.push_back(static_cast<char>(ch));
-            lastWasSeparator = false;
-        }
-        else if (!lastWasSeparator)
-        {
-            normalized.push_back('_');
-            lastWasSeparator = true;
-        }
-    }
-
-    while (!normalized.empty() && normalized.front() == '_')
-    {
-        normalized.erase(normalized.begin());
-    }
-
-    while (!normalized.empty() && normalized.back() == '_')
-    {
-        normalized.pop_back();
-    }
-
-    return normalized;
-}
-
 } // namespace base::utils::string

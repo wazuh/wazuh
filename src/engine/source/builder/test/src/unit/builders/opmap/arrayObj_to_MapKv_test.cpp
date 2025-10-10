@@ -6,11 +6,17 @@ using namespace builder::builders;
 
 namespace
 {
+void expectValidatorAccess(const BuildersMocks& mocks)
+{
+    EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AnyNumber());
+}
+
 auto builderArrayRefNotInSchema(const std::string& refName)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillOnce(testing::Return(false));
+        expectValidatorAccess(mocks);
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(false));
         return None {};
     };
 }
@@ -19,8 +25,9 @@ auto builderArrayRefNotArray(const std::string& refName)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillOnce(testing::Return(false));
+        expectValidatorAccess(mocks);
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillRepeatedly(testing::Return(false));
         return None {};
     };
 }
@@ -29,9 +36,11 @@ auto builderArrayRefWrongElement(const std::string& refName)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, getJsonType(DotPath(refName))).WillOnce(testing::Return(json::Json::Type::String));
+        expectValidatorAccess(mocks);
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks.validator,
+                    getJsonType(DotPath(refName))).WillRepeatedly(testing::Return(json::Json::Type::String));
         return None {};
     };
 }
@@ -40,7 +49,8 @@ auto opArrayRefNotInSchemaSuccess(const std::string& refName, const json::Json& 
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillOnce(testing::Return(false));
+        expectValidatorAccess(mocks);
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(false));
         return expectedJson;
     };
 }
@@ -49,7 +59,8 @@ auto opArrayRefNotInSchemaFailure(const std::string& refName)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillOnce(testing::Return(false));
+        expectValidatorAccess(mocks);
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(false));
         return None {};
     };
 }
@@ -58,8 +69,9 @@ auto opArrayRefNotArray(const std::string& refName)
 {
     return [=](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillOnce(testing::Return(false));
+        expectValidatorAccess(mocks);
+        EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillRepeatedly(testing::Return(false));
         return None {};
     };
 }
@@ -81,22 +93,22 @@ INSTANTIATE_TEST_SUITE_P(
              FAILURE()),
         MapT({makeRef("ExtendedProperties"), makeValue(R"(1)"), makeValue(R"("/Value")")},
              opBuilderHelperArrayObjToMapkv,
-             FAILURE()),
+             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
         MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"(1)")},
              opBuilderHelperArrayObjToMapkv,
-             FAILURE()),
+             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
         MapT({makeRef("ExtendedProperties"), makeValue(R"("")"), makeValue(R"("/Value")")},
              opBuilderHelperArrayObjToMapkv,
-             FAILURE()),
+             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
         MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("")")},
              opBuilderHelperArrayObjToMapkv,
-             FAILURE()),
+             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
         MapT({makeRef("ExtendedProperties"), makeValue(R"("Name")"), makeValue(R"("/Value")")},
              opBuilderHelperArrayObjToMapkv,
-             FAILURE()),
+             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
         MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("Value")")},
              opBuilderHelperArrayObjToMapkv,
-             FAILURE()),
+             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
         MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
              opBuilderHelperArrayObjToMapkv,
              FAILURE(builderArrayRefNotArray("ExtendedProperties"))),
@@ -116,6 +128,55 @@ INSTANTIATE_TEST_SUITE_P(
             R"({
                     "ExtendedProperties": [
                         {"Name": "UserAgent", "Value": "Mozilla/5.0"},
+                        {"Name": "Age", "Value": 42},
+                        {"Name": "KeepMeSignedIn", "Value": true},
+                        {"Name": "OptionalField", "Value": null},
+                        {"Name": "Roles", "Value": ["admin", "user"]},
+                        {"Name": "Meta", "Value": {"os": "linux", "arch": "x64"}}
+                    ]
+                })",
+            opBuilderHelperArrayObjToMapkv,
+            {makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+            SUCCESS(opArrayRefNotInSchemaSuccess(
+                "ExtendedProperties",
+                json::Json(R"({
+                    "useragent": "Mozilla/5.0",
+                    "age": 42,
+                    "keepmesignedin": true,
+                    "optionalfield": null,
+                    "roles": ["admin", "user"],
+                    "meta": {"os": "linux", "arch": "x64"}
+                })")))),
+        MapT(
+            R"({
+                    "ExtendedProperties": [
+                        {"Name": "UserAgent", "Value": "Mozilla/5.0"},
+                        {"Name": "Age", "Value": 42},
+                        {"Name": "KeepMeSignedIn", "Value": true},
+                        {"Name": "OptionalField", "Value": null},
+                        {"Name": "Roles", "Value": ["admin", "user"]},
+                        {"Name": "Meta", "Value": {"os": "linux", "arch": "x64"}}
+                    ]
+                })",
+            opBuilderHelperArrayObjToMapkv,
+            {makeRef("ExtendedProperties"),
+             makeValue(R"("/Name")"),
+             makeValue(R"("/Value")"),
+             makeValue(R"(true)")},
+            SUCCESS(opArrayRefNotInSchemaSuccess(
+                "ExtendedProperties",
+                json::Json(R"({
+                    "UserAgent": "Mozilla/5.0",
+                    "Age": 42,
+                    "KeepMeSignedIn": true,
+                    "OptionalField": null,
+                    "Roles": ["admin", "user"],
+                    "Meta": {"os": "linux", "arch": "x64"}
+                })")))),
+        MapT(
+            R"({
+                    "ExtendedProperties": [
+                        {"Name": "UserAgent", "Value": "Mozilla/5.0"},
                         {"Name": "Request.Type", "Value": "OAuth2:Authorize"},
                         {"Name": "Included Updated Properties", "Value": "RequiredResourceAccess"},
                         {"Name": "tilde~value", "Value": "data"},
@@ -127,11 +188,11 @@ INSTANTIATE_TEST_SUITE_P(
             SUCCESS(opArrayRefNotInSchemaSuccess(
                 "ExtendedProperties",
                 json::Json(R"({
-                    "UserAgent": "Mozilla/5.0",
-                    "Request_Type": "OAuth2:Authorize",
-                    "Included_Updated_Properties": "RequiredResourceAccess",
-                    "tilde_value": "data",
-                    "SCL_Reject": "False"
+                    "useragent": "Mozilla/5.0",
+                    "request_type": "OAuth2:Authorize",
+                    "included_updated_properties": "RequiredResourceAccess",
+                    "tildevalue": "data",
+                    "scl_reject": "False"
                 })")))),
         MapT(
             R"({
@@ -145,8 +206,8 @@ INSTANTIATE_TEST_SUITE_P(
             SUCCESS(opArrayRefNotInSchemaSuccess(
                 "ModifiedProperties",
                 json::Json(R"({
-                    "RequiredResourceAccess": { "NewValue": "new-data" },
-                    "Included_Updated_Properties": { "NewValue": "RequiredResourceAccess" }
+                    "requiredresourceaccess": "new-data",
+                    "included_updated_properties": "RequiredResourceAccess"
                 })")))),
         MapT(
             R"({
@@ -160,7 +221,7 @@ INSTANTIATE_TEST_SUITE_P(
             SUCCESS(opArrayRefNotInSchemaSuccess(
                 "Parameters",
                 json::Json(R"({
-                    "Other": { "Value": "42" }
+                    "other": "42"
                 })")))),
         MapT(
             R"({
@@ -192,6 +253,6 @@ INSTANTIATE_TEST_SUITE_P(
                 })",
             opBuilderHelperArrayObjToMapkv,
             {makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-            FAILURE(opArrayRefNotArray("ExtendedProperties")))),
+            FAILURE(opArrayRefNotInSchemaFailure("ExtendedProperties")))),
     testNameFormatter<MapOperationTest>("ArrayObjToMapKv"));
 } // namespace mapoperatestest

@@ -1,7 +1,9 @@
 #include "opBuilderHelperMap.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <chrono>
+#include <iterator>
 #include <numeric>
 #include <optional>
 #include <string>
@@ -14,8 +16,8 @@
 #include <openssl/sha.h>
 #include <re2/re2.h>
 
-#include <base/utils/communityId.hpp>
 #include <base/error.hpp>
+#include <base/utils/communityId.hpp>
 #include <base/utils/ipUtils.hpp>
 #include <base/utils/stringUtils.hpp>
 
@@ -1230,7 +1232,7 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
 // field: +map_from_array_obj_nv/$<array_reference>
 MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    builder::builders::utils::assertSize(opArgs, 3);
+    builder::builders::utils::assertSize(opArgs, 3, 4);
     builder::builders::utils::assertRef(opArgs, 0);
 
     const auto arrayRef = *std::static_pointer_cast<Reference>(opArgs[0]);
@@ -1276,11 +1278,63 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
         throw std::runtime_error("Value path cannot be an empty string and must start with '/' (JSON Pointer)");
     }
 
+    bool skipSerializer = false;
+    if (opArgs.size() == 4)
+    {
+        builder::builders::utils::assertValue(opArgs, 3);
+        const auto valueFlag = std::static_pointer_cast<Value>(opArgs[3])->value();
+        if (!valueFlag.isBool())
+        {
+            throw std::runtime_error(
+                fmt::format("Expected 'boolean' parameter for skipSerializer but got type '{}'", valueFlag.typeName()));
+        }
+        skipSerializer = valueFlag.getBool().value();
+    }
+
     const std::string traceName = buildCtx->context().opName;
     const std::string successTrace {fmt::format(TRACE_SUCCESS, traceName)};
     const std::string failureArrNotFound = fmt::format(TRACE_REFERENCE_NOT_FOUND, traceName, arrayRef.dotPath());
     const std::string failureNotArray =
         fmt::format("{}array", fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, traceName, arrayRef.dotPath()));
+
+    const auto normalizeStr = [](std::string_view input) -> std::string
+    {
+        std::string out;
+        std::transform(input.begin(),
+                       input.end(),
+                       std::back_inserter(out),
+                       [](unsigned char ch) -> char
+                       {
+                           ch = static_cast<unsigned char>(std::tolower(ch));
+                           if (std::isalnum(ch))
+                           {
+                               return static_cast<char>(ch);
+                           }
+
+                           if (ch == ' ' || ch == '/' || ch == '.' || ch == '-' || ch == '\\' || ch == ':')
+                           {
+                               return '_';
+                           }
+
+                           return '\0';
+                       });
+
+        out.erase(std::remove(out.begin(), out.end(), '\0'), out.end());
+
+        out.erase(std::unique(out.begin(), out.end(), [](char a, char b) { return a == '_' && b == '_'; }), out.end());
+
+        if (!out.empty() && out.front() == '_')
+        {
+            out.erase(out.begin());
+        }
+
+        if (!out.empty() && out.back() == '_')
+        {
+            out.pop_back();
+        }
+
+        return out;
+    };
 
     return [=, runState = buildCtx->runState(), arrayPath = arrayRef.jsonPath()](base::ConstEvent event) -> MapResult
     {
@@ -1296,10 +1350,50 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
 
         json::Json result;
         result.setObject();
-        const auto insertsOrError = result.setObjectFromArray(arrayOpt.value(), keyName, fieldValue);
-        if (base::isError(insertsOrError))
+
+        size_t inserts {0};
+
+        try
         {
-            const auto failureTrace = fmt::format("[{}] -> Failure: {}", traceName, base::getError(insertsOrError).message);
+            for (const auto& element : arrayOpt.value())
+            {
+                if (!element.isObject())
+                {
+                    continue;
+                }
+
+                const auto keyOpt = element.getString(keyName);
+                if (!keyOpt.has_value() || keyOpt->empty())
+                {
+                    continue;
+                }
+
+                const auto valueOpt = fieldValue == "/" ? element.getJson() : element.getJson(fieldValue);
+                if (!valueOpt.has_value())
+                {
+                    continue;
+                }
+
+                const auto normalizedKey = skipSerializer ? *keyOpt : normalizeStr(*keyOpt);
+                if (normalizedKey.empty())
+                {
+                    continue;
+                }
+
+                result.set(fmt::format("/{}", normalizedKey), valueOpt.value());
+                ++inserts;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            const auto failureTrace =
+                fmt::format("[{}] -> Failure: Failed to build object from array: {}", traceName, e.what());
+            RETURN_FAILURE(runState, json::Json {}, failureTrace);
+        }
+
+        if (inserts == 0)
+        {
+            const auto failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
             RETURN_FAILURE(runState, json::Json {}, failureTrace);
         }
 

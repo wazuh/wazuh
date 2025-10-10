@@ -200,21 +200,6 @@ public:
      */
     static std::string formatJsonPath(std::string_view dotPath, bool skipDot = false);
 
-    /**
-     * @brief Populate this JSON object from an array of objects using key/value pointers.
-     *
-     * Keys are normalized to alphanumeric identifiers separated by underscores. Elements without valid key/value pairs
-     * are ignored. Returns an error if no entries are inserted or if an underlying JSON operation fails.
-     *
-     * @param sourceArray Source array containing objects to process.
-     * @param keyPointer JSON pointer to the key string inside each element.
-     * @param valuePointer JSON pointer to the value inside each element. Use "/" to copy the full object.
-     * @return base::RespOrError<size_t> Number of inserted entries or an error.
-     */
-    base::OptError setObjectFromArray(const std::vector<Json>& sourceArray,
-                                      std::string_view keyPointer,
-                                      std::string_view valuePointer);
-
     /************************************************************************************/
     // Runtime functionality, used only by our operations.
     // TODO: Move runtime functionality to separate class.
