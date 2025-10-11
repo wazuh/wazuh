@@ -96,7 +96,10 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     // Verify events were reported (updateChanges was called internally)
     EXPECT_GE(m_reportedEvents.size(), static_cast<size_t>(1));

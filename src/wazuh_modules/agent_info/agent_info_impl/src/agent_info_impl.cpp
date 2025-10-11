@@ -96,14 +96,15 @@ AgentInfoImpl::~AgentInfoImpl()
     m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
-void AgentInfoImpl::start(int interval)
+void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
 {
     m_logFunction(LOG_INFO, "AgentInfo module started with interval: " + std::to_string(interval) + " seconds.");
 
     std::unique_lock<std::mutex> lock(m_mutex);
     m_stopped = false;
 
-    while (!m_stopped)
+    // Run at least once
+    do
     {
         lock.unlock();
 
@@ -118,9 +119,17 @@ void AgentInfoImpl::start(int interval)
 
         lock.lock();
 
-        // Wait for the interval or until stop is signaled
-        m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped; });
+        // If no shouldContinue function provided, use default behavior (continue until stopped)
+        bool shouldLoop = shouldContinue ? shouldContinue() : !m_stopped;
+
+        if (shouldLoop && !m_stopped)
+        {
+            // Wait for the interval or until stop is signaled
+            m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped; });
+        }
+
     }
+    while (!m_stopped && (shouldContinue ? shouldContinue() : true));
 
     m_logFunction(LOG_INFO, "AgentInfo module loop ended.");
 }

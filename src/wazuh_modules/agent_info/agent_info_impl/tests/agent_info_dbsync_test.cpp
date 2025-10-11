@@ -97,7 +97,10 @@ TEST_F(AgentInfoDBSyncIntegrationTest, CallbacksAreOptional)
     EXPECT_NE(m_agentInfo, nullptr);
 
     // Should not crash when starting
-    EXPECT_NO_THROW(m_agentInfo->start());
+    EXPECT_NO_THROW(m_agentInfo->start(1, []()
+    {
+        return false;
+    }));
 }
 
 TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
