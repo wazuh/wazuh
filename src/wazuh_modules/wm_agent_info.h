@@ -15,15 +15,25 @@
 #include "../os_xml/os_xml.h"
 #include "wmodules_def.h"
 #include <cJSON.h>
+#include <stdint.h>
 
 #define WM_AGENT_INFO_LOGTAG ARGV0 ":agent-info"
 #define AGENT_INFO_WM_NAME   "agent-info"
 #define AGENT_INFO_LIB_NAME  "agent_info"
 
+typedef struct wm_agent_info_sync_flags_t
+{
+    unsigned int enable_synchronization : 1;
+    uint32_t sync_interval;
+    uint32_t sync_response_timeout;
+    long sync_max_eps;
+} wm_agent_info_sync_flags_t;
+
 typedef struct wm_agent_info_t
 {
     int enabled;
     int interval; // Update interval in seconds
+    wm_agent_info_sync_flags_t sync;
 } wm_agent_info_t;
 
 extern const wm_context WM_AGENT_INFO_CONTEXT;
