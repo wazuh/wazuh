@@ -18,6 +18,8 @@ helper_type: map
 skipped:
   - success_cases
 
+is_variadic: false
+
 arguments:
   source_array:
     type: array
@@ -38,16 +40,29 @@ output:
 
 test:
   - arguments:
-      source_array: '$.ExtendedProperties'
-      key_pointer: '/Name'
-      value_pointer: '/Value'
+      source_array:
+        source: reference
+        value:
+          - Name: UserAgent
+            Value: Mozilla/5.0
+          - Name: Request.Type
+            Value: OAuth2:Authorize
+          - Name: Included Updated Properties
+            Value: RequiredResourceAccess
+      key_pointer:
+        source: value
+        value: '/Name'
+      value_pointer:
+        source: value
+        value: '/Value'
+      skip_serializer:
+        source: value
+        value: false
     should_pass: true
-    expected: |
-      {
-        "useragent": "Mozilla/5.0",
-        "request_type": "OAuth2:Authorize",
-        "included_updated_properties": "RequiredResourceAccess"
-      }
+    expected:
+      useragent: Mozilla/5.0
+      request_type: OAuth2:Authorize
+      included_updated_properties: RequiredResourceAccess
     description: Normalizes keys and extracts values using `/Value` pointer
     context: |
       {
@@ -59,19 +74,43 @@ test:
       }
 
   - arguments:
-      source_array: '$.ExtendedProperties'
-      key_pointer: '/Name'
-      value_pointer: '/Value'
-      skip_serializer: true
+      source_array:
+        source: reference
+        value:
+          - Name: UserAgent
+            Value: Mozilla/5.0
+          - Name: KeepMeSignedIn
+            Value: true
+          - Name: OptionalField
+            Value: null
+          - Name: Roles
+            Value:
+              - admin
+              - user
+          - Name: Meta
+            Value:
+              os: linux
+              arch: x64
+      key_pointer:
+        source: value
+        value: '/Name'
+      value_pointer:
+        source: value
+        value: '/Value'
+      skip_serializer:
+        source: value
+        value: true
     should_pass: true
-    expected: |
-      {
-        "UserAgent": "Mozilla/5.0",
-        "KeepMeSignedIn": true,
-        "OptionalField": null,
-        "Roles": ["admin", "user"],
-        "Meta": {"os": "linux", "arch": "x64"}
-      }
+    expected:
+      UserAgent: Mozilla/5.0
+      KeepMeSignedIn: true
+      OptionalField: null
+      Roles:
+        - admin
+        - user
+      Meta:
+        os: linux
+        arch: x64
     description: Keeps keys verbatim when `skipSerializer` is true
     context: |
       {
@@ -85,9 +124,18 @@ test:
       }
 
   - arguments:
-      source_array: '$.ExtendedProperties'
-      key_pointer: '/Name'
-      value_pointer: '/Value'
+      source_array:
+        source: reference
+        value: null
+      key_pointer:
+        source: value
+        value: '/Name'
+      value_pointer:
+        source: value
+        value: '/Value'
+      skip_serializer:
+        source: value
+        value: false
     should_pass: false
     description: Fails when array does not exist in the context
     context: |

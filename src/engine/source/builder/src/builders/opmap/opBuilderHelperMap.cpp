@@ -1296,6 +1296,7 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
     const std::string failureArrNotFound = fmt::format(TRACE_REFERENCE_NOT_FOUND, traceName, arrayRef.dotPath());
     const std::string failureNotArray =
         fmt::format("{}array", fmt::format(TRACE_REFERENCE_TYPE_IS_NOT, traceName, arrayRef.dotPath()));
+    const std::string failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
 
     const auto normalizeStr = [](std::string_view input) -> std::string
     {
@@ -1393,7 +1394,7 @@ MapOp opBuilderHelperArrayObjToMapkv(const std::vector<OpArg>& opArgs, const std
 
         if (inserts == 0)
         {
-            const auto failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
+            //const auto failureTrace = fmt::format("[{}] -> Failure: Result map is empty", traceName);
             RETURN_FAILURE(runState, json::Json {}, failureTrace);
         }
 
