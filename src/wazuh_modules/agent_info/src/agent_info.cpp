@@ -96,6 +96,7 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
         {
             g_log_callback(LOG_ERROR, "agent_info_config is null", "agent-info");
         }
+
         return;
     }
 
