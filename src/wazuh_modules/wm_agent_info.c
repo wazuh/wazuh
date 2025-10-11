@@ -23,6 +23,12 @@
 static const char* XML_ENABLED = "enabled";
 static const char* XML_INTERVAL = "interval";
 
+#ifdef WIN32
+#define AGENT_INFO_SYNC_PROTOCOL_DB_PATH "queue\\agent_info\\db\\agent_info_sync.db"
+#else
+#define AGENT_INFO_SYNC_PROTOCOL_DB_PATH "queue/agent_info/db/agent_info_sync.db"
+#endif
+
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
 #define static
@@ -45,7 +51,7 @@ static int g_agent_info_queue = 0;  // Output queue file descriptor
 static int g_shutting_down = 0;
 
 // Synchronization configuration
-static bool agent_info_enable_synchronization = false;
+static bool agent_info_enable_synchronization = true;
 
 // Sync protocol function pointers
 typedef void (*agent_info_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data);
@@ -83,9 +89,28 @@ static bool wm_agent_info_is_shutting_down() {
     return g_shutting_down;
 }
 
+// Agent-info message queue functions
+static int wm_agent_info_startmq(const char* key, short type, short attempts)
+{
+    return StartMQ(key, type, attempts);
+}
+
+static int
+wm_agent_info_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc)
+{
+    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+}
+
 // Callback to send stateless messages
-static int wm_agent_info_send_stateless(const char* message) {
-    if (!message) {
+static int wm_agent_info_send_stateless(const char* message)
+{
+    if (g_shutting_down)
+    {
+        return -1;
+    }
+
+    if (!message)
+    {
         return -1;
     }
 
@@ -110,15 +135,24 @@ static int wm_agent_info_send_stateless(const char* message) {
 }
 
 // Callback to persist stateful diffs (for synchronization)
-static int wm_agent_info_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message) {
-    if (!message) {
+static int wm_agent_info_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message)
+{
+    if (g_shutting_down)
+    {
         return -1;
     }
 
-    if (agent_info_enable_synchronization && agent_info_persist_diff_ptr) {
-        mdebug2("Persisting agent-info event: %s", message);
+    if (!message)
+    {
+        return -1;
+    }
+
+    if (agent_info_enable_synchronization && agent_info_persist_diff_ptr)
+    {
         agent_info_persist_diff_ptr(id, operation, index, message);
-    } else {
+    }
+    else
+    {
         mdebug2("Agent-info synchronization is disabled or function not available");
     }
 
@@ -132,6 +166,7 @@ agent_info_stop_func agent_info_stop_ptr = NULL;
 agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_set_persist_function_func agent_info_set_persist_function_ptr = NULL;
+agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
 
 // Reading function
 int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nodes, wmodule* module)
@@ -276,6 +311,7 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
         agent_info_set_persist_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_persist_function");
+        agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
 
         // Get sync protocol function pointers
         agent_info_persist_diff_ptr = so_get_function_sym(agent_info_module, "agent_info_persist_diff");
@@ -304,12 +340,17 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         return NULL;
     }
 
-    minfo("Starting agent-info module...");
+    if (agent_info_init_sync_protocol_ptr)
+    {
+        MQ_Functions mq_funcs = {.start = wm_agent_info_startmq, .send_binary = wm_agent_info_send_binary_msg};
+        agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME, AGENT_INFO_SYNC_PROTOCOL_DB_PATH, &mq_funcs);
+    }
 
     // Initialize the C++ implementation (this will create the AgentInfoImpl with the callbacks)
     // This call will populate the agent metadata and send it to the queue
     if (agent_info_start_ptr)
     {
+        minfo("Starting agent-info module...");
         agent_info_start_ptr(agent_info);
     }
     else
