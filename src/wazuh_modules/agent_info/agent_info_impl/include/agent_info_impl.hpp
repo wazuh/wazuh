@@ -8,8 +8,10 @@
 #include <commonDefs.h>
 #include <json.hpp>
 
+#include <condition_variable>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -119,4 +121,10 @@ class AgentInfoImpl
 
         /// @brief Flag to track if module has been stopped
         bool m_stopped = false;
+
+        /// @brief Condition variable for efficient sleep/wake mechanism
+        std::condition_variable m_cv;
+
+        /// @brief Mutex for condition variable synchronization
+        std::mutex m_mutex;
 };
