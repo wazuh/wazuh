@@ -29,6 +29,37 @@ link_libraries(
     optimized gmock_main
 )
 
-add_executable(agent_info_impl_unit_test agent_info_impl_test.cpp)
-target_link_libraries(agent_info_impl_unit_test PRIVATE AGENT_INFO_IMPL)
-add_test(NAME AgentInfoImplTest COMMAND agent_info_impl_unit_test)
+# Agent Info Basic Tests (constructor, start/stop, lifecycle)
+add_executable(agent_info_basic_test agent_info_basic_test.cpp)
+target_link_libraries(agent_info_basic_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoBasicTest COMMAND agent_info_basic_test)
+
+# Agent Info Metadata Tests (client.keys, merged.mg, OS info)
+add_executable(agent_info_metadata_test agent_info_metadata_test.cpp)
+target_link_libraries(agent_info_metadata_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoMetadataTest COMMAND agent_info_metadata_test)
+
+# Agent Info DBSync Integration Tests (callbacks, SQL operations)
+add_executable(agent_info_dbsync_test agent_info_dbsync_test.cpp)
+target_link_libraries(agent_info_dbsync_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoDBSyncTest COMMAND agent_info_dbsync_test)
+
+# Agent Info Event Processing Tests (INSERTED/MODIFIED/DELETED events)
+add_executable(agent_info_events_test agent_info_events_test.cpp)
+target_link_libraries(agent_info_events_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoEventsTest COMMAND agent_info_events_test)
+
+# Agent Info Utility Functions Tests (checksums, hash IDs, ECS formatting)
+add_executable(agent_info_utils_test agent_info_utils_test.cpp)
+target_link_libraries(agent_info_utils_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoUtilsTest COMMAND agent_info_utils_test)
+
+# Agent Info Logging Tests (log levels, error handling)
+add_executable(agent_info_logging_test agent_info_logging_test.cpp)
+target_link_libraries(agent_info_logging_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoLoggingTest COMMAND agent_info_logging_test)
+
+# Agent Info Integration Tests (end-to-end with real DBSync)
+add_executable(agent_info_integration_test agent_info_integration_test.cpp)
+target_link_libraries(agent_info_integration_test PRIVATE AGENT_INFO_IMPL)
+add_test(NAME AgentInfoIntegrationTest COMMAND agent_info_integration_test)
