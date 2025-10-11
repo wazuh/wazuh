@@ -423,6 +423,9 @@
                         <Directory Id="SCA" Name="sca">
                             <Directory Id="SCA_DB" Name="db" />
                         </Directory>
+                        <Directory Id="AGENT_INFO" Name="agent_info">
+                            <Directory Id="AGENT_INFO_DB" Name="db" />
+                        </Directory>
                     </Directory>
                     <Directory Id="BOOKMARKS" Name="bookmarks" />
                     <Directory Id="LOGS" Name="logs" />
@@ -506,6 +509,15 @@
                 </CreateFolder>
                 <RemoveFile Id="purgue_sca_db" Name="*.*" On="uninstall" />
                 <RemoveFolder Id="purgue_sca_db_dir" On="uninstall" />
+            </Component>
+        </DirectoryRef>
+        <DirectoryRef Id="AGENT_INFO_DB">
+            <Component Id="CMP_AGENT_INFO_DB" Guid="a3c4f5e6-78d9-4b2a-9c1e-2f3d4e5a6b7c" KeyPath="yes" NeverOverwrite="yes" Permanent="yes">
+                <CreateFolder>
+                    <Permission User="Everyone" GenericAll="yes" />
+                </CreateFolder>
+                <RemoveFile Id="purgue_agent_info_db" Name="*.*" On="uninstall" />
+                <RemoveFolder Id="purgue_agent_info_db_dir" On="uninstall" />
             </Component>
         </DirectoryRef>
         <DirectoryRef Id="LOGCOLLECTOR">
@@ -622,6 +634,7 @@
             <ComponentRef Id="CMP_SYSCOLLECTOR" />
             <ComponentRef Id="CMP_SYSCOLLECTOR_DB" />
             <ComponentRef Id="CMP_SCA_DB" />
+            <ComponentRef Id="CMP_AGENT_INFO_DB" />
             <ComponentRef Id="CMP_LOGCOLLECTOR" />
             <ComponentRef Id="CMP_RULESET" />
             <ComponentRef Id="CMP_SECURITY_CONFIGURATION_ASSESSMENT" />
