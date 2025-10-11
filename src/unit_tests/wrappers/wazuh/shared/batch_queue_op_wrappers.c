@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <stdint.h>
 #include <time.h>                 /* struct timespec */
 
 #include "batch_queue_op_wrappers.h"

@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <stdint.h>
 #include "agent_metadata_wrappers.h"
 
 void __wrap_agent_metadata_init(void) {
