@@ -35,7 +35,7 @@ class AgentInfoImpl
                       std::shared_ptr<IFileSystemWrapper> fileSystem = nullptr);
         ~AgentInfoImpl();
 
-        void start();
+        void start(int interval);
         void stop();
 
         /// @brief Persist a difference to the synchronization protocol

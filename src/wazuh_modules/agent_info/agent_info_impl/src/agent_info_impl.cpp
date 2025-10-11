@@ -10,7 +10,9 @@
 #include <filesystem_wrapper.hpp>
 #include <sysInfo.hpp>
 
+#include <chrono>
 #include <map>
+#include <thread>
 
 constexpr auto QUEUE_SIZE = 4096;
 constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
@@ -92,18 +94,30 @@ AgentInfoImpl::~AgentInfoImpl()
     m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
-void AgentInfoImpl::start()
+void AgentInfoImpl::start(int interval)
 {
-    m_logFunction(LOG_INFO, "AgentInfo module started.");
+    m_logFunction(LOG_INFO, "AgentInfo module started with interval: " + std::to_string(interval) + " seconds.");
+    m_stopped = false;
 
-    try
+    while (!m_stopped)
     {
-        populateAgentMetadata();
+        try
+        {
+            populateAgentMetadata();
+        }
+        catch (const std::exception& e)
+        {
+            m_logFunction(LOG_ERROR, std::string("Failed to populate agent metadata: ") + e.what());
+        }
+
+        // Sleep for the specified interval, but check for stop condition periodically
+        for (int i = 0; i < interval && !m_stopped; ++i)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
     }
-    catch (const std::exception& e)
-    {
-        m_logFunction(LOG_ERROR, std::string("Failed to populate agent metadata: ") + e.what());
-    }
+
+    m_logFunction(LOG_INFO, "AgentInfo module loop ended.");
 }
 
 void AgentInfoImpl::stop()
