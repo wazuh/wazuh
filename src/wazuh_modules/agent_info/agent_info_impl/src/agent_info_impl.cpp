@@ -11,7 +11,9 @@
 #include <sysInfo.hpp>
 
 #include <chrono>
+#include <condition_variable>
 #include <map>
+#include <mutex>
 #include <thread>
 
 constexpr auto QUEUE_SIZE = 4096;
@@ -97,10 +99,14 @@ AgentInfoImpl::~AgentInfoImpl()
 void AgentInfoImpl::start(int interval)
 {
     m_logFunction(LOG_INFO, "AgentInfo module started with interval: " + std::to_string(interval) + " seconds.");
+
+    std::unique_lock<std::mutex> lock(m_mutex);
     m_stopped = false;
 
     while (!m_stopped)
     {
+        lock.unlock();
+
         try
         {
             populateAgentMetadata();
@@ -110,11 +116,10 @@ void AgentInfoImpl::start(int interval)
             m_logFunction(LOG_ERROR, std::string("Failed to populate agent metadata: ") + e.what());
         }
 
-        // Sleep for the specified interval, but check for stop condition periodically
-        for (int i = 0; i < interval && !m_stopped; ++i)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
+        lock.lock();
+
+        // Wait for the interval or until stop is signaled
+        m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped; });
     }
 
     m_logFunction(LOG_INFO, "AgentInfo module loop ended.");
@@ -122,12 +127,18 @@ void AgentInfoImpl::start(int interval)
 
 void AgentInfoImpl::stop()
 {
-    if (m_stopped)
     {
-        return;
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        if (m_stopped)
+        {
+            return;
+        }
+
+        m_stopped = true;
     }
 
-    m_stopped = true;
+    m_cv.notify_one(); // Wake up the sleeping thread immediately
     m_logFunction(LOG_INFO, "AgentInfo module stopped.");
 }
 
