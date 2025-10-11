@@ -1,6 +1,5 @@
 #include "agent_info.h"
 #include "agent_info_impl.hpp"
-#include "logging_helper.hpp"
 #include <dbsync.hpp>
 
 #include <memory>
@@ -27,19 +26,26 @@ static std::unique_ptr<AgentInfoImpl> g_agent_info_impl;
 // Global callback function pointers
 static report_callback_t g_report_callback = nullptr;
 static persist_callback_t g_persist_callback = nullptr;
+static log_callback_t g_log_callback = nullptr;
 
 // Internal wrapper functions that capture the callbacks
 static std::function<void(const std::string&)> g_report_function_wrapper;
 static std::function<void(const std::string&, Operation, const std::string&, const std::string&)> g_persist_function_wrapper;
+static std::function<void(const modules_log_level_t, const std::string&)> g_log_function_wrapper;
 
 void agent_info_set_log_function(log_callback_t log_callback)
 {
-    if (log_callback)
+    g_log_callback = log_callback;
+
+    if (g_log_callback)
     {
-        LoggingHelper::setLogCallback([log_callback](const modules_log_level_t level, const char* log)
+        g_log_function_wrapper = [](const modules_log_level_t level, const std::string & msg)
         {
-            log_callback(level, log, "agent-info");
-        });
+            if (g_log_callback)
+            {
+                g_log_callback(level, msg.c_str(), "agent-info");
+            }
+        };
     }
 }
 
@@ -87,23 +93,17 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
     if (!g_agent_info_impl)
     {
         // Initialize DBSync logging before creating DBSync instances
-        DBSync::initialize([](const std::string & msg)
+        DBSync::initialize(
+            [](const std::string & msg)
         {
-            LoggingHelper::getInstance().log(LOG_DEBUG, msg.c_str());
+            if (g_log_callback)
+            {
+                g_log_callback(LOG_DEBUG, msg.c_str(), "agent-info");
+            }
         });
 
-        // Create log function wrapper
-        std::function<void(const modules_log_level_t, const std::string&)> logFunction =
-            [](const modules_log_level_t level, const std::string & msg)
-        {
-            LoggingHelper::getInstance().log(level, msg.c_str());
-        };
-
         g_agent_info_impl = std::make_unique<AgentInfoImpl>(
-                                AGENT_INFO_DB_DISK_PATH,
-                                g_report_function_wrapper,
-                                g_persist_function_wrapper,
-                                logFunction);
+                                AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_persist_function_wrapper, g_log_function_wrapper);
     }
 
     g_agent_info_impl->start();
