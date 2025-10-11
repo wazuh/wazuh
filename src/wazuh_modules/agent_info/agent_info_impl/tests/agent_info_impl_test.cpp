@@ -3,7 +3,6 @@
 
 #include <agent_info_impl.hpp>
 
-#include "logging_helper.hpp"
 #include <dbsync.hpp>
 #include <mock_dbsync.hpp>
 #include <mock_file_io_utils.hpp>
@@ -22,15 +21,15 @@ class AgentInfoImplTest : public ::testing::Test
         {
             m_logOutput.clear();
 
-            // Set up the logging callback to avoid "Log callback not set" errors
-            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
+            // Create the logging function to capture log messages
+            m_logFunction = [this](const modules_log_level_t /* level */, const std::string & log)
             {
                 m_logOutput += log;
                 m_logOutput += "\n";
-            });
+            };
 
             m_mockDBSync = std::make_shared<MockDBSync>();
-            m_agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync);
+            m_agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync);
         }
 
         void TearDown() override
@@ -42,6 +41,7 @@ class AgentInfoImplTest : public ::testing::Test
 
         std::shared_ptr<IDBSync> m_mockDBSync = nullptr;
         std::shared_ptr<AgentInfoImpl> m_agentInfo = nullptr;
+        std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
         std::string m_logOutput;
 };
 
@@ -134,7 +134,7 @@ TEST_F(AgentInfoImplTest, ConstructorWithCustomSysInfoSucceeds)
     m_logOutput.clear();
 
     // Create AgentInfoImpl with custom SysInfo
-    auto agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync, mockSysInfo);
+    auto agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, mockSysInfo);
 
     EXPECT_NE(agentInfo, nullptr);
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
@@ -146,7 +146,7 @@ TEST_F(AgentInfoImplTest, ConstructorWithDefaultDependenciesSucceeds)
 
     // Create AgentInfoImpl without passing dbSync or sysInfo (creates defaults)
     // Using in-memory database to avoid file I/O in tests
-    auto agentInfo = std::make_shared<AgentInfoImpl>(":memory:");
+    auto agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, nullptr, m_logFunction);
 
     EXPECT_NE(agentInfo, nullptr);
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
@@ -163,12 +163,12 @@ class AgentInfoMetadataTest : public ::testing::Test
         {
             m_logOutput.clear();
 
-            LoggingHelper::setLogCallback(
-                [this](const modules_log_level_t /* level */, const char* log)
+            // Create the logging function to capture log messages
+            m_logFunction = [this](const modules_log_level_t /* level */, const std::string & log)
             {
                 m_logOutput += log;
                 m_logOutput += "\n";
-            });
+            };
 
             m_mockDBSync = std::make_shared<MockDBSync>();
             m_mockSysInfo = std::make_shared<MockSysInfo>();
@@ -190,6 +190,7 @@ class AgentInfoMetadataTest : public ::testing::Test
         std::shared_ptr<MockFileIOUtils> m_mockFileIO;
         std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
         std::shared_ptr<AgentInfoImpl> m_agentInfo;
+        std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
         std::string m_logOutput;
 };
 
@@ -230,7 +231,7 @@ TEST_F(AgentInfoMetadataTest, PopulatesMetadataSuccessfully)
 
     // Create agent info and start
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start();
 
     // With nullptr handle, updateChanges will log errors but not crash
@@ -253,7 +254,7 @@ TEST_F(AgentInfoMetadataTest, HandlesClientKeysNotFound)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start();
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to read agent ID and name from client.keys"));
@@ -288,7 +289,7 @@ TEST_F(AgentInfoMetadataTest, HandlesEmptyGroups)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start();
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups cleared (no groups found)"));
@@ -322,7 +323,7 @@ TEST_F(AgentInfoMetadataTest, HandlesInvalidClientKeysFormat)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start();
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to read agent ID and name from client.keys"));
@@ -355,7 +356,7 @@ TEST_F(AgentInfoMetadataTest, ParsesMultipleGroups)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start();
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 3 groups"));
@@ -368,7 +369,7 @@ TEST_F(AgentInfoMetadataTest, HandlesExceptionDuringPopulate)
     .WillOnce(::testing::Throw(std::runtime_error("Filesystem error")));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // start() should catch the exception and log it
     EXPECT_NO_THROW(m_agentInfo->start());
@@ -409,7 +410,7 @@ TEST_F(AgentInfoMetadataTest, IncludesAllOSFieldsInMetadata)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start();
 
     // Verify that start() completed and populated metadata
@@ -447,7 +448,7 @@ TEST_F(AgentInfoMetadataTest, HandlesPartialOSData)
     .WillRepeatedly(::testing::Return(nullptr));
 
     m_agentInfo =
-        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, nullptr, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
     m_agentInfo->start();
 
     // Verify that start() completed
@@ -466,13 +467,6 @@ class AgentInfoDBSyncIntegrationTest : public ::testing::Test
             m_logOutput.clear();
             m_reportedEvents.clear();
             m_persistedEvents.clear();
-
-            LoggingHelper::setLogCallback(
-                [this](const modules_log_level_t /* level */, const char* log)
-            {
-                m_logOutput += log;
-                m_logOutput += "\n";
-            });
 
             m_mockDBSync = std::make_shared<MockDBSync>();
 
@@ -530,12 +524,12 @@ TEST_F(AgentInfoDBSyncIntegrationTest, ConstructorWithCallbacksSucceeds)
 
 TEST_F(AgentInfoDBSyncIntegrationTest, CallbacksAreOptional)
 {
-    // Test that the module works without callbacks (nullptr)
+    // Test that the module works without report and persist callbacks (nullptr)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       nullptr,  // No report callback
                       nullptr,  // No persist callback
-                      nullptr,  // No log callback
+                      m_logFunc, // Log function is required
                       m_mockDBSync
                   );
 
@@ -551,7 +545,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
                       ":memory:",
                       nullptr,
                       nullptr,
-                      nullptr,
+                      m_logFunc,
                       m_mockDBSync
                   );
 
@@ -581,7 +575,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithCallback)
                       ":memory:",
                       nullptr,
                       persistFunc,
-                      nullptr,
+                      m_logFunc,
                       m_mockDBSync
                   );
 
@@ -601,7 +595,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithoutCallback)
                       ":memory:",
                       nullptr,
                       nullptr,  // No persist callback
-                      nullptr,
+                      m_logFunc,
                       m_mockDBSync
                   );
 
@@ -621,13 +615,6 @@ class AgentInfoEventProcessingTest : public ::testing::Test
             m_logOutput.clear();
             m_reportedEvents.clear();
             m_persistedEvents.clear();
-
-            LoggingHelper::setLogCallback(
-                [this](const modules_log_level_t /* level */, const char* log)
-            {
-                m_logOutput += log;
-                m_logOutput += "\n";
-            });
 
             m_mockDBSync = std::make_shared<MockDBSync>();
             m_mockSysInfo = std::make_shared<MockSysInfo>();
@@ -876,15 +863,15 @@ class AgentInfoHelperFunctionsTest : public ::testing::Test
         {
             m_logOutput.clear();
 
-            LoggingHelper::setLogCallback(
-                [this](const modules_log_level_t /* level */, const char* log)
+            // Create the logging function to capture log messages
+            m_logFunction = [this](const modules_log_level_t /* level */, const std::string & log)
             {
                 m_logOutput += log;
                 m_logOutput += "\n";
-            });
+            };
 
             m_mockDBSync = std::make_shared<MockDBSync>();
-            m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, nullptr, nullptr, m_mockDBSync);
+            m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, nullptr, m_logFunction, m_mockDBSync);
         }
 
         void TearDown() override
@@ -895,6 +882,7 @@ class AgentInfoHelperFunctionsTest : public ::testing::Test
 
         std::shared_ptr<MockDBSync> m_mockDBSync;
         std::shared_ptr<AgentInfoImpl> m_agentInfo;
+        std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
         std::string m_logOutput;
 };
 
@@ -1021,12 +1009,6 @@ class AgentInfoLoggingTest : public ::testing::Test
         void SetUp() override
         {
             m_logMessages.clear();
-
-            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
-            {
-                m_logOutput += log;
-                m_logOutput += "\n";
-            });
 
             m_mockDBSync = std::make_shared<MockDBSync>();
             m_mockSysInfo = std::make_shared<MockSysInfo>();
@@ -1241,15 +1223,14 @@ class AgentInfoRealDBSyncTest : public ::testing::Test
             m_logOutput.clear();
             m_reportedEvents.clear();
 
-            LoggingHelper::setLogCallback([this](const modules_log_level_t /* level */, const char* log)
-            {
-                m_logOutput += log;
-                m_logOutput += "\n";
-            });
-
             m_reportDiffFunc = [this](const std::string & event)
             {
                 m_reportedEvents.push_back(nlohmann::json::parse(event));
+            };
+
+            m_logFunc = [this](modules_log_level_t /* level */, const std::string & msg)
+            {
+                m_logOutput += msg + "\n";
             };
 
             m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
@@ -1270,6 +1251,7 @@ class AgentInfoRealDBSyncTest : public ::testing::Test
         std::shared_ptr<MockFileIOUtils> m_mockFileIO;
         std::shared_ptr<MockSysInfo> m_mockSysInfo;
         std::function<void(const std::string&)> m_reportDiffFunc;
+        std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
         std::vector<nlohmann::json> m_reportedEvents;
         std::string m_logOutput;
 };
@@ -1300,7 +1282,7 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
                       ":memory:",
                       m_reportDiffFunc,
                       nullptr,
-                      nullptr,
+                      m_logFunc,
                       nullptr,  // Use real DBSync
                       m_mockSysInfo,
                       m_mockFileIO,
