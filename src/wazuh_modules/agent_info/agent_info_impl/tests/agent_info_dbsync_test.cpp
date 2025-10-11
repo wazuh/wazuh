@@ -118,51 +118,25 @@ TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
 }
 
-TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithCallback)
+TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithSyncProtocol)
 {
-    bool callbackInvoked = false;
-    std::string capturedId;
-    Operation capturedOp;
-    std::string capturedIndex;
-    std::string capturedData;
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, nullptr, m_logFunc, m_mockDBSync);
 
-    auto persistFunc = [&](const std::string & id, Operation op, const std::string & index, const std::string & data)
-    {
-        callbackInvoked = true;
-        capturedId = id;
-        capturedOp = op;
-        capturedIndex = index;
-        capturedData = data;
-    };
+    MQ_Functions mq_funcs = {nullptr, nullptr};
+    m_agentInfo->initSyncProtocol("test-module", ":memory:", mq_funcs);
 
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      nullptr,
-                      persistFunc,
-                      m_logFunc,
-                      m_mockDBSync
-                  );
-
-    // Call persistDifference
-    m_agentInfo->persistDifference("test-id", Operation::CREATE, "test-index", "{\"test\":\"data\"}");
-
-    EXPECT_TRUE(callbackInvoked);
-    EXPECT_EQ(capturedId, "test-id");
-    EXPECT_EQ(capturedOp, Operation::CREATE);
-    EXPECT_EQ(capturedIndex, "test-index");
-    EXPECT_EQ(capturedData, "{\"test\":\"data\"}");
+    // Call persistDifference - should work through sync protocol only
+    EXPECT_NO_THROW(m_agentInfo->persistDifference("test-id", Operation::CREATE, "test-index", "{\"test\":\"data\"}"));
 }
 
-TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithoutCallback)
+TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithoutSyncProtocol)
 {
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      nullptr,
-                      nullptr,  // No persist callback
-                      m_logFunc,
-                      m_mockDBSync
-                  );
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
+                                                  nullptr,
+                                                  nullptr, // No persist callback needed
+                                                  m_logFunc,
+                                                  m_mockDBSync);
 
-    // Should not crash when persist callback is null
+    // Don't initialize sync protocol - should not crash when sync protocol is null
     EXPECT_NO_THROW(m_agentInfo->persistDifference("test-id", Operation::CREATE, "test-index", "{}"));
 }

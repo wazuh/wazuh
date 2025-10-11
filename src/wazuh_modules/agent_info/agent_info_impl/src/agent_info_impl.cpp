@@ -1,5 +1,6 @@
 #include "agent_info_impl.hpp"
 
+#include "agent_sync_protocol.hpp"
 #include "defs.h"
 #include "hashHelper.h"
 #include "stringHelper.h"
@@ -153,12 +154,24 @@ void AgentInfoImpl::stop()
 
 void AgentInfoImpl::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
 {
-    // Call the persist diff function if it's set
-    // This is used by the synchronization protocol to persist state changes
-    if (m_persistDiffFunction)
+    if (m_spSyncProtocol)
     {
-        m_persistDiffFunction(id, operation, index, data);
+        m_spSyncProtocol->persistDifference(id, operation, index, data);
     }
+}
+
+void AgentInfoImpl::initSyncProtocol(const std::string& moduleName,
+                                     const std::string& syncDbPath,
+                                     const MQ_Functions& mqFuncs)
+{
+    auto logger_func = [this](modules_log_level_t level, const std::string & msg)
+    {
+        m_logFunction(level, msg);
+    };
+
+    m_spSyncProtocol = std::make_unique<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, nullptr);
+
+    m_logFunction(LOG_INFO, "Agent-info sync protocol initialized with database: " + syncDbPath);
 }
 
 std::string AgentInfoImpl::GetCreateStatement() const

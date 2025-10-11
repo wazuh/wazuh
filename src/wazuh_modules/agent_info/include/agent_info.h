@@ -1,6 +1,8 @@
 #ifndef _AGENT_INFO_H
 #define _AGENT_INFO_H
 
+#include "agent_sync_protocol_c_interface_types.h"
+
 // Define EXPORTED for any platform
 #ifdef _WIN32
 #ifdef WIN_EXPORT
@@ -41,6 +43,9 @@ EXPORTED void agent_info_set_persist_function(persist_callback_t persist_callbac
 
 EXPORTED void agent_info_persist_diff(const char* id, Operation_t operation, const char* index, const char* data);
 
+EXPORTED void
+agent_info_init_sync_protocol(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs);
+
 #ifdef __cplusplus
 }
 #endif
@@ -50,5 +55,8 @@ typedef void (*agent_info_stop_func)();
 typedef void (*agent_info_set_log_function_func)(log_callback_t log_callback);
 typedef void (*agent_info_set_report_function_func)(report_callback_t report_callback);
 typedef void (*agent_info_set_persist_function_func)(persist_callback_t persist_callback);
+typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,
+                                                   const char* sync_db_path,
+                                                   const MQ_Functions* mq_funcs);
 
 #endif //_AGENT_INFO_H
