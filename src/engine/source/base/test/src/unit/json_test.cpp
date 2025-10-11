@@ -5,7 +5,6 @@
 #include <string>
 
 #include <base/json.hpp>
-#include <base/error.hpp>
 #include <base/logging.hpp>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
@@ -2739,8 +2738,8 @@ INSTANTIATE_TEST_SUITE_P(Json,
                                            isEmptyT(false, R"({"a":[]})", "/a/0"),
                                            isEmptyT(false, R"({"a":""})", "/a/0"),
                                            isEmptyT(false, R"({"a":0})", "/a/0"),
-                                          isEmptyT(false, R"({"a":false})", "/a/0"),
-                                          isEmptyT(false, R"({"a":null})", "/a/0")));
+                                           isEmptyT(false, R"({"a":false})", "/a/0"),
+                                           isEmptyT(false, R"({"a":null})", "/a/0")));
 
 class JsonValidParamTest : public ::testing::TestWithParam<std::pair<bool, std::string>>
 {
