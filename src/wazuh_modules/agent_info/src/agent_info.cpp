@@ -1,5 +1,7 @@
 #include "agent_info.h"
 #include "agent_info_impl.hpp"
+#include "wm_agent_info.h"
+
 #include <dbsync.hpp>
 
 #include <memory>
@@ -88,7 +90,14 @@ void agent_info_set_persist_function(persist_callback_t persist_callback)
 
 void agent_info_start(const struct wm_agent_info_t* agent_info_config)
 {
-    (void)agent_info_config; // Mark as unused for now
+    if (!agent_info_config)
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_ERROR, "agent_info_config is null", "agent-info");
+        }
+        return;
+    }
 
     if (!g_agent_info_impl)
     {
@@ -106,7 +115,7 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
                                 AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_persist_function_wrapper, g_log_function_wrapper);
     }
 
-    g_agent_info_impl->start();
+    g_agent_info_impl->start(agent_info_config->interval);
 }
 
 void agent_info_stop()
