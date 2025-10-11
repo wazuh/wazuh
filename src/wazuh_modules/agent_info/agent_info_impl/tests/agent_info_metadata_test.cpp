@@ -99,7 +99,10 @@ TEST_F(AgentInfoMetadataTest, PopulatesMetadataSuccessfully)
     // Create agent info and start
     m_agentInfo =
         std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     // With nullptr handle, updateChanges will log errors but not crash
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent metadata populated successfully"));
@@ -122,7 +125,10 @@ TEST_F(AgentInfoMetadataTest, HandlesClientKeysNotFound)
 
     m_agentInfo =
         std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to read agent ID and name from client.keys"));
 }
@@ -157,7 +163,10 @@ TEST_F(AgentInfoMetadataTest, HandlesEmptyGroups)
 
     m_agentInfo =
         std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups cleared (no groups found)"));
 }
@@ -191,7 +200,10 @@ TEST_F(AgentInfoMetadataTest, HandlesInvalidClientKeysFormat)
 
     m_agentInfo =
         std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to read agent ID and name from client.keys"));
 }
@@ -224,7 +236,10 @@ TEST_F(AgentInfoMetadataTest, ParsesMultipleGroups)
 
     m_agentInfo =
         std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 3 groups"));
 }
@@ -239,7 +254,10 @@ TEST_F(AgentInfoMetadataTest, HandlesExceptionDuringPopulate)
         std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
 
     // start() should catch the exception and log it
-    EXPECT_NO_THROW(m_agentInfo->start());
+    EXPECT_NO_THROW(m_agentInfo->start(1, []()
+    {
+        return false;
+    }));
 
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to populate agent metadata"));
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Filesystem error"));
@@ -278,7 +296,10 @@ TEST_F(AgentInfoMetadataTest, IncludesAllOSFieldsInMetadata)
 
     m_agentInfo =
         std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     // Verify that start() completed and populated metadata
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent metadata populated successfully"));
@@ -316,7 +337,10 @@ TEST_F(AgentInfoMetadataTest, HandlesPartialOSData)
 
     m_agentInfo =
         std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     // Verify that start() completed
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent metadata populated successfully"));

@@ -97,7 +97,10 @@ TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
                       m_mockFileSystem
                   );
 
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     // Verify log function was called
     bool foundMetadataLog = false;
@@ -146,7 +149,10 @@ TEST_F(AgentInfoLoggingTest, UpdateChangesErrorUsesLogFunction)
                   );
 
     // Start will trigger updateChanges which will fail
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
 
     // Verify error was logged via m_logFunction
     bool foundError = false;

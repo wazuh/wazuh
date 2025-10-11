@@ -59,7 +59,10 @@ TEST_F(AgentInfoImplTest, ConstructorInitializesSuccessfully)
 TEST_F(AgentInfoImplTest, StartMethodLogsCorrectly)
 {
     m_logOutput.clear();
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module started"));
 }
 
@@ -84,7 +87,10 @@ TEST_F(AgentInfoImplTest, DestructorCallsStop)
 TEST_F(AgentInfoImplTest, StartAndStopSequence)
 {
     m_logOutput.clear();
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module started"));
 
     m_logOutput.clear();
@@ -94,8 +100,14 @@ TEST_F(AgentInfoImplTest, StartAndStopSequence)
 
 TEST_F(AgentInfoImplTest, MultipleStartCallsSucceed)
 {
-    m_agentInfo->start();
-    m_agentInfo->start();
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
+    m_agentInfo->start(1, []()
+    {
+        return false;
+    });
     // Should not crash or throw
     SUCCEED();
 }
