@@ -198,6 +198,27 @@ TEST(join, defaut_separator_empty_strings_array_as_input)
     ASSERT_EQ(result, expected);
 }
 
+TEST(normalizeStr, LowercasesAlphanumeric)
+{
+    const std::string input {"FeatureFlag42"};
+    const std::string expected {"featureflag42"};
+    ASSERT_EQ(base::utils::string::normalizeStr(input), expected);
+}
+
+TEST(normalizeStr, CollapsesSeparators)
+{
+    const std::string input {"Included Updated/Properties.Name-1\\Part:Two"};
+    const std::string expected {"included_updated_properties_name_1_part_two"};
+    ASSERT_EQ(base::utils::string::normalizeStr(input), expected);
+}
+
+TEST(normalizeStr, DropsUnsupportedCharacters)
+{
+    const std::string input {"SCL@Reject!"};
+    const std::string expected {"sclreject"};
+    ASSERT_EQ(base::utils::string::normalizeStr(input), expected);
+}
+
 TEST(splitEscaped, SuccessDefaultValues)
 {
     std::string input = R"(+helper_function/param\/et\/er/param2/param3)";
