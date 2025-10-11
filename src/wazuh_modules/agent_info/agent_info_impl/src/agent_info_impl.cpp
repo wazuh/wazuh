@@ -1,9 +1,8 @@
 #include "agent_info_impl.hpp"
 
 #include "defs.h"
-#include "logging_helper.hpp"
-#include "stringHelper.h"
 #include "hashHelper.h"
+#include "stringHelper.h"
 #include "timeHelper.h"
 
 #include <dbsync.hpp>
@@ -79,25 +78,23 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
     , m_persistDiffFunction(std::move(persistDiffFunction))
     , m_logFunction(std::move(logFunction))
 {
-    if (m_logFunction)
+    if (!m_logFunction)
     {
-        m_logFunction(LOG_INFO, "AgentInfo initialized.");
+        throw std::invalid_argument("Log function must be provided");
     }
-    else
-    {
-        LoggingHelper::getInstance().log(LOG_INFO, "AgentInfo initialized.");
-    }
+
+    m_logFunction(LOG_INFO, "AgentInfo initialized.");
 }
 
 AgentInfoImpl::~AgentInfoImpl()
 {
     stop();
-    LoggingHelper::getInstance().log(LOG_INFO, "AgentInfo destroyed.");
+    m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
 void AgentInfoImpl::start()
 {
-    LoggingHelper::getInstance().log(LOG_INFO, "AgentInfo module started.");
+    m_logFunction(LOG_INFO, "AgentInfo module started.");
 
     try
     {
@@ -105,7 +102,7 @@ void AgentInfoImpl::start()
     }
     catch (const std::exception& e)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, std::string("Failed to populate agent metadata: ") + e.what());
+        m_logFunction(LOG_ERROR, std::string("Failed to populate agent metadata: ") + e.what());
     }
 }
 
@@ -117,7 +114,7 @@ void AgentInfoImpl::stop()
     }
 
     m_stopped = true;
-    LoggingHelper::getInstance().log(LOG_INFO, "AgentInfo module stopped.");
+    m_logFunction(LOG_INFO, "AgentInfo module stopped.");
 }
 
 void AgentInfoImpl::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
@@ -140,7 +137,7 @@ std::string AgentInfoImpl::GetCreateStatement() const
 
 void AgentInfoImpl::populateAgentMetadata()
 {
-    LoggingHelper::getInstance().log(LOG_DEBUG, "Populating agent metadata from sysinfo");
+    m_logFunction(LOG_DEBUG, "Populating agent metadata from sysinfo");
 
     // Read agent ID and name from client.keys
     std::string agentId;
@@ -148,7 +145,7 @@ void AgentInfoImpl::populateAgentMetadata()
 
     if (!readClientKeys(agentId, agentName))
     {
-        LoggingHelper::getInstance().log(LOG_WARNING, "Failed to read agent ID and name from client.keys");
+        m_logFunction(LOG_WARNING, "Failed to read agent ID and name from client.keys");
     }
 
     // Get OS information from sysinfo
@@ -199,15 +196,7 @@ void AgentInfoImpl::populateAgentMetadata()
     updateChanges(AGENT_METADATA_TABLE, nlohmann::json::array({agentMetadata}));
 
     auto logMsg = std::string("Agent metadata populated successfully");
-
-    if (m_logFunction)
-    {
-        m_logFunction(LOG_INFO, logMsg);
-    }
-    else
-    {
-        LoggingHelper::getInstance().log(LOG_INFO, logMsg);
-    }
+    m_logFunction(LOG_INFO, logMsg);
 
     // Read agent groups from merged.mg
     std::vector<std::string> groups = readAgentGroups();
@@ -237,14 +226,7 @@ void AgentInfoImpl::populateAgentMetadata()
         groupLogMsg = "Agent groups populated successfully: " + std::to_string(groups.size()) + " groups";
     }
 
-    if (m_logFunction)
-    {
-        m_logFunction(LOG_INFO, groupLogMsg);
-    }
-    else
-    {
-        LoggingHelper::getInstance().log(LOG_INFO, groupLogMsg);
-    }
+    m_logFunction(LOG_INFO, groupLogMsg);
 }
 
 bool AgentInfoImpl::readClientKeys(std::string& agentId, std::string& agentName) const
@@ -252,7 +234,7 @@ bool AgentInfoImpl::readClientKeys(std::string& agentId, std::string& agentName)
     // Check if client.keys file exists
     if (!m_fileSystem->exists(KEYS_FILE))
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, std::string("File does not exist: ") + KEYS_FILE);
+        m_logFunction(LOG_DEBUG, std::string("File does not exist: ") + KEYS_FILE);
         return false;
     }
 
@@ -273,9 +255,7 @@ bool AgentInfoImpl::readClientKeys(std::string& agentId, std::string& agentName)
                 agentId = tokens[0];
                 agentName = tokens[1];
 
-                LoggingHelper::getInstance().log(
-                    LOG_DEBUG,
-                    "Read agent data from client.keys: ID=" + agentId + ", Name=" + agentName);
+                m_logFunction(LOG_DEBUG, "Read agent data from client.keys: ID=" + agentId + ", Name=" + agentName);
                 found = true;
                 return false; // Stop reading after first line
             }
@@ -300,7 +280,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
     // Check if merged.mg file exists
     if (!m_fileSystem->exists(mergedFile))
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, std::string("File does not exist: ") + mergedFile);
+        m_logFunction(LOG_DEBUG, std::string("File does not exist: ") + mergedFile);
         return groups;
     }
 
@@ -337,7 +317,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
     if (!groups.empty())
     {
-        LoggingHelper::getInstance().log(LOG_DEBUG, "Read " + std::to_string(groups.size()) + " groups from merged.mg");
+        m_logFunction(LOG_DEBUG, "Read " + std::to_string(groups.size()) + " groups from merged.mg");
     }
 
     return groups;
@@ -368,15 +348,7 @@ void AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
     catch (const std::exception& e)
     {
         std::string errorMsg = "Error updating changes for table " + table + ": " + e.what();
-
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_ERROR, errorMsg);
-        }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_ERROR, errorMsg);
-        }
+        m_logFunction(LOG_ERROR, errorMsg);
     }
 }
 
@@ -433,29 +405,13 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
             m_reportDiffFunction(statelessEvent.dump());
 
             std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result);
-
-            if (m_logFunction)
-            {
-                m_logFunction(LOG_DEBUG_VERBOSE, debugMsg);
-            }
-            else
-            {
-                LoggingHelper::getInstance().log(LOG_DEBUG_VERBOSE, debugMsg);
-            }
+            m_logFunction(LOG_DEBUG_VERBOSE, debugMsg);
         }
     }
     catch (const std::exception& e)
     {
         std::string errorMsg = "Error processing event for table " + table + ": " + e.what();
-
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_ERROR, errorMsg);
-        }
-        else
-        {
-            LoggingHelper::getInstance().log(LOG_ERROR, errorMsg);
-        }
+        m_logFunction(LOG_ERROR, errorMsg);
     }
 }
 
