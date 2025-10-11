@@ -30,6 +30,11 @@ static report_callback_t g_report_callback = nullptr;
 static persist_callback_t g_persist_callback = nullptr;
 static log_callback_t g_log_callback = nullptr;
 
+// Global sync protocol parameters
+static const char* g_module_name = nullptr;
+static const char* g_sync_db_path = nullptr;
+static const MQ_Functions* g_mq_functions = nullptr;
+
 // Internal wrapper functions that capture the callbacks
 static std::function<void(const std::string&)> g_report_function_wrapper;
 static std::function<void(const std::string&, Operation, const std::string&, const std::string&)> g_persist_function_wrapper;
@@ -102,6 +107,11 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
 
     if (!g_agent_info_impl)
     {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_DEBUG, "agent_info_start: Creating AgentInfoImpl instance", "agent-info");
+        }
+
         // Initialize DBSync logging before creating DBSync instances
         DBSync::initialize(
             [](const std::string & msg)
@@ -114,6 +124,35 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
 
         g_agent_info_impl = std::make_unique<AgentInfoImpl>(
                                 AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_persist_function_wrapper, g_log_function_wrapper);
+
+        // Initialize sync protocol immediately after creating instance
+        if (g_module_name && g_sync_db_path && g_mq_functions)
+        {
+            if (g_log_callback)
+            {
+                g_log_callback(LOG_DEBUG, "agent_info_start: Initializing sync protocol", "agent-info");
+            }
+
+            g_agent_info_impl->initSyncProtocol(
+                std::string(g_module_name), std::string(g_sync_db_path), *g_mq_functions);
+        }
+        else
+        {
+            if (g_log_callback)
+            {
+                g_log_callback(LOG_WARNING,
+                               "agent_info_start: Sync protocol parameters not set, skipping initialization",
+                               "agent-info");
+            }
+        }
+    }
+    else
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(
+                LOG_DEBUG, "agent_info_start: AgentInfoImpl instance already exists, reusing it", "agent-info");
+        }
     }
 
     g_agent_info_impl->start(agent_info_config->interval);
@@ -141,6 +180,13 @@ void agent_info_persist_diff(const char* id, Operation_t operation, const char* 
         // Call the persistDifference method on the AgentInfoImpl instance
         g_agent_info_impl->persistDifference(std::string(id), cppOperation, std::string(index), std::string(data));
     }
+}
+
+void agent_info_init_sync_protocol(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs)
+{
+    g_module_name = module_name;
+    g_sync_db_path = sync_db_path;
+    g_mq_functions = mq_funcs;
 }
 
 #ifdef __cplusplus

@@ -1,11 +1,14 @@
 #pragma once
 
+#include "iagent_sync_protocol.hpp"
 #include "sysInfoInterface.h"
+
+#include <commonDefs.h>
 #include <idbsync.hpp>
 #include <ifile_io_utils.hpp>
 #include <ifilesystem_wrapper.hpp>
 #include <ipersistent_queue.hpp>
-#include <commonDefs.h>
+
 #include <json.hpp>
 
 #include <condition_variable>
@@ -46,6 +49,13 @@ class AgentInfoImpl
         /// @param index Index or table name
         /// @param data Data payload
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
+
+        /// @brief Initialize the synchronization protocol
+        /// @param moduleName Name of the module
+        /// @param syncDbPath Path to sync database
+        /// @param mqFuncs Message queue functions
+        void
+        initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const MQ_Functions& mqFuncs);
 
         /// @brief Process a database event and emit notifications
         /// @param result Type of change (INSERTED, MODIFIED, DELETED)
@@ -118,6 +128,9 @@ class AgentInfoImpl
 
         /// @brief Function to log messages
         std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;
+
+        /// @brief Sync protocol for agent synchronization
+        std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 
         /// @brief Flag to track if module has been stopped
         bool m_stopped = false;
