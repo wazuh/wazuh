@@ -22,12 +22,83 @@
 
 static const char* XML_ENABLED = "enabled";
 static const char* XML_INTERVAL = "interval";
+static const char* XML_SYNC = "synchronization";
 
 #ifdef WIN32
 #define AGENT_INFO_SYNC_PROTOCOL_DB_PATH "queue\\agent_info\\db\\agent_info_sync.db"
 #else
 #define AGENT_INFO_SYNC_PROTOCOL_DB_PATH "queue/agent_info/db/agent_info_sync.db"
 #endif
+
+// Synchronization parsing function
+static void parse_synchronization_section(wm_agent_info_t* agent_info, xml_node** node)
+{
+    const char* XML_DB_SYNC_ENABLED = "enabled";
+    const char* XML_DB_SYNC_INTERVAL = "interval";
+    const char* XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
+    const char* XML_DB_SYNC_MAX_EPS = "max_eps";
+
+    for (int i = 0; node[i]; ++i)
+    {
+        if (strcmp(node[i]->element, XML_DB_SYNC_ENABLED) == 0)
+        {
+            int r = w_parse_bool(node[i]->content);
+
+            if (r < 0)
+            {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
+            else
+            {
+                agent_info->sync.enable_synchronization = r;
+            }
+        }
+        else if (strcmp(node[i]->element, XML_DB_SYNC_INTERVAL) == 0)
+        {
+            long t = w_parse_time(node[i]->content);
+
+            if (t <= 0)
+            {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
+            else
+            {
+                agent_info->sync.sync_interval = t;
+            }
+        }
+        else if (strcmp(node[i]->element, XML_DB_SYNC_RESPONSE_TIMEOUT) == 0)
+        {
+            long response_timeout = w_parse_time(node[i]->content);
+
+            if (response_timeout < 0)
+            {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
+            else
+            {
+                agent_info->sync.sync_response_timeout = (uint32_t)response_timeout;
+            }
+        }
+        else if (strcmp(node[i]->element, XML_DB_SYNC_MAX_EPS) == 0)
+        {
+            char* end;
+            const long value = strtol(node[i]->content, &end, 10);
+
+            if (value < 0 || value > 1000000 || *end)
+            {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
+            else
+            {
+                agent_info->sync.sync_max_eps = value;
+            }
+        }
+        else
+        {
+            mwarn(XML_INVELEM, node[i]->element);
+        }
+    }
+}
 
 #ifdef WAZUH_UNIT_TESTING
 /* Remove static qualifier when testing */
@@ -179,6 +250,13 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
         os_calloc(1, sizeof(wm_agent_info_t), agent_info);
         agent_info->enabled = 1;    // Enabled by default
         agent_info->interval = 300; // 5 minutes default interval
+
+        // Database synchronization config values
+        agent_info->sync.enable_synchronization = 1;
+        agent_info->sync.sync_interval = 300;
+        agent_info->sync.sync_response_timeout = 30;
+        agent_info->sync.sync_max_eps = 10;
+
         module->context = &WM_AGENT_INFO_CONTEXT;
         module->tag = strdup(module->context->name);
         module->data = agent_info;
@@ -227,6 +305,16 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
             else
             {
                 agent_info->interval = value;
+            }
+        }
+        else if (!strcmp(nodes[i]->element, XML_SYNC))
+        {
+            // Synchronization section - Let's get the children node and iterate the values
+            xml_node** children = OS_GetElementsbyNode(xml, nodes[i]);
+            if (children)
+            {
+                parse_synchronization_section(agent_info, children);
+                OS_ClearNode(children);
             }
         }
         else
@@ -301,6 +389,9 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 
     g_shutting_down = 0;
     minfo("Agent-info message queue initialized successfully.");
+
+    // Set synchronization parameters from configuration
+    agent_info_enable_synchronization = agent_info->sync.enable_synchronization;
 
     // Get module handle and function pointers
     if (agent_info_module = so_get_module_handle(AGENT_INFO_LIB_NAME), agent_info_module)
@@ -396,6 +487,16 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
     else
     {
         cJSON_AddStringToObject(wm_agent_info, "enabled", agent_info->enabled ? "yes" : "no");
+        cJSON_AddNumberToObject(wm_agent_info, "interval", agent_info->interval);
+
+        // Database synchronization values
+        cJSON* synchronization = cJSON_CreateObject();
+        cJSON_AddStringToObject(synchronization, "enabled", agent_info->sync.enable_synchronization ? "yes" : "no");
+        cJSON_AddNumberToObject(synchronization, "interval", agent_info->sync.sync_interval);
+        cJSON_AddNumberToObject(synchronization, "max_eps", agent_info->sync.sync_max_eps);
+        cJSON_AddNumberToObject(synchronization, "response_timeout", agent_info->sync.sync_response_timeout);
+
+        cJSON_AddItemToObject(wm_agent_info, "synchronization", synchronization);
     }
 
     cJSON_AddItemToObject(root, "agent-info", wm_agent_info);
