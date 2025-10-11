@@ -51,10 +51,10 @@ test:
             Value: RequiredResourceAccess
       key_pointer:
         source: value
-        value: '/Name'
+        value: "/Name"
       value_pointer:
         source: value
-        value: '/Value'
+        value: "/Value"
       skip_serializer:
         source: value
         value: false
@@ -93,10 +93,10 @@ test:
               arch: x64
       key_pointer:
         source: value
-        value: '/Name'
+        value: "/Name"
       value_pointer:
         source: value
-        value: '/Value'
+        value: "/Value"
       skip_serializer:
         source: value
         value: true
@@ -129,10 +129,10 @@ test:
         value: null
       key_pointer:
         source: value
-        value: '/Name'
+        value: "/Name"
       value_pointer:
         source: value
-        value: '/Value'
+        value: "/Value"
       skip_serializer:
         source: value
         value: false

@@ -166,6 +166,18 @@ bool isNumber(const std::string& str);
 bool replaceAll(std::string& data, const std::string_view toSearch, const std::string_view toReplace);
 bool haveUpperCaseCharacters(const std::string& str);
 
+/**
+ * @brief Normalize a string to lowercase snake_case removing unsupported characters.
+ *
+ * Converts alphanumeric characters to lowercase, replaces a subset of separators
+ * (space, '/', '.', '-', '\\', ':') with underscores, collapses multiple underscores,
+ * and trims leading/trailing underscores. Other characters are dropped.
+ *
+ * @param input String to normalize.
+ * @return std::string Normalized string.
+ */
+std::string normalizeStr(std::string_view input);
+
 } // namespace base::utils::string
 
 #endif // _STRING_UTILS_H

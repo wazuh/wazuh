@@ -251,6 +251,9 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         "array_obj_to_mapkv",
         {schemf::JTypeToken::create(json::Json::Type::String, true), builders::opBuilderHelperArrayObjToMapkv});
     registry->template add<builders::OpBuilderEntry>(
+        "array_obj_to_map_changes",
+        {schemf::JTypeToken::create(json::Json::Type::String, true), builders::opBuilderHelperArrayObjToMapChanges});
+    registry->template add<builders::OpBuilderEntry>(
         "concat", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat()});
     registry->template add<builders::OpBuilderEntry>(
         "concat_any",

@@ -39,8 +39,8 @@ auto builderArrayRefWrongElement(const std::string& refName)
         expectValidatorAccess(mocks);
         EXPECT_CALL(*mocks.validator, hasField(DotPath(refName))).WillRepeatedly(testing::Return(true));
         EXPECT_CALL(*mocks.validator, isArray(DotPath(refName))).WillRepeatedly(testing::Return(true));
-        EXPECT_CALL(*mocks.validator,
-                    getJsonType(DotPath(refName))).WillRepeatedly(testing::Return(json::Json::Type::String));
+        EXPECT_CALL(*mocks.validator, getJsonType(DotPath(refName)))
+            .WillRepeatedly(testing::Return(json::Json::Type::String));
         return None {};
     };
 }
@@ -83,38 +83,37 @@ namespace mapbuildtest
 INSTANTIATE_TEST_SUITE_P(
     ArrayObjToMapKv,
     MapBuilderTest,
-    testing::Values(
-        MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-             opBuilderHelperArrayObjToMapkv,
-             SUCCESS(builderArrayRefNotInSchema("ExtendedProperties"))),
-        MapT({}, opBuilderHelperArrayObjToMapkv, FAILURE()),
-        MapT({makeValue(R"("ExtendedProperties")"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-             opBuilderHelperArrayObjToMapkv,
-             FAILURE()),
-        MapT({makeRef("ExtendedProperties"), makeValue(R"(1)"), makeValue(R"("/Value")")},
-             opBuilderHelperArrayObjToMapkv,
-             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
-        MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"(1)")},
-             opBuilderHelperArrayObjToMapkv,
-             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
-        MapT({makeRef("ExtendedProperties"), makeValue(R"("")"), makeValue(R"("/Value")")},
-             opBuilderHelperArrayObjToMapkv,
-             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
-        MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("")")},
-             opBuilderHelperArrayObjToMapkv,
-             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
-        MapT({makeRef("ExtendedProperties"), makeValue(R"("Name")"), makeValue(R"("/Value")")},
-             opBuilderHelperArrayObjToMapkv,
-             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
-        MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("Value")")},
-             opBuilderHelperArrayObjToMapkv,
-             FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
-        MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-             opBuilderHelperArrayObjToMapkv,
-             FAILURE(builderArrayRefNotArray("ExtendedProperties"))),
-        MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-             opBuilderHelperArrayObjToMapkv,
-             FAILURE(builderArrayRefWrongElement("ExtendedProperties")))),
+    testing::Values(MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         SUCCESS(builderArrayRefNotInSchema("ExtendedProperties"))),
+                    MapT({}, opBuilderHelperArrayObjToMapkv, FAILURE()),
+                    MapT({makeValue(R"("ExtendedProperties")"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE()),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"(1)"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"(1)")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefNotInSchema("ExtendedProperties"))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefNotArray("ExtendedProperties"))),
+                    MapT({makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
+                         opBuilderHelperArrayObjToMapkv,
+                         FAILURE(builderArrayRefWrongElement("ExtendedProperties")))),
     testNameFormatter<MapBuilderTest>("ArrayObjToMapKv"));
 } // namespace mapbuildtest
 
@@ -137,9 +136,7 @@ INSTANTIATE_TEST_SUITE_P(
                 })",
             opBuilderHelperArrayObjToMapkv,
             {makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-            SUCCESS(opArrayRefNotInSchemaSuccess(
-                "ExtendedProperties",
-                json::Json(R"({
+            SUCCESS(opArrayRefNotInSchemaSuccess("ExtendedProperties", json::Json(R"({
                     "useragent": "Mozilla/5.0",
                     "age": 42,
                     "keepmesignedin": true,
@@ -159,13 +156,8 @@ INSTANTIATE_TEST_SUITE_P(
                     ]
                 })",
             opBuilderHelperArrayObjToMapkv,
-            {makeRef("ExtendedProperties"),
-             makeValue(R"("/Name")"),
-             makeValue(R"("/Value")"),
-             makeValue(R"(true)")},
-            SUCCESS(opArrayRefNotInSchemaSuccess(
-                "ExtendedProperties",
-                json::Json(R"({
+            {makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")"), makeValue(R"(true)")},
+            SUCCESS(opArrayRefNotInSchemaSuccess("ExtendedProperties", json::Json(R"({
                     "UserAgent": "Mozilla/5.0",
                     "Age": 42,
                     "KeepMeSignedIn": true,
@@ -185,9 +177,7 @@ INSTANTIATE_TEST_SUITE_P(
                 })",
             opBuilderHelperArrayObjToMapkv,
             {makeRef("ExtendedProperties"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-            SUCCESS(opArrayRefNotInSchemaSuccess(
-                "ExtendedProperties",
-                json::Json(R"({
+            SUCCESS(opArrayRefNotInSchemaSuccess("ExtendedProperties", json::Json(R"({
                     "useragent": "Mozilla/5.0",
                     "request_type": "OAuth2:Authorize",
                     "included_updated_properties": "RequiredResourceAccess",
@@ -203,9 +193,7 @@ INSTANTIATE_TEST_SUITE_P(
                 })",
             opBuilderHelperArrayObjToMapkv,
             {makeRef("ModifiedProperties"), makeValue(R"("/Name")"), makeValue(R"("/NewValue")")},
-            SUCCESS(opArrayRefNotInSchemaSuccess(
-                "ModifiedProperties",
-                json::Json(R"({
+            SUCCESS(opArrayRefNotInSchemaSuccess("ModifiedProperties", json::Json(R"({
                     "requiredresourceaccess": "new-data",
                     "included_updated_properties": "RequiredResourceAccess"
                 })")))),
@@ -218,9 +206,7 @@ INSTANTIATE_TEST_SUITE_P(
                 })",
             opBuilderHelperArrayObjToMapkv,
             {makeRef("Parameters"), makeValue(R"("/Name")"), makeValue(R"("/Value")")},
-            SUCCESS(opArrayRefNotInSchemaSuccess(
-                "Parameters",
-                json::Json(R"({
+            SUCCESS(opArrayRefNotInSchemaSuccess("Parameters", json::Json(R"({
                     "other": "42"
                 })")))),
         MapT(

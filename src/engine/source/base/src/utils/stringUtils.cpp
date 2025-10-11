@@ -1,5 +1,7 @@
 #include "utils/stringUtils.hpp"
 
+#include <iterator>
+
 namespace base::utils::string
 {
 
@@ -226,6 +228,47 @@ bool haveUpperCaseCharacters(const std::string& str)
 {
     return std::any_of(
         std::begin(str), std::end(str), [](std::string::value_type character) { return std::isupper(character); });
+}
+
+std::string normalizeStr(std::string_view input)
+{
+    std::string out;
+    out.reserve(input.size());
+
+    std::transform(input.begin(),
+                   input.end(),
+                   std::back_inserter(out),
+                   [](unsigned char ch) -> char
+                   {
+                       ch = static_cast<unsigned char>(std::tolower(ch));
+                       if (std::isalnum(ch))
+                       {
+                           return static_cast<char>(ch);
+                       }
+
+                       if (ch == ' ' || ch == '/' || ch == '.' || ch == '-' || ch == '\\' || ch == ':')
+                       {
+                           return '_';
+                       }
+
+                       return '\0';
+                   });
+
+    out.erase(std::remove(out.begin(), out.end(), '\0'), out.end());
+
+    out.erase(std::unique(out.begin(), out.end(), [](char a, char b) { return a == '_' && b == '_'; }), out.end());
+
+    if (!out.empty() && out.front() == '_')
+    {
+        out.erase(out.begin());
+    }
+
+    if (!out.empty() && out.back() == '_')
+    {
+        out.pop_back();
+    }
+
+    return out;
 }
 
 } // namespace base::utils::string
