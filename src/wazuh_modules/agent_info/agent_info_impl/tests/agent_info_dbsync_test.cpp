@@ -127,6 +127,10 @@ TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithSyncProtocol)
 
     // Call persistDifference - should work through sync protocol only
     EXPECT_NO_THROW(m_agentInfo->persistDifference("test-id", Operation::CREATE, "test-index", "{\"test\":\"data\"}"));
+
+    // Verify the log message was generated
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Persisting AgentInfo event:"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("{\"test\":\"data\"}"));
 }
 
 TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithoutSyncProtocol)

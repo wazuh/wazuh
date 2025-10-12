@@ -156,6 +156,7 @@ void AgentInfoImpl::persistDifference(const std::string& id, Operation operation
 {
     if (m_spSyncProtocol)
     {
+        m_logFunction(LOG_DEBUG_VERBOSE, "Persisting AgentInfo event: " + data);
         m_spSyncProtocol->persistDifference(id, operation, index, data);
     }
 }
