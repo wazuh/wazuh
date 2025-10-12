@@ -331,35 +331,42 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
         return groups;
     }
 
-    // Look for the group line in merged.mg
-    // Format: #group: group1,group2,group3
+    // Look for group names in XML comments in merged.mg
+    // Format: <!-- Source file: groupname/agent.conf --> or <!--Source file: groupname/agent.conf-->
     m_fileIO->readLineByLine(mergedFile,
                              [&](const std::string & line)
     {
-        if (line.find("#group:") == 0)
+        // Look for XML comment with "Source file:" (with or without space after <!--)
+        std::string trimmedLine = Utils::trim(line);
+        size_t sourceFilePos = trimmedLine.find("Source file:");
+
+        if (sourceFilePos != std::string::npos && trimmedLine.find("<!--") == 0)
         {
-            // Extract the group names after "#group:"
-            std::string groupsStr = line.substr(7); // Skip "#group:"
+            // Extract the path after "Source file:"
+            size_t pathStart = sourceFilePos + 12; // Length of "Source file:"
 
-            // Trim whitespace and split by comma using stringHelper
-            groupsStr = Utils::trim(groupsStr);
-            auto groupTokens = Utils::split(groupsStr, ',');
-
-            // Trim each group name
-            for (auto& group : groupTokens)
+            // Skip any leading whitespace after "Source file:"
+            while (pathStart < trimmedLine.length() && std::isspace(trimmedLine[pathStart]))
             {
-                group = Utils::trim(group);
-
-                if (!group.empty())
-                {
-                    groups.push_back(group);
-                }
+                pathStart++;
             }
 
-            return false; // Stop reading after finding the group line
+            auto pathEnd = trimmedLine.find("/agent.conf", pathStart);
+
+            if (pathEnd != std::string::npos && pathEnd > pathStart)
+            {
+                std::string groupName = trimmedLine.substr(pathStart, pathEnd - pathStart);
+                groupName = Utils::trim(groupName);
+
+                // Exclude "default" group and only add non-empty group names
+                if (!groupName.empty() && groupName != "default")
+                {
+                    groups.push_back(groupName);
+                }
+            }
         }
 
-        return true; // Continue reading
+        return true; // Continue reading to find all groups
     });
 
     if (!groups.empty())
