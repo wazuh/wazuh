@@ -9,29 +9,102 @@
  * Foundation.
  */
 
-#include "wazuh_modules/wm_agent_info.h"
-#include "wazuh_modules/agent_info/include/agent_info.h"
-#include "wazuh_modules/wmodules.h"
-#include "sym_load.h"
-#include "logging_helper.h"
-#include "mq_op.h"
-#include "agent_sync_protocol_c_interface_types.h"
-#include "rc.h"
-
+// System includes
 #include <stdio.h>
 
-static const char* XML_ENABLED = "enabled";
-static const char* XML_INTERVAL = "interval";
-static const char* XML_SYNC = "synchronization";
+// Project includes
+#include "agent_info/include/agent_info.h"
+#include "wm_agent_info.h"
+#include "wmodules.h"
 
+#include "agent_sync_protocol_c_interface_types.h"
+#include "logging_helper.h"
+#include "mq_op.h"
+#include "rc.h"
+#include "sym_load.h"
+
+// Unit testing support
+#ifdef WAZUH_UNIT_TESTING
+/* Remove static qualifier when testing */
+#define static
+#endif
+
+// Platform-specific defines
 #ifdef WIN32
 #define AGENT_INFO_SYNC_PROTOCOL_DB_PATH "queue\\agent_info\\db\\agent_info_sync.db"
 #else
 #define AGENT_INFO_SYNC_PROTOCOL_DB_PATH "queue/agent_info/db/agent_info_sync.db"
 #endif
 
+// Logging macros
+#undef minfo
+#undef mwarn
+#undef merror
+#undef mdebug1
+#undef mdebug2
+
+#define minfo(msg, ...)   _mtinfo(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mwarn(msg, ...)   _mtwarn(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define merror(msg, ...)  _mterror(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug1(msg, ...) _mtdebug1(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+#define mdebug2(msg, ...) _mtdebug2(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
+
+// XML configuration constants
+static const char* XML_ENABLED = "enabled";
+static const char* XML_INTERVAL = "interval";
+static const char* XML_SYNC = "synchronization";
+
+// Type definitions
+typedef void (*agent_info_persist_diff_func)(const char* id,
+                                             Operation_t operation,
+                                             const char* index,
+                                             const char* data);
+typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
+
+// Static module variables
+static int g_agent_info_queue = 0; // Output queue file descriptor
+static int g_shutting_down = 0;
+static bool agent_info_enable_synchronization = true;
+
+// Module handle and function pointers
+void* agent_info_module = NULL;
+agent_info_start_func agent_info_start_ptr = NULL;
+agent_info_stop_func agent_info_stop_ptr = NULL;
+agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
+agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
+agent_info_set_persist_function_func agent_info_set_persist_function_ptr = NULL;
+agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
+
+// Sync protocol function pointers
+static agent_info_persist_diff_func agent_info_persist_diff_ptr = NULL;
+static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
+
+// Forward declarations (needed for WM_AGENT_INFO_CONTEXT)
+#ifdef WIN32
+DWORD WINAPI wm_agent_info_main(void* arg);
+#else
+void* wm_agent_info_main(wm_agent_info_t* agent_info);
+#endif
+void wm_agent_info_destroy(wm_agent_info_t* agent_info);
+cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info);
+int wm_agent_info_sync_message(const char* command, size_t command_len);
+void wm_agent_info_stop(void);
+
+// Module context
+const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
+                                          .start = (wm_routine)wm_agent_info_main,
+                                          .destroy = (void (*)(void*))wm_agent_info_destroy,
+                                          .dump = (cJSON * (*)(const void*)) wm_agent_info_dump,
+                                          .sync = wm_agent_info_sync_message,
+                                          .stop = (void (*)(void*))wm_agent_info_stop,
+                                          .query = NULL};
+
+// ==============================================================================
+// Static Helper Functions
+// ==============================================================================
+
 // Synchronization parsing function
-static void parse_synchronization_section(wm_agent_info_t* agent_info, xml_node** node)
+static void wm_agent_info_parse_synchronization(wm_agent_info_t* agent_info, xml_node** node)
 {
     const char* XML_DB_SYNC_ENABLED = "enabled";
     const char* XML_DB_SYNC_INTERVAL = "interval";
@@ -100,63 +173,24 @@ static void parse_synchronization_section(wm_agent_info_t* agent_info, xml_node*
     }
 }
 
-#ifdef WAZUH_UNIT_TESTING
-/* Remove static qualifier when testing */
-#define static
-#endif
-
-#undef minfo
-#undef mwarn
-#undef merror
-#undef mdebug1
-#undef mdebug2
-
-#define minfo(msg, ...)   _mtinfo(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mwarn(msg, ...)   _mtwarn(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define merror(msg, ...)  _mterror(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mdebug1(msg, ...) _mtdebug1(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-#define mdebug2(msg, ...) _mtdebug2(WM_AGENT_INFO_LOGTAG, __FILE__, __LINE__, __func__, msg, ##__VA_ARGS__)
-
-// Queue and synchronization variables
-static int g_agent_info_queue = 0;  // Output queue file descriptor
-static int g_shutting_down = 0;
-
-// Synchronization configuration
-static bool agent_info_enable_synchronization = true;
-
-// Sync protocol function pointers
-typedef void (*agent_info_persist_diff_func)(const char* id, Operation_t operation, const char* index, const char* data);
-static agent_info_persist_diff_func agent_info_persist_diff_ptr = NULL;
-
-typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
-static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
-
 // Logging callback function for agent-info module
-static void agent_info_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag) {
-    switch(level) {
-        case LOG_DEBUG:
-            mdebug1("%s", log);
-            break;
-        case LOG_DEBUG_VERBOSE:
-            mdebug2("%s", log);
-            break;
-        case LOG_INFO:
-            minfo("%s", log);
-            break;
-        case LOG_WARNING:
-            mwarn("%s", log);
-            break;
-        case LOG_ERROR:
-            merror("%s", log);
-            break;
-        default:
-            minfo("%s", log);
-            break;
+static void
+agent_info_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag)
+{
+    switch (level)
+    {
+        case LOG_DEBUG: mdebug1("%s", log); break;
+        case LOG_DEBUG_VERBOSE: mdebug2("%s", log); break;
+        case LOG_INFO: minfo("%s", log); break;
+        case LOG_WARNING: mwarn("%s", log); break;
+        case LOG_ERROR: merror("%s", log); break;
+        default: minfo("%s", log); break;
     }
 }
 
 // Check if module is shutting down
-static bool wm_agent_info_is_shutting_down() {
+static bool wm_agent_info_is_shutting_down()
+{
     return g_shutting_down;
 }
 
@@ -187,16 +221,21 @@ static int wm_agent_info_send_stateless(const char* message)
 
     mdebug1("Sending agent-info event: %s", message);
 
-    if (SendMSGPredicated(g_agent_info_queue, message, WM_AGENT_INFO_LOGTAG, LOCALFILE_MQ, wm_agent_info_is_shutting_down) < 0) {
+    if (SendMSGPredicated(
+            g_agent_info_queue, message, WM_AGENT_INFO_LOGTAG, LOCALFILE_MQ, wm_agent_info_is_shutting_down) < 0)
+    {
         merror("Error sending message to queue");
 
-        if ((g_agent_info_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0) {
+        if ((g_agent_info_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0)
+        {
             merror("Cannot restart agent-info message queue");
             return -1;
         }
 
         // Try to send it again
-        if (SendMSGPredicated(g_agent_info_queue, message, WM_AGENT_INFO_LOGTAG, LOCALFILE_MQ, wm_agent_info_is_shutting_down) < 0) {
+        if (SendMSGPredicated(
+                g_agent_info_queue, message, WM_AGENT_INFO_LOGTAG, LOCALFILE_MQ, wm_agent_info_is_shutting_down) < 0)
+        {
             merror("Error sending message to queue after reconnection");
             return -1;
         }
@@ -230,14 +269,9 @@ static int wm_agent_info_persist_stateful(const char* id, Operation_t operation,
     return 0;
 }
 
-// Module handle and function pointers
-void *agent_info_module = NULL;
-agent_info_start_func agent_info_start_ptr = NULL;
-agent_info_stop_func agent_info_stop_ptr = NULL;
-agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
-agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
-agent_info_set_persist_function_func agent_info_set_persist_function_ptr = NULL;
-agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
+// ==============================================================================
+// Public Module Interface Functions
+// ==============================================================================
 
 // Reading function
 int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nodes, wmodule* module)
@@ -311,9 +345,10 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
         {
             // Synchronization section - Let's get the children node and iterate the values
             xml_node** children = OS_GetElementsbyNode(xml, nodes[i]);
+
             if (children)
             {
-                parse_synchronization_section(agent_info, children);
+                wm_agent_info_parse_synchronization(agent_info, children);
                 OS_ClearNode(children);
             }
         }
@@ -327,50 +362,53 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
 }
 
 // Stop function
-void wm_agent_info_stop() {
+void wm_agent_info_stop()
+{
     g_shutting_down = 1;
 
-    if (agent_info_stop_ptr) {
+    if (agent_info_stop_ptr)
+    {
         agent_info_stop_ptr();
     }
 }
 
 // Sync message function
-int wm_agent_info_sync_message(const char *command, size_t command_len) {
-    if (agent_info_enable_synchronization && agent_info_parse_response_ptr) {
+int wm_agent_info_sync_message(const char* command, size_t command_len)
+{
+    if (agent_info_enable_synchronization && agent_info_parse_response_ptr)
+    {
         size_t header_len = strlen(AGENT_INFO_SYNC_HEADER);
-        const uint8_t *data = (const uint8_t *)(command + header_len);
+        const uint8_t* data = (const uint8_t*)(command + header_len);
         size_t data_len = command_len - header_len;
 
-        bool ret = false;
-        ret = agent_info_parse_response_ptr(data, data_len);
+        bool ret = agent_info_parse_response_ptr(data, data_len);
 
-        if (!ret) {
+        if (!ret)
+        {
             mdebug1("Error syncing module");
             return -1;
         }
 
         return 0;
-    } else {
+    }
+    else
+    {
         mdebug1("Agent-info synchronization is disabled or function not available");
         return -1;
     }
 }
 
-// Module context
-const wm_context WM_AGENT_INFO_CONTEXT = {
-    .name = AGENT_INFO_WM_NAME,
-    .start = (wm_routine)wm_agent_info_main,
-    .destroy = (void(*)(void *))wm_agent_info_destroy,
-    .dump = (cJSON *(*)(const void *))wm_agent_info_dump,
-    .sync = wm_agent_info_sync_message,
-    .stop = (void(*)(void *))wm_agent_info_stop,
-    .query = NULL
-};
-
-// Main module function (runs in its own thread)
+// Main module function
+#ifdef WIN32
+DWORD WINAPI wm_agent_info_main(void* arg)
+{
+    wm_agent_info_t* agent_info = (wm_agent_info_t*)arg;
+#else
 void* wm_agent_info_main(wm_agent_info_t* agent_info)
 {
+#endif
+    g_shutting_down = 0;
+
     minfo("Starting agent-info module.");
 
     if (!agent_info || !agent_info->enabled)
@@ -381,13 +419,13 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
 
     // Initialize message queue
     g_agent_info_queue = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+
     if (g_agent_info_queue < 0)
     {
         merror("Cannot initialize agent-info message queue.");
         return NULL;
     }
 
-    g_shutting_down = 0;
     minfo("Agent-info message queue initialized successfully.");
 
     // Set synchronization parameters from configuration

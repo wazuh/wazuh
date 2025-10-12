@@ -38,13 +38,6 @@ typedef struct wm_agent_info_t
 
 extern const wm_context WM_AGENT_INFO_CONTEXT;
 
-// Module functions
-void* wm_agent_info_main(wm_agent_info_t* agent_info);
-void wm_agent_info_destroy(wm_agent_info_t* agent_info);
-cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info);
-void wm_agent_info_stop();
-int wm_agent_info_sync_message(const char* command, size_t command_len);
-
 // Configuration reading function
 int wm_agent_info_read(const OS_XML* xml, xml_node** nodes, wmodule* module);
 

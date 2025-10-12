@@ -2,6 +2,7 @@
 #define _AGENT_INFO_H
 
 #include "agent_sync_protocol_c_interface_types.h"
+#include "logging_helper.h"
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -20,9 +21,6 @@
 extern "C"
 {
 #endif
-
-#include "logging_helper.h"
-#include "agent_sync_protocol_c_interface_types.h"
 
 // Forward declarations
 struct wm_agent_info_t;
