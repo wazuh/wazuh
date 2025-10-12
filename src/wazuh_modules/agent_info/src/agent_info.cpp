@@ -1,10 +1,13 @@
 #include "agent_info.h"
+
 #include "agent_info_impl.hpp"
 #include "wm_agent_info.h"
 
 #include <dbsync.hpp>
 
+#include <functional>
 #include <memory>
+#include <string>
 
 /* Agent Info db directory */
 #ifndef WAZUH_UNIT_TESTING
