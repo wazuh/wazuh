@@ -77,7 +77,7 @@ TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
     }))
     .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
     {
-        callback("#group: test-group");
+        callback("<!-- Source file: test-group/agent.conf -->");
     }));
 
     nlohmann::json osData = {{"os_name", "Ubuntu"}};
