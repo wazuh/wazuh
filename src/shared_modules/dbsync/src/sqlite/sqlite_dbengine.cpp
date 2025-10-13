@@ -160,7 +160,7 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
     const auto& data { jsInput.at("data") };
 
     auto it { jsInput.find("options") };
-    auto returnOldData { false };
+    auto returnOldData { true };
     nlohmann::json ignoredColumns { };
 
     if (jsInput.end() != it)

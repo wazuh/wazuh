@@ -208,6 +208,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
 void Syscollector::updateChanges(const std::string& table,
                                  const nlohmann::json& values)
 {
+std::cout << "Updating changes for table: " << table << std::endl;
     const auto callback
     {
         [this, table](ReturnTypeCallback result, const nlohmann::json & data)
