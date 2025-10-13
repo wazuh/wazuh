@@ -457,6 +457,7 @@ nlohmann::json Syscollector::ecsSystemData(const nlohmann::json& originalData, b
     setJsonField(ret, originalData, "/host/os/major", "os_major", createFields);
     setJsonField(ret, originalData, "/host/os/minor", "os_minor", createFields);
     setJsonField(ret, originalData, "/host/os/name", "os_name", createFields);
+    setJsonField(ret, originalData, "/host/os/type", "os_type", createFields);
     setJsonField(ret, originalData, "/host/os/patch", "os_patch", createFields);
     setJsonField(ret, originalData, "/host/os/platform", "os_platform", createFields);
     setJsonField(ret, originalData, "/host/os/version", "os_version", createFields);
