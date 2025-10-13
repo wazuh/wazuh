@@ -460,11 +460,6 @@ TEST_F(CTIStorageDBTest, GetPolicyIntegrationList)
     EXPECT_THAT(names, ::testing::UnorderedElementsAre("Integration One", "Integration Two"));
 }
 
-TEST_F(CTIStorageDBTest, GetPolicyDefaultParent)
-{
-    auto defaultParent = m_storage->getPolicyDefaultParent();
-    EXPECT_EQ(defaultParent.fullName(), "wazuh");
-}
 
 // Error handling tests
 TEST_F(CTIStorageDBTest, GetNonExistentAsset)

@@ -24,7 +24,6 @@ public:
 
     // Policy operations
     MOCK_METHOD(std::vector<base::Name>, getPolicyIntegrationList, (), (const, override));
-    MOCK_METHOD(base::Name, getPolicyDefaultParent, (), (const, override));
     MOCK_METHOD(json::Json, getPolicy, (const base::Name& name), (const, override));
     MOCK_METHOD(std::vector<base::Name>, getPolicyList, (), (const, override));
     MOCK_METHOD(bool, policyExists, (const base::Name& name), (const, override));

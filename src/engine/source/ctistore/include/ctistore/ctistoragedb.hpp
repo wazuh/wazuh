@@ -220,16 +220,6 @@ public:
     std::vector<base::Name> getPolicyIntegrationList() const;
 
     /**
-     * @brief Get the default parent integration used by the policy.
-     *
-     * Returned when a policy item does not specify an explicit parent.
-     *
-     * @return Default parent integration Name.
-     * @throw std::runtime_error on read error or if undefined.
-     */
-    base::Name getPolicyDefaultParent() const;
-
-    /**
      * @brief Get a policy document by its ID or title.
      *
      * @param name Policy identifier (can be an ID or a title).

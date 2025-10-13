@@ -463,12 +463,6 @@ struct CTIStorageDB::Impl
     std::vector<base::Name> getPolicyIntegrationList() const;
 
     /**
-     * @brief Gets the default parent namespace for policies.
-     * @return Default parent name (typically "wazuh")
-     */
-    base::Name getPolicyDefaultParent() const;
-
-    /**
      * @brief Gets a policy document by ID or title.
      * @param name Policy identifier
      * @return JSON policy document
@@ -1119,10 +1113,6 @@ std::vector<base::Name> CTIStorageDB::getPolicyIntegrationList() const
     return m_pImpl->getPolicyIntegrationList();
 }
 
-base::Name CTIStorageDB::getPolicyDefaultParent() const
-{
-    return m_pImpl->getPolicyDefaultParent();
-}
 
 json::Json CTIStorageDB::getPolicy(const base::Name& name) const
 {
@@ -1467,11 +1457,6 @@ std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const
     return integrations;
 }
 
-base::Name CTIStorageDB::Impl::getPolicyDefaultParent() const
-{
-    std::shared_lock<std::shared_mutex> lock(m_rwMutex);
-    return base::Name(std::string(constants::DEFAULT_PARENT));
-}
 
 json::Json CTIStorageDB::Impl::getPolicy(const base::Name& name) const
 {

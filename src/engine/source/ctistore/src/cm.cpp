@@ -276,22 +276,6 @@ std::vector<base::Name> ContentManager::getPolicyIntegrationList() const
     }
 }
 
-base::Name ContentManager::getPolicyDefaultParent() const
-{
-    if (!m_storage || !m_storage->isOpen())
-    {
-        return base::Name();
-    }
-    try
-    {
-        return m_storage->getPolicyDefaultParent();
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("getPolicyDefaultParent error: {}", e.what());
-        return base::Name();
-    }
-}
 
 json::Json ContentManager::getPolicy(const base::Name& name) const
 {
