@@ -107,7 +107,6 @@ const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
 static void wm_agent_info_parse_synchronization(wm_agent_info_t* agent_info, xml_node** node)
 {
     const char* XML_DB_SYNC_ENABLED = "enabled";
-    const char* XML_DB_SYNC_INTERVAL = "interval";
     const char* XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
     const char* XML_DB_SYNC_MAX_EPS = "max_eps";
 
@@ -124,19 +123,6 @@ static void wm_agent_info_parse_synchronization(wm_agent_info_t* agent_info, xml
             else
             {
                 agent_info->sync.enable_synchronization = r;
-            }
-        }
-        else if (strcmp(node[i]->element, XML_DB_SYNC_INTERVAL) == 0)
-        {
-            long t = w_parse_time(node[i]->content);
-
-            if (t <= 0)
-            {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else
-            {
-                agent_info->sync.sync_interval = t;
             }
         }
         else if (strcmp(node[i]->element, XML_DB_SYNC_RESPONSE_TIMEOUT) == 0)
@@ -287,7 +273,6 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
 
         // Database synchronization config values
         agent_info->sync.enable_synchronization = 1;
-        agent_info->sync.sync_interval = 300;
         agent_info->sync.sync_response_timeout = 30;
         agent_info->sync.sync_max_eps = 10;
 
@@ -530,7 +515,6 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
         // Database synchronization values
         cJSON* synchronization = cJSON_CreateObject();
         cJSON_AddStringToObject(synchronization, "enabled", agent_info->sync.enable_synchronization ? "yes" : "no");
-        cJSON_AddNumberToObject(synchronization, "interval", agent_info->sync.sync_interval);
         cJSON_AddNumberToObject(synchronization, "max_eps", agent_info->sync.sync_max_eps);
         cJSON_AddNumberToObject(synchronization, "response_timeout", agent_info->sync.sync_response_timeout);
 
