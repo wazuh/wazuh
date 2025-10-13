@@ -11,7 +11,7 @@
 
 /* Agent Info db directory */
 #ifndef WAZUH_UNIT_TESTING
-#define AGENT_INFO_DB_DISK_PATH "queue/agent_info/agent_info.db"
+#define AGENT_INFO_DB_DISK_PATH "queue/agent_info/db/agent_info.db"
 #else
 #ifndef WIN32
 #define AGENT_INFO_DB_DISK_PATH    "./agent_info.db"
