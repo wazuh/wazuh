@@ -177,7 +177,7 @@ def main(argv):
                 external_id=options.external_id,
                 iam_role_arn=options.iam_role_arn,
                 iam_role_duration=options.iam_role_duration,
-                profile = options.aws_profile,
+                profile=options.aws_profile,
                 sts_endpoint=options.sts_endpoint,
                 service_endpoint=options.service_endpoint,
                 name=options.queue,
