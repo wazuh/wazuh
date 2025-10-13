@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch, ANY
 import pytest
 
 from wazuh.core.exception import WazuhError
-from framework.wazuh import kvdb
+from wazuh import kvdb
 
 
 class FakeEngineClient:
@@ -45,9 +45,9 @@ class FakeEngineCM:
 
 
 @pytest.mark.asyncio
-@patch('framework.wazuh.kvdb.process_array')
-@patch('framework.wazuh.kvdb.validate_response_or_raise')
-@patch('framework.wazuh.kvdb.get_engine_client')
+@patch('wazuh.kvdb.process_array')
+@patch('wazuh.kvdb.validate_response_or_raise')
+@patch('wazuh.kvdb.get_engine_client')
 async def test_list_kvdbs_ok(mock_get_client, mock_validate, mock_process):
     """Ensure list_kvdbs queries the engine and processes the array correctly."""
     items_from_engine = {"status": "OK", "content": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}]}
@@ -88,12 +88,12 @@ async def test_create_validates_payload(bad_body):
 
 
 @pytest.mark.asyncio
-@patch('framework.wazuh.kvdb.validate_response_or_raise')
-@patch('framework.wazuh.kvdb.get_engine_client')
-@patch('framework.wazuh.kvdb.remove')
-@patch('framework.wazuh.kvdb.save_asset_file')
-@patch('framework.wazuh.kvdb.exists', return_value=False)
-@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+@patch('wazuh.kvdb.validate_response_or_raise')
+@patch('wazuh.kvdb.get_engine_client')
+@patch('wazuh.kvdb.remove')
+@patch('wazuh.kvdb.save_asset_file')
+@patch('wazuh.kvdb.exists', return_value=False)
+@patch('wazuh.kvdb.generate_kvdb_file_path')
 async def test_create_success(mock_gen_path, mock_exists, mock_save, mock_remove, mock_get_client, mock_validate, tmp_path):
     """Create a KVDB successfully and confirm validation and engine calls."""
     body = {"type": "kvdb", "id": "100", "name": "demo1", "content": {"k": "v"}}
@@ -124,8 +124,8 @@ async def test_update_requires_testing_policy():
 
 
 @pytest.mark.asyncio
-@patch('framework.wazuh.kvdb.exists', return_value=False)
-@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+@patch('wazuh.kvdb.exists', return_value=False)
+@patch('wazuh.kvdb.generate_kvdb_file_path')
 async def test_update_missing_asset(mock_gen_path, mock_exists, tmp_path):
     """Verify update fails when asset file does not exist (error 8005)."""
     body = {"id": "100", "name": "demo1 (v2)", "content": {"k2": "v2"}}
@@ -138,14 +138,14 @@ async def test_update_missing_asset(mock_gen_path, mock_exists, tmp_path):
 
 
 @pytest.mark.asyncio
-@patch('framework.wazuh.kvdb.validate_response_or_raise')
-@patch('framework.wazuh.kvdb.get_engine_client')
-@patch('framework.wazuh.kvdb.safe_move')
-@patch('framework.wazuh.kvdb.save_asset_file')
-@patch('framework.wazuh.kvdb.remove')
-@patch('framework.wazuh.kvdb.full_copy')
-@patch('framework.wazuh.kvdb.exists', return_value=True)
-@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+@patch('wazuh.kvdb.validate_response_or_raise')
+@patch('wazuh.kvdb.get_engine_client')
+@patch('wazuh.kvdb.safe_move')
+@patch('wazuh.kvdb.save_asset_file')
+@patch('wazuh.kvdb.remove')
+@patch('wazuh.kvdb.full_copy')
+@patch('wazuh.kvdb.exists', return_value=True)
+@patch('wazuh.kvdb.generate_kvdb_file_path')
 async def test_update_success(mock_gen_path, mock_exists, mock_full_copy, mock_remove, mock_save, mock_safe_move, mock_get_client, mock_validate, tmp_path):
     """Update a KVDB successfully and confirm engine and file ops are called."""
     body = {"id": "100", "name": "demo1 (v2)", "content": {"k2": "v2"}}
@@ -178,8 +178,8 @@ async def test_delete_requires_testing_policy():
 
 
 @pytest.mark.asyncio
-@patch('framework.wazuh.kvdb.exists', return_value=False)
-@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+@patch('wazuh.kvdb.exists', return_value=False)
+@patch('wazuh.kvdb.generate_kvdb_file_path')
 async def test_delete_missing_asset(mock_gen_path, mock_exists, tmp_path):
     """Verify delete reports failures when files do not exist."""
     mock_gen_path.side_effect = lambda _id, _pt: str(tmp_path / f"{_id}.json")
@@ -192,13 +192,13 @@ async def test_delete_missing_asset(mock_gen_path, mock_exists, tmp_path):
 
 
 @pytest.mark.asyncio
-@patch('framework.wazuh.kvdb.validate_response_or_raise')
-@patch('framework.wazuh.kvdb.get_engine_client')
-@patch('framework.wazuh.kvdb.safe_move')
-@patch('framework.wazuh.kvdb.remove')
-@patch('framework.wazuh.kvdb.full_copy')
-@patch('framework.wazuh.kvdb.exists', return_value=True)
-@patch('framework.wazuh.kvdb.generate_kvdb_file_path')
+@patch('wazuh.kvdb.validate_response_or_raise')
+@patch('wazuh.kvdb.get_engine_client')
+@patch('wazuh.kvdb.safe_move')
+@patch('wazuh.kvdb.remove')
+@patch('wazuh.kvdb.full_copy')
+@patch('wazuh.kvdb.exists', return_value=True)
+@patch('wazuh.kvdb.generate_kvdb_file_path')
 async def test_delete_ok_calls_engine_per_id(mock_gen_path, mock_exists, mock_full_copy, mock_remove, mock_safe_move, mock_get_client, mock_validate, tmp_path):
     """Verify delete calls the engine once per id and returns affected ids."""
     fake = FakeEngineClient()
