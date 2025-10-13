@@ -78,7 +78,7 @@ function BuildWazuhMsi(){
             "..\shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll",
             "..\wazuh_modules\syscollector\build\bin\syscollector.dll",
             "..\wazuh_modules\sca\build\bin\sca.dll",
-            "..\wazuh_modules\sca\build\bin\agent_info.dll",
+            "..\wazuh_modules\agent_info\build\bin\agent_info.dll",
             "..\syscheckd\build\bin\libfimdb.dll"
         )
 
@@ -116,7 +116,7 @@ function ExtractDebugSymbols(){
     $exeFiles +=  Get-ChildItem -Filter "shared_modules\sync_protocol\build\bin\libagent_sync_protocol.dll"
 	$exeFiles +=  Get-ChildItem -Filter "wazuh_modules\syscollector\build\bin\syscollector.dll"
     $exeFiles +=  Get-ChildItem -Filter "wazuh_modules\sca\build\bin\sca.dll"
-    $exeFiles +=  Get-ChildItem -Filter "wazuh_modules\sca\build\bin\agent_info.dll"
+    $exeFiles +=  Get-ChildItem -Filter "wazuh_modules\agent_info\build\bin\agent_info.dll"
 	$exeFiles +=  Get-ChildItem -Filter "syscheckd\build\bin\libfimdb.dll"
 	cd "win32"
 
