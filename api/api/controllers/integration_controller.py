@@ -24,7 +24,7 @@ async def create_integration(body: dict, type_: str, pretty: bool = False, wait_
     Parameters
     ----------
     type_ : str
-        Integration type.
+        Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
     wait_for_complete : bool, optional
@@ -73,7 +73,7 @@ async def get_integrations(type_: str, integrations_list: List[str] = None, stat
     Parameters
     ----------
     type_ : str
-        Integration type.
+        Policy type.
     integrations_list : List[str]
         List of integration names to retrieve.
     status : str, optional
@@ -100,7 +100,7 @@ async def get_integrations(type_: str, integrations_list: List[str] = None, stat
     dapi = DistributedAPI(
         f=integration.get_integrations,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
+        request_type='local_any',
         is_async=True,
         wait_for_complete=wait_for_complete,
         logger=logger,
@@ -116,7 +116,7 @@ async def update_integration(body: dict, type_: str, pretty: bool = False, wait_
     Parameters
     ----------
     type_ : str
-        Integration type.
+        Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
     wait_for_complete : bool, optional
@@ -164,7 +164,7 @@ async def delete_integration(type_: str, integrations_list: List[str], pretty: b
     Parameters
     ----------
     type_ : str
-        Integration type.
+        Policy type.
     integrations_list : List[str]
         List of integration names to delete.
     pretty : bool, optional

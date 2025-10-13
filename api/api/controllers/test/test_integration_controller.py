@@ -96,7 +96,7 @@ async def test_get_integrations(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
     mock_dapi.assert_called_once_with(
         f=integration_framework.get_integrations,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
+        request_type='local_any',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,

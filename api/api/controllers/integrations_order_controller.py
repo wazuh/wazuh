@@ -23,7 +23,7 @@ async def create_integrations_order(body: dict, type_: str, pretty: bool = False
     Parameters
     ----------
     type_ : str
-        Integration type.
+        Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
     wait_for_complete : bool, optional
@@ -62,7 +62,7 @@ async def get_integrations_order(type_: str, pretty: bool = False, wait_for_comp
     Parameters
     ----------
     type_ : str
-        Integration type.
+        Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
     wait_for_complete : bool, optional
@@ -80,7 +80,7 @@ async def get_integrations_order(type_: str, pretty: bool = False, wait_for_comp
     dapi = DistributedAPI(
         f=integrations_order.get_integrations_order,
         f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
+        request_type='local_any',
         is_async=True,
         wait_for_complete=wait_for_complete,
         logger=logger,
@@ -96,7 +96,7 @@ async def delete_integrations_order(type_: str, pretty: bool = False, wait_for_c
     Parameters
     ----------
     type_ : str
-        Integration type.
+        Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
     wait_for_complete : bool, optional

@@ -79,7 +79,7 @@ async def test_get_integrations_order(mock_exc, mock_dapi, mock_remove, mock_dfu
     mock_dapi.assert_called_once_with(
         f=integrations_order_framework.get_integrations_order,
         f_kwargs=mock_remove.return_value,
-        request_type='local_master',
+        request_type='local_any',
         is_async=True,
         wait_for_complete=False,
         logger=ANY,
