@@ -23,6 +23,7 @@
 #include "../os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.h"
 #include "../rootcheck/rootcheck.h"
 #include "file/file.h"
+#include "db/include/db.h"
 #include "ebpf/include/ebpf_whodata.h"
 #include "agent_sync_protocol_c_interface.h"
 
@@ -74,6 +75,61 @@ bool is_fim_shutdown = false;
 bool fim_shutdown_process_on() {
     bool ret = is_fim_shutdown;
     return ret;
+}
+
+/**
+ * @brief Handles the FIM disabled scenario by cleaning up database and notifying the server
+ *
+ * This function is called when syscheck is disabled. It performs the following operations:
+ * 1. Checks for existing entries in the FIM database (files, registry keys/values)
+ * 2. Prepares data clean notifications for non-empty indices
+ * 3. Sends data clean notifications to the server with retry logic
+ * 4. Resets the database tables after successful notification
+ */
+STATIC void handle_fim_disabled(void) {
+
+    // Prepare indices vector for data clean notification
+    const char* indices[3] = {NULL, NULL, NULL};
+    size_t indices_count = 0;
+
+    int files_count = fim_db_get_count_file_entry();
+    if (files_count > 0) {
+        indices[indices_count++] = FIM_FILES_SYNC_INDEX;
+    }
+
+#ifdef WIN32
+    int registry_keys_count = fim_db_get_count_registry_key();
+    int registry_values_count = fim_db_get_count_registry_data();
+
+    if (registry_keys_count > 0) {
+        indices[indices_count++] = FIM_REGISTRY_KEYS_SYNC_INDEX;
+    }
+    if (registry_values_count > 0) {
+        indices[indices_count++] = FIM_REGISTRY_VALUES_SYNC_INDEX;
+    }
+#endif
+
+    // Send data clean notification if there are any indices to clean
+    if (indices_count > 0) {
+        minfo( "Syscheck is disabled, FIM database has entries. Proceeding with data clean notification.");
+
+        bool ret = false;
+        while (!ret) {
+            ret = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
+            if (!ret) {
+                for (uint32_t i = 0; i < syscheck.sync_interval; i++) {
+                    sleep(1);
+                }
+            }
+        }
+        mdebug1("Data clean notification sent successfully.");
+
+    } else {
+        minfo( "Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
+    }
+
+    asp_delete_database(syscheck.sync_handle);
+    fim_db_close_and_delete_database();
 }
 
 // Send a message
@@ -250,6 +306,8 @@ void start_daemon()
     }
 
     if (syscheck.disabled) {
+        handle_fim_disabled();
+        minfo("Syscheck is disabled. Exiting.");
         return;
     }
 
