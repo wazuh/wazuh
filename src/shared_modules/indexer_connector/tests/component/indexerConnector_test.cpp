@@ -25,7 +25,7 @@
 #include <thread>
 #include <utility>
 
-#define BUFFER_SIZE 4096
+#define LOG_BUFFER_SIZE 4096
 
 namespace Log
 {
@@ -139,7 +139,7 @@ static auto createStandardLogFunction()
         std::ignore = line;
         std::ignore = func;
 
-        char buffer[BUFFER_SIZE];
+        char buffer[LOG_BUFFER_SIZE];
         va_list args_copy;
         va_copy(args_copy, args);
         vsnprintf(buffer, sizeof(buffer), logMessage.c_str(), args_copy);

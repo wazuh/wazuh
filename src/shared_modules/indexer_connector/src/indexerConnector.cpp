@@ -299,7 +299,8 @@ void IndexerConnector::handleBulkOperationErrors(simdjson::ondemand::document& d
 
     // Verify event count matches response items
     size_t itemCount = 0;
-    for (auto item : items)
+
+    for (auto it = items.begin(); it != items.end(); ++it)
     {
         ++itemCount;
     }

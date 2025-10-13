@@ -17,46 +17,37 @@ if (NOT SHARED_MODULES)
     get_filename_component(SHARED_MODULES ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 endif()
 
-# Source files
-file(GLOB INDEXER_CONNECTOR_SRC "src/*.cpp")
+# Include directories
+include_directories(include)
 
-# Create library
-add_library(indexer_connector SHARED ${INDEXER_CONNECTOR_SRC})
+include_directories(${SRC_FOLDER})
+include_directories(${SRC_FOLDER}/external/cJSON)
+include_directories(${SRC_FOLDER}/external/nlohmann)
+include_directories(${SRC_FOLDER}/external/rocksdb/include)
+include_directories(${SRC_FOLDER}/external/openssl/include)
 
-# Include directories - PUBLIC for headers needed by consumers
-target_include_directories(indexer_connector
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${SRC_FOLDER}/external/simdjson/include # PUBLIC because .hpp includes it
-    PRIVATE
-    ${SRC_FOLDER}/external/cJSON
-    ${SRC_FOLDER}/external/nlohmann
-    ${SRC_FOLDER}/external/openssl/include
-    ${SHARED_MODULES}/utils
-    ${SHARED_MODULES}/common
-    ${SHARED_MODULES}/http-request/include
-    ${SHARED_MODULES}/keystore/include
-)
+include_directories(${SHARED_MODULES}/utils)
+include_directories(${SHARED_MODULES}/common)
+include_directories(${SHARED_MODULES}/http-request/include)
+include_directories(${SHARED_MODULES}/keystore/include)
 
 # Link directories
-target_link_directories(indexer_connector
-    PRIVATE
-    ${SRC_FOLDER}/external/rocksdb/build
-    ${SRC_FOLDER}/external/simdjson/build
-    ${SHARED_MODULES}/http-request/build
-    ${SHARED_MODULES}/keystore/build
-)
+link_directories(${SRC_FOLDER})
+link_directories(${SRC_FOLDER}/external/rocksdb/build)
+link_directories(${SRC_FOLDER}/external/simdjson/build)
+link_directories(${SHARED_MODULES}/http-request/build)
+link_directories(${SHARED_MODULES}/keystore/build)
 
-# Link libraries
-target_link_libraries(indexer_connector
-    PRIVATE
-    rocksdb
-    urlrequest
-    gcc_s
-    wazuhext
-    keystore
-    simdjson
-)
+file(GLOB INDEXER_CONNECTOR_SRC
+    "src/*.cpp"
+    )
+
+add_library(indexer_connector SHARED
+    ${INDEXER_CONNECTOR_SRC}
+    )
+
+target_link_libraries(indexer_connector rocksdb urlrequest gcc_s wazuhext keystore simdjson)
+target_include_directories(indexer_connector PUBLIC ${SRC_FOLDER}/external/simdjson/include)
 
 set_target_properties(indexer_connector PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE
