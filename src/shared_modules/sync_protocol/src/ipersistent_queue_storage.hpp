@@ -38,4 +38,8 @@ class IPersistentQueueStorage
 
         /// @brief Resets the status of all SYNCING messages for a module back to PENDING.
         virtual void resetAllSyncing() = 0;
+
+        /// @brief Deletes all messages belonging to a specific index.
+        /// @param index The index for which all messages should be removed.
+        virtual void removeByIndex(const std::string& index) = 0;
 };

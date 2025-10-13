@@ -24,6 +24,7 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
         MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
         MOCK_METHOD(void, removeAllSynced, (), (override));
         MOCK_METHOD(void, resetAllSyncing, (), (override));
+        MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
 };
 
 TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)
@@ -79,4 +80,33 @@ TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 
     auto all = queue.fetchAndMarkForSync();
     EXPECT_EQ(all.size(), static_cast<size_t>(2));
+}
+
+TEST(PersistentQueueTest, ClearItemsByIndexCallsStorageRemoveByIndex)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    std::string capturedIndex;
+    EXPECT_CALL(*mockStorage, removeByIndex(_))
+    .Times(1)
+    .WillOnce(SaveArg<0>(&capturedIndex));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    queue.clearItemsByIndex("test_index");
+    EXPECT_EQ(capturedIndex, "test_index");
+}
+
+TEST(PersistentQueueTest, ClearItemsByIndexThrowsOnStorageError)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    EXPECT_CALL(*mockStorage, removeByIndex(_))
+    .WillOnce(testing::Throw(std::runtime_error("Simulated DB error")));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    EXPECT_THROW(queue.clearItemsByIndex("test_index"), std::exception);
 }
