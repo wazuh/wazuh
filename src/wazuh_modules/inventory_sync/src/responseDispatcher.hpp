@@ -15,6 +15,7 @@
 #include "asyncValueDispatcher.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "loggerHelper.h"
+#include "routerProvider.hpp"
 #include "socketClient.hpp"
 #include <memory>
 
@@ -44,12 +45,23 @@ struct ResponseMessage
 using ResponseQueue = Utils::AsyncValueDispatcher<ResponseMessage, std::function<void(ResponseMessage&&)>>;
 
 constexpr auto ARQUEUE {"queue/alerts/ar"};
+constexpr auto AGENT_ZERO_ID {"000"};
 
 template<typename TQueue>
 class ResponseDispatcherImpl
 {
 private:
     std::unique_ptr<TQueue> m_responseDispatcher;
+    std::unique_ptr<RouterProvider> m_routerProvider; // For Agent 0 responses
+
+    /**
+     * @brief Gets the Router response topic for Agent 0.
+     * @return The response topic string.
+     */
+    static std::string getAgent0ResponseTopic()
+    {
+        return std::string("inventory-sync-agent-responses");
+    }
 
 public:
     explicit ResponseDispatcherImpl()
@@ -69,31 +81,84 @@ public:
             },
             SOCK_DGRAM);
 
-        m_responseDispatcher = std::make_unique<ResponseQueue>(
-            [responseSocketClient](const ResponseMessage& data)
-            {
-                thread_local std::vector<uint8_t> messageVector;
-                constexpr auto header = "(msg_to_agent) [] N!s ";
-                constexpr auto headerLength = 22;
-                constexpr auto agentIdLength = 3;
-                constexpr auto estimatedModuleNameLength = 20;
-                constexpr auto estimatedPayloadLength = 10;
-                messageVector.clear();
-                messageVector.reserve(headerLength + agentIdLength + estimatedModuleNameLength +
-                                      estimatedPayloadLength + data.builder.GetSize());
-                messageVector.assign(header, header + headerLength);
-                std::ranges::copy(data.agentId, std::back_inserter(messageVector));
-                messageVector.push_back(' ');
-                // Send the payload size
-                std::ranges::copy(std::to_string(data.builder.GetSize()), std::back_inserter(messageVector));
-                messageVector.push_back(' ');
-                std::ranges::copy(data.moduleName, std::back_inserter(messageVector));
-                std::ranges::copy("_sync ", std::back_inserter(messageVector));
-                std::ranges::copy(data.builder.GetBufferPointer(),
-                                  data.builder.GetBufferPointer() + data.builder.GetSize(),
-                                  std::back_inserter(messageVector));
+        // Initialize Router provider for Agent 0 (local IPC)
+        try
+        {
+            const std::string responseTopic = getAgent0ResponseTopic();
+            m_routerProvider = std::make_unique<RouterProvider>(responseTopic, true);
+            m_routerProvider->start();
+            logInfo(LOGGER_DEFAULT_TAG,
+                    "ResponseDispatcher: Initialized Router support for Agent 0 (topic: %s)",
+                    responseTopic.c_str());
+        }
+        catch (const std::exception& ex)
+        {
+            logError(LOGGER_DEFAULT_TAG,
+                     "ResponseDispatcher: Failed to initialize RouterProvider for Agent 0: %s",
+                     ex.what());
+            // Continue without Router - will use ARQUEUE for all agents
+        }
 
-                responseSocketClient->send(reinterpret_cast<const char*>(messageVector.data()), messageVector.size());
+        // Response queue callback - handles both Agent 0 (Router) and remote agents (ARQUEUE)
+        m_responseDispatcher = std::make_unique<ResponseQueue>(
+            [responseSocketClient, routerProvider = m_routerProvider.get()](const ResponseMessage& data)
+            {
+                // Check if this is Agent 0
+                if (data.agentId == AGENT_ZERO_ID)
+                {
+                    // Agent 0: Send via Router (local IPC)
+                    if (routerProvider)
+                    {
+                        try
+                        {
+                            // Convert FlatBuffer to vector<char> for Router
+                            const uint8_t* bufferPtr = data.builder.GetBufferPointer();
+                            const size_t bufferSize = data.builder.GetSize();
+                            std::vector<char> routerMessage(bufferPtr, bufferPtr + bufferSize);
+
+                            // Send via Router
+                            routerProvider->send(routerMessage);
+                        }
+                        catch (const std::exception& ex)
+                        {
+                            logError(LOGGER_DEFAULT_TAG,
+                                     "ResponseDispatcher: Failed to send to Agent 0 via Router: %s",
+                                     ex.what());
+                        }
+                    }
+                    else
+                    {
+                        logError(LOGGER_DEFAULT_TAG,
+                                 "ResponseDispatcher: RouterProvider not initialized, cannot send to Agent 0");
+                    }
+                }
+                else
+                {
+                    // Remote agents (001+): Send via ARQUEUE (existing logic)
+                    thread_local std::vector<uint8_t> messageVector;
+                    constexpr auto header = "(msg_to_agent) [] N!s ";
+                    constexpr auto headerLength = 22;
+                    constexpr auto agentIdLength = 3;
+                    constexpr auto estimatedModuleNameLength = 20;
+                    constexpr auto estimatedPayloadLength = 10;
+                    messageVector.clear();
+                    messageVector.reserve(headerLength + agentIdLength + estimatedModuleNameLength +
+                                          estimatedPayloadLength + data.builder.GetSize());
+                    messageVector.assign(header, header + headerLength);
+                    std::ranges::copy(data.agentId, std::back_inserter(messageVector));
+                    messageVector.push_back(' ');
+                    // Send the payload size
+                    std::ranges::copy(std::to_string(data.builder.GetSize()), std::back_inserter(messageVector));
+                    messageVector.push_back(' ');
+                    std::ranges::copy(data.moduleName, std::back_inserter(messageVector));
+                    std::ranges::copy("_sync ", std::back_inserter(messageVector));
+                    std::ranges::copy(data.builder.GetBufferPointer(),
+                                      data.builder.GetBufferPointer() + data.builder.GetSize(),
+                                      std::back_inserter(messageVector));
+
+                    responseSocketClient->send(reinterpret_cast<const char*>(messageVector.data()),
+                                               messageVector.size());
+                }
             });
     }
 

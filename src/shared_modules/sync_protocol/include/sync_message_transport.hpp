@@ -7,7 +7,6 @@
  * Foundation.
  */
 
-// sync_message_transport.hpp
 #pragma once
 
 #include <memory>
@@ -16,7 +15,8 @@
 #include <vector>
 
 #include "isync_message_transport.hpp"
-#include "agent_sync_protocol_c_interface_types.h" // for MQ_Functions, LoggerFunc
+#include "agent_sync_protocol_c_interface_types.h"
+#include "agent_sync_protocol_types.hpp"
 
 namespace SyncTransportFactory {
 
