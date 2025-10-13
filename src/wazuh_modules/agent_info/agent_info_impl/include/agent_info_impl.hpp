@@ -57,6 +57,12 @@ class AgentInfoImpl
         void
         initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const MQ_Functions& mqFuncs);
 
+        /// @brief Set synchronization parameters
+        /// @param timeout Response timeout in seconds
+        /// @param retries Number of retries
+        /// @param maxEps Maximum events per second
+        void setSyncParameters(uint32_t timeout, uint32_t retries, long maxEps);
+
         /// @brief Process a database event and emit notifications
         /// @param result Type of change (INSERTED, MODIFIED, DELETED)
         /// @param data Event data
@@ -131,6 +137,15 @@ class AgentInfoImpl
 
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
+
+        /// @brief Sync configuration: response timeout in seconds
+        uint32_t m_syncResponseTimeout = 30;
+
+        /// @brief Sync configuration: number of retries
+        uint32_t m_syncRetries = 5;
+
+        /// @brief Sync configuration: maximum events per second
+        long m_syncMaxEps = 10;
 
         /// @brief Flag to track if module has been stopped
         bool m_stopped = false;
