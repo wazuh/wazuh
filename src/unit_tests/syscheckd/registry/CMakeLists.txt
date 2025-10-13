@@ -26,6 +26,7 @@ target_link_libraries(test_registry "${DEBUG_OP_WRAPPERS} \
                                      -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
                                      -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                     -Wl,--wrap,asp_notify_data_clean \
                                      -Wl,--wrap=fim_db_teardown -Wl,--wrap,utf8_LookupAccountSid")
 
 if(${TARGET} STREQUAL "winagent")
@@ -46,7 +47,8 @@ target_link_libraries(test_events "${DEBUG_OP_WRAPPERS} \
                                    -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                    -Wl,--wrap=fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_remove_path \
                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown \
-                                   -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff")
+                                   -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                   -Wl,--wrap,asp_notify_data_clean")
 
 if(${TARGET} STREQUAL "winagent")
     target_link_libraries(test_events fimdb)

@@ -24,7 +24,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                         -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                         -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                         -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen \
-                        -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff")
+                        -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                        -Wl,--wrap,asp_notify_data_clean")
 
     target_link_libraries(test_audit_healthcheck SYSCHECK_O ${TEST_DEPS})
 
@@ -48,7 +49,8 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                               -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                               -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen \
-                              -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff")
+                              -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                              -Wl,--wrap,asp_notify_data_clean")
 
     target_link_libraries(test_audit_rule_handling SYSCHECK_O ${TEST_DEPS})
 
@@ -79,6 +81,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                               -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                               -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                               -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                              -Wl,--wrap,asp_notify_data_clean \
                               ${DEBUG_OP_WRAPPERS}")
 
     target_link_libraries(test_syscheck_audit SYSCHECK_O ${TEST_DEPS})
@@ -108,6 +111,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                            -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                           -Wl,--wrap,asp_notify_data_clean \
                            ${DEBUG_OP_WRAPPERS}")
 
     target_link_libraries(test_audit_parse SYSCHECK_O ${TEST_DEPS})
@@ -122,6 +126,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                             "-Wl,--wrap,ebpf_whodata_healthcheck"
 			                "-Wl,--wrap=_minfo -Wl,--wrap,_merror"
                             "-Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff"
+                            "-Wl,--wrap,asp_notify_data_clean"
                             ${DEBUG_OP_WRAPPERS})
 
     target_link_libraries(test_syscheck_ebpf SYSCHECK_O ${TEST_DEPS} fimdb)
@@ -153,6 +158,7 @@ else()
                            -Wl,--wrap=fim_db_teardown ${HASH_OP_WRAPPERS} \
                            -Wl,--wrap=utf8_GetNamedSecurityInfo -Wl,--wrap=utf8_SetNamedSecurityInfo \
                            -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                           -Wl,--wrap,asp_notify_data_clean \
                            ${DEBUG_OP_WRAPPERS}")
     target_link_libraries(test_win_whodata SYSCHECK_EVENT_O ${TEST_EVENT_DEPS} fimdb)
 
