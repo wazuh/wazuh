@@ -167,6 +167,8 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
     // If not a schema field, allways return success with no runtime validator
     if (!m_schema.hasField(name))
     {
+        // TODO: When custom fields are merged into the schema (ECS + custom),
+        // any unknown field should become a hard error instead of being allowed.
         return ValidationResult();
     }
 
