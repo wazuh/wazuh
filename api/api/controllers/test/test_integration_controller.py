@@ -59,7 +59,7 @@ async def test_create_integration(mock_integration_model, mock_create_model_cls,
     mock_instance.decoders = TEST_INTEGRATION_BODY['decoders']
     mock_create_model_cls.return_value = mock_instance
 
-    result = await create_integration(body=TEST_INTEGRATION_BODY, type_='policy')
+    result = await create_integration(body=TEST_INTEGRATION_BODY, policy_type='policy')
     f_kwargs = {
         'integration': mock_integration_model.return_value,
         'policy_type': 'policy'
@@ -86,7 +86,7 @@ async def test_create_integration(mock_integration_model, mock_create_model_cls,
 @patch('api.controllers.integration_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_integrations(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_integrations' works as expected."""
-    result = await get_integrations(type_='policy', integrations_list=['a', 'b'])
+    result = await get_integrations(policy_type='policy', integration_id=['a', 'b'])
     f_kwargs = {
         'policy_type': 'policy',
         'names': ['a', 'b'],
@@ -130,7 +130,7 @@ async def test_update_integration(mock_integration_model, mock_create_model_cls,
     mock_instance.decoders = TEST_INTEGRATION_BODY['decoders']
     mock_create_model_cls.return_value = mock_instance
 
-    result = await update_integration(body=TEST_INTEGRATION_BODY, type_='policy')
+    result = await update_integration(body=TEST_INTEGRATION_BODY, policy_type='policy')
     f_kwargs = {
         'integration': mock_integration_model.return_value,
         'policy_type': 'policy'
@@ -157,7 +157,7 @@ async def test_update_integration(mock_integration_model, mock_create_model_cls,
 @patch('api.controllers.integration_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_integration(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'delete_integration' works as expected."""
-    result = await delete_integration(type_='policy', integrations_list=['x'])
+    result = await delete_integration(policy_type='policy', integration_id=['x'])
     f_kwargs = {
         'policy_type': 'policy',
         'names': ['x']

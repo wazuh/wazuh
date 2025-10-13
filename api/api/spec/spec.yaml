@@ -5273,7 +5273,7 @@ components:
       schema:
         type: boolean
         default: false
-    type:
+    policy_type:
       in: query
       name: type
       description: Asset environment type.
@@ -5283,9 +5283,9 @@ components:
         enum:
           - testing
           - production
-    integrations_list:
+    integration_id:
       in: query
-      name: integrations_list
+      name: integration_id
       description: List of integration IDs (comma-separated).
       required: false
       schema:
@@ -10368,7 +10368,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/policy_type'
       requestBody:
         required: true
         content:
@@ -10413,10 +10413,10 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/policy_type'
         - $ref: '#/components/parameters/status'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/integrations_list'
+        - $ref: '#/components/parameters/integration_id'
       responses:
         '200':
           description: List of integrations
@@ -10451,7 +10451,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/policy_type'
       requestBody:
         required: true
         content:
@@ -10494,8 +10494,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/type'
-        - $ref: '#/components/parameters/integrations_list'
+        - $ref: '#/components/parameters/policy_type'
+        - $ref: '#/components/parameters/integration_id'
       responses:
         '200':
           description: Integrations deleted
@@ -10531,7 +10531,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/policy_type'
       responses:
         '200':
           description: List of integration info
@@ -10566,7 +10566,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/policy_type'
       requestBody:
         required: true
         content:
@@ -10613,7 +10613,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/policy_type'
       responses:
         '200':
           description: Integrations order deleted

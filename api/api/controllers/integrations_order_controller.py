@@ -17,12 +17,12 @@ from wazuh.core.engine.models.integrations_order import IntegrationsOrder, Integ
 
 logger = logging.getLogger('wazuh-api')
 
-async def create_integrations_order(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def create_integrations_order(body: dict, policy_type: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Create a new integrations order.
 
     Parameters
     ----------
-    type_ : str
+    policy_type : str
         Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
@@ -40,7 +40,7 @@ async def create_integrations_order(body: dict, type_: str, pretty: bool = False
 
     f_kwargs = {
         'order': model,
-        'policy_type': type_
+        'policy_type': policy_type
     }
 
     dapi = DistributedAPI(
@@ -56,12 +56,12 @@ async def create_integrations_order(body: dict, type_: str, pretty: bool = False
 
     return json_response(data, pretty=pretty)
 
-async def get_integrations_order(type_: str, pretty: bool = False, wait_for_complete: bool = False):
+async def get_integrations_order(policy_type: str, pretty: bool = False, wait_for_complete: bool = False):
     """Get the integrations order.
 
     Parameters
     ----------
-    type_ : str
+    policy_type : str
         Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
@@ -74,7 +74,7 @@ async def get_integrations_order(type_: str, pretty: bool = False, wait_for_comp
         API response with the integrations order.
     """
     f_kwargs = {
-        'policy_type': type_
+        'policy_type': policy_type
     }
 
     dapi = DistributedAPI(
@@ -90,12 +90,12 @@ async def get_integrations_order(type_: str, pretty: bool = False, wait_for_comp
 
     return json_response(data, pretty=pretty)
 
-async def delete_integrations_order(type_: str, pretty: bool = False, wait_for_complete: bool = False):
+async def delete_integrations_order(policy_type: str, pretty: bool = False, wait_for_complete: bool = False):
     """Delete the integrations order.
 
     Parameters
     ----------
-    type_ : str
+    policy_type : str
         Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
@@ -108,7 +108,7 @@ async def delete_integrations_order(type_: str, pretty: bool = False, wait_for_c
         API response.
     """
     f_kwargs = {
-        'policy_type': type_,
+        'policy_type': policy_type,
     }
 
     dapi = DistributedAPI(
