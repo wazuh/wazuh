@@ -15,6 +15,9 @@
 #include "shared.h"
 #include "external/cJSON/cJSON.h"
 
+#define WATERMARK_MIN 70
+#define WATERMARK_MAX 95
+
 /* Global variables */
 static const char * special_array_keys[] = {
     "indexer.hosts",
@@ -166,8 +169,13 @@ int Read_Indexer(const OS_XML *xml, XML_NODE nodes)
         return OS_SUCCESS;
     }
 
-    return indexer_config_subnode_read(xml, nodes, indexer_config, "indexer");
+    int ret = OS_MISVALUE;
+    if ((ret = indexer_config_subnode_read(xml, nodes, indexer_config, "indexer")) == OS_SUCCESS) {
+        cJSON_AddNumberToObject(indexer_config, "watermark", getDefine_Int("indexer-connector", "watermark", WATERMARK_MIN, WATERMARK_MAX));
+    }
+
+    return ret;
 }
 
-#endif
-#endif
+#endif // WIN32
+#endif // CLIENT
