@@ -345,8 +345,9 @@ x-rbac-catalog:
       example:
         actions: ['kvdbs:delete']
         resources: ['*:*:*']
+        effect: "allow"
     'integrations:create':
-      description:
+      description: "Create integration"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -354,7 +355,7 @@ x-rbac-catalog:
         resources: [ '*:*:*' ]
         effect: "allow"
     'integrations:read':
-      description:
+      description: "Read integration"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -362,7 +363,7 @@ x-rbac-catalog:
         resources: [ '*:*:*' ]
         effect: "allow"
     'integrations:update':
-      description:
+      description: "Update integration"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -370,7 +371,7 @@ x-rbac-catalog:
         resources: [ '*:*:*' ]
         effect: "allow"
     'integrations:delete':
-      description:
+      description: "Delete integration"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -10526,7 +10527,7 @@ paths:
       description: "Get list of integrations orders"
       operationId: api.controllers.integrations_order_controller.get_integrations_order
       x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/integrations:create'
+        - $ref: '#/x-rbac-catalog/actions/integrations:read'
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'

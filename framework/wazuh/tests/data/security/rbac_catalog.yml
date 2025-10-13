@@ -397,6 +397,57 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - DELETE /kvdbs
+      integrations:create:
+        description: Create integration
+        resources:
+          - "*:*"
+        example:
+          actions:
+            - integrations:create
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - POST /integrations
+          - POST /integrations_order
+      integrations:read:
+        description: Read integration
+        resources:
+            - "*:*"
+        example:
+          actions:
+            - integrations:read
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - GET /integrations
+          - GET /integrations_order
+      integrations:update:
+        description: Update integration
+        resources:
+            - "*:*"
+        example:
+          actions:
+            - integrations:update
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - PUT /integrations
+      integrations:delete:
+        description: Delete integration
+        resources:
+            - "*:*"
+        example:
+          actions:
+            - integrations:delete
+          resources:
+            - "*:*:*"
+          effect: allow
+        related_endpoints:
+          - DELETE /integrations
+          - DELETE /integrations_order
       logtest:run:
         description: Run logtest tool or end a logtest session
         resources:

@@ -104,7 +104,7 @@ async def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhR
 
     return results
 
-@expose_resources(actions=['integrations:create'], resources=["*:*:*"])
+@expose_resources(actions=['integrations:delete'], resources=["*:*:*"])
 async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Delete the integrations order resource.
 
