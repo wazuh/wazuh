@@ -995,31 +995,9 @@ json::Json CTIStorageDB::Impl::getByIdOrName(const std::string& identifier,
 
     try
     {
+        // Return the document exactly as stored in RocksDB (raw data)
+        // No transformations - let the adapter handle that
         json::Json doc(value.c_str());
-
-        // Unwrap /payload if it exists, but preserve top-level fields like /name
-        if (doc.exists("/payload"))
-        {
-            auto payload = doc.getJson("/payload");
-            if (payload.has_value())
-            {
-                json::Json result = payload.value();
-
-                // Preserve important top-level fields that are not in payload
-                if (doc.exists("/name"))
-                {
-                    auto name = doc.getString("/name");
-                    if (name.has_value())
-                    {
-                        result.setString(name.value(), "/name");
-                    }
-                }
-
-                return result;
-            }
-        }
-
-        // Fallback: return document as-is if no /payload wrapper
         return doc;
     }
     catch (const std::exception& e)
@@ -1407,19 +1385,11 @@ json::Json CTIStorageDB::Impl::kvdbDump(const std::string& kvdbName) const
 {
     std::shared_lock<std::shared_mutex> lock(m_rwMutex);
 
-    json::Json doc = getByIdOrName(kvdbName,
-                                    CTIStorageDB::ColumnFamily::KVDB,
-                                    std::string(constants::KVDB_PREFIX),
-                                    std::string(constants::NAME_KVDB_PREFIX));
-
-    // Extract only the content from /document/content
-    auto content = doc.getJson(constants::JSON_UNWRAPPED_DOCUMENT_CONTENT);
-    if (content)
-    {
-        return *content;
-    }
-
-    throw std::runtime_error("KVDB document missing content field");
+    // Return raw KVDB document - adapter will extract content if needed
+    return getByIdOrName(kvdbName,
+                        CTIStorageDB::ColumnFamily::KVDB,
+                        std::string(constants::KVDB_PREFIX),
+                        std::string(constants::NAME_KVDB_PREFIX));
 }
 
 std::vector<base::Name> CTIStorageDB::Impl::getPolicyIntegrationList() const

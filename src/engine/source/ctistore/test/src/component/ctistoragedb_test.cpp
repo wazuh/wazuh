@@ -318,9 +318,10 @@ TEST_F(CTIStorageDBTest, GetAssetById)
 
     auto retrieved = m_storage->getAsset(base::Name("test_integration_id"), "integration");
 
+    // Now returns raw data with /name and /payload structure
     EXPECT_EQ(retrieved.getString("/name").value_or(""), "test_integration_id");
 
-    auto document = retrieved.getJson("/document");
+    auto document = retrieved.getJson("/payload/document");
     ASSERT_TRUE(document.has_value());
     EXPECT_EQ(document->getString("/title").value_or(""), "Test Integration");
 }
@@ -410,10 +411,11 @@ TEST_F(CTIStorageDBTest, KVDBDump)
 
     auto kvdbDoc = m_storage->kvdbDump("test_kvdb_id");
 
-    // kvdbDump now returns only the content object
-    EXPECT_EQ(kvdbDoc.getString("/key1").value_or(""), "value1");
-    EXPECT_EQ(kvdbDoc.getString("/key2").value_or(""), "value2");
-    EXPECT_EQ(kvdbDoc.getInt("/key3").value_or(0), 123);
+    // kvdbDump now returns raw document with /name and /payload structure
+    // Content is at /payload/document/content
+    EXPECT_EQ(kvdbDoc.getString("/payload/document/content/key1").value_or(""), "value1");
+    EXPECT_EQ(kvdbDoc.getString("/payload/document/content/key2").value_or(""), "value2");
+    EXPECT_EQ(kvdbDoc.getInt("/payload/document/content/key3").value_or(0), 123);
 }
 
 TEST_F(CTIStorageDBTest, GetKVDBListByIntegration)
@@ -794,7 +796,7 @@ TEST_F(CTIStorageDBTest, DataIntegrityAfterReopen)
     EXPECT_EQ(retrievedIntegration.getString("/name").value_or(""), "test_integration");
 
     auto retrievedKvdb = m_storage->kvdbDump("test_kvdb");
-    EXPECT_EQ(retrievedKvdb.getString("/key1").value_or(""), "value1");
+    EXPECT_EQ(retrievedKvdb.getString("/payload/document/content/key1").value_or(""), "value1");
 }
 
 // Thread Safety and Concurrency Tests
@@ -1523,9 +1525,9 @@ TEST_F(CTIStorageDBTest, UpdateAssetReplaceString)
     bool updated = m_storage->updateAsset("integration_1", operations);
     EXPECT_TRUE(updated);
 
-    // Verify the update
+    // Verify the update - now returns raw data with /payload structure
     auto updatedAsset = m_storage->getAsset(base::Name("integration_1"), "integration");
-    auto title = updatedAsset.getString("/document/title");
+    auto title = updatedAsset.getString("/payload/document/title");
     EXPECT_TRUE(title.has_value());
     EXPECT_EQ(*title, "Updated Title");
 }
@@ -1551,9 +1553,9 @@ TEST_F(CTIStorageDBTest, UpdateAssetReplaceBoolean)
     bool updated = m_storage->updateAsset("decoder_1", operations);
     EXPECT_TRUE(updated);
 
-    // Verify the update
+    // Verify the update - now returns raw data with /payload structure
     auto updatedAsset = m_storage->getAsset(base::Name("test_decoder"), "decoder");
-    auto enabled = updatedAsset.getBool("/document/enabled");
+    auto enabled = updatedAsset.getBool("/payload/document/enabled");
     EXPECT_TRUE(enabled.has_value());
     EXPECT_FALSE(*enabled);
 }
@@ -1579,9 +1581,9 @@ TEST_F(CTIStorageDBTest, UpdateAssetAddString)
     bool updated = m_storage->updateAsset("integration_1", operations);
     EXPECT_TRUE(updated);
 
-    // Verify the new field exists
+    // Verify the new field exists - now returns raw data with /payload structure
     auto updatedAsset = m_storage->getAsset(base::Name("Test Integration"), "integration");
-    auto newField = updatedAsset.getString("/document/new_field");
+    auto newField = updatedAsset.getString("/payload/document/new_field");
     EXPECT_TRUE(newField.has_value());
     EXPECT_EQ(*newField, "New Value");
 }
@@ -1616,13 +1618,13 @@ TEST_F(CTIStorageDBTest, UpdateAssetMultipleOperations)
     bool updated = m_storage->updateAsset("decoder_1", operations);
     EXPECT_TRUE(updated);
 
-    // Verify both updates
+    // Verify both updates - now returns raw data with /payload structure
     auto updatedAsset = m_storage->getAsset(base::Name("test_decoder"), "decoder");
-    auto check = updatedAsset.getString("/document/check");
+    auto check = updatedAsset.getString("/payload/document/check");
     EXPECT_TRUE(check.has_value());
     EXPECT_EQ(*check, "new_condition");
 
-    auto enabled = updatedAsset.getBool("/document/enabled");
+    auto enabled = updatedAsset.getBool("/payload/document/enabled");
     EXPECT_TRUE(enabled.has_value());
     EXPECT_FALSE(*enabled);
 }
@@ -1678,9 +1680,9 @@ TEST_F(CTIStorageDBTest, UpdateAssetInvalidOperation)
     // Should throw because the operation is invalid per RFC 6902
     EXPECT_THROW(m_storage->updateAsset("integration_1", operations), std::runtime_error);
 
-    // Verify title is unchanged (update was not applied)
+    // Verify title is unchanged (update was not applied) - now returns raw data with /payload structure
     auto updatedAsset = m_storage->getAsset(base::Name("Test Integration"), "integration");
-    auto title = updatedAsset.getString("/document/title");
+    auto title = updatedAsset.getString("/payload/document/title");
     EXPECT_TRUE(title.has_value());
     EXPECT_EQ(*title, "Test Integration");
 }
@@ -1729,15 +1731,15 @@ TEST_F(CTIStorageDBTest, UpdateAssetAcrossColumnFamilies)
     ops3.appendJson(op3);
     EXPECT_TRUE(m_storage->updateAsset("policy_1", ops3));
 
-    // Verify all updates
+    // Verify all updates - now returns raw data with /payload structure
     auto updatedIntegration = m_storage->getAsset(base::Name("Integration 1"), "integration");
-    EXPECT_EQ(updatedIntegration.getString("/document/description").value_or(""), "Updated Integration");
+    EXPECT_EQ(updatedIntegration.getString("/payload/document/description").value_or(""), "Updated Integration");
 
     auto updatedDecoder = m_storage->getAsset(base::Name("decoder_1"), "decoder");
-    EXPECT_EQ(updatedDecoder.getString("/document/check").value_or(""), "updated_check");
+    EXPECT_EQ(updatedDecoder.getString("/payload/document/check").value_or(""), "updated_check");
 
     auto updatedPolicy = m_storage->getAsset(base::Name("policy_1"), "policy");
-    EXPECT_FALSE(updatedPolicy.getBool("/document/enabled").value_or(true));
+    EXPECT_FALSE(updatedPolicy.getBool("/payload/document/enabled").value_or(true));
 }
 
 // ============================================================================
@@ -1750,11 +1752,11 @@ TEST_F(CTIStorageDBTest, GetPolicyById)
     auto policy = createSamplePolicy("policy_1");
     m_storage->storePolicy(policy);
 
-    // Get by ID
+    // Get by ID - now returns raw data with /payload structure
     auto retrieved = m_storage->getPolicy(base::Name("policy_1"));
     EXPECT_TRUE(retrieved.exists("/name"));
     EXPECT_EQ(retrieved.getString("/name").value_or(""), "policy_1");
-    EXPECT_EQ(retrieved.getString("/document/title").value_or(""), "Wazuh 5.0");
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
 }
 
 TEST_F(CTIStorageDBTest, GetPolicyByTitle)
@@ -1763,11 +1765,11 @@ TEST_F(CTIStorageDBTest, GetPolicyByTitle)
     auto policy = createSamplePolicy("policy_1");
     m_storage->storePolicy(policy);
 
-    // Get by title
+    // Get by title - now returns raw data with /payload structure
     auto retrieved = m_storage->getPolicy(base::Name("Wazuh 5.0"));
     EXPECT_TRUE(retrieved.exists("/name"));
     EXPECT_EQ(retrieved.getString("/name").value_or(""), "policy_1");
-    EXPECT_EQ(retrieved.getString("/document/title").value_or(""), "Wazuh 5.0");
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
 }
 
 TEST_F(CTIStorageDBTest, GetPolicyNonExistent)
@@ -1851,9 +1853,9 @@ TEST_F(CTIStorageDBTest, PolicyAccessAfterUpdate)
     // Should still exist by ID
     EXPECT_TRUE(m_storage->policyExists(base::Name("policy_1")));
 
-    // Get by ID and verify new title
+    // Get by ID and verify new title - now returns raw data with /payload structure
     auto retrieved = m_storage->getPolicy(base::Name("policy_1"));
-    EXPECT_EQ(retrieved.getString("/document/title").value_or(""), "Updated Policy Title");
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Updated Policy Title");
 
     // List should show new title
     auto policies = m_storage->getPolicyList();
@@ -1899,12 +1901,12 @@ TEST_F(CTIStorageDBTest, PolicyNestedFormatSupport)
     // Should be retrievable by title
     EXPECT_TRUE(m_storage->policyExists(base::Name("Wazuh 5.0")));
 
-    // Get policy and verify structure
+    // Get policy and verify structure - now returns raw data with /payload structure
     auto retrieved = m_storage->getPolicy(base::Name("policy_nested"));
-    EXPECT_EQ(retrieved.getString("/document/title").value_or(""), "Wazuh 5.0");
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
 
     // Verify integrations in nested format
-    auto integrations = retrieved.getArray("/document/integrations");
+    auto integrations = retrieved.getArray("/payload/document/integrations");
     EXPECT_TRUE(integrations.has_value());
     EXPECT_EQ(integrations->size(), 2);
 }
@@ -1918,12 +1920,12 @@ TEST_F(CTIStorageDBTest, PolicyLegacyFlatFormatSupport)
     // Should be retrievable by title
     EXPECT_TRUE(m_storage->policyExists(base::Name("Legacy Flat Title")));
 
-    // Get policy and verify structure (payload is unwrapped, so /payload/title becomes /title)
+    // Get policy and verify structure - now returns raw data with /payload structure
     auto retrieved = m_storage->getPolicy(base::Name("policy_flat"));
-    EXPECT_EQ(retrieved.getString("/title").value_or(""), "Legacy Flat Title");
+    EXPECT_EQ(retrieved.getString("/payload/title").value_or(""), "Legacy Flat Title");
 
-    // Verify integrations in flat format (payload is unwrapped)
-    auto integrations = retrieved.getArray("/integrations");
+    // Verify integrations in flat format
+    auto integrations = retrieved.getArray("/payload/integrations");
     EXPECT_TRUE(integrations.has_value());
     EXPECT_EQ(integrations->size(), 2);
 }
@@ -2004,9 +2006,9 @@ TEST_F(CTIStorageDBTest, PolicyUpdatePreservesFormat)
     bool updated = m_storage->updateAsset("policy_flat", operations);
     EXPECT_TRUE(updated);
 
-    // Verify update worked and format is preserved (payload is unwrapped)
+    // Verify update worked and format is preserved - now returns raw data with /payload structure
     auto retrieved = m_storage->getPolicy(base::Name("policy_flat"));
-    EXPECT_EQ(retrieved.getString("/title").value_or(""), "Updated Flat Title");
+    EXPECT_EQ(retrieved.getString("/payload/title").value_or(""), "Updated Flat Title");
 
     // Should be findable by new title
     auto policyList = m_storage->getPolicyList();
