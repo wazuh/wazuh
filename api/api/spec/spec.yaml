@@ -10555,12 +10555,12 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-    post:
+    put:
       tags:
         - Integrations_order
       summary: "Create integrations orders"
       description: "Create a list of integrations orders"
-      operationId: api.controllers.integrations_order_controller.create_integrations_order
+      operationId: api.controllers.integrations_order_controller.update_integrations_order
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/integrations:create'
       parameters:

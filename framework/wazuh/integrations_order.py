@@ -21,7 +21,7 @@ DEFAULT_INTEGRATIONS_ORDER_FILENAME = 'integrations_order'
 DEFAULT_USER_NAMESPACE = 'user'
 
 @expose_resources(actions=['integrations:create'], resources=["*:*:*"])
-async def create_integrations_order(order: IntegrationsOrder, policy_type: PolicyType) -> AffectedItemsWazuhResult:
+async def update_integrations_order(order: IntegrationsOrder, policy_type: PolicyType) -> AffectedItemsWazuhResult:
     """Create a new integrations order resource.
 
     Parameters

@@ -24,7 +24,7 @@ with patch('wazuh.core.common.getgrnam'):
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.integrations_order import create_integrations_order, get_integrations_order, delete_integrations_order
+        from wazuh.integrations_order import update_integrations_order, get_integrations_order, delete_integrations_order
         from wazuh.core.engine.models.integrations_order import IntegrationsOrder, IntegrationInfo
         from wazuh.core.engine.models.policies import PolicyType
         from wazuh.core.results import AffectedItemsWazuhResult
@@ -68,9 +68,9 @@ MOCK_ENGINE_RESPONSE_EMPTY = {'status': 'OK', 'content': []}
 @patch('wazuh.integrations_order.generate_integrations_file_path')
 @patch('wazuh.integrations_order.exists', return_value=False)
 @patch('wazuh.integrations_order.remove')
-async def test_create_integrations_order(mock_remove, mock_exists, mock_generate_path,
+async def test_update_integrations_order(mock_remove, mock_exists, mock_generate_path,
                                        mock_save_file, mock_get_client, integrations_order, policy_type):
-    """Test basic create_integrations_order functionality.
+    """Test basic update_integrations_order functionality.
 
     Parameters
     ----------
@@ -91,7 +91,7 @@ async def test_create_integrations_order(mock_remove, mock_exists, mock_generate
     mock_context_manager.__aexit__.return_value = None
     mock_get_client.return_value = mock_context_manager
 
-    result = await create_integrations_order(integrations_order, policy_type)
+    result = await update_integrations_order(integrations_order, policy_type)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 1
@@ -106,10 +106,10 @@ async def test_create_integrations_order(mock_remove, mock_exists, mock_generate
 @patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
 @patch('wazuh.integrations_order.exists', return_value=True)
 @patch('wazuh.integrations_order.remove')
-async def test_create_integrations_order_file_exists_error(mock_remove, mock_exists, mock_generate_path,
+async def test_update_integrations_order_file_exists_error(mock_remove, mock_exists, mock_generate_path,
                                                          mock_save_file, mock_get_client):
-    """Test create_integrations_order when file already exists."""
-    result = await create_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
+    """Test update_integrations_order when file already exists."""
+    result = await update_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 0
@@ -124,9 +124,9 @@ async def test_create_integrations_order_file_exists_error(mock_remove, mock_exi
 @patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
 @patch('wazuh.integrations_order.exists', return_value=False)
 @patch('wazuh.integrations_order.remove')
-async def test_create_integrations_order_engine_error(mock_remove, mock_exists, mock_generate_path,
+async def test_update_integrations_order_engine_error(mock_remove, mock_exists, mock_generate_path,
                                                     mock_save_file, mock_get_client):
-    """Test create_integrations_order with engine error."""
+    """Test update_integrations_order with engine error."""
     mock_client = MagicMock()
     mock_client.integrations_order = MagicMock()
     mock_client.integrations_order.create_order = AsyncMock(return_value={'status': 'error', 'error': 'Engine error'})
@@ -137,7 +137,7 @@ async def test_create_integrations_order_engine_error(mock_remove, mock_exists, 
     mock_get_client.return_value = mock_context_manager
 
     with patch('wazuh.integrations_order.validate_response_or_raise', side_effect=WazuhError(9012)):
-        result = await create_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
+        result = await update_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
         assert isinstance(result, AffectedItemsWazuhResult)
         assert result.total_affected_items == 0
         assert len(result.failed_items) == 1
@@ -345,9 +345,9 @@ async def test_delete_integrations_order_engine_error(mock_safe_move, mock_remov
 @patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
 @patch('wazuh.integrations_order.exists', return_value=False)
 @patch('wazuh.integrations_order.remove')
-async def test_create_integrations_order_with_empty_order(mock_remove, mock_exists, mock_generate_path,
+async def test_update_integrations_order_with_empty_order(mock_remove, mock_exists, mock_generate_path,
                                                         mock_save_file, mock_get_client):
-    """Test create_integrations_order with empty integrations list."""
+    """Test update_integrations_order with empty integrations list."""
     mock_client = MagicMock()
     mock_client.integrations_order = MagicMock()
     mock_client.integrations_order.create_order = AsyncMock(return_value={'status': 'OK'})
@@ -357,7 +357,7 @@ async def test_create_integrations_order_with_empty_order(mock_remove, mock_exis
     mock_context_manager.__aexit__.return_value = None
     mock_get_client.return_value = mock_context_manager
 
-    result = await create_integrations_order(INTEGRATIONS_ORDER_EMPTY, PolicyType.TESTING)
+    result = await update_integrations_order(INTEGRATIONS_ORDER_EMPTY, PolicyType.TESTING)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 1
@@ -390,9 +390,9 @@ async def test_get_integrations_order_empty_response(mock_get_client):
 @patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
 @patch('wazuh.integrations_order.exists', return_value=False)
 @patch('wazuh.integrations_order.remove')
-async def test_create_integrations_order_save_file_error(mock_remove, mock_exists, mock_generate_path,
+async def test_update_integrations_order_save_file_error(mock_remove, mock_exists, mock_generate_path,
                                                        mock_save_file, mock_get_client):
-    """Test create_integrations_order with file save error."""
+    """Test update_integrations_order with file save error."""
     with pytest.raises(IOError) as exc_info:
-        await create_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
+        await update_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
     assert str(exc_info.value) == "Save failed"

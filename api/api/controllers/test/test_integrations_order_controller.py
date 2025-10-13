@@ -14,7 +14,7 @@ with patch('wazuh.common.wazuh_uid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from api.controllers.integrations_order_controller import (
-            create_integrations_order,
+            update_integrations_order,
             get_integrations_order,
             delete_integrations_order
         )
@@ -38,20 +38,20 @@ TEST_ORDER_BODY = [
 @patch('api.controllers.integrations_order_controller.Body.validate_content_type')
 @patch('api.controllers.integrations_order_controller.IntegrationsOrderModel')
 @patch('api.controllers.integrations_order_controller.IntegrationsOrder', return_value=MagicMock())
-async def test_create_integrations_order(mock_order_model, mock_model_cls, mock_validate, mock_exc,
+async def test_update_integrations_order(mock_order_model, mock_model_cls, mock_validate, mock_exc,
                                          mock_dapi, mock_remove, mock_dfunc, mock_request):
-    """Verify 'create_integrations_order' works as expected."""
+    """Verify 'update_integrations_order' works as expected."""
     mock_instance = MagicMock()
     mock_instance.order = [MagicMock(id=o['id'], name=o['name']) for o in TEST_ORDER_BODY]
     mock_model_cls.return_value = mock_instance
 
-    result = await create_integrations_order(body=TEST_ORDER_BODY, policy_type='policy')
+    result = await update_integrations_order(body=TEST_ORDER_BODY, policy_type='policy')
     f_kwargs = {
         'order': mock_order_model.return_value,
         'policy_type': 'policy'
     }
     mock_dapi.assert_called_once_with(
-        f=integrations_order_framework.create_integrations_order,
+        f=integrations_order_framework.update_integrations_order,
         f_kwargs=mock_remove.return_value,
         request_type='local_master',
         is_async=True,
