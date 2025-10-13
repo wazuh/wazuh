@@ -25,6 +25,7 @@ typedef struct wm_agent_info_sync_flags_t
 {
     unsigned int enable_synchronization : 1;
     uint32_t sync_response_timeout;
+    uint32_t sync_retries;
     long sync_max_eps;
 } wm_agent_info_sync_flags_t;
 

@@ -108,6 +108,7 @@ static void wm_agent_info_parse_synchronization(wm_agent_info_t* agent_info, xml
 {
     const char* XML_DB_SYNC_ENABLED = "enabled";
     const char* XML_DB_SYNC_RESPONSE_TIMEOUT = "response_timeout";
+    const char* XML_DB_SYNC_RETRIES = "retries";
     const char* XML_DB_SYNC_MAX_EPS = "max_eps";
 
     for (int i = 0; node[i]; ++i)
@@ -136,6 +137,20 @@ static void wm_agent_info_parse_synchronization(wm_agent_info_t* agent_info, xml
             else
             {
                 agent_info->sync.sync_response_timeout = (uint32_t)response_timeout;
+            }
+        }
+        else if (strcmp(node[i]->element, XML_DB_SYNC_RETRIES) == 0)
+        {
+            char* end;
+            const long value = strtol(node[i]->content, &end, 10);
+
+            if (value < 0 || value > 100 || *end)
+            {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
+            else
+            {
+                agent_info->sync.sync_retries = (uint32_t)value;
             }
         }
         else if (strcmp(node[i]->element, XML_DB_SYNC_MAX_EPS) == 0)
@@ -274,6 +289,7 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
         // Database synchronization config values
         agent_info->sync.enable_synchronization = 1;
         agent_info->sync.sync_response_timeout = 30;
+        agent_info->sync.sync_retries = 5;
         agent_info->sync.sync_max_eps = 10;
 
         module->context = &WM_AGENT_INFO_CONTEXT;
@@ -515,8 +531,9 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
         // Database synchronization values
         cJSON* synchronization = cJSON_CreateObject();
         cJSON_AddStringToObject(synchronization, "enabled", agent_info->sync.enable_synchronization ? "yes" : "no");
-        cJSON_AddNumberToObject(synchronization, "max_eps", agent_info->sync.sync_max_eps);
         cJSON_AddNumberToObject(synchronization, "response_timeout", agent_info->sync.sync_response_timeout);
+        cJSON_AddNumberToObject(synchronization, "retries", agent_info->sync.sync_retries);
+        cJSON_AddNumberToObject(synchronization, "max_eps", agent_info->sync.sync_max_eps);
 
         cJSON_AddItemToObject(wm_agent_info, "synchronization", synchronization);
     }

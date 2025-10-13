@@ -175,6 +175,17 @@ void AgentInfoImpl::initSyncProtocol(const std::string& moduleName,
     m_logFunction(LOG_INFO, "Agent-info sync protocol initialized with database: " + syncDbPath);
 }
 
+void AgentInfoImpl::setSyncParameters(uint32_t timeout, uint32_t retries, long maxEps)
+{
+    m_syncResponseTimeout = timeout;
+    m_syncRetries = retries;
+    m_syncMaxEps = maxEps;
+
+    m_logFunction(LOG_DEBUG,
+                  "Sync parameters set: timeout=" + std::to_string(timeout) + "s, retries=" +
+                      std::to_string(retries) + ", maxEps=" + std::to_string(maxEps));
+}
+
 std::string AgentInfoImpl::GetCreateStatement() const
 {
     std::string ret;
