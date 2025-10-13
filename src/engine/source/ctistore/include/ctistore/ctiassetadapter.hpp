@@ -1,10 +1,11 @@
 #ifndef _CTI_STORE_CTI_ASSET_ADAPTER_HPP
 #define _CTI_STORE_CTI_ASSET_ADAPTER_HPP
 
-#include <base/json.hpp>
-#include <string>
 #include <functional>
 #include <optional>
+#include <string>
+
+#include <base/json.hpp>
 
 namespace cti::store
 {
@@ -13,9 +14,9 @@ namespace cti::store
  * @brief Function type for resolving UUIDs to names
  * @param uuid The UUID to resolve
  * @param assetType The type of asset ("decoder", "kvdb", etc.)
- * @return The resolved name, or std::nullopt if resolution fails
+ * @return The resolved name
  */
-using UUIDResolver = std::function<std::optional<std::string>(const std::string& uuid, const std::string& assetType)>;
+using UUIDResolverFn = std::function<std::string(const std::string& uuid, const std::string& assetType)>;
 
 /**
  * @brief Static utility class for adapting CTI assets from storage format to consumer format.
@@ -42,7 +43,7 @@ public:
      */
     static json::Json adaptAsset(const json::Json& rawAsset,
                                   const std::string& assetType,
-                                  const UUIDResolver& resolver = nullptr);
+                                  const UUIDResolverFn& resolver = nullptr);
 
     /**
      * @brief Adapt a KVDB document to consumer format.

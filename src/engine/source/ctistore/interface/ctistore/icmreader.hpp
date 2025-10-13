@@ -120,13 +120,6 @@ public:
     virtual std::vector<base::Name> getPolicyIntegrationList() const = 0;
 
     /**
-     * @brief Get the default parent for policies that do not have a parent defined
-     * @return base::Name Name of the default parent integration
-     * @throw std::runtime_error on error (if unable to read the store, etc)
-     */
-    virtual base::Name getPolicyDefaultParent() const = 0;
-
-    /**
      * @brief Get a policy document by its ID or title
      * @param name Policy identifier (can be an ID or a title)
      * @return json::Json Policy JSON document

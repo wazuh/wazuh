@@ -56,7 +56,7 @@ public:
     /** @copydoc ICMReader::assetExists */
     bool assetExists(const base::Name& name) const override;
 
-    /**     */
+    /** @copydoc ICMReader::resolveNameFromUUID */
     std::string resolveNameFromUUID(const std::string& uuid) const override;
 
     /** @copydoc ICMReader::listKVDB */
@@ -73,9 +73,6 @@ public:
 
     /** @copydoc ICMReader::getPolicyIntegrationList */
     std::vector<base::Name> getPolicyIntegrationList() const override;
-
-    /** @copydoc ICMReader::getPolicyDefaultParent */
-    base::Name getPolicyDefaultParent() const override;
 
     /** @copydoc ICMReader::getPolicy */
     json::Json getPolicy(const base::Name& name) const override;
