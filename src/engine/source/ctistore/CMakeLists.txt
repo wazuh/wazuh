@@ -14,6 +14,7 @@ add_library(ctistore_ctistore STATIC
     ${SRC_DIR}/cm.cpp
     ${SRC_DIR}/ctistoragedb.cpp
     ${SRC_DIR}/contentdownloader.cpp
+    ${SRC_DIR}/ctiassetadapter.cpp
 )
 target_include_directories(ctistore_ctistore
     PUBLIC
