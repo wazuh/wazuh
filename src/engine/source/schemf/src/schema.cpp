@@ -134,6 +134,8 @@ Field Schema::get(const DotPath& name) const
     return *target;
 }
 
+// TODO: Once custom fields are merged into the schema, any path not
+// present in the (ECS+custom) tree should be considered invalid at build time.
 bool Schema::hasField(const DotPath& name) const
 {
     if (name.isRoot())
@@ -142,21 +144,13 @@ bool Schema::hasField(const DotPath& name) const
     }
 
     const auto* current = &m_fields;
-    auto isParentSchema = false;
     for (auto it = name.cbegin(); it != name.cend(); ++it)
     {
         auto entry = current->find(*it);
         if (entry == current->end())
         {
-            if (!isParentSchema)
-            {
-                return false;
-            }
-
-            throw std::runtime_error(fmt::format("Field '{}' does not exist in '{}'", it->data(), name.str()));
+            return false;
         }
-
-        isParentSchema = true;
 
         if (it != name.cend() - 1)
         {
@@ -164,13 +158,14 @@ bool Schema::hasField(const DotPath& name) const
             // If the field is an array and the next part is the last one and a number, return true
             if (entry->second.isArray() && it + 1 == name.cend() - 1)
             {
-                auto arrayIndex = *(it + 1);
-                auto isIndex = true;
+                const auto& arrayIndex = *(it + 1);
+                bool isIndex = true;
                 for (const auto& c : arrayIndex)
                 {
-                    if (!std::isdigit(c))
+                    if (!std::isdigit(static_cast<unsigned char>(c)))
                     {
                         isIndex = false;
+                        break;
                     }
                 }
 
