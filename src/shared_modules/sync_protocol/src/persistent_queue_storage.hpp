@@ -62,6 +62,10 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @brief Resets the status of all SYNCING messages for a module back to PENDING.
         void resetAllSyncing() override;
 
+        /// @brief Deletes all messages belonging to a specific index.
+        /// @param index The index for which all messages should be removed.
+        void removeByIndex(const std::string& index) override;
+
     private:
         /// @brief Active SQLite database connection.
         SQLite3Wrapper::Connection m_connection;

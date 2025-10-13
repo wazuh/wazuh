@@ -311,3 +311,24 @@ void PersistentQueueStorage::resetAllSyncing()
         throw;
     }
 }
+
+void PersistentQueueStorage::removeByIndex(const std::string& index)
+{
+    m_connection.execute("BEGIN IMMEDIATE TRANSACTION;");
+
+    try
+    {
+        const std::string query = "DELETE FROM persistent_queue WHERE idx = ?;";
+        SQLite3Wrapper::Statement stmt(m_connection, query);
+        stmt.bind(1, index);
+        stmt.step();
+
+        m_connection.execute("COMMIT;");
+    }
+    catch (const SQLite3Wrapper::Sqlite3Error& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error in removeByIndex: ") + ex.what());
+        m_connection.execute("ROLLBACK;");
+        throw;
+    }
+}

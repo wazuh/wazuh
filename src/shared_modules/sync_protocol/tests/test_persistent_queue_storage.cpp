@@ -283,3 +283,101 @@ QueueScenario
 }
     )
 );
+
+class PersistentQueueStorageTest : public ::testing::Test
+{
+    protected:
+        std::unique_ptr<PersistentQueueStorage> storage;
+        LoggerFunc testLogger;
+
+        void SetUp() override
+        {
+            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+            {
+            };
+
+            storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger);
+        }
+
+        void TearDown() override
+        {
+            storage.reset();
+        }
+};
+
+TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesOnlySpecifiedIndex)
+{
+    // Insert items with different indices
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index2", "{}", Operation::CREATE});
+    storage->submitOrCoalesce(PersistedData{0, "id3", "index1", "{}", Operation::MODIFY});
+    storage->submitOrCoalesce(PersistedData{0, "id4", "index3", "{}", Operation::CREATE});
+
+    // Verify all items are present
+    auto allItems = storage->fetchAndMarkForSync();
+    EXPECT_EQ(allItems.size(), static_cast<size_t>(4));
+
+    // Reset status to pending for next operations
+    storage->resetAllSyncing();
+
+    // Remove all items with "index1"
+    storage->removeByIndex("index1");
+
+    // Verify only items with "index1" were removed
+    auto remainingItems = storage->fetchAndMarkForSync();
+    EXPECT_EQ(remainingItems.size(), static_cast<size_t>(2));
+
+    // Verify the remaining items don't have "index1"
+    for (const auto& item : remainingItems)
+    {
+        EXPECT_NE(item.index, "index1");
+    }
+}
+
+TEST_F(PersistentQueueStorageTest, RemoveByIndexHandlesNonExistentIndex)
+{
+    // Insert some items
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index2", "{}", Operation::CREATE});
+
+    // Try to remove items with non-existent index (should not throw)
+    EXPECT_NO_THROW(storage->removeByIndex("non_existent_index"));
+
+    // Verify original items are still present
+    auto allItems = storage->fetchAndMarkForSync();
+    EXPECT_EQ(allItems.size(), static_cast<size_t>(2));
+}
+
+TEST_F(PersistentQueueStorageTest, RemoveByIndexHandlesEmptyDatabase)
+{
+    // Try to remove from empty database (should not throw)
+    EXPECT_NO_THROW(storage->removeByIndex("any_index"));
+
+    // Verify database is still empty
+    auto allItems = storage->fetchAndMarkForSync();
+    EXPECT_EQ(allItems.size(), static_cast<size_t>(0));
+}
+
+TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesItemsInAnyStatus)
+{
+    // Insert items and mark some as syncing
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE});
+    storage->submitOrCoalesce(PersistedData{0, "id2", "index1", "{}", Operation::MODIFY});
+    storage->submitOrCoalesce(PersistedData{0, "id3", "index2", "{}", Operation::CREATE});
+
+    // Mark items as syncing
+    storage->fetchAndMarkForSync();
+
+    // Update an item during sync (will be SYNCING_UPDATED)
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{updated}", Operation::MODIFY});
+
+    // Remove all items with "index1" regardless of status
+    storage->removeByIndex("index1");
+
+    // Reset and verify only index2 item remains
+    storage->resetAllSyncing();
+    auto remainingItems = storage->fetchAndMarkForSync();
+    EXPECT_EQ(remainingItems.size(), static_cast<size_t>(1));
+    EXPECT_EQ(remainingItems[0].id, "id3");
+    EXPECT_EQ(remainingItems[0].index, "index2");
+}

@@ -368,7 +368,10 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
             m_logger(LOG_DEBUG, "DataClean notification completed successfully. Clearing local database.");
 
             // Clear the local database after successful notification
-            //m_persistentQueue->clearSyncedItems();
+            for (const auto& index : indices)
+            {
+                m_persistentQueue->clearItemsByIndex(index);
+            }
         }
         else
         {
@@ -623,8 +626,8 @@ bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
 }
 
 bool AgentSyncProtocol::sendDataCleanMessages(uint64_t session,
-                                               const std::vector<PersistedData>& data,
-                                               size_t maxEps)
+                                              const std::vector<PersistedData>& data,
+                                              size_t maxEps)
 {
     try
     {
