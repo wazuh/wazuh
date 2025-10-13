@@ -36,17 +36,8 @@ async def create_integration(body: dict, policy_type: str, pretty: bool = False,
         API response.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    create_model = IntegrationCreateModel(**body)
-    model = Integration(
-        type=create_model.type,
-        id=create_model.id,
-        name=create_model.name,
-        documentation=create_model.documentation,
-        description=create_model.description,
-        status=create_model.status,
-        kvdbs=create_model.kvdbs,
-        decoders=create_model.decoders
-    )
+    body_kwargs = await IntegrationCreateModel.get_kwargs(body)
+    model = Integration(**body_kwargs)
 
     f_kwargs = {
         'integration': model,
@@ -128,17 +119,8 @@ async def update_integration(body: dict, policy_type: str, pretty: bool = False,
         API response.
     """
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    create_model = IntegrationCreateModel(**body)
-    model = Integration(
-        type=create_model.type,
-        id=create_model.id,
-        name=create_model.name,
-        documentation=create_model.documentation,
-        description=create_model.description,
-        status=create_model.status,
-        kvdbs=create_model.kvdbs,
-        decoders=create_model.decoders
-    )
+    body_kwargs = await IntegrationCreateModel.get_kwargs(body)
+    model = Integration(**body_kwargs)
 
     f_kwargs = {
         'integration': model,
