@@ -37,7 +37,7 @@ struct ContentManagerConfig
     std::string contentSource {"cti-offset"};
     std::string compressionType {"raw"};
     std::string versionedContent {"cti-api"};
-    bool deleteDownloadedContent {true};
+    bool deleteDownloadedContent {false}; // TODO: Chage this, is for develop
     std::string url {"https://cti-pre.wazuh.com/api/v1/catalog/contexts/decoders_development_0.0.1/consumers/"
                      "decoders_development_0.0.1"};
     std::string outputFolder {"content"};

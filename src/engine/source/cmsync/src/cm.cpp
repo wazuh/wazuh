@@ -1,6 +1,7 @@
 #include <cmsync/cmsync.hpp>
 
 #include <base/logging.hpp>
+#include <ctistore/adapter.hpp>
 
 #include "coreoutput.hpp"
 
@@ -283,7 +284,9 @@ void CMSync::pushKVDBsFromCM(const std::shared_ptr<cti::store::ICMReader>& ctiSt
         json::Json kvdbContent;
         try
         {
-            kvdbContent = ctiStore->kvdbDump(kvdbName);
+            json::Json rawCTIkvdbContent = ctiStore->kvdbDump(kvdbName);
+            kvdbContent = cti::store::CTIAssetAdapter::adaptKVDB(rawCTIkvdbContent);
+
         }
         catch (const std::exception& e)
         {
@@ -328,70 +331,20 @@ void CMSync::pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& cmst
         decoderList.reserve(32); // Prevent multiple allocations
         try
         {
-            const auto decodersPath =
-                "/document/decoders"; // builder::syntax::integration::DECODER_PATH TODO: Move to common header
-            decoderDef = cmstore->getAsset(integrationName);
+            const auto rawCTIdecoder = cmstore->getAsset(integrationName);
+            const auto decoderDef = cti::store::CTIAssetAdapter::adaptAsset(rawCTIdecoder, "integration", cmstore);
 
-            if (!decoderDef.isObject())
+            if (!decoderDef.isArray("/decoders"))
             {
-                throw std::runtime_error("Invalid integration asset, not a JSON object");
+                throw std::runtime_error(fmt::format(
+                    "Invalid integration document for '{}', '/decoders' is not an array or does not exist",
+                    integrationName.toStr()));
             }
 
-            if (!decoderDef.isArray(decodersPath))
-            {
-                // No decoders
-                throw std::runtime_error("No decoders found in integration asset");
-            }
-
-            const auto resp = decoderDef.getArray(decodersPath);
-            if (!resp)
-            {
-                throw std::runtime_error("Invalid decoders array in integration asset");
-            }
-
-            const auto& arrayList = resp.value();
+            const auto arrayList = decoderDef.getArray("/decoders").value();
             for (const auto& jName : arrayList)
             {
-                // Get and validate the asset name
-                const auto assetUUIDStr = jName.getString();
-                if (!assetUUIDStr)
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Invalid not string entry in '{}' array for integration '{}'", decodersPath, integrationName));
-                }
-
-                std::string assetNameStr {};
-                try {
-                    assetNameStr = cmstore->resolveNameFromUUID(assetUUIDStr.value());
-                } catch (const std::exception& e) {
-                    throw std::runtime_error(fmt::format("Failed to resolve asset name from UUID '{}' in integration '{}': {}",
-                                                         assetUUIDStr.value(),
-                                                         integrationName,
-                                                         e.what()));
-                }
-
-                base::Name assetName;
-                try
-                {
-                    assetName = base::Name(assetNameStr);
-                }
-                catch (const std::runtime_error& e)
-                {
-                    throw std::runtime_error(fmt::format(
-                        "Invalid asset name '{}' in integration '{}': {}", assetNameStr, integrationName, e.what()));
-                }
-
-                // Assert the asset name is a decoder
-                // if (!syntax::name::isDecoder(assetName)) TODO: Use syntax helper
-                if (assetName.parts().size() < 3 || assetName.parts()[0] != "decoder")
-                {
-                    throw std::runtime_error(fmt::format("Asset '{}' in integration '{}' is not of type '{}'",
-                                                         assetName.toStr(),
-                                                         integrationName,
-                                                         "decoder"));
-                }
-
-                decoderList.push_back(assetName);
+                decoderList.push_back(jName.getString().value_or("Error, not and string decoder"));
             }
         }
         catch (const std::exception& e)
@@ -420,23 +373,12 @@ void CMSync::pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& cmst
             {
                 throw std::runtime_error(fmt::format("Decoder asset '{}' does not exist in CM Store", decoderName));
             }
-            const auto decoderAssetDoc = cmstore->getAsset(decoderName);
-            auto optDecoderAsset = decoderAssetDoc.getJson("/document");
-            if (!optDecoderAsset) {
-                throw std::runtime_error(fmt::format("Invalid decoder asset '{}', no '/document' field in {}",
-                                                        decoderName.toStr(),
-                                                        decoderAssetDoc.str()));
-            }
-
-            // Delete '/date', '/enabled' and '/id' fields if exists
-            optDecoderAsset->erase("/date");
-            optDecoderAsset->erase("/enabled");
-            optDecoderAsset->erase("/id");
-
+            const auto rawCTIdecoderAsset = cmstore->getAsset(decoderName);
+            const auto decoderAsset = cti::store::CTIAssetAdapter::adaptAsset(rawCTIdecoderAsset, "decoder", cmstore);
 
             // Create decoder resource for CTI assets decoder collection
             api::catalog::Resource decoderResource {"decoder", api::catalog::Resource::Format::json};
-            const auto error = catalog->postResource(decoderResource, m_ctiNS, optDecoderAsset.value().str());
+            const auto error = catalog->postResource(decoderResource, m_ctiNS, decoderAsset.str());
             if (error)
             {
                 throw std::runtime_error(
@@ -448,8 +390,15 @@ void CMSync::pushAssetsFromCM(const std::shared_ptr<cti::store::ICMReader>& cmst
         try
         {
             api::catalog::Resource integrationResource {"integration", api::catalog::Resource::Format::json};
-            const auto integrationAsset = cmstore->getAsset(integrationName);
+            const auto rawCTIintegrationAsset = cmstore->getAsset(integrationName);
+            const auto integrationAsset =
+                cti::store::CTIAssetAdapter::adaptAsset(rawCTIintegrationAsset, "integration", cmstore);
             const auto error = catalog->postResource(integrationResource, m_ctiNS, integrationAsset.str());
+            if (error)
+            {
+                throw std::runtime_error(
+                    fmt::format("Failed to push integration '{}' to catalog: {}", integrationName.toStr(), error->message));
+            }
         }
         catch (const std::exception& e)
         {

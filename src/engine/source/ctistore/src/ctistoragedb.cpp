@@ -1298,7 +1298,7 @@ std::string CTIStorageDB::Impl::resolveNameFromUUID(const std::string& uuid, con
         }
 
         // Try /document/name (decoders)
-        auto name = doc.getString(constants::JSON_UNWRAPPED_DOCUMENT_NAME);
+        auto name = doc.getString(constants::JSON_DOCUMENT_NAME);
         if (name && !name->empty())
         {
             return *name;
