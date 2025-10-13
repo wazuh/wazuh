@@ -22,13 +22,10 @@ async def get_decoder(decoder_id: list = None, type_: str = None, status: str = 
                       sort: str = None,search: str = None, q: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get all decoders.
 
-    Returns information about all the decoders included in the ossec.conf file.
-    This information includes the decoders' routes, decoders' names, decoders' files, etc.
-
     Parameters
     ----------
-    names : list
-        Filters by decoder name.
+    decoder_id : list
+        Filters by decoder id.
     type_: str
         Policy type.
     status : str
@@ -57,12 +54,12 @@ async def get_decoder(decoder_id: list = None, type_: str = None, status: str = 
     ConnexionResponse
         API response.
     """ 
-    names = decoder_id or []
-    f_kwargs = {'names': names,
+    ids = decoder_id or []
+    f_kwargs = {'ids': ids,
                 'offset': offset,
                 'limit': limit,
                 'select': select,
-                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['name'],
+                'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['id'],
                 'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
                 'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
@@ -170,8 +167,8 @@ async def delete_decoder(decoder_id: list = None,  type_: str = None, pretty: bo
 
     Parameters
     ----------
-    names : list
-        Filters by decoder name.
+    decoder_id : list
+        Filters by decoder id.
     type_: str
         Policy type.
     pretty : bool
@@ -184,8 +181,8 @@ async def delete_decoder(decoder_id: list = None,  type_: str = None, pretty: bo
     ConnexionResponse
         API response.
     """
-    names = decoder_id or []
-    f_kwargs = {'names': names,
+    ids = decoder_id or []
+    f_kwargs = {'ids': ids,
                 'policy_type': type_}
 
     dapi = DistributedAPI(f=decoder_framework.delete_decoder,

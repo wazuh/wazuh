@@ -35,11 +35,11 @@ async def test_get_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
     """Verify 'get_decoder' endpoint is working as expected."""
     result = await get_decoder()
     f_kwargs = {
-        'names': [],
+        'ids': [],
         'offset': 0,
         'limit': None,
         'select': None,
-        'sort_by': ['name'],
+        'sort_by': ['id'],
         'sort_ascending': True,
         'search_text': None,
         'complementary_search': None,
@@ -72,7 +72,7 @@ async def test_get_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 async def test_create_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_get_kwargs, mock_request):
     """Verify 'create_decoder' endpoint is working as expected."""
     with patch('api.controllers.decoder_controller.Body.validate_content_type'):
-        mock_get_kwargs.return_value = {"name": "test-decoder"}
+        mock_get_kwargs.return_value = {"id": "test-decoder"}
         result = await create_decoder(body=b"dummy")
         f_kwargs = {
             'decoder_content': mock_get_kwargs.return_value,
@@ -102,7 +102,7 @@ async def test_create_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
 async def test_update_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_get_kwargs, mock_request):
     """Verify 'update_decoder' endpoint is working as expected."""
     with patch('api.controllers.decoder_controller.Body.validate_content_type'):
-        mock_get_kwargs.return_value = {"name": "test-decoder"}
+        mock_get_kwargs.return_value = {"id": "test-decoder"}
         result = await update_decoder(body=b"dummy")
         f_kwargs = {
             'decoder_content': mock_get_kwargs.return_value,
@@ -132,7 +132,7 @@ async def test_delete_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     """Verify 'delete_decoder' endpoint is working as expected."""
     result = await delete_decoder()
     f_kwargs = {
-        'names': [],
+        'ids': [],
         'policy_type': None,
     }
     mock_dapi.assert_called_once_with(

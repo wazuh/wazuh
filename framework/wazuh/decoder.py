@@ -29,7 +29,7 @@ async def create_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
     try:
         file_contents_json = json.dumps(decoder_content)
         decoder_resource = Resource.from_dict(decoder_content)
-        filename = decoder_resource.name
+        filename = decoder_resource.id
         asset_file_path = generate_asset_file_path(filename, PolicyType(policy_type), ResourceType.DECODER)
 
         if exists(asset_file_path):
@@ -39,8 +39,7 @@ async def create_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
 
         async with get_engine_client() as client:
             validation_results = await client.catalog.validate_resource(
-                name=decoder_resource.name,
-                format=DEFAULT_DECODER_FORMAT,
+                id_=decoder_resource.id,
                 content=file_contents_json,
                 namespace_id=ENGINE_USER_NAMESPACE,
             )
@@ -48,7 +47,6 @@ async def create_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
 
             creation_results = await client.content.create_resource(
                 type=ResourceType.DECODER,
-                format=DEFAULT_DECODER_FORMAT,
                 resource=decoder_resource,
                 policy_type=policy_type,
             )
@@ -64,7 +62,7 @@ async def create_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
 
 @expose_resources(actions=["decoders:read"], resources=["*:*:*"])
 async def get_decoder(
-    names: list,
+    ids: list,
     policy_type: str,
     status: Status,
     offset: Optional[int] = 0,
@@ -85,18 +83,18 @@ async def get_decoder(
         all_msg="All selected decoders were returned",
     )
     retrieved_decoders = []
-    for name in names:
+    for id_ in ids:
         try:
             async with get_engine_client() as client:
                 decoder_response = await client.content.get_resources(
-                    name=name,
+                    id_=id_,
                     type=ResourceType.DECODER,
                     policy_type=PolicyType(policy_type),
                 )
                 validate_response_or_raise(decoder_response, 9004)
                 retrieved_decoders.append(decoder_response["content"])
         except WazuhError as exc:
-            results.add_failed_item(id_=name, error=exc)
+            results.add_failed_item(id_=id_, error=exc)
 
     parsed_decoders = process_array(
         retrieved_decoders,
@@ -126,7 +124,7 @@ async def update_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
 
     try:
         decoder_resource = Resource.from_dict(decoder_content)
-        filename = decoder_resource.name
+        filename = decoder_resource.id
         asset_file_path = generate_asset_file_path(filename, PolicyType(policy_type), ResourceType.DECODER)
 
         # Ensure the decoder file exists before attempting update
@@ -153,8 +151,7 @@ async def update_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
         # Validate and update in the engine
         async with get_engine_client() as client:
             validation_results = await client.catalog.validate_resource(
-                name=decoder_resource.name,
-                format=DEFAULT_DECODER_FORMAT,
+                id_=decoder_resource.id,
                 content=file_contents_json,
                 namespace_id=ENGINE_USER_NAMESPACE,
             )
@@ -162,7 +159,6 @@ async def update_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
 
             update_results = await client.content.update_resource(
                 type=ResourceType.DECODER,
-                format=DEFAULT_DECODER_FORMAT,
                 resource=decoder_resource,
                 policy_type=policy_type,
             )
@@ -184,16 +180,16 @@ async def update_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
 
 
 @expose_resources(actions=["decoders:delete"], resources=["*:*:*"])
-async def delete_decoder(names: List[str], policy_type: str):
+async def delete_decoder(ids: List[str], policy_type: str):
     """Delete decoder resources."""
     result = AffectedItemsWazuhResult(
         all_msg="Decoder file was successfully deleted",
         some_msg="Some decoders were not returned",
         none_msg="Could not delete decoder file",
     )
-    for name in names:
+    for id_ in ids:
         backup_file = ""
-        asset_file_path = generate_asset_file_path(name, PolicyType(policy_type), ResourceType.DECODER)
+        asset_file_path = generate_asset_file_path(id_, PolicyType(policy_type), ResourceType.DECODER)
         try:
             if not exists(asset_file_path):
                 raise WazuhError(9005)
@@ -207,13 +203,13 @@ async def delete_decoder(names: List[str], policy_type: str):
             except IOError as exc:
                 raise WazuhError(1907) from exc
             async with get_engine_client() as client:
-                delete_results = await client.content.delete_resource(name=name, policy_type=PolicyType(policy_type))
+                delete_results = await client.content.delete_resource(id_=id_, policy_type=PolicyType(policy_type))
                 validate_response_or_raise(delete_results, 9007)
-            result.affected_items.append(name)
+            result.affected_items.append(id_)
         except WazuhError as exc:
             # Restore the backup
             backup_file and exists(backup_file) and safe_move(backup_file, asset_file_path)
-            result.add_failed_item(id_=name, error=exc)
+            result.add_failed_item(id_=id_, error=exc)
         finally:
             # Remove the backup
             backup_file and exists(backup_file) and remove(backup_file)

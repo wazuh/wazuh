@@ -69,7 +69,7 @@ class CatalogModule(BaseModule):
     async def get_resources(self) -> dict:
         return await self.send(
             path='/catalog/resource/get',
-            data={'name': 'decoder', 'format': 'yaml', 'namespaceid': 'system'}
+            data={'name': 'decoder', 'namespaceid': 'system'}
         )
 ```
 
