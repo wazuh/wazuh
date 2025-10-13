@@ -593,7 +593,7 @@ int main(int argc, char* argv[])
         }
 
         // CTI Store (initialized after CMSync to pass deploy callback)
-        {
+        if (confManager.get<bool>(conf::key::CTI_ENABLED)) {
             const auto baseCtiPath = confManager.get<std::string>(conf::key::CTI_PATH);
             cti::store::ContentManagerConfig ctiCfg;
             ctiCfg.basePath = baseCtiPath;
