@@ -34,6 +34,8 @@ constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
 // Name of the field that contains the server status
 constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
 
+static constexpr auto IC_NAME {"indexer-connector"};
+
 /**
  * @brief Monitoring class.
  *
@@ -66,8 +68,46 @@ class Monitoring final
         serverStatus = false;
 
         // On success callback
-        const auto onSuccess = [&serverStatus](std::string response)
+        const auto onSuccess = [this, &serverStatus, &serverAddress](std::string response)
         {
+            // Check for plain text error messages that shouldn't be in onSuccess
+            if (response.find("Unauthorized") != std::string::npos || response.find("Forbidden") != std::string::npos ||
+                response.find("Error") != std::string::npos)
+            {
+                serverStatus = false;
+
+                // Only log once per unique error to avoid spam
+                static std::unordered_map<std::string, std::chrono::steady_clock::time_point> lastLogTime;
+                static std::mutex logMutex;
+
+                std::lock_guard<std::mutex> lock(logMutex);
+                auto now = std::chrono::steady_clock::now();
+                auto& lastLog = lastLogTime[serverAddress];
+
+                // Log at most once per minute for the same server
+                if (std::chrono::duration_cast<std::chrono::seconds>(now - lastLog).count() >= 60)
+                {
+                    if (response.find("Unauthorized") != std::string::npos)
+                    {
+                        logWarn(IC_NAME,
+                                "Health check failed for %s: Authentication required. Please verify credentials in "
+                                "wazuh-keystore.",
+                                serverAddress.c_str());
+                    }
+                    else if (response.find("Forbidden") != std::string::npos)
+                    {
+                        logWarn(IC_NAME,
+                                "Health check failed for %s: Access forbidden. Please verify user permissions.",
+                                serverAddress.c_str());
+                    }
+                    else
+                    {
+                        logWarn(IC_NAME, "Health check failed for %s: %s", serverAddress.c_str(), response.c_str());
+                    }
+                    lastLog = now;
+                }
+                return;
+            }
             // Parse the response without throwing exceptions
             // Response example:
             // [

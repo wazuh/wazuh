@@ -360,11 +360,28 @@ void IndexerConnector::handleBulkOperationErrors(simdjson::ondemand::document& d
             }
         }
 
+        std::string actionableHint = " - No additional information available";
+        if (errorType == "validation_exception")
+        {
+            if (errorReason.find("shard") != std::string::npos)
+            {
+                actionableHint = " - Consider increasing cluster.max_shards_per_node setting";
+            }
+        }
+        else if (errorType == "security_exception")
+        {
+            actionableHint = " - Verify user credentials and permissions";
+        }
+        else if (errorType == "index_not_found_exception")
+        {
+            actionableHint = " - Index will be created on next initialization attempt";
+        }
+
         logWarn(IC_NAME,
-                "Document indexing failed - type: '%s', reason: '%s', event: %s",
+                "Indexer request failed - type: '%s', reason: '%s'%s",
                 errorType.c_str(),
                 errorReason.c_str(),
-                events.at(index).c_str());
+                actionableHint.c_str());
 
         ++index;
     }

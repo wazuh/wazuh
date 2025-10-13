@@ -149,11 +149,13 @@ static auto createStandardLogFunction()
 
         if (logLevel == 2) // Warning messages
         {
-            // Check for bulk format: "Document indexing failed"
-            if (formatted.find("Document indexing failed") != std::string::npos)
+            // Check for bulk/request error format: "Indexer request failed"
+            // This covers both bulk operation errors and request-level errors
+            if (formatted.find("Indexer request failed") != std::string::npos)
             {
                 g_logTestState.errorLogsCount++;
 
+                // Check for specific error types
                 if (formatted.find("mapper_parsing_exception") != std::string::npos)
                 {
                     g_logTestState.foundMapperError = true;
@@ -170,12 +172,6 @@ static auto createStandardLogFunction()
                 {
                     g_logTestState.foundUnknownType = true;
                 }
-            }
-
-            // Check for request-level errors format: "Indexer request failed"
-            if (formatted.find("Indexer request failed") != std::string::npos)
-            {
-                g_logTestState.errorLogsCount++;
             }
 
             // Check for parse errors
