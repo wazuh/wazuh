@@ -367,8 +367,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
                 std::string groupName = trimmedLine.substr(pathStart, pathEnd - pathStart);
                 groupName = Utils::trim(groupName);
 
-                // Exclude "default" group and only add non-empty group names
-                if (!groupName.empty() && groupName != "default")
+                if (!groupName.empty())
                 {
                     groups.push_back(groupName);
                 }
