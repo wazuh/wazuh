@@ -58,7 +58,6 @@ static int test_setup(void ** state) {
     remoted_state.sent_breakdown.ack_count = 1114;
     remoted_state.sent_breakdown.shared_count = 2540;
     remoted_state.sent_breakdown.ar_count = 18;
-    remoted_state.sent_breakdown.sca_count = 8;
     remoted_state.sent_breakdown.request_count = 9;
     remoted_state.sent_breakdown.discarded_count = 85;
 
@@ -85,7 +84,6 @@ static int test_setup_agent(void ** state) {
     test_data->agent_state->sent_breakdown.ack_count = 2346;
     test_data->agent_state->sent_breakdown.shared_count = 235;
     test_data->agent_state->sent_breakdown.ar_count = 514;
-    test_data->agent_state->sent_breakdown.sca_count = 134;
     test_data->agent_state->sent_breakdown.request_count = 153;
     test_data->agent_state->sent_breakdown.discarded_count = 235;
 
@@ -211,8 +209,6 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(sent, "shared")->valueint, 2540);
     assert_non_null(cJSON_GetObjectItem(sent, "ar"));
     assert_int_equal(cJSON_GetObjectItem(sent, "ar")->valueint, 18);
-    assert_non_null(cJSON_GetObjectItem(sent, "sca"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "sca")->valueint, 8);
     assert_non_null(cJSON_GetObjectItem(sent, "request"));
     assert_int_equal(cJSON_GetObjectItem(sent, "request")->valueint, 9);
     assert_non_null(cJSON_GetObjectItem(sent, "discarded"));
@@ -287,7 +283,6 @@ void test_rem_create_agents_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ack")->valueint, 2346);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "shared")->valueint, 235);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ar")->valueint, 514);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "sca")->valueint, 134);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "request")->valueint, 153);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "discarded")->valueint, 235);
 
