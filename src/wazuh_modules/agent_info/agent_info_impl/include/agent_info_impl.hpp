@@ -41,6 +41,10 @@ class AgentInfoImpl
         void start(int interval, std::function<bool()> shouldContinue = nullptr);
         void stop();
 
+        /// @brief Set whether this instance is running on an agent or manager
+        /// @param isAgent True if running on an agent, false if on a manager
+        void setIsAgent(bool isAgent);
+
         /// @brief Persist a difference to the synchronization protocol
         /// @param id Unique identifier for the difference
         /// @param operation Type of operation (CREATE, MODIFY, DELETE)
@@ -150,4 +154,7 @@ class AgentInfoImpl
 
         /// @brief Mutex for condition variable synchronization
         std::mutex m_mutex;
+
+        /// @brief True if the module is running on an agent, false if on a manager
+        bool m_isAgent = true;
 };

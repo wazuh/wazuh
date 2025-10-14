@@ -94,6 +94,11 @@ AgentInfoImpl::~AgentInfoImpl()
     m_logFunction(LOG_INFO, "AgentInfo destroyed.");
 }
 
+void AgentInfoImpl::setIsAgent(bool isAgent)
+{
+    m_isAgent = isAgent;
+}
+
 void AgentInfoImpl::start(int interval, std::function<bool()> shouldContinue)
 {
     m_logFunction(LOG_INFO, "AgentInfo module started with interval: " + std::to_string(interval) + " seconds.");
@@ -195,17 +200,33 @@ void AgentInfoImpl::populateAgentMetadata()
 {
     m_logFunction(LOG_DEBUG, "Populating agent metadata from sysinfo");
 
-    // Read agent ID and name from client.keys
+    // Get OS information from sysinfo
+    nlohmann::json osInfo = m_sysInfo->os();
+
+    // Read agent ID and name
     std::string agentId;
     std::string agentName;
 
-    if (!readClientKeys(agentId, agentName))
+    if (m_isAgent)
     {
-        m_logFunction(LOG_WARNING, "Failed to read agent ID and name from client.keys");
+        // For agents, read from client.keys
+        if (!readClientKeys(agentId, agentName))
+        {
+            m_logFunction(LOG_WARNING, "Failed to read agent ID and name from client.keys");
+        }
     }
+    else
+    {
+        // For server/manager, use default values
+        agentId = "000";
 
-    // Get OS information from sysinfo
-    nlohmann::json osInfo = m_sysInfo->os();
+        if (osInfo.contains("hostname"))
+        {
+            agentName = osInfo["hostname"];
+        }
+
+        m_logFunction(LOG_DEBUG, "Using default server/manager agent data: ID=000, Name=" + agentName);
+    }
 
     // Build the agent metadata JSON
     nlohmann::json agentMetadata;
@@ -254,8 +275,13 @@ void AgentInfoImpl::populateAgentMetadata()
     auto logMsg = std::string("Agent metadata populated successfully");
     m_logFunction(LOG_INFO, logMsg);
 
-    // Read agent groups from merged.mg
-    std::vector<std::string> groups = readAgentGroups();
+    // Read agent groups from merged.mg (only for agents)
+    std::vector<std::string> groups;
+
+    if (m_isAgent)
+    {
+        groups = readAgentGroups();
+    }
 
     // Always update agent groups in database (even if empty, to clear old groups)
     auto groupsData = nlohmann::json::array();
