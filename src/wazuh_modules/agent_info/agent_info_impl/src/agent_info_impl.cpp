@@ -29,14 +29,6 @@ static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
     {INSERTED, "created"},
 };
 
-// Map DBSync callback results to Operation enums for stateful events
-static const std::map<ReturnTypeCallback, Operation> OPERATION_STATES_MAP
-{
-    {MODIFIED, Operation::MODIFY},
-    {DELETED, Operation::DELETE_},
-    {INSERTED, Operation::CREATE},
-};
-
 // Map tables to their index names in the agent sync protocol
 static const std::map<std::string, std::string> INDEX_MAP
 {
