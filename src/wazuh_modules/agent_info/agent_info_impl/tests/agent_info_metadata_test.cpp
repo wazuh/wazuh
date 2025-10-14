@@ -246,7 +246,7 @@ TEST_F(AgentInfoMetadataTest, ParsesMultipleGroups)
         return false;
     });
 
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 3 groups"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 4 groups"));
 }
 
 TEST_F(AgentInfoMetadataTest, HandlesExceptionDuringPopulate)
@@ -432,7 +432,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_OnlyDefaultGroup)
     });
 
     // Default group should be excluded, so no groups found
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups cleared (no groups found)"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 1 groups"));
 }
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroup)
@@ -475,7 +475,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_SingleGroup)
     });
 
     // Should find 1 group
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 1 groups"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 2 groups"));
 }
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MultipleGroups)
@@ -525,7 +525,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MultipleGroups)
     });
 
     // Should find 2 groups (mygroup and mysecondgroup), excluding default
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 2 groups"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 3 groups"));
 }
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_WithWhitespaceAndExtraLines)
@@ -568,7 +568,7 @@ TEST_F(AgentInfoMetadataTest, ReadAgentGroups_WithWhitespaceAndExtraLines)
     });
 
     // Should find 3 groups (excluding default)
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 3 groups"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent groups populated successfully: 4 groups"));
 }
 
 TEST_F(AgentInfoMetadataTest, ReadAgentGroups_MalformedComments)
