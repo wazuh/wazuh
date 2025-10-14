@@ -268,6 +268,12 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
 
     agent_info = module->data;
 
+#ifdef CLIENT
+    agent_info->is_agent = true;
+#else
+    agent_info->is_agent = false;
+#endif
+
     if (!nodes)
     {
         return 0;
