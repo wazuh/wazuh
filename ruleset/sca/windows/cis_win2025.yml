@@ -252,7 +252,7 @@ checks:
 
   # 2.3.1.1 (L1) Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only). (Automated)
    - id: 18559
-     title: "(L1) Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only)."
+     title: "Ensure 'Accounts: Guest account status' is set to 'Disabled' (MS only)."
      description: "This policy setting determines whether the Guest account is enabled or disabled. The Guest account allows unauthenticated network users to gain access to the system. The recommended state for this setting is: Disabled. Note: This setting will have no impact when applied to the Domain Controllers organizational unit via group policy because Domain Controllers have no local account database. It can be configured at the domain level via group policy, similar to account lockout and password policy settings."
      rationale: "The default Guest account allows unauthenticated network users to log on as Guest with no password. These unauthorized users could access any resources that are accessible to the Guest account over the network. This capability means that any network shares with permissions that allow access to the Guest account, the Guests group, or the Everyone group will be accessible over the network, which could lead to the exposure or corruption of data."
      impact: "All network users will need to authenticate before they can access shared resources. If you disable the Guest account and the Network Access: Sharing and Security Model option is set to Guest Only, network logons, such as those performed by the Microsoft Network Server (SMB Service), will fail. This policy setting should have little impact on most organizations because it is the default setting in Microsoft Windows 2000, Windows XP, and Windows Server™ 2003."
@@ -265,12 +265,13 @@ checks:
        - pci_dss_v3.2.1: ["2.1", "2.1.1"]
        - pci_dss_v4.0: ["2.2.2", "2.3.1"]
        - soc_2: ["CC6.3"]
-     condition:
+     condition: all
      rules:
+       - 'c:powershell -NoProfile -Command "[bool](Get-CimInstance -Query ''SELECT * FROM Win32_UserAccount WHERE LocalAccount = TRUE AND SID LIKE ''''S-1-5-21-%-501'''''' | Where-Object -Property Disabled)" -> r:True'
 
   # 2.3.1.2 (L1) Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'. (Automated)
    - id: 18560
-     title: "(L1) Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'."
+     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'."
      description: "This policy setting determines whether local accounts that are not password protected can be used to log on from locations other than the physical computer console. If you enable this policy setting, local accounts that have blank passwords will not be able to log on to the network from remote client computers. Such accounts will only be able to log on at the keyboard of the computer. The recommended state for this setting is: Enabled."
      rationale: "Blank passwords are a serious threat to computer security and should be forbidden through both organizational policy and suitable technical measures. In fact, the default settings for Active Directory domains require complex passwords of at least seven characters. However, if users with the ability to create new accounts bypass your domain-based password policies, they could create accounts with blank passwords. For example, a user could build a stand-alone computer, create one or more accounts with blank passwords, and then join the computer to the domain. The local accounts with blank passwords would still function. Anyone who knows the name of one of these unprotected accounts could then use it to log on."
      impact: "None - this is the default behavior."
@@ -283,12 +284,15 @@ checks:
        - iso_27001-2013: ["A.9.4.3"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse -> 1'
 
   # 2.3.1.3 (L1) Configure 'Accounts: Rename administrator account'. (Automated)
    - id: 18561
-     title: "(L1) Configure 'Accounts: Rename administrator account'."
+     title: "Configure 'Accounts: Rename administrator account'."
      description: "The built-in local administrator account is a well-known account name that attackers will target. It is recommended to choose another name for this account, and to avoid names that denote administrative or elevated access accounts. Be sure to also change the default description for the local administrator (through the Computer Management console). On Domain Controllers, since they do not have their own local accounts, this rule refers to the built-in Administrator account that was established when the domain was first created."
      rationale: "The Administrator account exists on all computers that run the Windows 2000 or newer operating systems. If you rename this account, it is slightly more difficult for unauthorized persons to guess this privileged user name and password combination. The built-in Administrator account cannot be locked out, regardless of how many times an attacker might use a bad password. This capability makes the Administrator account a popular target for brute force attacks that attempt to guess passwords. The value of this countermeasure is lessened because this account has a well-known SID, and there are third-party tools that allow authentication by using the SID rather than the account name. Therefore, even if you rename the Administrator account, an attacker could launch a brute force attack by using the SID to log on."
      impact: "You will have to inform users who are authorized to use this account of the new account name. (The guidance for this setting assumes that the Administrator account was not disabled, which was recommended earlier in this chapter.)."
@@ -299,12 +303,13 @@ checks:
        - pci_dss_v3.2.1: ["2.1", "2.1.1"]
        - pci_dss_v4.0: ["2.2.2", "2.3.1"]
        - soc_2: ["CC6.3"]
-     condition:
+     condition: all
      rules:
+       - 'not c:net user -> r:Admin|Администратор|Amministratore|Beheerder|Järjestelmänvalvoja|Správce|Rendszergazda|Yönetici |Διαχειριστής|管理者|管理员|系統管理員|관리자|مسؤول | מנהל |ผู้ดูแลระบบ'
 
   # 2.3.1.4 (L1) Configure 'Accounts: Rename guest account'. (Automated)
    - id: 18562
-     title: "(L1) Configure 'Accounts: Rename guest account'."
+     title: "Configure 'Accounts: Rename guest account'."
      description: "The built-in local guest account is another well-known name to attackers. It is recommended to rename this account to something that does not indicate its purpose. Even if you disable this account, which is recommended, ensure that you rename it for added security. On Domain Controllers, since they do not have their own local accounts, this rule refers to the built-in Guest account that was established when the domain was first created."
      rationale: "The Guest account exists on all computers that run the Windows 2000 or newer operating systems. If you rename this account, it is slightly more difficult for unauthorized persons to guess this privileged user name and password combination."
      impact: "There should be little impact, because the Guest account is disabled by default."
@@ -315,12 +320,13 @@ checks:
        - pci_dss_v3.2.1: ["2.1", "2.1.1"]
        - pci_dss_v4.0: ["2.2.2", "2.3.1"]
        - soc_2: ["CC6.3"]
-     condition:
+     condition: all
      rules:
+       - 'not c:net user -> r:guest|Guest|Gast|Invité|Invitado|Ospite|Convidado|Gäst |Gjest|Gæst|Vieras|Гость|Gość|Vendég|Host |Misafir|Επισκέπτης|ゲスト|来宾|來賓|게스트|ضيف|אורח|บัญชีผู้ใช้ทั่วไป'
 
   # 2.3.2.2 (L1) Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'. (Automated)
    - id: 18563
-     title: "(L1) Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'."
+     title: "Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'."
      description: "This policy setting determines whether the system shuts down if it is unable to log Security events. It is a requirement for Trusted Computer System Evaluation Criteria (TCSEC)-C2 and Common Criteria certification to prevent auditable events from occurring if the audit system is unable to log them. Microsoft has chosen to meet this requirement by halting the system and displaying a stop message if the auditing system experiences a failure. When this policy setting is enabled, the system will be shut down if a security audit cannot be logged for any reason. If the Audit: Shut down system immediately if unable to log security audits setting is enabled, unplanned system failures can occur. The administrative burden can be significant, especially if you also configure the Retention method for the Security log to Do not overwrite events (clear log manually). This configuration causes a repudiation threat (a backup operator could deny that they backed up or restored data) to become a denial of service (DoS) vulnerability, because a server could be forced to shut down if it is overwhelmed with logon events and other security events that are written to the Security log. Also, because the shutdown is not graceful, it is possible that irreparable damage to the operating system, applications, or data could result. Although the NTFS file system guarantees its integrity when an ungraceful computer shutdown occurs, it cannot guarantee that every data file for every application will still be in a usable form when the computer restarts. The recommended state for this setting is: Disabled."
      rationale: "If the computer is unable to record events to the Security log, critical evidence or important troubleshooting information may not be available for review after a security incident. Also, an attacker could potentially generate a large volume of Security log events to purposely force a computer shutdown."
      impact: "None - this is the default behavior."
@@ -332,12 +338,15 @@ checks:
        - iso_27001-2013: ["A.12.4.1"]
        - pci_dss_v3.2.1: ["10.7"]
        - soc_2: ["A1.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy -> 1'
 
   # 2.3.4.1 (L1) Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'. (Automated)
    - id: 18564
-     title: "(L1) Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'."
+     title: "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'."
      description: "For a computer to print to a shared printer, the driver for that shared printer must be installed on the local computer. This security setting determines who is allowed to install a printer driver as part of connecting to a shared printer. The recommended state for this setting is: Enabled. Note: This setting does not affect the ability to add a local printer. This setting does not affect Administrators."
      rationale: "It may be appropriate in some organizations to allow users to install printer drivers on their own workstations. However, you should allow only Administrators, not users, to do so on servers, because printer driver installation on a server may unintentionally cause the computer to become less stable. A malicious user could install inappropriate printer drivers in a deliberate attempt to damage the computer, or a user might accidentally install malicious software that masquerades as a printer driver. It is feasible for an attacker to disguise a Trojan horse program as a printer driver. The program may appear to users as if they must use it to print, but such a program could unleash malicious code on your computer network."
      impact: "None - this is the default behavior."
@@ -350,12 +359,15 @@ checks:
        - nist_sp_800-53: ["AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)"]
        - pci_dss_v4.0: ["10.3.1", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2"]
        - soc_2: ["CC5.2", "CC6.3"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> 1'
 
   # 2.3.5.1 (L1) Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only). (Automated)
    - id: 18565
-     title: "(L1) Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only)."
+     title: "Ensure 'Domain controller: Allow server operators to schedule tasks' is set to 'Disabled' (DC only)."
      description: "This policy setting determines whether members of the Server Operators group are allowed to submit jobs by means of the AT schedule facility. The impact of this policy setting configuration should be small for most organizations. Users, including those in the Server Operators group, will still be able to create jobs by means of the Task Scheduler Wizard, but those jobs will run in the context of the account with which the user authenticates when they set up the job. Note: An AT Service Account can be modified to select a different account rather than the LOCAL SYSTEM account. To change the account, open System Tools, click Scheduled Tasks, and then click Accessories folder. Then click AT Service Account on the Advanced menu. The recommended state for this setting is: Disabled."
      rationale: "If you enable this policy setting, jobs that are created by server operators by means of the AT service will execute in the context of the account that runs that service. By default, that is the local SYSTEM account. If you enable this policy setting, server operators could perform tasks that SYSTEM is able to do but that they would typically not be able to do, such as add their account to the local Administrators group."
      impact: "None - this is the default behavior. Note that users (including those in the Server Operators group) are still able to create jobs by means of the Task Scheduler Wizard. However, those jobs will run in the context of the account that the user authenticates with when setting up the job."
@@ -364,12 +376,14 @@ checks:
        - cis: ["2.3.5.1"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> SubmitControl'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> SubmitControl -> 0'
 
   # 2.3.5.2 (L1) Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured' (DC Only). (Automated)
    - id: 18566
-     title: "(L1) Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured' (DC Only)."
+     title: "Ensure 'Domain controller: Allow vulnerable Netlogon secure channel connections' is set to 'Not Configured' (DC Only)."
      description: "This security setting determines whether the domain controller bypasses secure RPC for Netlogon secure channel connections for specified machine accounts. When deployed, this policy should be applied to all domain controllers in a forest by enabling the policy on the domain controllers OU. When the Create Vulnerable Connections list (allow list) is configured: - Given allow permission, the domain controller will allow accounts to use a Netlogon secure channel without secure RPC. - Given deny permission, the domain controller will require accounts to use a Netlogon secure channel with secure RPC which is the same as the default (not necessary). Note: Warning from Microsoft - enabling this policy will expose your domain-joined devices and can expose your Active Directory forest to risk. This policy should be used as a temporary measure for 3rd-party devices as you deploy updates. Once a 3rd-party device is updated to support using secure RPC with Netlogon secure channels, the account should be removed from the Create Vulnerable Connections list. To better understand the risk of configuring accounts to be allowed to use vulnerable Netlogon secure channel connections, please visit How to manage the changes in Netlogon secure channel connections associated with CVE-2020-1472. The recommended state for this setting is: Not Configured."
      rationale: "Enabling this policy will expose your domain-joined devices and can expose your Active Directory forest to security risks. It is highly recommended that this setting not be used (i.e. be left completely unconfigured) so as not to add risk."
      impact: "None - this is the default behavior."
@@ -380,12 +394,13 @@ checks:
        - cis: ["2.3.5.2"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters -> VulnerableChannelAllowList'
 
   # 2.3.5.3 (L1) Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only). (Automated)
    - id: 18567
-     title: "(L1) Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only)."
+     title: "Ensure 'Domain controller: LDAP server channel binding token requirements' is set to 'Always' (DC Only)."
      description: "This setting determines whether the LDAP server (Domain Controller) enforces validation of Channel Binding Tokens (CBT) received in LDAP bind requests that are sent over SSL/TLS (i.e. LDAPS). The recommended state for this setting is: Always. Note: All LDAP clients must have the CVC-2017-8563 security update to be compatible with Domain Controllers that have this setting enabled. More information on this setting is available at: MSKB 4520412: 2020 LDAP channel binding and LDAP signing requirements for Windows."
      rationale: "Requiring Channel Binding Tokens (CBT) can prevent an attacker who is able to capture users' authentication credentials (e.g. OAuth tokens, session identifiers, etc.) from reusing those credentials in another TLS session. This also helps to increase protection against \"man-in-the-middle\" attacks using LDAP authentication over SSL/TLS (LDAPS)."
      impact: "All LDAP clients must provide channel binding information over SSL/TLS (i.e. LDAPS). The LDAP server (Domain Controller) rejects authentication requests from clients that do not do so. Clients must have the CVC-2017-8563 security update to support this feature, and may have compatibility issues with this setting without the security update. This may also mean that LDAP authentication requests over SSL/TLS that previously worked may stop working until the security update is installed. When first deploying this setting, you may initially want to only set it to the alternate setting of When supported (instead of Always) on all Domain Controllers. This alternate, interim setting enables support for LDAP client channel binding but does not require it. Then set one DC that is not currently being targeted by LDAP clients to Always, and test each of the critical LDAP clients against that DC (and remediating as necessary), before deploying Always to the rest of the DCs. We also recommend using the new Event ID 3039 on your Domain Controllers (added with the March 2020 security update) to help locate clients that do not use Channel Binding Tokens (CBT) in their LDAPS connections. This new Event ID requires increasing the logging level of the 16 LDAP Interface Events portion of the NTDS service diagnostics to a value of 2 (Basic). For more information, please see Table 2: CBT events at this link: MSKB 4520412: 2020 LDAP channel binding and LDAP signing requirements for Windows Older OSes such as Windows XP, Windows Server 2003, Windows Vista and Windows Server 2008 (non-R2), will first require patches for Microsoft Security Advisory 973811, as well as all associated fixes, in order to be compatible with domain controllers that have this setting deployed. Note: Only Always is actually considered compliant to the CIS benchmark."
@@ -400,12 +415,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LdapEnforceChannelBinding'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LdapEnforceChannelBinding -> 2'
 
   # 2.3.5.4 (L1) Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing' (DC only). (Automated)
    - id: 18568
-     title: "(L1) Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing' (DC only)."
+     title: "Ensure 'Domain controller: LDAP server signing requirements' is set to 'Require signing' (DC only)."
      description: "This policy setting determines whether the Lightweight Directory Access Protocol (LDAP) server requires LDAP clients to negotiate data signing. The recommended state for this setting is: Require signing. Note: Domain member computers must have Network security: LDAP signing requirements (Section 2.3.11) set to Negotiate signing or higher. If not, they will fail to authenticate once the above Require signing value is configured on the Domain Controllers. Fortunately, Negotiate signing is the default in the client configuration. Note #2: This policy setting does not have any impact on LDAP simple bind (ldap_simple_bind) or LDAP simple bind through SSL (ldap_simple_bind_s). No Microsoft LDAP clients that are shipped with Windows XP Professional use LDAP simple bind or LDAP simple bind through SSL to talk to a Domain Controller. Note #3: Before enabling this setting, you should first ensure that there are no clients (including server-based applications) that are configured to authenticate with Active Directory via unsigned LDAP, because changing this setting will break those applications. Such applications should first be reconfigured to use signed LDAP, Secure LDAP (LDAPS), or IPsec-protected connections."
      rationale: "Unsigned network traffic is susceptible to man-in-the-middle attacks. In such attacks, an intruder captures packets between the server and the client, modifies them, and then forwards them to the client. Where LDAP servers are concerned, an attacker could cause a client to make decisions that are based on false records from the LDAP directory. To lower the risk of such an intrusion in an organization's network, you can implement strong physical security measures to protect the network infrastructure. Also, you could implement Internet Protocol security (IPsec) authentication header mode (AH), which performs mutual authentication and packet integrity for IP traffic to make all types of man-in-the-middle attacks extremely difficult. Additionally, allowing the use of regular, unsigned LDAP permits credentials to be received over the network in clear text, which could very easily result in the interception of account passwords by other systems on the network."
      impact: "Unless TLS/SSL is being used, the LDAP data signing option must be negotiated. Clients that do not support LDAP signing will be unable to run LDAP queries against the Domain Controllers. All Windows 2000-based computers in your organization that are managed from Windows Server 2003-based or Windows XP-based computers and that use Windows NT Challenge/Response (NTLM) authentication must have Windows 2000 Service Pack 3 (SP3) installed. Alternatively, these clients must have a registry change. Also, some non-Microsoft operating systems do not support LDAP signing. If you enable this policy setting, client computers that use those operating systems may be unable to access domain resources. Some non-Microsoft operating systems do not support LDAP signing. If you enable this policy setting, client computers that use those operating systems may be unable to access domain resources. More information about this registry change was published in Microsoft Knowledge Base article 325465."
@@ -421,12 +439,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerIntegrity'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerIntegrity -> 2'
 
   # 2.3.5.5 (L1) Ensure 'Domain controller: LDAP server signing requirements Enforcement' is set to 'Enabled' (DC only). (Automated)
    - id: 18569
-     title: "(L1) Ensure 'Domain controller: LDAP server signing requirements Enforcement' is set to 'Enabled' (DC only)."
+     title: "Ensure 'Domain controller: LDAP server signing requirements Enforcement' is set to 'Enabled' (DC only)."
      description: "This policy setting determines whether the Lightweight Directory Access Protocol (LDAP) server requires LDAP clients to negotiate data signing. The recommended state for this setting is: Enabled. Note: This policy setting overlaps Domain controller: LDAP server signing requirements. CIS has decided to adopt both to Require signing as a failsafe. Note #2: Domain member computers must have Network security: LDAP signing requirements (Section 2.3.11) set to Negotiate signing or higher. If not, they will fail to authenticate once the above Require signing value is configured on the Domain Controllers. Fortunately, Negotiate signing is the default in the client configuration. Note #3: This policy setting does not have any impact on LDAP simple bind (ldap_simple_bind) or LDAP simple bind through SSL (ldap_simple_bind_s). No Microsoft LDAP clients that are shipped with Windows XP Professional use LDAP simple bind or LDAP simple bind through SSL to talk to a Domain Controller. Note #4: Before enabling this setting, ensure that there are no clients (including server-based applications) that are configured to authenticate with Active Directory via unsigned LDAP, because changing this setting will break those applications. Such applications should first be reconfigured to use signed LDAP, Secure LDAP (LDAPS), or IPsec-protected connections."
      rationale: "Unsigned network traffic is susceptible to man-in-the-middle attacks. In such attacks, an intruder captures packets between the server and the client, modifies them, and then forwards them to the client. Where LDAP servers are concerned, an attacker could cause a client to make decisions that are based on false records from the LDAP directory. To lower the risk of such an intrusion in an organization's network, you can implement strong physical security measures to protect the network infrastructure. Also, you could implement Internet Protocol security (IPsec) authentication header mode (AH), which performs mutual authentication and packet integrity for IP traffic to make all types of man-in-the-middle attacks extremely difficult. Additionally, allowing the use of regular, unsigned LDAP permits credentials to be received over the network in clear text, which could very easily result in the interception of account passwords by other systems on the network."
      impact: "Unless TLS/SSL is being used, the LDAP data signing option must be negotiated. Clients that do not support LDAP signing will be unable to run LDAP queries against the Domain Controllers. All Windows 2000-based computers in your organization that are managed from Windows Server 2003-based or Windows XP-based computers and that use Windows NT Challenge/Response (NTLM) authentication must have Windows 2000 Service Pack 3 (SP3) installed. Alternatively, these clients must have a registry change. Some non-Microsoft operating systems do not support LDAP signing. If you enable this policy setting, client computers that use those operating systems may be unable to access domain resources. More information about this registry change was published in Microsoft Knowledge Base article 325465."
@@ -439,12 +460,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerForceIntegrity'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\NTDS\Parameters -> LDAPServerForceIntegrity -> 1'
 
   # 2.3.5.6 (L1) Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled' (DC only). (Automated)
    - id: 18570
-     title: "(L1) Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled' (DC only)."
+     title: "Ensure 'Domain controller: Refuse machine account password changes' is set to 'Disabled' (DC only)."
      description: "This security setting determines whether Domain Controllers will refuse requests from member computers to change computer account passwords. The recommended state for this setting is: Disabled. Note: Some problems can occur as a result of machine account password expiration, particularly if a machine is reverted to a previous point-in-time state, as is common with virtual machines. Depending on how far back the reversion is, the older machine account password stored on the machine may no longer be recognized by the domain controllers, and therefore the computer loses its domain trust. This can also disrupt non-persistent VDI implementations, and devices with write filters that disallow permanent changes to the OS volume. Some organizations may choose to exempt themselves from this recommendation and disable machine account password expiration for these situations."
      rationale: "If you enable this policy setting on all Domain Controllers in a domain, domain members will not be able to change their computer account passwords, and those passwords will be more susceptible to attack."
      impact: "None - this is the default behavior."
@@ -459,14 +483,17 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters -> RefusePasswordChange'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Netlogon\Parameters -> RefusePasswordChange -> 0'
 
   # 2.3.6.1 (L1) Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'. (Automated)
    - id: 18571
-     title: "(L1) Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'."
+     title: "Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'."
      description: "This policy setting determines whether all secure channel traffic that is initiated by the domain member must be signed or encrypted. The recommended state for this setting is: Enabled."
-     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated—and sensitive information such as passwords are encrypted—but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
+     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated - and sensitive information such as passwords are encrypted - but the channel is not integrity - checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
      impact: "None - this is the default behavior. However, only Windows NT 4.0 with Service Pack 6a (SP6a) and subsequent versions of the Windows operating system support digital encryption and signing of the secure channel. Windows 98 Second Edition clients do not support it unless they have Dsclient installed. Therefore, you cannot enable the Domain member: Digitally encrypt or sign secure channel data (always) setting on Domain Controllers that support Windows 98 clients as members of the domain. Potential impacts can include the following: - The ability to create or delete trust relationships with clients running versions of Windows earlier than Windows NT 4.0 with SP6a will be disabled. - Logons from clients running versions of Windows earlier than Windows NT 4.0 with SP6a will be disabled. - The ability to authenticate other domains' users from a Domain Controller running a version of Windows earlier than Windows NT 4.0 with SP6a in a trusted domain will be disabled. You can enable this policy setting after you eliminate all Windows 9x clients from the domain and upgrade all Windows NT 4.0 servers and Domain Controllers from trusted/trusting domains to Windows NT 4.0 with SP6a."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt or sign secure channel data (always)."
      compliance:
@@ -479,14 +506,17 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal -> 1'
 
   # 2.3.6.2 (L1) Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'. (Automated)
    - id: 18572
-     title: "(L1) Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'."
+     title: "Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'."
      description: "This policy setting determines whether a domain member should attempt to negotiate encryption for all secure channel traffic that it initiates. The recommended state for this setting is: Enabled."
-     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated—and sensitive information such as passwords are encrypted—but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
+     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated - and sensitive information such as passwords are encrypted - but the channel is not integrity - checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
      impact: "None - this is the default behavior. However, only Windows NT 4.0 Service Pack 6a (SP6a) and subsequent versions of the Windows operating system support digital encryption and signing of the secure channel. Windows 98 Second Edition clients do not support it unless they have Dsclient installed."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt secure channel data (when possible)."
      compliance:
@@ -499,14 +529,17 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel -> 1'
 
   # 2.3.6.3 (L1) Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'. (Automated)
    - id: 18573
-     title: "(L1) Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'."
+     title: "Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'."
      description: "This policy setting determines whether a domain member should attempt to negotiate whether all secure channel traffic that it initiates must be digitally signed. Digital signatures protect the traffic from being modified by anyone who captures the data as it traverses the network. The recommended state for this setting is: Enabled."
-     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated—and sensitive information such as passwords are encrypted—but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
+     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated - and sensitive information such as passwords are encrypted - but the channel is not integrity - checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
      impact: "None - this is the default behavior. However, only Windows NT 4.0 with Service Pack 6a (SP6a) and subsequent versions of the Windows operating system support digital encryption and signing of the secure channel. Windows 98 Second Edition clients do not support it unless they have Dsclient installed."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally sign secure channel data (when possible)."
      compliance:
@@ -517,12 +550,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel -> 1'
 
   # 2.3.6.4 (L1) Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'. (Automated)
    - id: 18574
-     title: "(L1) Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'."
+     title: "Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'."
      description: "This policy setting determines whether a domain member can periodically change its computer account password. Computers that cannot automatically change their account passwords are potentially vulnerable, because an attacker might be able to determine the password for the system's domain account. The recommended state for this setting is: Disabled. Note: Some problems can occur as a result of machine account password expiration, particularly if a machine is reverted to a previous point-in-time state, as is common with virtual machines. Depending on how far back the reversion is, the older machine account password stored on the machine may no longer be recognized by the domain controllers, and therefore the computer loses its domain trust. This can also disrupt non-persistent VDI implementations, and devices with write filters that disallow permanent changes to the OS volume. Some organizations may choose to exempt themselves from this recommendation and disable machine account password expiration for these situations."
      rationale: "The default configuration for Windows Server 2003-based computers that belong to a domain is that they are automatically required to change the passwords for their accounts every 30 days. If you disable this policy setting, computers that run Windows Server 2003 will retain the same passwords as their computer accounts. Computers that are no longer able to automatically change their account password are at risk from an attacker who could determine the password for the computer's domain account."
      impact: "None - this is the default behavior."
@@ -532,12 +568,15 @@ checks:
        - cis_csc_v8: ["5.6"]
        - nist_sp_800-53: ["AC-2(1)"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> DisablePasswordChange'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> DisablePasswordChange -> 0'
 
   # 2.3.6.5 (L1) Ensure 'Domain member: Maximum machine account password age' is set to '30 or fewer days, but not 0'. (Automated)
    - id: 18575
-     title: "(L1) Ensure 'Domain member: Maximum machine account password age' is set to '30 or fewer days, but not 0'."
+     title: "Ensure 'Domain member: Maximum machine account password age' is set to '30 or fewer days, but not 0'."
      description: "This policy setting determines the maximum allowable age for a computer account password. By default, domain members automatically change their domain passwords every 30 days. The recommended state for this setting is: 30 or fewer days, but not 0. Note: A value of 0 does not conform to the benchmark as it disables maximum password age. Note #2: Some problems can occur as a result of machine account password expiration, particularly if a machine is reverted to a previous point-in-time state, as is common with virtual machines. Depending on how far back the reversion is, the older machine account password stored on the machine may no longer be recognized by the domain controllers, and therefore the computer loses its domain trust. This can also disrupt non-persistent VDI implementations, and devices with write filters that disallow permanent changes to the OS volume. Some organizations may choose to exempt themselves from this recommendation and disable machine account password expiration for these situations."
      rationale: "In Active Directory-based domains, each computer has an account and password just like every user. By default, the domain members automatically change their domain password every 30 days. If you increase this interval significantly, or set it to 0 so that the computers no longer change their passwords, an attacker will have more time to undertake a brute force attack to guess the passwords of computer accounts."
      impact: "None - this is the default behavior."
@@ -548,12 +587,15 @@ checks:
        - cmmc_v2.0: ["IA.L2-3.5.7"]
        - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
        - soc_2: ["CC6.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> n:^(\d+) compare <= 30'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 0'
 
   # 2.3.6.6 (L1) Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'. (Automated)
    - id: 18576
-     title: "(L1) Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'."
+     title: "Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'."
      description: "When this policy setting is enabled, a secure channel can only be established with Domain Controllers that are capable of encrypting secure channel data with a strong (128-bit) session key. To enable this policy setting, all Domain Controllers in the domain must be able to encrypt secure channel data with a strong key, which means all Domain Controllers must be running Microsoft Windows 2000 or newer. The recommended state for this setting is: Enabled."
      rationale: "Session keys that are used to establish secure channel communications between Domain Controllers and member computers are much stronger in Windows 2000 than they were in previous Microsoft operating systems. Whenever possible, you should take advantage of these stronger session keys to help protect secure channel communications from attacks that attempt to hijack network sessions and eavesdropping. (Eavesdropping is a form of hacking in which network data is read or altered in transit. The data can be modified to hide or change the sender, or be redirected.)."
      impact: "None - this is the default behavior. However, computers will not be able to join Windows NT 4.0 domains, and trusts between Active Directory domains and Windows NT-style domains may not work properly. Also, Domain Controllers with this setting configured will not allow older pre-Windows 2000 clients (that that do not support this policy setting) to join the domain."
@@ -566,12 +608,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey -> 1'
 
   # 2.3.7.1 (L1) Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'. (Automated)
    - id: 18577
-     title: "(L1) Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'."
+     title: "Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'."
      description: "This policy setting determines whether users must press CTRL+ALT+DEL before they log on. The recommended state for this setting is: Disabled."
      rationale: "Microsoft developed this feature to make it easier for users with certain types of physical impairments to log on to computers that run Windows. If users are not required to press CTRL+ALT+DEL, they are susceptible to attacks that attempt to intercept their passwords. If CTRL+ALT+DEL is required before logon, user passwords are communicated by means of a trusted path. An attacker could install a Trojan horse program that looks like the standard Windows logon dialog box and capture the user's password. The attacker would then be able to log on to the compromised account with whatever level of privilege that user has."
      impact: "Users must press CTRL+ALT+DEL before they log on to Windows unless they use a smart card for Windows logon. A smart card is a tamper-proof device that stores security information."
@@ -581,12 +626,15 @@ checks:
        - cis_csc_v8: ["4.10"]
        - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
        - pci_dss_v4.0: ["8.3.4"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableCAD'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableCAD -> 0'
 
   # 2.3.7.2 (L1) Ensure 'Interactive logon: Don't display last signed-in' is set to 'Enabled'. (Automated)
    - id: 18578
-     title: "(L1) Ensure 'Interactive logon: Don't display last signed-in' is set to 'Enabled'."
+     title: "Ensure 'Interactive logon: Don't display last signed-in' is set to 'Enabled'."
      description: "This policy setting determines whether the account name of the last user to log on to the client computers in your organization will be displayed in each computer's respective Windows logon screen. Enable this policy setting to prevent intruders from collecting account names visually from the screens of desktop or laptop computers in your organization. The recommended state for this setting is: Enabled."
      rationale: "An attacker with access to the console (for example, someone with physical access or someone who is able to connect to the server through Remote Desktop Services) could view the name of the last user who logged on to the server. The attacker could then try to guess the password, use a dictionary, or use a brute-force attack to try and log on."
      impact: "The name of the last user to successfully log on will not be displayed in the Windows logon screen."
@@ -597,12 +645,15 @@ checks:
        - cis_csc_v7: ["20"]
        - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
        - pci_dss_v4.0: ["8.3.4"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName -> 1'
 
   # 2.3.7.3 (L1) Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'. (Automated)
    - id: 18579
-     title: "(L1) Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'."
+     title: "Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'."
      description: "Windows notices inactivity of a logon session, and if the amount of inactive time exceeds the inactivity limit, then the screen saver will run, locking the session. The recommended state for this setting is: 900 or fewer second(s), but not 0. Note: A value of 0 does not conform to the benchmark as it disables the machine inactivity limit."
      rationale: "If a user forgets to lock their computer when they walk away it's possible that a passerby will hijack it."
      impact: "The screen saver will automatically activate when the computer has been unattended for the amount of time specified. The impact should be minimal since the screen saver is enabled by default."
@@ -617,26 +668,31 @@ checks:
        - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
        - pci_dss_v3.2.1: ["8.1.8"]
        - pci_dss_v4.0: ["8.2.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs'
+       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 0'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> n:^(\d+) compare <= 900'
 
   # 2.3.7.4 (L1) Configure 'Interactive logon: Message text for users attempting to log on'. (Automated)
    - id: 18580
-     title: "(L1) Configure 'Interactive logon: Message text for users attempting to log on'."
+     title: "Configure 'Interactive logon: Message text for users attempting to log on'."
      description: "This policy setting specifies a text message that displays to users when they log on. Configure this setting in a manner that is consistent with the security and operational requirements of your organization."
-     rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited. Note: Any warning that you display should first be approved by your organization's legal and human resources representatives."
+     rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons - for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited. Note: Any warning that you display should first be approved by your organization's legal and human resources representatives."
      impact: "Users will have to acknowledge a dialog box containing the configured text before they can log on to the computer. Note: Windows Vista and Windows XP Professional support logon banners that can exceed 512 characters in length and that can also contain carriage-return line-feed sequences. However, Windows 2000-based clients cannot interpret and display these messages. You must use a Windows 2000-based computer to create a logon message policy that applies to Windows 2000-based computers."
      remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message text for users attempting to log on."
      compliance:
        - cis: ["2.3.7.4"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+       - 'c:reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v legalnoticetext -> r:legalnoticetext\s*\t*reg_sz\s*\t*\w+'
 
   # 2.3.7.5 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
    - id: 18581
-     title: "(L1) Configure 'Interactive logon: Message title for users attempting to log on'."
+     title: "Configure 'Interactive logon: Message title for users attempting to log on'."
      description: "This policy setting specifies the text displayed in the title bar of the window that users see when they log on to the system. Configure this setting in a manner that is consistent with the security and operational requirements of your organization."
      rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process."
      impact: "Users will have to acknowledge a dialog box with the configured title before they can log on to the computer."
@@ -645,12 +701,27 @@ checks:
        - cis: ["2.3.7.5"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+       - 'c:reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v legalnoticecaption -> r:legalnoticecaption\s*\t*reg_sz\s*\t*\w+'
+
+  # 2.3.7.6 (L2) Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)' (MS only) (Automated)
+   - id: 27033
+     title: "Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)' (MS only)."
+     description: "This policy setting determines whether a user can log on to a Windows domain using cached account information. Logon information for domain accounts can be cached locally to allow users to log on even if a Domain Controller cannot be contacted. This policy setting determines the number of unique users for whom logon information is cached locally. If this value is set to 0, the logon cache feature is disabled. An attacker who is able to access the file system of the server could locate this cached information and use a brute force attack to determine user passwords. The recommended state for this setting is: 4 or fewer logon(s)."
+     rationale: "The number that is assigned to this policy setting indicates the number of users whose logon information the computer will cache locally. If the number is set to 4, then the computer caches logon information for 4 users. When a 5th user logs on to the computer, the server overwrites the oldest cached logon session. Users who access the computer console will have their logon credentials cached on that computer. An attacker who is able to access the file system of the computer could locate this cached information and use a brute force attack to attempt to determine user passwords. To mitigate this type of attack, Windows encrypts the information and obscures its physical location."
+     remediation: "To establish the recommended configuration via GP, set the following UI path to 4 or fewer logon(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Number of previous logons to cache (in case domain controller is not available)."
+     compliance:
+       - cis: ["2.3.7.6"]
+     condition: all
+     rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> CachedLogonsCount'
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> CachedLogonsCount -> n:^(\d+) compare <= 4'
 
   # 2.3.7.7 (L1) Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'. (Automated)
    - id: 18582
-     title: "(L1) Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'."
+     title: "Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'."
      description: "This policy setting determines how far in advance users are warned that their password will expire. It is recommended that you configure this policy setting to at least 5 days but no more than 14 days to sufficiently warn users when their passwords will expire. The recommended state for this setting is: between 5 and 14 days."
      rationale: "It is recommended that user passwords be configured to expire periodically. Users will need to be warned that their passwords are going to expire, or they may inadvertently be locked out of the computer when their passwords expire. This condition could lead to confusion for users who access the network locally, or make it impossible for users to access your organization's network through dial-up or virtual private network (VPN) connections."
      impact: "Users will see a dialog box prompt to change their password each time that they log on to the domain when their password is configured to expire between 5 and 14 days."
@@ -659,14 +730,17 @@ checks:
        - cis: ["2.3.7.7"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> n:^(\d+) compare >= 5 && n:^(\d+) compare <= 14'
 
   # 2.3.7.8 (L1) Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled' (MS only). (Automated)
    - id: 18583
-     title: "(L1) Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled' (MS only)."
+     title: "Ensure 'Interactive logon: Require Domain Controller Authentication to unlock workstation' is set to 'Enabled' (MS only)."
      description: "Logon information is required to unlock a locked computer. For domain accounts, this security setting determines whether it is necessary to contact a Domain Controller to unlock a computer. The recommended state for this setting is: Enabled."
-     rationale: "By default, the computer caches in memory the credentials of any users who are authenticated locally. The computer uses these cached credentials to authenticate anyone who attempts to unlock the console. When cached credentials are used, any changes that have recently been made to the account — such as user rights assignments, account lockout, or the account being disabled — are not considered or applied after the account is authenticated. User privileges are not updated, and (more importantly) disabled accounts are still able to unlock the console of the computer."
+     rationale: "By default, the computer caches in memory the credentials of any users who are authenticated locally. The computer uses these cached credentials to authenticate anyone who attempts to unlock the console. When cached credentials are used, any changes that have recently been made to the account - such as user rights assignments, account lockout, or the account being disabled - are not considered or applied after the account is authenticated. User privileges are not updated, and (more importantly) disabled accounts are still able to unlock the console of the computer."
      impact: "When the console on a computer is locked, either by a user or automatically by a screen saver time-out, the console can only be unlocked if a Domain Controller is available to re-authenticate the domain account that is being used to unlock the computer. If no Domain Controller is available, the user cannot unlock the computer."
      remediation: "To implement the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Require Domain Controller Authentication to unlock workstation."
      compliance:
@@ -679,12 +753,13 @@ checks:
        - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
        - pci_dss_v3.2.1: ["8.1.8"]
        - pci_dss_v4.0: ["8.2.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> ForceUnlockLogon -> 1'
 
   # 2.3.7.9 (L1) Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher. (Automated)
    - id: 18584
-     title: "(L1) Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher."
+     title: "Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher."
      description: "This policy setting determines what happens when the smart card for a logged-on user is removed from the smart card reader. The recommended state for this setting is: Lock Workstation. Configuring this setting to Force Logoff or Disconnect if a Remote Desktop Services session also conforms to the benchmark."
      rationale: "Users sometimes forget to lock their workstations when they are away from them, allowing the possibility for malicious users to access their computers. If smart cards are used for authentication, the computer should automatically lock itself when the card is removed to ensure that only the user with the smart card is accessing resources using those credentials."
      impact: "If you select Lock Workstation, the workstation is locked when the smart card is removed, allowing users to leave the area, take their smart card with them, and still maintain a protected session. If you select Force Logoff, users are automatically logged off when their smart card is removed. If you select Disconnect if a Remote Desktop Services session, removal of the smart card disconnects the session without logging the users off. This allows the user to insert the smart card and resume the session later, or at another smart card reader-equipped computer, without having to log on again. If the session is local, this policy will function identically to Lock Workstation. Enforcing this setting on computers used by people who must log onto multiple computers in order to perform their duties could be frustrating and lower productivity. For example, if network administrators are limited to a single account but need to log into several computers simultaneously in order to effectively manage the network enforcing this setting will limit them to logging onto one computer at a time. For these reasons it is recommended that this setting only be enforced on workstations used for purposes commonly associated with typical users such as document creation and email."
@@ -699,13 +774,16 @@ checks:
        - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
        - pci_dss_v3.2.1: ["8.1.8"]
        - pci_dss_v4.0: ["8.2.8"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption'
+       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption -> r:^1$|^2$|^3$'
 
   # 2.3.8.1 (L1) Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'. (Automated)
    - id: 18585
-     title: "(L1) Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'."
-     description: "This policy setting determines whether packet signing is required by the SMB client component. Note: When Windows Vista-based computers have this policy setting enabled and they connect to file or print shares on remote servers, it is important that the setting is synchronized with its companion setting, Microsoft network server: Digitally sign communications (always), on those servers. For more information about these settings, see the \"Microsoft network client and server: Digitally sign communications (four related settings)\" section in Chapter 5 of the Threats and Countermeasures guide. The recommended state for this setting is: Enabled."
+     title: "Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'."
+     description: 'This policy setting determines whether packet signing is required by the SMB client component. Note: When Windows Vista-based computers have this policy setting enabled and they connect to file or print shares on remote servers, it is important that the setting is synchronized with its companion setting, Microsoft network server: Digitally sign communications (always), on those servers. For more information about these settings, see the "Microsoft network client and server; Digitally sign communications (four related settings)" section in Chapter 5 of the Threats and Countermeasures guide. The recommended state for this setting is: Enabled.'
      rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
      impact: "The Microsoft network client will not communicate with a Microsoft network server unless that server agrees to perform SMB packet signing. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
      remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network client: Digitally sign communications (always)."
@@ -717,12 +795,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature -> 1'
 
   # 2.3.8.2 (L1) Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'. (Automated)
    - id: 18586
-     title: "(L1) Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'."
+     title: "Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'."
      description: "This policy setting determines whether the SMB client will attempt to negotiate SMB packet signing. Note: Enabling this policy setting on SMB clients on your network makes them fully effective for packet signing with all clients and servers in your environment. The recommended state for this setting is: Enabled."
      rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
      impact: "None - this is the default behavior. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
@@ -735,12 +816,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnableSecuritySignature'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnableSecuritySignature -> 1'
 
   # 2.3.8.3 (L1) Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled'. (Automated)
    - id: 18587
-     title: "(L1) Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled'."
+     title: "Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled'."
      description: "This policy setting determines whether the SMB redirector will send plaintext passwords during authentication to third-party SMB servers that do not support password encryption. It is recommended that you disable this policy setting unless there is a strong business case to enable it. If this policy setting is enabled, unencrypted passwords will be allowed across the network. The recommended state for this setting is: Disabled."
      rationale: "If you enable this policy setting, the server can transmit passwords in plaintext across the network to other computers that offer SMB services, which is a significant security risk. These other computers may not use any of the SMB security mechanisms that are included with Windows Server 2003."
      impact: "None - this is the default behavior. Some very old applications and operating systems such as MS-DOS, Windows for Workgroups 3.11, and Windows 95a may not be able to communicate with the servers in your organization by means of the SMB protocol."
@@ -755,12 +839,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: any
      rules:
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword -> 0'
 
   # 2.3.9.1 (L1) Ensure 'Microsoft network server: Amount of idle time required before suspending session' is set to '15 or fewer minute(s)'. (Automated)
    - id: 18588
-     title: "(L1) Ensure 'Microsoft network server: Amount of idle time required before suspending session' is set to '15 or fewer minute(s)'."
+     title: "Ensure 'Microsoft network server: Amount of idle time required before suspending session' is set to '15 or fewer minute(s)'."
      description: "This policy setting allows you to specify the amount of continuous idle time that must pass in an SMB session before the session is suspended because of inactivity. Administrators can use this policy setting to control when a computer suspends an inactive SMB session. If client activity resumes, the session is automatically reestablished. The maximum value is 99999, which is over 69 days; in effect, this value disables the setting. The recommended state for this setting is: 15 or fewer minute(s)."
      rationale: "Each SMB session consumes server resources, and numerous null sessions will slow the server or possibly cause it to fail. An attacker could repeatedly establish SMB sessions until the server's SMB services become slow or unresponsive."
      impact: "There will be little impact because SMB sessions will be re-established automatically if the client resumes activity."
@@ -769,12 +856,15 @@ checks:
        - cis: ["2.3.9.1"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["0.0"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> n:^(\d+) compare <= 15'
 
   # 2.3.9.2 (L1) Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'. (Automated)
    - id: 18589
-     title: "(L1) Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'."
+     title: "Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'."
      description: "This policy setting determines whether packet signing is required by the SMB server component. Enable this policy setting in a mixed environment to prevent downstream clients from using the workstation as a network server. The recommended state for this setting is: Enabled."
      rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
      impact: "The Microsoft network server will not communicate with a Microsoft network client unless that client agrees to perform SMB packet signing. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
@@ -787,12 +877,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature -> 1'
 
   # 2.3.9.3 (L1) Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'. (Automated)
    - id: 18590
-     title: "(L1) Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'."
+     title: "Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'."
      description: "This policy setting determines whether the SMB server will negotiate SMB packet signing with clients that request it. If no signing request comes from the client, a connection will be allowed without a signature if the Microsoft network server: Digitally sign communications (always) setting is not enabled. Note: Enable this policy setting on SMB clients on your network to make them fully effective for packet signing with all clients and servers in your environment. The recommended state for this setting is: Enabled."
      rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
      impact: "The Microsoft network server will negotiate SMB packet signing as requested by the client. That is, if packet signing has been enabled on the client, packet signing will be negotiated. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
@@ -805,12 +898,15 @@ checks:
        - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
        - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
        - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature -> 1'
 
   # 2.3.9.4 (L1) Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'. (Automated)
    - id: 18591
-     title: "(L1) Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'."
+     title: "Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'."
      description: "This security setting determines whether to disconnect users who are connected to the local computer outside their user account's valid logon hours. This setting affects the Server Message Block (SMB) component. If you enable this policy setting you should also enable Network security: Force logoff when logon hours expire (Rule 2.3.11.6). If your organization configures logon hours for users, this policy setting is necessary to ensure they are effective. The recommended state for this setting is: Enabled."
      rationale: "If your organization configures logon hours for users, then it makes sense to enable this policy setting. Otherwise, users who should not have access to network resources outside of their logon hours may actually be able to continue to use those resources with sessions that were established during allowed hours."
      impact: "None - this is the default behavior. If logon hours are not used in your organization, this policy setting will have no impact. If logon hours are used, existing user sessions will be forcibly terminated when their logon hours expire."
@@ -819,12 +915,15 @@ checks:
        - cis: ["2.3.9.4"]
        - cis_csc_v8: ["0.0"]
        - cis_csc_v7: ["16.13"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff'
+       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> 1'
 
   # 2.3.9.5 (L1) Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher (MS only). (Automated)
    - id: 18592
-     title: "(L1) Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher (MS only)."
+     title: "Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher (MS only)."
      description: "This policy setting controls the level of validation a computer with shared folders or printers (the server) performs on the service principal name (SPN) that is provided by the client computer when it establishes a session using the server message block (SMB) protocol. The server message block (SMB) protocol provides the basis for file and print sharing and other networking operations, such as remote Windows administration. The SMB protocol supports validating the SMB server service principal name (SPN) within the authentication blob provided by a SMB client to prevent a class of attacks against SMB servers referred to as SMB relay attacks. This setting will affect both SMB1 and SMB2. The recommended state for this setting is: Accept if provided by client. Configuring this setting to Required from client also conforms to the benchmark. Note: Since the release of the MS KB3161561 security patch, this setting can cause significant issues (such as replication problems, group policy editing issues and blue screen crashes) on Domain Controllers when used simultaneously with UNC path hardening (i.e. Rule 18.5.14.1). CIS therefore recommends against deploying this setting on Domain Controllers."
      rationale: "The identity of a computer can be spoofed to gain unauthorized access to network resources."
      impact: "All Windows operating systems support both a client-side SMB component and a server-side SMB component. This setting affects the server SMB behavior, and its implementation should be carefully evaluated and tested to prevent disruptions to file and print serving capabilities. If configured to Accept if provided by client, the SMB server will accept and validate the SPN provided by the SMB client and allow a session to be established if it matches the SMB server’s list of SPN’s for itself. If the SPN does NOT match, the session request for that SMB client will be denied. If configured to Required from client, the SMB client MUST send a SPN name in session setup, and the SPN name provided MUST match the SMB server that is being requested to establish a connection. If no SPN is provided by client, or the SPN provided does not match, the session is denied."
@@ -839,8 +938,11 @@ checks:
        - pci_dss_v3.2.1: ["11.5", "2.2"]
        - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
        - soc_2: ["CC7.1", "CC8.1"]
-     condition:
+     condition: all
      rules:
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel'
+       - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> r:^1$|^2$'
 
   # 2.3.10.1 (L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'. (Automated)
    - id: 18593
