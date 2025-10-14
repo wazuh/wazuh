@@ -7,8 +7,10 @@
 #include <mock_dbsync.hpp>
 #include <mock_sysinfo.hpp>
 
+#include <chrono>
 #include <memory>
 #include <string>
+#include <thread>
 
 /**
  * @brief Test fixture for basic AgentInfoImpl functionality
@@ -167,4 +169,30 @@ TEST_F(AgentInfoImplTest, ConstructorWithDefaultDependenciesSucceeds)
 
     EXPECT_NE(agentInfo, nullptr);
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
+}
+
+TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
+{
+    m_logOutput.clear();
+
+    // Use a thread to stop the agent after a short time
+    std::thread stopThread([this]()
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        m_agentInfo->stop();
+    });
+
+    // Start with a shouldContinue that returns true for a bit
+    int iterations = 0;
+    m_agentInfo->start(1, [&iterations]()
+    {
+        iterations++;
+        return iterations < 2;  // Run for at least one iteration with wait
+    });
+
+    stopThread.join();
+
+    // Verify start was called
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module started"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module loop ended"));
 }
