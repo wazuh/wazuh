@@ -88,7 +88,6 @@ TEST_F(AgentInfoRealDBSyncTest, StartWithRealDBSyncTriggersEvents)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       m_reportDiffFunc,
-                      nullptr,
                       m_logFunc,
                       nullptr,  // Use real DBSync
                       m_mockSysInfo,

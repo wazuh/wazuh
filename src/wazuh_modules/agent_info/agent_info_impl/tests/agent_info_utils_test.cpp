@@ -34,7 +34,7 @@ class AgentInfoHelperFunctionsTest : public ::testing::Test
             };
 
             m_mockDBSync = std::make_shared<MockDBSync>();
-            m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, nullptr, m_logFunction, m_mockDBSync);
+            m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunction, m_mockDBSync);
         }
 
         void TearDown() override
