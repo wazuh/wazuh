@@ -18,6 +18,7 @@ from wazuh.core.assets import (
     DEFAULT_PERMISSIONS
 )
 from wazuh.core.engine.models.policies import PolicyType
+from wazuh.core.engine.models.resources import ResourceType
 
 
 @pytest.mark.parametrize(
@@ -48,8 +49,10 @@ def test_generate_asset_filename(original, expected):
 def test_generate_asset_file_path(filename, has_ext):
     """Test `generate_asset_file_path` builds a proper JSON filepath for assets."""
     base_path = "/tmp/test_assets_base"
-    with patch.object(PolicyType.TESTING, "get_base_path", return_value=base_path):
-        result = generate_asset_file_path(filename, PolicyType.TESTING)
+    with patch('wazuh.core.common.USER_ASSETS_PATH', base_path), \
+         patch.object(PolicyType.TESTING, "dirname", return_value="testing"), \
+         patch.object(ResourceType.RULE, "dirname", return_value="rules"):
+        result = generate_asset_file_path(filename, PolicyType.TESTING, ResourceType.RULE)
     assert result.startswith(base_path + os.sep)
     if has_ext:
         assert result.endswith(".json")
