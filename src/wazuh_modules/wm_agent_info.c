@@ -55,10 +55,6 @@ static const char* XML_INTERVAL = "interval";
 static const char* XML_SYNC = "synchronization";
 
 // Type definitions
-typedef void (*agent_info_persist_diff_func)(const char* id,
-                                             Operation_t operation,
-                                             const char* index,
-                                             const char* data);
 typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
 
 // Static module variables
@@ -72,11 +68,9 @@ agent_info_start_func agent_info_start_ptr = NULL;
 agent_info_stop_func agent_info_stop_ptr = NULL;
 agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
-agent_info_set_persist_function_func agent_info_set_persist_function_ptr = NULL;
 agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
 
 // Sync protocol function pointers
-static agent_info_persist_diff_func agent_info_persist_diff_ptr = NULL;
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
 
 // Forward declarations (needed for WM_AGENT_INFO_CONTEXT)
@@ -240,31 +234,6 @@ static int wm_agent_info_send_stateless(const char* message)
             merror("Error sending message to queue after reconnection");
             return -1;
         }
-    }
-
-    return 0;
-}
-
-// Callback to persist stateful diffs (for synchronization)
-static int wm_agent_info_persist_stateful(const char* id, Operation_t operation, const char* index, const char* message)
-{
-    if (g_shutting_down)
-    {
-        return -1;
-    }
-
-    if (!message)
-    {
-        return -1;
-    }
-
-    if (agent_info_enable_synchronization && agent_info_persist_diff_ptr)
-    {
-        agent_info_persist_diff_ptr(id, operation, index, message);
-    }
-    else
-    {
-        mdebug2("Agent-info synchronization is disabled or function not available");
     }
 
     return 0;
@@ -440,11 +409,9 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_stop_ptr = so_get_function_sym(agent_info_module, "agent_info_stop");
         agent_info_set_log_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_log_function");
         agent_info_set_report_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_report_function");
-        agent_info_set_persist_function_ptr = so_get_function_sym(agent_info_module, "agent_info_set_persist_function");
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
 
         // Get sync protocol function pointers
-        agent_info_persist_diff_ptr = so_get_function_sym(agent_info_module, "agent_info_persist_diff");
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");
 
         // Set the logging function pointer in the agent-info module
@@ -457,11 +424,6 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         if (agent_info_set_report_function_ptr)
         {
             agent_info_set_report_function_ptr(wm_agent_info_send_stateless);
-        }
-
-        if (agent_info_set_persist_function_ptr)
-        {
-            agent_info_set_persist_function_ptr(wm_agent_info_persist_stateful);
         }
     }
     else

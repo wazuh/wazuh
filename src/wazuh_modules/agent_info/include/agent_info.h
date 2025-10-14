@@ -27,7 +27,6 @@ struct wm_agent_info_t;
 
 typedef void (*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag);
 typedef int (*report_callback_t)(const char* message);
-typedef int (*persist_callback_t)(const char* id, Operation_t operation, const char* index, const char* message);
 
 EXPORTED void agent_info_start(const struct wm_agent_info_t* agent_info_config);
 
@@ -36,10 +35,6 @@ EXPORTED void agent_info_stop();
 EXPORTED void agent_info_set_log_function(log_callback_t log_callback);
 
 EXPORTED void agent_info_set_report_function(report_callback_t report_callback);
-
-EXPORTED void agent_info_set_persist_function(persist_callback_t persist_callback);
-
-EXPORTED void agent_info_persist_diff(const char* id, Operation_t operation, const char* index, const char* data);
 
 EXPORTED void
 agent_info_init_sync_protocol(const char* module_name, const char* sync_db_path, const MQ_Functions* mq_funcs);
@@ -52,7 +47,6 @@ typedef void (*agent_info_start_func)(const struct wm_agent_info_t* agent_info_c
 typedef void (*agent_info_stop_func)();
 typedef void (*agent_info_set_log_function_func)(log_callback_t log_callback);
 typedef void (*agent_info_set_report_function_func)(report_callback_t report_callback);
-typedef void (*agent_info_set_persist_function_func)(persist_callback_t persist_callback);
 typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,
                                                    const char* sync_db_path,
                                                    const MQ_Functions* mq_funcs);

@@ -74,7 +74,6 @@ TEST_F(AgentInfoDBSyncIntegrationTest, ConstructorWithCallbacksSucceeds)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       "test_path",
                       m_reportDiffFunc,
-                      m_persistDiffFunc,
                       m_logFunc,
                       m_mockDBSync
                   );
@@ -85,11 +84,10 @@ TEST_F(AgentInfoDBSyncIntegrationTest, ConstructorWithCallbacksSucceeds)
 
 TEST_F(AgentInfoDBSyncIntegrationTest, CallbacksAreOptional)
 {
-    // Test that the module works without report and persist callbacks (nullptr)
+    // Test that the module works without report callback (nullptr)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       nullptr,  // No report callback
-                      nullptr,  // No persist callback
                       m_logFunc, // Log function is required
                       m_mockDBSync
                   );
@@ -108,7 +106,6 @@ TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       nullptr,
-                      nullptr,
                       m_logFunc,
                       m_mockDBSync
                   );
@@ -120,7 +117,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
 
 TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithSyncProtocol)
 {
-    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, nullptr, m_logFunc, m_mockDBSync);
+    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_mockDBSync);
 
     MQ_Functions mq_funcs = {nullptr, nullptr};
     m_agentInfo->initSyncProtocol("test-module", ":memory:", mq_funcs);
@@ -137,7 +134,6 @@ TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithoutSyncProtocol)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
                                                   nullptr,
-                                                  nullptr, // No persist callback needed
                                                   m_logFunc,
                                                   m_mockDBSync);
 

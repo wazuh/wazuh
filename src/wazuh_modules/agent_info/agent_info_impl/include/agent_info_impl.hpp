@@ -24,7 +24,6 @@ class AgentInfoImpl
         /// @brief Constructor
         /// @param dbPath Path to the database file
         /// @param reportDiffFunction Function to report stateless diffs
-        /// @param persistDiffFunction Function to persist stateful diffs
         /// @param logFunction Function to log messages
         /// @param dbSync Pointer to IDBSync for database synchronization
         /// @param sysInfo Pointer to ISysInfo for system information gathering
@@ -32,7 +31,6 @@ class AgentInfoImpl
         /// @param fileSystem Pointer to IFileSystemWrapper for file system operations
         AgentInfoImpl(std::string dbPath,
                       std::function<void(const std::string&)> reportDiffFunction = nullptr,
-                      std::function<void(const std::string&, Operation, const std::string&, const std::string&)> persistDiffFunction = nullptr,
                       std::function<void(const modules_log_level_t, const std::string&)> logFunction = nullptr,
                       std::shared_ptr<IDBSync> dbSync = nullptr,
                       std::shared_ptr<ISysInfo> sysInfo = nullptr,
@@ -128,9 +126,6 @@ class AgentInfoImpl
 
         /// @brief Function to report stateless diffs
         std::function<void(const std::string&)> m_reportDiffFunction;
-
-        /// @brief Function to persist stateful diffs
-        std::function<void(const std::string&, Operation, const std::string&, const std::string&)> m_persistDiffFunction;
 
         /// @brief Function to log messages
         std::function<void(const modules_log_level_t, const std::string&)> m_logFunction;

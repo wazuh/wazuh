@@ -44,6 +44,13 @@ static const std::map<std::string, std::string> INDEX_MAP
     {AGENT_GROUPS_TABLE, "wazuh-states-agent-groups"},
 };
 
+// Map tables to their synchronization modes
+static const std::map<std::string, Mode> TABLE_MODE_MAP
+{
+    {AGENT_METADATA_TABLE, Mode::METADATA_DELTA},
+    {AGENT_GROUPS_TABLE, Mode::GROUP_DELTA},
+};
+
 const char* AGENT_METADATA_SQL_STATEMENT =
     "CREATE TABLE IF NOT EXISTS agent_metadata ("
     "agent_id          TEXT NOT NULL PRIMARY KEY,"
@@ -66,7 +73,6 @@ const char* AGENT_GROUPS_SQL_STATEMENT =
 
 AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::function<void(const std::string&)> reportDiffFunction,
-                             std::function<void(const std::string&, Operation, const std::string&, const std::string&)> persistDiffFunction,
                              std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                              std::shared_ptr<IDBSync> dbSync,
                              std::shared_ptr<ISysInfo> sysInfo,
@@ -80,7 +86,6 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
     , m_fileIO(fileIO ? std::move(fileIO) : std::make_shared<file_io::FileIOUtils>())
     , m_fileSystem(fileSystem ? std::move(fileSystem) : std::make_shared<file_system::FileSystemWrapper>())
     , m_reportDiffFunction(std::move(reportDiffFunction))
-    , m_persistDiffFunction(std::move(persistDiffFunction))
     , m_logFunction(std::move(logFunction))
 {
     if (!m_logFunction)
@@ -183,7 +188,7 @@ void AgentInfoImpl::setSyncParameters(uint32_t timeout, uint32_t retries, long m
 
     m_logFunction(LOG_DEBUG,
                   "Sync parameters set: timeout=" + std::to_string(timeout) + "s, retries=" +
-                      std::to_string(retries) + ", maxEps=" + std::to_string(maxEps));
+                  std::to_string(retries) + ", maxEps=" + std::to_string(maxEps));
 }
 
 std::string AgentInfoImpl::GetCreateStatement() const
@@ -425,15 +430,6 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
         nlohmann::json eventData = result == MODIFIED && data.contains("new") ? data["new"] : data;
         nlohmann::json ecsFormattedData = ecsData(eventData, table);
 
-        // Persist stateful event
-        auto indexIt = INDEX_MAP.find(table);
-
-        if (indexIt != INDEX_MAP.end() && m_persistDiffFunction)
-        {
-            std::string hashId = calculateHashId(eventData, table);
-            m_persistDiffFunction(hashId, OPERATION_STATES_MAP.at(result), indexIt->second, ecsFormattedData.dump());
-        }
-
         // Remove checksum from ECS data before sending stateless event
         if (ecsFormattedData.contains("checksum"))
         {
@@ -469,6 +465,17 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
             }
 
             m_reportDiffFunction(statelessEvent.dump());
+
+            auto indexIt = INDEX_MAP.find(table);
+
+            if (indexIt != INDEX_MAP.end() && m_spSyncProtocol)
+            {
+                m_spSyncProtocol->synchronizeMetadataOrGroups(
+                    TABLE_MODE_MAP.at(table),
+                    std::chrono::seconds(m_syncResponseTimeout),
+                    m_syncRetries,
+                    m_syncMaxEps);
+            }
 
             std::string debugMsg = "Event reported for table " + table + ": " + OPERATION_MAP.at(result);
             m_logFunction(LOG_DEBUG_VERBOSE, debugMsg);

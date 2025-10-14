@@ -89,7 +89,6 @@ TEST_F(AgentInfoLoggingTest, PopulateMetadataUsesLogFunction)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       "test_path",
                       nullptr,
-                      nullptr,
                       m_logFunc,  // Use log function
                       m_mockDBSync,
                       m_mockSysInfo,
@@ -140,7 +139,6 @@ TEST_F(AgentInfoLoggingTest, UpdateChangesErrorUsesLogFunction)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       "test_path",
                       nullptr,
-                      nullptr,
                       m_logFunc,
                       m_mockDBSync,
                       m_mockSysInfo,
@@ -176,7 +174,6 @@ TEST_F(AgentInfoLoggingTest, ProcessEventDebugUsesLogFunction)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       reportFunc,
-                      nullptr,
                       m_logFunc,
                       m_mockDBSync
                   );
@@ -214,7 +211,6 @@ TEST_F(AgentInfoLoggingTest, ProcessEventErrorUsesLogFunction)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       throwingReportFunc,
-                      nullptr,
                       m_logFunc,
                       m_mockDBSync
                   );

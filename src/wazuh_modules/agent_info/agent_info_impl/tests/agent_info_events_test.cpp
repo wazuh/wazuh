@@ -31,7 +31,6 @@ class AgentInfoEventProcessingTest : public ::testing::Test
         {
             m_logOutput.clear();
             m_reportedEvents.clear();
-            m_persistedEvents.clear();
 
             m_mockDBSync = std::make_shared<MockDBSync>();
             m_mockSysInfo = std::make_shared<MockSysInfo>();
@@ -44,15 +43,8 @@ class AgentInfoEventProcessingTest : public ::testing::Test
                 m_reportedEvents.push_back(nlohmann::json::parse(event));
             };
 
-            m_persistDiffFunc = [this](const std::string & id, Operation op, const std::string & index, const std::string & data)
-            {
-                nlohmann::json persistedEvent;
-                persistedEvent["id"] = id;
-                persistedEvent["operation"] = static_cast<int>(op);
-                persistedEvent["index"] = index;
-                persistedEvent["data"] = nlohmann::json::parse(data);
-                m_persistedEvents.push_back(persistedEvent);
-            };
+            // Note: persist callback removed as per PR feedback - new implementation uses
+            // synchronizeMetadataOrGroups instead of persistDifference with callbacks
 
             m_logFunc = [this](modules_log_level_t level, const std::string & msg)
             {
@@ -75,10 +67,8 @@ class AgentInfoEventProcessingTest : public ::testing::Test
         std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
         std::shared_ptr<AgentInfoImpl> m_agentInfo;
         std::function<void(const std::string&)> m_reportDiffFunc;
-        std::function<void(const std::string&, Operation, const std::string&, const std::string&)> m_persistDiffFunc;
         std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
         std::vector<nlohmann::json> m_reportedEvents;
-        std::vector<nlohmann::json> m_persistedEvents;
         std::string m_logOutput;
 };
 
@@ -87,7 +77,6 @@ TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       m_reportDiffFunc,
-                      m_persistDiffFunc,
                       m_logFunc,
                       m_mockDBSync
                   );
@@ -117,10 +106,8 @@ TEST_F(AgentInfoEventProcessingTest, ProcessInsertedEvent)
     EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["name"], "test-agent");
     EXPECT_FALSE(m_reportedEvents[0]["data"].contains("checksum")); // Checksum should be removed
 
-    // Verify persist callback was invoked
-    ASSERT_EQ(m_persistedEvents.size(), 1);
-    EXPECT_EQ(m_persistedEvents[0]["operation"], static_cast<int>(Operation::CREATE));
-    EXPECT_EQ(m_persistedEvents[0]["index"], "wazuh-states-agent-metadata");
+    // Note: Persist callback verification removed as per PR feedback
+    // New implementation uses synchronizeMetadataOrGroups without persist callbacks
 }
 
 TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
@@ -128,7 +115,6 @@ TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       m_reportDiffFunc,
-                      m_persistDiffFunc,
                       m_logFunc,
                       m_mockDBSync
                   );
@@ -158,9 +144,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessModifiedEvent)
     auto changedFields = m_reportedEvents[0]["data"]["event"]["changed_fields"];
     EXPECT_FALSE(changedFields.empty());
 
-    // Verify persist callback was invoked
-    ASSERT_EQ(m_persistedEvents.size(), 1);
-    EXPECT_EQ(m_persistedEvents[0]["operation"], static_cast<int>(Operation::MODIFY));
+    // Note: Persist callback verification removed as per PR feedback
 }
 
 TEST_F(AgentInfoEventProcessingTest, ProcessDeletedEvent)
@@ -168,7 +152,6 @@ TEST_F(AgentInfoEventProcessingTest, ProcessDeletedEvent)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       m_reportDiffFunc,
-                      m_persistDiffFunc,
                       m_logFunc,
                       m_mockDBSync
                   );
@@ -186,10 +169,7 @@ TEST_F(AgentInfoEventProcessingTest, ProcessDeletedEvent)
     EXPECT_EQ(m_reportedEvents[0]["data"]["event"]["type"], "deleted");
     EXPECT_EQ(m_reportedEvents[0]["data"]["agent"]["id"], "001");
 
-    // Verify persist callback was invoked
-    ASSERT_EQ(m_persistedEvents.size(), 1);
-    EXPECT_EQ(m_persistedEvents[0]["operation"], static_cast<int>(Operation::DELETE_));
-    EXPECT_EQ(m_persistedEvents[0]["index"], "wazuh-states-agent-groups");
+    // Note: Persist callback verification removed as per PR feedback
 }
 
 TEST_F(AgentInfoEventProcessingTest, ProcessAgentGroupsEvent)
@@ -197,7 +177,6 @@ TEST_F(AgentInfoEventProcessingTest, ProcessAgentGroupsEvent)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       m_reportDiffFunc,
-                      m_persistDiffFunc,
                       m_logFunc,
                       m_mockDBSync
                   );
@@ -228,7 +207,6 @@ TEST_F(AgentInfoEventProcessingTest, ProcessEventWithExceptionInCallback)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       throwingReportFunc,
-                      m_persistDiffFunc,
                       m_logFunc,
                       m_mockDBSync
                   );
@@ -251,7 +229,6 @@ TEST_F(AgentInfoEventProcessingTest, NotifyChangeCallsProcessEvent)
     m_agentInfo = std::make_shared<AgentInfoImpl>(
                       ":memory:",
                       m_reportDiffFunc,
-                      m_persistDiffFunc,
                       m_logFunc,
                       m_mockDBSync
                   );
