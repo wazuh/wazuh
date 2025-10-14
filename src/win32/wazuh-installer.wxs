@@ -605,6 +605,7 @@
             <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="SCA_DLL" />
+            <ComponentRef Id="AGENT_INFO_DLL" />
             <ComponentRef Id="FIMDB_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
             <ComponentRef Id="LIBWAZUHSHARED_DLL" />
