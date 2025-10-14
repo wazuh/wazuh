@@ -1540,10 +1540,6 @@ components:
                             type: integer
                             format: int32
                             description: "Request messages (for example, WPK chunks) sent to agent"
-                          sca:
-                            type: integer
-                            format: int32
-                            description: "SCA messages sent to agent"
                           shared:
                             type: integer
                             format: int32
@@ -2313,10 +2309,6 @@ components:
                       type: integer
                       format: int32
                       description: "Request messages (for example, WPK chunks) sent to agents"
-                    sca:
-                      type: integer
-                      format: int32
-                      description: "SCA messages sent to agents"
                     shared:
                       type: integer
                       format: int32
@@ -6611,7 +6603,6 @@ paths:
                               sent_breakdown:
                                 ack: 2
                                 ar: 0
-                                cfga: 2
                                 discarded: 0
                                 request: 0
                                 shared: 0
@@ -9294,7 +9285,6 @@ paths:
                             ar: 0
                             discarded: 0
                             request: 0
-                            sca: 0
                             shared: 0
                         queues:
                           received:
@@ -10860,7 +10850,6 @@ paths:
                             ar: 0
                             discarded: 0
                             request: 0
-                            sca: 0
                             shared: 0
                         queues:
                           received:
