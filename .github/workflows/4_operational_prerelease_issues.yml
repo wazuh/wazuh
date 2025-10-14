@@ -84,6 +84,7 @@ jobs:
           stage: ${{ needs.read-version.outputs.stage }}
           main_issue: ${{ inputs.main_issue }}
           prev_issue: ${{ inputs.prev_ut }}
+          assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
   create-coverity-issue:
@@ -105,6 +106,7 @@ jobs:
           stage: ${{ needs.read-version.outputs.stage }}
           main_issue: ${{ inputs.main_issue }}
           prev_issue: ${{ inputs.prev_cov }}
+          assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
   create-integration-tests-issue:
@@ -126,6 +128,7 @@ jobs:
           stage: ${{ needs.read-version.outputs.stage }}
           main_issue: ${{ inputs.main_issue }}
           prev_issue: ${{ inputs.prev_it }}
+          assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
   create-wpk-tests-issue:
@@ -147,6 +150,7 @@ jobs:
           stage: ${{ needs.read-version.outputs.stage }}
           main_issue: ${{ inputs.main_issue }}
           prev_issue: ${{ inputs.prev_wpk }}
+          assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
   summary:

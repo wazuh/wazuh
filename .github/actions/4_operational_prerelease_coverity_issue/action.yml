@@ -13,6 +13,9 @@ inputs:
   prev_issue:
     description: 'Previous issue number'
     required: true
+  assignee:
+    description: 'GitHub username to assign the issue to'
+    required: true
   github_token:
     description: 'GitHub token'
     required: true
@@ -57,6 +60,7 @@ runs:
           --repo "$REPO" \
           --title "$TITLE" \
           --label "$LABEL" \
+          --assignee "${{ inputs.assignee }}" \
           --body "$BODY")
 
         echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
