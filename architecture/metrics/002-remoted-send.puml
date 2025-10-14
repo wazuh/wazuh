@@ -44,15 +44,6 @@
     remoted -> agent: Send AR msg
     remoted -> state: ar++
 
-    == SCA ==
-    analysisd -> remoted : Enqueue msg in SCA queue
-    rnote over remoted
-      CFGARQUEUE
-        queue/alerts/cfgarq
-    endrnote
-    remoted -> agent: Send SCA msg
-    remoted -> state: sca++
-
     == Request (e.g. WPK upgrade) ==
     API -> remoted: Request agent upgrade
     remoted -> agent: Send WPK
