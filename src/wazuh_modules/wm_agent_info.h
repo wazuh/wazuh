@@ -31,6 +31,7 @@ typedef struct wm_agent_info_sync_flags_t
 
 typedef struct wm_agent_info_t
 {
+    bool is_agent; // True if the module is running on an agent, false if on a manager
     int enabled;
     int interval; // Update interval in seconds
     wm_agent_info_sync_flags_t sync;
