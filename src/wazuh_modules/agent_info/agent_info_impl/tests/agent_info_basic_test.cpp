@@ -34,7 +34,7 @@ class AgentInfoImplTest : public ::testing::Test
             };
 
             m_mockDBSync = std::make_shared<MockDBSync>();
-            m_agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync);
+            m_agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync);
         }
 
         void TearDown() override
@@ -151,7 +151,7 @@ TEST_F(AgentInfoImplTest, ConstructorWithCustomSysInfoSucceeds)
     m_logOutput.clear();
 
     // Create AgentInfoImpl with custom SysInfo
-    auto agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, nullptr, m_logFunction, m_mockDBSync, mockSysInfo);
+    auto agentInfo = std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_mockDBSync, mockSysInfo);
 
     EXPECT_NE(agentInfo, nullptr);
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
@@ -163,7 +163,7 @@ TEST_F(AgentInfoImplTest, ConstructorWithDefaultDependenciesSucceeds)
 
     // Create AgentInfoImpl without passing dbSync or sysInfo (creates defaults)
     // Using in-memory database to avoid file I/O in tests
-    auto agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, nullptr, m_logFunction);
+    auto agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunction);
 
     EXPECT_NE(agentInfo, nullptr);
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
