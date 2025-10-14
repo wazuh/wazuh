@@ -409,7 +409,7 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - POST /integrations
-          - POST /integrations_order
+          - PUT /integrations_order
       integrations:read:
         description: Read integration
         resources:

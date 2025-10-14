@@ -43,21 +43,13 @@ TEST_INTEGRATION_BODY = {
 @patch('api.controllers.integration_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.integration_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.integration_controller.Body.validate_content_type')
-@patch('api.controllers.integration_controller.IntegrationCreateModel')
+@patch('api.controllers.integration_controller.IntegrationCreateModel.get_kwargs', new_callable=AsyncMock)
 @patch('api.controllers.integration_controller.Integration', return_value=MagicMock())
-async def test_create_integration(mock_integration_model, mock_create_model_cls, mock_validate, mock_exc, mock_dapi,
+async def test_create_integration(mock_integration_model, mock_get_kwargs, mock_validate, mock_exc, mock_dapi,
                                   mock_remove, mock_dfunc, mock_request):
     """Verify 'create_integration' works as expected."""
-    mock_instance = MagicMock()
-    mock_instance.type = TEST_INTEGRATION_BODY['type']
-    mock_instance.id = TEST_INTEGRATION_BODY['id']
-    mock_instance.name = TEST_INTEGRATION_BODY['name']
-    mock_instance.documentation = TEST_INTEGRATION_BODY['documentation']
-    mock_instance.description = TEST_INTEGRATION_BODY['description']
-    mock_instance.status = TEST_INTEGRATION_BODY['status']
-    mock_instance.kvdbs = TEST_INTEGRATION_BODY['kvdbs']
-    mock_instance.decoders = TEST_INTEGRATION_BODY['decoders']
-    mock_create_model_cls.return_value = mock_instance
+    # Mock get_kwargs to return the body as kwargs
+    mock_get_kwargs.return_value = TEST_INTEGRATION_BODY
 
     result = await create_integration(body=TEST_INTEGRATION_BODY, policy_type='policy')
     f_kwargs = {
@@ -114,21 +106,13 @@ async def test_get_integrations(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.integration_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.integration_controller.raise_if_exc', return_value=CustomAffectedItems())
 @patch('api.controllers.integration_controller.Body.validate_content_type')
-@patch('api.controllers.integration_controller.IntegrationCreateModel')
+@patch('api.controllers.integration_controller.IntegrationCreateModel.get_kwargs', new_callable=AsyncMock)
 @patch('api.controllers.integration_controller.Integration', return_value=MagicMock())
-async def test_update_integration(mock_integration_model, mock_create_model_cls, mock_validate, mock_exc, mock_dapi,
+async def test_update_integration(mock_integration_model, mock_get_kwargs, mock_validate, mock_exc, mock_dapi,
                                   mock_remove, mock_dfunc, mock_request):
     """Verify 'update_integration' works as expected."""
-    mock_instance = MagicMock()
-    mock_instance.type = TEST_INTEGRATION_BODY['type']
-    mock_instance.id = TEST_INTEGRATION_BODY['id']
-    mock_instance.name = TEST_INTEGRATION_BODY['name']
-    mock_instance.documentation = TEST_INTEGRATION_BODY['documentation']
-    mock_instance.description = TEST_INTEGRATION_BODY['description']
-    mock_instance.status = TEST_INTEGRATION_BODY['status']
-    mock_instance.kvdbs = TEST_INTEGRATION_BODY['kvdbs']
-    mock_instance.decoders = TEST_INTEGRATION_BODY['decoders']
-    mock_create_model_cls.return_value = mock_instance
+    # Mock get_kwargs to return the body as kwargs
+    mock_get_kwargs.return_value = TEST_INTEGRATION_BODY
 
     result = await update_integration(body=TEST_INTEGRATION_BODY, policy_type='policy')
     f_kwargs = {
