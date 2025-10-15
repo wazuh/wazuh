@@ -98,4 +98,8 @@ class IPersistentQueue
         /// @brief Clears all items belonging to a specific index.
         /// @param index The index for which all items should be cleared.
         virtual void clearItemsByIndex(const std::string& index) = 0;
+
+        /// @brief Deletes the database file.
+        /// This method closes the database connection and removes the database file from disk.
+        virtual void deleteDatabase() = 0;
 };

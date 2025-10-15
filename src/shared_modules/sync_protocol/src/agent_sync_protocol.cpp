@@ -761,7 +761,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 if (m_syncState.endAckReceived)
                 {
-                    m_logger(LOG_INFO, "EndAck received.");
+                    m_logger(LOG_DEBUG, "EndAck received.");
                     return true;
                 }
             }
@@ -1026,4 +1026,17 @@ Wazuh::SyncSchema::Mode AgentSyncProtocol::toProtocolMode(Mode mode) const
     }
 
     throw std::invalid_argument("Unknown Mode value: " + std::to_string(static_cast<int>(mode)));
+}
+
+void AgentSyncProtocol::deleteDatabase()
+{
+    try
+    {
+        m_persistentQueue->deleteDatabase();
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Failed to delete database: ") + e.what());
+        throw;
+    }
 }

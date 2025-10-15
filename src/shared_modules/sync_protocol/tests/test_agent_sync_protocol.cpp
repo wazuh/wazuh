@@ -34,6 +34,7 @@ class MockPersistentQueue : public IPersistentQueue
         MOCK_METHOD(void, clearSyncedItems, (), (override));
         MOCK_METHOD(void, resetSyncingItems, (), (override));
         MOCK_METHOD(void, clearItemsByIndex, (const std::string& index), (override));
+        MOCK_METHOD(void, deleteDatabase, (), (override));
 
 };
 
@@ -2884,4 +2885,45 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithEndAckError)
     protocol->parseResponseBuffer(endBuffer, endBuilder.GetSize());
 
     syncThread.join();
+}
+
+// Tests for deleteDatabase
+TEST_F(AgentSyncProtocolTest, DeleteDatabaseCallsQueueDeleteDatabase)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+
+    EXPECT_CALL(*mockQueue, deleteDatabase())
+    .Times(1);
+
+    EXPECT_NO_THROW(protocol->deleteDatabase());
+}
+
+TEST_F(AgentSyncProtocolTest, DeleteDatabaseThrowsOnQueueError)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, mockQueue);
+
+    EXPECT_CALL(*mockQueue, deleteDatabase())
+    .WillOnce(::testing::Throw(std::runtime_error("Database deletion failed")));
+
+    EXPECT_THROW(protocol->deleteDatabase(), std::runtime_error);
 }

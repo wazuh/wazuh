@@ -279,4 +279,23 @@ extern "C" {
         }
     }
 
+    void asp_delete_database(AgentSyncProtocolHandle* handle)
+    {
+        try
+        {
+            if (!handle) return;
+
+            auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
+            wrapper->impl->deleteDatabase();
+        }
+        catch (const std::exception& ex)
+        {
+            return;
+        }
+        catch (...)
+        {
+            return;
+        }
+    }
+
 } // extern "C"

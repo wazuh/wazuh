@@ -64,6 +64,9 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @copydoc IAgentSyncProtocol::notifyDataClean
         bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
 
+        /// @copydoc IAgentSyncProtocol::deleteDatabase
+        void deleteDatabase() override;
+
         /// @brief Parses a FlatBuffer response message received from the manager.
         /// @param data Pointer to the FlatBuffer-encoded message buffer.
         /// @param length Size of the FlatBuffer message in bytes.

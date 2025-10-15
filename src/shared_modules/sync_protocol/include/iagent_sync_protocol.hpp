@@ -93,6 +93,10 @@ class IAgentSyncProtocol
         /// @return true if notification completed successfully and database was cleared, false otherwise
         virtual bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
 
+        /// @brief Deletes the database file.
+        /// This method closes the database connection and removes the database file from disk.
+        virtual void deleteDatabase() = 0;
+
         /// @brief Destructor
         virtual ~IAgentSyncProtocol() = default;
 

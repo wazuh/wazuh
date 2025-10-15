@@ -109,3 +109,17 @@ void PersistentQueue::clearItemsByIndex(const std::string& index)
         throw;
     }
 }
+
+void PersistentQueue::deleteDatabase()
+{
+    try
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_storage->deleteDatabase();
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error deleting database: ") + ex.what());
+        throw;
+    }
+}

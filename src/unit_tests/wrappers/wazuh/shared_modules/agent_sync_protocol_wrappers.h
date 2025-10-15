@@ -64,4 +64,6 @@ bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                                   unsigned int sync_retries,
                                   size_t max_eps);
 
+void __wrap_asp_delete_database(AgentSyncProtocolHandle* handle);
+
 #endif

@@ -113,3 +113,7 @@ bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
     check_expected(max_eps);
     return mock_type(bool);
 }
+
+void __wrap_asp_delete_database(AgentSyncProtocolHandle* handle) {
+    check_expected_ptr(handle);
+}
