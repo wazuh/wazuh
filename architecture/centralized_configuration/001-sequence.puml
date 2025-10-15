@@ -30,14 +30,14 @@ end
 
 loop
     wclusterd -> mclusterd: sync
-    rnote over wclusterd, mclusterd: [[https://github.com/wazuh/wazuh/blob/master/framework/wazuh/core/cluster/cluster.json sync file list]]
+    rnote over wclusterd, mclusterd: [[https://github.com/wazuh/wazuh/blob/main/framework/wazuh/core/cluster/cluster.json sync file list]]
     mclusterd --> wclusterd: delta
 end
 
 loop every <client> notify_time
     opt merged.mg hash not cached
         agent -> agent: hash current merged.mg and\nsave it into cache value
-    end 
+    end
     workerremote <- agent: send agent status\n(uname, labels, ip, merged.mg hash, labels ip)
     workerremote -> workerremote: update agent status
     opt agent's and worker's merged.mg differ\n(based on their hashes)
