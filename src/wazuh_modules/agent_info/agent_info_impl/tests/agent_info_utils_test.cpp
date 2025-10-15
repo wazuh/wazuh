@@ -14,7 +14,6 @@
  *
  * This test fixture focuses on testing the utility and helper functions:
  * - calculateMetadataChecksum() for generating consistent checksums
- * - calculateHashId() for generating unique identifiers
  * - ecsData() for converting database format to ECS (Elastic Common Schema)
  * - Data format conversion and validation
  * - Edge cases with partial or missing data
@@ -83,29 +82,6 @@ TEST_F(AgentInfoHelperFunctionsTest, CalculateMetadataChecksumDifferentForDiffer
     std::string checksum2 = m_agentInfo->calculateMetadataChecksum(metadata2);
 
     EXPECT_NE(checksum1, checksum2);
-}
-
-TEST_F(AgentInfoHelperFunctionsTest, CalculateHashIdForMetadataTable)
-{
-    nlohmann::json data;
-    data["agent_id"] = "123";
-
-    std::string hashId = m_agentInfo->calculateHashId(data, "agent_metadata");
-
-    EXPECT_FALSE(hashId.empty());
-    EXPECT_GT(hashId.length(), 10); // SHA-1 hash should be long
-}
-
-TEST_F(AgentInfoHelperFunctionsTest, CalculateHashIdForGroupsTable)
-{
-    nlohmann::json data;
-    data["agent_id"] = "123";
-    data["group_name"] = "web-servers";
-
-    std::string hashId = m_agentInfo->calculateHashId(data, "agent_groups");
-
-    EXPECT_FALSE(hashId.empty());
-    EXPECT_GT(hashId.length(), 10);
 }
 
 TEST_F(AgentInfoHelperFunctionsTest, EcsDataFormatsMetadataCorrectly)

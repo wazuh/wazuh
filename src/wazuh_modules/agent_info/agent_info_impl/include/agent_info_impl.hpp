@@ -45,13 +45,6 @@ class AgentInfoImpl
         /// @param isAgent True if running on an agent, false if on a manager
         void setIsAgent(bool isAgent);
 
-        /// @brief Persist a difference to the synchronization protocol
-        /// @param id Unique identifier for the difference
-        /// @param operation Type of operation (CREATE, MODIFY, DELETE)
-        /// @param index Index or table name
-        /// @param data Data payload
-        void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data);
-
         /// @brief Initialize the synchronization protocol
         /// @param moduleName Name of the module
         /// @param syncDbPath Path to sync database
@@ -71,22 +64,10 @@ class AgentInfoImpl
         /// @param table Table name
         void processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table);
 
-        /// @brief Notify change by calling report and persist callbacks
-        /// @param result Type of change (INSERTED, MODIFIED, DELETED)
-        /// @param data Event data
-        /// @param table Table name
-        void notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table);
-
         /// @brief Calculate checksum for metadata
         /// @param metadata Metadata JSON object
         /// @return Checksum string
         std::string calculateMetadataChecksum(const nlohmann::json& metadata) const;
-
-        /// @brief Calculate hash ID for a row
-        /// @param data Row data
-        /// @param table Table name
-        /// @return Hash ID string
-        std::string calculateHashId(const nlohmann::json& data, const std::string& table) const;
 
         /// @brief Convert data to ECS format
         /// @param data Original data

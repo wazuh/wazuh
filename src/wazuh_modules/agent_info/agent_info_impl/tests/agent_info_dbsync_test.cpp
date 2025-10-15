@@ -14,10 +14,9 @@
  * @brief Test fixture for AgentInfoImpl DBSync integration functionality
  *
  * This test fixture focuses on testing the integration with DBSync:
- * - Constructor with report and persist callbacks
+ * - Constructor with report callbacks
  * - Handling of optional callbacks (nullptr safety)
  * - SQL statement generation for database operations
- * - PersistDifference method functionality
  * - Error handling in DBSync operations
  */
 class AgentInfoDBSyncIntegrationTest : public ::testing::Test
@@ -115,32 +114,6 @@ TEST_F(AgentInfoDBSyncIntegrationTest, GetCreateStatementReturnsValidSQL)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo initialized"));
 }
 
-TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithSyncProtocol)
-{
-    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_mockDBSync);
-
-    MQ_Functions mq_funcs = {nullptr, nullptr};
-    m_agentInfo->initSyncProtocol("test-module", ":memory:", mq_funcs);
-
-    // Call persistDifference - should work through sync protocol only
-    EXPECT_NO_THROW(m_agentInfo->persistDifference("test-id", Operation::CREATE, "test-index", "{\"test\":\"data\"}"));
-
-    // Verify the log message was generated
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Persisting AgentInfo event:"));
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("{\"test\":\"data\"}"));
-}
-
-TEST_F(AgentInfoDBSyncIntegrationTest, PersistDifferenceWithoutSyncProtocol)
-{
-    m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:",
-                                                  nullptr,
-                                                  m_logFunc,
-                                                  m_mockDBSync);
-
-    // Don't initialize sync protocol - should not crash when sync protocol is null
-    EXPECT_NO_THROW(m_agentInfo->persistDifference("test-id", Operation::CREATE, "test-index", "{}"));
-}
-
 TEST_F(AgentInfoDBSyncIntegrationTest, SetSyncParametersConfiguresValues)
 {
     m_agentInfo = std::make_shared<AgentInfoImpl>(":memory:", nullptr, m_logFunc, m_mockDBSync);
@@ -170,11 +143,4 @@ TEST_F(AgentInfoDBSyncIntegrationTest, InitSyncProtocolLogsMessages)
     // Verify initialization log
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent-info sync protocol initialized"));
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr(":memory:"));
-
-    // Now trigger the lambda by persisting a difference
-    // This should call the logger function that was passed to AgentSyncProtocol
-    EXPECT_NO_THROW(m_agentInfo->persistDifference("test-id", Operation::CREATE, "test-index", "{\"test\":\"data\"}"));
-
-    // The persistDifference should have logged through the lambda
-    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Persisting AgentInfo event:"));
 }
