@@ -29,13 +29,6 @@ static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
     {INSERTED, "created"},
 };
 
-// Map tables to their index names in the agent sync protocol
-static const std::map<std::string, std::string> INDEX_MAP
-{
-    {AGENT_METADATA_TABLE, "wazuh-states-agent-metadata"},
-    {AGENT_GROUPS_TABLE, "wazuh-states-agent-groups"},
-};
-
 // Map tables to their synchronization modes
 static const std::map<std::string, Mode> TABLE_MODE_MAP
 {
@@ -152,15 +145,6 @@ void AgentInfoImpl::stop()
 
     m_cv.notify_one(); // Wake up the sleeping thread immediately
     m_logFunction(LOG_INFO, "AgentInfo module stopped.");
-}
-
-void AgentInfoImpl::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data)
-{
-    if (m_spSyncProtocol)
-    {
-        m_logFunction(LOG_DEBUG_VERBOSE, "Persisting AgentInfo event: " + data);
-        m_spSyncProtocol->persistDifference(id, operation, index, data);
-    }
 }
 
 void AgentInfoImpl::initSyncProtocol(const std::string& moduleName,
@@ -417,7 +401,7 @@ void AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
     {
         if (result == INSERTED || result == MODIFIED || result == DELETED)
         {
-            notifyChange(result, data, table);
+            processEvent(result, data, table);
         }
     };
 
@@ -483,9 +467,7 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
 
             m_reportDiffFunction(statelessEvent.dump());
 
-            auto indexIt = INDEX_MAP.find(table);
-
-            if (indexIt != INDEX_MAP.end() && m_spSyncProtocol)
+            if (m_spSyncProtocol)
             {
                 m_spSyncProtocol->synchronizeMetadataOrGroups(
                     TABLE_MODE_MAP.at(table),
@@ -503,11 +485,6 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
         std::string errorMsg = "Error processing event for table " + table + ": " + e.what();
         m_logFunction(LOG_ERROR, errorMsg);
     }
-}
-
-void AgentInfoImpl::notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
-{
-    processEvent(result, data, table);
 }
 
 std::string AgentInfoImpl::calculateMetadataChecksum(const nlohmann::json& metadata) const
@@ -535,33 +512,6 @@ std::string AgentInfoImpl::calculateMetadataChecksum(const nlohmann::json& metad
     // Use SHA-1 hash (consistent with other modules)
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(checksumInput.c_str(), checksumInput.size());
-    return Utils::asciiToHex(hash.hash());
-}
-
-std::string AgentInfoImpl::calculateHashId(const nlohmann::json& data, const std::string& table) const
-{
-    std::string hashInput;
-
-    if (table == AGENT_METADATA_TABLE)
-    {
-        // Use agent_id as the primary key
-        if (data.contains("agent_id"))
-        {
-            hashInput = table + ":" + data["agent_id"].get<std::string>();
-        }
-    }
-    else if (table == AGENT_GROUPS_TABLE)
-    {
-        // Use combination of agent_id and group_name as composite key
-        if (data.contains("agent_id") && data.contains("group_name"))
-        {
-            hashInput = table + ":" + data["agent_id"].get<std::string>() + ":" + data["group_name"].get<std::string>();
-        }
-    }
-
-    // Return SHA-1 hash of the input (consistent with other modules)
-    Utils::HashData hash(Utils::HashType::Sha1);
-    hash.update(hashInput.c_str(), hashInput.size());
     return Utils::asciiToHex(hash.hash());
 }
 
