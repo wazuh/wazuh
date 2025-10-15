@@ -8345,7 +8345,7 @@ paths:
                       node_type: master
                       key: 9d273b53510fef702b54a92e9cffc82e
                       port: 1516
-                      bind_addr: localhost
+                      bind_addr: 127.0.0.1
                       nodes:
                         - wazuh-master
                       hidden: "no"
@@ -9139,7 +9139,7 @@ paths:
                         node_type: "master"
                         key: "9d273b53510fef702b54a92e9cffc82e"
                         port: "1516"
-                        bind_addr: "localhost"
+                        bind_addr: "127.0.0.1"
                         nodes:
                           - "wazuh-master"
                         hidden: "no"

@@ -38,7 +38,7 @@ default_cluster_configuration = {
         'node_name': 'node01',
         'key': '',
         'port': 1516,
-        'bind_addr': 'localhost',
+        'bind_addr': '127.0.0.1',
         'nodes': ['NODE_IP'],
         'hidden': 'no'
     }
@@ -51,7 +51,7 @@ custom_cluster_configuration = {
         'node_name': 'node01',
         'key': 'a' * 32,
         'port': 1516,
-        'bind_addr': 'localhost',
+        'bind_addr': '127.0.0.1',
         'nodes': ['172.10.0.100'],
         'hidden': False
     }
@@ -73,7 +73,7 @@ custom_incomplete_configuration = {
     ({'cluster': {'port': 90}}, "Port must be"),
     ({'cluster': {'port': 70000}}, "Port must be"),
     ({'cluster': {'port': 1516, 'nodes': ['NODE_IP'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['localhost'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['127.0.1.1', '127.0.1.2'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
