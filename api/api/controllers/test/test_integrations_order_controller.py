@@ -45,10 +45,10 @@ async def test_update_integrations_order(mock_order_model, mock_model_cls, mock_
     mock_instance.order = [MagicMock(id=o['id'], name=o['name']) for o in TEST_ORDER_BODY]
     mock_model_cls.return_value = mock_instance
 
-    result = await update_integrations_order(body=TEST_ORDER_BODY, policy_type='policy')
+    result = await update_integrations_order(body=TEST_ORDER_BODY, type_='policy')
     f_kwargs = {
         'order': mock_order_model.return_value,
-        'policy_type': 'policy'
+        'type_': 'policy'
     }
     mock_dapi.assert_called_once_with(
         f=integrations_order_framework.update_integrations_order,
@@ -72,9 +72,9 @@ async def test_update_integrations_order(mock_order_model, mock_model_cls, mock_
 @patch('api.controllers.integrations_order_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_integrations_order(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_integrations_order' works as expected."""
-    result = await get_integrations_order(policy_type='policy')
+    result = await get_integrations_order(type_='policy')
     f_kwargs = {
-        'policy_type': 'policy'
+        'type_': 'policy'
     }
     mock_dapi.assert_called_once_with(
         f=integrations_order_framework.get_integrations_order,
@@ -98,9 +98,9 @@ async def test_get_integrations_order(mock_exc, mock_dapi, mock_remove, mock_dfu
 @patch('api.controllers.integrations_order_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_integrations_order(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'delete_integrations_order' works as expected."""
-    result = await delete_integrations_order(policy_type='policy')
+    result = await delete_integrations_order(type_='policy')
     f_kwargs = {
-        'policy_type': 'policy'
+        'type_': 'policy'
     }
     mock_dapi.assert_called_once_with(
         f=integrations_order_framework.delete_integrations_order,

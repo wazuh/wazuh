@@ -5273,20 +5273,10 @@ components:
       schema:
         type: boolean
         default: false
-    policy_type:
-      in: query
-      name: type
-      description: Asset environment type.
-      required: true
-      schema:
-        type: string
-        enum:
-          - testing
-          - production
     integration_id:
       in: query
       name: integration_id
-      description: List of integration IDs (comma-separated).
+      description: List of integration IDs.
       required: false
       schema:
         type: array

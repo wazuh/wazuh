@@ -51,10 +51,10 @@ async def test_create_integration(mock_integration_model, mock_get_kwargs, mock_
     # Mock get_kwargs to return the body as kwargs
     mock_get_kwargs.return_value = TEST_INTEGRATION_BODY
 
-    result = await create_integration(body=TEST_INTEGRATION_BODY, policy_type='policy')
+    result = await create_integration(body=TEST_INTEGRATION_BODY, type_='policy')
     f_kwargs = {
         'integration': mock_integration_model.return_value,
-        'policy_type': 'policy'
+        'type_': 'policy'
     }
     mock_dapi.assert_called_once_with(
         f=integration_framework.create_integration,
@@ -78,9 +78,9 @@ async def test_create_integration(mock_integration_model, mock_get_kwargs, mock_
 @patch('api.controllers.integration_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_get_integrations(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_integrations' works as expected."""
-    result = await get_integrations(policy_type='policy', integration_id=['a', 'b'])
+    result = await get_integrations(type_='policy', integration_id=['a', 'b'])
     f_kwargs = {
-        'policy_type': 'policy',
+        'type_': 'policy',
         'names': ['a', 'b'],
         'status': None,
         'search': None
@@ -114,10 +114,10 @@ async def test_update_integration(mock_integration_model, mock_get_kwargs, mock_
     # Mock get_kwargs to return the body as kwargs
     mock_get_kwargs.return_value = TEST_INTEGRATION_BODY
 
-    result = await update_integration(body=TEST_INTEGRATION_BODY, policy_type='policy')
+    result = await update_integration(body=TEST_INTEGRATION_BODY, type_='policy')
     f_kwargs = {
         'integration': mock_integration_model.return_value,
-        'policy_type': 'policy'
+        'type_': 'policy'
     }
     mock_dapi.assert_called_once_with(
         f=integration_framework.update_integration,
@@ -141,9 +141,9 @@ async def test_update_integration(mock_integration_model, mock_get_kwargs, mock_
 @patch('api.controllers.integration_controller.raise_if_exc', return_value=CustomAffectedItems())
 async def test_delete_integration(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'delete_integration' works as expected."""
-    result = await delete_integration(policy_type='policy', integration_id=['x'])
+    result = await delete_integration(type_='policy', integration_id=['x'])
     f_kwargs = {
-        'policy_type': 'policy',
+        'type_': 'policy',
         'names': ['x']
     }
     mock_dapi.assert_called_once_with(

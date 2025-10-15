@@ -18,12 +18,12 @@ from wazuh.core.engine.models.integration import Integration
 
 logger = logging.getLogger('wazuh-api')
 
-async def create_integration(body: dict, policy_type: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def create_integration(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Create a new integration.
 
     Parameters
     ----------
-    policy_type : str
+    type_ : str
         Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
@@ -41,7 +41,7 @@ async def create_integration(body: dict, policy_type: str, pretty: bool = False,
 
     f_kwargs = {
         'integration': model,
-        'policy_type': policy_type
+        'type_': type_
     }
 
     dapi = DistributedAPI(
@@ -57,13 +57,13 @@ async def create_integration(body: dict, policy_type: str, pretty: bool = False,
 
     return json_response(data, pretty=pretty)
 
-async def get_integrations(policy_type: str, integration_id: List[str] = None, status: Optional[str] = None,
+async def get_integrations(type_: str, integration_id: List[str] = None, status: Optional[str] = None,
                            search: Optional[str] = None, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get integrations.
 
     Parameters
     ----------
-    policy_type : str
+    type_ : str
         Policy type.
     integration_id : List[str]
         List of integration names to retrieve.
@@ -82,7 +82,7 @@ async def get_integrations(policy_type: str, integration_id: List[str] = None, s
         API response with the list of integrations.
     """
     f_kwargs = {
-        'policy_type': policy_type,
+        'type_': type_,
         'names': integration_id,
         'status': status,
         'search': parse_api_param(search, 'search')['value'] if search is not None else None,
@@ -101,12 +101,12 @@ async def get_integrations(policy_type: str, integration_id: List[str] = None, s
 
     return json_response(data, pretty=pretty)
 
-async def update_integration(body: dict, policy_type: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def update_integration(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Update an existing integration.
 
     Parameters
     ----------
-    policy_type : str
+    type_ : str
         Policy type.
     pretty : bool, optional
         Show results in human-readable format. Default `False`.
@@ -124,7 +124,7 @@ async def update_integration(body: dict, policy_type: str, pretty: bool = False,
 
     f_kwargs = {
         'integration': model,
-        'policy_type': policy_type
+        'type_': type_
     }
 
     dapi = DistributedAPI(
@@ -140,12 +140,12 @@ async def update_integration(body: dict, policy_type: str, pretty: bool = False,
 
     return json_response(data, pretty=pretty)
 
-async def delete_integration(policy_type: str, integration_id: List[str], pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def delete_integration(type_: str, integration_id: List[str], pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Delete one or more integrations.
 
     Parameters
     ----------
-    policy_type : str
+    type_ : str
         Policy type.
     integration_id : List[str]
         List of integration names to delete.
@@ -160,7 +160,7 @@ async def delete_integration(policy_type: str, integration_id: List[str], pretty
         API response.
     """
     f_kwargs = {
-        'policy_type': policy_type,
+        'type_': type_,
         'names': integration_id
     }
 
