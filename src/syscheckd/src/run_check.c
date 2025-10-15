@@ -603,9 +603,13 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
     }
 
     while (fim_sync_module_running) {
+        w_mutex_lock(&syscheck.fim_scan_mutex);
+
         minfo("Running FIM synchronization.");
 
         asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps);
+
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
 
         minfo("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
 
