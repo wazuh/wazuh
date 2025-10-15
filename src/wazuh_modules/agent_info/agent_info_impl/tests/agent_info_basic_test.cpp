@@ -7,6 +7,7 @@
 #include <mock_dbsync.hpp>
 #include <mock_sysinfo.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <string>
@@ -175,18 +176,34 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
 {
     m_logOutput.clear();
 
-    // Use a thread to stop the agent after a short time
-    std::thread stopThread([this]()
+    // Use atomic flag to ensure thread synchronization
+    std::atomic<bool> startedFirstIteration{false};
+
+    // Use a thread to stop the agent after the first iteration completes
+    std::thread stopThread([this, &startedFirstIteration]()
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // Wait for first iteration to complete (with timeout)
+        auto timeout = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
+
+        while (!startedFirstIteration.load() && std::chrono::steady_clock::now() < timeout)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
         m_agentInfo->stop();
     });
 
     // Start with a shouldContinue that returns true for a bit
     int iterations = 0;
-    m_agentInfo->start(1, [&iterations]()
+    m_agentInfo->start(1, [&iterations, &startedFirstIteration]()
     {
         iterations++;
+
+        if (iterations == 1)
+        {
+            startedFirstIteration = true;
+        }
+
         return iterations < 2;  // Run for at least one iteration with wait
     });
 
@@ -195,4 +212,5 @@ TEST_F(AgentInfoImplTest, StartWithIntervalTriggersWaitCondition)
     // Verify start was called
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module started"));
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module loop ended"));
+    EXPECT_GE(iterations, 1);  // At least one iteration should have completed
 }
