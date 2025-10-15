@@ -1,0 +1,71 @@
+---
+test_name: GET /content/status
+
+stages:
+  - name: Get content status
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/content/status"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        message: "Not Implemented"
+
+---
+test_name: PUT /content/reload
+
+stages:
+  - name: Reload contents
+    request:
+      verify: False
+      method: PUT
+      url: "{protocol:s}://{host:s}:{port:d}/content/reload"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        message: "Not Implemented"
+
+---
+test_name: PUT /content/validation
+
+stages:
+  - name: Validate content
+    request:
+      verify: False
+      method: PUT
+      url: "{protocol:s}://{host:s}:{port:d}/content/validation"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        type: "rule"
+        payload: "file_content"
+    response:
+      status_code: 200
+      json:
+        message: "Not Implemented"
+
+---
+test_name: PUT /log/test
+
+stages:
+  - name: Log test
+    request:
+      verify: False
+      method: PUT
+      url: "{protocol:s}://{host:s}:{port:d}/log/test"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        payload: "test log line"
+    response:
+      status_code: 200
+      json:
+        message: "Not Implemented"
+
