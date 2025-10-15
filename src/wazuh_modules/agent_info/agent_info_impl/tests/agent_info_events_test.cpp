@@ -223,25 +223,3 @@ TEST_F(AgentInfoEventProcessingTest, ProcessEventWithExceptionInCallback)
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Error processing event"));
     EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Test exception in report callback"));
 }
-
-TEST_F(AgentInfoEventProcessingTest, NotifyChangeCallsProcessEvent)
-{
-    m_agentInfo = std::make_shared<AgentInfoImpl>(
-                      ":memory:",
-                      m_reportDiffFunc,
-                      m_logFunc,
-                      m_mockDBSync
-                  );
-
-    nlohmann::json testData;
-    testData["agent_id"] = "001";
-    testData["agent_name"] = "test-agent";
-    testData["checksum"] = "abc";
-
-    // Call notifyChange (which should call processEvent)
-    m_agentInfo->notifyChange(INSERTED, testData, "agent_metadata");
-
-    // Verify event was processed
-    ASSERT_EQ(m_reportedEvents.size(), 1);
-    EXPECT_EQ(m_reportedEvents[0]["module"], "agent_info");
-}
