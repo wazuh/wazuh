@@ -85,7 +85,7 @@ const auto expected_dbsync_services
 };
 const auto expected_dbsync_browser_extensions
 {
-    R"({"data":{"browser_name":"chrome","browser_profile_name":"Default","browser_profile_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","browser_profile_referenced":1,"checksum":"5aa95635af540c2cdea58f889d617622f5abd49e","file_hash_sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234","item_id":"ada9ba8acb76ea1c14e12c58508b0dd6640b95b3","package_autoupdate":1,"package_description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","package_enabled":1,"package_from_webstore":1,"package_id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","package_installed":"1710489821000","package_name":"uBlock Origin","package_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","package_permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","package_persistent":0,"package_reference":"https://clients2.google.com/service/update2/crx","package_type":"extension","package_vendor":"Raymond Hill","package_version":"1.52.2","package_visible":0,"user_id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"operation":"INSERTED","type":"dbsync_browser_extensions"})"
+    R"({"data":{"browser_name":"chrome","browser_profile_name":"Default","browser_profile_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default","browser_profile_referenced":1,"checksum":"5aa95635af540c2cdea58f889d617622f5abd49e","file_hash_sha256":"a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234","item_id":"8fb19502963fccc83099831f9ee9583fe3077540","package_autoupdate":1,"package_description":"Finally, an efficient wide-spectrum content blocker. Easy on CPU and memory.","package_enabled":1,"package_from_webstore":1,"package_id":"cjpalhdlnbpafiamejdnhcphjbkeiagm","package_installed":"1710489821000","package_name":"uBlock Origin","package_path":"C:\\Users\\john.doe\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Extensions\\cjpalhdlnbpafiamejdnhcphjbkeiagm\\1.52.2_0","package_permissions":"[\\\"activeTab\\\",\\\"storage\\\",\\\"tabs\\\",\\\"webNavigation\\\"]","package_persistent":0,"package_reference":"https://clients2.google.com/service/update2/crx","package_type":"extension","package_vendor":"Raymond Hill","package_version":"1.52.2","package_visible":0,"user_id":"S-1-5-21-1234567890-987654321-1122334455-1001"},"operation":"INSERTED","type":"dbsync_browser_extensions"})"
 };
 
 
@@ -139,7 +139,7 @@ const auto expected_syscollector_services
 };
 const auto expected_syscollector_browser_extensions
 {
-    R"({"component":"syscollector_browser_extensions","data":{"begin":"ada9ba8acb76ea1c14e12c58508b0dd6640b95b3","end":"ada9ba8acb76ea1c14e12c58508b0dd6640b95b3"},"type":"integrity_check_global"})"
+    R"({"component":"syscollector_browser_extensions","data":{"begin":"8fb19502963fccc83099831f9ee9583fe3077540","end":"8fb19502963fccc83099831f9ee9583fe3077540"},"type":"integrity_check_global"})"
 };
 
 
