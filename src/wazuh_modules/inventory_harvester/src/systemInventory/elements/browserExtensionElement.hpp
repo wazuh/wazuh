@@ -45,10 +45,10 @@ public:
 
         auto browserName = data->browserName();
         auto userId = data->browserExtensionUserID();
-        auto browserProfileName = data->browserProfileName();
+        auto browserProfilePath = data->browserProfilePath();
         auto packageName = data->browserExtensionPackageName();
         auto packageVersion = data->browserExtensionPackageVersion();
-        if (browserName.empty() && userId.empty() && browserProfileName.empty() && packageName.empty() &&
+        if (browserName.empty() && userId.empty() && browserProfilePath.empty() && packageName.empty() &&
             packageVersion.empty())
         {
             throw std::runtime_error("BrowserExtensionElement::build: PK fields are empty.");
@@ -75,8 +75,8 @@ public:
 
         // Browser
         element.data.browser.name = browserName;
-        element.data.browser.profile.name = browserProfileName;
-        element.data.browser.profile.path = data->browserProfilePath();
+        element.data.browser.profile.name = data->browserProfileName();
+        element.data.browser.profile.path = browserProfilePath;
         if (auto browserProfileReferenced = data->browserProfileReferenced(); browserProfileReferenced >= 0)
         {
             element.data.browser.profile.referenced = browserProfileReferenced;
