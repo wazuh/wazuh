@@ -8,7 +8,11 @@
  */
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include "persistent_queue_storage.hpp"
+#include "mock_filesystem_wrapper.hpp"
+#include <memory>
+#include <filesystem>
 
 struct QueueScenario
 {
@@ -380,4 +384,129 @@ TEST_F(PersistentQueueStorageTest, RemoveByIndexDeletesItemsInAnyStatus)
     EXPECT_EQ(remainingItems.size(), static_cast<size_t>(1));
     EXPECT_EQ(remainingItems[0].id, "id3");
     EXPECT_EQ(remainingItems[0].index, "index2");
+}
+
+// Test class for testing deleteDatabase method with mock filesystem wrapper
+class PersistentQueueStorageDeleteDatabaseTest : public ::testing::Test
+{
+    protected:
+        std::shared_ptr<MockFileSystemWrapper> mockFileSystemWrapper;
+        std::unique_ptr<PersistentQueueStorage> storage;
+        LoggerFunc testLogger;
+
+        void SetUp() override
+        {
+            mockFileSystemWrapper = std::make_shared<MockFileSystemWrapper>();
+
+            testLogger = [](modules_log_level_t /*level*/, const std::string& /*msg*/)
+            {
+                // Capture log messages for testing if needed
+            };
+
+            storage = std::make_unique<PersistentQueueStorage>(":memory:", testLogger, mockFileSystemWrapper);
+        }
+
+        void TearDown() override
+        {
+            storage.reset();
+            mockFileSystemWrapper.reset();
+        }
+};
+
+TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenFileExists)
+{
+    using ::testing::Return;
+    using ::testing::_;
+
+    // Mock that file exists and removal succeeds
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
+    .WillOnce(Return(true));
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
+    .WillOnce(Return(true));
+
+    // Call deleteDatabase - should not throw
+    EXPECT_NO_THROW(storage->deleteDatabase());
+}
+
+TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenFileDoesNotExist)
+{
+    using ::testing::Return;
+    using ::testing::_;
+
+    // Mock that file does not exist
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
+    .WillOnce(Return(false));
+    // remove should not be called when file doesn't exist
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
+    .Times(0);
+
+    // Call deleteDatabase - should not throw and should log warning
+    EXPECT_NO_THROW(storage->deleteDatabase());
+}
+
+TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenRemoveFails)
+{
+    using ::testing::Return;
+    using ::testing::Throw;
+    using ::testing::_;
+
+    // Mock that file exists but removal fails
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
+    .WillOnce(Return(true));
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
+    .WillOnce(Throw(std::filesystem::filesystem_error("Remove failed", std::error_code())));
+
+    // Call deleteDatabase - should throw filesystem_error
+    EXPECT_THROW(storage->deleteDatabase(), std::filesystem::filesystem_error);
+}
+
+TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWhenExistsThrows)
+{
+    using ::testing::Throw;
+    using ::testing::_;
+
+    // Mock that exists() throws an exception
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
+    .WillOnce(Throw(std::runtime_error("Filesystem access error")));
+    // remove should not be called when exists throws
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
+    .Times(0);
+
+    // Call deleteDatabase - should throw the exception
+    EXPECT_THROW(storage->deleteDatabase(), std::runtime_error);
+}
+
+TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseWithMemoryDatabase)
+{
+    using ::testing::_;
+
+    // Mock that the memory path doesn't exist (which is expected)
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
+    .WillOnce(testing::Return(false));
+    // remove should not be called for memory database
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
+    .Times(0);
+
+    // Call deleteDatabase - should handle memory database gracefully
+    EXPECT_NO_THROW(storage->deleteDatabase());
+}
+
+TEST_F(PersistentQueueStorageDeleteDatabaseTest, DeleteDatabaseVerifyConnectionIsClosed)
+{
+    using ::testing::Return;
+    using ::testing::_;
+
+    // Insert some data to ensure database is active
+    storage->submitOrCoalesce(PersistedData{0, "id1", "index1", "{}", Operation::CREATE});
+    auto items = storage->fetchAndMarkForSync();
+    EXPECT_EQ(items.size(), static_cast<size_t>(1));
+
+    // Mock successful file operations
+    EXPECT_CALL(*mockFileSystemWrapper, exists(_))
+    .WillOnce(Return(true));
+    EXPECT_CALL(*mockFileSystemWrapper, remove(_))
+    .WillOnce(Return(true));
+
+    // Call deleteDatabase
+    EXPECT_NO_THROW(storage->deleteDatabase());
 }

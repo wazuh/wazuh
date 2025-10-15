@@ -122,6 +122,8 @@ STATIC void handle_fim_disabled(void) {
             }
         }
         mdebug1("Data clean notification sent successfully.");
+
+        asp_delete_database(syscheck.sync_handle);
     }
 
     minfo("Syscheck is disabled. Exiting.");

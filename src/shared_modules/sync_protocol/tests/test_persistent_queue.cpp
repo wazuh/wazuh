@@ -25,6 +25,7 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
         MOCK_METHOD(void, removeAllSynced, (), (override));
         MOCK_METHOD(void, resetAllSyncing, (), (override));
         MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
+        MOCK_METHOD(void, deleteDatabase, (), (override));
 };
 
 TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)
@@ -109,4 +110,30 @@ TEST(PersistentQueueTest, ClearItemsByIndexThrowsOnStorageError)
     PersistentQueue queue(":memory:", testLogger, mockStorage);
 
     EXPECT_THROW(queue.clearItemsByIndex("test_index"), std::exception);
+}
+
+TEST(PersistentQueueTest, DeleteDatabaseCallsStorageDeleteDatabase)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    EXPECT_CALL(*mockStorage, deleteDatabase())
+    .Times(1);
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    EXPECT_NO_THROW(queue.deleteDatabase());
+}
+
+TEST(PersistentQueueTest, DeleteDatabaseThrowsOnStorageError)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+
+    EXPECT_CALL(*mockStorage, deleteDatabase())
+    .WillOnce(testing::Throw(std::runtime_error("Simulated DB deletion error")));
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+
+    EXPECT_THROW(queue.deleteDatabase(), std::exception);
 }

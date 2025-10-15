@@ -8,12 +8,15 @@
  */
 
 #include "persistent_queue_storage.hpp"
+#include "filesystem_wrapper.hpp"
 #include "logging_helper.hpp"
 #include <filesystem>
 
-PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger)
+PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper)
     : m_connection(createOrOpenDatabase(dbPath)),
-      m_logger(std::move(logger))
+      m_dbPath(dbPath),
+      m_logger(std::move(logger)),
+      m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_shared<file_system::FileSystemWrapper>())
 {
     if (!m_logger)
     {
@@ -329,6 +332,36 @@ void PersistentQueueStorage::removeByIndex(const std::string& index)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueueStorage: SQLite error in removeByIndex: ") + ex.what());
         m_connection.execute("ROLLBACK;");
+        throw;
+    }
+}
+
+void PersistentQueueStorage::deleteDatabase()
+{
+    try
+    {
+        // Close the database connection first
+        m_connection.close();
+
+        // Remove the database file from the filesystem
+        if (m_fileSystemWrapper->exists(m_dbPath))
+        {
+            m_fileSystemWrapper->remove(m_dbPath);
+            m_logger(LOG_DEBUG, std::string("PersistentQueueStorage: Database file deleted: ") + m_dbPath);
+        }
+        else
+        {
+            m_logger(LOG_WARNING, std::string("PersistentQueueStorage: Database file not found: ") + m_dbPath);
+        }
+    }
+    catch (const std::filesystem::filesystem_error& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Filesystem error deleting database: ") + ex.what());
+        throw;
+    }
+    catch (const std::exception& ex)
+    {
+        m_logger(LOG_ERROR, std::string("PersistentQueueStorage: Error deleting database: ") + ex.what());
         throw;
     }
 }

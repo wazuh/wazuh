@@ -12,6 +12,7 @@
 #include "ipersistent_queue_storage.hpp"
 #include "sqlite3Wrapper.hpp"
 #include "agent_sync_protocol_types.hpp"
+#include "ifilesystem_wrapper.hpp"
 
 /// @brief Defines the synchronization status of a persisted message.
 enum class SyncStatus : int
@@ -37,10 +38,11 @@ enum class CreateStatus : int
 class PersistentQueueStorage : public IPersistentQueueStorage
 {
     public:
-        /// @brief Constructs the storage with the given database path.
+        /// @brief Constructs the storage with the given database path and optional filesystem wrapper.
         /// @param dbPath Path to the SQLite database file. If empty, DEFAULT_DB_PATH is used.
         /// @param logger Logger function
-        explicit PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger);
+        /// @param fileSystemWrapper Filesystem wrapper for operations (for testing). If nullptr, uses default implementation.
+        explicit PersistentQueueStorage(const std::string& dbPath, LoggerFunc logger, std::shared_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
 
         /// @brief Default destructor.
         ~PersistentQueueStorage() override = default;
@@ -66,12 +68,22 @@ class PersistentQueueStorage : public IPersistentQueueStorage
         /// @param index The index for which all messages should be removed.
         void removeByIndex(const std::string& index) override;
 
+        /// @brief Deletes the database file.
+        /// This method closes the database connection and removes the database file from disk.
+        void deleteDatabase() override;
+
     private:
         /// @brief Active SQLite database connection.
         SQLite3Wrapper::Connection m_connection;
 
+        /// @brief Path to the SQLite database file.
+        std::string m_dbPath;
+
         /// @brief Logger function
         LoggerFunc m_logger;
+
+        /// @brief Filesystem wrapper for operations
+        std::shared_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 
         /// @brief Creates the persistent_queue table if it doesn't already exist.
         void createTableIfNotExists();

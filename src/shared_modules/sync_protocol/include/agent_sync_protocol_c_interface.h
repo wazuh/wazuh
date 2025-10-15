@@ -136,6 +136,12 @@ bool asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                            unsigned int sync_retries,
                            size_t max_eps);
 
+/// @brief Deletes the database file.
+///
+/// This function closes the database connection and removes the database file from disk.
+/// @param handle Pointer to the AgentSyncProtocol handle.
+void asp_delete_database(AgentSyncProtocolHandle* handle);
+
 #ifdef __cplusplus
 }
 #endif
