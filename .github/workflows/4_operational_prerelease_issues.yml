@@ -84,7 +84,9 @@ jobs:
           stage: ${{ needs.read-version.outputs.stage }}
           main_issue: ${{ inputs.main_issue }}
           prev_issue: ${{ inputs.prev_ut }}
+          assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          project_token: ${{ secrets.GH_PAT_WRITE_PROJECT }}
 
   create-coverity-issue:
     name: "Create Coverity Analysis Issue"
@@ -105,7 +107,9 @@ jobs:
           stage: ${{ needs.read-version.outputs.stage }}
           main_issue: ${{ inputs.main_issue }}
           prev_issue: ${{ inputs.prev_cov }}
+          assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          project_token: ${{ secrets.GH_PAT_WRITE_PROJECT }}
 
   create-integration-tests-issue:
     name: "Create Integration Tests Issue"
@@ -126,7 +130,9 @@ jobs:
           stage: ${{ needs.read-version.outputs.stage }}
           main_issue: ${{ inputs.main_issue }}
           prev_issue: ${{ inputs.prev_it }}
+          assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          project_token: ${{ secrets.GH_PAT_WRITE_PROJECT }}
 
   create-wpk-tests-issue:
     name: "Create WPK Tests Issue"
@@ -147,7 +153,9 @@ jobs:
           stage: ${{ needs.read-version.outputs.stage }}
           main_issue: ${{ inputs.main_issue }}
           prev_issue: ${{ inputs.prev_wpk }}
+          assignee: ${{ github.actor }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          project_token: ${{ secrets.GH_PAT_WRITE_PROJECT }}
 
   summary:
     name: "Workflow Result"
