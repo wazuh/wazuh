@@ -2,23 +2,6 @@ name: 4.X - Enrollment on Windows - Integration tests - Tier 0 and 1
 
 on:
   workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
-  pull_request:
-    paths:
-        - ".github/workflows/4_testintegration_enrollment-tier-0-1-win.yml"
-        - "src/client-agent/**"
-        - "src/config/buffer-config.c"
-        - "src/config/client-config.c"
-        - "src/config/client-config.h"
-        - "src/os_auth/**"
-        - "src/win32/**"
-        - "src/Makefile"
-        - "tests/integration/conftest.py"
-        - "tests/integration/test_enrollment/**"
 
 jobs:
   # Build the winagent on linux.
