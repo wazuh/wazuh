@@ -2166,7 +2166,7 @@ FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION
     }
 
     if (GetFileInformationByHandle(h, lpFileInformation) == 0) {
-        merror(FILE_ERROR, file);
+        mdebug2(FILE_ERROR, file);
     }
 
     if (fd = _open_osfhandle((intptr_t)h, 0), fd == -1) {
@@ -3293,10 +3293,10 @@ DWORD FileSizeWin(const char * file) {
                     FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                     NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h1 == INVALID_HANDLE_VALUE) {
-        merror(FILE_ERROR, file);
+        mdebug2(FILE_ERROR, file);
     } else if (GetFileInformationByHandle(h1, &lpFileInfo) == 0) {
         CloseHandle(h1);
-        merror(FILE_ERROR, file);
+        mdebug2(FILE_ERROR, file);
     } else {
         CloseHandle(h1);
         return lpFileInfo.nFileSizeHigh + lpFileInfo.nFileSizeLow;
@@ -3322,7 +3322,7 @@ float DirSize(const char *path) {
     swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%ls\\*.*", wPathInput);
 
     if ((hFind = FindFirstFileW(wsPath, &fdFile)) == INVALID_HANDLE_VALUE) {
-        merror(FILE_ERROR, path);
+        mdebug2(FILE_ERROR, path);
         os_free(wPathInput);
         return 0;
     }
