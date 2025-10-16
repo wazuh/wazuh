@@ -430,11 +430,17 @@ void CMSync::pushPoliciesFromCM(const std::shared_ptr<cti::store::ICMReader>& cm
     // Get all policy from CM store
     const auto integrationList = cmstore->getPolicyIntegrationList();
 
+    // TODO Fix the order, should be pre-loaded
+    const auto errorPrefix {"Clean the policy, it contains deleted assets: "};
+
     // For each policy get his own default parent and create the policy
-    for (const auto& policyIntegrationName : integrationList)
+    for (const auto& integration : integrationList)
     {
+        base::Name policyIntegrationName{fmt::format("integration/{}/0", integration)};
         auto res = policyManager->addAsset(G_POLICY_NAME, store::NamespaceId(m_ctiNS), policyIntegrationName);
-        if (base::isError(res))
+
+        if (base::isError(res) &&
+            base::getError(res).message.find(errorPrefix) == std::string::npos) // Ignore if the asset is already in the policy
         {
             throw std::runtime_error(fmt::format("Failed to add asset '{}' to policy '{}': {}",
                                                  policyIntegrationName.fullName(),
@@ -480,7 +486,7 @@ void CMSync::pushOutputsToPolicy()
 
         try
         {
-            outputNames.push_back(fmt::format("output/{}/0", assetNameStr.value()));
+            outputNames.push_back(fmt::format("{}/0", assetNameStr.value()));
         }
         catch (const std::runtime_error& e)
         {
@@ -508,7 +514,7 @@ void CMSync::loadCoreFilter()
     const auto catalog = getHandlerOrThrow(m_catalog, "Catalog");
 
     // Check if filter already exists
-    api::catalog::Resource filterResource {G_FILTER_NAME, api::catalog::Resource::Format::json};
+    api::catalog::Resource filterResource {"filter", api::catalog::Resource::Format::json};
     if (catalog->existAsset(G_FILTER_NAME, m_systemNS))
     {
         // Filter already exists
