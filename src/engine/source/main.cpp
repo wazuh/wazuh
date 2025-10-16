@@ -579,6 +579,8 @@ int main(int argc, char* argv[])
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
         }
 
+        // TODO: This modules should be initialized before the API server to be able to
+        // provide their API endpoints, this need a improvement on wazuh-control start
         // Content Manager
         {
             cmsync = std::make_shared<cm::sync::CMSync>(catalog,
@@ -588,8 +590,6 @@ int main(int argc, char* argv[])
                                                         confManager.get<std::string>(conf::key::CMSYNC_OUTPUT_PATH));
             LOG_INFO("Content Manager Sync initialized.");
 
-            // TODO: Remove this in next iterations, maybe, can be validate without winc?
-            // cmsync->wazuhCoreOutput(true);
         }
 
         // CTI Store (initialized after CMSync to pass deploy callback)
@@ -604,16 +604,23 @@ int main(int argc, char* argv[])
             };
 
             ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, true, deployCallback);
-            LOG_INFO("CTI Store initialized with CMSync deploy callback.");
+            LOG_INFO("CTI Store initialized");
 
-            exitHandler.add(
-                [ctiStoreManager]()
+            // TODO: Find a better way to do this - This cannot going to production
+            if (orchestrator->getEntries().empty())
+            {
+                try
                 {
-                    if (ctiStoreManager)
-                    {
-                        ctiStoreManager->shutdown();
-                    }
-                });
+                    cmsync->deploy(ctiStoreManager);
+                }
+                catch (const std::exception& e)
+                {
+                    LOG_WARNING("Could not deploy CTI content at startup: '{}'", e.what());
+                }
+            }
+
+            ctiStoreManager->startSync();
+            exitHandler.add([ctiStoreManager]() { ctiStoreManager->shutdown(); });
         }
 
         // UDP Servers

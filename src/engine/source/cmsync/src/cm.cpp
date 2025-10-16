@@ -53,6 +53,7 @@ void CMSync::deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore)
 {
     namespace acns = api::catalog;
 
+    LOG_INFO("Starting Content Manager synchronization...");
     // Load from files and validate the core outputs
     wazuhCoreOutput(true);
 
@@ -93,6 +94,8 @@ void CMSync::deploy(const std::shared_ptr<cti::store::ICMReader>& ctiStore)
 
     // Create the route.
     loadDefaultRoute();
+
+    LOG_INFO("Content Manager synchronization completed successfully.");
 }
 
 CMSync::CMSync(const std::shared_ptr<api::catalog::ICatalog>& catalog,

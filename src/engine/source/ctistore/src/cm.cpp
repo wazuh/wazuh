@@ -73,10 +73,6 @@ ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStar
 
     m_downloader = std::make_unique<ContentDownloader>(m_config, processingCallback);
 
-    if (autoStart)
-    {
-        startSync();
-    }
 }
 
 ContentManager::~ContentManager()
