@@ -1,0 +1,223 @@
+---
+test_name: KVDB - setup fixtures (create three items)
+
+stages:
+  - name: create kvdb_a
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        id: "kvdb_a"
+        name: "dup"
+        content: { a: 1 }
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+
+  - name: create kvdb_b
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        id: "kvdb_b"
+        name: "dup"
+        content: { a: 2 }
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+
+  - name: create kvdb_c (uniq name)
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing"
+      method: POST
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/json
+      json:
+        id: "kvdb_c"
+        name: "uniq"
+        content: { a: 3 }
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+
+---
+test_name: KVDB - GET with select should trim fields
+
+stages:
+  - name: select id,name (no content/type/integration_id)
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&select=id,name&kvdb_id=kvdb_a"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+        extra_kwargs:
+          expected_total_items: 1
+          expected_first_id: "kvdb_a"
+          absent_fields: ["content", "integration_id", "type"]
+
+---
+test_name: KVDB - GET sort asc/desc on id
+
+stages:
+  - name: sort ascending by id
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=id&select=id"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+        extra_kwargs:
+          expected_ids_order: ["kvdb_a", "kvdb_b", "kvdb_c"]
+
+  - name: sort descending by id
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=-id&select=id"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+        extra_kwargs:
+          expected_ids_order: ["kvdb_c", "kvdb_b", "kvdb_a"]
+
+---
+test_name: KVDB - GET pagination with offset/limit
+
+stages:
+  - name: sorted then page (offset=1, limit=1) -> should return kvdb_b
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&sort=id&offset=1&limit=1&select=id"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+        extra_kwargs:
+          expected_page_len: 1
+          expected_first_id: "kvdb_b"
+
+---
+test_name: KVDB - GET search (by name field)
+
+stages:
+  - name: search 'uniq' should return only kvdb_c
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&search=uniq&select=id,name"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+        extra_kwargs:
+          expected_total_items: 1
+          expected_first_id: "kvdb_c"
+          expected_name: "uniq"
+
+---
+test_name: KVDB - GET distinct with select=name (two dup + one uniq)
+
+stages:
+  - name: select=name&distinct=true should return unique names {dup, uniq}
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a&kvdb_id=kvdb_b&kvdb_id=kvdb_c&select=name&distinct=true"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+        extra_kwargs:
+          expected_total_items: 2
+          expected_names: ["dup", "uniq"]
+
+---
+test_name: KVDB - GET with advanced q filter
+
+stages:
+  - name: q=id=kvdb_b should match only kvdb_b
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&q=id=kvdb_b&select=id"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+        extra_kwargs:
+          expected_total_items: 1
+          expected_first_id: "kvdb_b"
+
+---
+test_name: KVDB - cleanup fixtures
+
+stages:
+  - name: delete A
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_a"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+
+  - name: delete B
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_b"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb
+
+  - name: delete C
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/kvdbs?type=testing&kvdb_id=kvdb_c"
+      method: DELETE
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_kvdb

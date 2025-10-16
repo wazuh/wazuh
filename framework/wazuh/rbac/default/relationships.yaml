@@ -18,7 +18,8 @@ relationships:
         - security_all
         - cluster_all
         - decoders_all
-        - lists_all
+        - kvdbs_all
+        - integrations_all
         - rootcheck_read
         - rules_all
         - mitre_read
@@ -37,7 +38,8 @@ relationships:
         - agents_read
         - cluster_read
         - decoders_read
-        - lists_read
+        - kvdbs_read
+        - integrations_read
         - rootcheck_read
         - rules_read
         - mitre_read

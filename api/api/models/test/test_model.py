@@ -9,6 +9,7 @@ from json import JSONDecodeError
 from os import listdir
 from os.path import abspath, dirname, join
 from unittest.mock import MagicMock, patch
+from api.models.kvdb_model import KVDBCreateModel, KVDBUpdateModel
 
 import pytest
 from connexion import ProblemException
@@ -302,3 +303,44 @@ async def test_event_ingest_model_validation(size, raises):
         assert exc.value.title == 'Events bulk size exceeded'
     else:
         await event_ingest_model.EventIngestModel.get_kwargs(request)
+
+
+def test_kvdb_create_model_valid_and_extra_key():
+    """KVDBCreateModel: accept a valid payload and reject unexpected keys (error 1800)."""
+
+    # Valid payload should be accepted and values preserved
+    body_ok = {"id": "kv1", "name": "My KV", "content": {"k": "v"}, "integration_id": "int-1"}
+    model = KVDBCreateModel.from_dict(body_ok)
+    assert model.id == "kv1"
+    assert model.name == "My KV"
+    assert model.content == {"k": "v"}
+    assert model.integration_id == "int-1"
+
+    # Unexpected key must raise WazuhError 1800
+    body_extra = {"id": "kv1", "name": "x", "content": {}, "unexpected": True}
+    with pytest.raises(WazuhError) as exc:
+        KVDBCreateModel.from_dict(body_extra)
+    assert exc.value.code == 1800
+
+
+def test_kvdb_update_model_required_and_type_checks():
+    """KVDBUpdateModel: enforce required fields and type validations (1801, 1803, 1802)."""
+
+    # Missing 'id' -> non-empty string check -> 1801
+    with pytest.raises(WazuhError) as exc1:
+        KVDBUpdateModel.from_dict({"content": {"k": "v"}})
+    assert exc1.value.code == 1801
+
+    # 'content' must be an object (dict) -> 1803
+    with pytest.raises(WazuhError) as exc2:
+        KVDBUpdateModel.from_dict({"id": "kv1", "content": "not-a-dict"})
+    assert exc2.value.code == 1803
+
+    # Optional fields must be str or None -> 1802
+    with pytest.raises(WazuhError) as exc3:
+        KVDBUpdateModel.from_dict({"id": "kv1", "content": {}, "name": 123})
+    assert exc3.value.code == 1802
+
+    with pytest.raises(WazuhError) as exc4:
+        KVDBUpdateModel.from_dict({"id": "kv1", "content": {}, "integration_id": 999})
+    assert exc4.value.code == 1802
