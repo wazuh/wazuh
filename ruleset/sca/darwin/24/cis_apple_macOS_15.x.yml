@@ -911,7 +911,7 @@ checks:
     rules:
       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)s compare >= 5184000'
       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)h compare >= 1440'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)d compare >= 60'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)d compare >= 60'
       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)y compare >= 1'
       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)b compare >= 5368709120'
       - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)k compare >= 5242880'
