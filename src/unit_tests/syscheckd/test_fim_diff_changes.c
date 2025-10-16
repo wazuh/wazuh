@@ -908,7 +908,7 @@ void test_save_compress_file_rename_fail(void **state) {
 
     expect_rename_ex(diff->compress_tmp_file, diff->compress_file, -1);
 
-    expect_string(__wrap__merror, formatted_msg, "(1124): Could not rename file '/path/to/compress/tmp/file' to '/path/to/compress/file' due to [(0)-(Success)].");
+    expect_string(__wrap__mdebug2, formatted_msg, "(1124): Could not rename file '/path/to/compress/tmp/file' to '/path/to/compress/file' due to [(0)-(Success)].");
 
     save_compress_file(diff);
     assert_int_equal(syscheck.diff_folder_size, 0);

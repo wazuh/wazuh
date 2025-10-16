@@ -1344,13 +1344,13 @@ time_t get_UTC_modification_time(const char *file){
     FILETIME modification_date;
     if (hdle = wCreateFile(file, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
         hdle == INVALID_HANDLE_VALUE) {
-        mferror(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
+        mdebug2(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
         return 0;
     }
 
     if (!GetFileTime(hdle, NULL, NULL, &modification_date)) {
         CloseHandle(hdle);
-        mferror(FIM_WARN_GET_FILETIME, file, GetLastError());
+        mdebug2(FIM_WARN_GET_FILETIME, file, GetLastError());
         return 0;
     }
 
@@ -1382,7 +1382,7 @@ int rename_ex(const char *source, const char *destination)
         HANDLE hFile = wCreateFile(destination, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
         if (hFile == INVALID_HANDLE_VALUE) {
-            mferror("Could not create file (%s) which returned (%lu)", destination, GetLastError());
+            mdebug2("Could not create file (%s) which returned (%lu)", destination, GetLastError());
             return -1;
         }
 
@@ -1391,7 +1391,7 @@ int rename_ex(const char *source, const char *destination)
     }
 
     if (!utf8_ReplaceFile(destination, source, NULL, 0)) {
-        mferror("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
+        mdebug2("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
 
         if (file_created) {
             // Delete the destination file as it's been created by this function.
