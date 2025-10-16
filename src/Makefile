@@ -2052,7 +2052,7 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 		ar -x libwazuhext/$$lib; \
 		mv *.o libwazuhext/; \
 	done
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc
+	$(OSSEC_SHARED) $(OSSEC_CFLAGS) libwazuhext/*.o -o $@ -static-libgcc -lm
 else
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}

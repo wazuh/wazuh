@@ -146,6 +146,7 @@ download_source() {
     echo " Downloading source"
     /usr/local/bin/curl -L -o "/wazuh.zip" "https://github.com/wazuh/wazuh/archive/${wazuh_branch}.zip"
     /usr/local/bin/unzip /wazuh.zip
+    rm -rf ${source_directory}
     mv wazuh-* ${source_directory}
     compute_version_revision
 }
