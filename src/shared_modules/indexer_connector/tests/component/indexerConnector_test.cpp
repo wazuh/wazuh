@@ -214,9 +214,6 @@ TEST_F(IndexerConnectorTest, ConnectionWithSslCredentials)
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
-    indexerConfig["ssl"]["certificate_authorities"] = nlohmann::json::array({"/etc/filebeat/certs/root-ca.pem"});
-    indexerConfig["ssl"]["certificate"] = "/etc/filebeat/certs/filebeat.pem";
-    indexerConfig["ssl"]["key"] = "/etc/filebeat/certs/filebeat-key.pem";
 
     // Create connector and wait until the connection is established.
     auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};

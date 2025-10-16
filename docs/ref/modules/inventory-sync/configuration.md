@@ -19,13 +19,6 @@ Incoming FlatBuffer messages from agents are processed and grouped into **bulk o
     <hosts>
       <host>https://0.0.0.0:9200</host>
     </hosts>
-    <ssl>
-      <certificate_authorities>
-        <ca>/etc/filebeat/certs/root-ca.pem</ca>
-      </certificate_authorities>
-      <certificate>/etc/filebeat/certs/filebeat.pem</certificate>
-      <key>/etc/filebeat/certs/filebeat-key.pem</key>
-    </ssl>
   </indexer>
 ```
 

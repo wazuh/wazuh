@@ -9045,18 +9045,6 @@ paths:
                         enabled: yes
                         index-status: yes
                         feed-update-interval: "60m"
-                      indexer:
-                        enabled: yes
-                        hosts:
-                          - http://127.0.0.1:9200
-                        ssl:
-                          certificate_authorities:
-                            ca:
-                              - /etc/filebeat/certs/root-ca.pem
-                          certificate:
-                            - /etc/filebeat/certs/filebeat.pem
-                          key:
-                            - /etc/filebeat/certs/filebeat-key.pem
                       syscheck:
                         disabled: no
                         frequency: 43200
