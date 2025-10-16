@@ -909,14 +909,14 @@ checks:
       - soc_2: ["A1.1"]
     condition: any
     rules:
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)s compare >= 5184000'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)h compare >= 1440'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)d compare >= 60'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)y compare >= 1'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)b compare >= 5368709120'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)k compare >= 5242880'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)m compare >= 5120'
-      - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)g compare >= 5'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)s compare >= 5184000'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)h compare >= 1440'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)d compare >= 60'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)y compare >= 1'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)b compare >= 5368709120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)k compare >= 5242880'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)m compare >= 5120'
+      - 'f:/etc/security/audit_control -> n:^\s*expire-after\p\w*(\d+)g compare >= 5'
 
   # 3.5 Ensure Access to Audit Records Is Controlled. (Automated) - Not Implemented
   # 3.6 Audit Software Inventory. (Manual) - Not Implemented
