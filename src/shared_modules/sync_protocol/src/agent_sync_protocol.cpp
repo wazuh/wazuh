@@ -75,7 +75,7 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
     }
 }
 
-bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, bool isFirst)
 {
     // Validate synchronization mode
     if (mode != Mode::FULL && mode != Mode::DELTA)
@@ -137,7 +137,7 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
 
     bool success = false;
 
-    if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, timeout, retries, maxEps))
+    if (sendStartAndWaitAck(mode, dataToSync.size(), uniqueIndices, timeout, retries, maxEps, isFirst))
     {
         if (sendDataMessages(m_syncState.session, dataToSync, maxEps))
         {

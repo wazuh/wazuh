@@ -45,8 +45,9 @@ class IAgentSyncProtocol
         /// @param timeout The timeout for each response wait.
         /// @param retries The maximum number of re-send attempts.
         /// @param maxEps The maximum event reporting throughput. 0 means disabled.
+        /// @param isFirst true if this is the first synchronization attempt.
         /// @return true if the sync was successfully processed; false otherwise.
-        virtual bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) = 0;
+        virtual bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, bool isFirst = false) = 0;
 
         /// @brief Checks if a module index requires full synchronization
         /// @param index The index/table to check

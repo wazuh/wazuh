@@ -44,7 +44,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                        const std::string& data) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps) override;
+        bool synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps, bool isFirst = false) override;
 
         /// @copydoc IAgentSyncProtocol::requiresFullSync
         bool requiresFullSync(const std::string& index,
