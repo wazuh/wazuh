@@ -9,6 +9,7 @@ from shutil import Error
 
 from wazuh import WazuhError, WazuhInternalError
 from wazuh.core import common, utils, results
+from wazuh.core.common import USER_TESTING_INTEGRATIONS_PATH, USER_PRODUCTION_INTEGRATIONS_PATH
 from wazuh.core.engine.models.policies import PolicyType
 from wazuh.core.engine.models.resources import ResourceType
 
@@ -48,6 +49,31 @@ def generate_asset_file_path(filename: str, policy_type: PolicyType, resource_ty
         The full file path for the asset.
     """
     base_path = path.join(common.USER_ASSETS_PATH, policy_type.dirname(), resource_type.dirname())
+    safe_filename = generate_asset_filename(filename)
+    if not safe_filename.endswith('.json'):
+        safe_filename += '.json'
+
+    return path.join(base_path, safe_filename)
+
+def generate_integrations_file_path(filename: str, policy_type: PolicyType) -> str:
+    """Generate the full file path for an integration based on its policy type.
+
+    Parameters
+    ----------
+    filename : str
+        The asset filename.
+    policy_type : PolicyType
+        The policy type for the asset.
+
+    Returns
+    -------
+    str
+        The full file path for the asset.
+    """
+    if policy_type == PolicyType.TESTING:
+        base_path = USER_TESTING_INTEGRATIONS_PATH
+    else:
+        base_path = USER_PRODUCTION_INTEGRATIONS_PATH
     safe_filename = generate_asset_filename(filename)
     if not safe_filename.endswith('.json'):
         safe_filename += '.json'

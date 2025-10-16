@@ -178,6 +178,29 @@ default_policies:
           - '*:*:*'
         effect: allow
 
+  integrations_read:
+    description: Allow reading all integrations files in the system.
+    policies:
+      resourceless:
+        actions:
+          - integrations:read
+        resources:
+          - '*:*:*'
+        effect: allow
+
+  integrations_all:
+    description: Allow managing all integrations files in the system.
+    policies:
+      resourceless:
+        actions:
+          - integrations:create
+          - integrations:read
+          - integrations:update
+          - integrations:delete
+        resources:
+          - '*:*:*'
+        effect: allow
+
   rootcheck_read:
     description: Allow read rootcheck information.
     policies:
