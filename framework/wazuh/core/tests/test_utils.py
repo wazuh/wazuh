@@ -2131,15 +2131,15 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
         True,
     ),
     (
-        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/etc/filebeat/certs/filebeat-key.pem</key></ssl>" \
+        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/var/ossec/etc/certs/server-key.pem</key></ssl>" \
         "</indexer></ossec_config>",
         "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
         True,
     ),
     (
-        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/etc/filebeat/certs/filebeat-key.pem</key></ssl>" \
+        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/var/ossec/etc/certs/server-key.pem</key></ssl>" \
         "</indexer></ossec_config>",
-        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>filebeat-key.pem</key></ssl></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>server-key.pem</key></ssl></indexer></ossec_config>",
         True,
     ),
     (
