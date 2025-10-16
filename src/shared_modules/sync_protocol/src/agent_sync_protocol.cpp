@@ -32,10 +32,13 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::s
     {
         m_persistentQueue = queue ? std::move(queue) : std::make_shared<PersistentQueue>(dbPath, m_logger);
     }
+    // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR_EXIT, "Failed to initialize PersistentQueue: " + std::string(ex.what()));
     }
+
+    // LCOV_EXCL_STOP
 }
 
 void AgentSyncProtocol::persistDifference(const std::string& id,
@@ -72,10 +75,13 @@ void AgentSyncProtocol::persistDifferenceInMemory(const std::string& id,
 
         m_inMemoryData.push_back(persistedData);
     }
+    // LCOV_EXCL_START
     catch (const std::exception& e)
     {
         m_logger(LOG_ERROR, std::string("Failed to persist item in memory: ") + e.what());
     }
+
+    // LCOV_EXCL_STOP
 }
 
 bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)

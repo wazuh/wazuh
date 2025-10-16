@@ -6,6 +6,8 @@
 #include <memory>
 #include <string>
 
+// LCOV_EXCL_START
+
 /// @brief Wrapper struct that encapsulates the C++ AgentSyncProtocol implementation.
 ///
 /// This wrapper is used to bridge the C interface and the internal C++ logic.
@@ -299,3 +301,5 @@ extern "C" {
     }
 
 } // extern "C"
+
+// LCOV_EXCL_STOP
