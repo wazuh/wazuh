@@ -974,7 +974,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
             extensionItem["package_path"]              = ext.value("path",                UNKNOWN_VALUE);
             extensionItem["browser_profile_name"]      = UNKNOWN_VALUE;
-            extensionItem["browser_profile_path"]      = UNKNOWN_VALUE;
+            extensionItem["browser_profile_path"]      = (ext.contains("location") && !ext["location"].get<std::string>().empty()) ? ext["location"] : UNKNOWN_VALUE;
             extensionItem["package_reference"]         = ext.value("source_url",          UNKNOWN_VALUE);
             extensionItem["package_permissions"]       = UNKNOWN_VALUE;
             extensionItem["package_type"]              = ext.value("type",                UNKNOWN_VALUE);
