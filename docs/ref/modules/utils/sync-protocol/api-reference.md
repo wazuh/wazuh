@@ -87,7 +87,8 @@ Persists a difference to in-memory vector instead of database. This method is us
 bool synchronizeModule(Mode mode,
                       std::chrono::seconds timeout,
                       unsigned int retries,
-                      size_t maxEps)
+                      size_t maxEps,
+                      bool isFirst)
 ```
 
 Initiates a synchronization session with the manager.
@@ -97,6 +98,7 @@ Initiates a synchronization session with the manager.
 - `timeout`: Maximum time to wait for each response
 - `retries`: Number of retry attempts for Start and End messages
 - `maxEps`: Maximum events per second (0 = unlimited)
+- `isFirst`: true if this is the first synchronization attempt
 
 **Returns:** `true` if synchronization completed successfully, `false` otherwise
 
@@ -303,7 +305,8 @@ bool asp_sync_module(AgentSyncProtocolHandle* handle,
                     Mode_t mode,
                     unsigned int sync_timeout,
                     unsigned int sync_retries,
-                    size_t max_eps)
+                    size_t max_eps,
+                    bool is_first = false)
 ```
 
 C wrapper for `synchronizeModule()`.
@@ -314,6 +317,7 @@ C wrapper for `synchronizeModule()`.
 - `sync_timeout`: Timeout in seconds
 - `sync_retries`: Number of retries
 - `max_eps`: Maximum events per second
+- `is_first`: true if this is the first synchronization attempt
 
 **Returns:** `true` on success, `false` on failure
 

@@ -71,12 +71,14 @@ void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
 /// @param sync_timeout The timeout for each attempt to receive a response, in seconds.
 /// @param sync_retries The maximum number of attempts for re-sending Start and End messages.
 /// @param max_eps The maximum event reporting throughput. 0 means disabled.
+/// @param is_first true if this is the first synchronization attempt.
 /// @return true if the sync was successfully processed; false otherwise.
 bool asp_sync_module(AgentSyncProtocolHandle* handle,
                      Mode_t mode,
                      unsigned int sync_timeout,
                      unsigned int sync_retries,
-                     size_t max_eps);
+                     size_t max_eps,
+                     bool is_first);
 
 /// @brief Checks if a module index requires full synchronization.
 ///

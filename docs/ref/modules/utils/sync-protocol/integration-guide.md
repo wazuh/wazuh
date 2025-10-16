@@ -532,7 +532,7 @@ public:
                 (const std::string&, Operation, const std::string&, const std::string&),
                 (override));
     MOCK_METHOD(bool, synchronizeModule,
-                (Mode, std::chrono::seconds, unsigned int, size_t),
+                (Mode, std::chrono::seconds, unsigned int, size_t, bool),
                 (override));
     MOCK_METHOD(bool, parseResponseBuffer,
                 (const uint8_t*, size_t),
