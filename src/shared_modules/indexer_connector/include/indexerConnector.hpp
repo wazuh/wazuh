@@ -128,8 +128,9 @@ class EXPORTED IndexerConnector final
      * @brief Handle indexer internal errors, this method is used to logs errors returned by the indexer.
      * @param response Response from the indexer.
      * @param events Events that were sent to the indexer.
+     * @return True if internal errors were found, false otherwise.
      */
-    void handleIndexerInternalErrors(const std::string& response, const std::vector<std::string>& events);
+    bool handleIndexerInternalErrors(const std::string& response, const std::vector<std::string>& events);
 
 public:
     /**

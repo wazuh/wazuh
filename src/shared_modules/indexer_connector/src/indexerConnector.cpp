@@ -204,9 +204,8 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append("\n");
 }
 
-void IndexerConnector::handleIndexerInternalErrors(const std::string& response, const std::vector<std::string>& events)
+bool IndexerConnector::handleIndexerInternalErrors(const std::string& response, const std::vector<std::string>& events)
 {
-
     simdjson::ondemand::parser parser;
     simdjson::padded_string paddedResponse(response);
 
@@ -214,8 +213,8 @@ void IndexerConnector::handleIndexerInternalErrors(const std::string& response, 
     auto parseError = parser.iterate(paddedResponse).get(doc);
     if (parseError)
     {
-        logDebug2("Failed to parse the indexer response: %s", response.c_str());
-        return;
+        logDebug2(IC_NAME, "Failed to parse the indexer response: %s", response.c_str());
+        return false;
     }
 
     // Check for request-level error format first
@@ -227,7 +226,7 @@ void IndexerConnector::handleIndexerInternalErrors(const std::string& response, 
         if (!getError)
         {
             handleRequestLevelError(errorValue);
-            return;
+            return true; // Found errors
         }
     }
 
@@ -245,12 +244,13 @@ void IndexerConnector::handleIndexerInternalErrors(const std::string& response, 
 
     if (!hasErrors)
     {
-        logDebug2(IC_NAME, "Response: %s", response.c_str());
-        return;
+        // Success - no errors found
+        return false;
     }
 
     // Handle bulk operation errors
     handleBulkOperationErrors(doc, events);
+    return true; // Found errors
 }
 
 void IndexerConnector::handleRequestLevelError(simdjson::ondemand::value& errorObj)
@@ -869,8 +869,14 @@ IndexerConnector::IndexerConnector(
 
                 const auto onSuccess = [this, bulkSize, events](const std::string& response)
                 {
-                    handleIndexerInternalErrors(response, events);
+                    // Parse and handle internal errors
+                    bool hadErrors = handleIndexerInternalErrors(response, events);
 
+                    if (!hadErrors)
+                    {
+                        // Only log on clean success (no errors in bulk response)
+                        logDebug2(IC_NAME, "Bulk operation completed successfully, %zu items processed", events.size());
+                    }
                     // If the request was successful and the current bulk size is less than ELEMENTS_PER_BULK, increase
                     // the bulk size if the success count is SUCCESS_COUNT_TO_INCREASE_BULK_SIZE
 
@@ -937,23 +943,17 @@ IndexerConnector::IndexerConnector(
                                                      "indexer.");
                         }
                     }
-                    else if (statusCode == HTTP_BAD_REQUEST)
+                    else if (statusCode == HTTP_BAD_REQUEST || statusCode == HTTP_UNAUTHORIZED ||
+                             statusCode == HTTP_FORBIDDEN || statusCode == HTTP_NOT_FOUND)
                     {
-
-                        // For bulk operations, a 400 can mean individual item errors
-                        // Try to parse and handle internal errors
-                        handleIndexerInternalErrors(error, events);
-
                         logWarn(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
-                        throw std::runtime_error(error);
-                    }
-                    else if (statusCode == HTTP_UNAUTHORIZED || statusCode == HTTP_FORBIDDEN ||
-                             statusCode == HTTP_NOT_FOUND)
-                    {
+
+                        // For bulk operations, a 4xx can mean individual item errors
+                        // Try to parse and handle internal errors
+
                         handleIndexerInternalErrors(error, events);
                         throw std::runtime_error(error);
                     }
-
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
                         logDebug2(IC_NAME, "Document version conflict, retrying in 1 second.");
