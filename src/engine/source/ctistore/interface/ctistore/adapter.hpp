@@ -65,6 +65,10 @@ json::Json adaptDecoder(const json::Json& document)
         {
             result.setString(*nameOpt, "/name");
         }
+        else
+        {
+            throw std::runtime_error("Decoder document /name is not a string");
+        }
     }
 
     // 2. metadata
@@ -88,36 +92,9 @@ json::Json adaptDecoder(const json::Json& document)
     }
 
     // 3. definitions
-    if (document.exists("/definitions"))
+    if (auto defJsonOpt = document.getJson("/definitions"); defJsonOpt.has_value())
     {
-        // If is string, parse and assign
-        if (auto defStrOpt = document.getString("/definitions"); defStrOpt.has_value())
-        {
-            try
-            {
-                json::Json defJson(defStrOpt.value().c_str());
-                result.set("/definitions", defJson);
-            }
-            catch (const std::exception& e)
-            {
-                // Not a valid JSON string, log and continue
-                throw std::runtime_error(fmt::format("Decoder definitions is not valid JSON string: {}", e.what()));
-            }
-        }
-        else if (document.isObject("/definitions"))
-        {
-            // Already an object, copy as-is
-            // TODO: Delete this
-            auto defJsonOpt = document.getJson("/definitions");
-            if (defJsonOpt.has_value())
-            {
-                result.set("/definitions", *defJsonOpt);
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Decoder definitions is neither a JSON string nor an object");
-        }
+        result.set("/definitions", *defJsonOpt);
     }
 
     // Copy /check
@@ -155,19 +132,47 @@ json::Json adaptDecoder(const json::Json& document)
         const auto& normalizeArray = *normalizeOpt;
         for (const auto& element : normalizeArray)
         {
-            if (element.isString())
+            if (element.isObject())
             {
-                const auto jStr = element.getString().value_or("error type");
-                result.appendJson(json::Json(jStr.c_str()), "/normalize");
-            }
-            else if (element.isObject())
-            {
-                // TODO: Delete this
-                const auto jObjOpt = element.getJson();
-                if (jObjOpt.has_value())
+                json::Json orderedObj;
+                orderedObj.setObject();
+
+                // Order keys check, parse|.*, map
+                if (element.exists("/check"))
                 {
-                    result.appendJson(*jObjOpt, "/normalize");
+                    auto checkOpt = element.getJson("/check");
+                    if (checkOpt.has_value())
+                    {
+                        orderedObj.set("/check", *checkOpt);
+                    }
                 }
+
+                {
+                    const auto fullElemOpt = element.getObject();
+                    if (!fullElemOpt.has_value())
+                    {
+                        throw std::runtime_error("Decoder normalize array contains invalid element, not an object");
+                    }
+                    for (const auto& [key, value] : *fullElemOpt)
+                    {
+                        if (key.find("parse|") == 0)
+                        {
+                            orderedObj.set(fmt::format("/{}", key), value);
+                            break; // Only one parse|XXX expected
+                        }
+                    }
+                }
+
+                if (element.exists("/map"))
+                {
+                    auto mapOpt = element.getJson("/map");
+                    if (mapOpt.has_value())
+                    {
+                        orderedObj.set("/map", *mapOpt);
+                    }
+                }
+
+                result.appendJson(orderedObj, "/normalize");
             }
             else
             {
