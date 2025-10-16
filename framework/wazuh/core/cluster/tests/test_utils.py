@@ -27,7 +27,7 @@ default_cluster_config = {
     'key': '',
     'port': 1516,
     'bind_addr': '127.0.0.1',
-    'nodes': ['NODE_IP'],
+    'nodes': ['127.0.0.1'],
     'hidden': 'no'
 }
 
