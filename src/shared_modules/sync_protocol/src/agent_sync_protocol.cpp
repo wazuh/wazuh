@@ -9,19 +9,19 @@
 
 #include "agent_sync_protocol.hpp"
 #include "ipersistent_queue.hpp"
+#include "isync_message_transport.hpp"
+#include "sync_message_transport.hpp"
 #include "persistent_queue.hpp"
 #include "defs.h"
 #include "metadata_provider.h"
 
 #include <flatbuffers/flatbuffers.h>
+#include <memory>
 #include <thread>
 #include <set>
 
-constexpr char SYNC_MQ = 's';
-
 AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::string& dbPath, MQ_Functions mqFuncs, LoggerFunc logger, std::shared_ptr<IPersistentQueue> queue)
     : m_moduleName(moduleName),
-      m_mqFuncs(mqFuncs),
       m_logger(std::move(logger))
 {
     if (!m_logger)
@@ -32,6 +32,21 @@ AgentSyncProtocol::AgentSyncProtocol(const std::string& moduleName, const std::s
     try
     {
         m_persistentQueue = queue ? std::move(queue) : std::make_shared<PersistentQueue>(dbPath, m_logger);
+
+#if CLIENT
+        m_transport = SyncTransportFactory::createDefaultTransport(moduleName, mqFuncs, m_logger);
+#else
+        auto responseCallback = [this](const std::vector<char>& data)
+        {
+            parseResponseBuffer(reinterpret_cast<const uint8_t*>(data.data()), data.size());
+        };
+        m_transport = SyncTransportFactory::createDefaultTransport("000", "manager", "127.0.0.1", moduleName, m_logger, std::move(responseCallback));
+#endif
+
+        if (!m_transport || !m_transport->initialize())
+        {
+            m_logger(LOG_ERROR_EXIT, "Failed to initialize transport for module: " + moduleName);
+        }
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
@@ -96,9 +111,8 @@ bool AgentSyncProtocol::synchronizeModule(Mode mode, std::chrono::seconds timeou
         return false;
     }
 
-    if (!ensureQueueAvailable())
+    if (!m_transport->checkStatus())
     {
-        m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
         return false;
     }
 
@@ -206,9 +220,8 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
                                          unsigned int retries,
                                          size_t maxEps)
 {
-    if (!ensureQueueAvailable())
+    if (!m_transport->checkStatus())
     {
-        m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
         return false; // Return false as this is not a checksum error from manager
     }
 
@@ -281,9 +294,8 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
         return false;
     }
 
-    if (!ensureQueueAvailable())
+    if (!m_transport->checkStatus())
     {
-        m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
         return false;
     }
 
@@ -335,9 +347,8 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
         return false;
     }
 
-    if (!ensureQueueAvailable())
+    if (!m_transport->checkStatus())
     {
-        m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
         return false;
     }
 
@@ -399,29 +410,7 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     return success;
 }
 
-bool AgentSyncProtocol::ensureQueueAvailable()
-{
-    try
-    {
-        if (m_queue < 0)
-        {
-            m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
-
-            if (m_queue < 0)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-    catch (const std::exception& e)
-    {
-        m_logger(LOG_ERROR, std::string("Exception when checking queue availability: ") + e.what());
-    }
-
-    return false;
-}
+// Removed ensureQueueAvailable; handled by transport implementation
 
 bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t dataSize,
@@ -858,28 +847,7 @@ bool AgentSyncProtocol::receiveEndAck(std::chrono::seconds timeout)
 
 bool AgentSyncProtocol::sendFlatBufferMessageAsString(const std::vector<uint8_t>& fbData, size_t maxEps)
 {
-    if (m_mqFuncs.send_binary(m_queue, fbData.data(), fbData.size(), m_moduleName.c_str(), SYNC_MQ) < 0)
-    {
-        m_logger(LOG_ERROR, "SendMSG failed, attempting to reinitialize queue...");
-        m_queue = m_mqFuncs.start(DEFAULTQUEUE, WRITE, 0);
-
-        if (m_queue < 0 || m_mqFuncs.send_binary(m_queue, fbData.data(), fbData.size(), m_moduleName.c_str(), SYNC_MQ) < 0)
-        {
-            m_logger(LOG_ERROR, "SendMSG failed to send message after retry");
-            return false;
-        }
-    }
-
-    if (maxEps > 0)
-    {
-        if (++m_msgSent >= maxEps)
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            m_msgSent.store(0);
-        }
-    }
-
-    return true;
+    return m_transport->sendMessage(fbData, maxEps);
 }
 
 bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)

@@ -13,6 +13,7 @@
 #include "agent_sync_protocol_c_interface_types.h"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
+#include "isync_message_transport.hpp"
 
 #include <atomic>
 #include <condition_variable>
@@ -89,8 +90,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Name of the module associated with this instance.
         std::string m_moduleName;
 
-        /// @brief Functions used to interact with MQueue.
-        MQ_Functions m_mqFuncs;
+        /// @brief The message transport (MQueue or Router).
+        std::unique_ptr<ISyncMessageTransport> m_transport;
 
         /// @brief Persistent message queue used to store and replay differences for synchronization.
         std::shared_ptr<IPersistentQueue> m_persistentQueue;
@@ -98,21 +99,11 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Logger function
         LoggerFunc m_logger;
 
-        /// @brief Queue
-        int m_queue = -1;
-
-        /// @brief Sent message counter for eps control
-        std::atomic<size_t> m_msgSent{0};
-
         /// @brief Stop flag to abort ongoing operations
         std::atomic<bool> m_stopRequested{false};
 
         /// @brief In-memory vector to store PersistedData for recovery scenarios
         std::vector<PersistedData> m_inMemoryData;
-
-        /// @brief Ensures that the queue is available
-        /// @return True on success, false on failure
-        bool ensureQueueAvailable();
 
         /// @brief Sends a start message to the server
         /// @param mode Sync mode

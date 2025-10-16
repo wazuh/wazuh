@@ -81,8 +81,15 @@ add_library(agent_sync_protocol SHARED
   src/metadata_provider.cpp
   ${GENERATED_HEADER}
   src/agent_sync_protocol_c_interface.cpp
+  src/sync_message_transport.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/../../${RESOURCE_OBJ}
 )
+
+if(CLIENT)
+    target_sources(agent_sync_protocol PRIVATE src/mqueue_transport.cpp)
+else()
+    target_sources(agent_sync_protocol PRIVATE src/router_transport.cpp)
+endif()
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
 target_include_directories(agent_sync_protocol
