@@ -74,7 +74,6 @@ jobs:
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
 
-          sudo sed -i "s:<key></key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:g" /var/ossec/etc/ossec.conf
           sudo /var/ossec/bin/wazuh-control restart
       # Download and install integration tests framework.
       - name: Download and install integration tests framework

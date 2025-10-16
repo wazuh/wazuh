@@ -195,7 +195,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
-        'key': '',
+        'key': 'fd3350b86d239654e34866ab3c4988a8',
         'port': 1516,
         'bind_addr': '127.0.0.1',
         'nodes': ['127.0.0.1'],
