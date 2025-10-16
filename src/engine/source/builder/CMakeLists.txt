@@ -143,6 +143,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/opmap/ip_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/time_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/hash_test.cpp
+    ${UNIT_SRC_DIR}/builders/opmap/syslogFacilityAndSeverityName_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/kvdb_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/mmdb_test.cpp
     ${UNIT_SRC_DIR}/builders/opmap/networkCommunityId_test.cpp
