@@ -22,3 +22,25 @@ void expect_CloseHandle_call(HANDLE object, int ret) {
     expect_value(wrap_CloseHandle, hObject, object);
     will_return(wrap_CloseHandle, ret);
 }
+
+BOOL wrap_CreatePipe(PHANDLE hReadPipe,
+                     PHANDLE hWritePipe,
+                     LPSECURITY_ATTRIBUTES lpPipeAttributes,
+                     DWORD nSize) {
+    if (mock_type(BOOL)) {
+        // Simulate valid handles when successful
+        *hReadPipe = mock_type(HANDLE);
+        *hWritePipe = mock_type(HANDLE);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL wrap_SetHandleInformation(HANDLE hObject,
+                                DWORD dwMask,
+                                DWORD dwFlags) {
+    check_expected(hObject);
+    check_expected(dwMask);
+    check_expected(dwFlags);
+    return mock_type(BOOL);
+}
