@@ -1346,8 +1346,8 @@ int wdb_browser_extensions_insert(wdb_t * wdb, const browser_extension_record_t 
         strlen(browser_extension_record->browser_name) == 0 ||
         NULL == browser_extension_record->user_id ||
         strlen(browser_extension_record->user_id) == 0 ||
-        NULL == browser_extension_record->browser_profile_name ||
-        strlen(browser_extension_record->browser_profile_name) == 0 ||
+        NULL == browser_extension_record->browser_profile_path ||
+        strlen(browser_extension_record->browser_profile_path) == 0 ||
         NULL == browser_extension_record->package_name ||
         strlen(browser_extension_record->package_name) == 0 ||
         NULL == browser_extension_record->package_version ||

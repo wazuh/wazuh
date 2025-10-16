@@ -313,7 +313,7 @@ CREATE TABLE IF NOT EXISTS sys_browser_extensions (
     file_hash_sha256 TEXT,
     checksum TEXT NOT NULL CHECK (checksum <> ''),
     item_id TEXT,
-    PRIMARY KEY (browser_name, user_id, browser_profile_name, package_name, package_version)
+    PRIMARY KEY (browser_name, user_id, browser_profile_path, package_name, package_version)
 );
 
 CREATE TABLE IF NOT EXISTS sys_services (
