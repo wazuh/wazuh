@@ -289,6 +289,9 @@ nlohmann::json SysInfo::getOsInfo() const
         ret["architecture"] = MAC_ROSETTA_DEFAULT_ARCH;
     }
 
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "macos";
+
     return ret;
 }
 
