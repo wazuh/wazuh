@@ -84,6 +84,9 @@ add_library(agent_sync_protocol SHARED
 )
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
+# Mark generated header as generated so coverage tools ignore it
+#set_source_files_properties(${GENERATED_HEADER} PROPERTIES GENERATED TRUE)
+
 target_include_directories(agent_sync_protocol
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
