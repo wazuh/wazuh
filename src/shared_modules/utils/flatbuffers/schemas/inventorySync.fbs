@@ -33,6 +33,7 @@ table DataValue {
 }
 
 table Start {
+    module: string;
     mode: Mode;
     size: ulong;
     index: [string];

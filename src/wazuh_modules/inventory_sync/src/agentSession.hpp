@@ -82,11 +82,6 @@ class AgentSessionImpl final
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
-                              std::string_view agentId,
-                              std::string_view moduleName,
-                              std::string_view agentName,
-                              std::string_view agentIp,
-                              std::string_view agentVersion,
                               Wazuh::SyncSchema::Start const* data,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
@@ -99,6 +94,12 @@ public:
         {
             throw AgentSessionException("Invalid data");
         }
+
+        // Extract agent info and module from Start message
+        auto agentId = data->agentid() ? data->agentid()->string_view() : std::string_view();
+        auto agentName = data->agentname() ? data->agentname()->string_view() : std::string_view();
+        auto agentVersion = data->agentversion() ? data->agentversion()->string_view() : std::string_view();
+        auto moduleName = data->module_() ? data->module_()->string_view() : std::string_view();
 
         auto agentIdString = std::string(agentId.data(), agentId.size());
         if (agentIdString.length() < 3)
@@ -120,7 +121,6 @@ public:
                                                .sessionId = sessionId,
                                                .agentId = std::move(agentIdString),
                                                .agentName = std::string(agentName.data(), agentName.size()),
-                                               .agentIp = std::string(agentIp.data(), agentIp.size()),
                                                .agentVersion = std::string(agentVersion.data(), agentVersion.size()),
                                                .moduleName = std::string(moduleName.data(), moduleName.size())});
 

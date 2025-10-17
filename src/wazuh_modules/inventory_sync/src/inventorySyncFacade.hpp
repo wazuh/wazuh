@@ -13,7 +13,6 @@
 #define _INVENTORY_SYNC_FACADE_HPP
 
 #include "agentSession.hpp"
-#include "flatbuffers/include/agentInfo_generated.h"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "loggerHelper.h"
 #include "routerSubscriber.hpp"
@@ -84,118 +83,103 @@ class InventorySyncFacadeImpl final
 
     void run(const std::vector<char>& dataRaw)
     {
-        auto message = Wazuh::Sync::GetAgentInfo(dataRaw.data());
+        auto syncMessage = Wazuh::SyncSchema::GetMessage(dataRaw.data());
 
-        if (message->id() == nullptr || message->module_() == nullptr)
+        if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataValue)
         {
-            throw InventorySyncException("Invalid message buffer");
-        }
-
-        auto agentId = message->id()->string_view();
-        auto moduleName = message->module_()->string_view();
-
-        auto agentName = message->name() ? message->name()->string_view() : std::string_view();
-        auto agentIp = message->ip() ? message->ip()->string_view() : std::string_view();
-        auto agentVersion = message->version() ? message->version()->string_view() : std::string_view();
-
-        flatbuffers::Verifier verifier(message->data()->data(), message->data()->size());
-        if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
-        {
-            auto syncMessage = Wazuh::SyncSchema::GetMessage(message->data()->data());
-            if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataValue)
+            const auto data = syncMessage->content_as<Wazuh::SyncSchema::DataValue>();
+            if (!data)
             {
-                const auto data = syncMessage->content_as<Wazuh::SyncSchema::DataValue>();
-                if (!data)
-                {
-                    throw InventorySyncException("Invalid data message");
-                }
-
-                // Check if session exists.
-                std::shared_lock lock(m_agentSessionsMutex);
-                if (auto it = m_agentSessions.find(data->session()); it == m_agentSessions.end())
-                {
-                    logDebug2(LOGGER_DEFAULT_TAG,
-                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                              data->session());
-                }
-                else
-                {
-                    // Handle data.
-                    it->second.handleData(data, message->data());
-                    logDebug2(LOGGER_DEFAULT_TAG,
-                              "InventorySyncFacade::start: Data handled for session %llu",
-                              data->session());
-                }
+                throw InventorySyncException("Invalid data message");
             }
-            else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
-            {
-                if (!m_indexerConnector->isAvailable())
-                {
-                    logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: No available server");
-                    m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
-                }
-                else
-                {
 
-                    // Generate random number for session ID.
-                    std::random_device rd;
-                    std::mt19937 gen(rd());
-                    std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
-                    const auto sessionId = dis(gen);
-                    {
-                        std::unique_lock lock(m_agentSessionsMutex);
-                        // Check if session already exists.
-                        if (m_agentSessions.contains(sessionId))
-                        {
-                            throw InventorySyncException("Session already exists");
-                        }
-
-                        m_agentSessions.try_emplace(sessionId,
-                                                    sessionId,
-                                                    agentId,
-                                                    moduleName,
-                                                    agentName,
-                                                    agentIp,
-                                                    agentVersion,
-                                                    syncMessage->content_as<Wazuh::SyncSchema::Start>(),
-                                                    *m_dataStore,
-                                                    *m_indexerQueue,
-                                                    *m_responseDispatcher);
-                        logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Session created %llu", sessionId);
-                    }
-                }
-            }
-            else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
+            // Check if session exists.
+            std::shared_lock lock(m_agentSessionsMutex);
+            if (auto it = m_agentSessions.find(data->session()); it == m_agentSessions.end())
             {
-                const auto end = syncMessage->content_as<Wazuh::SyncSchema::End>();
-                if (!end)
-                {
-                    throw InventorySyncException("Invalid end message");
-                }
-                // Check if session exists.
-                std::shared_lock lock(m_agentSessionsMutex);
-                if (auto it = m_agentSessions.find(end->session()); it == m_agentSessions.end())
-                {
-                    logDebug2(LOGGER_DEFAULT_TAG,
-                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                              end->session());
-                }
-                else
-                {
-                    // Handle end.
-                    it->second.handleEnd(*m_responseDispatcher);
-                    logDebug2(
-                        LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: End handled for session %llu", end->session());
-                }
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                          data->session());
             }
             else
             {
-                throw InventorySyncException("Invalid message type");
+                // Handle data - wrap the raw flatbuffer bytes in a Vector
+                flatbuffers::FlatBufferBuilder builder(dataRaw.size());
+                auto vec = builder.CreateVector(reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
+                builder.Finish(vec);
+
+                it->second.handleData(data,
+                                      flatbuffers::GetRoot<flatbuffers::Vector<uint8_t>>(builder.GetBufferPointer()));
+                logDebug2(
+                    LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Data handled for session %llu", data->session());
+            }
+        }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
+        {
+            const auto startMsg = syncMessage->content_as<Wazuh::SyncSchema::Start>();
+            if (!startMsg)
+            {
+                throw InventorySyncException("Invalid start message");
+            }
+
+            // Extract agent ID and module name from Start message
+            auto agentId = startMsg->agentid() ? startMsg->agentid()->string_view() : std::string_view();
+            auto moduleName = startMsg->module_() ? startMsg->module_()->string_view() : std::string_view();
+
+            if (!m_indexerConnector->isAvailable())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: No available server");
+                m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
+            }
+            else
+            {
+                // Generate random number for session ID.
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX);
+                const auto sessionId = dis(gen);
+                {
+                    std::unique_lock lock(m_agentSessionsMutex);
+                    // Check if session already exists.
+                    if (m_agentSessions.contains(sessionId))
+                    {
+                        throw InventorySyncException("Session already exists");
+                    }
+
+                    // AgentSession will extract all info (including module) from Start message
+                    m_agentSessions.try_emplace(
+                        sessionId, sessionId, startMsg, *m_dataStore, *m_indexerQueue, *m_responseDispatcher);
+                    logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Session created %llu", sessionId);
+                }
+            }
+        }
+        else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
+        {
+            const auto end = syncMessage->content_as<Wazuh::SyncSchema::End>();
+            if (!end)
+            {
+                throw InventorySyncException("Invalid end message");
+            }
+
+            // Check if session exists.
+            std::shared_lock lock(m_agentSessionsMutex);
+            if (auto it = m_agentSessions.find(end->session()); it == m_agentSessions.end())
+            {
+                logDebug2(LOGGER_DEFAULT_TAG,
+                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                          end->session());
+            }
+            else
+            {
+                // Handle end.
+                it->second.handleEnd(*m_responseDispatcher);
+                logDebug2(
+                    LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: End handled for session %llu", end->session());
             }
         }
         else
         {
-            throw InventorySyncException("Invalid message buffer");
+            throw InventorySyncException("Invalid message type");
         }
     }
 
@@ -240,7 +224,7 @@ public:
                 try
                 {
                     flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                    if (Wazuh::Sync::VerifyAgentInfoBuffer(verifier))
+                    if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
                     {
                         logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Processing message...");
                         run(dataRaw);

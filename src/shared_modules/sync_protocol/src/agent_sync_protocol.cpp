@@ -346,6 +346,9 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
     {
         flatbuffers::FlatBufferBuilder builder;
 
+        // Create module name string
+        auto module = builder.CreateString(m_moduleName);
+
         // Translate DB mode to Schema mode
         const auto protocolMode = toProtocolMode(mode);
 
@@ -378,6 +381,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         auto indices = builder.CreateVector(index_vec);
 
         Wazuh::SyncSchema::StartBuilder startBuilder(builder);
+        startBuilder.add_module_(module);
         startBuilder.add_mode(protocolMode);
         startBuilder.add_size(static_cast<uint64_t>(dataSize));
         startBuilder.add_index(indices);

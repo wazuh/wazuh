@@ -60,7 +60,7 @@ STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storag
 #define INVENTORY_SYNC_HEADER_SIZE 2
 
 // Router message forwarder
-void router_message_forward(char* msg, size_t msg_length, const char* agent_id, const char* agent_ip, const char* agent_name);
+void router_message_forward(char* msg, size_t msg_length, const char* agent_id);
 
 // Message handler thread
 static void * rem_handler_main(void * args);
@@ -585,8 +585,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     char srcip[IPSIZE + 1] = {0};
     char agname[KEYSIZE + 1] = {0};
     char *agentid_str = NULL;
-    char *agent_ip = NULL;
-    char *agent_name = NULL;
     char buffer[OS_MAXSTR + 1] = "";
     char *tmp_msg;
     size_t msg_length;
@@ -949,8 +947,6 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     }
 
     os_strdup(keys.keyentries[agentid]->id, agentid_str);
-    os_strdup(keys.keyentries[agentid]->name, agent_name);
-    os_strdup(keys.keyentries[agentid]->ip->ip, agent_ip);
 
     key_unlock();
 
@@ -973,20 +969,16 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         // If router forwarding is disabled, do not forward events to subscribers
         mdebug2("Router forwarding is disabled, not forwarding message from agent '%s'.", agentid_str);
         os_free(agentid_str);
-        os_free(agent_ip);
-        os_free(agent_name);
         return;
     }
 
     // Forwarding events to subscribers
-    router_message_forward(tmp_msg, msg_length, agentid_str, agent_ip, agent_name);
+    router_message_forward(tmp_msg, msg_length, agentid_str);
 
     os_free(agentid_str);
-    os_free(agent_ip);
-    os_free(agent_name);
 }
 
-void router_message_forward(char* msg, size_t msg_length, const char* agent_id, const char* agent_ip, const char* agent_name) {
+void router_message_forward(char* msg, size_t msg_length, const char* agent_id) {
 
     mdebug2("Forwarding message to router");
 
@@ -1054,24 +1046,10 @@ void router_message_forward(char* msg, size_t msg_length, const char* agent_id, 
         // Calculate safe message size
         size_t msg_size = msg_length - payload_offset;
 
-        // Temporarily null-terminate module name (save original char)
-        char saved_char = *colon;
-        *colon = '\0';
-
-        struct agent_ctx agent_ctx = {
-            .id = agent_id,
-            .name = agent_name,
-            .ip = agent_ip,
-            .version = (char *)OSHash_Get_ex(agent_data_hash, agent_id),
-            .module = msg_start
-        };
-
-        if (router_provider_send_fb_agent_ctx(router_sync_handle, msg_to_send, msg_size, &agent_ctx) != 0) {
+        // Send the raw flatbuffer to inventory sync
+        if (router_provider_send(router_sync_handle, msg_to_send, msg_size) != 0) {
             mdebug2("Unable to forward message for agent '%s'.", agent_id);
         }
-
-        // Restore original character
-        *colon = saved_char;
     }
     else if (message_type == MT_UPGRADE_ACK) {
 

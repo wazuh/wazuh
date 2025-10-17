@@ -22,7 +22,6 @@ struct Context final
     uint64_t sessionId;
     std::string agentId;
     std::string agentName;
-    std::string agentIp;
     std::string agentVersion;
     std::string moduleName;
     bool transactionDispatched = false;
