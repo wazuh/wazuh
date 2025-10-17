@@ -12,6 +12,7 @@
  * Copyright (C) 2003 Daniel B. Cid <daniel@underlinux.com.br>
  */
 
+#include "debug_op.h"
 #include "shared.h"
 #include "syscheck.h"
 #include "../rootcheck/rootcheck.h"
@@ -89,6 +90,7 @@ static int fim_send_binary_msg(int queue, const void* message, size_t message_le
 
 
 void fim_initialize() {
+    bool db_file_exists = w_is_file(FIM_DB_DISK_PATH);
     // Create store data
 #ifndef WIN32
     FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
@@ -106,6 +108,13 @@ void fim_initialize() {
 
     if (ret_val != FIMDB_OK) {
         merror_exit("Unable to initialize database.");
+    }
+
+    if (db_file_exists) {
+        fim_db_set_first_scan_has_been_synched();
+        mdebug2("db's first scan has previosuly been synched");
+    } else {
+           mdebug2("db's first scan has not been synched yet");
     }
 
     w_rwlock_init(&syscheck.directories_lock, NULL);
