@@ -10209,7 +10209,7 @@ paths:
                       major: 4
                       minor: 8
                       patch: 2
-                  uuid": "edc90f7f-fca4-446c-8985-e69520948e42"
+                  uuid: "edc90f7f-fca4-446c-8985-e69520948e42"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
