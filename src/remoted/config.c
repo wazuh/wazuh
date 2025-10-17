@@ -192,7 +192,7 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"recv_counter_flush",_s_recv_flush);
     cJSON_AddNumberToObject(remoted,"comp_average_printout",_s_comp_print);
     cJSON_AddNumberToObject(remoted,"verify_msg_id",_s_verify_counter);
-    cJSON_AddNumberToObject(remoted,"recv_timeout",timeout);
+    cJSON_AddNumberToObject(remoted,"recv_timeout",recv_timeout);
     cJSON_AddNumberToObject(remoted,"pass_empty_keyfile",pass_empty_keyfile);
     cJSON_AddNumberToObject(remoted,"sender_pool",sender_pool);
     cJSON_AddNumberToObject(remoted,"request_pool",request_pool);
@@ -214,6 +214,12 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"tcp_keepidle",tcp_keepidle);
     cJSON_AddNumberToObject(remoted,"tcp_keepintvl",tcp_keepintvl);
     cJSON_AddNumberToObject(remoted,"tcp_keepcnt",tcp_keepcnt);
+    cJSON_AddNumberToObject(remoted,"debug",isDebug());
+    cJSON_AddNumberToObject(remoted,"worker_pool",worker_pool);
+    cJSON_AddNumberToObject(remoted,"control_msg_queue_size",ctrl_msg_queue_size);
+    cJSON_AddNumberToObject(remoted,"keyupdate_interval",keyupdate_interval);
+    cJSON_AddNumberToObject(remoted,"router_forwarding_disabled",router_forwarding_disabled);
+    cJSON_AddNumberToObject(remoted,"state_interval",state_interval);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);
     cJSON_AddItemToObject(root,"internal",internals);
