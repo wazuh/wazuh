@@ -36,7 +36,7 @@
         </indexer>
         <cluster>
           <key>9d273b53510fef702b54a92e9cffc82e</key>
-          <bind_addr>localhost</bind_addr>
+          <bind_addr>127.0.0.1</bind_addr>
           <nodes>
               <node>node01</node>
           </nodes>
@@ -87,7 +87,7 @@
         </remote>
         <cluster>
           <key>9d273b53510fef702b54a92e9cffc82e</key>
-          <bind_addr>localhost</bind_addr>
+          <bind_addr>127.0.0.1</bind_addr>
           <nodes>
               <node>node01</node>
           </nodes>
@@ -138,7 +138,7 @@
         </indexer>
         <cluster>
           <key>9d273b53510fef702b54a92e9cffc82e</key>
-          <bind_addr>localhost</bind_addr>
+          <bind_addr>127.0.0.1</bind_addr>
           <nodes>
               <node>node01</node>
           </nodes>

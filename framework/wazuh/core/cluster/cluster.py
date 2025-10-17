@@ -106,7 +106,7 @@ def check_cluster_config(config):
         If any of above conditions is not met.
     """
     iv = InputValidator()
-    reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
+    reservated_ips = {'localhost', '0.0.0.0', '127.0.1.1'}
 
     if len(config['key']) == 0:
         raise WazuhError(3004, 'Unspecified key')
