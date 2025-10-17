@@ -1344,13 +1344,13 @@ time_t get_UTC_modification_time(const char *file){
     FILETIME modification_date;
     if (hdle = wCreateFile(file, GENERIC_READ, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL), \
         hdle == INVALID_HANDLE_VALUE) {
-        mferror(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
+        mdebug2(FIM_WARN_OPEN_HANDLE_FILE, file, GetLastError());
         return 0;
     }
 
     if (!GetFileTime(hdle, NULL, NULL, &modification_date)) {
         CloseHandle(hdle);
-        mferror(FIM_WARN_GET_FILETIME, file, GetLastError());
+        mdebug2(FIM_WARN_GET_FILETIME, file, GetLastError());
         return 0;
     }
 
@@ -1382,7 +1382,7 @@ int rename_ex(const char *source, const char *destination)
         HANDLE hFile = wCreateFile(destination, dwDesiredAccess, dwShareMode, NULL, dwCreationDisposition, dwFlagsAndAttributes, NULL);
 
         if (hFile == INVALID_HANDLE_VALUE) {
-            mferror("Could not create file (%s) which returned (%lu)", destination, GetLastError());
+            mdebug2("Could not create file (%s) which returned (%lu)", destination, GetLastError());
             return -1;
         }
 
@@ -1391,7 +1391,7 @@ int rename_ex(const char *source, const char *destination)
     }
 
     if (!utf8_ReplaceFile(destination, source, NULL, 0)) {
-        mferror("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
+        mdebug2("Could not move (%s) to (%s) which returned (%lu)", source, destination, GetLastError());
 
         if (file_created) {
             // Delete the destination file as it's been created by this function.
@@ -2166,7 +2166,7 @@ FILE * w_fopen_r(const char *file, const char * mode, BY_HANDLE_FILE_INFORMATION
     }
 
     if (GetFileInformationByHandle(h, lpFileInformation) == 0) {
-        merror(FILE_ERROR, file);
+        mdebug2(FILE_ERROR, file);
     }
 
     if (fd = _open_osfhandle((intptr_t)h, 0), fd == -1) {
@@ -3293,10 +3293,10 @@ DWORD FileSizeWin(const char * file) {
                     FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                     NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h1 == INVALID_HANDLE_VALUE) {
-        merror(FILE_ERROR, file);
+        mdebug2(FILE_ERROR, file);
     } else if (GetFileInformationByHandle(h1, &lpFileInfo) == 0) {
         CloseHandle(h1);
-        merror(FILE_ERROR, file);
+        mdebug2(FILE_ERROR, file);
     } else {
         CloseHandle(h1);
         return lpFileInfo.nFileSizeHigh + lpFileInfo.nFileSizeLow;
@@ -3322,7 +3322,7 @@ float DirSize(const char *path) {
     swprintf(wsPath, sizeof(wsPath) / sizeof(wsPath[0]), L"%ls\\*.*", wPathInput);
 
     if ((hFind = FindFirstFileW(wsPath, &fdFile)) == INVALID_HANDLE_VALUE) {
-        merror(FILE_ERROR, path);
+        mdebug2(FILE_ERROR, path);
         os_free(wPathInput);
         return 0;
     }
