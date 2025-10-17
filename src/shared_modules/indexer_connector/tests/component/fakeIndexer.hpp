@@ -35,7 +35,7 @@ private:
     std::atomic<bool> m_indexerInitialized = false;
     std::function<void(const std::string&)> m_initTemplateCallback = {};
     std::function<void(const std::string&)> m_initIndexCallback = {};
-    std::function<void(const std::string&)> m_publishCallback = {};
+    std::function<std::pair<int, std::string>(const std::string&)> m_publishCallback = {};
     std::function<std::string(const std::string&)> m_searchCallback = {};
     std::function<void(const std::string&)> m_deleteScrollCallback = {};
 
@@ -95,7 +95,7 @@ public:
      *
      * @param callback New callback.
      */
-    void setPublishCallback(std::function<void(const std::string&)> callback)
+    void setPublishCallback(std::function<std::pair<int, std::string>(const std::string&)> callback)
     {
         m_publishCallback = std::move(callback);
     }
@@ -233,10 +233,15 @@ public:
                           {
                               if (m_publishCallback)
                               {
-                                  m_publishCallback(req.body);
+                                  auto [statusCode, content] = m_publishCallback(req.body);
+                                  res.status = statusCode;
+                                  res.set_content(content, "application/json");
                               }
-                              res.status = 200;
-                              res.set_content("Content published", "text/plain");
+                              else
+                              {
+                                  res.status = 200;
+                                  res.set_content("{\"errors\":false}", "application/json");
+                              }
                           }
                           catch (const std::exception& e)
                           {
@@ -245,7 +250,7 @@ public:
                           }
                       });
 
-        // Endpoint where the publications are made into.
+        // Endpoint where the delete by query is made into.
         m_server.Post("/indexer_connector_test/_delete_by_query",
                       [this](const httplib::Request& req, httplib::Response& res)
                       {
@@ -253,10 +258,15 @@ public:
                           {
                               if (m_publishCallback)
                               {
-                                  m_publishCallback(req.body);
+                                  auto [statusCode, content] = m_publishCallback(req.body);
+                                  res.status = statusCode;
+                                  res.set_content(content, "application/json");
                               }
-                              res.status = 200;
-                              res.set_content("Content published", "text/plain");
+                              else
+                              {
+                                  res.status = 200;
+                                  res.set_content("{\"deleted\":0}", "application/json");
+                              }
                           }
                           catch (const std::exception& e)
                           {

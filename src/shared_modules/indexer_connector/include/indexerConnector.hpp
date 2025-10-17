@@ -13,6 +13,7 @@
 #define _INDEXER_CONNECTOR_HPP
 
 #include "rocksDBWrapper.hpp"
+#include "simdjson/dom/element.h"
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
 #else
@@ -20,13 +21,13 @@
 #endif
 
 static constexpr auto DEFAULT_INTERVAL = 60u;
-static constexpr auto IC_NAME {"indexer-connector"};
 
 class ServerSelector;
 class SecureCommunication;
 #include "threadDispatcher.h"
 #include "threadEventDispatcher.hpp"
 #include <json.hpp>
+#include <simdjson.h>
 #include <string>
 
 using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
@@ -124,6 +125,14 @@ class EXPORTED IndexerConnector final
                           const SecureCommunication& secureCommunication,
                           int depth = 1);
 
+    /**
+     * @brief Handle indexer internal errors, this method is used to logs errors returned by the indexer.
+     * @param response Response from the indexer.
+     * @param events Events that were sent to the indexer.
+     * @return True if internal errors were found, false otherwise.
+     */
+    bool handleIndexerInternalErrors(const std::string& response, const std::vector<std::string>& events);
+
 public:
     /**
      * @brief Class constructor that initializes the publisher.
@@ -174,6 +183,19 @@ public:
      * @param agentId Agent ID.
      */
     void sync(const std::string& agentId);
+
+    /**
+     * @brief Handles request-level errors (e.g., validation, authentication, resource limits)
+     * @param errorObj The "error" object from the response
+     */
+    void handleRequestLevelError(simdjson::dom::element& errorObj);
+
+    /**
+     * @brief Handles item-level errors from bulk operations
+     * @param doc The parsed JSON document
+     * @param events The list of events that were sent
+     */
+    void handleBulkOperationErrors(simdjson::dom::element& doc, const std::vector<std::string>& events);
 };
 
 #endif // _INDEXER_CONNECTOR_HPP

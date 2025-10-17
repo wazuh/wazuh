@@ -25,6 +25,8 @@
 #include <thread>
 #include <utility>
 
+#define LOG_BUFFER_SIZE 4096
+
 namespace Log
 {
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
@@ -84,6 +86,116 @@ static const auto B_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(B_PORT)};
 static const auto C_IDX {2};
 static const auto C_PORT {7777};
 static const auto C_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(C_PORT)};
+
+/**
+ * @brief Keeps track of the log messages received during the tests.
+ *
+ * This structure stores information about various error types and log counts
+ * encountered during indexer connector component tests.
+ */
+struct LogTestState
+{
+    std::atomic<int> errorLogsCount {0};                 ///< Number of error logs received.
+    std::atomic<bool> foundMapperError {false};          ///< Found mapper parsing exception.
+    std::atomic<bool> foundVersionConflictError {false}; ///< Found version conflict exception.
+    std::atomic<bool> foundParseError {false};           ///< Found parse error.
+    std::atomic<bool> foundUnknownReason {false};        ///< Found unknown reason.
+    std::atomic<bool> foundUnknownType {false};          ///< Found unknown type.
+    std::atomic<bool> dbRepaired {true};                 ///< Database was repaired.
+
+    /**
+     * @brief Reset the log test state to default values.
+     */
+    void reset()
+    {
+        errorLogsCount = 0;
+        foundMapperError = false;
+        foundVersionConflictError = false;
+        foundParseError = false;
+        foundUnknownReason = false;
+        foundUnknownType = false;
+        dbRepaired = true;
+    }
+};
+
+// Global instance, we need this to be able to check the log messages received in the log function and avoid local
+// instance due threads are asynchronous.
+static LogTestState g_logTestState;
+
+// Helper function to create the standard log function. As global is copied by value, it is safe to use it in multiple
+// tests.
+static auto createStandardLogFunction()
+{
+    return [](const int logLevel,
+              const std::string& tag,
+              const std::string& file,
+              const int line,
+              const std::string& func,
+              const std::string& logMessage,
+              va_list args)
+    {
+        std::ignore = tag;
+        std::ignore = file;
+        std::ignore = line;
+        std::ignore = func;
+
+        char buffer[LOG_BUFFER_SIZE];
+        va_list args_copy;
+        va_copy(args_copy, args);
+        vsnprintf(buffer, sizeof(buffer), logMessage.c_str(), args_copy);
+        va_end(args_copy);
+
+        std::string formatted(buffer);
+
+        if (logLevel == 2) // Warning messages
+        {
+            // Check for error formats: "Indexer request failed"
+            if (formatted.find("Indexer request failed") != std::string::npos)
+            {
+                g_logTestState.errorLogsCount++;
+
+                // Check for specific error types
+                if (formatted.find("mapper_parsing_exception") != std::string::npos)
+                {
+                    g_logTestState.foundMapperError = true;
+                }
+                if (formatted.find("version_conflict_engine_exception") != std::string::npos)
+                {
+                    g_logTestState.foundVersionConflictError = true;
+                }
+                if (formatted.find("Unknown reason") != std::string::npos)
+                {
+                    g_logTestState.foundUnknownReason = true;
+                }
+                if (formatted.find("Unknown type") != std::string::npos)
+                {
+                    g_logTestState.foundUnknownType = true;
+                }
+            }
+
+            // Check for parse errors
+            if (formatted.find("Failed to parse") != std::string::npos || formatted.find("parse") != std::string::npos)
+            {
+                g_logTestState.foundParseError = true;
+            }
+
+            // Check for database repaired message
+            if (logMessage.compare("Database '%s' was repaired because it was corrupt.") == 0)
+            {
+                g_logTestState.dbRepaired = true;
+            }
+        }
+
+        // Special case of response with no error formatting
+        if (logLevel == 5)
+        {
+            if (formatted.find("invalid json") != std::string::npos)
+            {
+                g_logTestState.foundParseError = true;
+            }
+        }
+    };
+}
 
 void IndexerConnectorTest::SetUp()
 {
@@ -280,23 +392,35 @@ TEST_F(IndexerConnectorTest, ConnectionInvalidServer)
  */
 TEST_F(IndexerConnectorTest, ConnectionInitTemplateErrorFromServer)
 {
-    // Callback function that checks if the callback was executed or not.
     std::atomic<bool> callbackCalled {false};
-    const auto forceErrorCallback {[&callbackCalled](const std::string& data)
-                                   {
-                                       std::ignore = data;
-                                       callbackCalled = true;
-                                       throw std::runtime_error {"Forced server error"};
-                                   }};
+    std::atomic<bool> exceptionThrown {false};
+
+    const auto forceErrorCallback = [&callbackCalled, &exceptionThrown](const std::string& data)
+    {
+        std::ignore = data;
+        callbackCalled = true;
+        exceptionThrown = true;
+        throw std::runtime_error {"Forced server error"};
+    };
     m_indexerServers[A_IDX]->setInitTemplateCallback(forceErrorCallback);
 
-    // Create connector and wait until the connection is established.
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
-    auto indexerConnector {IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT)};
-    ASSERT_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS),
-                 std::runtime_error);
+
+    // Constructor doesn't throw - initialization is async
+    ASSERT_NO_THROW(auto indexerConnector =
+                        IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, "", true, nullptr, INDEXER_TIMEOUT));
+
+    // Wait for the callback to be called
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    // Verify the callback was called and threw an exception
+    EXPECT_TRUE(callbackCalled) << "Init template callback should have been called";
+    EXPECT_TRUE(exceptionThrown) << "Exception should have been thrown in callback";
+
+    // Give time for async operations to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
 /**
@@ -341,13 +465,15 @@ TEST_F(IndexerConnectorTest, Publish)
     // Second line: Index data.
     constexpr auto INDEX_DATA {"content"};
     std::atomic<bool> callbackCalled {false};
-    const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
-                                   {
-                                       const auto splitData {Utils::split(data, '\n')};
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
-                                       callbackCalled = true;
-                                   }};
+    const auto checkPublishedData {
+        [&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data) -> std::pair<int, std::string>
+        {
+            const auto splitData {Utils::split(data, '\n')};
+            EXPECT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+            EXPECT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
+            callbackCalled = true;
+            return {200, R"({"errors":false})"};
+        }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
@@ -379,18 +505,17 @@ TEST_F(IndexerConnectorTest, NoPublish)
     expectedMetadata["index"]["_id"] = agentId + "_" + INDEX_ID_A;
 
     // Callback that checks the expected data to be published.
-    // The format of the data published is divided in two lines:
-    // First line: JSON data with the metadata (indexer name, index ID)
-    // Second line: Index data.
     constexpr auto INDEX_DATA {"content"};
     std::atomic<bool> callbackCalled {false};
-    const auto checkPublishedData {[&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data)
-                                   {
-                                       const auto splitData {Utils::split(data, '\n')};
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
-                                       callbackCalled = true;
-                                   }};
+    const auto checkPublishedData {
+        [&expectedMetadata, &callbackCalled, &INDEX_DATA](const std::string& data) -> std::pair<int, std::string>
+        {
+            const auto splitData {Utils::split(data, '\n')};
+            EXPECT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+            EXPECT_EQ(nlohmann::json::parse(splitData.back()), INDEX_DATA);
+            callbackCalled = true;
+            return {200, R"({"errors":false})"};
+        }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and make sure the connection isn't established.
@@ -459,16 +584,15 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
     nlohmann::json expectedMetadata;
 
     // Callback that checks the expected data to be published.
-    // The format of the data published is divided in two lines:
-    // First line: JSON data with the metadata (indexer name, index ID)
-    // Second line: Index data. When the operation is DELETED, no data is present.
     std::atomic<bool> callbackCalled {false};
-    const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data)
-                                   {
-                                       const auto splitData {Utils::split(data, '\n')};
-                                       ASSERT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
-                                       callbackCalled = true;
-                                   }};
+    const auto checkPublishedData {
+        [&expectedMetadata, &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+        {
+            const auto splitData {Utils::split(data, '\n')};
+            EXPECT_EQ(nlohmann::json::parse(splitData.front()), expectedMetadata);
+            callbackCalled = true;
+            return {200, R"({"errors":false})"};
+        }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
@@ -500,6 +624,620 @@ TEST_F(IndexerConnectorTest, PublishDeleted)
 }
 
 /**
+ * @brief Test that handleIndexerInternalErrors correctly processes a response with errors and logs them.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_WithErrors)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    nlohmann::json errorResponse;
+    errorResponse["errors"] = true;
+    errorResponse["items"] = nlohmann::json::array();
+
+    nlohmann::json item1;
+    item1["index"]["error"]["type"] = "mapper_parsing_exception";
+    item1["index"]["error"]["reason"] = "failed to parse field [timestamp]";
+    errorResponse["items"].push_back(item1);
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnErrorResponse = [&errorResponse,
+                                      &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {400, errorResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnErrorResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 1) << "Expected 1 error log";
+    EXPECT_TRUE(g_logTestState.foundMapperError.load()) << "mapper_parsing_exception error log not found";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors correctly processes multiple errors in a batch.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_MultipleErrors)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    nlohmann::json errorResponse;
+    errorResponse["errors"] = true;
+    errorResponse["items"] = nlohmann::json::array();
+
+    nlohmann::json item1;
+    item1["index"]["error"]["type"] = "mapper_parsing_exception";
+    item1["index"]["error"]["reason"] = "failed to parse field [timestamp]";
+    errorResponse["items"].push_back(item1);
+
+    nlohmann::json item2;
+    item2["index"]["_id"] = "B";
+    item2["index"]["status"] = 200;
+    errorResponse["items"].push_back(item2);
+
+    nlohmann::json item3;
+    item3["index"]["error"]["type"] = "version_conflict_engine_exception";
+    item3["index"]["error"]["reason"] = "version conflict, document already exists";
+    errorResponse["items"].push_back(item3);
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnErrorResponse = [&errorResponse,
+                                      &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {400, errorResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnErrorResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData1;
+    publishData1["id"] = INDEX_ID_A;
+    publishData1["operation"] = "INSERT";
+    publishData1["data"] = "content1";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData1.dump()));
+
+    nlohmann::json publishData2;
+    publishData2["id"] = INDEX_ID_B;
+    publishData2["operation"] = "INSERT";
+    publishData2["data"] = "content2";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData2.dump()));
+
+    nlohmann::json publishData3;
+    publishData3["id"] = "C";
+    publishData3["operation"] = "INSERT";
+    publishData3["data"] = "content3";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData3.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 2) << "Expected 2 error logs (items 1 and 3 have errors)";
+    EXPECT_TRUE(g_logTestState.foundMapperError.load()) << "mapper_parsing_exception error log not found";
+    EXPECT_TRUE(g_logTestState.foundVersionConflictError.load())
+        << "version_conflict_engine_exception error log not found";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors handles response with no errors field gracefully.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_NoErrorsField)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    nlohmann::json successResponse;
+    successResponse["items"] = nlohmann::json::array();
+    nlohmann::json item;
+    item["index"]["_id"] = "A";
+    item["index"]["status"] = 200;
+    successResponse["items"].push_back(item);
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnSuccessResponse = [&successResponse,
+                                        &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {200, successResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnSuccessResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 0) << "No error logs should be generated";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors handles errors=false correctly.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_ErrorsFalse)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    nlohmann::json successResponse;
+    successResponse["errors"] = false;
+    successResponse["items"] = nlohmann::json::array();
+    nlohmann::json item;
+    item["index"]["_id"] = "A";
+    item["index"]["status"] = 200;
+    successResponse["items"].push_back(item);
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnSuccessResponse = [&successResponse,
+                                        &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {200, successResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnSuccessResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 0) << "No error logs should be generated when errors=false";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors handles missing error reason field.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_MissingErrorReason)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    nlohmann::json errorResponse;
+    errorResponse["errors"] = true;
+    errorResponse["items"] = nlohmann::json::array();
+
+    nlohmann::json item;
+    item["index"]["error"]["type"] = "some_error_type";
+    // Missing "reason" field - should use default "Unknown reason"
+    errorResponse["items"].push_back(item);
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnErrorResponse = [&errorResponse,
+                                      &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {400, errorResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnErrorResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 1) << "Expected 1 error log";
+    EXPECT_TRUE(g_logTestState.foundUnknownReason.load())
+        << "'Unknown reason' should be used when reason field is missing";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors handles missing error type field.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_MissingErrorType)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    nlohmann::json errorResponse;
+    errorResponse["errors"] = true;
+    errorResponse["items"] = nlohmann::json::array();
+
+    nlohmann::json item;
+    item["index"]["error"]["reason"] = "some error occurred";
+    // Missing "type" field - should use default "Unknown type"
+    errorResponse["items"].push_back(item);
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnErrorResponse = [&errorResponse,
+                                      &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {400, errorResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnErrorResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 1) << "Expected 1 error log";
+    EXPECT_TRUE(g_logTestState.foundUnknownType.load()) << "'Unknown type' should be used when type field is missing";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors handles invalid JSON gracefully.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_InvalidJSON)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnInvalidJSON = [&callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {400, "{ \"unclosed\": "};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnInvalidJSON);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_TRUE(g_logTestState.foundParseError.load()) << "Parse error warning should be logged for invalid JSON";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors handles shard limit exceeded error.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_ShardLimitExceeded)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    // Elasticsearch shard limit error response (request-level, not bulk)
+    nlohmann::json errorResponse;
+    errorResponse["error"]["type"] = "validation_exception";
+    errorResponse["error"]["reason"] = "Validation Failed: 1: this action would add [1] total shards, but this cluster "
+                                       "currently has [1000]/[1000] maximum shards open;";
+    errorResponse["status"] = 400;
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnErrorResponse = [&errorResponse,
+                                      &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {400, errorResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnErrorResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 1) << "Expected 1 request-level error log";
+    // Could add a specific flag for validation_exception if needed
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors handles 404 index not found error.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_IndexNotFound)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    // Elasticsearch 404 index not found error
+    nlohmann::json errorResponse;
+    errorResponse["error"]["type"] = "index_not_found_exception";
+    errorResponse["error"]["reason"] = "no such index [indexer_connector_test]";
+    errorResponse["error"]["resource.type"] = "index_or_alias";
+    errorResponse["error"]["resource.id"] = "indexer_connector_test";
+    errorResponse["error"]["index"] = "indexer_connector_test";
+    errorResponse["status"] = 404;
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnErrorResponse = [&errorResponse,
+                                      &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {404, errorResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnErrorResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 1) << "Expected 1 request-level error log";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors handles 403 forbidden/authentication error.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_Forbidden)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    // Elasticsearch 403 forbidden error (authentication/authorization)
+    nlohmann::json errorResponse;
+    errorResponse["error"]["type"] = "security_exception";
+    errorResponse["error"]["reason"] = "action [indices:data/write/bulk] is unauthorized for user [test_user]";
+    errorResponse["status"] = 403;
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnErrorResponse = [&errorResponse,
+                                      &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {403, errorResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnErrorResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 1) << "Expected 1 request-level error log";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
+ * @brief Test that handleIndexerInternalErrors handles cluster unavailable error.
+ */
+TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_ClusterUnavailable)
+{
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
+
+    // Elasticsearch 503 service unavailable (cluster block, no master, etc.)
+    nlohmann::json errorResponse;
+    errorResponse["error"]["type"] = "cluster_block_exception";
+    errorResponse["error"]["reason"] = "blocked by: [SERVICE_UNAVAILABLE/1/state not recovered / initialized];";
+    errorResponse["status"] = 503;
+
+    std::atomic<bool> callbackCalled {false};
+    const auto returnErrorResponse = [&errorResponse,
+                                      &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+    {
+        callbackCalled = true;
+        return {503, errorResponse.dump()};
+    };
+    m_indexerServers[A_IDX]->setPublishCallback(returnErrorResponse);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+
+    auto indexerConnector = std::make_unique<IndexerConnector>(
+        indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
+
+    ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
+
+    nlohmann::json publishData;
+    publishData["id"] = INDEX_ID_A;
+    publishData["operation"] = "INSERT";
+    publishData["data"] = "content";
+    ASSERT_NO_THROW(indexerConnector->publish(publishData.dump()));
+
+    ASSERT_NO_THROW(waitUntil([&callbackCalled]() { return callbackCalled.load(); }, MAX_INDEXER_PUBLISH_TIME_MS));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_TRUE(callbackCalled) << "Publish callback was not called";
+    EXPECT_EQ(g_logTestState.errorLogsCount.load(), 1) << "Expected 1 request-level error log";
+
+    indexerConnector.reset();
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+}
+
+/**
  * @brief Test the connection and posterior data publication into a server. The published data is checked against the
  * expected one. The publication contains a DELETED_BY_QUERY operation.
  *
@@ -512,15 +1250,14 @@ TEST_F(IndexerConnectorTest, PublishDeletedByQuery)
     expectedMetadata["query"]["bool"]["filter"]["terms"]["agent.id"] = agentIds;
 
     // Callback that checks the expected data to be published.
-    // The format of the data published is divided in two lines:
-    // First line: JSON data with the metadata (indexer name, index ID)
-    // Second line: Index data. When the operation is DELETED, no data is present.
     std::atomic<bool> callbackCalled {false};
-    const auto checkPublishedData {[&expectedMetadata, &callbackCalled](const std::string& data)
-                                   {
-                                       ASSERT_EQ(nlohmann::json::parse(data), expectedMetadata);
-                                       callbackCalled = true;
-                                   }};
+    const auto checkPublishedData {
+        [&expectedMetadata, &callbackCalled](const std::string& data) -> std::pair<int, std::string>
+        {
+            EXPECT_EQ(nlohmann::json::parse(data), expectedMetadata);
+            callbackCalled = true;
+            return {200, R"({"deleted":1})"};
+        }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
@@ -546,10 +1283,11 @@ TEST_F(IndexerConnectorTest, PublishUnavailableServer)
 {
     // Callback function that checks if the callback was executed or not.
     std::atomic<bool> callbackCalled {false};
-    const auto checkPublishedData {[&callbackCalled](const std::string& data)
+    const auto checkPublishedData {[&callbackCalled](const std::string& data) -> std::pair<int, std::string>
                                    {
                                        std::ignore = data;
                                        callbackCalled = true;
+                                       return {200, R"({"errors":false})"};
                                    }};
     m_indexerServers[B_IDX]->setPublishCallback(checkPublishedData);
 
@@ -574,10 +1312,11 @@ TEST_F(IndexerConnectorTest, PublishInvalidNoOperation)
 {
     // Callback function that checks if the callback was executed or not.
     std::atomic<bool> callbackCalled {false};
-    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data) -> std::pair<int, std::string>
                                     {
                                         std::ignore = data;
                                         callbackCalled = true;
+                                        return {200, R"({"errors":false})"};
                                     }};
     m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
 
@@ -605,10 +1344,11 @@ TEST_F(IndexerConnectorTest, PublishInvalidNoID)
 {
     // Callback function that checks if the callback was executed or not.
     std::atomic<bool> callbackCalled {false};
-    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data) -> std::pair<int, std::string>
                                     {
                                         std::ignore = data;
                                         callbackCalled = true;
+                                        return {200, R"({"errors":false})"};
                                     }};
     m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
 
@@ -636,10 +1376,11 @@ TEST_F(IndexerConnectorTest, PublishNoInsertData)
 {
     // Callback function that checks if the callback was executed or not.
     std::atomic<bool> callbackCalled {false};
-    const auto checkCallbackCalled {[&callbackCalled](const std::string& data)
+    const auto checkCallbackCalled {[&callbackCalled](const std::string& data) -> std::pair<int, std::string>
                                     {
                                         std::ignore = data;
                                         callbackCalled = true;
+                                        return {200, R"({"errors":false})"};
                                     }};
     m_indexerServers[A_IDX]->setPublishCallback(checkCallbackCalled);
 
@@ -669,20 +1410,19 @@ TEST_F(IndexerConnectorTest, PublishTwoIndexes)
 {
     auto publishedData = nlohmann::json::array();
 
-    // Callback that stores the published data into a JSON array. It also counts the times the callback was called.
-    // The format of the data published is divided in two lines:
-    // First line: JSON data with the metadata (indexer name, index ID).
-    // Second line: Index data.
+    // Callback that stores the published data into a JSON array.
     std::atomic<bool> callbackCalled {false};
-    const auto checkPublishedData {[&callbackCalled, &publishedData](const std::string& data)
-                                   {
-                                       const auto splitData {Utils::split(data, '\n')};
-                                       nlohmann::json entry;
-                                       entry["metadata"] = nlohmann::json::parse(splitData.front());
-                                       entry["data"] = nlohmann::json::parse(splitData.back());
-                                       publishedData.push_back(std::move(entry));
-                                       callbackCalled = true;
-                                   }};
+    const auto checkPublishedData {
+        [&callbackCalled, &publishedData](const std::string& data) -> std::pair<int, std::string>
+        {
+            const auto splitData {Utils::split(data, '\n')};
+            nlohmann::json entry;
+            entry["metadata"] = nlohmann::json::parse(splitData.front());
+            entry["data"] = nlohmann::json::parse(splitData.back());
+            publishedData.push_back(std::move(entry));
+            callbackCalled = true;
+            return {200, R"({"errors":false})"};
+        }};
     m_indexerServers[A_IDX]->setPublishCallback(checkPublishedData);
 
     // Create connector and wait until the connection is established.
@@ -730,7 +1470,7 @@ TEST_F(IndexerConnectorTest, PublishErrorFromServer)
 {
     // Callback function that checks if the callback was executed or not.
     std::atomic<bool> callbackCalled {false};
-    const auto forceErrorCallback {[&callbackCalled](const std::string& data)
+    const auto forceErrorCallback {[&callbackCalled](const std::string& data) -> std::pair<int, std::string>
                                    {
                                        std::ignore = data;
                                        callbackCalled = true;
@@ -793,6 +1533,10 @@ TEST_F(IndexerConnectorTest, UpperCaseCharactersIndexName)
 
 TEST_F(IndexerConnectorTest, QueueCorruptionTest)
 {
+    Log::GLOBAL_LOG_FUNCTION = nullptr;
+    g_logTestState.reset();
+
+    auto customLogFunction = createStandardLogFunction();
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
@@ -817,34 +1561,10 @@ TEST_F(IndexerConnectorTest, QueueCorruptionTest)
     }
     EXPECT_TRUE(corrupted);
 
-    bool dbRepaired {false};
-    auto customLogFunction = [&dbRepaired](const int logLevel,
-                                           const std::string& tag,
-                                           const std::string& file,
-                                           const int line,
-                                           const std::string& func,
-                                           const std::string& logMessage,
-                                           va_list args)
-    {
-        std::ignore = tag;
-        std::ignore = file;
-        std::ignore = line;
-        std::ignore = func;
-        std::ignore = args;
-
-        if (logLevel == 2) // Warning messages
-        {
-            if (logMessage.compare("Database '%s' was repaired because it was corrupt.") == 0)
-            {
-                dbRepaired = true;
-            }
-        }
-    };
-
     EXPECT_NO_THROW({
         spIndexerConnector = std::make_unique<IndexerConnector>(
             indexerConfig, TEMPLATE_FILE_PATH, "", true, customLogFunction, INDEXER_TIMEOUT);
     });
 
-    EXPECT_TRUE(dbRepaired) << "The log that indicates the database was repaired wasn't found";
+    EXPECT_TRUE(g_logTestState.dbRepaired) << "The log that indicates the database was repaired wasn't found";
 }
