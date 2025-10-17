@@ -83,6 +83,14 @@ int DB::countEntries(const std::string& tableName, const COUNT_SELECT_TYPE selec
     return count;
 }
 
+bool DB::checkIfFirstScanHasBeenSynched() const{
+    return DB::instance().first_scan_has_been_synched;
+}
+
+void DB::setFirstScanHasBeenSynched(){
+    DB::instance().first_scan_has_been_synched = true;
+}
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -219,8 +227,15 @@ void fim_db_close_and_delete_database()
     {
         FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
-
     // LCOV_EXCL_STOP
+}
+
+bool fim_db_check_if_first_scan_has_been_synched(){
+    return DB::instance().checkIfFirstScanHasBeenSynched();
+}
+
+void fim_db_set_first_scan_has_been_synched(){
+    DB::instance().setFirstScanHasBeenSynched();
 }
 
 #ifdef __cplusplus

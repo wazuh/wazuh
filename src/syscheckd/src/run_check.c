@@ -26,6 +26,7 @@
 #include "db/include/db.h"
 #include "ebpf/include/ebpf_whodata.h"
 #include "agent_sync_protocol_c_interface.h"
+#include "db.h"
 
 #ifdef WAZUH_UNIT_TESTING
 unsigned int files_read = 0;
@@ -607,7 +608,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
         minfo("Running FIM synchronization.");
 
-        asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps, false);
+        bool has_been_synched = fim_db_check_if_first_scan_has_been_synched();
+        asp_sync_module(syscheck.sync_handle, MODE_DELTA, syscheck.sync_response_timeout, FIM_SYNC_RETRIES, syscheck.sync_max_eps, has_been_synched);
+        if (!has_been_synched) {
+            fim_db_set_first_scan_has_been_synched();
+            mdebug2("db's first scan has been synched");
+        }
 
         w_mutex_unlock(&syscheck.fim_scan_mutex);
 

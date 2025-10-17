@@ -169,6 +169,17 @@ EXPORTED void fim_db_teardown();
  */
 EXPORTED void fim_db_close_and_delete_database();
 
+    /**
+     * @brief Check if the first scan has been synched.
+     * @return true if it has been synched, false otherwise
+     */
+    EXPORTED bool fim_db_check_if_first_scan_has_been_synched();
+
+    /**
+     * @brief Set the first_scan_has_been_synched flag.
+     */
+    EXPORTED void fim_db_set_first_scan_has_been_synched();
+
 #ifdef WIN32
 
 // Registry functions.

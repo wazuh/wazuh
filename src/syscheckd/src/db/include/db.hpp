@@ -140,11 +140,24 @@ class EXPORTED DB final
          */
         void closeAndDeleteDatabase();
 
+        /**
+        * @brief Check if the first scan has been synched.
+        *
+        * @return true if first scan has been synched, false otherwise.
+        */
+       bool checkIfFirstScanHasBeenSynched() const;
+
+        /**
+        * @brief Set the first_scan_has_been_synched flag.
+        */
+       void setFirstScanHasBeenSynched();
+
     private:
         DB() = default;
         ~DB() = default;
         DB(const DB&) = delete;
         DB& operator=(const DB&) = delete;
+        bool first_scan_has_been_synched = false;
 };
 
 #endif //_IFIMDB_HPP
