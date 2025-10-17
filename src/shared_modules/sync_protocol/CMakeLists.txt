@@ -84,6 +84,9 @@ add_library(agent_sync_protocol SHARED
 )
 add_dependencies(agent_sync_protocol generate_flatbuffers)
 
+# Mark generated header as generated so coverage tools ignore it
+#set_source_files_properties(${GENERATED_HEADER} PROPERTIES GENERATED TRUE)
+
 target_include_directories(agent_sync_protocol
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -93,11 +96,18 @@ target_include_directories(agent_sync_protocol
     ${CMAKE_CURRENT_SOURCE_DIR}/../../
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/
     ${CMAKE_SOURCE_DIR}/../../headers
+    ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/filesystem/include
+)
+
+target_link_directories(agent_sync_protocol
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../file_helper/build/lib
 )
 
 target_link_libraries(agent_sync_protocol
   PRIVATE
     flatbuffers
+    FilesystemWrapper
     ${CMAKE_CURRENT_SOURCE_DIR}/../../external/sqlite/libsqlite3.a
 )
 
@@ -121,6 +131,14 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 if(UNIT_TEST)
   enable_testing()
   add_subdirectory(tests)
+
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(agent_sync_protocol PRIVATE -fprofile-arcs -ftest-coverage)
+    target_link_libraries(agent_sync_protocol PRIVATE -fprofile-arcs)
+  else()
+    target_compile_options(agent_sync_protocol PRIVATE --coverage)
+    target_link_libraries(agent_sync_protocol PRIVATE --coverage)
+  endif()
 endif()
 
 add_subdirectory(testtool)
