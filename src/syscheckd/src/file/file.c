@@ -210,12 +210,31 @@ STATIC void transaction_callback(ReturnTypeCallback resultType,
         }
     }
 
-    // Add state modified_at field for stateful event only
+    // Add state modified_at and document_version fields for stateful event only
     cJSON* state = cJSON_CreateObject();
     if (state != NULL) {
         char modified_at_time[32];
         get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
         cJSON_AddStringToObject(state, "modified_at", modified_at_time);
+
+        // Add document_version for state tracking - read from DBSync callback result
+        cJSON *version_aux = NULL;
+        // For MODIFIED events, version is in the "new" object
+        cJSON *new_data = cJSON_GetObjectItem(result_json, "new");
+        if (new_data != NULL) {
+            version_aux = cJSON_GetObjectItem(new_data, "version");
+        } else {
+            // For INSERTED/DELETED events, version is at the top level
+            version_aux = cJSON_GetObjectItem(result_json, "version");
+        }
+
+        if (version_aux != NULL) {
+            cJSON_AddNumberToObject(state, "document_version", version_aux->valueint);
+        } else {
+            mdebug1("Couldn't find version for '%s", path);
+            goto end; // LCOV_EXCL_LINE
+        }
+
         cJSON_AddItemToObject(stateful_event, "state", state);
     }
 

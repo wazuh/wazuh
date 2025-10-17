@@ -234,7 +234,8 @@ std::vector<nlohmann::json> SCAEventHandler::GetChecksForPolicy(const std::strin
                                     "reason",
                                     "condition",
                                     "compliance",
-                                    "rules"})
+                                    "rules",
+                                    "version"})
                        .rowFilter(filter)
                        .build();
 
@@ -306,7 +307,8 @@ nlohmann::json SCAEventHandler::GetPolicyCheckById(const std::string& policyChec
                                     "reason",
                                     "condition",
                                     "compliance",
-                                    "rules"})
+                                    "rules",
+                                    "version"})
                        .rowFilter(filter)
                        .build();
 
@@ -377,9 +379,16 @@ std::pair<nlohmann::json, ReturnTypeCallback> SCAEventHandler::ProcessStateful(c
             check.erase("checksum");
         }
 
-        // Add state modified_at field for stateful events only
+        // Add state modified_at and version fields for stateful events only
         nlohmann::json state;
         state["modified_at"] = Utils::getCurrentISO8601();
+
+        // Include document_version field in state for synchronization
+        if (check.contains("version"))
+        {
+            state["document_version"] = check["version"];
+            check.erase("version");
+        }
 
         jsonEvent = {{"checksum", checksumObj}, {"check", check}, {"policy", policy}, {"state", state}};
     }

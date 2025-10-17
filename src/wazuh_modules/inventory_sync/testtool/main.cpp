@@ -104,7 +104,7 @@ int main(int argc, char* argv[])
         flatbuffers::FlatBufferBuilder builder;
         auto start_builder = Wazuh::SyncSchema::StartBuilder(builder);
         start_builder.add_size(num_messages);
-        start_builder.add_mode(Wazuh::SyncSchema::Mode_Full);
+        start_builder.add_mode(Wazuh::SyncSchema::Mode_ModuleFull);
         auto start_offset = start_builder.Finish();
 
         auto msg_offset =
@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
         auto index_offset = builder.CreateString("test_index");
         auto id_offset = builder.CreateString("test_id");
 
-        auto data_builder = Wazuh::SyncSchema::DataBuilder(builder);
+        auto data_builder = Wazuh::SyncSchema::DataValueBuilder(builder);
         data_builder.add_session(session_id);
         data_builder.add_seq(i);
         data_builder.add_operation(Wazuh::SyncSchema::Operation_Upsert);
@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
         auto data_offset = data_builder.Finish();
 
         auto msg_offset =
-            Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_Data, data_offset.Union());
+            Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_DataValue, data_offset.Union());
         builder.Finish(msg_offset);
 
         std::vector<char> message(builder.GetBufferPointer(), builder.GetBufferPointer() + builder.GetSize());

@@ -1,8 +1,14 @@
 get_filename_component(FLATC_PATH ${SRC_FOLDER}/external/flatbuffers/build/ ABSOLUTE)
+set(FLATC_EXECUTABLE ${FLATC_PATH}/flatc)
+
+# Verify flatc exists (should be built by src/Makefile)
+if(NOT EXISTS ${FLATC_EXECUTABLE})
+  message(FATAL_ERROR "flatc not found at ${FLATC_EXECUTABLE}.")
+endif()
+message(STATUS "Using flatc from: ${FLATC_EXECUTABLE}")
 
 list(APPEND schemas
             inventorySync
-            agentInfo
 )
 
 add_custom_target(compile_schemas_input)
@@ -16,7 +22,7 @@ foreach(schema IN LISTS schemas)
 
     add_custom_command(
     OUTPUT "${OUTPUT_HEADER_GENERATED}"
-    COMMAND ${FLATC_PATH}/flatc
+    COMMAND ${FLATC_EXECUTABLE}
     ARGS -c
     ARGS -o "${SRC_FOLDER}/shared_modules/utils/flatbuffers/include" "${FBS_FILE}"
     ARGS --no-warnings

@@ -24,7 +24,7 @@ namespace PackageLinuxHelper
     static const std::map<char, std::pair<std::type_index, std::string>> s_mapAlpineFields =
     {
         {'P', {typeid(std::string), "name"}},
-        {'V', {typeid(std::string), "version"}},
+        {'V', {typeid(std::string), "version_"}},
         {'A', {typeid(std::string), "architecture"}},
         {'I', {typeid(int64_t), "size"}},
         {'T', {typeid(std::string), "description"}},
@@ -75,7 +75,7 @@ namespace PackageLinuxHelper
         }
 
         if (!packageInfo.contains("name") ||
-                !packageInfo.contains("version"))
+                !packageInfo.contains("version_"))
         {
             packageInfo.clear();
         }

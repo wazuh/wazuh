@@ -55,12 +55,12 @@ namespace PackageLinuxHelper
         }
 
         packageInfo["category"]     = groups.empty() ? UNKNOWN_VALUE : groups.substr(0, groups.size() - 1);
-        const std::string version          = alpmWrapper(alpm_pkg_get_version(pArchPkg));
-        packageInfo["version"]      = version.empty() ? UNKNOWN_VALUE : version;
+        const std::string version   = alpmWrapper(alpm_pkg_get_version(pArchPkg));
+        packageInfo["version_"]     = version.empty() ? UNKNOWN_VALUE : version;
         packageInfo["path"]         = UNKNOWN_VALUE;
         const std::string architecture = alpmWrapper(alpm_pkg_get_arch(pArchPkg));
         packageInfo["architecture"] = architecture.empty() ? UNKNOWN_VALUE : architecture;
-        packageInfo["priority"]         = UNKNOWN_VALUE;
+        packageInfo["priority"]     = UNKNOWN_VALUE;
         packageInfo["type"]         = "pacman";
         packageInfo["vendor"]       = "Arch Linux";
         packageInfo["source"]       = UNKNOWN_VALUE;

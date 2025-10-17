@@ -145,6 +145,128 @@ table EndAck {
 
 **State Transition**: `WaitingEndAck` → `Idle`
 
+### 7. ChecksumModule Message
+
+Transmits checksum information for integrity verification.
+
+**Direction**: Agent → Manager
+
+**Content**:
+- Session ID
+- Index identifier
+- Checksum value
+
+**FlatBuffer Schema**:
+```
+table ChecksumModule {
+    session: ulong;
+    index: string;
+    checksum: string;
+}
+```
+
+**State**: Used during integrity check mode, sent between StartAck and End
+
+## Special Synchronization Modes
+
+### Integrity Check Mode (requiresFullSync)
+
+The `requiresFullSync` method implements a specialized synchronization flow for checksum verification:
+
+```
+Agent                                   Manager
+  |                                        |
+  |-------------- Start ---------------->  |
+  |    (mode=CHECK, checksum)              |
+  |                                        |
+  |<------------ StartAck ---------------- |
+  |            (session_id)                |
+  |                                        |
+  |---------- ChecksumModule ----------->  |
+  |          (index, checksum)             |
+  |                                        |
+  |--------------- End ------------------> |
+  |             (session_id)               |
+  |                                        |
+  |<------------- EndAck ----------------- |
+  |       (status: match/mismatch)         |
+  |                                        |
+```
+
+**Process:**
+1. Agent sends Start message with CHECK mode
+2. Agent sends checksum message
+3. Agent sends End message
+4. Manager responds with EndAck indicating if checksums match
+5. Return `Error` if mismatch (full sync needed), `Ok` if valid
+
+### Metadata/Groups Synchronization Mode
+
+The `synchronizeMetadataOrGroups` method implements a simplified flow without data transfer:
+
+```
+Agent                                   Manager
+  |                                        |
+  |-------------- Start ---------------->  |
+  |  (mode=METADATA_DELTA/GROUP_DELTA)     |
+  |                                        |
+  |<------------ StartAck ---------------- |
+  |            (session_id)                |
+  |                                        |
+  |--------------- End ------------------> |
+  |             (session_id)               |
+  |                                        |
+  |<------------- EndAck ----------------- |
+  |              (success)                 |
+  |                                        |
+```
+
+**Supported Modes:**
+- `METADATA_DELTA`: Metadata delta synchronization
+- `METADATA_CHECK`: Metadata integrity check
+- `GROUP_DELTA`: Group delta synchronization
+- `GROUP_CHECK`: Group integrity check
+
+**Process:**
+1. Agent sends Start message with metadata/group mode
+2. No Data messages are sent
+3. Agent immediately sends End message
+4. Manager processes metadata/group information and responds with EndAck
+
+### In-Memory Recovery Mode
+
+When using `persistDifferenceInMemory` for recovery scenarios:
+
+```
+Agent (Recovery)                       Manager
+  |                                        |
+  | persistDifferenceInMemory() × N        |
+  | (storing recovery data in memory)      |
+  |                                        |
+  |-------------- Start ---------------->  |
+  |          (mode=FULL)                   |
+  |                                        |
+  |<------------ StartAck ---------------- |
+  |                                        |
+  |-------- Data (from memory) ----------> |
+  |-------- Data (from memory) ----------> |
+  |              ...                       |
+  |                                        |
+  |--------------- End ------------------> |
+  |                                        |
+  |<------------- EndAck ----------------- |
+  |                                        |
+  | clearInMemoryData()                    |
+  | (cleanup after successful sync)        |
+  |                                        |
+```
+
+**Process:**
+1. Agent persists recovery data in memory using `persistDifferenceInMemory()`
+2. Agent triggers full synchronization
+3. Data is sent from in-memory vector (not from database)
+4. After successful sync, agent calls `clearInMemoryData()` to free memory
+
 ## Complete Synchronization Flow
 
 ### Successful Synchronization

@@ -97,12 +97,6 @@ static void rem_inc_agents_send_shared(const char *agent_id);
 static void rem_inc_agents_send_ar(const char *agent_id);
 
 /**
- * @brief Increment sent CFGA messages counter for agents
- * @param agent_id Id of the agent that corresponds to the message
- */
-static void rem_inc_agents_send_cfga(const char *agent_id);
-
-/**
  * @brief Increment sent request messages counter for agents
  * @param agent_id Id of the agent that corresponds to the message
  */
@@ -348,13 +342,6 @@ static void rem_inc_agents_send_ar(const char *agent_id) {
     w_mutex_unlock(&agents_state_mutex);
 }
 
-static void rem_inc_agents_send_cfga(const char *agent_id) {
-    w_mutex_lock(&agents_state_mutex);
-    remoted_agent_state_t *agent_node = get_node(agent_id);
-    agent_node->sent_breakdown.sca_count++;
-    w_mutex_unlock(&agents_state_mutex);
-}
-
 static void rem_inc_agents_send_request(const char *agent_id) {
     w_mutex_lock(&agents_state_mutex);
     remoted_agent_state_t *agent_node = get_node(agent_id);
@@ -507,16 +494,6 @@ void rem_inc_send_ar(const char *agent_id) {
     }
 }
 
-void rem_inc_send_cfga(const char *agent_id) {
-    w_mutex_lock(&state_mutex);
-    remoted_state.sent_breakdown.sca_count++;
-    w_mutex_unlock(&state_mutex);
-
-    if (agent_id != NULL) {
-        rem_inc_agents_send_cfga(agent_id);
-    }
-}
-
 void rem_inc_send_request(const char *agent_id) {
     w_mutex_lock(&state_mutex);
     remoted_state.sent_breakdown.request_count++;
@@ -616,7 +593,6 @@ cJSON* rem_create_state_json() {
     cJSON_AddNumberToObject(_sent_breakdown, "ar", state_cpy.sent_breakdown.ar_count);
     cJSON_AddNumberToObject(_sent_breakdown, "discarded", state_cpy.sent_breakdown.discarded_count);
     cJSON_AddNumberToObject(_sent_breakdown, "request", state_cpy.sent_breakdown.request_count);
-    cJSON_AddNumberToObject(_sent_breakdown, "sca", state_cpy.sent_breakdown.sca_count);
     cJSON_AddNumberToObject(_sent_breakdown, "shared", state_cpy.sent_breakdown.shared_count);
 
     cJSON *_queues = cJSON_CreateObject();
@@ -693,7 +669,6 @@ cJSON* rem_create_agents_state_json(int* agents_ids) {
                 cJSON_AddNumberToObject(_sent_breakdown, "ar", agent_state->sent_breakdown.ar_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "discarded", agent_state->sent_breakdown.discarded_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "request", agent_state->sent_breakdown.request_count);
-                cJSON_AddNumberToObject(_sent_breakdown, "sca", agent_state->sent_breakdown.sca_count);
                 cJSON_AddNumberToObject(_sent_breakdown, "shared", agent_state->sent_breakdown.shared_count);
 
                 cJSON_AddItemToArray(_array, _item);

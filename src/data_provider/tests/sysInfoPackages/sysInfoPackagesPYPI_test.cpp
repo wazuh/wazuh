@@ -112,7 +112,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestEggInfo)
     pypi->getPackages(folders, callback);
 
     EXPECT_EQ(capturedJson.at("name"), "TestPackage");
-    EXPECT_EQ(capturedJson.at("version"), "1.0.0");
+    EXPECT_EQ(capturedJson.at("version_"), "1.0.0");
 }
 
 TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileDistInfo)
@@ -144,7 +144,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileDistInfo)
     pypi->getPackages(folders, callback);
 
     EXPECT_EQ(capturedJson.at("name"), "TestPackage");
-    EXPECT_EQ(capturedJson.at("version"), "1.0.0");
+    EXPECT_EQ(capturedJson.at("version_"), "1.0.0");
 }
 
 TEST_F(PYPITest, getPackages_OneValidPackageTestDistInfo)
@@ -176,7 +176,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestDistInfo)
     pypi->getPackages(folders, callback);
 
     EXPECT_EQ(capturedJson.at("name"), "TestPackage");
-    EXPECT_EQ(capturedJson.at("version"), "1.0.0");
+    EXPECT_EQ(capturedJson.at("version_"), "1.0.0");
 }
 
 TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileEggInfo)
@@ -208,7 +208,7 @@ TEST_F(PYPITest, getPackages_OneValidPackageTestNoRegularFileEggInfo)
     pypi->getPackages(folders, callback);
 
     EXPECT_EQ(capturedJson.at("name"), "TestPackage");
-    EXPECT_EQ(capturedJson.at("version"), "1.0.0");
+    EXPECT_EQ(capturedJson.at("version_"), "1.0.0");
 }
 
 
@@ -246,11 +246,11 @@ TEST_F(PYPITest, getPackages_MultipleValidPackagesTest)
     nlohmann::json capturedJson;
     auto callback = [&](nlohmann::json & json)
     {
-        if (json.at("name") == "TestPackage1" && json.at("version") == "1.0.0")
+        if (json.at("name") == "TestPackage1" && json.at("version_") == "1.0.0")
         {
             foundPackage1 = true;
         }
-        else if (json.at("name") == "TestPackage2" && json.at("version") == "2.0.0")
+        else if (json.at("name") == "TestPackage2" && json.at("version_") == "2.0.0")
         {
             foundPackage2 = true;
         }

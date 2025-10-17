@@ -58,7 +58,8 @@ void DB::getFile(const std::string& path, std::function<void(const nlohmann::jso
                                    "hash_md5",
                                    "hash_sha1",
                                    "hash_sha256",
-                                   "mtime"})
+                                   "mtime",
+                                   "version"})
                       .rowFilter(std::string("WHERE path=\"") + encodedPath + "\"")
                       .orderByOpt(FILE_PRIMARY_KEY)
                       .distinctOpt(false)
