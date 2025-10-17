@@ -105,12 +105,18 @@ class FlatBuffersManager:
                 import Wazuh.SyncSchema.Start as StartModule
 
                 # Create Start message
+                module_str = builder.CreateString(data.get('module', 'syscollector'))
+                agentid_str = builder.CreateString(data.get('agentid', '001'))
+                agentname_str = builder.CreateString(data.get('agentname', 'test-agent'))
+                agentversion_str = builder.CreateString(data.get('agentversion', '4.8.0'))
+
                 StartModule.StartStart(builder)
+                StartModule.StartAddModule(builder, module_str)
                 StartModule.StartAddMode(builder, data.get('mode', 0))
                 StartModule.StartAddSize(builder, data.get('size', 0))
-                if 'module' in data:
-                    module_str = builder.CreateString(data['module'])
-                    StartModule.StartAddModule(builder, module_str)
+                StartModule.StartAddAgentid(builder, agentid_str)
+                StartModule.StartAddAgentname(builder, agentname_str)
+                StartModule.StartAddAgentversion(builder, agentversion_str)
                 start = StartModule.StartEnd(builder)
                 content = start
 
