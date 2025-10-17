@@ -79,7 +79,7 @@
                   "type": "long"
                 },
                 "usage": {
-                  "scaling_factor": 100,
+                  "scaling_factor": 100.0,
                   "type": "scaled_float"
                 },
                 "used": {
