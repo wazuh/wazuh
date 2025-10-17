@@ -1,0 +1,160 @@
+name: Generate internal tools package
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - 'src/engine/test/**'
+      - 'src/engine/tools/**'
+      - 'src/engine/internal_packages/**'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        default: 'main'
+      checksum:
+        description: 'Attach checksum (.sha512)'
+        required: false
+        default: 'false'
+
+env:
+  PKG_TARGET_DIR: src/engine/internal_packages
+  SCRIPT: generate_package.sh
+  REVISION: "1"
+  TAG_NAME: "local"
+  # PR => true; dispatch => inputs.checksum; other => false
+  GEN_CHECKSUM: ${{ github.event_name == 'pull_request' && 'true' || (github.event_name == 'workflow_dispatch' && inputs.checksum || 'false') }}
+  OUTDIR: /tmp
+
+jobs:
+  build:
+    name: Build ${{ matrix.system }} / ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        system: [deb, rpm]
+        arch: [amd64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.branch || '' }}
+
+      - name: Resolve extension
+        id: meta
+        shell: bash
+        run: |
+          [[ "${{ matrix.system }}" == "deb" ]] && EXT=deb || EXT=rpm
+          echo "EXT=$EXT" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Run generate_package.sh
+        working-directory: ${{ env.PKG_TARGET_DIR }}
+        shell: bash
+        env:
+          OUTDIR: ${{ env.OUTDIR }}
+        run: |
+          set -euo pipefail
+          SYS="${{ matrix.system }}"
+          ARCH="${{ matrix.arch }}"
+          ARGS=( "--system" "$SYS" "-a" "$ARCH" "-s" "${{ env.OUTDIR }}" "-r" "${{ env.REVISION }}" "-j" "$(nproc)" "--tag" "${{ env.TAG_NAME }}" "--verbose" )
+          [[ "${{ env.GEN_CHECKSUM }}" == "true" ]] && ARGS+=( "--checksum" )
+          echo "Invoking: ./${{ env.SCRIPT }} ${ARGS[*]}"
+          ./"${{ env.SCRIPT }}" "${ARGS[@]}"
+
+      - name: Locate artifact(s)
+        id: stage
+        shell: bash
+        env:
+          OUTDIR: ${{ env.OUTDIR }}
+        run: |
+          set -euo pipefail
+          COMMIT="${GITHUB_SHA::7}"
+          EXT="${{ steps.meta.outputs.EXT }}"
+          OUT="${OUTDIR:?OUTDIR must be set}"
+
+          MAT_ARCH="${{ matrix.arch }}"  # amd64|arm64
+          if [[ "$EXT" == "deb" ]]; then
+            ARCH_PAT="$MAT_ARCH"   # deb: amd64|arm64
+            GLOB="$OUT/wazuh-internal-tools_*_${ARCH_PAT}.deb"
+          else
+            # rpm: x86_64|aarch64
+            case "$MAT_ARCH" in
+              amd64) ARCH_PAT="x86_64" ;;
+              arm64) ARCH_PAT="aarch64" ;;
+              *)     ARCH_PAT="$MAT_ARCH" ;;
+            esac
+            GLOB="$OUT/wazuh-internal-tools_*_${ARCH_PAT}.rpm"
+          fi
+
+          PKG="$(ls -1 $GLOB 2>/dev/null | head -n1 || true)"
+          if [[ -z "$PKG" ]]; then
+            echo "::error::no $EXT found at $GLOB"
+            echo "[debug] ls -l $OUT:" && ls -l "$OUT" || true
+            exit 1
+          fi
+
+          BASE="$(basename "$PKG")"
+          if [[ "$EXT" == "deb" ]]; then
+            ART_INNER="${BASE%.deb}_${COMMIT}.deb"
+          else
+            ART_INNER="${BASE%.rpm}_${COMMIT}.rpm"
+          fi
+
+          HAS_CHECKSUM="false"
+          SHA_PATH=""
+          SHA_INNER=""
+          if [[ -f "${PKG}.sha512" ]]; then
+            HAS_CHECKSUM="true"
+            SHA_BASE="$(basename "${PKG}.sha512")"
+            if [[ "$EXT" == "deb" ]]; then
+              SHA_INNER="${SHA_BASE%.deb.sha512}_${COMMIT}.deb.sha512"
+            else
+              SHA_INNER="${SHA_BASE%.rpm.sha512}_${COMMIT}.rpm.sha512"
+            fi
+            SHA_PATH="${PKG}.sha512"
+          fi
+
+          {
+            echo "pkg_path=$PKG"
+            echo "artifact_inner_name=$ART_INNER"
+            echo "has_checksum=$HAS_CHECKSUM"
+            echo "checksum_path=$SHA_PATH"
+            echo "checksum_inner_name=$SHA_INNER"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Prepare artifact file (flat, renamed)
+        id: prep
+        shell: bash
+        env:
+          OUTDIR: ${{ env.OUTDIR }}
+        run: |
+          set -euo pipefail
+          DEST="${OUTDIR}/${{ steps.stage.outputs.artifact_inner_name }}"
+          cp -f "${{ steps.stage.outputs.pkg_path }}" "$DEST"
+          echo "upload_path=$DEST" >> "$GITHUB_OUTPUT"
+
+          if [[ "${{ steps.stage.outputs.has_checksum }}" == "true" ]]; then
+            SHA_DEST="${OUTDIR}/${{ steps.stage.outputs.checksum_inner_name }}"
+            cp -f "${{ steps.stage.outputs.checksum_path }}" "$SHA_DEST"
+            echo "checksum_upload_path=$SHA_DEST" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload installer (flat, single file)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.stage.outputs.artifact_inner_name }}
+          path: ${{ steps.prep.outputs.upload_path }}
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Upload checksum (.sha512) as separate artifact
+        if: ${{ env.GEN_CHECKSUM == 'true' && steps.stage.outputs.has_checksum == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.stage.outputs.checksum_inner_name }}
+          path: ${{ steps.prep.outputs.checksum_upload_path }}
+          if-no-files-found: error
+          overwrite: true

@@ -1,0 +1,15 @@
+/opt/wazuh-internal-tools/venv/bin/engine-health-test  /usr/bin/engine-health-test
+/opt/wazuh-internal-tools/venv/bin/engine-helper-test  /usr/bin/engine-helper-test
+/opt/wazuh-internal-tools/venv/bin/engine-it           /usr/bin/engine-it
+/opt/wazuh-internal-tools/venv/bin/engine-test         /usr/bin/engine-test
+/opt/wazuh-internal-tools/venv/bin/engine-archiver     /usr/bin/engine-archiver
+/opt/wazuh-internal-tools/venv/bin/engine-catalog      /usr/bin/engine-catalog
+/opt/wazuh-internal-tools/venv/bin/engine-clear        /usr/bin/engine-clear
+/opt/wazuh-internal-tools/venv/bin/engine-decoder      /usr/bin/engine-decoder
+/opt/wazuh-internal-tools/venv/bin/engine-diff         /usr/bin/engine-diff
+/opt/wazuh-internal-tools/venv/bin/engine-geo          /usr/bin/engine-geo
+/opt/wazuh-internal-tools/venv/bin/engine-integration  /usr/bin/engine-integration
+/opt/wazuh-internal-tools/venv/bin/engine-kvdb         /usr/bin/engine-kvdb
+/opt/wazuh-internal-tools/venv/bin/engine-policy       /usr/bin/engine-policy
+/opt/wazuh-internal-tools/venv/bin/engine-router       /usr/bin/engine-router
+/opt/wazuh-internal-tools/venv/bin/engine-schema       /usr/bin/engine-schema

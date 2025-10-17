@@ -2,6 +2,13 @@ run-name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.a
 name: 5.X - Package - Upload manager images
 
 on:
+  push:
+    branches:
+      - '5.[0-9]+.[0-9]+'
+      - 'main'
+    paths:
+      - 'packages/**'
+
   workflow_dispatch:
     inputs:
       docker_image_tag:
@@ -39,6 +46,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      actions: write
 
     runs-on: ${{ inputs.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-22.04' }}
     timeout-minutes: 140
