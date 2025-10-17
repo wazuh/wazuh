@@ -33,28 +33,26 @@ agent_groups = b"default,windows-servers"
 # Valid configurations
 default_cluster_configuration = {
     'cluster': {
-        'disabled': 'yes',
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
-        'key': '',
+        'key': 'fd3350b86d239654e34866ab3c4988a8',
         'port': 1516,
-        'bind_addr': '0.0.0.0',
-        'nodes': ['NODE_IP'],
+        'bind_addr': '127.0.0.1',
+        'nodes': ['127.0.0.1'],
         'hidden': 'no'
     }
 }
 
 custom_cluster_configuration = {
     'cluster': {
-        'disabled': 'no',
         'node_type': 'master',
         'name': 'wazuh',
         'node_name': 'node01',
         'key': 'a' * 32,
         'port': 1516,
-        'bind_addr': '0.0.0.0',
-        'nodes': ['172.10.0.100'],
+        'bind_addr': '127.0.0.1',
+        'nodes': ['172.10.0.1'],
         'hidden': False
     }
 }
@@ -74,8 +72,8 @@ custom_incomplete_configuration = {
     ({'cluster': {'port': 'string', 'node_type': 'master'}}, "Port has to"),
     ({'cluster': {'port': 90}}, "Port must be"),
     ({'cluster': {'port': 70000}}, "Port must be"),
-    ({'cluster': {'port': 1516, 'nodes': ['NODE_IP'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
-    ({'cluster': {'nodes': ['localhost'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'port': 1516, 'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['127.0.1.1', '127.0.1.2'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
@@ -103,11 +101,6 @@ def test_get_node():
         assert get_node["node"] == test_dict["node_name"]
         assert get_node["cluster"] == test_dict["name"]
         assert get_node["type"] == test_dict["node_type"]
-
-
-def test_check_cluster_status():
-    """Check the correct output of the check_cluster_status function."""
-    assert isinstance(cluster.check_cluster_status(), bool)
 
 
 @patch('os.path.getmtime', return_value=45)

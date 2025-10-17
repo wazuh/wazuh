@@ -167,7 +167,7 @@ async def print_health(config: dict, more: bool, filter_node: Union[str, list]):
             # Integrity check
             total = calculate_seconds(node_info['status']['last_check_integrity']['date_start_master'],
                                       node_info['status']['last_check_integrity']['date_end_master'])
-            msg2 += f"            Integrity check:\n"
+            msg2 += "            Integrity check:\n"
             msg2 += f"                Last integrity check: {total} " \
                     f"({node_info['status']['last_check_integrity']['date_start_master']} - " \
                     f"{node_info['status']['last_check_integrity']['date_end_master']}).\n"
@@ -264,11 +264,6 @@ def main():
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.ERROR, format='%(levelname)s: %(message)s')
-
-    cluster_status = wazuh.core.cluster.utils.get_cluster_status()
-    if cluster_status['enabled'] == 'no' or cluster_status['running'] == 'no':
-        logging.error("Cluster is not running.")
-        sys.exit(1)
 
     cluster_config = wazuh.core.cluster.utils.read_config()
     wazuh.core.cluster.cluster.check_cluster_config(config=cluster_config)
