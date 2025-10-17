@@ -203,7 +203,7 @@ TEST(ContentManagerTest, ManagerUpdateConfigRejectsInvalid)
 {
     ContentManagerConfig cfg;
     auto base = makeIsolatedConfig(cfg, "mgr_update_invalid");
-    ContentManager manager(cfg, false);
+    ContentManager manager(cfg);
     ContentManagerConfig bad = cfg;
     bad.interval = 0;
     EXPECT_THROW(manager.updateConfig(bad, false), std::runtime_error);
@@ -214,7 +214,7 @@ TEST(ContentManagerTest, ManagerUpdateConfigRejectsInvalid)
 
 TEST_F(ContentDownloaderTest, ProcessMessageWithInvalidFormat)
 {
-    ContentManager cm(testConfig, false);
+    ContentManager cm(testConfig);
     std::string invalidMessage = R"({"invalid": "format"})";
     auto result = cm.testProcessMessage(invalidMessage);
     EXPECT_EQ(std::get<0>(result), 0);
@@ -224,7 +224,7 @@ TEST_F(ContentDownloaderTest, ProcessMessageWithInvalidFormat)
 
 TEST_F(ContentDownloaderTest, ProcessMessageWithValidOffsetFormat)
 {
-    ContentManager cm(testConfig, false);
+    ContentManager cm(testConfig);
     std::string testFile = testDir + "/test_content.json";
     std::ofstream file(testFile);
     file << R"({"data":[{"offset":100,"type":"create","payload":{"type":"decoder","document":{"id":"dec1"}}}]})"
@@ -238,7 +238,7 @@ TEST_F(ContentDownloaderTest, ProcessMessageWithValidOffsetFormat)
 
 TEST_F(ContentDownloaderTest, ProcessMessageWithRawType)
 {
-    ContentManager cm(testConfig, false);
+    ContentManager cm(testConfig);
     std::string testFile = testDir + "/test_raw.json";
     std::ofstream file(testFile);
     file << R"({"name": "asset1", "offset": 50, "payload":{"type":"policy"}})" << std::endl;
@@ -327,7 +327,7 @@ TEST(ContentManagerTest, RelativePathsResolvedInConstructor)
     ASSERT_EQ(cfg.databasePath, "rocksdb");
 
     // Construct manager (should normalize + create directories + open DB)
-    cti::store::ContentManager manager(cfg, false);
+    cti::store::ContentManager manager(cfg);
     auto effective = manager.getConfig();
 
     EXPECT_TRUE(effective.outputFolder.find(baseRoot) == 0);
@@ -350,7 +350,7 @@ TEST(ContentManagerTest, AssetStorePathOverridesDatabasePath)
     cfg.databasePath = "offset_db";   // offsets
     cfg.assetStorePath = "assets_db"; // assets
 
-    ContentManager manager(cfg, false);
+    ContentManager manager(cfg);
     auto effective = manager.getConfig();
     EXPECT_TRUE(effective.assetStorePath.find(cfg.basePath) == 0);
     EXPECT_NE(effective.assetStorePath, effective.databasePath);
@@ -365,7 +365,7 @@ TEST(ContentManagerTest, BasicOperations)
     ContentManagerConfig config;
     auto base = makeIsolatedConfig(config, "basic_ops");
 
-    ContentManager manager(config, false);
+    ContentManager manager(config);
 
     // Test ICMReader interface methods
     EXPECT_NO_THROW({
@@ -393,7 +393,7 @@ TEST(ContentManagerTest, SyncOperations)
     ContentManagerConfig config;
     auto base = makeIsolatedConfig(config, "sync_ops");
 
-    ContentManager manager(config, false);
+    ContentManager manager(config);
 
     EXPECT_FALSE(manager.isSyncRunning());
 
@@ -424,7 +424,7 @@ TEST(ContentManagerTest, UpdateConfigWithRestartRestartsRunningSync)
     auto base = makeIsolatedConfig(cfg, "restart_sync");
     cfg.interval = 2; // small interval
 
-    ContentManager manager(cfg, false);
+    ContentManager manager(cfg);
 
     // Start sync (may not actually run if ContentRegister unavailable, so guard with check)
     manager.startSync();

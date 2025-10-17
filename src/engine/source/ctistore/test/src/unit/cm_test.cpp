@@ -31,7 +31,7 @@ TEST(ContentManagerTest, init)
     auto base = makeIsolatedConfig(cfg, "cm_init");
 
     std::unique_ptr<cti::store::ContentManager> cm;
-    ASSERT_NO_THROW({ cm = std::make_unique<cti::store::ContentManager>(cfg, false); });
+    ASSERT_NO_THROW({ cm = std::make_unique<cti::store::ContentManager>(cfg); });
     ASSERT_NE(cm, nullptr);
 
     // Clean up
@@ -44,7 +44,7 @@ TEST(ContentManagerTest, processClassificationAllTypes)
     auto base = makeIsolatedConfig(cfg, "cm_proc");
     cfg.deleteDownloadedContent = false;
 
-    cti::store::ContentManager cm(cfg, false);
+    cti::store::ContentManager cm(cfg);
 
     // Create a temporary content file with one line for each type
     std::filesystem::create_directories(cfg.outputFolder);
@@ -77,7 +77,7 @@ TEST(ContentManagerTest, processSkipsUnclassifiedLines)
     auto base = makeIsolatedConfig(cfg, "cm_proc_skip");
     cfg.deleteDownloadedContent = false;
 
-    cti::store::ContentManager cm(cfg, false);
+    cti::store::ContentManager cm(cfg);
 
     std::filesystem::create_directories(cfg.outputFolder);
     const std::string filePath = cfg.outputFolder + "/batch.json";

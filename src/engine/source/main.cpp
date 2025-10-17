@@ -603,7 +603,7 @@ int main(int argc, char* argv[])
                 cmsync->deploy(cmstore);
             };
 
-            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, true, deployCallback);
+            ctiStoreManager = std::make_shared<cti::store::ContentManager>(ctiCfg, deployCallback);
             LOG_INFO("CTI Store initialized");
 
             // TODO: Find a better way to do this - This cannot going to production

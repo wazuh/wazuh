@@ -31,11 +31,9 @@ public:
     /**
      * @brief Constructor
      * @param config Configuration for the content downloader
-     * @param autoStart If true, starts the downloader automatically
      * @param deployCallback Optional callback to notify when content is successfully deployed
      */
     explicit ContentManager(const ContentManagerConfig& config = ContentManagerConfig {},
-                            bool autoStart = false,
                             ContentDeployCallback deployCallback = nullptr);
 
     /**
