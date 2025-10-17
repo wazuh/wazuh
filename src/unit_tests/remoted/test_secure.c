@@ -73,6 +73,10 @@ static int setup_config(void** state)
     router_syscollector_handle = (ROUTER_PROVIDER_HANDLE)&syscollector_dummy;
     router_rsync_handle = (ROUTER_PROVIDER_HANDLE)&rsync_dummy;
     agent_data_hash = (OSHash*)&hash_dummy;
+
+    // Initialize router_forwarding_disabled to 0 (enabled by default)
+    router_forwarding_disabled = 0;
+
     return 0;
 }
 
@@ -162,7 +166,7 @@ int __wrap_close(int __fd)
     return mock();
 }
 
-int __wrap_router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle, const char* msg, 
+int __wrap_router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle, const char* msg,
                                         void* agent_ctx, int schema_type) {
     check_expected_ptr(handle);
     check_expected_ptr(msg);
@@ -1240,8 +1244,6 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 12!");
 
@@ -1338,8 +1340,6 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized AAA");
 
@@ -1895,8 +1895,6 @@ void test_HandleSecureMessage_close_same_sock(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized 12!");
 
@@ -1971,8 +1969,6 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    // getDefine_Int for router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 0); // Router forwarding enabled
 
     expect_string(__wrap__mdebug2, formatted_msg, "001 message not recognized AAA");
 
@@ -2046,13 +2042,16 @@ void test_HandleSecureMessage_router_forwarding_disabled(void** state)
 
     expect_function_call(__wrap_rem_inc_recv_evt);
 
-    // getDefine_Int for router_forwarding_disabled - DISABLED (return 1)
-    will_return(__wrap_getDefine_Int, 1); // Router forwarding DISABLED
+    // Set router_forwarding_disabled to 1 to test disabled forwarding
+    router_forwarding_disabled = 1;
 
     // Expect the debug message when router forwarding is disabled
     expect_string(__wrap__mdebug2, formatted_msg, "Router forwarding is disabled, not forwarding message from agent '001'.");
 
     HandleSecureMessage(&message, control_msg_queue);
+
+    // Reset router_forwarding_disabled after test
+    router_forwarding_disabled = 0;
 
     os_free(key->id);
     os_free(key->name);
@@ -2395,9 +2394,9 @@ void test_router_message_forward_fim_syscheck_header(void** state) {
     const char* agent_id = "001";
     const char* agent_ip = "192.168.1.1";
     const char* agent_name = "test-agent";
-    
+
     expect_string(__wrap__mdebug2, formatted_msg, "FIM event detected, not forwarding to Inventory Harvester.");
-    
+
     router_message_forward(msg, agent_id, agent_ip, agent_name);
 }
 
