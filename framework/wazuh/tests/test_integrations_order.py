@@ -24,7 +24,7 @@ with patch('wazuh.core.common.getgrnam'):
         del sys.modules['wazuh.rbac.orm']
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
-        from wazuh.integrations_order import update_integrations_order, get_integrations_order, delete_integrations_order
+        from wazuh.integrations_order import upsert_integrations_order, get_integrations_order, delete_integrations_order
         from wazuh.core.engine.models.integrations_order import IntegrationsOrder, IntegrationInfo
         from wazuh.core.engine.models.policies import PolicyType
         from wazuh.core.results import AffectedItemsWazuhResult
@@ -65,12 +65,12 @@ MOCK_ENGINE_RESPONSE_EMPTY = {'status': 'OK', 'content': []}
 ])
 @patch('wazuh.integrations_order.get_engine_client')
 @patch('wazuh.integrations_order.save_asset_file')
-@patch('wazuh.integrations_order.generate_integrations_file_path')
+@patch('wazuh.integrations_order.generate_asset_file_path', return_value="/fake/path/decoder.json")
 @patch('wazuh.integrations_order.exists', return_value=False)
 @patch('wazuh.integrations_order.remove')
-async def test_update_integrations_order(mock_remove, mock_exists, mock_generate_path,
+async def test_upsert_integrations_order(mock_remove, mock_exists, mock_generate_path,
                                        mock_save_file, mock_get_client, integrations_order, policy_type):
-    """Test basic update_integrations_order functionality.
+    """Test basic upsert_integrations_order functionality.
 
     Parameters
     ----------
@@ -91,7 +91,7 @@ async def test_update_integrations_order(mock_remove, mock_exists, mock_generate
     mock_context_manager.__aexit__.return_value = None
     mock_get_client.return_value = mock_context_manager
 
-    result = await update_integrations_order(integrations_order, policy_type)
+    result = await upsert_integrations_order(integrations_order, policy_type)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 1
@@ -103,30 +103,12 @@ async def test_update_integrations_order(mock_remove, mock_exists, mock_generate
 @pytest.mark.asyncio
 @patch('wazuh.integrations_order.get_engine_client')
 @patch('wazuh.integrations_order.save_asset_file')
-@patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
-@patch('wazuh.integrations_order.exists', return_value=True)
-@patch('wazuh.integrations_order.remove')
-async def test_update_integrations_order_file_exists_error(mock_remove, mock_exists, mock_generate_path,
-                                                         mock_save_file, mock_get_client):
-    """Test update_integrations_order when file already exists."""
-    result = await update_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
-
-    assert isinstance(result, AffectedItemsWazuhResult)
-    assert result.total_affected_items == 0
-    assert len(result.failed_items) == 1
-    assert 9010 in failed_error_codes(result)
-    mock_save_file.assert_not_called()
-
-
-@pytest.mark.asyncio
-@patch('wazuh.integrations_order.get_engine_client')
-@patch('wazuh.integrations_order.save_asset_file')
-@patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
+@patch('wazuh.integrations_order.generate_asset_file_path', return_value="/fake/path/decoder.json")
 @patch('wazuh.integrations_order.exists', return_value=False)
 @patch('wazuh.integrations_order.remove')
-async def test_update_integrations_order_engine_error(mock_remove, mock_exists, mock_generate_path,
+async def test_upsert_integrations_order_engine_error(mock_remove, mock_exists, mock_generate_path,
                                                     mock_save_file, mock_get_client):
-    """Test update_integrations_order with engine error."""
+    """Test upsert_integrations_order with engine error."""
     mock_client = MagicMock()
     mock_client.integrations_order = MagicMock()
     mock_client.integrations_order.create_order = AsyncMock(return_value={'status': 'error', 'error': 'Engine error'})
@@ -137,7 +119,7 @@ async def test_update_integrations_order_engine_error(mock_remove, mock_exists, 
     mock_get_client.return_value = mock_context_manager
 
     with patch('wazuh.integrations_order.validate_response_or_raise', side_effect=WazuhError(9012)):
-        result = await update_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
+        result = await upsert_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
         assert isinstance(result, AffectedItemsWazuhResult)
         assert result.total_affected_items == 0
         assert len(result.failed_items) == 1
@@ -207,7 +189,7 @@ async def test_get_integrations_order_engine_error(mock_get_client):
     PolicyType.PRODUCTION,
 ])
 @patch('wazuh.integrations_order.get_engine_client')
-@patch('wazuh.integrations_order.generate_integrations_file_path')
+@patch('wazuh.integrations_order.generate_asset_file_path', return_value="/fake/path/decoder.json")
 @patch('wazuh.integrations_order.exists', return_value=True)
 @patch('wazuh.integrations_order.full_copy')
 @patch('wazuh.integrations_order.remove')
@@ -240,16 +222,16 @@ async def test_delete_integrations_order(mock_safe_move, mock_remove, mock_full_
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 1
     assert result.affected_items == [expected_filename]
-    mock_full_copy.assert_called_once_with(file_path, f"{file_path}.backup")
-    # remove called for original file and backup file cleanup
+    mock_full_copy.assert_called_once_with(file_path, f"{file_path}.bak")
+    # remove called for original file and bak file cleanup
     assert mock_remove.call_count == 2
     assert mock_remove.call_args_list[0].args[0] == file_path
-    assert mock_remove.call_args_list[1].args[0] == f"{file_path}.backup"
+    assert mock_remove.call_args_list[1].args[0] == f"{file_path}.bak"
     mock_client.integrations_order.delete_order.assert_called_once()
 
 
 @pytest.mark.asyncio
-@patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
+@patch('wazuh.integrations_order.generate_asset_file_path', return_value="/fake/path/decoder.json")
 @patch('wazuh.integrations_order.exists', return_value=False)
 async def test_delete_integrations_order_file_not_exists(mock_exists, mock_generate_path):
     """Test delete_integrations_order when file doesn't exist."""
@@ -263,13 +245,13 @@ async def test_delete_integrations_order_file_not_exists(mock_exists, mock_gener
 
 @pytest.mark.asyncio
 @patch('wazuh.integrations_order.get_engine_client')
-@patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
+@patch('wazuh.integrations_order.generate_asset_file_path', return_value="/fake/path/decoder.json")
 @patch('wazuh.integrations_order.exists', return_value=True)
-@patch('wazuh.integrations_order.full_copy', side_effect=IOError("Backup failed"))
+@patch('wazuh.integrations_order.full_copy', side_effect=IOError("bak failed"))
 @patch('wazuh.integrations_order.safe_move')
-async def test_delete_integrations_order_backup_error(mock_safe_move, mock_full_copy, mock_exists,
+async def test_delete_integrations_order_bak_error(mock_safe_move, mock_full_copy, mock_exists,
                                                     mock_generate_path, mock_get_client):
-    """Test delete_integrations_order with backup error."""
+    """Test delete_integrations_order with bak error."""
     mock_client = MagicMock()
     mock_client.integrations_order = MagicMock()
 
@@ -288,7 +270,7 @@ async def test_delete_integrations_order_backup_error(mock_safe_move, mock_full_
 
 @pytest.mark.asyncio
 @patch('wazuh.integrations_order.get_engine_client')
-@patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
+@patch('wazuh.integrations_order.generate_asset_file_path', return_value="/fake/path/decoder.json")
 @patch('wazuh.integrations_order.exists', return_value=True)
 @patch('wazuh.integrations_order.full_copy')
 @patch('wazuh.integrations_order.remove', side_effect=IOError("Remove failed"))
@@ -314,7 +296,7 @@ async def test_delete_integrations_order_remove_error(mock_safe_move, mock_remov
 
 @pytest.mark.asyncio
 @patch('wazuh.integrations_order.get_engine_client')
-@patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
+@patch('wazuh.integrations_order.generate_asset_file_path', return_value="/fake/path/decoder.json")
 @patch('wazuh.integrations_order.exists', return_value=True)
 @patch('wazuh.integrations_order.full_copy')
 @patch('wazuh.integrations_order.remove')
@@ -342,12 +324,12 @@ async def test_delete_integrations_order_engine_error(mock_safe_move, mock_remov
 @pytest.mark.asyncio
 @patch('wazuh.integrations_order.get_engine_client')
 @patch('wazuh.integrations_order.save_asset_file')
-@patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
+@patch('wazuh.integrations_order.generate_asset_file_path', return_value="/fake/path/decoder.json")
 @patch('wazuh.integrations_order.exists', return_value=False)
 @patch('wazuh.integrations_order.remove')
-async def test_update_integrations_order_with_empty_order(mock_remove, mock_exists, mock_generate_path,
+async def test_upsert_integrations_order_with_empty_order(mock_remove, mock_exists, mock_generate_path,
                                                         mock_save_file, mock_get_client):
-    """Test update_integrations_order with empty integrations list."""
+    """Test upsert_integrations_order with empty integrations list."""
     mock_client = MagicMock()
     mock_client.integrations_order = MagicMock()
     mock_client.integrations_order.create_order = AsyncMock(return_value={'status': 'OK'})
@@ -357,7 +339,7 @@ async def test_update_integrations_order_with_empty_order(mock_remove, mock_exis
     mock_context_manager.__aexit__.return_value = None
     mock_get_client.return_value = mock_context_manager
 
-    result = await update_integrations_order(INTEGRATIONS_ORDER_EMPTY, PolicyType.TESTING)
+    result = await upsert_integrations_order(INTEGRATIONS_ORDER_EMPTY, PolicyType.TESTING)
 
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 1
@@ -387,12 +369,12 @@ async def test_get_integrations_order_empty_response(mock_get_client):
 @pytest.mark.asyncio
 @patch('wazuh.integrations_order.get_engine_client')
 @patch('wazuh.integrations_order.save_asset_file', side_effect=IOError("Save failed"))
-@patch('wazuh.integrations_order.generate_integrations_file_path', return_value="/path/integrations_order")
+@patch('wazuh.integrations_order.generate_asset_file_path', return_value="/fake/path/decoder.json")
 @patch('wazuh.integrations_order.exists', return_value=False)
 @patch('wazuh.integrations_order.remove')
-async def test_update_integrations_order_save_file_error(mock_remove, mock_exists, mock_generate_path,
+async def test_upsert_integrations_order_save_file_error(mock_remove, mock_exists, mock_generate_path,
                                                        mock_save_file, mock_get_client):
-    """Test update_integrations_order with file save error."""
+    """Test upsert_integrations_order with file save error."""
     with pytest.raises(IOError) as exc_info:
-        await update_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
+        await upsert_integrations_order(INTEGRATIONS_ORDER_1, PolicyType.PRODUCTION)
     assert str(exc_info.value) == "Save failed"

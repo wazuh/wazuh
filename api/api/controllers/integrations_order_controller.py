@@ -17,8 +17,8 @@ from wazuh.core.engine.models.integrations_order import IntegrationsOrder, Integ
 
 logger = logging.getLogger('wazuh-api')
 
-async def update_integrations_order(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Create a new integrations order.
+async def upsert_integrations_order(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Upsert integrations order.
 
     Parameters
     ----------
@@ -44,7 +44,7 @@ async def update_integrations_order(body: dict, type_: str, pretty: bool = False
     }
 
     dapi = DistributedAPI(
-        f=integrations_order.update_integrations_order,
+        f=integrations_order.upsert_integrations_order,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_master',
         is_async=True,

@@ -2,75 +2,48 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from __future__ import absolute_import
-from typing import Dict, Optional
+from typing import Dict  # noqa: F401
 
-from api.util import deserialize_model
-from api.models.base_model_ import Body, Model
-from wazuh.core.exception import WazuhError
+from api.models.base_model_ import Body
 
 
-class _Validators:
-    """Internal helpers for strict KVDB payload validation."""
+class KVDBModel(Body):
+    """Body model for KVDBs."""
 
-    @classmethod
-    def from_dict(cls, body):
-        return deserialize_model(body, cls)
-
-    @staticmethod
-    def _check_no_extra(body: Dict, allowed_keys: set):
-        """Raise if payload contains properties not listed in allowed_keys."""
-        extra = set(body.keys()) - allowed_keys
-        if extra:
-            raise WazuhError(1800)
-
-    @staticmethod
-    def _check_non_empty_str(value: Optional[str], field: str):
-        """Raise if value is not a non-empty string."""
-        if not isinstance(value, str) or not value:
-            raise WazuhError(1801)
-
-    @staticmethod
-    def _check_optional_str_or_none(value, field: str):
-        """Raise if value is neither None nor a string."""
-        if value is not None and not isinstance(value, str):
-            raise WazuhError(1802)
-
-    @staticmethod
-    def _check_object(value, field: str):
-        """Raise if value is not a JSON object (dict)."""
-        if not isinstance(value, dict):
-            raise WazuhError(1803)
-
-
-class KVDBCreateModel(Body):
-    """Body model for POST /kvdbs. Required: id, name, content. Optional: integration_id."""
-
-    def __init__(self, id: str = None, name: str = None,
-                 content: Dict = None, integration_id: Optional[str] = None):
+    def __init__(self, id: str = None, name: str = None, type: str = None,
+                 content: Dict = None, integration_id: str = None):
         self.swagger_types = {
+            'type': str,
             'id': str,
             'name': str,
             'content': dict,
             'integration_id': str
         }
         self.attribute_map = {
+            'type': 'type',
             'id': 'id',
             'name': 'name',
             'content': 'content',
             'integration_id': 'integration_id'
         }
-
+        self._type = type
         self._id = id
         self._name = name
         self._content = content
         self._integration_id = integration_id
 
-    # --- properties ---
+    @property
+    def type(self):
+        """Policy type."""
+        return self._type
+
+    @type.setter
+    def type(self, type):
+        self._type = type
 
     @property
     def id(self) -> str:
-        """KVDB identifier (required)."""
+        """KVDB identifier."""
         return self._id
 
     @id.setter
@@ -79,7 +52,7 @@ class KVDBCreateModel(Body):
 
     @property
     def name(self) -> str:
-        """Human-friendly display name (required)."""
+        """Human-friendly display name."""
         return self._name
 
     @name.setter
@@ -88,7 +61,7 @@ class KVDBCreateModel(Body):
 
     @property
     def content(self) -> Dict:
-        """KV map content (required)."""
+        """KVDB map content."""
         return self._content
 
     @content.setter
@@ -96,126 +69,10 @@ class KVDBCreateModel(Body):
         self._content = value
 
     @property
-    def integration_id(self) -> Optional[str]:
-        """Optional integration identifier."""
+    def integration_id(self) -> str:
+        """Integration identifier."""
         return self._integration_id
 
     @integration_id.setter
-    def integration_id(self, value: Optional[str]):
+    def integration_id(self, value: str):
         self._integration_id = value
-
-    # --- helpers ---
-
-    @classmethod
-    def from_dict(cls, body: Dict) -> "KVDBCreateModel":
-        """Build and validate the model from a dict, rejecting extra properties."""
-
-        if not isinstance(body, dict):
-            return deserialize_model(body, cls)
-
-        model = cls(
-            id=body.get('id'),
-            name=body.get('name'),
-            content=body.get('content'),
-            integration_id=body.get('integration_id')
-        )
-        model.validate(body)
-        return model
-
-    def validate(self, raw: Dict = None):
-        """Strict validation: required fields, types, and no extra properties."""
-        raw = raw if raw is not None else self.to_dict()
-        _Validators._check_no_extra(raw, set(self.attribute_map.keys()))
-        _Validators._check_non_empty_str(self._id, 'id')
-        _Validators._check_non_empty_str(self._name, 'name')
-        _Validators._check_object(self._content, 'content')
-        _Validators._check_optional_str_or_none(self._integration_id, 'integration_id')
-
-
-class KVDBUpdateModel(Body):
-    """Body model for PUT /kvdbs. Required: id, content. Optional: name, integration_id."""
-
-    def __init__(self, id: str = None, content: Dict = None,
-                 name: Optional[str] = None, integration_id: Optional[str] = None):
-        self.swagger_types = {
-            'id': str,
-            'content': dict,
-            'name': str,
-            'integration_id': str
-        }
-        self.attribute_map = {
-            'id': 'id',
-            'content': 'content',
-            'name': 'name',
-            'integration_id': 'integration_id'
-        }
-
-        self._id = id
-        self._content = content
-        self._name = name
-        self._integration_id = integration_id
-
-    # --- properties ---
-
-    @property
-    def id(self) -> str:
-        """KVDB identifier (required)."""
-        return self._id
-
-    @id.setter
-    def id(self, value: str):
-        self._id = value
-
-    @property
-    def content(self) -> Dict:
-        """KV map content (required)."""
-        return self._content
-
-    @content.setter
-    def content(self, value: Dict):
-        self._content = value
-
-    @property
-    def name(self) -> Optional[str]:
-        """Optional display name."""
-        return self._name
-
-    @name.setter
-    def name(self, value: Optional[str]):
-        self._name = value
-
-    @property
-    def integration_id(self) -> Optional[str]:
-        """Optional integration identifier."""
-        return self._integration_id
-
-    @integration_id.setter
-    def integration_id(self, value: Optional[str]):
-        self._integration_id = value
-
-    # --- helpers ---
-
-    @classmethod
-    def from_dict(cls, body: Dict) -> "KVDBUpdateModel":
-        """Build and validate the model from a dict, rejecting extra properties."""
-
-        if not isinstance(body, dict):
-            return deserialize_model(body, cls)
-
-        model = cls(
-            id=body.get('id'),
-            content=body.get('content'),
-            name=body.get('name'),
-            integration_id=body.get('integration_id')
-        )
-        model.validate(body)
-        return model
-
-    def validate(self, raw: Dict = None):
-        """Strict validation: required fields, types, and no extra properties."""
-        raw = raw if raw is not None else self.to_dict()
-        _Validators._check_no_extra(raw, set(self.attribute_map.keys()))
-        _Validators._check_non_empty_str(self._id, 'id')
-        _Validators._check_object(self._content, 'content')
-        _Validators._check_optional_str_or_none(self._name, 'name')
-        _Validators._check_optional_str_or_none(self._integration_id, 'integration_id')

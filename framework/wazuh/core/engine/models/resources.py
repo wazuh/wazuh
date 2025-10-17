@@ -11,17 +11,14 @@ from wazuh.core.exception import WazuhError
 
 class ResourceType(str, Enum):
     """Enumeration for resource types in the catalog."""
-    RULE = 'rule'
     DECODER = 'decoder'
     KVDB = 'kvdb'
-    INTEGRATION = 'integration'
+    INTEGRATION = 'integrations'
 
     def dirname(self) -> str:
         """Return the directory name corresponding to the resource type."""
         mapping = {
-            self.RULE: 'rules',
             self.DECODER: 'decoders',
-            self.KVDB: 'kvdbs',
             self.INTEGRATION: 'integrations'
         }
         return mapping.get(self)
@@ -79,39 +76,50 @@ class Resource:
         """
         try:
             type_ = ResourceType(data["type"])
-        except KeyError:
-            raise WazuhError(9002)
-        except ValueError:
-            raise WazuhError(9002)
-
-        if type_ == ResourceType.DECODER:
-            try:
-                author_data = data["document"]["metadata"]["author"]
-                metadata = Metadata(
-                    author=Author(**author_data),
-                    compatibility=data["document"]["metadata"]["compatibility"],
-                    description=data["document"]["metadata"]["description"],
-                    module=data["document"]["metadata"]["module"],
-                    references=data["document"]["metadata"]["references"],
-                    title=data["document"]["metadata"]["title"],
-                    versions=data["document"]["metadata"]["versions"],
-                )
-                document = Document(metadata=metadata)
-                status = Status(data["status"])
-                return DecoderResource(
-                    type=type_,
-                    id=data["id"],
-                    name=data["name"],
-                    integration_id=data["integration_id"],
-                    status=status,
-                    document=document,
-                )
-            except KeyError as e:
-                raise WazuhError(9002) from e
-            except ValueError as e:
-                raise WazuhError(9002) from e
-        else:
-            raise WazuhError(9002)
+            match type_:
+                case ResourceType.DECODER:
+                    author_data = data["document"]["metadata"]["author"]
+                    metadata = Metadata(
+                        author=Author(**author_data),
+                        compatibility=data["document"]["metadata"]["compatibility"],
+                        description=data["document"]["metadata"]["description"],
+                        module=data["document"]["metadata"]["module"],
+                        references=data["document"]["metadata"]["references"],
+                        title=data["document"]["metadata"]["title"],
+                        versions=data["document"]["metadata"]["versions"],
+                    )
+                    document = Document(metadata=metadata)
+                    status = Status(data["status"])
+                    return DecoderResource(
+                        type=type_,
+                        id=data["id"],
+                        name=data["name"],
+                        integration_id=data["integration_id"],
+                        status=status,
+                        document=document,
+                    )
+                case ResourceType.KVDB:
+                    return KVDBResource(
+                        type=type_,
+                        id=data["id"],
+                        name=data["name"],
+                        integration_id=data["integration_id"],
+                        content=data["content"]
+                    )
+                case ResourceType.INTEGRATION:
+                    return IntegrationResource(
+                        type=type_,
+                        id=data["id"],
+                        name=data["name"],
+                        description=data["description"],
+                        status=data["status"],
+                        kvdbs=data["kvdbs"],
+                        decoders=data["decoders"]
+                    )
+        except KeyError as e:
+            raise WazuhError(9002) from e
+        except ValueError as e:
+            raise WazuhError(9002) from e
         
     def to_dict(self) -> Dict:
         """Convert Resource (including nested dataclasses and enums) to a dictionary."""
@@ -145,3 +153,11 @@ class DecoderResource(Resource, WithIntegrationId):
     """Decoder resource."""
     status: Status
     document: Document
+
+@dataclass 
+class IntegrationResource(Resource):
+    description: str
+    documentation: str
+    status: Status
+    kvdbs: List
+    decoders: List

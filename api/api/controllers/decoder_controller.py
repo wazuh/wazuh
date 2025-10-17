@@ -7,7 +7,7 @@ import logging
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
-from api.controllers.util import json_response
+from api.controllers.util import json_response, JSON_CONTENT_TYPE
 from api.models.decoders_model import DecodersModel
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
@@ -81,47 +81,7 @@ async def get_decoder(decoder_id: list = None, type_: str = None, status: str = 
     return json_response(data, pretty=pretty)
 
 
-async def create_decoder(body: bytes, type_: str = None, pretty: bool = False,
-                         wait_for_complete: bool = False) -> ConnexionResponse:
-    """Create a decoder file.
-
-    Parameters
-    ----------
-    body : bytes
-        Body request with the file content to be uploaded.
-    type_: str
-        Policy type.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    # Parse body to utf-8
-    Body.validate_content_type(request, expected_content_type='application/json')
-    parsed_body = await DecodersModel.get_kwargs(body)
-
-    f_kwargs = {'decoder_content': parsed_body,
-                'policy_type': type_}
-
-    dapi = DistributedAPI(f=decoder_framework.create_decoder,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def update_decoder(body: bytes, type_: str = None,  pretty: bool = False,
+async def upsert_decoder(body: bytes, type_: str = None,  pretty: bool = False,
                          wait_for_complete: bool = False) -> ConnexionResponse:
     """Upload a decoder file.
 
@@ -141,14 +101,13 @@ async def update_decoder(body: bytes, type_: str = None,  pretty: bool = False,
     ConnexionResponse
         API response.
     """
-    # Parse body to utf-8
-    Body.validate_content_type(request, expected_content_type='application/json')
+    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
     parsed_body = await DecodersModel.get_kwargs(body)
 
     f_kwargs = {'decoder_content': parsed_body,
                 'policy_type': type_}
 
-    dapi = DistributedAPI(f=decoder_framework.update_decoder,
+    dapi = DistributedAPI(f=decoder_framework.upsert_decoder,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=True,

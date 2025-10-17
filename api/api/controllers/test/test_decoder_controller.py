@@ -15,8 +15,7 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.rbac.decorators
         from api.controllers.decoder_controller import (
             get_decoder,
-            create_decoder,
-            update_decoder,
+            upsert_decoder,
             delete_decoder,
         )
         from wazuh import decoder as decoder_framework
@@ -69,47 +68,17 @@ async def test_get_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 @patch('api.controllers.decoder_controller.remove_nones_to_dict')
 @patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_create_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_get_kwargs, mock_request):
+async def test_upsert_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_get_kwargs, mock_request):
     """Verify 'create_decoder' endpoint is working as expected."""
     with patch('api.controllers.decoder_controller.Body.validate_content_type'):
         mock_get_kwargs.return_value = {"id": "test-decoder"}
-        result = await create_decoder(body=b"dummy")
+        result = await upsert_decoder(body=b"dummy")
         f_kwargs = {
             'decoder_content': mock_get_kwargs.return_value,
             'policy_type': None,
         }
         mock_dapi.assert_called_once_with(
-            f=decoder_framework.create_decoder,
-            f_kwargs=mock_remove.return_value,
-            request_type='local_master',
-            is_async=True,
-            wait_for_complete=False,
-            logger=ANY,
-            rbac_permissions=mock_request.context['token_info']['rbac_policies'],
-        )
-        mock_exc.assert_called_once_with(mock_dfunc.return_value)
-        mock_remove.assert_called_once_with(f_kwargs)
-        assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["decoder_controller"], indirect=True)
-@patch('api.controllers.decoder_controller.DecodersModel.get_kwargs', new_callable=AsyncMock)
-@patch('api.controllers.decoder_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.decoder_controller.remove_nones_to_dict')
-@patch('api.controllers.decoder_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.decoder_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_update_decoder(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_get_kwargs, mock_request):
-    """Verify 'update_decoder' endpoint is working as expected."""
-    with patch('api.controllers.decoder_controller.Body.validate_content_type'):
-        mock_get_kwargs.return_value = {"id": "test-decoder"}
-        result = await update_decoder(body=b"dummy")
-        f_kwargs = {
-            'decoder_content': mock_get_kwargs.return_value,
-            'policy_type': None,
-        }
-        mock_dapi.assert_called_once_with(
-            f=decoder_framework.update_decoder,
+            f=decoder_framework.upsert_decoder,
             f_kwargs=mock_remove.return_value,
             request_type='local_master',
             is_async=True,

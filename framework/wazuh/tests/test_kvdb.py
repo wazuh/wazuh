@@ -1,214 +1,287 @@
-# Copyright (C) 2015, Wazuh Inc.
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, patch, ANY
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from wazuh.core.exception import WazuhError
-from wazuh import kvdb
+from wazuh import WazuhError, kvdb
+from wazuh.core.engine.models.resources import Status
+from wazuh.core.results import AffectedItemsWazuhResult
 
+@pytest.mark.asyncio
+@patch("wazuh.kvdb.Resource.from_dict")
+@patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
+@patch("wazuh.kvdb.exists", return_value=False)
+@patch("wazuh.kvdb.save_asset_file")
+@patch("wazuh.kvdb.get_engine_client")
+async def test_upsert_kvdb_create_success(
+    mock_get_engine, mock_save, mock_exists, mock_path, mock_resource
+):
+    """Test creating a new kvdb successfully."""
+    mock_catalog = AsyncMock()
+    mock_catalog.validate_resource.return_value = {"status": "OK"}
 
-class FakeEngineClient:
-    """Engine client with async mocked methods for catalog and content."""
-    def __init__(
-        self,
-        get_resources_return=None,
-        validate_return=None,
-        create_return=None,
-        update_return=None,
-        delete_return=None,
-    ):
-        # Submodules with async functions
-        self.catalog = SimpleNamespace(
-            validate_resource=AsyncMock(return_value=validate_return or {"status": "OK"})
-        )
-        self.content = SimpleNamespace(
-            get_resources=AsyncMock(return_value=get_resources_return or {"status": "OK", "content": []}),
-            create_resource=AsyncMock(return_value=create_return or {"status": "OK"}),
-            update_resource=AsyncMock(return_value=update_return or {"status": "OK"}),
-            delete_resource=AsyncMock(return_value=delete_return or {"status": "OK"}),
-        )
+    mock_content = AsyncMock()
+    mock_content.create_resource.return_value = {"status": "OK"}
 
+    mock_client = AsyncMock()
+    mock_client.catalog = mock_catalog
+    mock_client.content = mock_content
 
-class FakeEngineCM:
-    """Async context manager that yields the FakeEngineClient."""
-    def __init__(self, client: FakeEngineClient):
-        self.client = client
+    mock_get_engine.return_value.__aenter__.return_value = mock_client
 
-    async def __aenter__(self):
-        return self.client
+    fake_resource = MagicMock()
+    fake_resource.id = "my_kvdb"
+    mock_resource.return_value = fake_resource
 
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
+    result = await kvdb.upsert_kvdb({"id": "my_kvdb"}, "testing")
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == ["my_kvdb"]
+    assert result.total_affected_items == 1
 
 
 @pytest.mark.asyncio
-@patch('wazuh.kvdb.process_array')
-@patch('wazuh.kvdb.validate_response_or_raise')
-@patch('wazuh.kvdb.get_engine_client')
-async def test_list_kvdbs_ok(mock_get_client, mock_validate, mock_process):
-    """Ensure list_kvdbs queries the engine and processes the array correctly."""
-    items_from_engine = {"status": "OK", "content": [{"id": "a", "name": "A"}, {"id": "b", "name": "B"}]}
-    processed = {"items": [{"id": "a"}, {"id": "b"}], "totalItems": 2}
+@patch("wazuh.kvdb.Resource.from_dict", side_effect=WazuhError(9006))
+async def test_upsert_kvdb_bad_kvdb_format(mock_resource):
+    """Test handling bad kvdb input."""
+    result = await kvdb.upsert_kvdb({}, "testing")
 
-    fake = FakeEngineClient(get_resources_return=items_from_engine)
-    mock_get_client.return_value = FakeEngineCM(fake)
-    mock_process.return_value = processed
-
-    res = await kvdb.list_kvdbs(policy_type="production")
-
-    assert res.affected_items == processed["items"]
-    assert res.total_affected_items == processed["totalItems"]
-    fake.content.get_resources.assert_awaited()
-    mock_validate.assert_called()
-    mock_process.assert_called_once()
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == []
+    assert result.total_affected_items == 0
+    assert result.total_failed_items == 1
 
 
 @pytest.mark.asyncio
-async def test_create_requires_testing_policy():
-    """Verify create fails outside 'testing' policy (error 1804)."""
-    body = {"type": "kvdb", "id": "100", "name": "demo1", "content": {"k": "v"}}
-    with pytest.raises(WazuhError) as exc:
-        await kvdb.create_kvdb(policy_type="production", item=body)
-    assert getattr(exc.value, "code", None) == 1804
+@patch("wazuh.kvdb.Resource.from_dict")
+@patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
+@patch("wazuh.kvdb.exists", side_effect=[True, False])
+@patch("wazuh.kvdb.save_asset_file")
+@patch("wazuh.kvdb.get_engine_client")
+@patch("wazuh.kvdb.full_copy")
+@patch("wazuh.kvdb.remove")
+@patch("wazuh.kvdb.safe_move")
+async def test_upsert_kvdb_update_success(
+    mock_safe_move,
+    mock_remove,
+    mock_full_copy,
+    mock_get_engine,
+    mock_save,
+    mock_exists,
+    mock_path,
+    mock_resource,
+):
+    """Test updating an existing kvdb successfully."""
+    mock_catalog = AsyncMock()
+    mock_catalog.validate_resource.return_value = {"status": "OK"}
 
+    mock_content = AsyncMock()
+    mock_content.update_resource.return_value = {"status": "OK"}
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize("bad_body", [
-    {"type": "kvdb", "name": "No ID", "content": {"k": "v"}},                   # missing id
-    {"type": "kvdb", "id": "100", "name": "Bad content", "content": "str"},     # content not dict
-])
-async def test_create_validates_payload(bad_body):
-    """Verify invalid payloads raise error 1806 in create."""
-    with pytest.raises(WazuhError) as exc:
-        await kvdb.create_kvdb(policy_type="testing", item=bad_body)
-    assert getattr(exc.value, "code", None) == 1806
+    mock_client = AsyncMock()
+    mock_client.catalog = mock_catalog
+    mock_client.content = mock_content
 
+    mock_get_engine.return_value.__aenter__.return_value = mock_client
 
-@pytest.mark.asyncio
-@patch('wazuh.kvdb.validate_response_or_raise')
-@patch('wazuh.kvdb.get_engine_client')
-@patch('wazuh.kvdb.remove')
-@patch('wazuh.kvdb.save_asset_file')
-@patch('wazuh.kvdb.exists', return_value=False)
-@patch('wazuh.kvdb.generate_kvdb_file_path')
-async def test_create_success(mock_gen_path, mock_exists, mock_save, mock_remove, mock_get_client, mock_validate, tmp_path):
-    """Create a KVDB successfully and confirm validation and engine calls."""
-    body = {"type": "kvdb", "id": "100", "name": "demo1", "content": {"k": "v"}}
-    fake = FakeEngineClient()
-    asset_path = tmp_path / "100.json"
-    mock_gen_path.return_value = str(asset_path)
-    mock_get_client.return_value = FakeEngineCM(fake)
+    fake_resource = MagicMock()
+    fake_resource.id = "my_kvdb"
+    mock_resource.return_value = fake_resource
 
-    res = await kvdb.create_kvdb(policy_type="testing", item=body)
+    result = await kvdb.upsert_kvdb({"id": "my_kvdb"}, "testing")
 
-    assert res.affected_items == ["100"]
-    assert res.total_affected_items == 1
-    assert res.total_failed_items == 0
-
-    mock_exists.assert_called()
-    mock_save.assert_called_once_with(str(asset_path), ANY)
-    fake.catalog.validate_resource.assert_awaited()
-    fake.content.create_resource.assert_awaited()
-
-
-@pytest.mark.asyncio
-async def test_update_requires_testing_policy():
-    """Verify update fails outside 'testing' policy (error 1804)."""
-    body = {"id": "100", "name": "demo1 (v2)", "content": {"k2": "v2"}}
-    with pytest.raises(WazuhError) as exc:
-        await kvdb.update_kvdb(policy_type="production", item=body)
-    assert getattr(exc.value, "code", None) == 1804
-
-
-@pytest.mark.asyncio
-@patch('wazuh.kvdb.exists', return_value=False)
-@patch('wazuh.kvdb.generate_kvdb_file_path')
-async def test_update_missing_asset(mock_gen_path, mock_exists, tmp_path):
-    """Verify update fails when asset file does not exist (error 8005)."""
-    body = {"id": "100", "name": "demo1 (v2)", "content": {"k2": "v2"}}
-    asset_path = tmp_path / "100.json"
-    mock_gen_path.return_value = str(asset_path)
-
-    with pytest.raises(WazuhError) as exc:
-        await kvdb.update_kvdb(policy_type="testing", item=body)
-    assert getattr(exc.value, "code", None) == 8005
-
-
-@pytest.mark.asyncio
-@patch('wazuh.kvdb.validate_response_or_raise')
-@patch('wazuh.kvdb.get_engine_client')
-@patch('wazuh.kvdb.safe_move')
-@patch('wazuh.kvdb.save_asset_file')
-@patch('wazuh.kvdb.remove')
-@patch('wazuh.kvdb.full_copy')
-@patch('wazuh.kvdb.exists', return_value=True)
-@patch('wazuh.kvdb.generate_kvdb_file_path')
-async def test_update_success(mock_gen_path, mock_exists, mock_full_copy, mock_remove, mock_save, mock_safe_move, mock_get_client, mock_validate, tmp_path):
-    """Update a KVDB successfully and confirm engine and file ops are called."""
-    body = {"id": "100", "name": "demo1 (v2)", "content": {"k2": "v2"}}
-    fake = FakeEngineClient()
-    asset_path = tmp_path / "100.json"
-    mock_gen_path.return_value = str(asset_path)
-    mock_get_client.return_value = FakeEngineCM(fake)
-
-    res = await kvdb.update_kvdb(policy_type="testing", item=body)
-
-    assert res.affected_items == ["100"]
-    assert res.total_affected_items == 1
-    assert res.total_failed_items == 0
-
-    # backup created
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == ["my_kvdb"]
+    assert result.total_affected_items == 1
     mock_full_copy.assert_called_once()
-    # original removed and/or backup cleaned
-    mock_remove.assert_called()
-    mock_save.assert_called_once_with(str(asset_path), ANY)
-    fake.catalog.validate_resource.assert_awaited()
-    fake.content.update_resource.assert_awaited()
+    mock_remove.assert_called_once()
+    mock_safe_move.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_delete_requires_testing_policy():
-    """Verify delete fails outside 'testing' policy (error 1804)."""
-    with pytest.raises(WazuhError) as exc:
-        await kvdb.delete_kvdbs(policy_type="production", ids=["a", "b"])
-    assert getattr(exc.value, "code", None) == 1804
+@patch("wazuh.kvdb.Resource.from_dict")
+@patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
+@patch("wazuh.kvdb.exists", side_effect=[True, False, False])
+@patch("wazuh.kvdb.full_copy", side_effect=IOError)
+async def test_upsert_kvdb_backup_fail(
+    mock_full_copy, mock_exists, mock_path, mock_resource
+):
+    """Test failure during backup when updating."""
+    fake_resource = MagicMock()
+    fake_resource.id = "my_kvdb"
+    mock_resource.return_value = fake_resource
+
+    result = await kvdb.upsert_kvdb({"id": "my_kvdb"}, "testing")
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == []
+    assert result.total_affected_items == 0
+    assert result.total_failed_items == 1
 
 
 @pytest.mark.asyncio
-@patch('wazuh.kvdb.exists', return_value=False)
-@patch('wazuh.kvdb.generate_kvdb_file_path')
-async def test_delete_missing_asset(mock_gen_path, mock_exists, tmp_path):
-    """Verify delete reports failures when files do not exist."""
-    mock_gen_path.side_effect = lambda _id, _pt: str(tmp_path / f"{_id}.json")
+@patch("wazuh.kvdb.Resource.from_dict")
+@patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
+@patch("wazuh.kvdb.exists", side_effect=[False, True])
+@patch("wazuh.kvdb.save_asset_file")
+@patch("wazuh.kvdb.remove")
+@patch("wazuh.kvdb.get_engine_client")
+async def test_upsert_kvdb_remove_on_create_fail(
+    mock_get_engine,
+    mock_remove,
+    mock_save,
+    mock_exists,
+    mock_path,
+    mock_resource
+):
+    """Test that newly created file is removed if creation fails."""
+    fake_resource = MagicMock()
+    fake_resource.id = "my_kvdb"
+    mock_resource.return_value = fake_resource
 
-    res = await kvdb.delete_kvdbs(policy_type="testing", ids=["a", "b"])
+    mock_client = AsyncMock()
+    mock_client.catalog.validate_resource.side_effect = WazuhError(9002)
+    mock_get_engine.return_value.__aenter__.return_value = mock_client
 
-    assert res.total_affected_items == 0
-    assert res.affected_items == []
-    assert res.total_failed_items == 2
+    result = await kvdb.upsert_kvdb({"id": "my_kvdb"}, "testing")
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == []
+    assert result.total_failed_items == 1
+    mock_remove.assert_called_once_with("/fake/path/kvdb.json")
 
 
 @pytest.mark.asyncio
-@patch('wazuh.kvdb.validate_response_or_raise')
-@patch('wazuh.kvdb.get_engine_client')
-@patch('wazuh.kvdb.safe_move')
-@patch('wazuh.kvdb.remove')
-@patch('wazuh.kvdb.full_copy')
-@patch('wazuh.kvdb.exists', return_value=True)
-@patch('wazuh.kvdb.generate_kvdb_file_path')
-async def test_delete_ok_calls_engine_per_id(mock_gen_path, mock_exists, mock_full_copy, mock_remove, mock_safe_move, mock_get_client, mock_validate, tmp_path):
-    """Verify delete calls the engine once per id and returns affected ids."""
-    fake = FakeEngineClient()
-    mock_gen_path.side_effect = lambda _id, _pt: str(tmp_path / f"{_id}.json")
-    mock_get_client.return_value = FakeEngineCM(fake)
+@patch("wazuh.kvdb.Resource.from_dict")
+@patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
+@patch("wazuh.kvdb.exists", side_effect=[True, True, True, True])
+@patch("wazuh.kvdb.full_copy")
+@patch("wazuh.kvdb.remove", side_effect=[IOError(), True])
+@patch("wazuh.kvdb.safe_move")
+async def test_upsert_kvdb_delete_previous_fail(
+    mock_safe_move,
+    mock_remove,
+    mock_full_copy,
+    mock_exists,
+    mock_path,
+    mock_resource,
+):
+    """Test failure removing old file during update triggers backup restore."""
+    fake_resource = MagicMock()
+    fake_resource.id = "my_kvdb"
+    mock_resource.return_value = fake_resource
 
-    res = await kvdb.delete_kvdbs(policy_type="testing", ids=["a", "b"])
+    result = await kvdb.upsert_kvdb({"id": "my_kvdb"}, "testing")
 
-    assert res.affected_items == ["a", "b"]
-    assert res.total_affected_items == 2
-    assert res.total_failed_items == 0
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == []
+    assert result.total_affected_items == 0
+    assert result.total_failed_items == 1
+    mock_safe_move.assert_called_once()
 
-    assert fake.content.delete_resource.await_count == 2
+
+@pytest.mark.asyncio
+@patch("wazuh.kvdb.process_array", return_value={"items": [{"id": "my_kvdb"}], "totalItems": 1})
+@patch("wazuh.kvdb.validate_response_or_raise", new_callable=MagicMock)
+@patch("wazuh.kvdb.get_engine_client")
+async def test_get_kvdb_success(mock_get_engine, mock_validate, mock_process):
+    mock_content = AsyncMock()
+    mock_content.get_resources.return_value = {"content": [{"id": "my_kvdb"}]}
+
+    mock_client = AsyncMock()
+    mock_client.content = mock_content
+
+    mock_get_engine.return_value.__aenter__.return_value = mock_client
+    mock_get_engine.return_value.__aexit__.return_value = AsyncMock()
+
+    result = await kvdb.get_kvdb(
+        ids=["my_kvdb"], policy_type="testing", status=Status.ENABLED
+    )
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == [{"id": "my_kvdb"}]
+    assert result.total_affected_items == 1
+
+
+@pytest.mark.asyncio
+@patch("wazuh.kvdb.get_engine_client")
+async def test_get_kvdb_failure(mock_get_engine):
+    mock_content = AsyncMock()
+    mock_content.get_resources.return_value = {
+        "status": "error",
+        "error": "error message",
+        "content": [],
+    }
+
+    mock_client = AsyncMock()
+    mock_client.content = mock_content
+
+    mock_get_engine.return_value.__aenter__.return_value = mock_client
+
+    results = await kvdb.get_kvdb(
+        ids=["invalid"], policy_type="testing", status=Status("enabled")
+    )
+
+    assert isinstance(results, AffectedItemsWazuhResult)
+    assert results.total_affected_items == 0
+    assert results.total_failed_items == 1
+
+
+@pytest.mark.asyncio
+@patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
+@patch("wazuh.kvdb.exists", return_value=True)
+@patch("wazuh.kvdb.remove")
+@patch("wazuh.kvdb.full_copy")
+@patch("wazuh.kvdb.safe_move")
+@patch("wazuh.kvdb.get_engine_client")
+async def test_delete_kvdb_success(
+    mock_get_engine, mock_safe, mock_copy, mock_remove, mock_exists, mock_path
+):
+    mock_client = AsyncMock()
+    mock_client.content.delete_resource.return_value = {"status": "OK"}
+
+    mock_get_engine.return_value.__aenter__.return_value = mock_client
+
+    result = await kvdb.delete_kvdb(ids=["my_kvdb"], policy_type="testing")
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.affected_items == ["my_kvdb"]
+    assert result.total_affected_items == 1
+
+
+@pytest.mark.asyncio
+@patch("wazuh.kvdb.full_copy", side_effect=IOError())
+@patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
+@patch("wazuh.kvdb.exists", side_effect=[True, False, False])
+async def test_delete_kvdb_backup_fail(mock_exists, mock_path, mock_full_copy):
+    result = await kvdb.delete_kvdb(ids=["not_found"], policy_type="testing")
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.total_affected_items == 0
+    assert result.total_failed_items == 1
+
+
+@pytest.mark.asyncio
+@patch("wazuh.kvdb.safe_move")
+@patch("wazuh.kvdb.remove", side_effect=[IOError(), True])
+@patch("wazuh.kvdb.full_copy")
+@patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
+@patch("wazuh.kvdb.exists", side_effect=[True, True, True])
+async def test_delete_kvdb_delete_fail(
+    mock_exists, mock_path, mock_full_copy, mock_remove, mock_safe_move
+):
+    result = await kvdb.delete_kvdb(ids=["not_found"], policy_type="testing")
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    mock_safe_move.assert_called_once()
+    assert result.total_affected_items == 0
+    assert result.total_failed_items == 1
+
+
+@pytest.mark.asyncio
+@patch("wazuh.kvdb.generate_asset_file_path", return_value="/fake/path/kvdb.json")
+@patch("wazuh.kvdb.exists", side_effect=[False, False])
+async def test_delete_kvdb_not_found(mock_exists, mock_path):
+    result = await kvdb.delete_kvdb(ids=["not_found"], policy_type="testing")
+
+    assert isinstance(result, AffectedItemsWazuhResult)
+    assert result.total_affected_items == 0
+    assert result.total_failed_items == 1

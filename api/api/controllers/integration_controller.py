@@ -18,7 +18,7 @@ from wazuh.core.engine.models.integration import Integration
 
 logger = logging.getLogger('wazuh-api')
 
-async def create_integration(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def upsert_integration(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Create a new integration.
 
     Parameters
@@ -45,7 +45,7 @@ async def create_integration(body: dict, type_: str, pretty: bool = False, wait_
     }
 
     dapi = DistributedAPI(
-        f=integration.create_integration,
+        f=integration.upsert_integration,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_master',
         is_async=True,
@@ -57,7 +57,7 @@ async def create_integration(body: dict, type_: str, pretty: bool = False, wait_
 
     return json_response(data, pretty=pretty)
 
-async def get_integrations(type_: str, integration_id: List[str] = None, status: Optional[str] = None,
+async def get_integration(type_: str, integration_id: List[str] = None, status: Optional[str] = None,
                            search: Optional[str] = None, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get integrations.
 
@@ -89,48 +89,9 @@ async def get_integrations(type_: str, integration_id: List[str] = None, status:
     }
 
     dapi = DistributedAPI(
-        f=integration.get_integrations,
+        f=integration.get_integration,
         f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_any',
-        is_async=True,
-        wait_for_complete=wait_for_complete,
-        logger=logger,
-        rbac_permissions=request.context['token_info']['rbac_policies']
-    )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-async def update_integration(body: dict, type_: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Update an existing integration.
-
-    Parameters
-    ----------
-    type_ : str
-        Policy type.
-    pretty : bool, optional
-        Show results in human-readable format. Default `False`.
-    wait_for_complete : bool, optional
-        Disable timeout response. Default `False`.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    body_kwargs = await IntegrationCreateModel.get_kwargs(body)
-    model = Integration(**body_kwargs)
-
-    f_kwargs = {
-        'integration': model,
-        'type_': type_
-    }
-
-    dapi = DistributedAPI(
-        f=integration.update_integration,
-        f_kwargs=remove_nones_to_dict(f_kwargs),
-        request_type='local_master',
         is_async=True,
         wait_for_complete=wait_for_complete,
         logger=logger,
