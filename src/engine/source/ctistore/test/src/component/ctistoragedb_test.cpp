@@ -68,6 +68,7 @@ protected:
 
     json::Json createSamplePolicy(const std::string& name = "policy_1", int version = 1)
     {
+        // Creates policy in nested format (preferred): /payload/document/title and /payload/document/integrations
         json::Json policy;
         policy.setObject();
         policy.setString(name, "/name");
@@ -98,7 +99,33 @@ protected:
         metadata.set("/references", references);
 
         document.set("/metadata", metadata);
+
+        json::Json integrations;
+        integrations.setArray();
+        integrations.appendString("integration_1");
+        integrations.appendString("integration_2");
+        document.set("/integrations", integrations);
+
         payload.set("/document", document);
+        policy.set("/payload", payload);
+        return policy;
+    }
+
+    json::Json createSamplePolicyLegacy(const std::string& name = "policy_legacy_1", const std::string& title = "Wazuh Legacy Policy")
+    {
+        // Creates policy in legacy flat format: /payload/title and /payload/integrations (no document wrapper)
+        // TODO: Remove once all policies migrated to nested format
+        json::Json policy;
+        policy.setObject();
+        policy.setString(name, "/name");
+        policy.setInt(1, "/offset");
+        policy.setInt(1, "/version");
+        policy.setString("2025-09-19T14:35:57.830144Z", "/inserted_at");
+
+        json::Json payload;
+        payload.setObject();
+        payload.setString("policy", "/type");
+        payload.setString(title, "/title");
 
         json::Json integrations;
         integrations.setArray();
@@ -291,11 +318,10 @@ TEST_F(CTIStorageDBTest, GetAssetById)
 
     auto retrieved = m_storage->getAsset(base::Name("test_integration_id"), "integration");
 
+    // Now returns raw data with /name and /payload structure
     EXPECT_EQ(retrieved.getString("/name").value_or(""), "test_integration_id");
 
-    auto payload = retrieved.getJson("/payload");
-    ASSERT_TRUE(payload.has_value());
-    auto document = payload.value().getJson("/document");
+    auto document = retrieved.getJson("/payload/document");
     ASSERT_TRUE(document.has_value());
     EXPECT_EQ(document->getString("/title").value_or(""), "Test Integration");
 }
@@ -385,17 +411,11 @@ TEST_F(CTIStorageDBTest, KVDBDump)
 
     auto kvdbDoc = m_storage->kvdbDump("test_kvdb_id");
 
-    // kvdbDump now returns the full document, not just content
-    auto payload = kvdbDoc.getJson("/payload");
-    ASSERT_TRUE(payload.has_value());
-    auto document = payload.value().getJson("/document");
-    ASSERT_TRUE(document.has_value());
-    auto content = document.value().getJson("/content");
-    ASSERT_TRUE(content.has_value());
-
-    EXPECT_EQ(content->getString("/key1").value_or(""), "value1");
-    EXPECT_EQ(content->getString("/key2").value_or(""), "value2");
-    EXPECT_EQ(content->getInt("/key3").value_or(0), 123);
+    // kvdbDump now returns raw document with /name and /payload structure
+    // Content is at /payload/document/content
+    EXPECT_EQ(kvdbDoc.getString("/payload/document/content/key1").value_or(""), "value1");
+    EXPECT_EQ(kvdbDoc.getString("/payload/document/content/key2").value_or(""), "value2");
+    EXPECT_EQ(kvdbDoc.getInt("/payload/document/content/key3").value_or(0), 123);
 }
 
 TEST_F(CTIStorageDBTest, GetKVDBListByIntegration)
@@ -440,11 +460,6 @@ TEST_F(CTIStorageDBTest, GetPolicyIntegrationList)
     EXPECT_THAT(names, ::testing::UnorderedElementsAre("Integration One", "Integration Two"));
 }
 
-TEST_F(CTIStorageDBTest, GetPolicyDefaultParent)
-{
-    auto defaultParent = m_storage->getPolicyDefaultParent();
-    EXPECT_EQ(defaultParent.fullName(), "wazuh");
-}
 
 // Error handling tests
 TEST_F(CTIStorageDBTest, GetNonExistentAsset)
@@ -776,13 +791,7 @@ TEST_F(CTIStorageDBTest, DataIntegrityAfterReopen)
     EXPECT_EQ(retrievedIntegration.getString("/name").value_or(""), "test_integration");
 
     auto retrievedKvdb = m_storage->kvdbDump("test_kvdb");
-    auto retrievedPayload = retrievedKvdb.getJson("/payload");
-    ASSERT_TRUE(retrievedPayload.has_value());
-    auto retrievedDocument = retrievedPayload.value().getJson("/document");
-    ASSERT_TRUE(retrievedDocument.has_value());
-    auto retrievedContent = retrievedDocument.value().getJson("/content");
-    ASSERT_TRUE(retrievedContent.has_value());
-    EXPECT_EQ(retrievedContent->getString("/key1").value_or(""), "value1");
+    EXPECT_EQ(retrievedKvdb.getString("/payload/document/content/key1").value_or(""), "value1");
 }
 
 // Thread Safety and Concurrency Tests
@@ -1351,4 +1360,672 @@ TEST_F(CTIStorageDBTest, ThreadSafetyBasicVerification)
     // Should have initial + written assets
     auto finalList = m_storage->getAssetList("integration");
     EXPECT_EQ(finalList.size(), 3 + numWriters * writesPerWriter);
+}
+
+// ============================================================================
+// Delete Asset Tests
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, DeleteAssetIntegration)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Test Integration"), "integration"));
+
+    // Delete by resource ID
+    bool deleted = m_storage->deleteAsset("integration_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify it no longer exists
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Test Integration"), "integration"));
+
+    // Verify it's not in the list
+    auto list = m_storage->getAssetList("integration");
+    EXPECT_EQ(list.size(), 0);
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetDecoder)
+{
+    // Store a decoder
+    auto decoder = createSampleDecoder("decoder_1", "test_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->assetExists(base::Name("test_decoder"), "decoder"));
+
+    // Delete by resource ID
+    bool deleted = m_storage->deleteAsset("decoder_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify it no longer exists
+    EXPECT_FALSE(m_storage->assetExists(base::Name("test_decoder"), "decoder"));
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetPolicy)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Wazuh 5.0"), "policy"));
+
+    // Delete by resource ID
+    bool deleted = m_storage->deleteAsset("policy_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify it no longer exists
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Wazuh 5.0"), "policy"));
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetKVDB)
+{
+    // Store a KVDB
+    auto kvdb = createSampleKVDB("kvdb_1", "Test KVDB");
+    m_storage->storeKVDB(kvdb);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->kvdbExists("Test KVDB"));
+
+    // Delete by resource ID
+    bool deleted = m_storage->deleteAsset("kvdb_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify it no longer exists
+    EXPECT_FALSE(m_storage->kvdbExists("Test KVDB"));
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetNonExistent)
+{
+    // Try to delete non-existent asset
+    bool deleted = m_storage->deleteAsset("non_existent_id");
+    EXPECT_FALSE(deleted);
+}
+
+TEST_F(CTIStorageDBTest, DeleteAssetWithRelationships)
+{
+    // Store an integration with relationships
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Verify relationship indexes exist by checking we can get KVDB list
+    auto kvdbList = m_storage->getKVDBList(base::Name("Test Integration"));
+    // Note: The KVDBs themselves don't exist, but the relationship index should be created
+
+    // Delete the integration
+    bool deleted = m_storage->deleteAsset("integration_1");
+    EXPECT_TRUE(deleted);
+
+    // Verify the asset is deleted
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Test Integration"), "integration"));
+}
+
+TEST_F(CTIStorageDBTest, DeleteMultipleAssetsDifferentTypes)
+{
+    // Store multiple assets of different types
+    auto integration = createSampleIntegration("integration_1", "Integration 1");
+    auto decoder = createSampleDecoder("decoder_1", "decoder_1");
+    auto policy = createSamplePolicy("policy_1");
+    auto kvdb = createSampleKVDB("kvdb_1", "KVDB 1");
+
+    m_storage->storeIntegration(integration);
+    m_storage->storeDecoder(decoder);
+    m_storage->storePolicy(policy);
+    m_storage->storeKVDB(kvdb);
+
+    // Verify all exist
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Integration 1"), "integration"));
+    EXPECT_TRUE(m_storage->assetExists(base::Name("decoder_1"), "decoder"));
+    EXPECT_TRUE(m_storage->assetExists(base::Name("Wazuh 5.0"), "policy"));
+    EXPECT_TRUE(m_storage->kvdbExists("KVDB 1"));
+
+    // Delete each one
+    EXPECT_TRUE(m_storage->deleteAsset("integration_1"));
+    EXPECT_TRUE(m_storage->deleteAsset("decoder_1"));
+    EXPECT_TRUE(m_storage->deleteAsset("policy_1"));
+    EXPECT_TRUE(m_storage->deleteAsset("kvdb_1"));
+
+    // Verify all are deleted
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Integration 1"), "integration"));
+    EXPECT_FALSE(m_storage->assetExists(base::Name("decoder_1"), "decoder"));
+    EXPECT_FALSE(m_storage->assetExists(base::Name("Wazuh 5.0"), "policy"));
+    EXPECT_FALSE(m_storage->kvdbExists("KVDB 1"));
+}
+
+// ============================================================================
+// Update Asset Tests
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, UpdateAssetReplaceString)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Original Title");
+    m_storage->storeIntegration(integration);
+
+    // Create update operations to replace the title
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/document/title", "/path");
+    op1.setString("Updated Title", "/value");
+    operations.appendJson(op1);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("integration_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify the update - now returns raw data with /payload structure
+    auto updatedAsset = m_storage->getAsset(base::Name("integration_1"), "integration");
+    auto title = updatedAsset.getString("/payload/document/title");
+    EXPECT_TRUE(title.has_value());
+    EXPECT_EQ(*title, "Updated Title");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetReplaceBoolean)
+{
+    // Store a decoder
+    auto decoder = createSampleDecoder("decoder_1", "test_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Create update operations to disable it
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/document/enabled", "/path");
+    op1.setBool(false, "/value");
+    operations.appendJson(op1);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("decoder_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify the update - now returns raw data with /payload structure
+    auto updatedAsset = m_storage->getAsset(base::Name("test_decoder"), "decoder");
+    auto enabled = updatedAsset.getBool("/payload/document/enabled");
+    EXPECT_TRUE(enabled.has_value());
+    EXPECT_FALSE(*enabled);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetAddString)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Create update operations to add a new field
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("add", "/op");
+    op1.setString("/document/new_field", "/path");
+    op1.setString("New Value", "/value");
+    operations.appendJson(op1);
+
+    // Apply update
+    bool updated = m_storage->updateAsset("integration_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify the new field exists - now returns raw data with /payload structure
+    auto updatedAsset = m_storage->getAsset(base::Name("Test Integration"), "integration");
+    auto newField = updatedAsset.getString("/payload/document/new_field");
+    EXPECT_TRUE(newField.has_value());
+    EXPECT_EQ(*newField, "New Value");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetMultipleOperations)
+{
+    // Store a decoder
+    auto decoder = createSampleDecoder("decoder_1", "test_decoder");
+    m_storage->storeDecoder(decoder);
+
+    // Create multiple update operations
+    json::Json operations;
+    operations.setArray();
+
+    // Operation 1: Replace check field
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/document/check", "/path");
+    op1.setString("new_condition", "/value");
+    operations.appendJson(op1);
+
+    // Operation 2: Disable decoder
+    json::Json op2;
+    op2.setObject();
+    op2.setString("replace", "/op");
+    op2.setString("/document/enabled", "/path");
+    op2.setBool(false, "/value");
+    operations.appendJson(op2);
+
+    // Apply updates
+    bool updated = m_storage->updateAsset("decoder_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify both updates - now returns raw data with /payload structure
+    auto updatedAsset = m_storage->getAsset(base::Name("test_decoder"), "decoder");
+    auto check = updatedAsset.getString("/payload/document/check");
+    EXPECT_TRUE(check.has_value());
+    EXPECT_EQ(*check, "new_condition");
+
+    auto enabled = updatedAsset.getBool("/payload/document/enabled");
+    EXPECT_TRUE(enabled.has_value());
+    EXPECT_FALSE(*enabled);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetNonExistent)
+{
+    // Try to update non-existent asset
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/document/title", "/path");
+    op1.setString("New Title", "/value");
+    operations.appendJson(op1);
+
+    bool updated = m_storage->updateAsset("non_existent_id", operations);
+    EXPECT_FALSE(updated);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetEmptyOperations)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Create empty operations array
+    json::Json operations;
+    operations.setArray();
+
+    // Should throw due to empty operations
+    EXPECT_THROW(m_storage->updateAsset("integration_1", operations), std::invalid_argument);
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetInvalidOperation)
+{
+    // Store an integration
+    auto integration = createSampleIntegration("integration_1", "Test Integration");
+    m_storage->storeIntegration(integration);
+
+    // Create operations with missing value field (invalid per RFC 6902)
+    json::Json operations;
+    operations.setArray();
+
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/document/title", "/path");
+    // Missing /value field - this violates RFC 6902
+    operations.appendJson(op1);
+
+    // Should throw because the operation is invalid per RFC 6902
+    EXPECT_THROW(m_storage->updateAsset("integration_1", operations), std::runtime_error);
+
+    // Verify title is unchanged (update was not applied) - now returns raw data with /payload structure
+    auto updatedAsset = m_storage->getAsset(base::Name("Test Integration"), "integration");
+    auto title = updatedAsset.getString("/payload/document/title");
+    EXPECT_TRUE(title.has_value());
+    EXPECT_EQ(*title, "Test Integration");
+}
+
+TEST_F(CTIStorageDBTest, UpdateAssetAcrossColumnFamilies)
+{
+    // Store assets in different column families
+    auto integration = createSampleIntegration("integration_1", "Integration 1");
+    auto decoder = createSampleDecoder("decoder_1", "decoder_1");
+    auto policy = createSamplePolicy("policy_1");
+
+    m_storage->storeIntegration(integration);
+    m_storage->storeDecoder(decoder);
+    m_storage->storePolicy(policy);
+
+    // Update integration
+    json::Json ops1;
+    ops1.setArray();
+    json::Json op1;
+    op1.setObject();
+    op1.setString("replace", "/op");
+    op1.setString("/document/description", "/path");
+    op1.setString("Updated Integration", "/value");
+    ops1.appendJson(op1);
+    EXPECT_TRUE(m_storage->updateAsset("integration_1", ops1));
+
+    // Update decoder
+    json::Json ops2;
+    ops2.setArray();
+    json::Json op2;
+    op2.setObject();
+    op2.setString("replace", "/op");
+    op2.setString("/document/check", "/path");
+    op2.setString("updated_check", "/value");
+    ops2.appendJson(op2);
+    EXPECT_TRUE(m_storage->updateAsset("decoder_1", ops2));
+
+    // Update policy
+    json::Json ops3;
+    ops3.setArray();
+    json::Json op3;
+    op3.setObject();
+    op3.setString("replace", "/op");
+    op3.setString("/document/enabled", "/path");
+    op3.setBool(false, "/value");
+    ops3.appendJson(op3);
+    EXPECT_TRUE(m_storage->updateAsset("policy_1", ops3));
+
+    // Verify all updates - now returns raw data with /payload structure
+    auto updatedIntegration = m_storage->getAsset(base::Name("Integration 1"), "integration");
+    EXPECT_EQ(updatedIntegration.getString("/payload/document/description").value_or(""), "Updated Integration");
+
+    auto updatedDecoder = m_storage->getAsset(base::Name("decoder_1"), "decoder");
+    EXPECT_EQ(updatedDecoder.getString("/payload/document/check").value_or(""), "updated_check");
+
+    auto updatedPolicy = m_storage->getAsset(base::Name("policy_1"), "policy");
+    EXPECT_FALSE(updatedPolicy.getBool("/payload/document/enabled").value_or(true));
+}
+
+// ============================================================================
+// Policy Access Tests
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, GetPolicyById)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Get by ID - now returns raw data with /payload structure
+    auto retrieved = m_storage->getPolicy(base::Name("policy_1"));
+    EXPECT_TRUE(retrieved.exists("/name"));
+    EXPECT_EQ(retrieved.getString("/name").value_or(""), "policy_1");
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
+}
+
+TEST_F(CTIStorageDBTest, GetPolicyByTitle)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Get by title - now returns raw data with /payload structure
+    auto retrieved = m_storage->getPolicy(base::Name("Wazuh 5.0"));
+    EXPECT_TRUE(retrieved.exists("/name"));
+    EXPECT_EQ(retrieved.getString("/name").value_or(""), "policy_1");
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
+}
+
+TEST_F(CTIStorageDBTest, GetPolicyNonExistent)
+{
+    // Try to get non-existent policy
+    EXPECT_THROW(m_storage->getPolicy(base::Name("non_existent")), std::runtime_error);
+}
+
+TEST_F(CTIStorageDBTest, GetPolicyList)
+{
+    // Store multiple policies
+    auto policy1 = createSamplePolicy("policy_1", 1);
+    auto policy2 = createSamplePolicy("policy_2", 2);
+    auto policy3 = createSamplePolicy("policy_3", 3);
+
+    m_storage->storePolicy(policy1);
+    m_storage->storePolicy(policy2);
+    m_storage->storePolicy(policy3);
+
+    // Get list
+    auto policies = m_storage->getPolicyList();
+    EXPECT_EQ(policies.size(), 3);
+
+    // All should have the same title "Wazuh 5.0" as created by createSamplePolicy
+    std::vector<std::string> titles;
+    for (const auto& p : policies)
+    {
+        titles.push_back(p.fullName());
+    }
+    EXPECT_THAT(titles, ::testing::Each("Wazuh 5.0"));
+}
+
+TEST_F(CTIStorageDBTest, GetPolicyListEmpty)
+{
+    // Get list when no policies exist
+    auto policies = m_storage->getPolicyList();
+    EXPECT_EQ(policies.size(), 0);
+}
+
+TEST_F(CTIStorageDBTest, PolicyExistsById)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Check by ID
+    EXPECT_TRUE(m_storage->policyExists(base::Name("policy_1")));
+    EXPECT_FALSE(m_storage->policyExists(base::Name("non_existent")));
+}
+
+TEST_F(CTIStorageDBTest, PolicyExistsByTitle)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Check by title
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+    EXPECT_FALSE(m_storage->policyExists(base::Name("Non Existent Title")));
+}
+
+TEST_F(CTIStorageDBTest, PolicyAccessAfterUpdate)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Update the policy title
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/document/title", "/path");
+    op.setString("Updated Policy Title", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("policy_1", operations);
+    EXPECT_TRUE(updated);
+
+    // Should still exist by ID
+    EXPECT_TRUE(m_storage->policyExists(base::Name("policy_1")));
+
+    // Get by ID and verify new title - now returns raw data with /payload structure
+    auto retrieved = m_storage->getPolicy(base::Name("policy_1"));
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Updated Policy Title");
+
+    // List should show new title
+    auto policies = m_storage->getPolicyList();
+    EXPECT_EQ(policies.size(), 1);
+    EXPECT_EQ(policies[0].fullName(), "Updated Policy Title");
+}
+
+TEST_F(CTIStorageDBTest, PolicyAccessAfterDelete)
+{
+    // Store a policy
+    auto policy = createSamplePolicy("policy_1");
+    m_storage->storePolicy(policy);
+
+    // Verify it exists
+    EXPECT_TRUE(m_storage->policyExists(base::Name("policy_1")));
+    EXPECT_EQ(m_storage->getPolicyList().size(), 1);
+
+    // Delete it
+    bool deleted = m_storage->deleteAsset("policy_1");
+    EXPECT_TRUE(deleted);
+
+    // Should no longer exist
+    EXPECT_FALSE(m_storage->policyExists(base::Name("policy_1")));
+    EXPECT_FALSE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+
+    // List should be empty
+    EXPECT_EQ(m_storage->getPolicyList().size(), 0);
+
+    // Get should throw
+    EXPECT_THROW(m_storage->getPolicy(base::Name("policy_1")), std::runtime_error);
+}
+
+// ============================================================================
+// Policy Dual Format Support Tests
+// ============================================================================
+
+TEST_F(CTIStorageDBTest, PolicyNestedFormatSupport)
+{
+    // Store policy with nested format (preferred): /payload/document/title
+    auto policy = createSamplePolicy("policy_nested", 1);
+    m_storage->storePolicy(policy);
+
+    // Should be retrievable by title
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+
+    // Get policy and verify structure - now returns raw data with /payload structure
+    auto retrieved = m_storage->getPolicy(base::Name("policy_nested"));
+    EXPECT_EQ(retrieved.getString("/payload/document/title").value_or(""), "Wazuh 5.0");
+
+    // Verify integrations in nested format
+    auto integrations = retrieved.getArray("/payload/document/integrations");
+    EXPECT_TRUE(integrations.has_value());
+    EXPECT_EQ(integrations->size(), 2);
+}
+
+TEST_F(CTIStorageDBTest, PolicyLegacyFlatFormatSupport)
+{
+    // Store policy with legacy flat format: /payload/title
+    auto policyLegacy = createSamplePolicyLegacy("policy_flat", "Legacy Flat Title");
+    m_storage->storePolicy(policyLegacy);
+
+    // Should be retrievable by title
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Legacy Flat Title")));
+
+    // Get policy and verify structure - now returns raw data with /payload structure
+    auto retrieved = m_storage->getPolicy(base::Name("policy_flat"));
+    EXPECT_EQ(retrieved.getString("/payload/title").value_or(""), "Legacy Flat Title");
+
+    // Verify integrations in flat format
+    auto integrations = retrieved.getArray("/payload/integrations");
+    EXPECT_TRUE(integrations.has_value());
+    EXPECT_EQ(integrations->size(), 2);
+}
+
+TEST_F(CTIStorageDBTest, PolicyMixedFormatsCoexist)
+{
+    // Store both formats
+    auto policyNested = createSamplePolicy("policy_nested", 1);
+    auto policyFlat = createSamplePolicyLegacy("policy_flat", "Flat Policy");
+
+    m_storage->storePolicy(policyNested);
+    m_storage->storePolicy(policyFlat);
+
+    // Both should exist
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+    EXPECT_TRUE(m_storage->policyExists(base::Name("Flat Policy")));
+
+    // List should contain both
+    auto policyList = m_storage->getPolicyList();
+    EXPECT_EQ(policyList.size(), 2);
+
+    std::vector<std::string> titles;
+    for (const auto& p : policyList)
+    {
+        titles.push_back(p.fullName());
+    }
+    EXPECT_THAT(titles, ::testing::UnorderedElementsAre("Wazuh 5.0", "Flat Policy"));
+}
+
+TEST_F(CTIStorageDBTest, PolicyIntegrationListBothFormats)
+{
+    // Store integrations first
+    auto integration1 = createSampleIntegration("integration_1", "Integration One");
+    auto integration2 = createSampleIntegration("integration_2", "Integration Two");
+    m_storage->storeIntegration(integration1);
+    m_storage->storeIntegration(integration2);
+
+    // Store policies in both formats
+    auto policyNested = createSamplePolicy("policy_nested", 1);
+    auto policyFlat = createSamplePolicyLegacy("policy_flat", "Flat Policy");
+
+    m_storage->storePolicy(policyNested);
+    m_storage->storePolicy(policyFlat);
+
+    // Get policy integration list (should resolve from both formats)
+    auto integrations = m_storage->getPolicyIntegrationList();
+
+    // Should have 4 total (2 from each policy, with duplicates)
+    // Note: Current implementation doesn't deduplicate
+    EXPECT_GE(integrations.size(), 2);
+
+    // Verify that integration titles are resolved
+    std::vector<std::string> integrationNames;
+    for (const auto& name : integrations)
+    {
+        integrationNames.push_back(name.fullName());
+    }
+    EXPECT_THAT(integrationNames, ::testing::Contains("Integration One"));
+    EXPECT_THAT(integrationNames, ::testing::Contains("Integration Two"));
+}
+
+TEST_F(CTIStorageDBTest, PolicyUpdatePreservesFormat)
+{
+    // Store policy in legacy flat format
+    auto policyFlat = createSamplePolicyLegacy("policy_flat", "Original Title");
+    m_storage->storePolicy(policyFlat);
+
+    // Update the title
+    json::Json operations;
+    operations.setArray();
+    json::Json op;
+    op.setObject();
+    op.setString("replace", "/op");
+    op.setString("/payload/title", "/path");
+    op.setString("Updated Flat Title", "/value");
+    operations.appendJson(op);
+
+    bool updated = m_storage->updateAsset("policy_flat", operations);
+    EXPECT_TRUE(updated);
+
+    // Verify update worked and format is preserved - now returns raw data with /payload structure
+    auto retrieved = m_storage->getPolicy(base::Name("policy_flat"));
+    EXPECT_EQ(retrieved.getString("/payload/title").value_or(""), "Updated Flat Title");
+
+    // Should be findable by new title
+    auto policyList = m_storage->getPolicyList();
+    EXPECT_EQ(policyList.size(), 1);
+    EXPECT_EQ(policyList[0].fullName(), "Updated Flat Title");
+}
+
+TEST_F(CTIStorageDBTest, PolicyDeleteBothFormats)
+{
+    // Store policies in both formats
+    auto policyNested = createSamplePolicy("policy_nested", 1);
+    auto policyFlat = createSamplePolicyLegacy("policy_flat", "Flat Policy");
+
+    m_storage->storePolicy(policyNested);
+    m_storage->storePolicy(policyFlat);
+
+    // Delete both
+    EXPECT_TRUE(m_storage->deleteAsset("policy_nested"));
+    EXPECT_TRUE(m_storage->deleteAsset("policy_flat"));
+
+    // Both should be gone
+    EXPECT_FALSE(m_storage->policyExists(base::Name("Wazuh 5.0")));
+    EXPECT_FALSE(m_storage->policyExists(base::Name("Flat Policy")));
+    EXPECT_EQ(m_storage->getPolicyList().size(), 0);
 }

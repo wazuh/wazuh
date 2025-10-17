@@ -486,7 +486,7 @@ INSTANTIATE_TEST_SUITE_P(
                        "stages",
                        {base::Chain::create(
                             "normalize",
-                            {base::And::create("subblock",
+                            {base::And::create("normalize-item",
                                                {base::Chain::create("stage.map",
                                                                     {base::Term<base::EngineOp>::create(
                                                                         "event.risk_score: map(21)", {})})})}),

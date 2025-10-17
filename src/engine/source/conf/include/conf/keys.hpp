@@ -16,6 +16,8 @@ constexpr std::string_view KVDB_PATH = "analysisd.kvdb_path";
 constexpr std::string_view CMSYNC_OUTPUT_PATH = "analysisd.cmsync_output_path";
 
 constexpr std::string_view CTI_PATH = "analysisd.cti_path";
+constexpr std::string_view CTI_FORCE_IF_EMPTY = "analysisd.cti_force_if_empty";
+constexpr std::string_view CTI_ENABLED = "analysisd.cti_enabled";
 
 constexpr std::string_view INDEXER_HOST = "analysisd.indexer_hosts";
 constexpr std::string_view INDEXER_USER = "analysisd.indexer_username";

@@ -291,7 +291,7 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
                                              json::Json::typeToStr(definition.type())));
     }
 
-    if (!definition.size() == 1)
+    if (definition.size() != 1)
     {
         throw std::runtime_error(
             fmt::format("Expected operation definition to have 1 key, got '{}'", definition.size()));

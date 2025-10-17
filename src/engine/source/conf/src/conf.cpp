@@ -42,8 +42,10 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Content Manager
     addUnit<std::string>(key::CMSYNC_OUTPUT_PATH, "WAZUH_CMSYNC_OUTPUT_PATH", (wazuhRoot / "engine/outputs").c_str());
 
-    // CTI module
+    // CTI Store module
     addUnit<std::string>(key::CTI_PATH, "WAZUH_CTI_PATH", (wazuhRoot / "engine/cti/").c_str());
+    addUnit<bool>(key::CTI_FORCE_IF_EMPTY, "WAZUH_CTI_FORCE_IF_EMPTY", true);
+    addUnit<bool>(key::CTI_ENABLED, "WAZUH_CTI_ENABLED", true);
 
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
