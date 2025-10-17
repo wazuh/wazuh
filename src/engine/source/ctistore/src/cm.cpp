@@ -28,7 +28,7 @@ constexpr std::string_view assetTypeToString(cti::store::AssetType type) noexcep
 
 } // namespace
 
-ContentManager::ContentManager(const ContentManagerConfig& config, bool autoStart, ContentDeployCallback deployCallback)
+ContentManager::ContentManager(const ContentManagerConfig& config, ContentDeployCallback deployCallback)
     : m_config(config)
     , m_deployCallback(deployCallback)
 {

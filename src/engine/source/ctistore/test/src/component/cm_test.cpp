@@ -19,7 +19,7 @@ TEST(ContentManagerTest, init)
     cfg.assetStorePath = (tmpBase / "assets").string();
 
     std::unique_ptr<cti::store::ContentManager> cm;
-    ASSERT_NO_THROW({ cm = std::make_unique<cti::store::ContentManager>(cfg, false); });
+    ASSERT_NO_THROW({ cm = std::make_unique<cti::store::ContentManager>(cfg); });
     ASSERT_NE(cm, nullptr);
 
     // Cleanup (best-effort)
