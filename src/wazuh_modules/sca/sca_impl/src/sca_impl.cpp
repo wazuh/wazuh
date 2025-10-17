@@ -239,4 +239,22 @@ bool SecurityConfigurationAssessment::parseResponseBuffer(const uint8_t* data, s
     return false;
 }
 
+bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_spSyncProtocol)
+    {
+        return m_spSyncProtocol->notifyDataClean(indices, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void SecurityConfigurationAssessment::deleteDatabase()
+{
+    if (m_spSyncProtocol)
+    {
+        m_spSyncProtocol->deleteDatabase();
+    }
+}
+
 // LCOV_EXCL_STOP

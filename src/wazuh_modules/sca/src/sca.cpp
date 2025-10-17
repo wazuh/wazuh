@@ -18,17 +18,6 @@ extern "C"
 #include <unistd.h>
 #include <chrono>
 
-/* SCA db directory */
-#ifndef WAZUH_UNIT_TESTING
-#define SCA_DB_DISK_PATH "queue/sca/db/sca.db"
-#else
-#ifndef WIN32
-#define SCA_DB_DISK_PATH    "./sca.db"
-#else
-#define SCA_DB_DISK_PATH    ".\\sca.db"
-#endif // WIN32
-#endif // WAZUH_UNIT_TESTING
-
 static push_stateless_func g_push_stateless_func = NULL;
 static push_stateful_func g_push_stateful_func = NULL;
 static yaml_to_cjson_func g_yaml_to_cjson_func = NULL;
@@ -79,6 +68,18 @@ void sca_start(const struct wm_sca_t* sca_config)
         SCA::instance().init();
         SCA::instance().setup(sca_config);
         SCA::instance().run();
+    }
+    catch (const std::exception& ex)
+    {
+        LoggingHelper::getInstance().log(LOG_ERROR, ex.what());
+    }
+}
+
+void sca_init()
+{
+    try
+    {
+        SCA::instance().init();
     }
     catch (const std::exception& ex)
     {
@@ -335,6 +336,24 @@ bool SCA::parseResponseBuffer(const uint8_t* data, size_t length)
     return false;
 }
 
+bool SCA::notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps)
+{
+    if (m_sca)
+    {
+        return m_sca->notifyDataClean(indices, timeout, retries, maxEps);
+    }
+
+    return false;
+}
+
+void SCA::deleteDatabase()
+{
+    if (m_sca)
+    {
+        m_sca->deleteDatabase();
+    }
+}
+
 /// @brief C-style wrapper for SCA module synchronization.
 ///
 /// Provides a C-compatible interface for triggering database synchronization
@@ -388,6 +407,43 @@ bool sca_parse_response(const unsigned char* data, size_t length)
     }
 
     return false;
+}
+
+/// @brief C-style wrapper for notifying data clean in SCA module.
+/// @param indices Array of index strings to notify as clean
+/// @param indices_count Number of indices in the array
+/// @param timeout Timeout value in seconds for the notification operation
+/// @param retries Number of retry attempts on failure
+/// @param max_eps Maximum events per second during the notification
+/// @return true if the operation succeeds, false otherwise
+bool sca_notify_data_clean(const char** indices, size_t indices_count, unsigned int timeout, unsigned int retries, size_t max_eps)
+{
+    if (indices && indices_count > 0)
+    {
+        std::vector<std::string> indicesVec;
+        indicesVec.reserve(indices_count);
+
+        for (size_t i = 0; i < indices_count; ++i)
+        {
+            if (indices[i])
+            {
+                indicesVec.emplace_back(indices[i]);
+            }
+        }
+
+        if (!indicesVec.empty())
+        {
+            return SCA::instance().notifyDataClean(indicesVec, std::chrono::seconds(timeout), retries, max_eps);
+        }
+    }
+
+    return false;
+}
+
+/// @brief C-style wrapper for deleting the SCA database.
+void sca_delete_database()
+{
+    SCA::instance().deleteDatabase();
 }
 
 // LCOV_EXCL_STOP

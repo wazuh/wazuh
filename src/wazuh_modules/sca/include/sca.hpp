@@ -108,6 +108,17 @@ class EXPORTED SCA final
         /// @return true if parsing succeeds, false on error or invalid data
         bool parseResponseBuffer(const uint8_t* data, size_t length);
 
+        /// @brief Notifies that data associated with specified indices needs to be cleaned.
+        /// @param indices Vector of indices whose data needs to be cleaned.
+        /// @param timeout Timeout value in seconds for the operation.
+        /// @param retries Number of retry attempts on failure.
+        /// @param maxEps Maximum events per second during the operation.
+        /// @return true if the operation succeeds, false otherwise.
+        bool notifyDataClean(const std::vector<std::string>& indices, std::chrono::seconds timeout, unsigned int retries, size_t maxEps);
+
+        /// @brief Deletes the database.
+        void deleteDatabase();
+
     private:
         /// @brief Private constructor for singleton pattern.
         SCA();

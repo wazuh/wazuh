@@ -10,6 +10,7 @@
 
 #include "logging_helper.hpp"
 #include "agent_sync_protocol.hpp"
+#include "../../include/sca.h"
 
 /// @brief Map of stateless operations
 static const std::map<ReturnTypeCallback, std::string> STATELESS_OPERATION_MAP
@@ -30,9 +31,6 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
     {INSERTED, OPERATION_CREATE},
     // LCOV_EXCL_STOP
 };
-
-/// @brief Sync protocol index name
-static const std::string SCA_SYNC_INDEX = "wazuh-states-sca";
 
 SCAEventHandler::SCAEventHandler(std::shared_ptr<IDBSync> dBSync,
                                  std::function<int(const std::string&)> pushStatelessMessage,
