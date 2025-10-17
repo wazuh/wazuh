@@ -9,7 +9,6 @@ message(STATUS "Using flatc from: ${FLATC_EXECUTABLE}")
 
 list(APPEND schemas
             inventorySync
-            agentInfo
 )
 
 add_custom_target(compile_schemas_input)
