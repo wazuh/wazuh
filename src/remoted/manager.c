@@ -206,10 +206,6 @@ static OSHash *groups;
 static OSHash *multi_groups;
 
 static time_t _stime;
-int INTERVAL;
-
-/* Use disk storage to create temporal merged files */
-int disk_storage = 0;
 
 /* For the last message tracking */
 static w_linked_queue_t *pending_queue;
@@ -1779,18 +1775,16 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 /* Update shared files */
 void *update_shared_files(__attribute__((unused)) void *none)
 {
-    INTERVAL = getDefine_Int("remoted", "shared_reload", 1, 18000);
-
-    poll_interval_time = INTERVAL;
+    poll_interval_time = shared_reload_interval;
 
     while (1) {
         time_t _ctime = time(0);
 
-        /* Every INTERVAL seconds, re-read the files
+        /* Every shared_reload_interval seconds, re-read the files
          * If something changed, notify all agents
          */
 
-        if ((_ctime - _stime) >= INTERVAL) {
+        if ((_ctime - _stime) >= shared_reload_interval) {
             // Check if the yaml file has changed and reload it
             if (w_yaml_file_has_changed()) {
                 w_yaml_file_update_structs();
@@ -1827,8 +1821,6 @@ void manager_init()
     multi_groups = OSHash_Create();
 
     agent_data_hash = OSHash_Create();
-
-    disk_storage = getDefine_Int("remoted", "disk_storage", 0, 1);
 
     /* Run initial groups and multigroups scan */
     c_files(true);
