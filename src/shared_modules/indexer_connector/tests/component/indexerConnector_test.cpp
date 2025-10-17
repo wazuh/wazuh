@@ -149,8 +149,7 @@ static auto createStandardLogFunction()
 
         if (logLevel == 2) // Warning messages
         {
-            // Check for bulk/request error format: "Indexer request failed"
-            // This covers both bulk operation errors and request-level errors
+            // Check for error formats: "Indexer request failed"
             if (formatted.find("Indexer request failed") != std::string::npos)
             {
                 g_logTestState.errorLogsCount++;
@@ -994,7 +993,7 @@ TEST_F(IndexerConnectorTest, HandleIndexerInternalErrors_InvalidJSON)
     const auto returnInvalidJSON = [&callbackCalled](const std::string& data) -> std::pair<int, std::string>
     {
         callbackCalled = true;
-        return {400, "{ invalid json }"};
+        return {400, "{ \"unclosed\": "};
     };
     m_indexerServers[A_IDX]->setPublishCallback(returnInvalidJSON);
 

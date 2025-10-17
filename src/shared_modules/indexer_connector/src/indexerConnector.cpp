@@ -206,161 +206,153 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
 
 bool IndexerConnector::handleIndexerInternalErrors(const std::string& response, const std::vector<std::string>& events)
 {
-    simdjson::ondemand::parser parser;
-    simdjson::padded_string paddedResponse(response);
+    simdjson::dom::parser parser;
 
-    simdjson::ondemand::document doc;
-    auto parseError = parser.iterate(paddedResponse).get(doc);
-    if (parseError)
+    auto parseResult = parser.parse(response);
+    if (parseResult.error())
     {
-        logDebug2(IC_NAME, "Failed to parse the indexer response: %s", response.c_str());
+        logWarn(IC_NAME, "Failed to parse the indexer response: %s", response.c_str());
         return false;
     }
 
+    simdjson::dom::element doc = parseResult.value();
+
     // Check for request-level error format first
-    auto errorFieldResult = doc["error"];
-    if (!errorFieldResult.error())
+    auto errorResult = doc["error"].get_object();
+    if (!errorResult.error())
     {
-        simdjson::ondemand::value errorValue;
-        auto getError = errorFieldResult.get(errorValue);
-        if (!getError)
+        simdjson::dom::object errorObj = errorResult.value();
+        simdjson::dom::element errorElement = errorObj;
+        handleRequestLevelError(errorElement);
+        return true; // Found errors
+    }
+
+    // Check for bulk API response format
+    auto errorsResult = doc["errors"].get_bool();
+    if (!errorsResult.error())
+    {
+        bool hasErrors = errorsResult.value();
+        if (hasErrors)
         {
-            handleRequestLevelError(errorValue);
+            // Handle bulk operation errors
+            handleBulkOperationErrors(doc, events);
             return true; // Found errors
         }
     }
 
-    // Check for bulk API response format
-    bool hasErrors = false;
-    auto errorsField = doc["errors"];
-    if (!errorsField.error())
-    {
-        auto boolResult = errorsField.get_bool();
-        if (!boolResult.error())
-        {
-            hasErrors = boolResult.value();
-        }
-    }
-
-    if (!hasErrors)
-    {
-        // Success - no errors found
-        return false;
-    }
-
-    // Handle bulk operation errors
-    handleBulkOperationErrors(doc, events);
-    return true; // Found errors
+    // Success - no errors found
+    return false;
 }
 
-void IndexerConnector::handleRequestLevelError(simdjson::ondemand::value& errorObj)
+void IndexerConnector::handleRequestLevelError(simdjson::dom::element& errorObj)
 {
     std::string errorType = "Unknown type";
     std::string errorReason = "Unknown reason";
 
     // Get type
-    auto typeField = errorObj["type"];
-    if (!typeField.error())
+    auto typeResult = errorObj["type"].get_string();
+    if (!typeResult.error())
     {
-        std::string_view tempType;
-        auto typeError = typeField.get_string(tempType);
-        if (!typeError)
-        {
-            errorType = std::string(tempType);
-        }
+        errorType = std::string(typeResult.value());
     }
 
     // Get reason
-    auto reasonField = errorObj["reason"];
-    if (!reasonField.error())
+    auto reasonResult = errorObj["reason"].get_string();
+    if (!reasonResult.error())
     {
-        std::string_view tempReason;
-        auto reasonError = reasonField.get_string(tempReason);
-        if (!reasonError)
-        {
-            errorReason = std::string(tempReason);
-        }
+        errorReason = std::string(reasonResult.value());
     }
 
-    logWarn(IC_NAME, "Indexer request failed - type: '%s', reason: '%s'", errorType.c_str(), errorReason.c_str());
+    // Build actionable hint for other errors
+    std::string actionableHint;
+    if (errorType == "validation_exception")
+    {
+        if (errorReason.find("shard") != std::string::npos)
+        {
+            actionableHint = " - Consider increasing cluster.max_shards_per_node setting";
+        }
+    }
+    else if (errorType == "security_exception")
+    {
+        actionableHint = " - Verify user credentials and permissions";
+    }
+    else if (errorType == "index_not_found_exception")
+    {
+        actionableHint = " - Index will be created on next initialization attempt";
+    }
+
+    // Log with appropriate context
+    if (!actionableHint.empty())
+    {
+        logWarn(IC_NAME,
+                "Indexer request failed - type: '%s', reason: '%s'%s",
+                errorType.c_str(),
+                errorReason.c_str(),
+                actionableHint.c_str());
+    }
+    else
+    {
+        logWarn(IC_NAME, "Indexer request failed - type: '%s', reason: '%s'", errorType.c_str(), errorReason.c_str());
+    }
 }
 
-void IndexerConnector::handleBulkOperationErrors(simdjson::ondemand::document& doc,
-                                                 const std::vector<std::string>& events)
+void IndexerConnector::handleBulkOperationErrors(simdjson::dom::element& doc, const std::vector<std::string>& events)
 {
     // Check if "items" array exists
-    simdjson::ondemand::array items;
-    auto itemsError = doc["items"].get_array().get(items);
-    if (itemsError)
+    auto itemsResult = doc["items"].get_array();
+    if (itemsResult.error())
     {
         logDebug2(IC_NAME, "Bulk response missing 'items' array");
         return;
     }
 
-    // Verify event count matches response items
-    size_t itemCount = 0;
-
-    for (auto it = items.begin(); it != items.end(); ++it)
-    {
-        ++itemCount;
-    }
-
-    if (events.size() != itemCount)
+    simdjson::dom::array items = itemsResult.value();
+    size_t itemCount = items.size();
+    bool eventCountMatches = (events.size() == itemCount);
+    if (!eventCountMatches)
     {
         logDebug2(IC_NAME, "Event count mismatch - sent: %zu, received: %zu", events.size(), itemCount);
-        return;
     }
 
-    // Re-iterate to process each item (simdjson arrays are single-pass)
-    auto items2 = doc["items"].get_array();
     size_t index = 0;
-
-    for (auto itemValue : items2)
+    for (simdjson::dom::element itemValue : items)
     {
-        auto indexObj = itemValue["index"];
-        if (indexObj.error())
+        auto indexObjResult = itemValue["index"].get_object();
+        if (indexObjResult.error())
         {
             ++index;
             continue;
         }
 
-        auto errorObj = indexObj["error"];
-        if (errorObj.error())
+        simdjson::dom::object indexObj = indexObjResult.value();
+        auto errorObjResult = indexObj["error"].get_object();
+        if (errorObjResult.error())
         {
             // No error for this item - success
             ++index;
             continue;
         }
 
+        simdjson::dom::object errorObj = errorObjResult.value();
+
         // Extract error details
         std::string errorType = "Unknown type";
         std::string errorReason = "Unknown reason";
 
-        // Get type
-        auto typeField = errorObj["type"];
-        if (!typeField.error())
+        auto typeResult = errorObj["type"].get_string();
+        if (!typeResult.error())
         {
-            std::string_view tempType;
-            auto typeError = typeField.get_string(tempType);
-            if (!typeError)
-            {
-                errorType = std::string(tempType);
-            }
+            errorType = std::string(typeResult.value());
         }
 
-        // Get reason
-        auto reasonField = errorObj["reason"];
-        if (!reasonField.error())
+        auto reasonResult = errorObj["reason"].get_string();
+        if (!reasonResult.error())
         {
-            std::string_view tempReason;
-            auto reasonError = reasonField.get_string(tempReason);
-            if (!reasonError)
-            {
-                errorReason = std::string(tempReason);
-            }
+            errorReason = std::string(reasonResult.value());
         }
 
-        std::string actionableHint = " - No additional information available";
+        // Build actionable hint
+        std::string actionableHint;
         if (errorType == "validation_exception")
         {
             if (errorReason.find("shard") != std::string::npos)
@@ -377,11 +369,49 @@ void IndexerConnector::handleBulkOperationErrors(simdjson::ondemand::document& d
             actionableHint = " - Index will be created on next initialization attempt";
         }
 
-        logWarn(IC_NAME,
-                "Indexer request failed - type: '%s', reason: '%s'%s",
-                errorType.c_str(),
-                errorReason.c_str(),
-                actionableHint.c_str());
+        // Log with document ID if available, otherwise without
+        if (eventCountMatches && index < events.size())
+        {
+            if (!actionableHint.empty())
+            {
+                logWarn(IC_NAME,
+                        "Indexer request failed for index '%s' - type: '%s', reason: '%s', document ID: %s%s",
+                        m_indexName.c_str(),
+                        errorType.c_str(),
+                        errorReason.c_str(),
+                        events.at(index).c_str(),
+                        actionableHint.c_str());
+            }
+            else
+            {
+                logWarn(IC_NAME,
+                        "Indexer request failed for index '%s' - type: '%s', reason: '%s', document ID: %s",
+                        m_indexName.c_str(),
+                        errorType.c_str(),
+                        errorReason.c_str(),
+                        events.at(index).c_str());
+            }
+        }
+        else
+        {
+            if (!actionableHint.empty())
+            {
+                logWarn(IC_NAME,
+                        "Indexer request failed for index '%s' - type: '%s', reason: '%s'%s",
+                        m_indexName.c_str(),
+                        errorType.c_str(),
+                        errorReason.c_str(),
+                        actionableHint.c_str());
+            }
+            else
+            {
+                logWarn(IC_NAME,
+                        "Indexer request failed for index '%s' - type: '%s', reason: '%s'",
+                        m_indexName.c_str(),
+                        errorType.c_str(),
+                        errorReason.c_str());
+            }
+        }
 
         ++index;
     }
@@ -633,28 +663,56 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
                                   const std::shared_ptr<ServerSelector>& selector,
                                   const SecureCommunication& secureCommunication)
 {
+    // Track if we hit "already exists" errors (which are OK)
+    bool resourceExistsError = false;
+
     // Define the error callback
-    auto onError = [](const std::string& error, const long statusCode)
+    auto onError = [this, &resourceExistsError](const std::string& error, const long statusCode)
     {
-        if (statusCode != HTTP_BAD_REQUEST) // Assuming 400 is for bad requests which we expect to handle differently
+        logDebug2(IC_NAME, "Initialization request returned status code: %ld", statusCode);
+
+        // Parse and log structured errors
+        std::vector<std::string> events;
+        handleIndexerInternalErrors(error, events);
+
+        // Check if it's just "already exists" error (which is fine)
+        if (error.find("resource_already_exists_exception") != std::string::npos)
         {
-            std::string errorMessage = error;
-            if (statusCode != NOT_USED)
+            resourceExistsError = true;
+            return; // Don't throw - "already exists" is OK
+        }
+
+        // For other errors, throw to trigger retry
+        std::string errorMessage = "Index initialization failed";
+        if (statusCode != NOT_USED)
+        {
+            errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
+        }
+        throw std::runtime_error(errorMessage);
+    };
+
+    // Define the success callback - CHECK FOR ERRORS IN BODY!
+    auto onSuccess = [this, &resourceExistsError](const std::string& response)
+    {
+        // OpenSearch can return HTTP 200 with errors in the JSON body
+        std::vector<std::string> events;
+        bool hadErrors = handleIndexerInternalErrors(response, events);
+
+        if (hadErrors)
+        {
+            // Check if it's just "already exists" error (which is fine)
+            if (response.find("resource_already_exists_exception") != std::string::npos)
             {
-                errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
+                resourceExistsError = true;
+                return; // Don't throw - "already exists" is OK
             }
 
-            throw std::runtime_error(errorMessage);
+            // Found real errors in response body
+            throw std::runtime_error("Index initialization failed: operation returned errors");
         }
     };
 
-    // Define the success callback
-    auto onSuccess = [](const std::string&)
-    {
-        // Not used
-    };
-
-    // Initialize template.
+    // Initialize template
     HTTPRequest::instance().put(
         RequestParametersJson {.url = HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
                                .data = templateData,
@@ -662,14 +720,14 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
         ConfigurationParameters {});
 
-    // Initialize Index.
+    // Initialize Index
     HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(selector->getNext() + "/" + m_indexName),
                                                        .data = templateData.at("template"),
                                                        .secureCommunication = secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 ConfigurationParameters {});
 
-    // Create new mappings after update.
+    // Create new mappings after update
     if (!updateMappingsData.empty())
     {
         HTTPRequest::instance().put(
@@ -680,8 +738,17 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
             ConfigurationParameters {});
     }
 
+    // If we reach here, all steps succeeded (or already existed, which is OK)
     m_initialized = true;
-    logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", m_indexName.c_str());
+
+    if (resourceExistsError)
+    {
+        logInfo(IC_NAME, "IndexerConnector initialized for index: %s (resources already existed)", m_indexName.c_str());
+    }
+    else
+    {
+        logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s", m_indexName.c_str());
+    }
 }
 
 void IndexerConnector::preInitialization(

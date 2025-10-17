@@ -13,6 +13,7 @@
 #define _INDEXER_CONNECTOR_HPP
 
 #include "rocksDBWrapper.hpp"
+#include "simdjson/dom/element.h"
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
 #else
@@ -187,14 +188,14 @@ public:
      * @brief Handles request-level errors (e.g., validation, authentication, resource limits)
      * @param errorObj The "error" object from the response
      */
-    void handleRequestLevelError(simdjson::ondemand::value& errorObj);
+    void handleRequestLevelError(simdjson::dom::element& errorObj);
 
     /**
      * @brief Handles item-level errors from bulk operations
      * @param doc The parsed JSON document
      * @param events The list of events that were sent
      */
-    void handleBulkOperationErrors(simdjson::ondemand::document& doc, const std::vector<std::string>& events);
+    void handleBulkOperationErrors(simdjson::dom::element& doc, const std::vector<std::string>& events);
 };
 
 #endif // _INDEXER_CONNECTOR_HPP
