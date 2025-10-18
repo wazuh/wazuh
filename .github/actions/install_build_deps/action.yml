@@ -37,6 +37,8 @@ runs:
             wine-stable-amd64=10.0.0.0~jammy-1 \
             wine-stable-i386=10.0.0.0~jammy-1
           wine --version
+          # Disable Wine crash dialogs (no X server available in CI)
+          WINEARCH=win64 wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f
         else
           echo "Skipping wine installation for this target"
         fi
