@@ -17,9 +17,12 @@ jobs:
       matrix:
         module: [shared_modules/file_helper]
         target: [agent, winagent]
-    runs-on: ubuntu-22.04-20250929.88.1
+    runs-on: ubuntu-22.04
     env:
       WINEARCH: win64
+      WINEDLLOVERRIDES: "mscoree,mshtml="
+      DISPLAY: ":0"
+      WINEDEBUG: "-all"
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

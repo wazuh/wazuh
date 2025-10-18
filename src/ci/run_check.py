@@ -625,10 +625,10 @@ def runTests(moduleName):
                     for d in uniq_dirs
                 )
 
+                # Use WINEPATH instead of wine cmd for simpler and more reliable execution
                 command = (
-                    f'WINEARCH=win64 '
-                    'wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f & '
-                    f'wine cmd /c "set PATH={win_path};%PATH% & {os.path.basename(path)}"'
+                    f'WINEPATH="{";".join(uniq_dirs)}" '
+                    f'wine {path}'
                 )
             else:
                 command = path
