@@ -19,7 +19,7 @@ jobs:
         target: [agent, winagent]
     runs-on: ubuntu-22.04
     env:
-      WINEARCH: win64
+      WINEARCH: win32
       WINEDLLOVERRIDES: "mscoree,mshtml="
       DISPLAY: ":0"
       WINEDEBUG: "-all"

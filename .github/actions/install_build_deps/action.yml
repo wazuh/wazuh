@@ -30,8 +30,8 @@ runs:
           # Use Ubuntu's Wine 6.0.3 which may be more compatible with the runner environment
           sudo apt-get install -y wine wine64 wine32
           wine --version
-          # Initialize Wine prefix
-          WINEARCH=win64 WINEDLLOVERRIDES="mscoree,mshtml=" wine wineboot --init 2>&1 | head -10 || true
+          # Initialize Wine prefix with 32-bit architecture for i686-w64-mingw32 tests
+          WINEARCH=win32 WINEDLLOVERRIDES="mscoree,mshtml=" wine wineboot --init 2>&1 | head -10 || true
         else
           echo "Skipping wine installation for this target"
         fi
