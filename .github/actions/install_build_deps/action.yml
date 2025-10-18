@@ -26,15 +26,18 @@ runs:
       run: |
         if [[ "${{ inputs.target }}" == "winagent" ]]; then
           sudo dpkg --add-architecture i386
+          sudo mkdir -pm755 /etc/apt/keyrings
+          sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
+          sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources
           sudo apt-get update
-          # Use Ubuntu's Wine 6.0.3 instead of WineHQ (matches local working environment)
-          sudo apt-get install -y wine wine64 wine32
+          # Install latest WineHQ stable (like yesterday's successful runs)
+          sudo apt-get install -y --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine-stable-i386 wine-stable-amd64 winehq-stable
           wine --version
-          # Initialize Wine prefix to avoid initialization during tests
+          # Pre-initialize Wine prefix to avoid hangs during test execution
           export WINEARCH=win64
-          wine wineboot -i 2>&1 | head -20 || true
-          wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f || true
-          echo "Wine configured for CI"
+          wine wineboot --init
+          wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f
+          echo "Wine initialized successfully"
         else
           echo "Skipping wine installation for this target"
         fi
