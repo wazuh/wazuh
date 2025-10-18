@@ -535,9 +535,15 @@ def runTestToolForWindows(moduleName, testToolConfig):
     for element in module:
         path = os.path.join(rootPath, element['test_tool_name'])
         args = " ".join(element['args'])
-        testToolCommand = "WINEPATH=\"/usr/i686-w64-mingw32/lib;{}\" \
-                           WINEARCH=win64 /usr/bin/wine {}.exe {}"\
-                           .format(utils.rootPath(), path, args)
+        winepath_entries = [
+            "Z:\\usr\\i686-w64-mingw32\\lib",
+            "Z:" + utils.rootPath().replace("/", "\\")
+        ]
+        win_path = ";".join(winepath_entries)
+        testToolCommand = (
+            f'WINEARCH=win32 WINEPATH="{win_path}" '
+            f'/usr/bin/wine {path}.exe {args}'
+        )
         runTestTool(moduleName=moduleName,
                     testToolCommand=testToolCommand,
                     element=element)
@@ -619,15 +625,16 @@ def runTests(moduleName):
                         seen.add(d)
                         uniq_dirs.append(d)
 
-                # Convert to Windows-style paths for Wine's %PATH% (Z:\… and backslashes)
+                # Convert to Windows-style paths for Wine's loader (Z:\… and backslashes)
                 win_path = ";".join(
-                    "Z:" + d.replace("/", "\\\\")
+                    "Z:" + d.replace("/", "\\")
                     for d in uniq_dirs
                 )
 
-                # Use WINEPATH instead of wine cmd for simpler and more reliable execution
+                # Run tests under a 32-bit Wine prefix with the DLL search path configured
                 command = (
-                    f'WINEPATH="{";".join(uniq_dirs)}" '
+                    f'WINEARCH=win32 '
+                    f'WINEPATH="{win_path}" '
                     f'wine {path}'
                 )
             else:
