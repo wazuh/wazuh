@@ -30,12 +30,12 @@ runs:
           sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
           sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources
           sudo apt-get update
-          # Pin to Wine 9.0 (last stable before 10.x) to avoid breaking changes
+          # Pin to Wine 10.0 (released Jan 2025) which was working before
           sudo apt-get install -y --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 \
-            winehq-stable=9.0.0.0~jammy-1 \
-            wine-stable=9.0.0.0~jammy-1 \
-            wine-stable-amd64=9.0.0.0~jammy-1 \
-            wine-stable-i386=9.0.0.0~jammy-1
+            winehq-stable=10.0.0.0~jammy-1 \
+            wine-stable=10.0.0.0~jammy-1 \
+            wine-stable-amd64=10.0.0.0~jammy-1 \
+            wine-stable-i386=10.0.0.0~jammy-1
           wine --version
         else
           echo "Skipping wine installation for this target"
