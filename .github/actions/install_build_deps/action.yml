@@ -27,8 +27,8 @@ runs:
         if [[ "${{ inputs.target }}" == "winagent" ]]; then
           sudo dpkg --add-architecture i386
           sudo apt-get update
-          # Use Ubuntu's Wine 6.0.3 which may be more compatible with the runner environment
-          sudo apt-get install -y wine wine64 wine32
+          # Install only 32-bit Wine to avoid WOW64 issues with Azure kernel
+          sudo apt-get install -y wine32:i386
           wine --version
           # Initialize Wine prefix with 32-bit architecture for i686-w64-mingw32 tests
           WINEARCH=win32 WINEDLLOVERRIDES="mscoree,mshtml=" wine wineboot --init 2>&1 | head -10 || true
