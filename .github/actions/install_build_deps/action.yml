@@ -30,18 +30,7 @@ runs:
           sudo wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key
           sudo wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/jammy/winehq-jammy.sources
           sudo apt-get update
-          # Pin to Wine 10.16 - last known working version before 10.17 broke exception handling
-          sudo apt-get install -y --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 \
-            winehq-stable=10.16.0.0~jammy-1 \
-            wine-stable=10.16.0.0~jammy-1 \
-            wine-stable-amd64=10.16.0.0~jammy-1 \
-            wine-stable-i386=10.16.0.0~jammy-1
-          wine --version
-          # Pre-initialize Wine prefix to avoid hangs during test execution
-          export WINEARCH=win64
-          wine wineboot --init
-          wine reg add "HKCU\\Software\\Wine\\WineDbg" /v ShowCrashDialog /t REG_DWORD /d 0 /f
-          echo "Wine initialized successfully"
+          sudo apt-get install -y --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine-stable-i386 wine-stable-amd64 winehq-stable
         else
           echo "Skipping wine installation for this target"
         fi
