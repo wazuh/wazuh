@@ -781,7 +781,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
+      - 'c:stat -c "%u %U %g %G %a" /boot/grub/grub.cfg  /boot/grub/grub.cfg -> r:0 root 0 root 600'
 
   # 1.5.1 Ensure address space layout randomization is enabled. (Automated) - Not Implemented
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
