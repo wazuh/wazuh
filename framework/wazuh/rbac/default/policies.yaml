@@ -143,27 +143,22 @@ default_policies:
   kvdbs_read:
     description: Allow reading KVDBs.
     policies:
-      kvdbs:
-        actions:
+      resourceless:
+          actions:
           - kvdbs:read
-        resources:
-          - '*:*:*'
-        effect: allow
+          resources:
+            - '*:*:*'
+          effect: allow
 
   kvdbs_all:
     description: Allow managing KVDBs (create, update, delete).
     policies:
-      kvdbs:
-        actions:
-          - kvdbs:read
-          - kvdbs:delete
-        resources:
-          - '*:*:*'
-        effect: allow
       resourceless:
         actions:
           - kvdbs:create
+          - kvdbs:read
           - kvdbs:update
+          - kvdbs:delete
         resources:
           - '*:*:*'
         effect: allow

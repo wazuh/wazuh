@@ -20,12 +20,11 @@ from wazuh.core.utils import process_array, full_copy, safe_move
 DEFAULT_INTEGRATION_FORMAT = ResourceFormat.JSON
 ENGINE_USER_NAMESPACE = "user"
 
-
-@expose_resources(actions=["integration:read"], resources=["*:*:*"])
+@expose_resources(actions=["integrations:read"], resources=["*:*:*"])
 async def get_integration(
     ids: list,
     policy_type: str,
-    status: Status,
+    status: Optional[Status] = None,
     offset: Optional[int] = 0,
     limit: Optional[int] = 0,
     select: Optional[list] = None,
@@ -52,8 +51,8 @@ async def get_integration(
                     type=ResourceType.INTEGRATION,
                     policy_type=PolicyType(policy_type),
                 )
-                validate_response_or_raise(integration_response, 9004)
-                retrieved_integrations.append(integration_response["content"])
+                validate_response_or_raise(integration_response, 9003, ResourceType.INTEGRATION)
+                retrieved_integrations.extend(integration_response["content"])
         except WazuhError as exc:
             results.add_failed_item(id_="all" if id_ is None else id_, error=exc)
 
@@ -75,7 +74,7 @@ async def get_integration(
     return results
 
 
-@expose_resources(actions=["integration:delete"], resources=["*:*:*"])
+@expose_resources(actions=["integrations:delete"], resources=["*:*:*"])
 async def delete_integration(ids: List[str], policy_type: str):
     """Delete integration resources."""
     result = AffectedItemsWazuhResult(
@@ -100,7 +99,7 @@ async def delete_integration(ids: List[str], policy_type: str):
                 raise WazuhError(1907) from exc
             async with get_engine_client() as client:
                 delete_results = await client.content.delete_resource(id_=id_, policy_type=PolicyType(policy_type))
-                validate_response_or_raise(delete_results, 9007)
+                validate_response_or_raise(delete_results, 9007, ResourceType.INTEGRATION)
             result.affected_items.append(id_)
         except WazuhError as exc:
             # Restore the backup
@@ -114,7 +113,7 @@ async def delete_integration(ids: List[str], policy_type: str):
     return result
 
 
-@expose_resources(actions=["integration:create", "integration:update"], resources=["*:*:*"])
+@expose_resources(actions=["integrations:create", "integrations:update"], resources=["*:*:*"])
 async def upsert_integration(integration_content: dict, policy_type: str) -> AffectedItemsWazuhResult:
     """Create or update an integration resource."""
     filename = None
@@ -164,7 +163,7 @@ async def upsert_integration(integration_content: dict, policy_type: str) -> Aff
                 content=file_contents_json,
                 namespace_id=ENGINE_USER_NAMESPACE,
             )
-            validate_response_or_raise(validation_results, 9002)
+            validate_response_or_raise(validation_results, 9002, ResourceType.INTEGRATION)
 
             if mode == "create":
                 creation_results = await client.content.create_resource(
@@ -172,14 +171,14 @@ async def upsert_integration(integration_content: dict, policy_type: str) -> Aff
                     resource=integration_resource,
                     policy_type=policy_type,
                 )
-                validate_response_or_raise(creation_results, 9003)
+                validate_response_or_raise(creation_results, 9004, ResourceType.INTEGRATION)
             else:
                 update_results = await client.content.update_resource(
                     type=ResourceType.INTEGRATION,
                     resource=integration_resource,
                     policy_type=policy_type,
                 )
-                validate_response_or_raise(update_results, 9006)
+                validate_response_or_raise(update_results, 9005, ResourceType.INTEGRATION)
 
         result.affected_items.append(filename)
 

@@ -355,32 +355,6 @@ class WazuhException(Exception):
         1760: {'message': 'Feature only available for older agent versions, it doesn\'t apply for more recent ones.'
                },
 
-       # KVDB: 1800 - 1899
-       1800: {'message': "Invalid KVDB payload: unexpected field(s)",
-              'remediation': "Send only allowed keys: id, name, content, integration_id."
-              },
-       1801: {'message': "Invalid KVDB payload: field must be a non-empty string",
-              'remediation': "Provide a string with length > 0."
-              },
-       1802: {'message': "Invalid KVDB payload: field must be a string or null",
-              'remediation': "Provide a string value or null."
-              },
-       1803: {'message': "Invalid KVDB payload: field must be an object",
-              'remediation': "Provide a JSON object (dictionary)."
-              },
-       1804: {'message': "Mutations only allowed in testing policy",
-              'remediation': "Use type=testing for create/update/delete operations."
-              },
-       1805: {'message': "Missing request body",
-              'remediation': "Provide a JSON body with the required fields."
-              },
-       1806: {'message': "Invalid KVDB payload",
-              'remediation': "Required: id (string) and content (object)."
-              },
-       1807: {'message': "Missing ids to delete",
-              'remediation': "Provide at least one kvdb_id to delete."
-              },
-
         # Manager:
         1901: {'message': '\'execq\' socket has not been created'
                },
@@ -612,32 +586,18 @@ class WazuhException(Exception):
                'remediation': 'Make sure you introduce the token within the field "token"'},
 
         # Engine
-        9000: {'message': 'Invalid policy type provided: {policy_type}. The specified policy type is not recognized by the engine.'},
-        9001: {'message': 'Asset upload failed: An asset with the same ID already exists in the system.',
-               'remediation': 'Please use a unique asset ID to upload a new asset.'},
-        9002: {'message': 'Asset syntax error: The provided asset data does not match the required format.'},
-        9003: {'message': 'Engine error: Unable to add the asset. Please check the asset data and try again.'},
-        9004: {'message': 'Engine error: Unable to retrieve the specified decoders. The requested decoders could not be found or there was an issue processing your request.',
-               'remediation': 'Please verify the decoder names and ensure they exist in the system.'},
-        9005: {'message': 'Asset does not exist',
-                'remediation': 'Please verify the asset ID and ensure it exists in the system before making the request.'},
-        9006: {'message': 'Engine error: Error uploading the decoder',
-                'remediation': 'Please check the decoder data and ensure it meets the required format before uploading.'},
-        9007: {'message': 'Engine error: Unable to delete the decoder.',
-                'remediation': 'Check the decoder ID and confirm it is present in the system.'},
-        9008: {
-            'message': 'Engine error: Unable to retrieve the specified integrations. The requested integrations could not be found or there was an issue processing your request.',
-            'remediation': 'Please verify the integration names and ensure they exist in the system.'},
-        9009: {'message': 'Engine error: Error uploading the integration',
-               'remediation': 'Please check the integration data and ensure it meets the required format before uploading.'},
-        9010: {'message': 'Integrations order file already exists.',
-               'remediation': 'Please remove the existing integrations order file before creating a new one.'},
-        9011: {'message': 'Integrations order file does not exist.',
-               'remediation': 'Please ensure the integrations order file exists before attempting this operation.'},
-        9012: {'message': 'Error validating integrations order with the engine.',
-               'remediation': 'Please check the integrations order content and try again.'},
-        9013: {'message': 'Error deleting integrations order from the engine.',
-               'remediation': 'Please check the integrations order file and engine status.'},
+        9001: {'message': 'Asset syntax error: The provided {resource_type} asset data does not match the required format : {cause}.',
+              'remediation': 'Please check the resouce data and ensure it meets the required format'},
+        9002: {'message': 'Engine error: Unable to validate the {resource_type}: {cause}.',
+               'remediation': 'Please check the resouce data and ensure it meets the required format.'},
+        9003: {'message': 'Engine error: Unable to get the {resource_type}: {cause}',
+               'remediation': 'Check the resouce ID and confirm it is present in the system.'},
+        9004: {'message': 'Engine error: Unable to create the {resource_type}: {cause}.',
+                'remediation': 'Please check the resouce data and ensure it meets the required format.'},
+        9005: {'message': 'Engine error: Unable to update the {resource_type}: {cause}.',
+                'remediation': 'Please check the resouce data and ensure it meets the required format.'},
+        9006: {'message': 'Engine error: Unable to delete the {resource_type}: {cause}.',
+                'remediation': 'Check the resouce ID and confirm it is present in the system.'},
     }
 
     # Reserve agent upgrade custom errors
@@ -718,7 +678,8 @@ class WazuhException(Exception):
 
     def __hash__(self):
         return hash(
-            (self._type, self._title, self._code, self._extra_message, self._extra_remediation, self._cmd_error))
+            (self._type, self._title, self._code, self._extra_message if isinstance(self._extra_message, str) else None,
+              self._extra_remediation, self._cmd_error))
 
     def __or__(self, other):
         if isinstance(other, WazuhException):

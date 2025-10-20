@@ -13,7 +13,8 @@ class ResourceType(str, Enum):
     """Enumeration for resource types in the catalog."""
     DECODER = 'decoder'
     KVDB = 'kvdb'
-    INTEGRATION = 'integrations'
+    INTEGRATION = 'integration'
+    INTEGRATIONS_ORDER = 'integrations_order'
 
     def dirname(self) -> str:
         """Return the directory name corresponding to the resource type."""
@@ -117,9 +118,9 @@ class Resource:
                         decoders=data["decoders"]
                     )
         except KeyError as e:
-            raise WazuhError(9002) from e
+            raise WazuhError(9001, extra_message={'resource_type': type_}) from e
         except ValueError as e:
-            raise WazuhError(9002) from e
+            raise WazuhError(9001, extra_message={'resource_type': type_}) from e
         
     def to_dict(self) -> Dict:
         """Convert Resource (including nested dataclasses and enums) to a dictionary."""

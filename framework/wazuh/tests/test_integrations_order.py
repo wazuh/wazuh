@@ -240,7 +240,7 @@ async def test_delete_integrations_order_file_not_exists(mock_exists, mock_gener
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.total_affected_items == 0
     assert len(result.failed_items) == 1
-    assert 9011 in failed_error_codes(result)
+    assert 9006 in failed_error_codes(result)
 
 
 @pytest.mark.asyncio

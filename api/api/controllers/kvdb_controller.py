@@ -55,7 +55,7 @@ async def get_kvdb(pretty: bool = False, wait_for_complete: bool = False,
     """
     f_kwargs = {
         'policy_type': type_,
-        'ids': kvdb_id,
+        'ids': kvdb_id or [],
         'offset': offset,
         'limit': limit,
         'select': select,
@@ -149,7 +149,7 @@ async def delete_kvdb(pretty: bool = False, wait_for_complete: bool = False,
     """
     f_kwargs = {
         'policy_type': type_,
-        'ids': kvdb_id if kvdb_id else None
+        'ids': kvdb_id or []
     }
 
     dapi = DistributedAPI(

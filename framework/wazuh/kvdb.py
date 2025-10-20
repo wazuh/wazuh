@@ -11,7 +11,7 @@ from wazuh.rbac.decorators import expose_resources
 from wazuh.core.exception import WazuhError
 from wazuh.core.engine import get_engine_client
 from wazuh.core.engine.utils import validate_response_or_raise
-from wazuh.core.engine.models.resources import ResourceFormat, Status, ResourceType, Resource
+from wazuh.core.engine.models.resources import ResourceFormat, ResourceType, Resource
 from wazuh.core.engine.models.policies import PolicyType
 from wazuh.core.assets import save_asset_file, generate_asset_file_path
 from wazuh.core.results import AffectedItemsWazuhResult
@@ -21,11 +21,10 @@ DEFAULT_KVDB_FORMAT = ResourceFormat.JSON
 ENGINE_USER_NAMESPACE = "user"
 
 
-@expose_resources(actions=["kvdb:read"], resources=["*:*:*"])
+@expose_resources(actions=["kvdbs:read"], resources=["*:*:*"])
 async def get_kvdb(
     ids: list,
     policy_type: str,
-    status: Status,
     offset: Optional[int] = 0,
     limit: Optional[int] = 0,
     select: Optional[list] = None,
@@ -52,8 +51,8 @@ async def get_kvdb(
                     type=ResourceType.KVDB,
                     policy_type=PolicyType(policy_type),
                 )
-                validate_response_or_raise(kvdb_response, 9004)
-                retrieved_kvdbs.append(kvdb_response["content"])
+                validate_response_or_raise(kvdb_response, 9003, ResourceType.KVDB)
+                retrieved_kvdbs.extend(kvdb_response["content"])
         except WazuhError as exc:
             results.add_failed_item(id_="all" if id_ is None else id_, error=exc)
 
@@ -74,7 +73,7 @@ async def get_kvdb(
     results.total_affected_items = parsed_kvdbs["totalItems"]
     return results
 
-@expose_resources(actions=["kvdb:delete"], resources=["*:*:*"])
+@expose_resources(actions=["kvdbs:delete"], resources=["*:*:*"])
 async def delete_kvdb(ids: List[str], policy_type: str):
     """Delete KVDB resources."""
     result = AffectedItemsWazuhResult(
@@ -87,7 +86,7 @@ async def delete_kvdb(ids: List[str], policy_type: str):
         asset_file_path = generate_asset_file_path(id_, PolicyType(policy_type), ResourceType.KVDB)
         try:
             if not exists(asset_file_path):
-                raise WazuhError(9005)
+                raise WazuhError(9006)
             backup_file = f"{asset_file_path}.backup"
             try:
                 full_copy(asset_file_path, backup_file)
@@ -99,7 +98,7 @@ async def delete_kvdb(ids: List[str], policy_type: str):
                 raise WazuhError(1907) from exc
             async with get_engine_client() as client:
                 delete_results = await client.content.delete_resource(id_=id_, policy_type=PolicyType(policy_type))
-                validate_response_or_raise(delete_results, 9007)
+                validate_response_or_raise(delete_results, 9006, ResourceType.KVDB)
             result.affected_items.append(id_)
         except WazuhError as exc:
             # Restore the backup
@@ -113,7 +112,7 @@ async def delete_kvdb(ids: List[str], policy_type: str):
     return result
 
 
-@expose_resources(actions=["kvdb:create", "kvdb:update"], resources=["*:*:*"])
+@expose_resources(actions=["kvdbs:create", "kvdbs:update"], resources=["*:*:*"])
 async def upsert_kvdb(kvdb_content: dict, policy_type: str) -> AffectedItemsWazuhResult:
     """Create or update a kvdb resource.
 
@@ -179,7 +178,7 @@ async def upsert_kvdb(kvdb_content: dict, policy_type: str) -> AffectedItemsWazu
                 content=file_contents_json,
                 namespace_id=ENGINE_USER_NAMESPACE,
             )
-            validate_response_or_raise(validation_results, 9002)
+            validate_response_or_raise(validation_results, 9002, ResourceType.KVDB)
 
             if mode == "create":
                 creation_results = await client.content.create_resource(
@@ -187,14 +186,14 @@ async def upsert_kvdb(kvdb_content: dict, policy_type: str) -> AffectedItemsWazu
                     resource=kvdb_resource,
                     policy_type=policy_type,
                 )
-                validate_response_or_raise(creation_results, 9003)
+                validate_response_or_raise(creation_results, 9004, ResourceType.KVDB)
             else:
                 update_results = await client.content.update_resource(
                     type=ResourceType.KVDB,
                     resource=kvdb_resource,
                     policy_type=policy_type,
                 )
-                validate_response_or_raise(update_results, 9006)
+                validate_response_or_raise(update_results, 9005, ResourceType.KVDB)
 
         result.affected_items.append(filename)
 

@@ -47,7 +47,7 @@ async def test_get_kvdbs_defaults(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
     result = await get_kvdb()
     f_kwargs = {
         'policy_type': None,
-        'ids': None,
+        'ids': [],
         'offset': 0,
         'limit': None,
         'select': None,
@@ -183,7 +183,7 @@ async def test_delete_kvdbs_defaults(mock_exc, mock_dapi, mock_remove, mock_dfun
     """Verify 'delete_kvdbs' default wiring (no ids, no type)."""
     result = await delete_kvdb()
 
-    f_kwargs = {'policy_type': None, 'ids': None}
+    f_kwargs = {'policy_type': None, 'ids': []}
     mock_dapi.assert_called_once_with(
         f=kvdb.delete_kvdb,
         f_kwargs=mock_remove.return_value,

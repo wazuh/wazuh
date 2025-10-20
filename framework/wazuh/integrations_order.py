@@ -79,13 +79,13 @@ async def upsert_integrations_order(order: IntegrationsOrder, policy_type: Polic
                     content=file_contents_json,
                     policy_type=policy_type
                 )
-                validate_response_or_raise(creation_results, 9012)
+                validate_response_or_raise(creation_results, 9004, ResourceType.INTEGRATIONS_ORDER)
             else:
                 update_results = await client.integrations_order.update_order(
                     content=file_contents_json,
                     policy_type=policy_type
                 )
-                validate_response_or_raise(update_results, 9013)
+                validate_response_or_raise(update_results, 9005, ResourceType.INTEGRATIONS_ORDER)
 
         result.affected_items.append(filename)
 
@@ -122,7 +122,7 @@ async def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhR
     Raises
     ------
     WazuhError
-        If retrieval or validation fails (code: 8011).
+        If retrieval or validation fails (code: 9003).
     """
     results = AffectedItemsWazuhResult(none_msg='No integrations order was returned',
                                       some_msg='Some integrations order were not returned',
@@ -131,7 +131,7 @@ async def get_integrations_order(policy_type: PolicyType) -> AffectedItemsWazuhR
     async with get_engine_client() as client:
         integrations_order_response = await client.integrations_order.get_order(policy_type=policy_type)
 
-        validate_response_or_raise(integrations_order_response, 8011)
+        validate_response_or_raise(integrations_order_response, 9003, ResourceType.INTEGRATIONS_ORDER)
 
         results.affected_items = integrations_order_response['content']
         results.total_affected_items = len(integrations_order_response['content'])
@@ -155,7 +155,7 @@ async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWaz
     Raises
     ------
     WazuhError
-        If the file does not exist or file/engine operations fail (codes: 8010, 1019, 1907, 8012).
+        If the file does not exist or file/engine operations fail (codes: 9006, 1019, 1907).
     """
     result = AffectedItemsWazuhResult(all_msg='Integrations order file was successfully deleted',
                                       some_msg='Some integrations order were not returned',
@@ -166,7 +166,7 @@ async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWaz
 
     try:
         if not exists(integration_order_path_file):
-            raise WazuhError(9011)
+            raise WazuhError(9006)
 
         # Creates a backup copy
         backup_file = f'{integration_order_path_file}.bak'
@@ -187,7 +187,7 @@ async def delete_integrations_order(policy_type: PolicyType) -> AffectedItemsWaz
                 policy_type=policy_type
             )
 
-            validate_response_or_raise(delete_results, 9013)
+            validate_response_or_raise(delete_results, 9006, ResourceType.INTEGRATIONS_ORDER)
 
         result.affected_items.append(DEFAULT_INTEGRATIONS_ORDER_FILENAME)
     except WazuhError as exc:

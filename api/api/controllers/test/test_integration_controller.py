@@ -52,8 +52,8 @@ async def test_upsert_integration(mock_integration_model, mock_get_kwargs, mock_
 
     result = await upsert_integration(body=TEST_INTEGRATION_BODY, type_='policy')
     f_kwargs = {
-        'integration': mock_integration_model.return_value,
-        'type_': 'policy'
+        'integration_content': mock_integration_model.return_value,
+        'policy_type': 'policy'
     }
     mock_dapi.assert_called_once_with(
         f=integration_framework.upsert_integration,
@@ -79,8 +79,8 @@ async def test_get_integrations(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
     """Verify 'get_integrations' works as expected."""
     result = await get_integration(type_='policy', integration_id=['a', 'b'])
     f_kwargs = {
-        'type_': 'policy',
-        'names': ['a', 'b'],
+        'policy_type': 'policy',
+        'ids': ['a', 'b'],
         'status': None,
         'search': None
     }
@@ -107,8 +107,8 @@ async def test_delete_integration(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
     """Verify 'delete_integration' works as expected."""
     result = await delete_integration(type_='policy', integration_id=['x'])
     f_kwargs = {
-        'type_': 'policy',
-        'names': ['x']
+        'policy_type': 'policy',
+        'ids': ['x']
     }
     mock_dapi.assert_called_once_with(
         f=integration_framework.delete_integration,

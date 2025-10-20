@@ -5950,7 +5950,6 @@ components:
           - 'agent:id'
           - 'group:id'
           - 'node:id'
-          - 'kvdbs'
           - 'rule:file'
           - 'policy:id'
           - 'role:id'

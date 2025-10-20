@@ -193,7 +193,7 @@ async def test_get_kvdb_success(mock_get_engine, mock_validate, mock_process):
     mock_get_engine.return_value.__aexit__.return_value = AsyncMock()
 
     result = await kvdb.get_kvdb(
-        ids=["my_kvdb"], policy_type="testing", status=Status.ENABLED
+        ids=["my_kvdb"], policy_type="testing"
     )
 
     assert isinstance(result, AffectedItemsWazuhResult)
@@ -217,7 +217,7 @@ async def test_get_kvdb_failure(mock_get_engine):
     mock_get_engine.return_value.__aenter__.return_value = mock_client
 
     results = await kvdb.get_kvdb(
-        ids=["invalid"], policy_type="testing", status=Status("enabled")
+        ids=["invalid"], policy_type="testing"
     )
 
     assert isinstance(results, AffectedItemsWazuhResult)

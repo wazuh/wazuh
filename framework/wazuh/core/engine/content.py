@@ -38,10 +38,14 @@ class ContentModule(BaseModule):
         """Retrieve a list of content resources."""
         key = (type, policy_type, id_)
         async with self._lock:
-            if key not in self._db:
+            # Get every resource
+            if id_ is None:
+                resources = [resource.to_dict() for resource in self._db.values()]
+            elif key in self._db:
+                resources = [self._db[key].to_dict]
+            else: 
                 return {"status": "ERROR", "error": f"Resource '{id_}' not found"}
-            resource = self._db[key]
-        return {"status": "OK", "error": None, "content": resource.to_dict()}
+        return {"status": "OK", "error": None, "content": resources}
 
     async def update_resource(
         self, resource: Resource, type: ResourceType, policy_type: PolicyType

@@ -20,7 +20,6 @@ from wazuh.core.utils import process_array, full_copy, safe_move
 DEFAULT_DECODER_FORMAT = ResourceFormat.JSON
 ENGINE_USER_NAMESPACE = "user"
 
-
 @expose_resources(actions=["decoders:read"], resources=["*:*:*"])
 async def get_decoder(
     ids: list,
@@ -52,8 +51,8 @@ async def get_decoder(
                     type=ResourceType.DECODER,
                     policy_type=PolicyType(policy_type),
                 )
-                validate_response_or_raise(decoder_response, 9004)
-                retrieved_decoders.append(decoder_response["content"])
+                validate_response_or_raise(decoder_response, 9003, ResourceType.DECODER)
+                retrieved_decoders.extend(decoder_response["content"])
         except WazuhError as exc:
             results.add_failed_item(id_="all" if id_ is None else id_, error=exc)
 
@@ -87,7 +86,7 @@ async def delete_decoder(ids: List[str], policy_type: str):
         asset_file_path = generate_asset_file_path(id_, PolicyType(policy_type), ResourceType.DECODER)
         try:
             if not exists(asset_file_path):
-                raise WazuhError(9005)
+                raise WazuhError(9006)
             backup_file = f"{asset_file_path}.backup"
             try:
                 full_copy(asset_file_path, backup_file)
@@ -99,7 +98,7 @@ async def delete_decoder(ids: List[str], policy_type: str):
                 raise WazuhError(1907) from exc
             async with get_engine_client() as client:
                 delete_results = await client.content.delete_resource(id_=id_, policy_type=PolicyType(policy_type))
-                validate_response_or_raise(delete_results, 9007)
+                validate_response_or_raise(delete_results, 9006, ResourceType.DECODER)
             result.affected_items.append(id_)
         except WazuhError as exc:
             # Restore the backup
@@ -179,7 +178,7 @@ async def upsert_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
                 content=file_contents_json,
                 namespace_id=ENGINE_USER_NAMESPACE,
             )
-            validate_response_or_raise(validation_results, 9002)
+            validate_response_or_raise(validation_results, 9002, ResourceType.DECODER)
 
             if mode == "create":
                 creation_results = await client.content.create_resource(
@@ -187,14 +186,14 @@ async def upsert_decoder(decoder_content: dict, policy_type: str) -> AffectedIte
                     resource=decoder_resource,
                     policy_type=policy_type,
                 )
-                validate_response_or_raise(creation_results, 9003)
+                validate_response_or_raise(creation_results, 9004, ResourceType.DECODER)
             else:
                 update_results = await client.content.update_resource(
                     type=ResourceType.DECODER,
                     resource=decoder_resource,
                     policy_type=policy_type,
                 )
-                validate_response_or_raise(update_results, 9006)
+                validate_response_or_raise(update_results, 9005, ResourceType.DECODER)
 
         result.affected_items.append(filename)
 

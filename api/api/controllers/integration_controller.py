@@ -40,8 +40,8 @@ async def upsert_integration(body: dict, type_: str, pretty: bool = False, wait_
     model = Integration(**body_kwargs)
 
     f_kwargs = {
-        'integration': model,
-        'type_': type_
+        'integration_content': model,
+        'policy_type': type_
     }
 
     dapi = DistributedAPI(
@@ -82,8 +82,8 @@ async def get_integration(type_: str, integration_id: List[str] = None, status: 
         API response with the list of integrations.
     """
     f_kwargs = {
-        'type_': type_,
-        'names': integration_id,
+        'policy_type': type_,
+        'ids': integration_id  or [],
         'status': status,
         'search': parse_api_param(search, 'search')['value'] if search is not None else None,
     }
@@ -121,8 +121,8 @@ async def delete_integration(type_: str, integration_id: List[str], pretty: bool
         API response.
     """
     f_kwargs = {
-        'type_': type_,
-        'names': integration_id
+        'policy_type': type_,
+        'ids': integration_id
     }
 
     dapi = DistributedAPI(
