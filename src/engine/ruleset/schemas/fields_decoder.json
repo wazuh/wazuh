@@ -3084,11 +3084,16 @@
       ]
     },
     "gen_ai.response.finish_reasons": {
-      "description": "Module: ecs\nIndexerType: nested\nArray: False\n\nArray of reasons the model stopped generating tokens, corresponding to each generation received.",
+      "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of reasons the model stopped generating tokens, corresponding to each generation received.",
+      "items": {
+        "type": [
+          "string"
+        ]
+      },
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
       "type": [
-        "object",
-        "string"
+        "string",
+        "array"
       ]
     },
     "gen_ai.response.id": {
