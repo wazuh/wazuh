@@ -39,8 +39,8 @@ constexpr auto TRACE_REFERENCE_NOT_FOUND = "[{}] -> Failure: Parameter '{}' refe
 constexpr auto TRACE_REFERENCE_TYPE_IS_NOT = "[{}] -> Failure: Parameter '{}' type is not ";
 
 constexpr std::array<std::string_view, 24> SYSLOG_FACILITY_NAMES = {
-    "kern",   "user",   "mail",     "daemon", "auth",   "syslog", "lpr",    "news",
-    "uucp",   "clock",  "authpriv", "ftp",    "ntp",    "audit",  "alert",  "clock",
+    "kernel",   "user",   "mail",     "daemon", "auth",   "syslog", "lpr",    "news",
+    "uucp",   "cron",  "authpriv", "ftp",    "ntp",    "logaudit",  "logalert",  "solaris-cron",
     "local0", "local1", "local2",   "local3", "local4", "local5", "local6", "local7"};
 
 constexpr std::array<std::string_view, 8> SYSLOG_SEVERITY_NAMES = {
@@ -2622,7 +2622,7 @@ MapOp opBuilderHelperNetworkCommunityId(const std::vector<OpArg>& opArgs,
     };
 }
 
-// field: +syslog_extract_facility/$<facility_code_ref>
+// field: +syslog_extract_facility/$<log.syslog.priority>
 MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
@@ -2681,7 +2681,7 @@ MapOp opBuilderHelperSyslogExtractFacility(const std::vector<OpArg>& opArgs,
     };
 }
 
-// field: +syslog_extract_severity/$<severity_code_ref>
+// field: +syslog_extract_severity/$<log.syslog.priority>
 MapOp opBuilderHelperSyslogExtractSeverity(const std::vector<OpArg>& opArgs,
                                            const std::shared_ptr<const IBuildCtx>& buildCtx)
 {

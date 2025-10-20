@@ -201,10 +201,10 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperNetworkCommunityId});
     registry->template add<builders::OpBuilderEntry>(
         "syslog_extract_facility",
-        {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperSyslogExtractFacility});
+        {schemf::JTypeToken::create(json::Json::Type::Object), builders::opBuilderHelperSyslogExtractFacility});
     registry->template add<builders::OpBuilderEntry>(
         "syslog_extract_severity",
-        {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperSyslogExtractSeverity});
+        {schemf::JTypeToken::create(json::Json::Type::Object), builders::opBuilderHelperSyslogExtractSeverity});
     registry->template add<builders::OpBuilderEntry>(
         "join", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringFromArray});
     registry->template add<builders::OpBuilderEntry>(

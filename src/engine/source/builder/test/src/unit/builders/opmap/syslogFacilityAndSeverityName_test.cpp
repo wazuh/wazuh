@@ -108,7 +108,7 @@ INSTANTIATE_TEST_SUITE_P(
         MapT(R"({"priority": 0})",
              opBuilderHelperSyslogExtractFacility,
              {makeRef(PRIORITY_REF)},
-             SUCCESS(expectRuntimeNotTyped(json::Json(R"({"code":0,"name":"kern"})")))),
+             SUCCESS(expectRuntimeNotTyped(json::Json(R"({"code":0,"name":"kernel"})")))),
         MapT(R"({"priority": 160})",
              opBuilderHelperSyslogExtractFacility,
              {makeRef(PRIORITY_REF)},
