@@ -65,19 +65,19 @@ static const auto OFFSET_UPDATE_VALUE {100000};
  * @param message Message to log.
  */
 void logFunction(const int logLevel,
-                 const std::string& tag,
-                 const std::string& file,
+                 const char* tag,
+                 const char* file,
                  const int line,
-                 const std::string& func,
-                 const std::string& message,
+                 const char* func,
+                 const char* message,
                  va_list args)
 {
-    auto pos {file.find_last_of('/')};
+    auto pos {std::string(file).find_last_of('/')};
     if (pos != std::string::npos)
     {
         pos++;
     }
-    const auto fileName {file.substr(pos, file.size() - pos)};
+    const auto fileName {std::string(file).substr(pos, std::string(file).size() - pos)};
 
     // Set log level tag.
     static const std::map<int, std::string> LOG_LEVEL_TAGS {{LOGLEVEL_DEBUG_VERBOSE, "DEBUG_VERBOSE"},
@@ -89,7 +89,7 @@ void logFunction(const int logLevel,
     const auto levelTag {"[" + LOG_LEVEL_TAGS.at(logLevel) + "]"};
 
     char formattedStr[OS_MAXSTR] = {0};
-    vsnprintf(formattedStr, OS_MAXSTR, message.c_str(), args);
+    vsnprintf(formattedStr, OS_MAXSTR, message, args);
 
     if (logLevel == LOGLEVEL_ERROR || logLevel == LOGLEVEL_CRITICAL)
     {
@@ -116,7 +116,7 @@ namespace Log
 {
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
-};
+}; // namespace Log
 
 /**
  * @brief Performs a PUT query to the on-demand manager, requesting an offset update.
